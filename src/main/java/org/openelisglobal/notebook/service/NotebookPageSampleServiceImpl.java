@@ -812,7 +812,8 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
     @Transactional
     public int bulkUpdateStatusStringWithPathwayRouting(Integer pageId, List<String> sampleIds, Status status,
             String userId, Boolean pathwayRouting, String sourcePageName, String targetPageName) {
-        // If pathway routing is not enabled, delegate to standard bulkUpdateStatusString
+        // If pathway routing is not enabled, delegate to standard
+        // bulkUpdateStatusString
         if (pathwayRouting == null || !pathwayRouting) {
             return bulkUpdateStatusString(pageId, sampleIds, status, userId);
         }
@@ -840,10 +841,10 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
      * Internal implementation of pathway-based routing. Routes samples to different
      * pages based on their pathway selection (analyticalPathwayId in JSONB data).
      *
-     * @param pageId        the source page ID
-     * @param sampleIds     list of sample item IDs
-     * @param status        the new status
-     * @param userId        the user performing the update
+     * @param pageId         the source page ID
+     * @param sampleIds      list of sample item IDs
+     * @param status         the new status
+     * @param userId         the user performing the update
      * @param sourcePageName the source page name (used to find next page)
      * @param targetPageName the target page name (for path_b routing)
      * @return number of samples updated
@@ -870,8 +871,7 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
             java.util.List<NoteBookPage> allPages = sourcePage.getNotebook().getPages();
             if (allPages != null) {
                 for (NoteBookPage p : allPages) {
-                    if (targetPageName != null && p.getTitle() != null
-                            && p.getTitle().contains(targetPageName)) {
+                    if (targetPageName != null && p.getTitle() != null && p.getTitle().contains(targetPageName)) {
                         targetPageForPathB = p;
                         break;
                     }
@@ -917,8 +917,7 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
 
                 // Create record on target page if it doesn't already exist
                 if (targetPage != null) {
-                    NotebookPageSample existingOnTargetPage = getByPageIdAndSampleItemId(targetPage.getId(),
-                            sampleId);
+                    NotebookPageSample existingOnTargetPage = getByPageIdAndSampleItemId(targetPage.getId(), sampleId);
                     if (existingOnTargetPage == null) {
                         // Get source data to copy
                         NotebookPageSample sourceSample = getByPageIdAndSampleItemId(pageId, sampleId);
@@ -937,8 +936,7 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                         }
                         insert(targetPageNps);
                         LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatusWithPathwayRoutingInternal",
-                                "Created PENDING record for sample " + sampleId + " on page: "
-                                        + targetPage.getTitle());
+                                "Created PENDING record for sample " + sampleId + " on page: " + targetPage.getTitle());
                     }
                 }
             }

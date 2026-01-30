@@ -1,0 +1,6 @@
+sampleId,sampleType,source,collectionDate,receptionDateTime,projectStudyAssociation,volumeConcentration,a260_280,a260_230,rin,extractionMethodKit,pcrProtocol,libraryPrepProtocol,sequencingPlatform,runId,operator,processingDateTime,notes
+GBD-2024-001-A,DNA,Research Hospital Addis Ababa,2024-01-15,2024-01-16 14:00,PROJ-GENOMICS-2024,100,1.82,2.15,,,,,,,Dr. Abebe Kemal,,Sample received in good condition
+GBD-2024-002-B,RNA,University Laboratory,2024-01-15,2024-01-16 15:30,PROJ-GENOMICS-2024,150,1.95,2.10,8.5,Qiagen RNeasy Kit,,,,,Dr. Sarah Bekele,,RIN score indicates good quality
+GBD-2024-003-C,Tissue,Biomedical Research Institute,2024-01-16,2024-01-17 09:15,PROJ-GENOMICS-2024,200,1.80,2.05,,,,,,,Dr. Daniel Assefa,,Frozen tissue sample
+GBD-2024-004-D,PCR product,Clinical Diagnostic Lab,2024-01-16,2024-01-17 11:45,PROJ-GENOMICS-2024,75,1.88,2.20,,Polymerase Standard,HotStart Taq,,,,Dr. Tigist Alemu,,PCR product amplified successfully
+GBD-2024-005-E,DNA,Research Hospital Addis Ababa,2024-01-17,2024-01-17 16:20,PROJ-GENOMICS-2024,120,1.85,2.12,,Genomic DNA Kit,Q5 Master Mix,NEXTflex DNA,Illumina MiSeq,RUN20240117,Dr. Abebe Kemal,2024-01-18 10:30,Ready for library preparation

@@ -6,11 +6,11 @@
       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!-- ======================================================================= -->
-    <!-- ADD TMMRD ROLES TO ALLLABUNITS                                         -->
-    <!-- Ensures admin users get automatic access to Traditional Medicine roles -->
+    <!-- ADD GBD ROLES TO ALLLABUNITS                                          -->
+    <!-- Ensures admin users get automatic access to GBD roles                  -->
     <!-- ======================================================================= -->
 
-    <changeSet id="add-tradmed-roles-to-alllabunits" author="openelis-admin-access">
+    <changeSet id="add-gbd-roles-to-alllabunits" author="openelis-gbd-admin-access">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="lab_roles" schemaName="clinlims"/>
             <sqlCheck expectedResult="1">
@@ -18,46 +18,46 @@
             </sqlCheck>
             <sqlCheck expectedResult="5">
                 SELECT COUNT(*) FROM clinlims.system_role
-                WHERE name IN ('TMMRD Lab Technician', 'TMMRD Researcher', 'TMMRD Pharmacognosist', 'TMMRD Lab Manager', 'TMMRD Principal Investigator')
+                WHERE name IN ('GBD Lab Technician', 'GBD Bioinformatician', 'GBD Manager', 'GBD Principal Investigator', 'GBD Data Manager')
             </sqlCheck>
-            <!-- Only run if TMMRD roles are not already in AllLabUnits -->
+            <!-- Only run if GBD roles are not already in AllLabUnits -->
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.lab_roles lr
                 JOIN clinlims.system_role sr ON lr.role::int = sr.id
                 WHERE lr.lab_unit_role_map_id = (SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'AllLabUnits')
-                AND sr.name IN ('TMMRD Lab Technician', 'TMMRD Researcher', 'TMMRD Pharmacognosist', 'TMMRD Lab Manager', 'TMMRD Principal Investigator')
+                AND sr.name IN ('GBD Lab Technician', 'GBD Bioinformatician', 'GBD Manager', 'GBD Principal Investigator', 'GBD Data Manager')
             </sqlCheck>
         </preConditions>
-        <comment>Add Traditional Medicine roles to AllLabUnits so admin users get automatic access (per TMMRD SRS Section 11)</comment>
+        <comment>Add GBD roles to AllLabUnits so admin users get automatic access</comment>
 
-        <!-- TMMRD Lab Technician -->
+        <!-- GBD Lab Technician -->
         <insert tableName="lab_roles" schemaName="clinlims">
             <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'AllLabUnits')"/>
-            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'TMMRD Lab Technician')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'GBD Lab Technician')"/>
         </insert>
 
-        <!-- TMMRD Researcher -->
+        <!-- GBD Bioinformatician -->
         <insert tableName="lab_roles" schemaName="clinlims">
             <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'AllLabUnits')"/>
-            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'TMMRD Researcher')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'GBD Bioinformatician')"/>
         </insert>
 
-        <!-- TMMRD Pharmacognosist -->
+        <!-- GBD Manager -->
         <insert tableName="lab_roles" schemaName="clinlims">
             <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'AllLabUnits')"/>
-            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'TMMRD Pharmacognosist')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'GBD Manager')"/>
         </insert>
 
-        <!-- TMMRD Lab Manager -->
+        <!-- GBD Principal Investigator -->
         <insert tableName="lab_roles" schemaName="clinlims">
             <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'AllLabUnits')"/>
-            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'TMMRD Lab Manager')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'GBD Principal Investigator')"/>
         </insert>
 
-        <!-- TMMRD Principal Investigator -->
+        <!-- GBD Data Manager -->
         <insert tableName="lab_roles" schemaName="clinlims">
             <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'AllLabUnits')"/>
-            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'TMMRD Principal Investigator')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'GBD Data Manager')"/>
         </insert>
     </changeSet>
 

@@ -857,7 +857,13 @@ function TraditionalMedicineFormulationPage({
         </Button>
 
         {/* FINAL ACTIONS - Disposal & Archival */}
-        <div style={{ borderLeft: "1px solid #e0e0e0", paddingLeft: "1rem", marginLeft: "1rem" }}>
+        <div
+          style={{
+            borderLeft: "1px solid #e0e0e0",
+            paddingLeft: "1rem",
+            marginLeft: "1rem",
+          }}
+        >
           <Button
             kind="danger--tertiary"
             size="sm"
@@ -1366,7 +1372,13 @@ function TraditionalMedicineFormulationPage({
         <Grid>
           <Column lg={16}>
             <div style={{ marginTop: "1rem", marginBottom: "1.5rem" }}>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: 500,
+                }}
+              >
                 <FormattedMessage
                   id="notebook.tradmed.formulation.qc.status"
                   defaultMessage="QC Status"
@@ -1382,7 +1394,10 @@ function TraditionalMedicineFormulationPage({
                     onChange={(e) => setProductQcStatus(e.target.value)}
                     style={{ marginRight: "0.5rem" }}
                   />
-                  <FormattedMessage id="notebook.tradmed.qc.pass" defaultMessage="Pass" />
+                  <FormattedMessage
+                    id="notebook.tradmed.qc.pass"
+                    defaultMessage="Pass"
+                  />
                 </label>
                 <label style={{ marginRight: "1rem" }}>
                   <input
@@ -1393,7 +1408,10 @@ function TraditionalMedicineFormulationPage({
                     onChange={(e) => setProductQcStatus(e.target.value)}
                     style={{ marginRight: "0.5rem" }}
                   />
-                  <FormattedMessage id="notebook.tradmed.qc.fail" defaultMessage="Fail" />
+                  <FormattedMessage
+                    id="notebook.tradmed.qc.fail"
+                    defaultMessage="Fail"
+                  />
                 </label>
                 <label>
                   <input
@@ -1404,24 +1422,47 @@ function TraditionalMedicineFormulationPage({
                     onChange={(e) => setProductQcStatus(e.target.value)}
                     style={{ marginRight: "0.5rem" }}
                   />
-                  <FormattedMessage id="notebook.tradmed.qc.failWithCaution" defaultMessage="Fail with Caution" />
+                  <FormattedMessage
+                    id="notebook.tradmed.qc.failWithCaution"
+                    defaultMessage="Fail with Caution"
+                  />
                 </label>
               </div>
             </div>
 
             {productQcStatus === "fail" && (
-              <div style={{ marginBottom: "1.5rem", padding: "1rem", backgroundColor: "#fee5e5", border: "1px solid #da1e28", borderRadius: "4px" }}>
+              <div
+                style={{
+                  marginBottom: "1.5rem",
+                  padding: "1rem",
+                  backgroundColor: "#fee5e5",
+                  border: "1px solid #da1e28",
+                  borderRadius: "4px",
+                }}
+              >
                 <strong style={{ color: "#da1e28" }}>
-                  <FormattedMessage id="notebook.tradmed.qc.failBlocks" defaultMessage="Fail Status Blocks Progression" />
+                  <FormattedMessage
+                    id="notebook.tradmed.qc.failBlocks"
+                    defaultMessage="Fail Status Blocks Progression"
+                  />
                 </strong>
                 <p style={{ marginTop: "0.5rem", color: "#da1e28" }}>
-                  <FormattedMessage id="notebook.tradmed.qc.failBlocksDescription" defaultMessage="Samples with Fail status cannot progress to the next stage." />
+                  <FormattedMessage
+                    id="notebook.tradmed.qc.failBlocksDescription"
+                    defaultMessage="Samples with Fail status cannot progress to the next stage."
+                  />
                 </p>
               </div>
             )}
 
             <div style={{ marginBottom: "1rem" }}>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: 500,
+                }}
+              >
                 <FormattedMessage
                   id="notebook.tradmed.formulation.qc.activeConstituent"
                   defaultMessage="Active Constituent Content"
@@ -1429,7 +1470,11 @@ function TraditionalMedicineFormulationPage({
               </label>
               <select
                 value={activeConstituentPass || ""}
-                onChange={(e) => setActiveConstituentPass(e.target.value ? e.target.value === "true" : null)}
+                onChange={(e) =>
+                  setActiveConstituentPass(
+                    e.target.value ? e.target.value === "true" : null,
+                  )
+                }
                 style={{
                   width: "100%",
                   padding: "0.5rem",
@@ -1444,7 +1489,13 @@ function TraditionalMedicineFormulationPage({
             </div>
 
             <div style={{ marginBottom: "1rem" }}>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: 500,
+                }}
+              >
                 <FormattedMessage
                   id="notebook.tradmed.formulation.qc.microbialLimits"
                   defaultMessage="Microbial Limits"
@@ -1452,7 +1503,11 @@ function TraditionalMedicineFormulationPage({
               </label>
               <select
                 value={microbialLimitsPass || ""}
-                onChange={(e) => setMicrobialLimitsPass(e.target.value ? e.target.value === "true" : null)}
+                onChange={(e) =>
+                  setMicrobialLimitsPass(
+                    e.target.value ? e.target.value === "true" : null,
+                  )
+                }
                 style={{
                   width: "100%",
                   padding: "0.5rem",
@@ -1467,7 +1522,13 @@ function TraditionalMedicineFormulationPage({
             </div>
 
             <div style={{ marginBottom: "1rem" }}>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: 500,
+                }}
+              >
                 <FormattedMessage
                   id="notebook.tradmed.formulation.qc.heavyMetals"
                   defaultMessage="Heavy Metals"
@@ -1475,7 +1536,11 @@ function TraditionalMedicineFormulationPage({
               </label>
               <select
                 value={heavyMetalsPass || ""}
-                onChange={(e) => setHeavyMetalsPass(e.target.value ? e.target.value === "true" : null)}
+                onChange={(e) =>
+                  setHeavyMetalsPass(
+                    e.target.value ? e.target.value === "true" : null,
+                  )
+                }
                 style={{
                   width: "100%",
                   padding: "0.5rem",
@@ -1490,7 +1555,13 @@ function TraditionalMedicineFormulationPage({
             </div>
 
             <div style={{ marginBottom: "1rem" }}>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: 500,
+                }}
+              >
                 <FormattedMessage
                   id="notebook.tradmed.formulation.qc.stability"
                   defaultMessage="Stability"
@@ -1498,7 +1569,11 @@ function TraditionalMedicineFormulationPage({
               </label>
               <select
                 value={stabilityPass || ""}
-                onChange={(e) => setStabilityPass(e.target.value ? e.target.value === "true" : null)}
+                onChange={(e) =>
+                  setStabilityPass(
+                    e.target.value ? e.target.value === "true" : null,
+                  )
+                }
                 style={{
                   width: "100%",
                   padding: "0.5rem",
@@ -1513,7 +1588,13 @@ function TraditionalMedicineFormulationPage({
             </div>
 
             <div style={{ marginBottom: "1rem" }}>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: 500,
+                }}
+              >
                 <FormattedMessage
                   id="notebook.tradmed.qc.notes"
                   defaultMessage="QC Notes"

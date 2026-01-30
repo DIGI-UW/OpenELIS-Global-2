@@ -1,0 +1,489 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- GENOMICS & BIOINFORMATICS WORKFLOW PERMISSION LEVELS -->
+    <!-- Adds action-level permissions per GBD_IMPLEMENTATION_GUIDE.md Section 5.1 -->
+    <!-- Permission matrix from PDF: Registration, Extraction, QC, PCR, Gel, LibPrep, BioQC, Sequencing, Bioinformatics -->
+    <!-- ======================================================== -->
+
+    <!-- CHANGESET 1: Add permission_level column if it doesn't exist (should already exist from Bioanalytical) -->
+    <changeSet id="add-gbd-permission-level-column" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_page_allowed_roles" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="notebook_page_allowed_roles" columnName="permission_level" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add permission_level column for action-level access control (if not already present)</comment>
+        <addColumn tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" type="VARCHAR(50)" defaultValue="VIEW">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: Sample Reception & Registration -->
+    <!-- Lab Tech=FULL, Bioinformatician=VIEW, Manager=FULL, PI=VIEW -->
+    <!-- ======================================================== -->
+
+    <changeSet id="gbd-page1-technician-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page1-bioinformatician-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Bioinformatician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Bioinformatician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page1-manager-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page1-pi-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: DNA/RNA Extraction -->
+    <!-- Lab Tech=FULL, Manager=FULL, PI=VIEW (no Bioinformatician, no Data Manager) -->
+    <!-- ======================================================== -->
+
+    <changeSet id="gbd-page2-technician-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page2-manager-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page2-pi-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: Quality & Quantity Assessment (same as PAGE 2) -->
+    <!-- Lab Tech=FULL, Manager=FULL, PI=VIEW -->
+    <!-- ======================================================== -->
+
+    <changeSet id="gbd-page3-technician-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page3-manager-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page3-pi-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- PAGE 4: PCR Amplification (same as PAGE 2 & 3) -->
+    <changeSet id="gbd-page4-technician-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page4-manager-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page4-pi-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- PAGE 5: Gel Electrophoresis (same as PAGE 2, 3, 4) -->
+    <changeSet id="gbd-page5-technician-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page5-manager-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page5-pi-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- PAGE 6: Library Preparation (same as PAGE 2, 3, 4, 5) -->
+    <changeSet id="gbd-page6-technician-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page6-manager-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page6-pi-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- PAGE 7: Bioanalyzer QC (same as PAGE 1: Lab Tech, Bio, Manager, PI) -->
+    <changeSet id="gbd-page7-technician-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page7-bioinformatician-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Bioinformatician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Bioinformatician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page7-manager-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page7-pi-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- PAGE 8: Sequencing (same as PAGE 7 & 1: Lab Tech, Bio, Manager, PI) -->
+    <changeSet id="gbd-page8-technician-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page8-bioinformatician-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Bioinformatician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Bioinformatician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page8-manager-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page8-pi-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 9: Bioinformatics Analysis & Data Submission -->
+    <!-- Bioinformatician=FULL, Manager=VIEW, PI=VIEW, Data Manager=VIEW (NO Lab Technician) -->
+    <!-- ======================================================== -->
+
+    <changeSet id="gbd-page9-bioinformatician-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Bioinformatician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Bioinformatician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page9-manager-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page9-pi-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="gbd-page9-dm-permission" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%'))
+                AND role = 'GBD Data Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Genomics%')) AND role = 'GBD Data Manager'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

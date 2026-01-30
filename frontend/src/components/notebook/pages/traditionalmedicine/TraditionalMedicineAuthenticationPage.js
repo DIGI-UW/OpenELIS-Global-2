@@ -112,7 +112,10 @@ function TraditionalMedicineAuthenticationPage({
   const authMethodOptions = [
     { id: "morphological_examination", label: "Morphological examination" },
     { id: "microscopic_analysis", label: "Microscopic analysis" },
-    { id: "molecular_identification", label: "Molecular identification (DNA barcoding: ITS, rbcL, matK genes)" },
+    {
+      id: "molecular_identification",
+      label: "Molecular identification (DNA barcoding: ITS, rbcL, matK genes)",
+    },
   ];
 
   // Authentication result options
@@ -283,7 +286,7 @@ function TraditionalMedicineAuthenticationPage({
               },
               {
                 count: response.updatedCount || selectedSampleIds.length,
-                result: authResult.label
+                result: authResult.label,
               },
             );
 

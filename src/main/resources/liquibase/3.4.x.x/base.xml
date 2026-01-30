@@ -117,6 +117,12 @@
     <include file="liquibase/3.4.x.x/050-bioequivalence-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/051-separate-bioanalytical-bioequivalence-notebooks.xml"/>
     <include file="liquibase/3.4.x.x/052-bioequivalence-page-roles.xml"/>
+    <include file="liquibase/3.4.x.x/053-gbd-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/054-gbd-system-roles.xml"/>
+    <include file="liquibase/3.4.x.x/055-gbd-page-roles.xml"/>
+    <include file="liquibase/3.4.x.x/056-gbd-permission-levels.xml"/>
+    <include file="liquibase/3.4.x.x/057-create-gbd-lab-unit.xml"/>
+    <include file="liquibase/3.4.x.x/058-add-gbd-roles-to-alllabunits.xml"/>
 
     <!-- TB Laboratory Workflow Feature (053) -->
     <include file="liquibase/3.4.x.x/053-tuberculosis-notebook-template.xml"/>

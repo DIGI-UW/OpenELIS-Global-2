@@ -1852,3 +1852,863 @@
   display: inline-flex;
   align-items: center;
 }
+
+/* ========================================== */
+/* GBD Page Styles                            */
+/* ========================================== */
+
+.gbd-sample-reception-page {
+  padding: 1rem 0;
+}
+
+.gbd-sample-reception-page .page-section-header {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-sample-reception-page .page-section-header h4 {
+  margin: 0 0 0.5rem 0;
+}
+
+.gbd-sample-reception-page .page-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.gbd-sample-reception-page .progress-section {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-sample-reception-page .progress-tiles {
+  display: flex;
+  gap: 1rem;
+}
+
+.gbd-sample-reception-page .progress-tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.gbd-sample-reception-page .progress-tile .progress-label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.gbd-sample-reception-page .progress-tile .progress-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.gbd-sample-reception-page .page-actions-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.gbd-sample-reception-page .sample-table-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--cds-layer-01);
+  border-radius: 4px;
+}
+
+.gbd-sample-reception-page .sample-table-section:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.gbd-sample-reception-page .table-section-header {
+  margin-bottom: 1rem;
+}
+
+.gbd-sample-reception-page .table-section-header h5 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.gbd-sample-reception-page .table-section-header .count-tag {
+  margin-left: 0.25rem;
+}
+
+.gbd-sample-reception-page .table-section-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.gbd-sample-reception-page .empty-table-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--cds-text-secondary);
+  background: var(--cds-layer-02);
+  border-radius: 4px;
+}
+
+.gbd-sample-reception-page .empty-table-state p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+/* GBD DNA/RNA Extraction Page Styles */
+.gbd-dna-rna-extraction-page {
+  padding: 1rem 0;
+}
+
+.gbd-dna-rna-extraction-page .page-section-header {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-dna-rna-extraction-page .page-section-header h4 {
+  margin: 0 0 0.5rem 0;
+}
+
+.gbd-dna-rna-extraction-page .page-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.gbd-dna-rna-extraction-page .progress-section {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-dna-rna-extraction-page .progress-tiles {
+  display: flex;
+  gap: 1rem;
+}
+
+.gbd-dna-rna-extraction-page .progress-tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.gbd-dna-rna-extraction-page .progress-tile .progress-label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.gbd-dna-rna-extraction-page .progress-tile .progress-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.gbd-dna-rna-extraction-page .sample-table-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--cds-layer-01);
+  border-radius: 4px;
+}
+
+.gbd-dna-rna-extraction-page .sample-table-section:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.gbd-dna-rna-extraction-page .table-section-header {
+  margin-bottom: 1rem;
+}
+
+.gbd-dna-rna-extraction-page .table-section-header h5 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.gbd-dna-rna-extraction-page .table-section-header .count-tag {
+  margin-left: 0.25rem;
+}
+
+.gbd-dna-rna-extraction-page .table-section-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.gbd-dna-rna-extraction-page .empty-table-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--cds-text-secondary);
+  background: var(--cds-layer-02);
+  border-radius: 4px;
+}
+
+/* GBD Quality Quantity Assessment Page Styles */
+.gbd-quality-quantity-assessment-page {
+  padding: 1rem 0;
+}
+
+.gbd-quality-quantity-assessment-page .page-section-header {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-quality-quantity-assessment-page .page-section-header h4 {
+  margin: 0 0 0.5rem 0;
+}
+
+.gbd-quality-quantity-assessment-page .page-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.gbd-quality-quantity-assessment-page .progress-section {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-quality-quantity-assessment-page .progress-tiles {
+  display: flex;
+  gap: 1rem;
+}
+
+.gbd-quality-quantity-assessment-page .progress-tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.gbd-quality-quantity-assessment-page .progress-tile .progress-label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.gbd-quality-quantity-assessment-page .progress-tile .progress-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.gbd-quality-quantity-assessment-page .sample-table-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--cds-layer-01);
+  border-radius: 4px;
+}
+
+.gbd-quality-quantity-assessment-page .sample-table-section:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.gbd-quality-quantity-assessment-page .table-section-header {
+  margin-bottom: 1rem;
+}
+
+.gbd-quality-quantity-assessment-page .table-section-header h5 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.gbd-quality-quantity-assessment-page .table-section-header .count-tag {
+  margin-left: 0.25rem;
+}
+
+.gbd-quality-quantity-assessment-page .table-section-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.gbd-quality-quantity-assessment-page .empty-table-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--cds-text-secondary);
+  background: var(--cds-layer-02);
+  border-radius: 4px;
+}
+
+/* GBD PCR Amplification Page Styles */
+.gbd-pcr-amplification-page {
+  padding: 1rem 0;
+}
+
+.gbd-pcr-amplification-page .page-section-header {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-pcr-amplification-page .page-section-header h4 {
+  margin: 0 0 0.5rem 0;
+}
+
+.gbd-pcr-amplification-page .page-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.gbd-pcr-amplification-page .progress-section {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-pcr-amplification-page .progress-tiles {
+  display: flex;
+  gap: 1rem;
+}
+
+.gbd-pcr-amplification-page .progress-tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.gbd-pcr-amplification-page .progress-tile .progress-label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.gbd-pcr-amplification-page .progress-tile .progress-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.gbd-pcr-amplification-page .sample-table-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--cds-layer-01);
+  border-radius: 4px;
+}
+
+.gbd-pcr-amplification-page .sample-table-section:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.gbd-pcr-amplification-page .table-section-header {
+  margin-bottom: 1rem;
+}
+
+.gbd-pcr-amplification-page .table-section-header h5 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.gbd-pcr-amplification-page .table-section-header .count-tag {
+  margin-left: 0.25rem;
+}
+
+.gbd-pcr-amplification-page .table-section-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.gbd-pcr-amplification-page .empty-table-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--cds-text-secondary);
+  background: var(--cds-layer-02);
+  border-radius: 4px;
+}
+
+/* GBD Gel Electrophoresis Page Styles */
+.gbd-gel-electrophoresis-page {
+  padding: 1rem 0;
+}
+
+.gbd-gel-electrophoresis-page .page-section-header {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-gel-electrophoresis-page .page-section-header h4 {
+  margin: 0 0 0.5rem 0;
+}
+
+.gbd-gel-electrophoresis-page .page-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.gbd-gel-electrophoresis-page .progress-section {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-gel-electrophoresis-page .progress-tiles {
+  display: flex;
+  gap: 1rem;
+}
+
+.gbd-gel-electrophoresis-page .progress-tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.gbd-gel-electrophoresis-page .progress-tile .progress-label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.gbd-gel-electrophoresis-page .progress-tile .progress-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.gbd-gel-electrophoresis-page .sample-table-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--cds-layer-01);
+  border-radius: 4px;
+}
+
+.gbd-gel-electrophoresis-page .sample-table-section:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.gbd-gel-electrophoresis-page .table-section-header {
+  margin-bottom: 1rem;
+}
+
+.gbd-gel-electrophoresis-page .table-section-header h5 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.gbd-gel-electrophoresis-page .table-section-header .count-tag {
+  margin-left: 0.25rem;
+}
+
+.gbd-gel-electrophoresis-page .table-section-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.gbd-gel-electrophoresis-page .empty-table-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--cds-text-secondary);
+  background: var(--cds-layer-02);
+  border-radius: 4px;
+}
+
+/* GBD Library Preparation Page Styles */
+.gbd-library-preparation-page {
+  padding: 1rem 0;
+}
+
+.gbd-library-preparation-page .page-section-header {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-library-preparation-page .page-section-header h4 {
+  margin: 0 0 0.5rem 0;
+}
+
+.gbd-library-preparation-page .page-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.gbd-library-preparation-page .progress-section {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-library-preparation-page .progress-tiles {
+  display: flex;
+  gap: 1rem;
+}
+
+.gbd-library-preparation-page .progress-tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.gbd-library-preparation-page .progress-tile .progress-label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.gbd-library-preparation-page .progress-tile .progress-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.gbd-library-preparation-page .sample-table-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--cds-layer-01);
+  border-radius: 4px;
+}
+
+.gbd-library-preparation-page .sample-table-section:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.gbd-library-preparation-page .table-section-header {
+  margin-bottom: 1rem;
+}
+
+.gbd-library-preparation-page .table-section-header h5 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.gbd-library-preparation-page .table-section-header .count-tag {
+  margin-left: 0.25rem;
+}
+
+.gbd-library-preparation-page .table-section-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.gbd-library-preparation-page .empty-table-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--cds-text-secondary);
+  background: var(--cds-layer-02);
+  border-radius: 4px;
+}
+
+/* GBD Bioanalyzer QC Page Styles */
+.gbd-bioanalyzer-qc-page {
+  padding: 1rem 0;
+}
+
+.gbd-bioanalyzer-qc-page .page-section-header {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-bioanalyzer-qc-page .page-section-header h4 {
+  margin: 0 0 0.5rem 0;
+}
+
+.gbd-bioanalyzer-qc-page .page-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.gbd-bioanalyzer-qc-page .progress-section {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-bioanalyzer-qc-page .progress-tiles {
+  display: flex;
+  gap: 1rem;
+}
+
+.gbd-bioanalyzer-qc-page .progress-tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.gbd-bioanalyzer-qc-page .progress-tile .progress-label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.gbd-bioanalyzer-qc-page .progress-tile .progress-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.gbd-bioanalyzer-qc-page .sample-table-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--cds-layer-01);
+  border-radius: 4px;
+}
+
+.gbd-bioanalyzer-qc-page .sample-table-section:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.gbd-bioanalyzer-qc-page .table-section-header {
+  margin-bottom: 1rem;
+}
+
+.gbd-bioanalyzer-qc-page .table-section-header h5 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.gbd-bioanalyzer-qc-page .table-section-header .count-tag {
+  margin-left: 0.25rem;
+}
+
+.gbd-bioanalyzer-qc-page .table-section-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.gbd-bioanalyzer-qc-page .empty-table-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--cds-text-secondary);
+  background: var(--cds-layer-02);
+  border-radius: 4px;
+}
+
+/* GBD Sequencing Page Styles */
+.gbd-sequencing-page {
+  padding: 1rem 0;
+}
+
+.gbd-sequencing-page .page-section-header {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-sequencing-page .page-section-header h4 {
+  margin: 0 0 0.5rem 0;
+}
+
+.gbd-sequencing-page .page-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.gbd-sequencing-page .progress-section {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-sequencing-page .progress-tiles {
+  display: flex;
+  gap: 1rem;
+}
+
+.gbd-sequencing-page .progress-tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.gbd-sequencing-page .progress-tile .progress-label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.gbd-sequencing-page .progress-tile .progress-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.gbd-sequencing-page .sample-table-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--cds-layer-01);
+  border-radius: 4px;
+}
+
+.gbd-sequencing-page .sample-table-section:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.gbd-sequencing-page .table-section-header {
+  margin-bottom: 1rem;
+}
+
+.gbd-sequencing-page .table-section-header h5 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.gbd-sequencing-page .table-section-header .count-tag {
+  margin-left: 0.25rem;
+}
+
+.gbd-sequencing-page .table-section-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.gbd-sequencing-page .empty-table-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--cds-text-secondary);
+  background: var(--cds-layer-02);
+  border-radius: 4px;
+}
+
+/* GBD Bioinformatics Analysis Page Styles */
+.gbd-bioinformatics-analysis-page {
+  padding: 1rem 0;
+}
+
+.gbd-bioinformatics-analysis-page .page-section-header {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-bioinformatics-analysis-page .page-section-header h4 {
+  margin: 0 0 0.5rem 0;
+}
+
+.gbd-bioinformatics-analysis-page .page-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.gbd-bioinformatics-analysis-page .progress-section {
+  margin-bottom: 1.5rem;
+}
+
+.gbd-bioinformatics-analysis-page .progress-tiles {
+  display: flex;
+  gap: 1rem;
+}
+
+.gbd-bioinformatics-analysis-page .progress-tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.gbd-bioinformatics-analysis-page .progress-tile .progress-label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.gbd-bioinformatics-analysis-page .progress-tile .progress-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.gbd-bioinformatics-analysis-page .sample-table-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--cds-layer-01);
+  border-radius: 4px;
+}
+
+.gbd-bioinformatics-analysis-page .sample-table-section:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.gbd-bioinformatics-analysis-page .table-section-header {
+  margin-bottom: 1rem;
+}
+
+.gbd-bioinformatics-analysis-page .table-section-header h5 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.gbd-bioinformatics-analysis-page .table-section-header .count-tag {
+  margin-left: 0.25rem;
+}
+
+.gbd-bioinformatics-analysis-page .table-section-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.gbd-bioinformatics-analysis-page .empty-table-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--cds-text-secondary);
+  background: var(--cds-layer-02);
+  border-radius: 4px;
+}

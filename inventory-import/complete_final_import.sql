@@ -1661,167 +1661,167 @@ SELECT 'Pfdhps-Rv', 'Code:3560', 1.0, '', '2026-12-31'
         UNION ALL
 SELECT 'Pfdhps-Fw', 'Code: 3559', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pfcrt-F1', 'LOT-435b5e0b', 1.0, 'Received reconstitute', '2026-12-31'
+SELECT 'Pfcrt-F1', 'LOT-0af93efd', 1.0, 'Received reconstitute', '2026-12-31'
         UNION ALL
-SELECT 'Pfcrt-R1 sequence', 'LOT-7760bb9f', 1.0, 'Received reconstitute', '2026-12-31'
+SELECT 'Pfcrt-R1 sequence', 'LOT-57df7e88', 1.0, 'Received reconstitute', '2026-12-31'
         UNION ALL
-SELECT 'Pfdhps-F', 'LOT-a72c0040', 1.0, 'Received reconstitute', '2026-12-31'
+SELECT 'Pfdhps-F', 'LOT-283a243a', 1.0, 'Received reconstitute', '2026-12-31'
         UNION ALL
-SELECT 'Pfdhps-R', 'LOT-a4391fc1', 1.0, 'Received reconstitute', '2026-12-31'
+SELECT 'Pfdhps-R', 'LOT-195da30e', 1.0, 'Received reconstitute', '2026-12-31'
         UNION ALL
-SELECT 'plasmepsin 3R', 'LOT-7dfe07cb', 1.0, '', '2021-12-20'
+SELECT 'plasmepsin 3R', 'LOT-032df67e', 1.0, '', '2021-12-20'
         UNION ALL
-SELECT 'plasmepsin 2R', 'LOT-5aaaec75', 1.0, '', '2021-12-21'
+SELECT 'plasmepsin 2R', 'LOT-83f99738', 1.0, '', '2021-12-21'
         UNION ALL
-SELECT 'plasmepsin 2F', 'LOT-1f875cbd', 1.0, '', '2021-12-22'
+SELECT 'plasmepsin 2F', 'LOT-dad39359', 1.0, '', '2021-12-22'
         UNION ALL
-SELECT 'plasmepsin 3F', 'LOT-04483e47', 1.0, '', '2021-12-23'
+SELECT 'plasmepsin 3F', 'LOT-2ff98162', 1.0, '', '2021-12-23'
         UNION ALL
-SELECT 'plasmepsin 3P', 'LOT-0597c2b4', 1.0, '', '2021-12-24'
+SELECT 'plasmepsin 3P', 'LOT-ed2f9bc7', 1.0, '', '2021-12-24'
         UNION ALL
-SELECT 'plasmepsin 2P', 'LOT-152ecb26', 1.0, '', '2022-01-22'
+SELECT 'plasmepsin 2P', 'LOT-e4f023b1', 1.0, '', '2022-01-22'
         UNION ALL
-SELECT 'Pf 18s fwd', 'LOT-b9c413fa', 2.0, '', '2021-12-20'
+SELECT 'Pf 18s fwd', 'LOT-6ffbd4bc', 2.0, '', '2021-12-20'
         UNION ALL
-SELECT 'Pf 18s rev', 'LOT-c4b31fd1', 2.0, '', '2021-12-21'
+SELECT 'Pf 18s rev', 'LOT-88d8e59e', 2.0, '', '2021-12-21'
         UNION ALL
-SELECT 'Beta tubulin F', 'LOT-7afb0b62', 1.0, '', '2021-12-22'
+SELECT 'Beta tubulin F', 'LOT-95491f33', 1.0, '', '2021-12-22'
         UNION ALL
-SELECT 'beta tubulin R', 'LOT-b8755ae4', 1.0, '', '2022-01-21'
+SELECT 'beta tubulin R', 'LOT-631b6ff7', 1.0, '', '2022-01-21'
         UNION ALL
-SELECT 'beta tublin P', 'LOT-0b3865f0', 1.0, '', '2022-01-22'
+SELECT 'beta tublin P', 'LOT-2c6064bd', 1.0, '', '2022-01-22'
         UNION ALL
-SELECT 'cyt B-F1', 'LOT-1e232e16', 1.0, '', '2022-01-23'
+SELECT 'cyt B-F1', 'LOT-ffe0f04f', 1.0, '', '2022-01-23'
         UNION ALL
-SELECT 'cyt B-R1', 'LOT-b72003d4', 1.0, '', '2021-12-22'
+SELECT 'cyt B-R1', 'LOT-3f59793e', 1.0, '', '2021-12-22'
         UNION ALL
-SELECT 'mitochndorion -R1', 'LOT-1584a4ad', 1.0, '', '2021-12-23'
+SELECT 'mitochndorion -R1', 'LOT-3b608139', 1.0, '', '2021-12-23'
         UNION ALL
-SELECT 'mitochndorion -F1', 'LOT-ff22ede7', 1.0, '', '2021-12-24'
+SELECT 'mitochndorion -F1', 'LOT-bdf68a93', 1.0, '', '2021-12-24'
         UNION ALL
-SELECT 'Pf k13-F1', 'LOT-fa60e7b5', 1.0, '', '2021-12-25'
+SELECT 'Pf k13-F1', 'LOT-f95caf6c', 1.0, '', '2021-12-25'
         UNION ALL
-SELECT 'Pf k13-R1', 'LOT-fc3d3e5c', 1.0, '', '2021-12-26'
+SELECT 'Pf k13-R1', 'LOT-b3efa99f', 1.0, '', '2021-12-26'
         UNION ALL
-SELECT 'pfmdr1 F', 'LOT-f7cbb7ab', 2.0, '', '2021-12-27'
+SELECT 'pfmdr1 F', 'LOT-70265904', 2.0, '', '2021-12-27'
         UNION ALL
-SELECT 'pfmdr1 R', 'LOT-b9c00e48', 2.0, '', '2021-12-28'
+SELECT 'pfmdr1 R', 'LOT-e446b470', 2.0, '', '2021-12-28'
         UNION ALL
-SELECT 'FastDigest Alul enzyme with buffer ', 'LOT-dad6d7aa', 1.0, '', '2020-12-02'
+SELECT 'FastDigest Alul enzyme with buffer ', 'LOT-5c85fd7d', 1.0, '', '2020-12-02'
         UNION ALL
-SELECT 'SmartCut enzyme with buffer ', 'LOT-babb7cee', 1.0, '', '2018-11-01'
+SELECT 'SmartCut enzyme with buffer ', 'LOT-bb19dcbe', 1.0, '', '2018-11-01'
         UNION ALL
-SELECT 'mbo II 5000 U/ml', 'LOT-0d3fb70a', 1.0, '0.3', '2017-05-31'
+SELECT 'mbo II 5000 U/ml', 'LOT-e95cb973', 1.0, '0.3', '2017-05-31'
         UNION ALL
-SELECT 'Nla III  10,000 U/ml', 'LOT-2ab430f5', 2.0, '0.25', '2017-07-30'
+SELECT 'Nla III  10,000 U/ml', 'LOT-a5cbc2c5', 2.0, '0.25', '2017-07-30'
         UNION ALL
-SELECT 'Ase I  10,000 U/ml', 'LOT-036df5df', 1.0, '0.2', '2017-04-30'
+SELECT 'Ase I  10,000 U/ml', 'LOT-3e9097f7', 1.0, '0.2', '2017-04-30'
         UNION ALL
-SELECT 'Fok I 5,000 U/ml', 'LOT-d326a6f9', 1.0, '1.0', '2018-01-30'
+SELECT 'Fok I 5,000 U/ml', 'LOT-e88fd682', 1.0, '1.0', '2018-01-30'
         UNION ALL
-SELECT 'Fok I 5,000 U/ml (cutsmart)', 'LOT-b450484b', 1.0, '1.0', '2018-11-30'
+SELECT 'Fok I 5,000 U/ml (cutsmart)', 'LOT-ac3ff5a6', 1.0, '1.0', '2018-11-30'
         UNION ALL
-SELECT 'Dra I  20,000 U/ml', 'LOT-40a69f19', 1.0, '0.1', '2017-02-01'
+SELECT 'Dra I  20,000 U/ml', 'LOT-312528d5', 1.0, '0.1', '2017-02-01'
         UNION ALL
-SELECT 'ApoI 10,000 U/ml', 'LOT-8c7e750f', 1.0, '0.1', '2017-03-01'
+SELECT 'ApoI 10,000 U/ml', 'LOT-8ab67ee3', 1.0, '0.1', '2017-03-01'
         UNION ALL
-SELECT 'Dde I   10,000 U/ml', 'LOT-a1259a94', 1.0, '0.1', '2017-03-02'
+SELECT 'Dde I   10,000 U/ml', 'LOT-daf9e9e6', 1.0, '0.1', '2017-03-02'
         UNION ALL
-SELECT 'Eco RV 20,000 U/ml', 'LOT-b41b4d19', 1.0, '0.2', '2016-08-01'
+SELECT 'Eco RV 20,000 U/ml', 'LOT-faf66236', 1.0, '0.2', '2016-08-01'
         UNION ALL
-SELECT 'NEBuffer  3.1  10x conc.', 'LOT-2dad79b3', 5.0, '1.25', '2018-10-01'
+SELECT 'NEBuffer  3.1  10x conc.', 'LOT-1144e195', 5.0, '1.25', '2018-10-01'
         UNION ALL
-SELECT 'NEBuffer  4  10x conc.', 'LOT-ccd60e9a', 2.0, '5.0', '2015-03-01'
+SELECT 'NEBuffer  4  10x conc.', 'LOT-c41943df', 2.0, '5.0', '2015-03-01'
         UNION ALL
-SELECT 'Afa I  1,000 U/ml', 'LOT-8f88099a', 1.0, '', '2011-11-01'
+SELECT 'Afa I  1,000 U/ml', 'LOT-40c709ff', 1.0, '', '2011-11-01'
         UNION ALL
-SELECT 'Pvu II 15U/ml', 'LOT-cd9c2815', 1.0, '3000.0', '2007-11-01'
+SELECT 'Pvu II 15U/ml', 'LOT-ef691db3', 1.0, '3000.0', '2007-11-01'
         UNION ALL
-SELECT '10x M buffer', 'LOT-ede478df', 3.0, '1.0', '2026-12-31'
+SELECT '10x M buffer', 'LOT-dbcac990', 3.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'cutsmart buffer  10x conc.', 'LOT-ea744455', 3.0, '1.25', '2018-07-01'
+SELECT 'cutsmart buffer  10x conc.', 'LOT-6af24b89', 3.0, '1.25', '2018-07-01'
         UNION ALL
-SELECT 'Qiagen rnase free water', 'LOT-111faed1', 4.0, '1.9', '2026-12-31'
+SELECT 'Qiagen rnase free water', 'LOT-de2d58b8', 4.0, '1.9', '2026-12-31'
         UNION ALL
-SELECT '1KB + DNA ladder', 'LOT-ac74ac46', 1.0, '', '2026-12-31'
+SELECT '1KB + DNA ladder', 'LOT-5d008507', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT '0.1% BSA ', 'LOT-9cdd1374', 1.0, '1.0', '2026-12-31'
+SELECT '0.1% BSA ', 'LOT-6d40febc', 1.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'pscam II (alpha DNA)', 'LOT-3abaaca3', 1.0, '', '2026-12-31'
+SELECT 'pscam II (alpha DNA)', 'LOT-2e2dde2c', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'T2 (alpha DNA)', 'LOT-b4661886', 1.0, '', '2026-12-31'
+SELECT 'T2 (alpha DNA)', 'LOT-215a0632', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'ILRI 161108 R1 66.1 nmol', 'LOT-168d801f', 1.0, '6060.9', '2026-12-31'
+SELECT 'ILRI 161108 R1 66.1 nmol', 'LOT-97de1f0b', 1.0, '6060.9', '2026-12-31'
         UNION ALL
-SELECT 'ILRI 161108 R2 60.3 nmol', 'LOT-a701d3cc', 1.0, '603.1', '2026-12-31'
+SELECT 'ILRI 161108 R2 60.3 nmol', 'LOT-4bd4f4c9', 1.0, '603.1', '2026-12-31'
         UNION ALL
-SELECT 'ILRI 161108 R3 60.5 nmol', 'LOT-b553bc45', 1.0, '604.6', '2026-12-31'
+SELECT 'ILRI 161108 R3 60.5 nmol', 'LOT-5d6405c2', 1.0, '604.6', '2026-12-31'
         UNION ALL
-SELECT 'ILRI 161108 F3 45.1 nmol', 'LOT-122408f3', 1.0, '451.1', '2026-12-31'
+SELECT 'ILRI 161108 F3 45.1 nmol', 'LOT-b3d4b840', 1.0, '451.1', '2026-12-31'
         UNION ALL
-SELECT 'ILRI 161108 F2 45.1 nmol', 'LOT-c5312343', 1.0, '', '2026-12-31'
+SELECT 'ILRI 161108 F2 45.1 nmol', 'LOT-5be719b7', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'loading dye', 'LOT-3339854e', 1.0, 'working', '2026-12-31'
+SELECT 'loading dye', 'LOT-5c823f69', 1.0, 'working', '2026-12-31'
         UNION ALL
-SELECT 'Eurofins genomics 2R', 'LOT-349b199f', 1.0, '', '2017-09-12'
+SELECT 'Eurofins genomics 2R', 'LOT-6d5ad210', 1.0, '', '2017-09-12'
         UNION ALL
-SELECT 'Eurofins genomics 1R', 'LOT-52431305', 1.0, '', '2017-09-12'
+SELECT 'Eurofins genomics 1R', 'LOT-4b9f5293', 1.0, '', '2017-09-12'
         UNION ALL
-SELECT 'Eurofins genomics pair 1R', 'LOT-6576fc40', 1.0, '', '2017-07-07'
+SELECT 'Eurofins genomics pair 1R', 'LOT-5e9fdc0a', 1.0, '', '2017-07-07'
         UNION ALL
-SELECT 'Eurofins genomics pair 2F', 'LOT-8579e4bc', 1.0, '', '2017-07-08'
+SELECT 'Eurofins genomics pair 2F', 'LOT-ffd463ea', 1.0, '', '2017-07-08'
         UNION ALL
-SELECT 'Eurofins genomics pair 2R', 'LOT-8273cef7', 1.0, '', '2017-07-07'
+SELECT 'Eurofins genomics pair 2R', 'LOT-355b4a1b', 1.0, '', '2017-07-07'
         UNION ALL
-SELECT 'Eurofins genomics 2F', 'LOT-1aacb0d9', 1.0, '', '2017-09-12'
+SELECT 'Eurofins genomics 2F', 'LOT-69b1f620', 1.0, '', '2017-09-12'
         UNION ALL
-SELECT 'Eurofins genomics 1F', 'LOT-4046f91c', 1.0, '', '2017-09-13'
+SELECT 'Eurofins genomics 1F', 'LOT-0e9f005a', 1.0, '', '2017-09-13'
         UNION ALL
-SELECT 'Eurofins genomics pair 1F', 'LOT-99d2a201', 1.0, '', '2017-07-07'
+SELECT 'Eurofins genomics pair 1F', 'LOT-2f207500', 1.0, '', '2017-07-07'
         UNION ALL
-SELECT '10x M buffer', 'LOT-a5546c37', 5.0, '1.0', '2026-12-31'
+SELECT '10x M buffer', 'LOT-7bdebe53', 5.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'Hae III', 'LOT-f8ad3cb7', 9.0, '10.0', '2007-10-01'
+SELECT 'Hae III', 'LOT-51622bb2', 9.0, '10.0', '2007-10-01'
         UNION ALL
-SELECT 'Hha I', 'LOT-4642e11d', 3.0, '10.0', '2008-03-01'
+SELECT 'Hha I', 'LOT-667242cf', 3.0, '10.0', '2008-03-01'
         UNION ALL
-SELECT '10x React 2', 'LOT-3ae8f47f', 7.0, '1.0', '2026-12-31'
+SELECT '10x React 2', 'LOT-c803d3d1', 7.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'quanti Tect probe PCR mastermix', 'LOT-33a251c0', 2.0, '1.7', '2026-12-31'
+SELECT 'quanti Tect probe PCR mastermix', 'LOT-8c31c732', 2.0, '1.7', '2026-12-31'
         UNION ALL
-SELECT '10x buffer T', 'LOT-72537cd0', 1.0, '1.0', '2026-12-31'
+SELECT '10x buffer T', 'LOT-7e2e8980', 1.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'Hae III', 'LOT-6f7982ee', 1.0, '10.0', '2024-11-01'
+SELECT 'Hae III', 'LOT-6568f32e', 1.0, '10.0', '2024-11-01'
         UNION ALL
-SELECT 'Hha I', 'LOT-ba687cb6', 1.0, '0.1', '2014-10-01'
+SELECT 'Hha I', 'LOT-32d05614', 1.0, '0.1', '2014-10-01'
         UNION ALL
-SELECT 'Hha1 use with react 2', 'LOT-dd3676a3', 1.0, '10.0', '2010-02-28'
+SELECT 'Hha1 use with react 2', 'LOT-8476033c', 1.0, '10.0', '2010-02-28'
         UNION ALL
-SELECT '10x react I', 'LOT-cc19456f', 1.0, '1.0', '2026-12-31'
+SELECT '10x react I', 'LOT-c89822ce', 1.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT '10x PCR buffer (-mgcl2)', 'LOT-8a357e56', 1.0, '1.25', '2026-12-31'
+SELECT '10x PCR buffer (-mgcl2)', 'LOT-bcac1ef7', 1.0, '1.25', '2026-12-31'
         UNION ALL
-SELECT 'HuPoR (alpha DNA)(5'' GGACTTCGTTTGTACCCGTTG )', 'LOT-d2054fd3', 2.0, '', '2026-12-31'
+SELECT 'HuPoR (alpha DNA)(5'' GGACTTCGTTTGTACCCGTTG )', 'LOT-134b317c', 2.0, '', '2026-12-31'
         UNION ALL
-SELECT 'b- actin R (5'' CGTCATACTCCTGCTTGCTGATCCACATCTGC)', 'LOT-3e24db92', 1.0, '', '2026-12-31'
+SELECT 'b- actin R (5'' CGTCATACTCCTGCTTGCTGATCCACATCTGC)', 'LOT-35d0154f', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'LaeV5f (5'' CGTGATGTGCCCGAGTGCA)', 'LOT-0106d854', 1.0, '', '2026-12-31'
+SELECT 'LaeV5f (5'' CGTGATGTGCCCGAGTGCA)', 'LOT-7076f72d', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'cpb EF rev', 'LOT-796a7e6c', 1.0, 'stock ', '2026-12-31'
+SELECT 'cpb EF rev', 'LOT-b6f01488', 1.0, 'stock ', '2026-12-31'
         UNION ALL
-SELECT 'cpb EFfwd', 'LOT-973fa075', 1.0, 'stock ', '2026-12-31'
+SELECT 'cpb EFfwd', 'LOT-80a1b9bf', 1.0, 'stock ', '2026-12-31'
         UNION ALL
-SELECT 'K26 fwd', 'LOT-91fb8e7f', 1.0, 'stock ', '2026-12-31'
+SELECT 'K26 fwd', 'LOT-b126f239', 1.0, 'stock ', '2026-12-31'
         UNION ALL
-SELECT 'k26 rev', 'LOT-46623ff2', 1.0, 'stock ', '2026-12-31'
+SELECT 'k26 rev', 'LOT-85036f48', 1.0, 'stock ', '2026-12-31'
         UNION ALL
-SELECT 'List R', 'LOT-833e41cf', 1.0, 'working', '2026-12-31'
+SELECT 'List R', 'LOT-29f4f4c8', 1.0, 'working', '2026-12-31'
         UNION ALL
-SELECT '10xFast DigestGreen Buffer', 'LOT-aa4832dc', 1.0, '1.0', '2020-12-01'
+SELECT '10xFast DigestGreen Buffer', 'LOT-44e44ccf', 1.0, '1.0', '2020-12-01'
         UNION ALL
-SELECT '10xFast Digest Buffer (colorless)', 'LOT-1a4b55aa', 1.0, '1.0', '2020-12-02'
+SELECT '10xFast Digest Buffer (colorless)', 'LOT-889cdbdb', 1.0, '1.0', '2020-12-02'
         UNION ALL
-SELECT 'Fast Digest Buffer Alul', 'LOT-9f61ada6', 1.0, '100.0', '2020-12-03'
+SELECT 'Fast Digest Buffer Alul', 'LOT-1aabb50c', 1.0, '100.0', '2020-12-03'
         UNION ALL
 SELECT 'turbo DNase buffer', '402/4G', 18.0, '6.0', '2026-12-31'
         UNION ALL
@@ -1833,51 +1833,51 @@ SELECT 'elution buffer  (opened)', '9918G7', 12.0, '9.0', '2026-12-31'
         UNION ALL
 SELECT 'turbo DNase buffer (opened)', '402/4G', 13.0, '6.0', '2026-12-31'
         UNION ALL
-SELECT 'G-OFprimer (Glurp) 2.5 nMol', 'LOT-95244e43', 1.0, 'stock', '2026-12-31'
+SELECT 'G-OFprimer (Glurp) 2.5 nMol', 'LOT-4996c12b', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'OuterG4 for GLURP FW', 'LOT-d0080262', 1.0, 'stock', '2026-12-31'
+SELECT 'OuterG4 for GLURP FW', 'LOT-a1404b77', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'G-OR 2.5 nMol', 'LOT-f9cb70c5', 1.0, 'stock', '2026-12-31'
+SELECT 'G-OR 2.5 nMol', 'LOT-5b52e12d', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'OuterG5 for GLURP RV ', 'LOT-690cfdd5', 1.0, 'stock', '2026-12-31'
+SELECT 'OuterG5 for GLURP RV ', 'LOT-7017868c', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Nested S4 for MSP-2 FW', 'LOT-a84a9286', 1.0, 'stock', '2026-12-31'
+SELECT 'Nested S4 for MSP-2 FW', 'LOT-9deea979', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Nested S1 for MSP-2 FW', 'LOT-38913855', 1.0, 'stock', '2026-12-31'
+SELECT 'Nested S1 for MSP-2 FW', 'LOT-70c42f19', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'MSP-2-S2 FW', 'LOT-70f04a16', 1.0, 'stock', '2026-12-31'
+SELECT 'MSP-2-S2 FW', 'LOT-4d254611', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'MSP-2-S3 RV', 'LOT-27da3f36', 1.0, 'stock', '2026-12-31'
+SELECT 'MSP-2-S3 RV', 'LOT-61354836', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'MSP-2-S1 tail fw', 'LOT-5b1bb1e3', 1.0, 'stock', '2026-12-31'
+SELECT 'MSP-2-S1 tail fw', 'LOT-1d7b128b', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'MSP2-FC27 RV (FAM dye labeled)', 'LOT-483fc567', 1.0, 'stock', '2026-12-31'
+SELECT 'MSP2-FC27 RV (FAM dye labeled)', 'LOT-cb44a585', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'MSP2-3D7-RV (VIC dye labeled)', 'LOT-ac53d7c0', 1.0, 'stock', '2026-12-31'
+SELECT 'MSP2-3D7-RV (VIC dye labeled)', 'LOT-095d9f40', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'M1-OR 2.5 nMol (MSP1M1OR)', 'LOT-3435a184', 1.0, 'stock', '2026-12-31'
+SELECT 'M1-OR 2.5 nMol (MSP1M1OR)', 'LOT-0d21b34c', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'MSP1 M1 RV 2.5 nMol', 'LOT-74a8dd3f', 1.0, 'stock', '2026-12-31'
+SELECT 'MSP1 M1 RV 2.5 nMol', 'LOT-e450c61d', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'MSP1M1-FW 2.5 nMol', 'LOT-ab1aa12d', 1.0, 'stock', '2026-12-31'
+SELECT 'MSP1M1-FW 2.5 nMol', 'LOT-69d3e645', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'MSP1M1-OF 2.5 nMol', 'LOT-938f4cb4', 1.0, 'stock', '2026-12-31'
+SELECT 'MSP1M1-OF 2.5 nMol', 'LOT-ce47f313', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'MSP1M1-KF 2.5 nMol', 'LOT-4e21d5ee', 1.0, 'stock', '2026-12-31'
+SELECT 'MSP1M1-KF 2.5 nMol', 'LOT-6953aa92', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'MSP1M1-KR 2.5 nMol', 'LOT-0b1b1422', 1.0, 'stock', '2026-12-31'
+SELECT 'MSP1M1-KR 2.5 nMol', 'LOT-b259b5ac', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Nested N1 for MSP1 FW', 'LOT-752b01c1', 1.0, 'stock', '2026-12-31'
+SELECT 'Nested N1 for MSP1 FW', 'LOT-29c8ff75', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Nested N2 for MSP1 RV', 'LOT-e61bc48c', 1.0, 'stock', '2026-12-31'
+SELECT 'Nested N2 for MSP1 RV', 'LOT-f660be6c', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'N2RPfmdr86', 'LOT-d7ba7b69', 1.0, 'Lyophilized', '2026-12-31'
+SELECT 'N2RPfmdr86', 'LOT-4fe247cd', 1.0, 'Lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'N2RPfcrt', 'LOT-fe5a4e63', 1.0, 'Lyophilized', '2026-12-31'
+SELECT 'N2RPfcrt', 'LOT-16dc2698', 1.0, 'Lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'N1FPfcrt', 'LOT-4b5906fd', 1.0, 'Lyophilized', '2026-12-31'
+SELECT 'N1FPfcrt', 'LOT-039cf448', 1.0, 'Lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'N1FPfmdr1034', 'LOT-087a66e9', 1.0, 'Lyophilized', '2026-12-31'
+SELECT 'N1FPfmdr1034', 'LOT-2211ee6c', 1.0, 'Lyophilized', '2026-12-31'
         UNION ALL
 SELECT '96 DNA multi-sample kit 96 rxn', 'PARA Freezer 04', 1.0, 'stock', '2026-12-31'
         UNION ALL
@@ -1947,7 +1947,7 @@ SELECT 'Tagmentation buffer 1', '20015171.0', 16.0, '0.29', '2023-04-04'
         UNION ALL
 SELECT 'enhanced PCR mix', '20015172.0', 16.0, '0.58', '2023-03-22'
         UNION ALL
-SELECT 'phix control V3', 'LOT-d110f238', 1.0, '', '2026-12-31'
+SELECT 'phix control V3', 'LOT-63d88708', 1.0, '', '2026-12-31'
         UNION ALL
 SELECT 'Cubit dsDNA HS Assay kit ', 'Q32854', 4.0, '500.0', '2026-12-31'
         UNION ALL
@@ -2013,7 +2013,7 @@ SELECT 'collection tubes 2 ml', 'lot 172016263', 19.0, '50.0', '2026-12-31'
         UNION ALL
 SELECT 'QIAamp mini spin colomn', 'lot 172015984', 50.0, '10.0', '2026-12-31'
         UNION ALL
-SELECT 'Qiagen Exraction kit', 'LOT-d86f0e5e', 2.0, '', '2026-12-31'
+SELECT 'Qiagen Exraction kit', 'LOT-06afa934', 2.0, '', '2026-12-31'
         UNION ALL
 SELECT 'tris-hydro chloride 1M', 'BP1756-100', 1.0, '100.0', '2026-12-31'
         UNION ALL
@@ -2033,7 +2033,7 @@ SELECT 'Amplitubes PCR rxn strips', 'T320-2R', 3.0, '125.0', '2026-12-31'
         UNION ALL
 SELECT 'PCR plate 96 well', '17820008.0', 2.0, '10.0', '2026-12-31'
         UNION ALL
-SELECT 'sample (DNA elution) storage tube', 'LOT-81e2420d', 1.0, '25.0', '2026-12-31'
+SELECT 'sample (DNA elution) storage tube', 'LOT-21f2ed9c', 1.0, '25.0', '2026-12-31'
         UNION ALL
 SELECT 'Quick gel extraction & PCR Purification combo kit', 'K220001', 3.0, '50.0', '2025-10-31'
         UNION ALL
@@ -2043,1537 +2043,1537 @@ SELECT 'Bio analyzer-syringe kit', 'G293868706', 2.0, '', '2026-12-31'
         UNION ALL
 SELECT 'Top vision Agrose', 'R0492', 3.0, '500.0', '2026-03-01'
         UNION ALL
-SELECT 'Qubit 1x ds DNA HS assay kit', 'LOT-59816228', 12.0, '', '2026-12-31'
+SELECT 'Qubit 1x ds DNA HS assay kit', 'LOT-5346ef59', 12.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Qubit 1x dsL DNA BR assay standard is ', 'LOT-4a93c85f', 12.0, '', '2026-12-31'
+SELECT 'Qubit 1x dsL DNA BR assay standard is ', 'LOT-6110bb3e', 12.0, '', '2026-12-31'
         UNION ALL
-SELECT 'AmpureXP', 'LOT-3a13eaf9', 6.0, '', '2026-12-31'
+SELECT 'AmpureXP', 'LOT-816aa140', 6.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Hot start MasterMix, high fidelity', 'LOT-134fe31d', 15.0, '', '2026-12-31'
+SELECT 'Hot start MasterMix, high fidelity', 'LOT-f0f575a3', 15.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Q5 Blood Direct MasterMix', 'LOT-afe04112', 12.0, '', '2026-12-31'
+SELECT 'Q5 Blood Direct MasterMix', 'LOT-b6576d2e', 12.0, '', '2026-12-31'
         UNION ALL
-SELECT 'cpbF (alpha DNA)', 'LOT-82c0208e', 1.0, '', '2026-12-31'
+SELECT 'cpbF (alpha DNA)', 'LOT-79c4c13c', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'cpbEF-F  (alpha DNA)', 'LOT-78f2917d', 1.0, '', '2026-12-31'
+SELECT 'cpbEF-F  (alpha DNA)', 'LOT-31f665bf', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'B4 (alpha DNA)', 'LOT-b42a97d8', 3.0, '', '2026-12-31'
+SELECT 'B4 (alpha DNA)', 'LOT-5cad6a8d', 3.0, '', '2026-12-31'
         UNION ALL
-SELECT 'K26 f 15pM', 'LOT-a5081181', 3.0, '', '2026-12-31'
+SELECT 'K26 f 15pM', 'LOT-b68cba79', 3.0, '', '2026-12-31'
         UNION ALL
-SELECT 'T2 (alpha DNA)', 'LOT-78f96656', 3.0, '', '2026-12-31'
+SELECT 'T2 (alpha DNA)', 'LOT-8571ce47', 3.0, '', '2026-12-31'
         UNION ALL
-SELECT 'seqcpbr2 (apha DNA)', 'LOT-6b76a2a7', 1.0, '', '2026-12-31'
+SELECT 'seqcpbr2 (apha DNA)', 'LOT-c00801d7', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Cpbef frd (alpha DNA)', 'LOT-b6a79645', 1.0, '', '2026-12-31'
+SELECT 'Cpbef frd (alpha DNA)', 'LOT-8934c334', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'seqcpbf1 (alpha DNA)', 'LOT-a1cf81ff', 1.0, '', '2026-12-31'
+SELECT 'seqcpbf1 (alpha DNA)', 'LOT-97e0e16b', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'cpbEFrev (alpha DNA)', 'LOT-9b6e1cde', 1.0, '', '2026-12-31'
+SELECT 'cpbEFrev (alpha DNA)', 'LOT-f9cffb23', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'cpbEF R  (alpha DNA)', 'LOT-969a7c77', 1.0, '', '2026-12-31'
+SELECT 'cpbEF R  (alpha DNA)', 'LOT-4a8a2629', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'dNTPs 10mM', 'LOT-00a62824', 1.0, '', '2026-12-31'
+SELECT 'dNTPs 10mM', 'LOT-15c24a03', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'vsp15pM', 'LOT-fc93a0da', 3.0, '', '2026-12-31'
+SELECT 'vsp15pM', 'LOT-41dad4a3', 3.0, '', '2026-12-31'
         UNION ALL
-SELECT 'one-4 phor-all buffer + 10x conc.', 'LOT-713a6c2e', 1.0, '1.0', '2026-12-31'
+SELECT 'one-4 phor-all buffer + 10x conc.', 'LOT-e42d5e9a', 1.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'taq DNA poly', 'LOT-00f5c796', 1.0, '250.0', '2026-12-31'
+SELECT 'taq DNA poly', 'LOT-bca0c013', 1.0, '250.0', '2026-12-31'
         UNION ALL
-SELECT 'k26r (alpha DNA)', 'LOT-4a0f97bc', 1.0, '', '2026-12-31'
+SELECT 'k26r (alpha DNA)', 'LOT-7c057e25', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'LITSR (alpha DNA)', 'LOT-e01f01ed', 4.0, '', '2026-12-31'
+SELECT 'LITSR (alpha DNA)', 'LOT-6b726437', 4.0, '', '2026-12-31'
         UNION ALL
-SELECT 'L%.8s  (alpha DNA)', 'LOT-d74eb295', 1.0, '', '2026-12-31'
+SELECT 'L%.8s  (alpha DNA)', 'LOT-44f67ec4', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Laev 10 R', 'LOT-27596c14', 1.0, '', '2026-12-31'
+SELECT 'Laev 10 R', 'LOT-4f818703', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'cpb TAG', 'LOT-e2562115', 1.0, '', '2026-12-31'
+SELECT 'cpb TAG', 'LOT-f785ce5c', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'cpbr (alpha DNA)', 'LOT-9832d807', 1.0, '150.0', '2026-12-31'
+SELECT 'cpbr (alpha DNA)', 'LOT-1ce4cb87', 1.0, '150.0', '2026-12-31'
         UNION ALL
-SELECT 'cpb ATG (alpha DNA)', 'LOT-1fcb8304', 1.0, '', '2026-12-31'
+SELECT 'cpb ATG (alpha DNA)', 'LOT-bfcd5ac5', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'big dye terminator v 3.1 cycle sequencing RR-24', 'LOT-0e881373', 1.0, '', '2026-12-31'
+SELECT 'big dye terminator v 3.1 cycle sequencing RR-24', 'LOT-ac466658', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Ilri-161108F1', 'LOT-70cf3296', 1.0, '604.2', '2026-12-31'
+SELECT 'Ilri-161108F1', 'LOT-5c5b8abc', 1.0, '604.2', '2026-12-31'
         UNION ALL
-SELECT 'pgem3Zf(+)', 'LOT-e8492ef0', 1.0, '', '2026-12-31'
+SELECT 'pgem3Zf(+)', 'LOT-6385718a', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'm13(-21)primer', 'LOT-d016086d', 1.0, '', '2026-12-31'
+SELECT 'm13(-21)primer', 'LOT-93df04b9', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT '202GA-Rv', 'LOT-aef875c3', 1.0, '', '2026-12-31'
+SELECT '202GA-Rv', 'LOT-823daeb0', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT '202GA-Fw', 'LOT-861551bc', 1.0, '', '2026-12-31'
+SELECT '202GA-Fw', 'LOT-377679a2', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Tailing Segment FW', 'LOT-5ebafcf5', 1.0, '14.6', '2026-12-31'
+SELECT 'Tailing Segment FW', 'LOT-5c25653f', 1.0, '14.6', '2026-12-31'
         UNION ALL
-SELECT 'Tailing Segment RV', 'LOT-4d2034b6', 1.0, '18.9', '2026-12-31'
+SELECT 'Tailing Segment RV', 'LOT-111473c2', 1.0, '18.9', '2026-12-31'
         UNION ALL
-SELECT 'Tailing Segment FW', 'LOT-6f108b9e', 1.0, '14.6', '2026-12-31'
+SELECT 'Tailing Segment FW', 'LOT-1de8fa5b', 1.0, '14.6', '2026-12-31'
         UNION ALL
-SELECT 'Tailing Segment RV', 'LOT-fef0346b', 1.0, '18.9', '2026-12-31'
+SELECT 'Tailing Segment RV', 'LOT-e147e99e', 1.0, '18.9', '2026-12-31'
         UNION ALL
-SELECT 'hrp2 one-step FW', 'LOT-918b0b10', 1.0, '14.6', '2026-12-31'
+SELECT 'hrp2 one-step FW', 'LOT-63666fe5', 1.0, '14.6', '2026-12-31'
         UNION ALL
-SELECT 'hrp2 one-step RV', 'LOT-91df7c98', 1.0, '20.0', '2026-12-31'
+SELECT 'hrp2 one-step RV', 'LOT-a56b5b07', 1.0, '20.0', '2026-12-31'
         UNION ALL
-SELECT 'hrp2 one-step FW', 'LOT-a566c6a7', 1.0, '14.6', '2026-12-31'
+SELECT 'hrp2 one-step FW', 'LOT-c8a07d47', 1.0, '14.6', '2026-12-31'
         UNION ALL
-SELECT 'hrp2 one-step RV', 'LOT-e7fbf084', 1.0, '20.0', '2026-12-31'
+SELECT 'hrp2 one-step RV', 'LOT-8d7d2fde', 1.0, '20.0', '2026-12-31'
         UNION ALL
-SELECT 'N1FPfcrt FW', 'LOT-ff793e2c', 1.0, '11.8', '2026-12-31'
+SELECT 'N1FPfcrt FW', 'LOT-0581cb06', 1.0, '11.8', '2026-12-31'
         UNION ALL
-SELECT 'N1FPfcrt RV', 'LOT-4b8d0256', 1.0, '7.2', '2026-12-31'
+SELECT 'N1FPfcrt RV', 'LOT-1866ad8e', 1.0, '7.2', '2026-12-31'
         UNION ALL
-SELECT 'N1FPfcrt FW', 'LOT-218988de', 1.0, '11.8', '2026-12-31'
+SELECT 'N1FPfcrt FW', 'LOT-5d6f3750', 1.0, '11.8', '2026-12-31'
         UNION ALL
-SELECT 'N1FPfcrt RV', 'LOT-1923136d', 1.0, '7.2', '2026-12-31'
+SELECT 'N1FPfcrt RV', 'LOT-3b249981', 1.0, '7.2', '2026-12-31'
         UNION ALL
-SELECT 'N2FPfcrt FW', 'LOT-95cf4f2f', 1.0, '13.9', '2026-12-31'
+SELECT 'N2FPfcrt FW', 'LOT-41986975', 1.0, '13.9', '2026-12-31'
         UNION ALL
-SELECT 'N2FPfcrt RV', 'LOT-12b51a08', 1.0, '12.4', '2026-12-31'
+SELECT 'N2FPfcrt RV', 'LOT-41600166', 1.0, '12.4', '2026-12-31'
         UNION ALL
-SELECT 'N2FPfcrt FW', 'LOT-23a848a1', 1.0, '13.9', '2026-12-31'
+SELECT 'N2FPfcrt FW', 'LOT-5bec1dbb', 1.0, '13.9', '2026-12-31'
         UNION ALL
-SELECT 'N2FPfcrt RV', 'LOT-b0690fbc', 1.0, '12.4', '2026-12-31'
+SELECT 'N2FPfcrt RV', 'LOT-4a4eb6ba', 1.0, '12.4', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Fw', 'LOT-d95f224b', 1.0, '12.3', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Fw', 'LOT-ca36533e', 1.0, '12.3', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Rv', 'LOT-59f5ec2b', 1.0, '12.9', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Rv', 'LOT-5f03f0eb', 1.0, '12.9', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Fw', 'LOT-aefb2313', 1.0, '12.3', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Fw', 'LOT-7bbd152a', 1.0, '12.3', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Rv', 'LOT-c8df3c30', 1.0, '12.9', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Rv', 'LOT-9b2ed586', 1.0, '12.9', '2026-12-31'
         UNION ALL
-SELECT 'N2-Mdr1-86Y FW', 'LOT-fb5290b3', 1.0, '16.8', '2026-12-31'
+SELECT 'N2-Mdr1-86Y FW', 'LOT-071f9b7d', 1.0, '16.8', '2026-12-31'
         UNION ALL
-SELECT 'N2-Mdr1-86Y Rv', 'LOT-acc1e21c', 1.0, '17.3', '2026-12-31'
+SELECT 'N2-Mdr1-86Y Rv', 'LOT-0033a8a8', 1.0, '17.3', '2026-12-31'
         UNION ALL
-SELECT 'N2-Mdr1-86Y FW', 'LOT-3742b820', 1.0, '16.8', '2026-12-31'
+SELECT 'N2-Mdr1-86Y FW', 'LOT-c82507a5', 1.0, '16.8', '2026-12-31'
         UNION ALL
-SELECT 'N2-Mdr1-86Y Rv', 'LOT-5a2bef57', 1.0, '17.3', '2026-12-31'
+SELECT 'N2-Mdr1-86Y Rv', 'LOT-e853c5fd', 1.0, '17.3', '2026-12-31'
         UNION ALL
-SELECT 'N1FPfcrt FW', 'LOT-d76dc157', 1.0, '12.3', '2026-12-31'
+SELECT 'N1FPfcrt FW', 'LOT-e345ce46', 1.0, '12.3', '2026-12-31'
         UNION ALL
-SELECT 'N1FPfcrt RV', 'LOT-b38721fe', 1.0, '14.1', '2026-12-31'
+SELECT 'N1FPfcrt RV', 'LOT-72e1cb7d', 1.0, '14.1', '2026-12-31'
         UNION ALL
-SELECT 'N2FPfcrt FW', 'LOT-ed5affdb', 1.0, '15.4', '2026-12-31'
+SELECT 'N2FPfcrt FW', 'LOT-589a5136', 1.0, '15.4', '2026-12-31'
         UNION ALL
-SELECT 'N2FPfcrt RV', 'LOT-8e1185c3', 1.0, '14.0', '2026-12-31'
+SELECT 'N2FPfcrt RV', 'LOT-cd37685d', 1.0, '14.0', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Fw', 'LOT-22680609', 1.0, '11.4', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Fw', 'LOT-69999f05', 1.0, '11.4', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Rv', 'LOT-e4e19155', 1.0, '12.1', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Rv', 'LOT-47074b5e', 1.0, '12.1', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Fw', 'LOT-9130e0fc', 1.0, '12.4', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Fw', 'LOT-a12458c6', 1.0, '12.4', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Rv', 'LOT-a993cc87', 1.0, '12.1', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Rv', 'LOT-d6ccbd10', 1.0, '12.1', '2026-12-31'
         UNION ALL
-SELECT 'N2-mdr1-86Y FW', 'LOT-94623201', 1.0, '8.6', '2026-12-31'
+SELECT 'N2-mdr1-86Y FW', 'LOT-4affec08', 1.0, '8.6', '2026-12-31'
         UNION ALL
-SELECT 'N2-mdr1-86Y RV', 'LOT-25f43104', 1.0, '10.4', '2026-12-31'
+SELECT 'N2-mdr1-86Y RV', 'LOT-77a574ca', 1.0, '10.4', '2026-12-31'
         UNION ALL
-SELECT 'N2-mdr1-86Y FW', 'LOT-4dccc150', 1.0, '8.6', '2026-12-31'
+SELECT 'N2-mdr1-86Y FW', 'LOT-c7038df6', 1.0, '8.6', '2026-12-31'
         UNION ALL
-SELECT 'N2-mdr1-86Y RV', 'LOT-376d02ab', 1.0, '10.4', '2026-12-31'
+SELECT 'N2-mdr1-86Y RV', 'LOT-82c6626c', 1.0, '10.4', '2026-12-31'
         UNION ALL
-SELECT 'M1-OF', 'LOT-dacc2806', 1.0, '9.6', '2026-12-31'
+SELECT 'M1-OF', 'LOT-d877ce13', 1.0, '9.6', '2026-12-31'
         UNION ALL
-SELECT 'M1-OR', 'LOT-9641b118', 1.0, '11.1', '2026-12-31'
+SELECT 'M1-OR', 'LOT-59229707', 1.0, '11.1', '2026-12-31'
         UNION ALL
-SELECT 'M1-OF', 'LOT-8e611989', 1.0, '9.6', '2026-12-31'
+SELECT 'M1-OF', 'LOT-54b4abbb', 1.0, '9.6', '2026-12-31'
         UNION ALL
-SELECT 'M1-OR', 'LOT-f6d8a807', 1.0, '11.1', '2026-12-31'
+SELECT 'M1-OR', 'LOT-5142b2d1', 1.0, '11.1', '2026-12-31'
         UNION ALL
-SELECT 'RNaseP-F', 'LOT-dadb44ea', 1.0, '62.1', '2026-12-31'
+SELECT 'RNaseP-F', 'LOT-49429148', 1.0, '62.1', '2026-12-31'
         UNION ALL
-SELECT 'RNaseP-R', 'LOT-df287895', 1.0, '65.4', '2026-12-31'
+SELECT 'RNaseP-R', 'LOT-9d2635cf', 1.0, '65.4', '2026-12-31'
         UNION ALL
-SELECT 'msp-1(N)-FW', 'LOT-1cbe37f9', 1.0, '25.3', '2026-12-31'
+SELECT 'msp-1(N)-FW', 'LOT-a9b2e57d', 1.0, '25.3', '2026-12-31'
         UNION ALL
-SELECT 'msp-1(N)-RV', 'LOT-f6eebf1b', 1.0, '10.2', '2026-12-31'
+SELECT 'msp-1(N)-RV', 'LOT-9d0cd562', 1.0, '10.2', '2026-12-31'
         UNION ALL
-SELECT 'msp-1(N1)-FW', 'LOT-4b67f7cf', 1.0, '25.3', '2026-12-31'
+SELECT 'msp-1(N1)-FW', 'LOT-0175baee', 1.0, '25.3', '2026-12-31'
         UNION ALL
-SELECT 'msp-1(N1)-RV', 'LOT-bc2d68dd', 1.0, '10.2', '2026-12-31'
+SELECT 'msp-1(N1)-RV', 'LOT-1932693b', 1.0, '10.2', '2026-12-31'
         UNION ALL
-SELECT 'msp-outer-F', 'LOT-4639ada0', 1.0, '60.6', '2026-12-31'
+SELECT 'msp-outer-F', 'LOT-f498ee80', 1.0, '60.6', '2026-12-31'
         UNION ALL
-SELECT 'msp-outer-R', 'LOT-785a0123', 1.0, '59.7', '2026-12-31'
+SELECT 'msp-outer-R', 'LOT-4821d82f', 1.0, '59.7', '2026-12-31'
         UNION ALL
-SELECT '3D7/ICfamily(N-2)-FW', 'LOT-45113687', 1.0, '25.9', '2026-12-31'
+SELECT '3D7/ICfamily(N-2)-FW', 'LOT-0290f36c', 1.0, '25.9', '2026-12-31'
         UNION ALL
-SELECT '3D7/ICfamily(N-2)-FW', 'LOT-1d09bd75', 1.0, '25.9', '2026-12-31'
+SELECT '3D7/ICfamily(N-2)-FW', 'LOT-cf50e51a', 1.0, '25.9', '2026-12-31'
         UNION ALL
-SELECT 'msp2-S2-fw', 'LOT-127b8298', 1.0, '26.5', '2026-12-31'
+SELECT 'msp2-S2-fw', 'LOT-15e8b189', 1.0, '26.5', '2026-12-31'
         UNION ALL
-SELECT 'msp2-S3-rev', 'LOT-91b4732a', 1.0, '24.2', '2026-12-31'
+SELECT 'msp2-S3-rev', 'LOT-86d2dc60', 1.0, '24.2', '2026-12-31'
         UNION ALL
-SELECT 'msp-2(N1)-FW', 'LOT-df6932cc', 1.0, '9.3', '2026-12-31'
+SELECT 'msp-2(N1)-FW', 'LOT-9e4be06a', 1.0, '9.3', '2026-12-31'
         UNION ALL
-SELECT 'msp-2(N1)-Rv', 'LOT-b6293077', 1.0, '28.4', '2026-12-31'
+SELECT 'msp-2(N1)-Rv', 'LOT-370ecf0d', 1.0, '28.4', '2026-12-31'
         UNION ALL
-SELECT 'msp2-S2-fw', 'LOT-2699cdc9', 1.0, '26.5', '2026-12-31'
+SELECT 'msp2-S2-fw', 'LOT-36a189ea', 1.0, '26.5', '2026-12-31'
         UNION ALL
-SELECT 'msp2-S3-rev', 'LOT-f661b359', 1.0, '24.2', '2026-12-31'
+SELECT 'msp2-S3-rev', 'LOT-1206644f', 1.0, '24.2', '2026-12-31'
         UNION ALL
-SELECT 'msp-2(N1)-FW', 'LOT-07ea0445', 1.0, '9.3', '2026-12-31'
+SELECT 'msp-2(N1)-FW', 'LOT-b938f88c', 1.0, '9.3', '2026-12-31'
         UNION ALL
-SELECT 'msp-2(N1)-RV', 'LOT-f43eaf26', 1.0, '28.4', '2026-12-31'
+SELECT 'msp-2(N1)-RV', 'LOT-cb2bb012', 1.0, '28.4', '2026-12-31'
         UNION ALL
-SELECT 'msp2-S2-F', 'LOT-104f9d43', 1.0, '57.5', '2026-12-31'
+SELECT 'msp2-S2-F', 'LOT-f0e0730f', 1.0, '57.5', '2026-12-31'
         UNION ALL
-SELECT 'msp2-S3-R', 'LOT-db39acd3', 1.0, '56.0', '2026-12-31'
+SELECT 'msp2-S3-R', 'LOT-0ee41458', 1.0, '56.0', '2026-12-31'
         UNION ALL
-SELECT 'msp2-S1Tail-fw', 'LOT-ea059c9e', 1.0, '18.9', '2026-12-31'
+SELECT 'msp2-S1Tail-fw', 'LOT-66df23ec', 1.0, '18.9', '2026-12-31'
         UNION ALL
-SELECT 'msp2-S1Tail-fw', 'LOT-2e164d12', 1.0, '18.9', '2026-12-31'
+SELECT 'msp2-S1Tail-fw', 'LOT-5058543d', 1.0, '18.9', '2026-12-31'
         UNION ALL
-SELECT 'msp2-S1Tail-f', 'LOT-3c89c579', 1.0, '53.8', '2026-12-31'
+SELECT 'msp2-S1Tail-f', 'LOT-8509fbf8', 1.0, '53.8', '2026-12-31'
         UNION ALL
-SELECT 'FC27family(N2)-FW', 'LOT-e1a8b184', 1.0, '25.9', '2026-12-31'
+SELECT 'FC27family(N2)-FW', 'LOT-21514c31', 1.0, '25.9', '2026-12-31'
         UNION ALL
-SELECT 'FC27family(N2)-RV', 'LOT-18aa9bfa', 1.0, '11.8', '2026-12-31'
+SELECT 'FC27family(N2)-RV', 'LOT-6df15d72', 1.0, '11.8', '2026-12-31'
         UNION ALL
-SELECT 'FC27family(N2)-FW', 'LOT-a96f4de6', 1.0, '25.9', '2026-12-31'
+SELECT 'FC27family(N2)-FW', 'LOT-38e8aa23', 1.0, '25.9', '2026-12-31'
         UNION ALL
-SELECT 'FC27family(N2)-RV', 'LOT-8a7f064b', 1.0, '11.8', '2026-12-31'
+SELECT 'FC27family(N2)-RV', 'LOT-193e3e4e', 1.0, '11.8', '2026-12-31'
         UNION ALL
-SELECT 'msp1-k1-F', 'LOT-728e4d4a', 1.0, '38.8', '2026-12-31'
+SELECT 'msp1-k1-F', 'LOT-df246217', 1.0, '38.8', '2026-12-31'
         UNION ALL
-SELECT 'msp1-k1-R', 'LOT-2a88242e', 1.0, '56.6', '2026-12-31'
+SELECT 'msp1-k1-R', 'LOT-efd3dd89', 1.0, '56.6', '2026-12-31'
         UNION ALL
-SELECT 'msp1-Mad20-F', 'LOT-f898d13c', 1.0, '49.6', '2026-12-31'
+SELECT 'msp1-Mad20-F', 'LOT-5590ada3', 1.0, '49.6', '2026-12-31'
         UNION ALL
-SELECT 'msp1-Mad20-R', 'LOT-fee67d99', 1.0, '51.5', '2026-12-31'
+SELECT 'msp1-Mad20-R', 'LOT-4f30c8d3', 1.0, '51.5', '2026-12-31'
         UNION ALL
-SELECT 'Fc27', 'LOT-b3c8c92e', 1.0, '57.8', '2026-12-31'
+SELECT 'Fc27', 'LOT-9bda3ffc', 1.0, '57.8', '2026-12-31'
         UNION ALL
-SELECT '3D7', 'LOT-6c5ae543', 1.0, '57.4', '2026-12-31'
+SELECT '3D7', 'LOT-898fbf9c', 1.0, '57.4', '2026-12-31'
         UNION ALL
-SELECT 'msp2-3D7-N5-RV-probe', 'LOT-63de57dc', 1.0, '20.9', '2026-12-31'
+SELECT 'msp2-3D7-N5-RV-probe', 'LOT-f743e06f', 1.0, '20.9', '2026-12-31'
         UNION ALL
-SELECT 'msp2-FC27-MS-RV-probe', 'LOT-1e08f44f', 1.0, '20.1', '2026-12-31'
+SELECT 'msp2-FC27-MS-RV-probe', 'LOT-7ef4d0ba', 1.0, '20.1', '2026-12-31'
         UNION ALL
-SELECT 'Nuclase free water', 'LOT-73516da0', 6.0, '1.5', '2026-12-31'
+SELECT 'Nuclase free water', 'LOT-fa4aa68e', 6.0, '1.5', '2026-12-31'
         UNION ALL
-SELECT 'NOT I', 'LOT-47c3e7fa', 1.0, '0.05', '2022-09-01'
+SELECT 'NOT I', 'LOT-7daaa9f9', 1.0, '0.05', '2022-09-01'
         UNION ALL
-SELECT 'NE buffer 3.1  ', 'LOT-796e3037', 1.0, '1.25', '2024-01-01'
+SELECT 'NE buffer 3.1  ', 'LOT-b11f11d8', 1.0, '1.25', '2024-01-01'
         UNION ALL
-SELECT 'PhHv10^3', 'LOT-29f4ffa6', 1.0, '80.0', '2026-12-31'
+SELECT 'PhHv10^3', 'LOT-1493da1d', 1.0, '80.0', '2026-12-31'
         UNION ALL
-SELECT 'PhHv-26267s ', 'LOT-6dc27be7', 1.0, '232.0', '2026-12-31'
+SELECT 'PhHv-26267s ', 'LOT-5cc47965', 1.0, '232.0', '2026-12-31'
         UNION ALL
-SELECT 'probephhv-305TQ-cy5', 'LOT-7b2da903', 1.0, '', '2026-12-31'
+SELECT 'probephhv-305TQ-cy5', 'LOT-ea6e7185', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'phhv-337as', 'LOT-d485ee2a', 1.0, '210.0', '2011-12-01'
+SELECT 'phhv-337as', 'LOT-ad03fcce', 1.0, '210.0', '2011-12-01'
         UNION ALL
-SELECT 'ENDFORWARD (Genosys 7112-012)', 'LOT-01eaab8a', 1.0, 'Lyophilized', '2026-12-31'
+SELECT 'ENDFORWARD (Genosys 7112-012)', 'LOT-0caf30d0', 1.0, 'Lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'ENDREVERSE (gENOSYS 7112-013)', 'LOT-edf02506', 1.0, 'Lyophilized', '2026-12-31'
+SELECT 'ENDREVERSE (gENOSYS 7112-013)', 'LOT-99b4dd4e', 1.0, 'Lyophilized', '2026-12-31'
         UNION ALL
-SELECT '563CT- Fw', 'LOT-b31b5e76', 1.0, 'Lyophilized', '2026-12-31'
+SELECT '563CT- Fw', 'LOT-302f0366', 1.0, 'Lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'DNase I, RNase free', 'LOT-b12ee09f', 13.0, '', '2025-06-30'
+SELECT 'DNase I, RNase free', 'LOT-2284b683', 13.0, '', '2025-06-30'
         UNION ALL
-SELECT '10X reaction buffer with MgCl2 for DNase I', 'LOT-5a95231a', 13.0, '1.25', '2026-12-31'
+SELECT '10X reaction buffer with MgCl2 for DNase I', 'LOT-4fb8df3c', 13.0, '1.25', '2026-12-31'
         UNION ALL
-SELECT 'MnCl2', 'LOT-582a29ad', 13.0, '1.0', '2026-12-31'
+SELECT 'MnCl2', 'LOT-dd16adb6', 13.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'reaction buffer with out MnCl2 for DNase I', 'LOT-24eb3ad9', 13.0, '1.0', '2026-12-31'
+SELECT 'reaction buffer with out MnCl2 for DNase I', 'LOT-8a4312ce', 13.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'EDTA', 'LOT-5a0a6c53', 13.0, '1.0', '2026-12-31'
+SELECT 'EDTA', 'LOT-a0ce4dd8', 13.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'cell proliferatio kit I (MTT)', 'LOT-42da4d25', 1.0, '', '2026-12-31'
+SELECT 'cell proliferatio kit I (MTT)', 'LOT-a074e9dd', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'cell proliferatio kit I (MTT)', 'LOT-52581023', 1.0, '', '2026-12-31'
+SELECT 'cell proliferatio kit I (MTT)', 'LOT-727d113c', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'RQ1R  DNase, stop solution', 'LOT-4a5b9289', 1.0, '1.0', '2016-04-30'
+SELECT 'RQ1R  DNase, stop solution', 'LOT-5d504e46', 1.0, '1.0', '2016-04-30'
         UNION ALL
-SELECT 'RQ1 DNase, 10x rxn buffer', 'LOT-0c4ccdde', 1.0, '1.0', '2016-04-30'
+SELECT 'RQ1 DNase, 10x rxn buffer', 'LOT-ac1b8c7b', 1.0, '1.0', '2016-04-30'
         UNION ALL
-SELECT 'RQ1R  RNase freeDNase', 'LOT-2e87478b', 1.0, '1.0', '2016-04-30'
+SELECT 'RQ1R  RNase freeDNase', 'LOT-45b7c74e', 1.0, '1.0', '2016-04-30'
         UNION ALL
-SELECT 'PV25probe', 'LOT-d3a0f45f', 1.0, '20.4', '2026-12-31'
+SELECT 'PV25probe', 'LOT-b4a7fa69', 1.0, '20.4', '2026-12-31'
         UNION ALL
-SELECT 'PV_DBP_probe', 'LOT-bbed8251', 1.0, '20.0', '2026-12-31'
+SELECT 'PV_DBP_probe', 'LOT-d77e9a41', 1.0, '20.0', '2026-12-31'
         UNION ALL
-SELECT 'CCp4 probe', 'LOT-ad1a7679', 1.0, '20.0', '2026-12-31'
+SELECT 'CCp4 probe', 'LOT-c34d7af7', 1.0, '20.0', '2026-12-31'
         UNION ALL
-SELECT 'pfMGET', 'LOT-6841d935', 1.0, '20.7', '2026-12-31'
+SELECT 'pfMGET', 'LOT-6d3668ba', 1.0, '20.7', '2026-12-31'
         UNION ALL
-SELECT 'Ps18S', 'LOT-fabf933a', 1.0, '', '2026-12-31'
+SELECT 'Ps18S', 'LOT-8a719509', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'QIAcuity probe PCR kit', 'LOT-5b40e5c4', 15.0, '1.0', '2024-09-17'
+SELECT 'QIAcuity probe PCR kit', 'LOT-d7d26406', 15.0, '1.0', '2024-09-17'
         UNION ALL
-SELECT 'Probe PCR Kit 25ml', 'LOT-bb86d496', 1.0, '25.0', '2026-12-31'
+SELECT 'Probe PCR Kit 25ml', 'LOT-6b56eded', 1.0, '25.0', '2026-12-31'
         UNION ALL
-SELECT 'Probe PCR Kit 50ml', 'LOT-b5cbf3f7', 10.0, '50.0', '2026-12-31'
+SELECT 'Probe PCR Kit 50ml', 'LOT-68c0b86f', 10.0, '50.0', '2026-12-31'
         UNION ALL
-SELECT 'Probe PCR Kit 15ml', 'LOT-c896ff20', 1.0, '15.0', '2026-12-31'
+SELECT 'Probe PCR Kit 15ml', 'LOT-8ac6b1f0', 1.0, '15.0', '2026-12-31'
         UNION ALL
-SELECT 'varATS ', 'LOT-d23666ec', 18.0, 'stock', '2026-12-31'
+SELECT 'varATS ', 'LOT-450a9b2a', 18.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT '2E12F1', 'LOT-664f2bde', 1.0, '15.5', '2026-12-31'
+SELECT '2E12F1', 'LOT-dad5eead', 1.0, '15.5', '2026-12-31'
         UNION ALL
-SELECT '2E12R1', 'LOT-935f5e73', 1.0, '13.2', '2026-12-31'
+SELECT '2E12R1', 'LOT-84cc0c0b', 1.0, '13.2', '2026-12-31'
         UNION ALL
-SELECT '2E12F1', 'LOT-9f7e2cc1', 1.0, '15.5', '2026-12-31'
+SELECT '2E12F1', 'LOT-c6d390b3', 1.0, '15.5', '2026-12-31'
         UNION ALL
-SELECT '2E12R1', 'LOT-a20f29ce', 1.0, '13.2', '2026-12-31'
+SELECT '2E12R1', 'LOT-ae26aef9', 1.0, '13.2', '2026-12-31'
         UNION ALL
-SELECT '2E12F', 'LOT-3280fa5a', 1.0, '20.4', '2026-12-31'
+SELECT '2E12F', 'LOT-d650e8b4', 1.0, '20.4', '2026-12-31'
         UNION ALL
-SELECT '2E12R', 'LOT-c5e8af5c', 1.0, '13.6', '2026-12-31'
+SELECT '2E12R', 'LOT-1d822a69', 1.0, '13.6', '2026-12-31'
         UNION ALL
-SELECT '2E12F', 'LOT-aa4f8eae', 1.0, '20.4', '2026-12-31'
+SELECT '2E12F', 'LOT-eb63a073', 1.0, '20.4', '2026-12-31'
         UNION ALL
-SELECT '2E12R', 'LOT-eb5497b5', 1.0, '13.6', '2026-12-31'
+SELECT '2E12R', 'LOT-a31b2631', 1.0, '13.6', '2026-12-31'
         UNION ALL
-SELECT '2E2F', 'LOT-16e700c3', 1.0, '14.9', '2026-12-31'
+SELECT '2E2F', 'LOT-00a8c1d4', 1.0, '14.9', '2026-12-31'
         UNION ALL
-SELECT '2E2R1', 'LOT-91df6804', 1.0, '16.6', '2026-12-31'
+SELECT '2E2R1', 'LOT-f4053a08', 1.0, '16.6', '2026-12-31'
         UNION ALL
-SELECT '2E2F', 'LOT-237a0c61', 1.0, '14.9', '2026-12-31'
+SELECT '2E2F', 'LOT-f2edc91b', 1.0, '14.9', '2026-12-31'
         UNION ALL
-SELECT '2E2R1', 'LOT-d7d2c70c', 1.0, '16.6', '2026-12-31'
+SELECT '2E2R1', 'LOT-ba13f02e', 1.0, '16.6', '2026-12-31'
         UNION ALL
-SELECT '2E2F1', 'LOT-42755adb', 1.0, '12.0', '2026-12-31'
+SELECT '2E2F1', 'LOT-da06ba04', 1.0, '12.0', '2026-12-31'
         UNION ALL
-SELECT '2E2R', 'LOT-a76fb37d', 1.0, '13.8', '2026-12-31'
+SELECT '2E2R', 'LOT-9e80fe8d', 1.0, '13.8', '2026-12-31'
         UNION ALL
-SELECT '2E2F1', 'LOT-07358a08', 1.0, '12.0', '2026-12-31'
+SELECT '2E2F1', 'LOT-547b1531', 1.0, '12.0', '2026-12-31'
         UNION ALL
-SELECT '2E2R', 'LOT-3085fde7', 1.0, '13.8', '2026-12-31'
+SELECT '2E2R', 'LOT-dce7e5ee', 1.0, '13.8', '2026-12-31'
         UNION ALL
-SELECT 'BRAVO_F', 'LOT-580e3cac', 1.0, '14.6', '2026-12-31'
+SELECT 'BRAVO_F', 'LOT-9d2be71d', 1.0, '14.6', '2026-12-31'
         UNION ALL
-SELECT 'BRAVO_R', 'LOT-c4e26805', 1.0, '17.9', '2026-12-31'
+SELECT 'BRAVO_R', 'LOT-2dbaf3d7', 1.0, '17.9', '2026-12-31'
         UNION ALL
-SELECT 'BRAVO_F', 'LOT-f4d97bfa', 1.0, '14.6', '2026-12-31'
+SELECT 'BRAVO_F', 'LOT-65e58754', 1.0, '14.6', '2026-12-31'
         UNION ALL
-SELECT 'BRAVO_R', 'LOT-693e8c58', 1.0, '17.9', '2026-12-31'
+SELECT 'BRAVO_R', 'LOT-52228502', 1.0, '17.9', '2026-12-31'
         UNION ALL
-SELECT 'R1(2)', 'LOT-3ee76e08', 1.0, '19.0', '2026-12-31'
+SELECT 'R1(2)', 'LOT-480d2f7c', 1.0, '19.0', '2026-12-31'
         UNION ALL
-SELECT 'F1 (M1-F1)', 'LOT-541ccb7e', 1.0, '16.2', '2026-12-31'
+SELECT 'F1 (M1-F1)', 'LOT-fcee6009', 1.0, '16.2', '2026-12-31'
         UNION ALL
-SELECT 'R1(2)', 'LOT-4d7fb331', 1.0, '19.0', '2026-12-31'
+SELECT 'R1(2)', 'LOT-edbecf71', 1.0, '19.0', '2026-12-31'
         UNION ALL
-SELECT 'F1 (M1-F1)', 'LOT-09240e20', 1.0, '16.2', '2026-12-31'
+SELECT 'F1 (M1-F1)', 'LOT-07bc367c', 1.0, '16.2', '2026-12-31'
         UNION ALL
-SELECT 'R2', 'LOT-e5725454', 1.0, '11.6', '2026-12-31'
+SELECT 'R2', 'LOT-d46dcdc0', 1.0, '11.6', '2026-12-31'
         UNION ALL
-SELECT 'F2', 'LOT-f031a6b9', 1.0, '14.4', '2026-12-31'
+SELECT 'F2', 'LOT-64add7bd', 1.0, '14.4', '2026-12-31'
         UNION ALL
-SELECT 'R2', 'LOT-c683669c', 1.0, '11.6', '2026-12-31'
+SELECT 'R2', 'LOT-647e0a27', 1.0, '11.6', '2026-12-31'
         UNION ALL
-SELECT 'F2', 'LOT-b3de15cd', 1.0, '14.4', '2026-12-31'
+SELECT 'F2', 'LOT-19859fef', 1.0, '14.4', '2026-12-31'
         UNION ALL
-SELECT 'Out PCR barcoding fw', 'LOT-3a4bea57', 1.0, '15.3', '2026-12-31'
+SELECT 'Out PCR barcoding fw', 'LOT-f5cdffa5', 1.0, '15.3', '2026-12-31'
         UNION ALL
-SELECT 'Out PCR barcoding rv', 'LOT-3c7aee16', 1.0, '15.9', '2026-12-31'
+SELECT 'Out PCR barcoding rv', 'LOT-5208031d', 1.0, '15.9', '2026-12-31'
         UNION ALL
-SELECT 'Out PCR barcoding fw', 'LOT-e055ef30', 1.0, '15.3', '2026-12-31'
+SELECT 'Out PCR barcoding fw', 'LOT-12257842', 1.0, '15.3', '2026-12-31'
         UNION ALL
-SELECT 'Out PCR barcoding rv', 'LOT-707f24a5', 1.0, '15.9', '2026-12-31'
+SELECT 'Out PCR barcoding rv', 'LOT-98b5c4da', 1.0, '15.9', '2026-12-31'
         UNION ALL
-SELECT 'M1-R1', 'LOT-4a01911e', 1.0, '16.9', '2026-12-31'
+SELECT 'M1-R1', 'LOT-63082f92', 1.0, '16.9', '2026-12-31'
         UNION ALL
-SELECT 'M1-IR', 'LOT-c859d01b', 1.0, '16.9', '2026-12-31'
+SELECT 'M1-IR', 'LOT-589c275e', 1.0, '16.9', '2026-12-31'
         UNION ALL
-SELECT 'Tailing Segment FW', 'LOT-865a7416', 1.0, '14.6', '2026-12-31'
+SELECT 'Tailing Segment FW', 'LOT-37955eaf', 1.0, '14.6', '2026-12-31'
         UNION ALL
-SELECT 'Tailing Segment RV', 'LOT-2bbc182a', 1.0, '18.9', '2026-12-31'
+SELECT 'Tailing Segment RV', 'LOT-76d24160', 1.0, '18.9', '2026-12-31'
         UNION ALL
-SELECT 'Tailing Segment FW', 'LOT-1878115a', 1.0, '14.6', '2026-12-31'
+SELECT 'Tailing Segment FW', 'LOT-d7c1e94f', 1.0, '14.6', '2026-12-31'
         UNION ALL
-SELECT 'Tailing Segment RV', 'LOT-5a8f5d0e', 1.0, '18.9', '2026-12-31'
+SELECT 'Tailing Segment RV', 'LOT-cd8a1c4e', 1.0, '18.9', '2026-12-31'
         UNION ALL
-SELECT 'hrp2 one-step FW', 'LOT-bbf0a520', 1.0, '14.6', '2026-12-31'
+SELECT 'hrp2 one-step FW', 'LOT-499be627', 1.0, '14.6', '2026-12-31'
         UNION ALL
-SELECT 'hrp2 one-step RV', 'LOT-6de4bbec', 1.0, '20.0', '2026-12-31'
+SELECT 'hrp2 one-step RV', 'LOT-353c72f6', 1.0, '20.0', '2026-12-31'
         UNION ALL
-SELECT 'hrp2 one-step FW', 'LOT-ccf3aa9d', 1.0, '14.6', '2026-12-31'
+SELECT 'hrp2 one-step FW', 'LOT-bc5db4c8', 1.0, '14.6', '2026-12-31'
         UNION ALL
-SELECT 'hrp2 one-step RV', 'LOT-be45530d', 1.0, '20.0', '2026-12-31'
+SELECT 'hrp2 one-step RV', 'LOT-a2811e1f', 1.0, '20.0', '2026-12-31'
         UNION ALL
-SELECT 'N1FPfcrt FW', 'LOT-8cd0e913', 1.0, '11.8', '2026-12-31'
+SELECT 'N1FPfcrt FW', 'LOT-5c49f2b8', 1.0, '11.8', '2026-12-31'
         UNION ALL
-SELECT 'N1FPfcrt RV', 'LOT-d61be401', 1.0, '7.2', '2026-12-31'
+SELECT 'N1FPfcrt RV', 'LOT-a77ec0a6', 1.0, '7.2', '2026-12-31'
         UNION ALL
-SELECT 'N1FPfcrt FW', 'LOT-071ac58e', 1.0, '11.8', '2026-12-31'
+SELECT 'N1FPfcrt FW', 'LOT-0adec5a6', 1.0, '11.8', '2026-12-31'
         UNION ALL
-SELECT 'N1FPfcrt RV', 'LOT-7e3f76f2', 1.0, '7.2', '2026-12-31'
+SELECT 'N1FPfcrt RV', 'LOT-0eff241c', 1.0, '7.2', '2026-12-31'
         UNION ALL
-SELECT 'N2FPfcrt FW', 'LOT-f6a2e7e2', 1.0, '13.9', '2026-12-31'
+SELECT 'N2FPfcrt FW', 'LOT-82f404a0', 1.0, '13.9', '2026-12-31'
         UNION ALL
-SELECT 'N2FPfcrt RV', 'LOT-6f8fd980', 1.0, '12.4', '2026-12-31'
+SELECT 'N2FPfcrt RV', 'LOT-f889d5f2', 1.0, '12.4', '2026-12-31'
         UNION ALL
-SELECT 'N2FPfcrt FW', 'LOT-61be611b', 1.0, '13.9', '2026-12-31'
+SELECT 'N2FPfcrt FW', 'LOT-cbd8e4df', 1.0, '13.9', '2026-12-31'
         UNION ALL
-SELECT 'N2FPfcrt RV', 'LOT-66964dc2', 1.0, '12.4', '2026-12-31'
+SELECT 'N2FPfcrt RV', 'LOT-2efefb8d', 1.0, '12.4', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Fw', 'LOT-5ff71ad3', 1.0, '12.3', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Fw', 'LOT-95f4c8ad', 1.0, '12.3', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Rv', 'LOT-b3a56d5c', 1.0, '12.9', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Rv', 'LOT-eb7a08c8', 1.0, '12.9', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Fw', 'LOT-58528d9d', 1.0, '12.3', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Fw', 'LOT-43bbcfd6', 1.0, '12.3', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Rv', 'LOT-88a790e2', 1.0, '12.9', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Rv', 'LOT-363404f4', 1.0, '12.9', '2026-12-31'
         UNION ALL
-SELECT 'N2-Mdr1-86Y FW', 'LOT-4cdccd66', 1.0, '16.8', '2026-12-31'
+SELECT 'N2-Mdr1-86Y FW', 'LOT-6d5fdbbb', 1.0, '16.8', '2026-12-31'
         UNION ALL
-SELECT 'N2-Mdr1-86Y Rv', 'LOT-12d3eb3d', 1.0, '17.3', '2026-12-31'
+SELECT 'N2-Mdr1-86Y Rv', 'LOT-f39172f4', 1.0, '17.3', '2026-12-31'
         UNION ALL
-SELECT 'N2-Mdr1-86Y FW', 'LOT-467e1865', 1.0, '16.8', '2026-12-31'
+SELECT 'N2-Mdr1-86Y FW', 'LOT-00f69bd6', 1.0, '16.8', '2026-12-31'
         UNION ALL
-SELECT 'N2-Mdr1-86Y Rv', 'LOT-b2296502', 1.0, '17.3', '2026-12-31'
+SELECT 'N2-Mdr1-86Y Rv', 'LOT-4aebe2db', 1.0, '17.3', '2026-12-31'
         UNION ALL
-SELECT 'N1FPfcrt FW', 'LOT-6a6ec30d', 1.0, '12.3', '2026-12-31'
+SELECT 'N1FPfcrt FW', 'LOT-749c31aa', 1.0, '12.3', '2026-12-31'
         UNION ALL
-SELECT 'N1FPfcrt RV', 'LOT-82aafe65', 1.0, '14.1', '2026-12-31'
+SELECT 'N1FPfcrt RV', 'LOT-64b9cebb', 1.0, '14.1', '2026-12-31'
         UNION ALL
-SELECT 'N2FPfcrt FW', 'LOT-6140d473', 1.0, '15.4', '2026-12-31'
+SELECT 'N2FPfcrt FW', 'LOT-a7b97d93', 1.0, '15.4', '2026-12-31'
         UNION ALL
-SELECT 'N2FPfcrt RV', 'LOT-70cc3620', 1.0, '14.0', '2026-12-31'
+SELECT 'N2FPfcrt RV', 'LOT-b5b5eb21', 1.0, '14.0', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Fw', 'LOT-d04f6efd', 1.0, '11.4', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Fw', 'LOT-708b5eb5', 1.0, '11.4', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Rv', 'LOT-83b0b49d', 1.0, '12.1', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Rv', 'LOT-0988ab53', 1.0, '12.1', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Fw', 'LOT-dd960167', 1.0, '12.4', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Fw', 'LOT-b96a6317', 1.0, '12.4', '2026-12-31'
         UNION ALL
-SELECT 'N1-Mdr1-86Y Rv', 'LOT-ff72ae1c', 1.0, '12.1', '2026-12-31'
+SELECT 'N1-Mdr1-86Y Rv', 'LOT-c3bddcff', 1.0, '12.1', '2026-12-31'
         UNION ALL
-SELECT 'N2-mdr1-86Y FW', 'LOT-a9ef6b3e', 1.0, '8.6', '2026-12-31'
+SELECT 'N2-mdr1-86Y FW', 'LOT-97d4f57a', 1.0, '8.6', '2026-12-31'
         UNION ALL
-SELECT 'N2-mdr1-86Y RV', 'LOT-2d2005a9', 1.0, '10.4', '2026-12-31'
+SELECT 'N2-mdr1-86Y RV', 'LOT-7eda9d18', 1.0, '10.4', '2026-12-31'
         UNION ALL
-SELECT 'N2-mdr1-86Y FW', 'LOT-32597837', 1.0, '8.6', '2026-12-31'
+SELECT 'N2-mdr1-86Y FW', 'LOT-10c12423', 1.0, '8.6', '2026-12-31'
         UNION ALL
-SELECT 'N2-mdr1-86Y RV', 'LOT-7c238175', 1.0, '10.4', '2026-12-31'
+SELECT 'N2-mdr1-86Y RV', 'LOT-95081f8b', 1.0, '10.4', '2026-12-31'
         UNION ALL
-SELECT 'M1-OF', 'LOT-c0b55773', 1.0, '9.6', '2026-12-31'
+SELECT 'M1-OF', 'LOT-3380c2ff', 1.0, '9.6', '2026-12-31'
         UNION ALL
-SELECT 'M1-OR', 'LOT-c6d9a34e', 1.0, '11.1', '2026-12-31'
+SELECT 'M1-OR', 'LOT-65ee3394', 1.0, '11.1', '2026-12-31'
         UNION ALL
-SELECT 'M1-OF', 'LOT-e0b3d685', 1.0, '9.6', '2026-12-31'
+SELECT 'M1-OF', 'LOT-15b7f16b', 1.0, '9.6', '2026-12-31'
         UNION ALL
-SELECT 'M1-OR', 'LOT-28a0f150', 1.0, '11.1', '2026-12-31'
+SELECT 'M1-OR', 'LOT-ef43941b', 1.0, '11.1', '2026-12-31'
         UNION ALL
-SELECT 'Pfmdr11246-B', 'LOT-fcc291c3', 1.0, '26.3', '2026-12-31'
+SELECT 'Pfmdr11246-B', 'LOT-e7a1d48f', 1.0, '26.3', '2026-12-31'
         UNION ALL
-SELECT 'Pfmdr11246-A', 'LOT-917d0017', 1.0, '24.7', '2026-12-31'
+SELECT 'Pfmdr11246-A', 'LOT-6a308476', 1.0, '24.7', '2026-12-31'
         UNION ALL
-SELECT 'Pfmdr1_RV', 'LOT-b74dfc67', 1.0, '40.2', '2026-12-31'
+SELECT 'Pfmdr1_RV', 'LOT-3dcaec1b', 1.0, '40.2', '2026-12-31'
         UNION ALL
-SELECT 'Pfmdr1_FW', 'LOT-de32ceef', 1.0, '50.6', '2026-12-31'
+SELECT 'Pfmdr1_FW', 'LOT-fdab0f7c', 1.0, '50.6', '2026-12-31'
         UNION ALL
-SELECT 'Pf--tubulin_FW', 'LOT-073c07b2', 1.0, '54.9', '2026-12-31'
+SELECT 'Pf--tubulin_FW', 'LOT-05862da4', 1.0, '54.9', '2026-12-31'
         UNION ALL
-SELECT 'Pf--tubulin_RV', 'LOT-6dbc78fa', 1.0, '45.3', '2026-12-31'
+SELECT 'Pf--tubulin_RV', 'LOT-a56aa499', 1.0, '45.3', '2026-12-31'
         UNION ALL
-SELECT 'Pfplasmepsin2__FW', 'LOT-9c284b28', 1.0, '63.4', '2026-12-31'
+SELECT 'Pfplasmepsin2__FW', 'LOT-2936dd5c', 1.0, '63.4', '2026-12-31'
         UNION ALL
-SELECT 'Pfplasmepsin2__RV', 'LOT-67d27907', 1.0, '55.3', '2026-12-31'
+SELECT 'Pfplasmepsin2__RV', 'LOT-5e74c8ed', 1.0, '55.3', '2026-12-31'
         UNION ALL
-SELECT 'Pfmdr1246-D1', 'LOT-faba8468', 1.0, '22.2', '2026-12-31'
+SELECT 'Pfmdr1246-D1', 'LOT-36bdbe84', 1.0, '22.2', '2026-12-31'
         UNION ALL
-SELECT 'Pfmdr1246-D2', 'LOT-1205ccaa', 1.0, '25.6', '2026-12-31'
+SELECT 'Pfmdr1246-D2', 'LOT-3845f254', 1.0, '25.6', '2026-12-31'
         UNION ALL
-SELECT 'Pfmdr1246-A', 'LOT-7188f948', 1.0, '24.7', '2026-12-31'
+SELECT 'Pfmdr1246-A', 'LOT-11a2f0bd', 1.0, '24.7', '2026-12-31'
         UNION ALL
-SELECT 'Pfmdr1246-B', 'LOT-8cb4d5ee', 1.0, '26.3', '2026-12-31'
+SELECT 'Pfmdr1246-B', 'LOT-9acfe144', 1.0, '26.3', '2026-12-31'
         UNION ALL
-SELECT 'Pfmdr1246-D1', 'LOT-bfaa17dd', 1.0, '22.2', '2026-12-31'
+SELECT 'Pfmdr1246-D1', 'LOT-5bca924d', 1.0, '22.2', '2026-12-31'
         UNION ALL
-SELECT 'Pfmdr1246-D2', 'LOT-3dd3e576', 1.0, '25.6', '2026-12-31'
+SELECT 'Pfmdr1246-D2', 'LOT-f85ba222', 1.0, '25.6', '2026-12-31'
         UNION ALL
-SELECT 'RV11', 'LOT-7dd364e7', 1.0, '52.7', '2026-12-31'
+SELECT 'RV11', 'LOT-c3ed9b11', 1.0, '52.7', '2026-12-31'
         UNION ALL
-SELECT 'RV12', 'LOT-5654319d', 1.0, '53.9', '2026-12-31'
+SELECT 'RV12', 'LOT-866b756a', 1.0, '53.9', '2026-12-31'
         UNION ALL
-SELECT '8633F', 'LOT-2fef18ac', 1.0, '55.9', '2026-12-31'
+SELECT '8633F', 'LOT-93885245', 1.0, '55.9', '2026-12-31'
         UNION ALL
-SELECT '9211R', 'LOT-aa7410a2', 1.0, '62.5', '2026-12-31'
+SELECT '9211R', 'LOT-c47e4995', 1.0, '62.5', '2026-12-31'
         UNION ALL
-SELECT '8945F', 'LOT-1da5ace7', 1.0, '69.7', '2026-12-31'
+SELECT '8945F', 'LOT-53b8d5fe', 1.0, '69.7', '2026-12-31'
         UNION ALL
-SELECT '9577R', 'LOT-b8eed9d5', 1.0, '59.5', '2026-12-31'
+SELECT '9577R', 'LOT-c6c43296', 1.0, '59.5', '2026-12-31'
         UNION ALL
-SELECT '8669F', 'LOT-71426843', 1.0, '65.0', '2026-12-31'
+SELECT '8669F', 'LOT-4a820050', 1.0, '65.0', '2026-12-31'
         UNION ALL
-SELECT '9541R', 'LOT-81881ca5', 1.0, '59.4', '2026-12-31'
+SELECT '9541R', 'LOT-089aa1f8', 1.0, '59.4', '2026-12-31'
         UNION ALL
-SELECT 'RV12-2', 'LOT-5b9016ec', 1.0, '63.9', '2026-12-31'
+SELECT 'RV12-2', 'LOT-24e149f8', 1.0, '63.9', '2026-12-31'
         UNION ALL
-SELECT 'Pv210-Pc', 'LOT-8e5369ee', 3.0, '9.1', '2026-12-31'
+SELECT 'Pv210-Pc', 'LOT-3fa173e6', 3.0, '9.1', '2026-12-31'
         UNION ALL
-SELECT 'pf-pc2', 'LOT-cbca1c29', 1.0, '0.25', '2026-12-31'
+SELECT 'pf-pc2', 'LOT-abaae358', 1.0, '0.25', '2026-12-31'
         UNION ALL
-SELECT 'pv-210-6', 'LOT-6c5e6cbb', 1.0, '0.5', '2026-12-31'
+SELECT 'pv-210-6', 'LOT-6eb4f04b', 1.0, '0.5', '2026-12-31'
         UNION ALL
-SELECT 'pf-pc5', 'LOT-f7be2704', 1.0, '0.25', '2026-12-31'
+SELECT 'pf-pc5', 'LOT-eac04774', 1.0, '0.25', '2026-12-31'
         UNION ALL
-SELECT 'pf-pc1', 'LOT-758b06ff', 1.0, '0.25', '2026-12-31'
+SELECT 'pf-pc1', 'LOT-90dadac4', 1.0, '0.25', '2026-12-31'
         UNION ALL
-SELECT 'pv-210-5', 'LOT-8f663c89', 1.0, '0.3', '2026-12-31'
+SELECT 'pv-210-5', 'LOT-a1539cce', 1.0, '0.3', '2026-12-31'
         UNION ALL
-SELECT 'pf-pc4', 'LOT-47fb2d3f', 1.0, '0.3', '2026-12-31'
+SELECT 'pf-pc4', 'LOT-e244286f', 1.0, '0.3', '2026-12-31'
         UNION ALL
-SELECT 'pv-210-2', 'LOT-9207a99c', 1.0, '0.25', '2026-12-31'
+SELECT 'pv-210-2', 'LOT-b70a6207', 1.0, '0.25', '2026-12-31'
         UNION ALL
-SELECT 'pv-210-1', 'LOT-d5457bf0', 1.0, '0.25', '2026-12-31'
+SELECT 'pv-210-1', 'LOT-203b844a', 1.0, '0.25', '2026-12-31'
         UNION ALL
-SELECT 'pf-pc6', 'LOT-642eb800', 1.0, '0.5', '2026-12-31'
+SELECT 'pf-pc6', 'LOT-78e8c6fb', 1.0, '0.5', '2026-12-31'
         UNION ALL
-SELECT 'pv-210 pc ELISA(stock)', 'LOT-1cb1a466', 1.0, '0.25', '2026-12-31'
+SELECT 'pv-210 pc ELISA(stock)', 'LOT-2f6369a4', 1.0, '0.25', '2026-12-31'
         UNION ALL
-SELECT 'pv-247 pc ELISA(stock)', 'LOT-b507ca45', 1.0, '0.25', '2026-12-31'
+SELECT 'pv-247 pc ELISA(stock)', 'LOT-49fc2734', 1.0, '0.25', '2026-12-31'
         UNION ALL
-SELECT 'Pf-PC', 'LOT-f1be4b30', 2.0, '0.1', '2026-12-31'
+SELECT 'Pf-PC', 'LOT-339e84b2', 2.0, '0.1', '2026-12-31'
         UNION ALL
-SELECT 'PV-210-3', 'LOT-64e33729', 1.0, '0.25', '2026-12-31'
+SELECT 'PV-210-3', 'LOT-ad5b3f44', 1.0, '0.25', '2026-12-31'
         UNION ALL
-SELECT 'Pf-PC3', 'LOT-97575c4e', 1.0, '0.25', '2026-12-31'
+SELECT 'Pf-PC3', 'LOT-fd3e8b24', 1.0, '0.25', '2026-12-31'
         UNION ALL
-SELECT 'pf-210-4', 'LOT-00765d84', 1.0, '0.25', '2026-12-31'
+SELECT 'pf-210-4', 'LOT-1c59fe31', 1.0, '0.25', '2026-12-31'
         UNION ALL
-SELECT 'New Naive-serum', 'LOT-112029e5', 1.0, '1.5', '2026-12-31'
+SELECT 'New Naive-serum', 'LOT-48bbaf39', 1.0, '1.5', '2026-12-31'
         UNION ALL
-SELECT 'conjugate m Ab pf', 'LOT-1cbc989c', 1.0, '', '2026-12-31'
+SELECT 'conjugate m Ab pf', 'LOT-6a5788d9', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'pf-pc csp', 'LOT-6aceffb4', 1.0, '', '2026-12-31'
+SELECT 'pf-pc csp', 'LOT-cbced18b', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'pv hrp swp', 'LOT-1163d2f6', 1.0, '', '2026-12-31'
+SELECT 'pv hrp swp', 'LOT-d558b3e6', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'pv-210-pc ELISA(stock)', 'LOT-5568e8c8', 1.0, '', '2026-12-31'
+SELECT 'pv-210-pc ELISA(stock)', 'LOT-94286dae', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'pv247-pc', 'LOT-83201d02', 1.0, '4.6', '2026-12-31'
+SELECT 'pv247-pc', 'LOT-771cf5f5', 1.0, '4.6', '2026-12-31'
         UNION ALL
-SELECT 'pv capture AB', 'LOT-44bb9c62', 1.0, '', '2026-12-31'
+SELECT 'pv capture AB', 'LOT-5684ff58', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'pf capture AB', 'LOT-a432057c', 1.0, '', '2026-12-31'
+SELECT 'pf capture AB', 'LOT-33ec7a63', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'pv-210-1 m ab', 'LOT-611aee9e', 1.0, '', '2026-12-31'
+SELECT 'pv-210-1 m ab', 'LOT-2c0765a9', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'pv-210 2nd mab', 'LOT-f2f68053', 2.0, '', '2026-12-31'
+SELECT 'pv-210 2nd mab', 'LOT-b91542ad', 2.0, '', '2026-12-31'
         UNION ALL
-SELECT 'pv-219 pc ELISA', 'LOT-7a5e7e14', 1.0, '', '2026-12-31'
+SELECT 'pv-219 pc ELISA', 'LOT-55f54479', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'CCP4-RV', 'LOT-fff17fd6', 1.0, '500.0', '2026-12-31'
+SELECT 'CCP4-RV', 'LOT-0d324c3d', 1.0, '500.0', '2026-12-31'
         UNION ALL
-SELECT 'BCFB FY2021', 'LOT-0c18768e', 1.0, '', '2026-12-31'
+SELECT 'BCFB FY2021', 'LOT-3c309b7e', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PfMGET-FW', 'LOT-89778b5b', 1.0, '1000.0', '2026-12-31'
+SELECT 'PfMGET-FW', 'LOT-b8ba6aaa', 1.0, '1000.0', '2026-12-31'
         UNION ALL
-SELECT 'PfMGET-RV', 'LOT-0bda0b33', 1.0, '500.0', '2026-12-31'
+SELECT 'PfMGET-RV', 'LOT-3021795b', 1.0, '500.0', '2026-12-31'
         UNION ALL
-SELECT 'rPLU-5', 'LOT-7446ecab', 1.0, '1000.0', '2026-12-31'
+SELECT 'rPLU-5', 'LOT-1fb476b1', 1.0, '1000.0', '2026-12-31'
         UNION ALL
-SELECT 'Pv18s-RV', 'LOT-8cf5cb61', 1.0, '500.0', '2026-12-31'
+SELECT 'Pv18s-RV', 'LOT-86f34dd4', 1.0, '500.0', '2026-12-31'
         UNION ALL
-SELECT 'rVIV-1', 'LOT-4fcb1d99', 1.0, '300.0', '2026-12-31'
+SELECT 'rVIV-1', 'LOT-9e91273b', 1.0, '300.0', '2026-12-31'
         UNION ALL
-SELECT 'Pv525-RV', 'LOT-667ee854', 1.0, '500.0', '2026-12-31'
+SELECT 'Pv525-RV', 'LOT-8924f147', 1.0, '500.0', '2026-12-31'
         UNION ALL
-SELECT 'rPLU-6', 'LOT-946e43ad', 1.0, '1000.0', '2026-12-31'
+SELECT 'rPLU-6', 'LOT-31c6a113', 1.0, '1000.0', '2026-12-31'
         UNION ALL
-SELECT 'PV525-FW', 'LOT-95211254', 1.0, '500.0', '2026-12-31'
+SELECT 'PV525-FW', 'LOT-68951fc8', 1.0, '500.0', '2026-12-31'
         UNION ALL
-SELECT 'Pf 18s-FW', 'LOT-a8835c8c', 1.0, '300.0', '2026-12-31'
+SELECT 'Pf 18s-FW', 'LOT-ffd622f1', 1.0, '300.0', '2026-12-31'
         UNION ALL
-SELECT 'rFAL-2', 'LOT-8cc5615a', 1.0, '300.0', '2026-12-31'
+SELECT 'rFAL-2', 'LOT-c51fd952', 1.0, '300.0', '2026-12-31'
         UNION ALL
-SELECT 'PV18S probe', 'LOT-beb01c90', 1.0, '300.0', '2026-12-31'
+SELECT 'PV18S probe', 'LOT-8af3d0a9', 1.0, '300.0', '2026-12-31'
         UNION ALL
-SELECT 'rVIV-2', 'LOT-49d6586c', 1.0, '300.0', '2026-12-31'
+SELECT 'rVIV-2', 'LOT-4f8aae08', 1.0, '300.0', '2026-12-31'
         UNION ALL
-SELECT 'rFAL-1', 'LOT-00950410', 1.0, '300.0', '2026-12-31'
+SELECT 'rFAL-1', 'LOT-ea23a327', 1.0, '300.0', '2026-12-31'
         UNION ALL
-SELECT 'PfMEGT probe', 'LOT-86d9694e', 1.0, '7443.9', '2026-12-31'
+SELECT 'PfMEGT probe', 'LOT-7d599fc5', 1.0, '7443.9', '2026-12-31'
         UNION ALL
-SELECT 'Pf 18s turbo probe', 'LOT-878e2a2e', 1.0, '900.0', '2026-12-31'
+SELECT 'Pf 18s turbo probe', 'LOT-5ebf1f81', 1.0, '900.0', '2026-12-31'
         UNION ALL
-SELECT 'CCP4 probe', 'LOT-c1b94870', 1.0, '900.0', '2026-12-31'
+SELECT 'CCP4 probe', 'LOT-4dbd38ba', 1.0, '900.0', '2026-12-31'
         UNION ALL
-SELECT 'PF18S RV', 'LOT-00c93f63', 1.0, '500.0', '2026-12-31'
+SELECT 'PF18S RV', 'LOT-38826290', 1.0, '500.0', '2026-12-31'
         UNION ALL
-SELECT 'PVS25 Probe', 'LOT-5c6ddb86', 1.0, '600.0', '2026-12-31'
+SELECT 'PVS25 Probe', 'LOT-115c0ead', 1.0, '600.0', '2026-12-31'
         UNION ALL
-SELECT 'PV18S Probe', 'LOT-9e1e4fcc', 1.0, '300.0', '2026-12-31'
+SELECT 'PV18S Probe', 'LOT-b21d51b7', 1.0, '300.0', '2026-12-31'
         UNION ALL
-SELECT 'E-COLI', 'LOT-8e4d427c', 5.0, '~1', '2026-12-31'
+SELECT 'E-COLI', 'LOT-fb117291', 5.0, '~1', '2026-12-31'
         UNION ALL
-SELECT 'New N-serum', 'LOT-b9ef72f9', 6.0, '~2', '2026-12-31'
+SELECT 'New N-serum', 'LOT-3c7b8792', 6.0, '~2', '2026-12-31'
         UNION ALL
-SELECT 'E-COLI Lysate', 'LOT-51397ea3', 4.0, '8.64', '2026-12-31'
+SELECT 'E-COLI Lysate', 'LOT-c36e5f3f', 4.0, '8.64', '2026-12-31'
         UNION ALL
-SELECT 'WHO PF standard(+ve control)', 'LOT-e5ce626f', 1.0, '', '2026-12-31'
+SELECT 'WHO PF standard(+ve control)', 'LOT-bc1293be', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PF +VE control(cp3 NEAT)', 'LOT-3f6fd995', 1.0, '', '2026-12-31'
+SELECT 'PF +VE control(cp3 NEAT)', 'LOT-77123985', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'cp3(1:1)(50%)', 'LOT-42b0c7f6', 1.0, '', '2026-12-31'
+SELECT 'cp3(1:1)(50%)', 'LOT-86b332dd', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Et-pf pooled serum', 'LOT-c60a91be', 1.0, '', '2026-12-31'
+SELECT 'Et-pf pooled serum', 'LOT-d79302c3', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'E-COLI Lysate(5.2mg/ml)', 'LOT-0c58472d', 1.0, '1.6', '2026-12-31'
+SELECT 'E-COLI Lysate(5.2mg/ml)', 'LOT-812711f1', 1.0, '1.6', '2026-12-31'
         UNION ALL
-SELECT 'CP3 1:10', 'LOT-036c892b', 1.0, '0.5', '2026-12-31'
+SELECT 'CP3 1:10', 'LOT-42c4a524', 1.0, '0.5', '2026-12-31'
         UNION ALL
-SELECT 'S1PV +VE control', 'LOT-dd8fd2ae', 1.0, '~2,5', '2026-12-31'
+SELECT 'S1PV +VE control', 'LOT-74398a76', 1.0, '~2,5', '2026-12-31'
         UNION ALL
-SELECT 'Hot start Taq 2x Master Mix 500rxn', 'LOT-f862d45c', 1.0, '', '2024-08-01'
+SELECT 'Hot start Taq 2x Master Mix 500rxn', 'LOT-72c2af65', 1.0, '', '2024-08-01'
         UNION ALL
-SELECT 'Dream Taq Master Mix 2x', 'LOT-5480c59f', 5.0, '', '2026-12-31'
+SELECT 'Dream Taq Master Mix 2x', 'LOT-ec25f148', 5.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PCR buffer+green+white+mgcl', 'LOT-10c2d922', 1.0, '2ml', '2019-09-14'
+SELECT 'PCR buffer+green+white+mgcl', 'LOT-48796ab6', 1.0, '2ml', '2019-09-14'
         UNION ALL
-SELECT 'PCR buffer+green+white+mgcl', 'LOT-834abb1f', 1.0, '2ml', '2021-10-15'
+SELECT 'PCR buffer+green+white+mgcl', 'LOT-0673b372', 1.0, '2ml', '2021-10-15'
         UNION ALL
-SELECT 'PCR buffer+green+white+mgcl', 'LOT-bd75a4dc', 1.0, '2ml', '2026-12-31'
+SELECT 'PCR buffer+green+white+mgcl', 'LOT-48ee8004', 1.0, '2ml', '2026-12-31'
         UNION ALL
-SELECT 'DNA ladder 100bp with buffer', 'LOT-cd88ab75', 2.0, '', '2026-12-31'
+SELECT 'DNA ladder 100bp with buffer', 'LOT-545a7528', 2.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Invitrogen DNA ladder 50bp with buffer', 'LOT-c541e21c', 1.0, '', '2026-12-31'
+SELECT 'Invitrogen DNA ladder 50bp with buffer', 'LOT-5be76bfa', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'GoTaq nPCR componenet ', 'LOT-11552df2', 40.0, '', '2024-11-04'
+SELECT 'GoTaq nPCR componenet ', 'LOT-ddbfd91c', 40.0, '', '2024-11-04'
         UNION ALL
-SELECT 'GoTaq nPCR componenet ', 'LOT-2630b647', 20.0, '', '2026-12-31'
+SELECT 'GoTaq nPCR componenet ', 'LOT-b3ebe56b', 20.0, '', '2026-12-31'
         UNION ALL
-SELECT 'GoTaq nPCR componenet ', 'LOT-7c8297e9', 40.0, '', '2024-04-11'
+SELECT 'GoTaq nPCR componenet ', 'LOT-697cef22', 40.0, '', '2024-04-11'
         UNION ALL
-SELECT 'GoTaq nPCR componenet ', 'LOT-bd182b9b', 3.0, '', '2021-10-15'
+SELECT 'GoTaq nPCR componenet ', 'LOT-ae7c2471', 3.0, '', '2021-10-15'
         UNION ALL
-SELECT 'GoTaq nPCR componenet ', 'LOT-6b70fb43', 18.0, '', '2022-12-11'
+SELECT 'GoTaq nPCR componenet ', 'LOT-c2df4c7c', 18.0, '', '2022-12-11'
         UNION ALL
-SELECT 'GoTaq 100nM dNTPs set', 'LOT-eefb819d', 11.0, '', '2024-01-08'
+SELECT 'GoTaq 100nM dNTPs set', 'LOT-4e4dd721', 11.0, '', '2024-01-08'
         UNION ALL
-SELECT 'Bio-dNTP Mix ', 'LOT-61175f7a', 1.0, '', '2023-02-01'
+SELECT 'Bio-dNTP Mix ', 'LOT-87b99774', 1.0, '', '2023-02-01'
         UNION ALL
-SELECT 'MBL-dNTP Mix ', 'LOT-2905f420', 1.0, '', '2026-12-31'
+SELECT 'MBL-dNTP Mix ', 'LOT-e5c0a28a', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Thermoscintific- dNTP Mix ', 'LOT-1165d903', 1.0, '', '2024-05-01'
+SELECT 'Thermoscintific- dNTP Mix ', 'LOT-12540b4d', 1.0, '', '2024-05-01'
         UNION ALL
-SELECT 'GoTaq dNTP set', 'LOT-634dfc80', 1.0, '', '2026-12-31'
+SELECT 'GoTaq dNTP set', 'LOT-35012206', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT '100bp DNA ladder ', 'LOT-ec461797', 1.0, '', '2026-12-31'
+SELECT '100bp DNA ladder ', 'LOT-7a7cb33e', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PCR Nucleotide Mix', 'LOT-d8ad0b5e', 1.0, '', '2024-04-01'
+SELECT 'PCR Nucleotide Mix', 'LOT-338cbe3a', 1.0, '', '2024-04-01'
         UNION ALL
-SELECT 'rplu5-100mM', 'LOT-e0d3082c', 1.0, '', '2026-12-31'
+SELECT 'rplu5-100mM', 'LOT-f06d1557', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rplu5-100mM', 'LOT-83ccb79a', 1.0, '', '2026-12-31'
+SELECT 'rplu5-100mM', 'LOT-9a28da5a', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rplu6-100mM', 'LOT-49da199e', 4.0, '', '2026-12-31'
+SELECT 'rplu6-100mM', 'LOT-437bf3ee', 4.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rplu6-100mM', 'LOT-dfde270a', 2.0, '', '2026-12-31'
+SELECT 'rplu6-100mM', 'LOT-561d448b', 2.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rrplu1-100mM', 'LOT-81bea63f', 1.0, '', '2026-12-31'
+SELECT 'rrplu1-100mM', 'LOT-36dad796', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rplu3-100mM', 'LOT-0543cf17', 1.0, '', '2026-12-31'
+SELECT 'rplu3-100mM', 'LOT-65916209', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rplu3-100mM', 'LOT-c5c92e3d', 1.0, '', '2026-12-31'
+SELECT 'rplu3-100mM', 'LOT-96156203', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rplu4-100mM', 'LOT-1a1791c8', 1.0, '', '2026-12-31'
+SELECT 'rplu4-100mM', 'LOT-f3f20a51', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rviv1-100mM', 'LOT-a610a486', 4.0, '', '2026-12-31'
+SELECT 'rviv1-100mM', 'LOT-a3667afd', 4.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rviv1-100mM', 'LOT-9ffe5b51', 1.0, '', '2026-12-31'
+SELECT 'rviv1-100mM', 'LOT-e735c5ef', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rviv2-100mM', 'LOT-05fc941b', 4.0, '', '2026-12-31'
+SELECT 'rviv2-100mM', 'LOT-096b9feb', 4.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rviv2-100mM', 'LOT-46fbc391', 1.0, '', '2026-12-31'
+SELECT 'rviv2-100mM', 'LOT-37d6db4c', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rfal2-100mM', 'LOT-5d08d31a', 4.0, '', '2026-12-31'
+SELECT 'rfal2-100mM', 'LOT-091dfd5d', 4.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rfal2-100mM', 'LOT-e56a4093', 2.0, '', '2026-12-31'
+SELECT 'rfal2-100mM', 'LOT-a582e582', 2.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rfal1-100mM', 'LOT-382d8009', 4.0, '', '2026-12-31'
+SELECT 'rfal1-100mM', 'LOT-b6dcd1a4', 4.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rfal1-100mM', 'LOT-dc0b0ef7', 2.0, '', '2026-12-31'
+SELECT 'rfal1-100mM', 'LOT-96f3cce0', 2.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rmal1-100mM', 'LOT-b2ee15b9', 1.0, '', '2026-12-31'
+SELECT 'rmal1-100mM', 'LOT-1c1c253a', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rmal2-100mM', 'LOT-afb0b271', 1.0, '', '2026-12-31'
+SELECT 'rmal2-100mM', 'LOT-1b79a556', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rova1-100mM', 'LOT-673fe63b', 1.0, '', '2026-12-31'
+SELECT 'rova1-100mM', 'LOT-5150db0a', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rova2-100mM', 'LOT-2fb2edc0', 1.0, '', '2026-12-31'
+SELECT 'rova2-100mM', 'LOT-27ba6171', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf - Rv (rFAL2)', 'LOT-65490365', 1.0, '', '2026-12-31'
+SELECT 'Pf - Rv (rFAL2)', 'LOT-8ee087bb', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf-fw (rFAL1)', 'LOT-c86e180c', 1.0, '', '2026-12-31'
+SELECT 'Pf-fw (rFAL1)', 'LOT-82c44a83', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv Rv (rVIV 2)', 'LOT-bdb1d294', 1.0, '', '2026-12-31'
+SELECT 'Pv Rv (rVIV 2)', 'LOT-574ebfb0', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv Fw (rVIV 1)', 'LOT-736f0a1c', 1.0, '', '2026-12-31'
+SELECT 'Pv Fw (rVIV 1)', 'LOT-44fdf26a', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rPLU 6 forward', 'LOT-e7e14fe4', 1.0, '', '2026-12-31'
+SELECT 'rPLU 6 forward', 'LOT-00ad152c', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rPLU 5 reverse', 'LOT-690df071', 1.0, '', '2026-12-31'
+SELECT 'rPLU 5 reverse', 'LOT-dcf0197b', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'dCTP-100mM', 'LOT-ad2df871', 2.0, '1.0', '2023-04-09'
+SELECT 'dCTP-100mM', 'LOT-c6d7b1d3', 2.0, '1.0', '2023-04-09'
         UNION ALL
-SELECT 'dTTP-100mM', 'LOT-e9f80de1', 2.0, '1.0', '2023-04-09'
+SELECT 'dTTP-100mM', 'LOT-48b8a553', 2.0, '1.0', '2023-04-09'
         UNION ALL
-SELECT 'dATP-100mM', 'LOT-88c3fae6', 2.0, '1.0', '2023-04-09'
+SELECT 'dATP-100mM', 'LOT-b43a4ad2', 2.0, '1.0', '2023-04-09'
         UNION ALL
-SELECT 'dGTP-100mM', 'LOT-c05b5f88', 2.0, '1.0', '2023-04-13'
+SELECT 'dGTP-100mM', 'LOT-2bc9a770', 2.0, '1.0', '2023-04-13'
         UNION ALL
-SELECT 'dTTP-100mM', 'LOT-d3acd8af', 4.0, '0.4&1', '2022-02-17'
+SELECT 'dTTP-100mM', 'LOT-ff54b44c', 4.0, '0.4&1', '2022-02-17'
         UNION ALL
-SELECT 'dGTP-100mM', 'LOT-3da85e55', 4.0, '0.4&1', '2022-04-28'
+SELECT 'dGTP-100mM', 'LOT-beb14f64', 4.0, '0.4&1', '2022-04-28'
         UNION ALL
-SELECT 'dATP-100mM', 'LOT-668e74b9', 4.0, '0.4&1', '2022-05-27'
+SELECT 'dATP-100mM', 'LOT-3a61171b', 4.0, '0.4&1', '2022-05-27'
         UNION ALL
-SELECT 'dCTP-100mM', 'LOT-743ceb84', 4.0, '0.4&1', '2022-02-17'
+SELECT 'dCTP-100mM', 'LOT-a42bccaf', 4.0, '0.4&1', '2022-02-17'
         UNION ALL
-SELECT 'dATP-100mM', 'LOT-d7fa874e', 11.0, '0.4&1', '2024-09-19'
+SELECT 'dATP-100mM', 'LOT-fd9347db', 11.0, '0.4&1', '2024-09-19'
         UNION ALL
-SELECT 'dGTP-100mM', 'LOT-7b70640d', 11.0, '0.4&1', '2024-09-26'
+SELECT 'dGTP-100mM', 'LOT-11da95e7', 11.0, '0.4&1', '2024-09-26'
         UNION ALL
-SELECT 'dCTP-100mM', 'LOT-c7b3ffe5', 11.0, '0.4&1', '2024-09-19'
+SELECT 'dCTP-100mM', 'LOT-2f863cb5', 11.0, '0.4&1', '2024-09-19'
         UNION ALL
-SELECT 'dTTP-100mM', 'LOT-e71b40a5', 11.0, '0.4&1', '2024-08-01'
+SELECT 'dTTP-100mM', 'LOT-7a3c632a', 11.0, '0.4&1', '2024-08-01'
         UNION ALL
-SELECT 'dNTP Mix -2.5mM', 'LOT-d6804eff', 13.0, '1.0', '2026-12-31'
+SELECT 'dNTP Mix -2.5mM', 'LOT-e31c0386', 13.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'dATP-100mM', 'LOT-cd6ae41d', 2.0, '1.0', '2022-05-27'
+SELECT 'dATP-100mM', 'LOT-e56c96c0', 2.0, '1.0', '2022-05-27'
         UNION ALL
-SELECT 'dCTP-100mM', 'LOT-c926a44a', 2.0, '1.0', '2022-02-17'
+SELECT 'dCTP-100mM', 'LOT-eeca7b19', 2.0, '1.0', '2022-02-17'
         UNION ALL
-SELECT 'dTTP-100mM', 'LOT-bc946897', 2.0, '1.0', '2022-02-17'
+SELECT 'dTTP-100mM', 'LOT-06ec9e66', 2.0, '1.0', '2022-02-17'
         UNION ALL
-SELECT 'dGTP-100mM', 'LOT-a7851ada', 2.0, '1.0', '2022-04-28'
+SELECT 'dGTP-100mM', 'LOT-c7502a16', 2.0, '1.0', '2022-04-28'
         UNION ALL
-SELECT 'dNTP MIX -10mM', 'LOT-cdc26174', 1.0, '1.0', '2022-05-12'
+SELECT 'dNTP MIX -10mM', 'LOT-b149eae2', 1.0, '1.0', '2022-05-12'
         UNION ALL
-SELECT 'dATP-100mM   100umol', 'LOT-b09943e8', 1.0, '1.0', '2018-06-01'
+SELECT 'dATP-100mM   100umol', 'LOT-faf35153', 1.0, '1.0', '2018-06-01'
         UNION ALL
-SELECT 'dCTP-100mM  100umol', 'LOT-c01cb94f', 1.0, '1.0', '2018-06-01'
+SELECT 'dCTP-100mM  100umol', 'LOT-225c104b', 1.0, '1.0', '2018-06-01'
         UNION ALL
-SELECT 'dGTP-100mM  100umol', 'LOT-2c0b5766', 2.0, '1.0', '2018-06-01'
+SELECT 'dGTP-100mM  100umol', 'LOT-d2d96358', 2.0, '1.0', '2018-06-01'
         UNION ALL
-SELECT 'dTTP-100mM  100umol', 'LOT-5e6995b7', 1.0, '1.0', '2018-06-01'
+SELECT 'dTTP-100mM  100umol', 'LOT-1da9f324', 1.0, '1.0', '2018-06-01'
         UNION ALL
-SELECT 'dNTP MIX with dUTP-12.5mM', 'LOT-78885649', 1.0, '1.0', '2026-12-31'
+SELECT 'dNTP MIX with dUTP-12.5mM', 'LOT-456205c5', 1.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'dNTP MIX with dTTP-10mM', 'LOT-c466398a', 1.0, '1.0', '2026-12-31'
+SELECT 'dNTP MIX with dTTP-10mM', 'LOT-3ef65fa2', 1.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'dNTP mix 10mM', 'LOT-7f0bbe06', 10.0, '1.0', '2023-02-01'
+SELECT 'dNTP mix 10mM', 'LOT-ea53d7ef', 10.0, '1.0', '2023-02-01'
         UNION ALL
-SELECT 'AF1III ', 'LOT-66a2b6bf', 1.0, '0.025', '2024-01-01'
+SELECT 'AF1III ', 'LOT-c69416f6', 1.0, '0.025', '2024-01-01'
         UNION ALL
-SELECT 'AF1III ', 'LOT-a20bc765', 1.0, '0.025', '2024-01-01'
+SELECT 'AF1III ', 'LOT-8b00fe63', 1.0, '0.025', '2024-01-01'
         UNION ALL
-SELECT 'APoI', 'LOT-3c8a6897', 1.0, '0.1', '2018-07-01'
+SELECT 'APoI', 'LOT-c55aae02', 1.0, '0.1', '2018-07-01'
         UNION ALL
-SELECT 'N1FPfcrt-100mM', 'LOT-93684ff8', 2.0, '', '2026-12-31'
+SELECT 'N1FPfcrt-100mM', 'LOT-f7ba3fe6', 2.0, '', '2026-12-31'
         UNION ALL
-SELECT 'N2FPfcrt-100mM', 'LOT-8930ed3f', 2.0, '', '2026-12-31'
+SELECT 'N2FPfcrt-100mM', 'LOT-db103c67', 2.0, '', '2026-12-31'
         UNION ALL
-SELECT 'N1FPfcrt RW-100mM', 'LOT-1ee7c59f', 1.0, '', '2022-12-01'
+SELECT 'N1FPfcrt RW-100mM', 'LOT-19333839', 1.0, '', '2022-12-01'
         UNION ALL
-SELECT 'N1FPfcrt FW-100mM', 'LOT-44444b94', 1.0, '', '2022-12-01'
+SELECT 'N1FPfcrt FW-100mM', 'LOT-eab10baa', 1.0, '', '2022-12-01'
         UNION ALL
-SELECT 'N2FPfcrt RW-100mM', 'LOT-049e6c1a', 1.0, '', '2022-12-01'
+SELECT 'N2FPfcrt RW-100mM', 'LOT-66ccbefd', 1.0, '', '2022-12-01'
         UNION ALL
-SELECT 'N2FPfcrt FW-100mM', 'LOT-c1865e0b', 1.0, '', '2022-12-01'
+SELECT 'N2FPfcrt FW-100mM', 'LOT-3a065d27', 1.0, '', '2022-12-01'
         UNION ALL
-SELECT 'green Go Taq buffer', 'LOT-6d43fdbf', 15.0, '1.0', '2026-12-31'
+SELECT 'green Go Taq buffer', 'LOT-d3f52cb2', 15.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'MgCl2 -25mM', 'LOT-7b70f640', 16.0, '1.2', '2026-12-31'
+SELECT 'MgCl2 -25mM', 'LOT-14080fb1', 16.0, '1.2', '2026-12-31'
         UNION ALL
-SELECT 'colorless Go Taq buffer', 'LOT-7edcdef1', 25.0, '1.0', '2026-12-31'
+SELECT 'colorless Go Taq buffer', 'LOT-b4211bf8', 25.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'colorless Go Taq buffer', 'LOT-335bd97a', 68.0, '1.0', '2022-11-22'
+SELECT 'colorless Go Taq buffer', 'LOT-6235421d', 68.0, '1.0', '2022-11-22'
         UNION ALL
-SELECT 'colorless Go Taq buffer', 'LOT-328376e9', 33.0, '1.0', '2026-12-31'
+SELECT 'colorless Go Taq buffer', 'LOT-cdabece6', 33.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'MgCl2 -25mM', 'LOT-96955c9b', 17.0, '1.2', '2026-12-31'
+SELECT 'MgCl2 -25mM', 'LOT-68dd199a', 17.0, '1.2', '2026-12-31'
         UNION ALL
-SELECT 'green Go Taq buffer', 'LOT-b303968a', 23.0, '1.0', '2026-12-31'
+SELECT 'green Go Taq buffer', 'LOT-612cd2ad', 23.0, '1.0', '2026-12-31'
         UNION ALL
-SELECT 'green Go Taq buffer', 'LOT-52363449', 69.0, '1.0', '2022-11-12'
+SELECT 'green Go Taq buffer', 'LOT-2d50358a', 69.0, '1.0', '2022-11-12'
         UNION ALL
-SELECT 'MgCl2 -25mM', 'LOT-26a7bb93', 54.0, '1.2', '2022-11-12'
+SELECT 'MgCl2 -25mM', 'LOT-10b11342', 54.0, '1.2', '2022-11-12'
         UNION ALL
-SELECT 'green Go Taq buffer', 'LOT-23e1eac5', 59.0, '1.0', '2024-04-11'
+SELECT 'green Go Taq buffer', 'LOT-729470dd', 59.0, '1.0', '2024-04-11'
         UNION ALL
-SELECT 'green Go Taq buffer', 'LOT-ef620856', 56.0, '1.0', '2024-04-11'
+SELECT 'green Go Taq buffer', 'LOT-f12fe7d6', 56.0, '1.0', '2024-04-11'
         UNION ALL
-SELECT 'green Go Taq buffer', 'LOT-e63fc8d4', 44.0, '1.0', '2024-04-11'
+SELECT 'green Go Taq buffer', 'LOT-89039534', 44.0, '1.0', '2024-04-11'
         UNION ALL
-SELECT 'colorless Go Taq buffer', 'LOT-8b02ab1e', 40.0, '1.0', '2024-04-11'
+SELECT 'colorless Go Taq buffer', 'LOT-2e03cf7d', 40.0, '1.0', '2024-04-11'
         UNION ALL
-SELECT 'colorless Go Taq buffer', 'LOT-6d9096bd', 53.0, '1.0', '2024-04-11'
+SELECT 'colorless Go Taq buffer', 'LOT-310462ee', 53.0, '1.0', '2024-04-11'
         UNION ALL
-SELECT 'colorless Go Taq buffer', 'LOT-71db905b', 58.0, '1.0', '2024-04-11'
+SELECT 'colorless Go Taq buffer', 'LOT-625505aa', 58.0, '1.0', '2024-04-11'
         UNION ALL
-SELECT 'MgCl2 -25mM', 'LOT-162c6a67', 43.0, '1.2', '2024-04-11'
+SELECT 'MgCl2 -25mM', 'LOT-0eb065f7', 43.0, '1.2', '2024-04-11'
         UNION ALL
-SELECT 'MgCl2 -25mM', 'LOT-759d2f26', 48.0, '1.2', '2024-04-11'
+SELECT 'MgCl2 -25mM', 'LOT-dd34c39f', 48.0, '1.2', '2024-04-11'
         UNION ALL
-SELECT 'MgCl2 -25mM', 'LOT-060672e0', 27.0, '1.2', '2024-04-11'
+SELECT 'MgCl2 -25mM', 'LOT-bf04a32a', 27.0, '1.2', '2024-04-11'
         UNION ALL
-SELECT 'GO Taq G2 flexi DNA polymerases 5 u/ul', 'LOT-9b42824b', 40.0, '500.0', '2024-12-12'
+SELECT 'GO Taq G2 flexi DNA polymerases 5 u/ul', 'LOT-1dd6cd30', 40.0, '500.0', '2024-12-12'
         UNION ALL
-SELECT 'HOT Start Taq 2X master mix (500 rxn / vial )', 'LOT-b9f4b0f4', 2.0, '50.0', '2024-08-31'
+SELECT 'HOT Start Taq 2X master mix (500 rxn / vial )', 'LOT-f9bf0fa1', 2.0, '50.0', '2024-08-31'
         UNION ALL
-SELECT 'dNTP set 4x25 umol', 'LOT-e851af49', 4.0, '1.0', '2024-05-31'
+SELECT 'dNTP set 4x25 umol', 'LOT-0d2b093b', 4.0, '1.0', '2024-05-31'
         UNION ALL
-SELECT 'PCR nucleotide mix 10mM', 'LOT-c1f1b693', 1.0, '200.0', '2024-01-04'
+SELECT 'PCR nucleotide mix 10mM', 'LOT-94fbc261', 1.0, '200.0', '2024-01-04'
         UNION ALL
-SELECT 'flexi DNA polymerase', 'LOT-0667425c', 12.0, '500.0', '2020-09-18'
+SELECT 'flexi DNA polymerase', 'LOT-e35e9fbe', 12.0, '500.0', '2020-09-18'
         UNION ALL
-SELECT 'GO Taq G2 flexi DNA polymerases 5u/ul', 'LOT-cd3e0d72', 18.0, '500.0', '2022-11-12'
+SELECT 'GO Taq G2 flexi DNA polymerases 5u/ul', 'LOT-d54cb7cb', 18.0, '500.0', '2022-11-12'
         UNION ALL
-SELECT 'Go Taq flexi DNA polymerase', 'LOT-5975b7af', 3.0, '500.0', '2021-10-15'
+SELECT 'Go Taq flexi DNA polymerase', 'LOT-c55f66e5', 3.0, '500.0', '2021-10-15'
         UNION ALL
-SELECT 'MgCl2 -25mM', 'LOT-2b65967b', 15.0, '1.2', '2021-10-15'
+SELECT 'MgCl2 -25mM', 'LOT-413a39ea', 15.0, '1.2', '2021-10-15'
         UNION ALL
-SELECT 'green Go Taq buffer', 'LOT-feb425f4', 20.0, '1.0', '2021-10-15'
+SELECT 'green Go Taq buffer', 'LOT-3323e93f', 20.0, '1.0', '2021-10-15'
         UNION ALL
-SELECT 'colorless Go Taq buffer', 'LOT-bb3907fa', 20.0, '1.0', '2021-10-15'
+SELECT 'colorless Go Taq buffer', 'LOT-137db57b', 20.0, '1.0', '2021-10-15'
         UNION ALL
-SELECT 'NPCR components (Go Taq)', 'LOT-eceb991c', 13.0, '', '2020-09-18'
+SELECT 'NPCR components (Go Taq)', 'LOT-65cefa1f', 13.0, '', '2020-09-18'
         UNION ALL
-SELECT 'Flexi Go Taq DNA polymerase', 'LOT-ae1db1af', 1.0, '', '2024-04-11'
+SELECT 'Flexi Go Taq DNA polymerase', 'LOT-dd7e7990', 1.0, '', '2024-04-11'
         UNION ALL
-SELECT 'F-Rv+Fw', 'LOT-2778cde1', 1.0, '', '2026-12-31'
+SELECT 'F-Rv+Fw', 'LOT-93abddfa', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'O-Rv+Fw', 'LOT-82a585eb', 1.0, '', '2026-12-31'
+SELECT 'O-Rv+Fw', 'LOT-2b2eac51', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'M-Rv+Fw', 'LOT-58c37993', 1.0, '', '2026-12-31'
+SELECT 'M-Rv+Fw', 'LOT-e9533b2a', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'V-Rv+Fw', 'LOT-7470ce73', 1.0, '', '2026-12-31'
+SELECT 'V-Rv+Fw', 'LOT-d313e1bb', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'K-Rv+Fw', 'LOT-d3f4f99c', 1.0, '', '2026-12-31'
+SELECT 'K-Rv+Fw', 'LOT-d802907d', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'P-Rv+Fw', 'LOT-c7819e2b', 1.0, '', '2026-12-31'
+SELECT 'P-Rv+Fw', 'LOT-c6cba98f', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rCutSmart Buffer', 'LOT-f33bac92', 1.0, '1.25', '2025-04-01'
+SELECT 'rCutSmart Buffer', 'LOT-6f4ba19b', 1.0, '1.25', '2025-04-01'
         UNION ALL
-SELECT 'rCutSmart Buffer', 'LOT-dc23d31f', 1.0, '1.25', '2025-02-01'
+SELECT 'rCutSmart Buffer', 'LOT-a90f0c73', 1.0, '1.25', '2025-02-01'
         UNION ALL
-SELECT 'rCutSmart Buffer', 'LOT-c7ae7ea4', 1.0, '1.25', '2024-07-01'
+SELECT 'rCutSmart Buffer', 'LOT-210ba55b', 1.0, '1.25', '2024-07-01'
         UNION ALL
-SELECT 'rCutSmart Buffer', 'LOT-46adf2a7', 1.0, '1.25', '2025-04-01'
+SELECT 'rCutSmart Buffer', 'LOT-decbff31', 1.0, '1.25', '2025-04-01'
         UNION ALL
-SELECT 'gel loading dye purple', 'LOT-deeb0c5c', 1.0, '0.5', '2024-12-01'
+SELECT 'gel loading dye purple', 'LOT-4d279077', 1.0, '0.5', '2024-12-01'
         UNION ALL
-SELECT 'gel loading dye purple', 'LOT-a63ed7eb', 1.0, '0.5', '2024-09-01'
+SELECT 'gel loading dye purple', 'LOT-2b0a1e8d', 1.0, '0.5', '2024-09-01'
         UNION ALL
-SELECT 'gel loading dye purple', 'LOT-5533add5', 1.0, '0.5', '2024-03-01'
+SELECT 'gel loading dye purple', 'LOT-fb570f41', 1.0, '0.5', '2024-03-01'
         UNION ALL
-SELECT 'gel loading dye purple', 'LOT-b24bd129', 1.0, '0.5', '2024-05-01'
+SELECT 'gel loading dye purple', 'LOT-963fb592', 1.0, '0.5', '2024-05-01'
         UNION ALL
-SELECT 'NEBuffer', 'LOT-10e6ddf5', 1.0, '1.25', '2024-12-01'
+SELECT 'NEBuffer', 'LOT-5300f3a7', 1.0, '1.25', '2024-12-01'
         UNION ALL
-SELECT 'NEBuffer', 'LOT-5b4015cd', 2.0, '1.25', '2024-10-01'
+SELECT 'NEBuffer', 'LOT-6fe99759', 2.0, '1.25', '2024-10-01'
         UNION ALL
-SELECT 'HhaI', 'LOT-bc0d81a1', 1.0, '0.1', '2024-02-01'
+SELECT 'HhaI', 'LOT-010e5892', 1.0, '0.1', '2024-02-01'
         UNION ALL
-SELECT 'EcoRI-HF', 'LOT-61f999db', 2.0, '1.25', '2024-03-01'
+SELECT 'EcoRI-HF', 'LOT-0b2bedfe', 2.0, '1.25', '2024-03-01'
         UNION ALL
-SELECT 'BgI-II', 'LOT-558a04e1', 1.0, '0.2', '2023-08-01'
+SELECT 'BgI-II', 'LOT-2ab30d8d', 1.0, '0.2', '2023-08-01'
         UNION ALL
-SELECT 'Dde-I', 'LOT-415ce261', 1.0, '0.1', '2023-07-01'
+SELECT 'Dde-I', 'LOT-f18f3919', 1.0, '0.1', '2023-07-01'
         UNION ALL
-SELECT 'Pst-I', 'LOT-e4e1772a', 1.0, '0.5', '2023-11-01'
+SELECT 'Pst-I', 'LOT-bd50a666', 1.0, '0.5', '2023-11-01'
         UNION ALL
-SELECT 'BIO Taq DNA polymerase', 'LOT-7d7670c8', 20.0, '100.0', '2023-12-30'
+SELECT 'BIO Taq DNA polymerase', 'LOT-df4adb46', 20.0, '100.0', '2023-12-30'
         UNION ALL
-SELECT 'NH4 reaction buffer, MgCl2 free', 'LOT-8b21fd22', 40.0, '1.2', '2023-12-30'
+SELECT 'NH4 reaction buffer, MgCl2 free', 'LOT-13d9bfc8', 40.0, '1.2', '2023-12-30'
         UNION ALL
-SELECT 'MgCl2 ', 'LOT-92d436b7', 20.0, '1.2', '2023-12-30'
+SELECT 'MgCl2 ', 'LOT-1e1adf7a', 20.0, '1.2', '2023-12-30'
         UNION ALL
-SELECT 'RQ1 RNase-Free DNase', 'LOT-f3925152', 1.0, '', '2016-04-30'
+SELECT 'RQ1 RNase-Free DNase', 'LOT-58b7fb4e', 1.0, '', '2016-04-30'
         UNION ALL
-SELECT 'DNase I, RNase-free', 'LOT-60da205b', 15.0, '', '2025-06-01'
+SELECT 'DNase I, RNase-free', 'LOT-1647319d', 15.0, '', '2025-06-01'
         UNION ALL
-SELECT 'RNase inhibitor', 'LOT-66a3a7f1', 5.0, '', '2019-07-01'
+SELECT 'RNase inhibitor', 'LOT-8712be04', 5.0, '', '2019-07-01'
         UNION ALL
-SELECT 'RNase inhibitor', 'LOT-806b0e1f', 1.0, '', '2017-08-01'
+SELECT 'RNase inhibitor', 'LOT-af0955cf', 1.0, '', '2017-08-01'
         UNION ALL
-SELECT 'High capacity cDNA Reverse T kit', 'LOT-5453371c', 1.0, '', '2015-06-23'
+SELECT 'High capacity cDNA Reverse T kit', 'LOT-7feaba56', 1.0, '', '2015-06-23'
         UNION ALL
-SELECT 'One step RT-qPCR kit 2500rxn', 'LOT-767bc47e', 1.0, '', '2022-04-01'
+SELECT 'One step RT-qPCR kit 2500rxn', 'LOT-eec6dcf1', 1.0, '', '2022-04-01'
         UNION ALL
-SELECT 'One step RT-qPCR kit 500rxn', 'LOT-09952dc2', 1.0, '', '2019-08-01'
+SELECT 'One step RT-qPCR kit 500rxn', 'LOT-456e779b', 1.0, '', '2019-08-01'
         UNION ALL
-SELECT 'One step RT-SuperMix kit 25rxn', 'LOT-5e09d2c2', 1.0, '', '2020-02-01'
+SELECT 'One step RT-SuperMix kit 25rxn', 'LOT-dcfc4ec0', 1.0, '', '2020-02-01'
         UNION ALL
-SELECT 'Luna warm start RT enzyme mix, 20x conc', 'LOT-44472b7b', 1.0, 'used', '2019-08-31'
+SELECT 'Luna warm start RT enzyme mix, 20x conc', 'LOT-a8e27c6f', 1.0, 'used', '2019-08-31'
         UNION ALL
-SELECT 'Luna universal probe 1 step reaction mix 2x conc', 'LOT-21be3872', 1.0, '1.0', '2020-01-30'
+SELECT 'Luna universal probe 1 step reaction mix 2x conc', 'LOT-88731a4a', 1.0, '1.0', '2020-01-30'
         UNION ALL
-SELECT 'GO Taq PCR master mix 2X c0nc', 'LOT-668f7796', 2.0, 'used', '2020-05-28'
+SELECT 'GO Taq PCR master mix 2X c0nc', 'LOT-2b7e6ece', 2.0, 'used', '2020-05-28'
         UNION ALL
-SELECT 'MQ', 'LOT-d8969f40', 1.0, '1.5', '2020-11-30'
+SELECT 'MQ', 'LOT-2f306619', 1.0, '1.5', '2020-11-30'
         UNION ALL
-SELECT 'Luna One step RT-qPCR kit 2,500 rxn', 'LOT-192ec1c7', 2.0, '', '2021-04-30'
+SELECT 'Luna One step RT-qPCR kit 2,500 rxn', 'LOT-4fab6e10', 2.0, '', '2021-04-30'
         UNION ALL
-SELECT 'Luna One step RT-qPCR kit 2,500 rxn', 'LOT-d5eaf3de', 2.0, '', '2022-04-30'
+SELECT 'Luna One step RT-qPCR kit 2,500 rxn', 'LOT-780a092c', 2.0, '', '2022-04-30'
         UNION ALL
-SELECT 'Luna One step RT-qPCR kit 2,500 rxn', 'LOT-3a0e2d10', 6.0, '', '2024-01-30'
+SELECT 'Luna One step RT-qPCR kit 2,500 rxn', 'LOT-6c8d41a3', 6.0, '', '2024-01-30'
         UNION ALL
-SELECT 'Luna One step RT-qPCR kit 2,500 rxn', 'LOT-1e6a3a8e', 6.0, '', '2024-01-30'
+SELECT 'Luna One step RT-qPCR kit 2,500 rxn', 'LOT-35bb32b8', 6.0, '', '2024-01-30'
         UNION ALL
 SELECT 'High capacity cDNA rt kit', '4.0', 1.0, '1.0', '2023-01-31'
         UNION ALL
-SELECT 'UD2-R_2_P.PIGNATELL', 'LOT-8d46ec61', 1.0, '', '2022-08-09'
+SELECT 'UD2-R_2_P.PIGNATELL', 'LOT-24d8f314', 1.0, '', '2022-08-09'
         UNION ALL
-SELECT 'St-F_2_P.PIGNATELL', 'LOT-7ef250ea', 1.0, '', '2022-08-09'
+SELECT 'St-F_2_P.PIGNATELL', 'LOT-30867103', 1.0, '', '2022-08-09'
         UNION ALL
-SELECT 'U5.8S-F_2_P.PIGNATELL', 'LOT-384811b9', 1.0, '', '2022-08-09'
+SELECT 'U5.8S-F_2_P.PIGNATELL', 'LOT-19ed5b23', 1.0, '', '2022-08-09'
         UNION ALL
-SELECT 'ITS2-steph-R_P.PIGNATELL', 'LOT-c5e10045', 1.0, '', '2021-07-26'
+SELECT 'ITS2-steph-R_P.PIGNATELL', 'LOT-8234bc2f', 1.0, '', '2021-07-26'
         UNION ALL
-SELECT 'ITS2A_P.PIGNATELL', 'LOT-0c5a573c', 1.0, '', '2021-07-26'
+SELECT 'ITS2A_P.PIGNATELL', 'LOT-010121c9', 1.0, '', '2021-07-26'
         UNION ALL
-SELECT 'ITS2B_mod2_P.PIGNATELL', 'LOT-b018cca9', 1.0, '', '2021-07-26'
+SELECT 'ITS2B_mod2_P.PIGNATELL', 'LOT-159c35b4', 1.0, '', '2021-07-26'
         UNION ALL
-SELECT 'OVM_115402_C8', 'LOT-b2772c81', 1.0, '', '2026-12-31'
+SELECT 'OVM_115402_C8', 'LOT-7a041ccf', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'OVM_115394_C4', 'LOT-87356df8', 1.0, '', '2026-12-31'
+SELECT 'OVM_115394_C4', 'LOT-6e336f4d', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pfr364af_fw', 'LOT-ee9e14c2', 1.0, '', '2026-12-31'
+SELECT 'Pfr364af_fw', 'LOT-0a4f208d', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pfr364af_rb', 'LOT-450e4e9a', 1.0, '', '2026-12-31'
+SELECT 'Pfr364af_rb', 'LOT-55595d9d', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pvdhfrv_fw', 'LOT-0f6099fd', 1.0, '', '2026-12-31'
+SELECT 'Pvdhfrv_fw', 'LOT-a401d380', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pvdhfrv_rv', 'LOT-dd371dbf', 1.0, '', '2026-12-31'
+SELECT 'Pvdhfrv_rv', 'LOT-5f49c195', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Hrp2 exon 2 fwd', 'LOT-13cc5fdc', 1.0, '', '2022-01-31'
+SELECT 'Hrp2 exon 2 fwd', 'LOT-3fc9ede8', 1.0, '', '2022-01-31'
         UNION ALL
-SELECT 'Hrp2 exon 2 rev', 'LOT-5b79e0e7', 1.0, '', '2022-01-31'
+SELECT 'Hrp2 exon 2 rev', 'LOT-c10068cc', 1.0, '', '2022-01-31'
         UNION ALL
-SELECT 'Hrp3 rev ', 'LOT-bcb42c71', 1.0, '', '2022-01-31'
+SELECT 'Hrp3 rev ', 'LOT-dbb5f3ca', 1.0, '', '2022-01-31'
         UNION ALL
-SELECT 'Hrp3 fwd', 'LOT-06678907', 1.0, '', '2022-01-31'
+SELECT 'Hrp3 fwd', 'LOT-ca945d4d', 1.0, '', '2022-01-31'
         UNION ALL
-SELECT 'Trna rev', 'LOT-7c193ed8', 1.0, '', '2022-01-31'
+SELECT 'Trna rev', 'LOT-99ce9e4a', 1.0, '', '2022-01-31'
         UNION ALL
-SELECT 'Trna fwd', 'LOT-47a2e7c3', 1.0, '', '2022-01-31'
+SELECT 'Trna fwd', 'LOT-9a962cb2', 1.0, '', '2022-01-31'
         UNION ALL
-SELECT 'Hrp2 exon 2 probe', 'LOT-69f9e062', 1.0, '', '2022-01-29'
+SELECT 'Hrp2 exon 2 probe', 'LOT-a00dede4', 1.0, '', '2022-01-29'
         UNION ALL
-SELECT 'Hrp2 probe', 'LOT-e2bc2d85', 1.0, '', '2022-02-17'
+SELECT 'Hrp2 probe', 'LOT-bed7aa3c', 1.0, '', '2022-02-17'
         UNION ALL
-SELECT 'Hrp3 probe', 'LOT-3247717a', 1.0, '', '2022-02-17'
+SELECT 'Hrp3 probe', 'LOT-1c4964a0', 1.0, '', '2022-02-17'
         UNION ALL
-SELECT 'Trna probe', 'LOT-eefd67f1', 1.0, '', '2022-02-02'
+SELECT 'Trna probe', 'LOT-e8425171', 1.0, '', '2022-02-02'
         UNION ALL
-SELECT 'Pvmsp2_n_rev', 'LOT-af419b22', 1.0, '', '2022-02-05'
+SELECT 'Pvmsp2_n_rev', 'LOT-63befbf3', 1.0, '', '2022-02-05'
         UNION ALL
-SELECT 'Pvmsp2_p_fwd', 'LOT-12090479', 1.0, '', '2022-02-05'
+SELECT 'Pvmsp2_p_fwd', 'LOT-74642d5b', 1.0, '', '2022-02-05'
         UNION ALL
-SELECT 'Pvmsp2_n_fwd', 'LOT-dda527be', 1.0, '', '2022-01-28'
+SELECT 'Pvmsp2_n_fwd', 'LOT-fcd63e9e', 1.0, '', '2022-01-28'
         UNION ALL
-SELECT 'Pvmsp2_p_rev', 'LOT-82a4ccad', 1.0, '', '2022-02-05'
+SELECT 'Pvmsp2_p_rev', 'LOT-5684b736', 1.0, '', '2022-02-05'
         UNION ALL
-SELECT 'Pvmsp1f3_p_rev', 'LOT-c75a0aef', 1.0, '', '2022-02-09'
+SELECT 'Pvmsp1f3_p_rev', 'LOT-f908497d', 1.0, '', '2022-02-09'
         UNION ALL
-SELECT 'Pvmsp1f3_n_fwd', 'LOT-a3985dc0', 1.0, '', '2022-01-28'
+SELECT 'Pvmsp1f3_n_fwd', 'LOT-69464a81', 1.0, '', '2022-01-28'
         UNION ALL
-SELECT 'Pvmsp1f3_p_fwd', 'LOT-48a90796', 1.0, '', '2022-02-09'
+SELECT 'Pvmsp1f3_p_fwd', 'LOT-f7b5d329', 1.0, '', '2022-02-09'
         UNION ALL
-SELECT 'Pvmsp1f3_n_rev', 'LOT-bcbdbd66', 1.0, '', '2022-02-05'
+SELECT 'Pvmsp1f3_n_rev', 'LOT-4fe1cf32', 1.0, '', '2022-02-05'
         UNION ALL
-SELECT 'Msp2_s1 tail_fwd', 'LOT-959ad871', 1.0, '', '2022-02-05'
+SELECT 'Msp2_s1 tail_fwd', 'LOT-91b57e2c', 1.0, '', '2022-02-05'
         UNION ALL
-SELECT 'Msp2_fc27_m5_rev', 'LOT-d8e6a19c', 1.0, '', '2022-01-28'
+SELECT 'Msp2_fc27_m5_rev', 'LOT-cb1d0c56', 1.0, '', '2022-01-28'
         UNION ALL
-SELECT 'Msp2_3d7_n5_rev', 'LOT-e8c6a3dc', 1.0, '', '2022-01-28'
+SELECT 'Msp2_3d7_n5_rev', 'LOT-c2ddab1d', 1.0, '', '2022-01-28'
         UNION ALL
-SELECT 'Pfmsp2_s2_fw', 'LOT-57239617', 1.0, '', '2022-02-05'
+SELECT 'Pfmsp2_s2_fw', 'LOT-4286d37b', 1.0, '', '2022-02-05'
         UNION ALL
-SELECT 'Pfmsp2_s3_rv', 'LOT-b390e400', 1.0, '', '2022-02-05'
+SELECT 'Pfmsp2_s3_rv', 'LOT-97d60c53', 1.0, '', '2022-02-05'
         UNION ALL
-SELECT 'ed protein (hyp8) rv', 'LOT-bc3749e1', 1.0, '', '2026-12-31'
+SELECT 'ed protein (hyp8) rv', 'LOT-5823215e', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT '563ct_rv', 'LOT-661d9d5e', 1.0, '', '2026-12-31'
+SELECT '563ct_rv', 'LOT-8fe2dbaf', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rPLU3', 'LOT-b83073e7', 1.0, '', '2026-12-31'
+SELECT 'rPLU3', 'LOT-61e4a5fb', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rPLU4', 'LOT-1cef7b2b', 1.0, '', '2026-12-31'
+SELECT 'rPLU4', 'LOT-8b80f46d', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'TARE_2_fw', 'LOT-ba46af4b', 1.0, '', '2026-12-31'
+SELECT 'TARE_2_fw', 'LOT-0d4ab740', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'TARE_2_rv', 'LOT-24378a7f', 1.0, '', '2026-12-31'
+SELECT 'TARE_2_rv', 'LOT-1f606164', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'RESA rv', 'LOT-431b345d', 1.0, '', '2026-12-31'
+SELECT 'RESA rv', 'LOT-e0649a98', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'RESA fw', 'LOT-c82d1aa5', 1.0, '', '2026-12-31'
+SELECT 'RESA fw', 'LOT-5018e820', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pfs25_fw', 'LOT-4c6fc1a1', 1.0, '', '2026-12-31'
+SELECT 'Pfs25_fw', 'LOT-c4c37245', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'rPLU1', 'LOT-2f26c6fc', 1.0, '', '2026-12-31'
+SELECT 'rPLU1', 'LOT-d1edb8c9', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT '376AG fw', 'LOT-08e5742c', 1.0, '', '2026-12-31'
+SELECT '376AG fw', 'LOT-327bd384', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT '376AG rv', 'LOT-153ce589', 1.0, '', '2026-12-31'
+SELECT '376AG rv', 'LOT-3f2fe136', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv18s_ fw', 'LOT-7a158c34', 1.0, '', '2026-12-31'
+SELECT 'Pv18s_ fw', 'LOT-9f91359c', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv18s_ rv', 'LOT-7ede5ec0', 1.0, '', '2026-12-31'
+SELECT 'Pv18s_ rv', 'LOT-00d3f8be', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pmal_qPCR_ fw', 'LOT-66ba2347', 1.0, '', '2026-12-31'
+SELECT 'Pmal_qPCR_ fw', 'LOT-07bd9df7', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pmal_qPCR_ rv', 'LOT-727d2fb3', 1.0, '', '2026-12-31'
+SELECT 'Pmal_qPCR_ rv', 'LOT-7a5e266e', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pova_qPCR_fw', 'LOT-3fb62d5e', 1.0, '', '2026-12-31'
+SELECT 'Pova_qPCR_fw', 'LOT-56fa8934', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pova_qPCR_rv', 'LOT-d4ca0791', 1.0, '', '2026-12-31'
+SELECT 'Pova_qPCR_rv', 'LOT-ea1a9494', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PgMET_fw', 'LOT-d779498b', 1.0, '', '2026-12-31'
+SELECT 'PgMET_fw', 'LOT-13e9cbba', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PgMET_rw', 'LOT-dfd77b58', 1.0, '', '2026-12-31'
+SELECT 'PgMET_rw', 'LOT-0f0b625a', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pvs25 fw', 'LOT-aae17666', 1.0, '', '2026-12-31'
+SELECT 'Pvs25 fw', 'LOT-ee8d1109', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pvs25 rev', 'LOT-90cf80a7', 1.0, '', '2026-12-31'
+SELECT 'Pvs25 rev', 'LOT-cb2309b3', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'QMAL fw', 'LOT-99309c5c', 1.0, '', '2026-12-31'
+SELECT 'QMAL fw', 'LOT-48d34331', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'QMAL rv', 'LOT-7ee6d1c0', 1.0, '', '2026-12-31'
+SELECT 'QMAL rv', 'LOT-fa7bd7ca', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'QMAL fw', 'LOT-1ef63bcb', 1.0, '', '2026-12-31'
+SELECT 'QMAL fw', 'LOT-e5875c6c', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'QMAL rv', 'LOT-a01af190', 1.0, '', '2026-12-31'
+SELECT 'QMAL rv', 'LOT-682f96ae', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pfs230p_fw', 'LOT-2ddbabf7', 1.0, '', '2026-12-31'
+SELECT 'Pfs230p_fw', 'LOT-c1a75a1b', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pfs230p_rv', 'LOT-db01d4c2', 1.0, '', '2026-12-31'
+SELECT 'Pfs230p_rv', 'LOT-36dde7a6', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'varATS_fw', 'LOT-09e421d0', 1.0, '', '2026-12-31'
+SELECT 'varATS_fw', 'LOT-2be1e890', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'varATS_rv', 'LOT-eea7f7d6', 1.0, '', '2026-12-31'
+SELECT 'varATS_rv', 'LOT-139e8eb7', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'varATS_fw', 'LOT-20e2327c', 1.0, '', '2026-12-31'
+SELECT 'varATS_fw', 'LOT-9844b045', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'varATS_rv', 'LOT-62ad2061', 1.0, '', '2026-12-31'
+SELECT 'varATS_rv', 'LOT-5abf2cb6', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf18S RV 100uM', 'LOT-8b431aab', 1.0, 'stock', '2026-12-31'
+SELECT 'Pf18S RV 100uM', 'LOT-a2eaa020', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'PV18S FW MPX 100uM', 'LOT-b648dada', 1.0, 'stock', '2026-12-31'
+SELECT 'PV18S FW MPX 100uM', 'LOT-ffe2b4ee', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Pf18S probe 100uM', 'LOT-abbd215c', 1.0, 'stock', '2026-12-31'
+SELECT 'Pf18S probe 100uM', 'LOT-5c7b06f7', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Pv18S MPX 100uM', 'LOT-87535308', 1.0, 'stock', '2026-12-31'
+SELECT 'Pv18S MPX 100uM', 'LOT-388803ef', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'PV18S RV 100uM  ', 'LOT-624f05ac', 1.0, 'stock', '2026-12-31'
+SELECT 'PV18S RV 100uM  ', 'LOT-c9af7bc5', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Pf18s FW 100uM', 'LOT-a5636c45', 1.0, 'stock', '2026-12-31'
+SELECT 'Pf18s FW 100uM', 'LOT-bd082e19', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'PV25 probe 5.3 nMol', 'LOT-70aa71fd', 1.0, 'lyophilized ', '2026-12-31'
+SELECT 'PV25 probe 5.3 nMol', 'LOT-0c0bcbc2', 1.0, 'lyophilized ', '2026-12-31'
         UNION ALL
-SELECT 'PfMDR1 probe 5.1 nMol', 'LOT-e2faf25d', 1.0, 'lyophilized ', '2026-12-31'
+SELECT 'PfMDR1 probe 5.1 nMol', 'LOT-43835f6e', 1.0, 'lyophilized ', '2026-12-31'
         UNION ALL
-SELECT 'Beta TT probe 5.2 nMol', 'LOT-f379849d', 1.0, 'lyophilized ', '2026-12-31'
+SELECT 'Beta TT probe 5.2 nMol', 'LOT-988b072a', 1.0, 'lyophilized ', '2026-12-31'
         UNION ALL
-SELECT 'Pf plasmepsin2 probe 5.3 nMol', 'LOT-1730c396', 1.0, 'lyophilized ', '2026-12-31'
+SELECT 'Pf plasmepsin2 probe 5.3 nMol', 'LOT-5651b2dd', 1.0, 'lyophilized ', '2026-12-31'
         UNION ALL
-SELECT 'Viv f(shako) ', 'LOT-67f544bb', 1.0, 'stock', '2026-12-31'
+SELECT 'Viv f(shako) ', 'LOT-c8ced578', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Fal-F(shako)', 'LOT-71d64c0a', 1.0, 'stock', '2026-12-31'
+SELECT 'Fal-F(shako)', 'LOT-c817d525', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Pf18S shoko probe 5.3 nMOL', 'LOT-7f6414d6', 1.0, 'stock', '2026-12-31'
+SELECT 'Pf18S shoko probe 5.3 nMOL', 'LOT-4d3d2875', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Pv18s SHOKO probe ', 'LOT-47e235b2', 1.0, 'stock', '2026-12-31'
+SELECT 'Pv18s SHOKO probe ', 'LOT-4bc4ad08', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Plasmo rev 100UM Shoko (for Pv- Pf mpx)', 'LOT-1a7e4b49', 1.0, 'stock', '2026-12-31'
+SELECT 'Plasmo rev 100UM Shoko (for Pv- Pf mpx)', 'LOT-15aafdbb', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Pv 18S REV', 'LOT-1d47fdc3', 1.0, 'stock', '2026-12-31'
+SELECT 'Pv 18S REV', 'LOT-caf18a44', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Pv-25 Fw', 'LOT-631c0b0c', 1.0, '', '2026-12-31'
+SELECT 'Pv-25 Fw', 'LOT-8d8d465f', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv-25 Rev', 'LOT-62936f36', 1.0, '', '2026-12-31'
+SELECT 'Pv-25 Rev', 'LOT-2f5f96f7', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv-25 Rv', 'LOT-caa817fe', 1.0, '', '2026-12-31'
+SELECT 'Pv-25 Rv', 'LOT-8e0bf933', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pvs25 Fw', 'LOT-a9965484', 1.0, '', '2026-12-31'
+SELECT 'Pvs25 Fw', 'LOT-a6c9a851', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv-18s new short', 'LOT-5370b857', 1.0, '', '2026-12-31'
+SELECT 'Pv-18s new short', 'LOT-6a536836', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf-18s- DNA-Rv', 'LOT-84a09e67', 1.0, '', '2026-12-31'
+SELECT 'Pf-18s- DNA-Rv', 'LOT-dab3fcb9', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf-18s- DNA-Fw', 'LOT-a821b9ab', 1.0, '', '2026-12-31'
+SELECT 'Pf-18s- DNA-Fw', 'LOT-240a481a', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'StD2', 'LOT-1febbef3', 1.0, '300ul', '2026-12-31'
+SELECT 'StD2', 'LOT-969430b2', 1.0, '300ul', '2026-12-31'
         UNION ALL
-SELECT 'GATA-1F', 'LOT-dd1386a4', 1.0, '1000ul', '2026-12-31'
+SELECT 'GATA-1F', 'LOT-db66463b', 1.0, '1000ul', '2026-12-31'
         UNION ALL
-SELECT 'GATA-1R', 'LOT-89b5124f', 1.0, '1000ul', '2026-12-31'
+SELECT 'GATA-1R', 'LOT-6fcba331', 1.0, '1000ul', '2026-12-31'
         UNION ALL
-SELECT 'hrp2-Exon-FW', 'LOT-4bff0706', 1.0, '600ul', '2026-12-31'
+SELECT 'hrp2-Exon-FW', 'LOT-098333cc', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'tRNA-FW', 'LOT-be0a65ef', 1.0, '600ul', '2026-12-31'
+SELECT 'tRNA-FW', 'LOT-6bed00aa', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'hrp3-FW', 'LOT-fb18b8a3', 1.0, '600ul', '2026-12-31'
+SELECT 'hrp3-FW', 'LOT-be629032', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'uq-R', 'LOT-af987127', 1.0, '600ul', '2026-12-31'
+SELECT 'uq-R', 'LOT-7eb9a51b', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'UD2-R', 'LOT-a7797cf6', 1.0, '600ul', '2026-12-31'
+SELECT 'UD2-R', 'LOT-28ee10e4', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'St-F', 'LOT-0cca2f72', 1.0, '600ul', '2026-12-31'
+SELECT 'St-F', 'LOT-d374bb28', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'StD2-R', 'LOT-8c437143', 1.0, '600ul', '2026-12-31'
+SELECT 'StD2-R', 'LOT-be8c928f', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'us-85-F', 'LOT-6fd9217f', 1.0, '600ul', '2026-12-31'
+SELECT 'us-85-F', 'LOT-1c5b0717', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'st-F', 'LOT-5c655bbc', 1.0, '600ul', '2026-12-31'
+SELECT 'st-F', 'LOT-66282412', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'UD2-R', 'LOT-1ea59ec1', 1.0, '600ul', '2026-12-31'
+SELECT 'UD2-R', 'LOT-f40e7af0', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'tRNA-Rv', 'LOT-88ff41c0', 1.0, '600ul', '2026-12-31'
+SELECT 'tRNA-Rv', 'LOT-40eeee37', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'hrp2-Exon2-RV', 'LOT-9482cdca', 1.0, '600ul', '2026-12-31'
+SELECT 'hrp2-Exon2-RV', 'LOT-017725b7', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'HumTuBB-R', 'LOT-1ada10b8', 1.0, '600ul', '2026-12-31'
+SELECT 'HumTuBB-R', 'LOT-2aa692a3', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'Uq-R', 'LOT-480f59a1', 1.0, '600ul', '2026-12-31'
+SELECT 'Uq-R', 'LOT-1b1d465f', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'U5.8S-F', 'LOT-a7bfb759', 1.0, '600ul', '2026-12-31'
+SELECT 'U5.8S-F', 'LOT-915a2c12', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'Pfldh-F', 'LOT-2e342064', 1.0, '600ul', '2026-12-31'
+SELECT 'Pfldh-F', 'LOT-8a06c750', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'Pfldh-R', 'LOT-5e4008eb', 1.0, '1200ul', '2026-12-31'
+SELECT 'Pfldh-R', 'LOT-e81dfbce', 1.0, '1200ul', '2026-12-31'
         UNION ALL
-SELECT 'HumTubBB-F', 'LOT-a0f680d5', 1.0, '900ul', '2026-12-31'
+SELECT 'HumTubBB-F', 'LOT-793cd6b5', 1.0, '900ul', '2026-12-31'
         UNION ALL
-SELECT 'stq-F', 'LOT-6c329712', 1.0, '1200.0', '2026-12-31'
+SELECT 'stq-F', 'LOT-cb2c3df3', 1.0, '1200.0', '2026-12-31'
         UNION ALL
-SELECT 'stq-R', 'LOT-66bf3fb8', 1.0, '900ul', '2026-12-31'
+SELECT 'stq-R', 'LOT-edbe864d', 1.0, '900ul', '2026-12-31'
         UNION ALL
-SELECT 'uq-F', 'LOT-bd498472', 1.0, '1200.0', '2026-12-31'
+SELECT 'uq-F', 'LOT-31a97c0e', 1.0, '1200.0', '2026-12-31'
         UNION ALL
-SELECT 'Pf Hrp3-R2', 'LOT-014becfb', 1.0, '', '2026-12-31'
+SELECT 'Pf Hrp3-R2', 'LOT-c6693cc1', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Hrp3-Rv', 'LOT-8997c9a2', 1.0, '', '2026-12-31'
+SELECT 'Hrp3-Rv', 'LOT-e0896f0d', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PfHrp2-F1', 'LOT-a1bb593a', 1.0, '', '2026-12-31'
+SELECT 'PfHrp2-F1', 'LOT-d76e6ae5', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PfHrp2-R3', 'LOT-24aec177', 1.0, '', '2026-12-31'
+SELECT 'PfHrp2-R3', 'LOT-25b29087', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PfHrp2-F2', 'LOT-09221fab', 1.0, '', '2026-12-31'
+SELECT 'PfHrp2-F2', 'LOT-b95de66f', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PfHrp3-R1', 'LOT-0274d07c', 1.0, '', '2026-12-31'
+SELECT 'PfHrp3-R1', 'LOT-e0f8ade5', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PfHrp2-R2', 'LOT-66fb5290', 1.0, '', '2026-12-31'
+SELECT 'PfHrp2-R2', 'LOT-6ad519f3', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf Hrp3-F1', 'LOT-3203a9c4', 1.0, '', '2026-12-31'
+SELECT 'Pf Hrp3-F1', 'LOT-25f3bef4', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf Hrp3-P1', 'LOT-096b58b6', 1.0, '', '2026-12-31'
+SELECT 'Pf Hrp3-P1', 'LOT-d2919d88', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PfHrp2-R1', 'LOT-0d0e45d8', 1.0, '', '2026-12-31'
+SELECT 'PfHrp2-R1', 'LOT-258de4d8', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PfHrp3-F2', 'LOT-ef2da4f5', 1.0, '', '2026-12-31'
+SELECT 'PfHrp3-F2', 'LOT-3d87eac7', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PfHrp2-F3', 'LOT-9db489d2', 1.0, '', '2026-12-31'
+SELECT 'PfHrp2-F3', 'LOT-0da510c6', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pfhrp3_F2', 'LOT-a38d8da2', 1.0, '', '2026-12-31'
+SELECT 'Pfhrp3_F2', 'LOT-2150c9a7', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pfhrp3_R2', 'LOT-15c00761', 1.0, '', '2026-12-31'
+SELECT 'Pfhrp3_R2', 'LOT-4702f0cf', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'GATA-MT-probe', 'LOT-afbfc1bd', 1.0, '300ul', '2026-12-31'
+SELECT 'GATA-MT-probe', 'LOT-d8e82274', 1.0, '300ul', '2026-12-31'
         UNION ALL
-SELECT 'GATA-WT-probe', 'LOT-92ab5b06', 1.0, '600ul', '2026-12-31'
+SELECT 'GATA-WT-probe', 'LOT-b2620495', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT '2-probe', 'LOT-5bb4c7c0', 1.0, '600ul', '2026-12-31'
+SELECT '2-probe', 'LOT-fb6b609d', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'tRNA-probe', 'LOT-a3ff5634', 1.0, '900ul', '2026-12-31'
+SELECT 'tRNA-probe', 'LOT-30621084', 1.0, '900ul', '2026-12-31'
         UNION ALL
-SELECT 'hrp3-probe', 'LOT-048fdc77', 1.0, '600ul', '2026-12-31'
+SELECT 'hrp3-probe', 'LOT-b7806359', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'Pfhrp2-probe', 'LOT-84cb21c1', 1.0, '600ul', '2026-12-31'
+SELECT 'Pfhrp2-probe', 'LOT-5225ad3a', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'Pfidh-probe', 'LOT-6e725e20', 1.0, '600ul', '2026-12-31'
+SELECT 'Pfidh-probe', 'LOT-ad6f143c', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'Pfhrp3-probe', 'LOT-f724e723', 1.0, '300ul', '2026-12-31'
+SELECT 'Pfhrp3-probe', 'LOT-87be9fab', 1.0, '300ul', '2026-12-31'
         UNION ALL
-SELECT 'Stq-P probe', 'LOT-513fecee', 1.0, '600ul', '2026-12-31'
+SELECT 'Stq-P probe', 'LOT-04d9a00d', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'Uq-P probe', 'LOT-3f15cf17', 1.0, '600ul', '2026-12-31'
+SELECT 'Uq-P probe', 'LOT-1748e6f3', 1.0, '600ul', '2026-12-31'
         UNION ALL
-SELECT 'HumanTuBB-P probe', 'LOT-60fec7b5', 1.0, '300ul', '2026-12-31'
+SELECT 'HumanTuBB-P probe', 'LOT-161f2c5a', 1.0, '300ul', '2026-12-31'
         UNION ALL
-SELECT 'Pfhrp3_probe', 'LOT-22ddcb61', 1.0, '', '2026-12-31'
+SELECT 'Pfhrp3_probe', 'LOT-131d9c59', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf18s-Fw (Nij)', 'LOT-4c441946', 1.0, '', '2026-12-31'
+SELECT 'Pf18s-Fw (Nij)', 'LOT-15dbcfdf', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv18s-Fw', 'LOT-892f72c0', 1.0, '', '2026-12-31'
+SELECT 'Pv18s-Fw', 'LOT-fad9203b', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv18s-fw', 'LOT-6df6c6ff', 1.0, '', '2026-12-31'
+SELECT 'Pv18s-fw', 'LOT-cfa6581b', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf18s-Rv (Nij)', 'LOT-78915c4a', 1.0, '', '2026-12-31'
+SELECT 'Pf18s-Rv (Nij)', 'LOT-38f902ee', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv18s-rv', 'LOT-2a8eaff1', 1.0, '', '2026-12-31'
+SELECT 'Pv18s-rv', 'LOT-a6364f5a', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PfMGET-fw', 'LOT-84daf133', 1.0, '', '2026-12-31'
+SELECT 'PfMGET-fw', 'LOT-5a1620cd', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PfMGET-Rv', 'LOT-577f0939', 1.0, '', '2026-12-31'
+SELECT 'PfMGET-Rv', 'LOT-84238455', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PfMGET- FW', 'LOT-ebee1ab8', 1.0, '', '2026-12-31'
+SELECT 'PfMGET- FW', 'LOT-34b18ac0', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PfMGET- Rev multiplex', 'LOT-c7120aa5', 1.0, '', '2026-12-31'
+SELECT 'PfMGET- Rev multiplex', 'LOT-bf61c02e', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf18s-RNA-fw', 'LOT-68342622', 1.0, '', '2026-12-31'
+SELECT 'Pf18s-RNA-fw', 'LOT-3f4e6b87', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv18s -fw', 'LOT-610dd441', 1.0, '', '2026-12-31'
+SELECT 'Pv18s -fw', 'LOT-59d10818', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv18s-Rv', 'LOT-fc4a98b2', 1.0, '', '2026-12-31'
+SELECT 'Pv18s-Rv', 'LOT-33eaf817', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv18s-Rv', 'LOT-ec4a1eb0', 1.0, '', '2026-12-31'
+SELECT 'Pv18s-Rv', 'LOT-85356197', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv18s-fw', 'LOT-e838f78d', 1.0, '', '2026-12-31'
+SELECT 'Pv18s-fw', 'LOT-ec2c2e79', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf18s-RNA-RV', 'LOT-72921271', 1.0, '', '2026-12-31'
+SELECT 'Pf18s-RNA-RV', 'LOT-9bb7853e', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pfs25_FW', 'LOT-a1bf7dcb', 1.0, '', '2026-12-31'
+SELECT 'Pfs25_FW', 'LOT-462a0a36', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pfs25_Rv', 'LOT-8c21b131', 1.0, '', '2026-12-31'
+SELECT 'Pfs25_Rv', 'LOT-119a5814', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pfs25_FW', 'LOT-9e97e12b', 1.0, '', '2026-12-31'
+SELECT 'Pfs25_FW', 'LOT-f9e59303', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pfs25_Rv', 'LOT-09bcb41b', 1.0, '', '2026-12-31'
+SELECT 'Pfs25_Rv', 'LOT-c556392d', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'SBP1-RV', 'LOT-fced796a', 1.0, '', '2026-12-31'
+SELECT 'SBP1-RV', 'LOT-d8d5a218', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'SBP1-Fw', 'LOT-b8c38b17', 1.0, '', '2026-12-31'
+SELECT 'SBP1-Fw', 'LOT-717326ae', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pfs25-Rv', 'LOT-e41c746c', 1.0, '', '2026-12-31'
+SELECT 'Pfs25-Rv', 'LOT-16c7eabc', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf18s-DNA-RV(Swit)', 'LOT-f409f170', 1.0, '', '2026-12-31'
+SELECT 'Pf18s-DNA-RV(Swit)', 'LOT-381acded', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf18s_Nji_RV', 'LOT-e715d873', 1.0, '', '2026-12-31'
+SELECT 'Pf18s_Nji_RV', 'LOT-141f2c69', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf18s-Rv', 'LOT-8e678212', 1.0, '', '2026-12-31'
+SELECT 'Pf18s-Rv', 'LOT-866f0a4c', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf18s-DNA-FW(Swit)', 'LOT-fb561164', 1.0, '', '2026-12-31'
+SELECT 'Pf18s-DNA-FW(Swit)', 'LOT-199bf87e', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf18s_Nji_FW', 'LOT-a92fd7e7', 1.0, '', '2026-12-31'
+SELECT 'Pf18s_Nji_FW', 'LOT-68a18a04', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf18s Rev', 'LOT-4d677b25', 1.0, '', '2026-12-31'
+SELECT 'Pf18s Rev', 'LOT-0487e11d', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pf18s for', 'LOT-73e037d5', 1.0, '', '2026-12-31'
+SELECT 'Pf18s for', 'LOT-92698b02', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv-18s Fw', 'LOT-6ebaf2d0', 1.0, '', '2026-12-31'
+SELECT 'Pv-18s Fw', 'LOT-c21dcfc8', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv-18s Rv', 'LOT-81a0b9c0', 1.0, '', '2026-12-31'
+SELECT 'Pv-18s Rv', 'LOT-89bbcf5c', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'CCp4 Rev', 'LOT-653b10b6', 1.0, '', '2026-12-31'
+SELECT 'CCp4 Rev', 'LOT-14fe95d1', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'CCp4 Fw', 'LOT-98f4afbe', 1.0, '', '2026-12-31'
+SELECT 'CCp4 Fw', 'LOT-1843f25a', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pfs25-FW', 'LOT-b2fa501f', 1.0, '', '2026-12-31'
+SELECT 'Pfs25-FW', 'LOT-1cb5e7f3', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PfMGET probe (FAM)', 'LOT-222b3419', 1.0, '', '2026-12-31'
+SELECT 'PfMGET probe (FAM)', 'LOT-5c7bd160', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'CCP4 probe TEXAS-RED)', 'LOT-76c8380d', 1.0, '', '2026-12-31'
+SELECT 'CCP4 probe TEXAS-RED)', 'LOT-d750f5de', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pvs25 probe (FAM)', 'LOT-de0e948e', 1.0, '', '2026-12-31'
+SELECT 'Pvs25 probe (FAM)', 'LOT-01587e1a', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv18s probe (HEX)', 'LOT-1f17b025', 1.0, '', '2026-12-31'
+SELECT 'Pv18s probe (HEX)', 'LOT-cfb9b8c8', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pvs25 probe (FAM)', 'LOT-71d16589', 1.0, '', '2026-12-31'
+SELECT 'Pvs25 probe (FAM)', 'LOT-d55da76e', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pv18s probe (FAM)', 'LOT-7217a933', 1.0, '', '2026-12-31'
+SELECT 'Pv18s probe (FAM)', 'LOT-2e19b7ca', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Pvs25 probe (FAM)', 'LOT-50587f17', 1.0, '', '2026-12-31'
+SELECT 'Pvs25 probe (FAM)', 'LOT-f8d289cb', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'ITS2B-mod2, 20.5nmol', 'LOT-6bb055c1', 1.0, '', '2026-12-31'
+SELECT 'ITS2B-mod2, 20.5nmol', 'LOT-2bbc291f', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'PAR, 24.7nmol', 'LOT-63495fef', 1.0, '', '2026-12-31'
+SELECT 'PAR, 24.7nmol', 'LOT-8f1e2c98', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'UN, 19.8nmol', 'LOT-0784a4d1', 1.0, '', '2026-12-31'
+SELECT 'UN, 19.8nmol', 'LOT-904f8bb6', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'Stq-F, 21.2nmol', 'LOT-7dfd9b9e', 1.0, '', '2026-12-31'
+SELECT 'Stq-F, 21.2nmol', 'LOT-79807780', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'LESS, 22.8', 'LOT-4f96c15b', 1.0, '', '2026-12-31'
+SELECT 'LESS, 22.8', 'LOT-d39be399', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'RIV,23.0 nmol', 'LOT-8de07e2a', 1.0, '', '2026-12-31'
+SELECT 'RIV,23.0 nmol', 'LOT-a1a6b0ff', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'UD2, 22.3nmol', 'LOT-bb78c1c6', 1.0, '', '2026-12-31'
+SELECT 'UD2, 22.3nmol', 'LOT-b03e9138', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'VAN, 22.5nmol', 'LOT-4d10eee8', 1.0, '', '2026-12-31'
+SELECT 'VAN, 22.5nmol', 'LOT-ac7f0fa4', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'FUN,19.9nmol', 'LOT-7bd52236', 1.0, '', '2026-12-31'
+SELECT 'FUN,19.9nmol', 'LOT-66b3cae1', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'ITS2A, 19.5nmol', 'LOT-ce3a2166', 1.0, '', '2026-12-31'
+SELECT 'ITS2A, 19.5nmol', 'LOT-242c9f49', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'ITS2-steph-R, 22.2nmol', 'LOT-acef3910', 1.0, '', '2026-12-31'
+SELECT 'ITS2-steph-R, 22.2nmol', 'LOT-8b217af2', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'U5.8S-F', 'LOT-d2d81422', 1.0, '', '2026-12-31'
+SELECT 'U5.8S-F', 'LOT-df6661d5', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT '02Ga FW 100uM', 'LOT-91969d26', 1.0, 'stock', '2026-12-31'
+SELECT '02Ga FW 100uM', 'LOT-df24c588', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT '63CT FW 100 uM', 'LOT-0abecbd0', 1.0, 'stock', '2026-12-31'
+SELECT '63CT FW 100 uM', 'LOT-52bac107', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT '02GA RV 100 uM', 'LOT-5d13a335', 1.0, 'stock', '2026-12-31'
+SELECT '02GA RV 100 uM', 'LOT-978175fb', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT '63CT RV 100 uM', 'LOT-efc890e7', 1.0, 'stock', '2026-12-31'
+SELECT '63CT RV 100 uM', 'LOT-82621c47', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT '76AG FW 100uM', 'LOT-ec97120d', 1.0, 'stock', '2026-12-31'
+SELECT '76AG FW 100uM', 'LOT-db9fe15b', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT '76AG RV 100uM', 'LOT-305b3573', 1.0, 'stock', '2026-12-31'
+SELECT '76AG RV 100uM', 'LOT-a33db5bf', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'N1RPFMDR1034 100UM', 'LOT-33cd7cd6', 1.0, 'stock', '2026-12-31'
+SELECT 'N1RPFMDR1034 100UM', 'LOT-e3df70fa', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'N2FPFMDR1034 100UM', 'LOT-f8cad5fb', 1.0, 'stock', '2026-12-31'
+SELECT 'N2FPFMDR1034 100UM', 'LOT-2bc15c7e', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'N1FPFMDR1034', 'LOT-1511ccd0', 1.0, 'stock', '2026-12-31'
+SELECT 'N1FPFMDR1034', 'LOT-2ef49fbe', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'N2RPFMDR1034', 'LOT-e389301f', 1.0, 'stock', '2026-12-31'
+SELECT 'N2RPFMDR1034', 'LOT-4f46db6a', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'N1FPFMDR86 100UM', 'LOT-26499933', 1.0, 'stock', '2026-12-31'
+SELECT 'N1FPFMDR86 100UM', 'LOT-6ae9bc46', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'N1RPFMDR86 100UM', 'LOT-bf3976da', 1.0, 'stock', '2026-12-31'
+SELECT 'N1RPFMDR86 100UM', 'LOT-60c85151', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'N2FPFMDR86 100UM', 'LOT-230f5b16', 1.0, 'stock', '2026-12-31'
+SELECT 'N2FPFMDR86 100UM', 'LOT-a7acb780', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'N2RPFMDR86 100UM', 'LOT-d7fe0642', 1.0, 'stock', '2026-12-31'
+SELECT 'N2RPFMDR86 100UM', 'LOT-efa75615', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Ovis F 134.9 nMol (Sheep)', 'LOT-9315c4fa', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'Ovis F 134.9 nMol (Sheep)', 'LOT-2fc91a83', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'Can 2F 125 nMol', 'LOT-92086b89', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'Can 2F 125 nMol', 'LOT-e4a9b1ad', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'ME (1) 143.5 nMol', 'LOT-23024c7e', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'ME (1) 143.5 nMol', 'LOT-986e144e', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'CAN 2R (2) 161.6 nMol', 'LOT-434292d9', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'CAN 2R (2) 161.6 nMol', 'LOT-bffee130', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'UN (1) 139.8 nMol', 'LOT-418f3354', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'UN (1) 139.8 nMol', 'LOT-56aa12ef', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'Ovis 2R (2) 140.4 nMol (sheep)', 'LOT-5a6bacdb', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'Ovis 2R (2) 140.4 nMol (sheep)', 'LOT-4b66ab8a', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'Hmn F (2) 126.3 nMol', 'LOT-eb66a512', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'Hmn F (2) 126.3 nMol', 'LOT-c9e83083', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'AR (1) 130.4 nMol', 'LOT-30cdbd00', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'AR (1) 130.4 nMol', 'LOT-8791cad5', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'Sus F 145.9 nMol', 'LOT-6aa9403e', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'Sus F 145.9 nMol', 'LOT-b6f269da', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'Bos 2F (2) 149nMol', 'LOT-6e685d38', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'Bos 2F (2) 149nMol', 'LOT-1dedfd3e', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'Bos 2R 122.2 nMol', 'LOT-31ce7118', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'Bos 2R 122.2 nMol', 'LOT-992e1260', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'Hmn R (1) 145.5 nMol', 'LOT-ba48857d', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'Hmn R (1) 145.5 nMol', 'LOT-4684807d', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'Sus R (2) 147.5 nMol', 'LOT-d1d22e94', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'Sus R (2) 147.5 nMol', 'LOT-e3ea8839', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'ITS 2A(2) 125.7nMol', 'LOT-b0fbd74f', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'ITS 2A(2) 125.7nMol', 'LOT-e3e4fe9d', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'ITS2-Steph-R(2) 143.2 nMol', 'LOT-cd930f62', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'ITS2-Steph-R(2) 143.2 nMol', 'LOT-f10da1f2', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'GA 170.3 nMol', 'LOT-309b37ca', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'GA 170.3 nMol', 'LOT-617f5d4d', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'Hco2 198 (1) 113.7 nMol', 'LOT-1f3e2d77', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'Hco2 198 (1) 113.7 nMol', 'LOT-cf9081ba', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'LCO 1490(2) 99.7 nMol', 'LOT-a6572f13', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'LCO 1490(2) 99.7 nMol', 'LOT-3d7d2fe8', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'S200x6.1-F 132.3 nMol', 'LOT-200359f9', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'S200x6.1-F 132.3 nMol', 'LOT-40923671', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'Cap3R 126.8 nMol', 'LOT-e4e4d476', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'Cap3R 126.8 nMol', 'LOT-c34139a1', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'plsR (revers primer)(1) 644.4 nMol', 'LOT-a4834ce0', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'plsR (revers primer)(1) 644.4 nMol', 'LOT-e23c31a9', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'S200X6.1-R(2) 157.2 nMol', 'LOT-4da9c24b', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'S200X6.1-R(2) 157.2 nMol', 'LOT-e1fb4b57', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'PlsF(forward primer)(1) 738.6 nMol', 'LOT-123ad492', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'PlsF(forward primer)(1) 738.6 nMol', 'LOT-32e51d7a', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'Cap3F 136.8 nMol', 'LOT-f177180f', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'Cap3F 136.8 nMol', 'LOT-27424195', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'QD(1) 134.9 nMol', 'LOT-adbff029', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'QD(1) 134.9 nMol', 'LOT-475f0fc9', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'N1RPFmdr86 41.9.nMol', 'LOT-b0c30790', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'N1RPFmdr86 41.9.nMol', 'LOT-962e200e', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'N2RPVmdr1 76.4.nMol', 'LOT-71c91f11', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'N2RPVmdr1 76.4.nMol', 'LOT-65e35a19', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'N1RPFcrt 41.1 nMol', 'LOT-5fea4a30', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'N1RPFcrt 41.1 nMol', 'LOT-994b1008', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'N1FPFmdr86 47.0.nMol', 'LOT-006c03eb', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'N1FPFmdr86 47.0.nMol', 'LOT-d759ef1a', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'N2RPFmdr1034 43.9 nMol', 'LOT-2d5c678b', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'N2RPFmdr1034 43.9 nMol', 'LOT-2a432fe7', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'N2FPFmdr 1034 61.5 nMol', 'LOT-ba0118e9', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'N2FPFmdr 1034 61.5 nMol', 'LOT-ba1528d5', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'N2 FPFmdr86 39.1nMol', 'LOT-8b8ea9c7', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'N2 FPFmdr86 39.1nMol', 'LOT-f6c6255e', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'N2FPFcrt 40.6nMol', 'LOT-a714537a', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'N2FPFcrt 40.6nMol', 'LOT-09e7f8b1', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'N1RPVmdr1 77.7nMol', 'LOT-a8039991', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'N1RPVmdr1 77.7nMol', 'LOT-e9671e66', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'N1FPVmdr1 75.5nMol', 'LOT-78e3cb1c', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'N1FPVmdr1 75.5nMol', 'LOT-d6ba75c1', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'N1RPFmdr1034 61.2 nMol', 'LOT-17fd7c74', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'N1RPFmdr1034 61.2 nMol', 'LOT-f540aa90', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'N2FPVmdr1 60.9nMol', 'LOT-433f8b60', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'N2FPVmdr1 60.9nMol', 'LOT-a3af2a50', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'MDR3 (sense) for PFMDR1', 'LOT-f40a52e1', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'MDR3 (sense) for PFMDR1', 'LOT-1897670e', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'MDR4 (anti-sense) for PFMDR1', 'LOT-e783dc2d', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'MDR4 (anti-sense) for PFMDR1', 'LOT-5904f6a7', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'MDR3 (sence) ', 'LOT-94104ec4', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'MDR3 (sence) ', 'LOT-8b84c310', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'PV-25 FW', 'LOT-2206f587', 1.0, 'stock', '2026-12-31'
+SELECT 'PV-25 FW', 'LOT-22564cc0', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'PV-25 RV', 'LOT-41ccfc49', 1.0, 'stock', '2026-12-31'
+SELECT 'PV-25 RV', 'LOT-5063a816', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'CCp4 FW', 'LOT-d49ef68a', 1.0, 'stock', '2026-12-31'
+SELECT 'CCp4 FW', 'LOT-5dc32e18', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'PF MGET ', 'LOT-e7549595', 1.0, 'stock', '2026-12-31'
+SELECT 'PF MGET ', 'LOT-80ca3884', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'CCp4RV', 'LOT-d68af66b', 1.0, 'stock', '2026-12-31'
+SELECT 'CCp4RV', 'LOT-7c729e36', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'CCp4 RV', 'LOT-31e7af3f', 1.0, 'stock', '2026-12-31'
+SELECT 'CCp4 RV', 'LOT-60bb8af3', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'CCp4 FW', 'LOT-03d04a9f', 1.0, 'stock', '2026-12-31'
+SELECT 'CCp4 FW', 'LOT-13da9cb9', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Pf MGET RV', 'LOT-227e4854', 1.0, 'stock', '2026-12-31'
+SELECT 'Pf MGET RV', 'LOT-036cc1a5', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'CCp4 probe ', 'LOT-f8ca8537', 1.0, 'stock', '2026-12-31'
+SELECT 'CCp4 probe ', 'LOT-e9c213bf', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'Pf MGET probe', 'LOT-a26a97f5', 1.0, 'stock', '2026-12-31'
+SELECT 'Pf MGET probe', 'LOT-8971fc84', 1.0, 'stock', '2026-12-31'
         UNION ALL
-SELECT 'M1-RR primer 2.5 nMol', 'LOT-d84c62f0', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'M1-RR primer 2.5 nMol', 'LOT-13a0b7e8', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'M1-RF primer 2.5 nMol', 'LOT-a2718ca0', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'M1-RF primer 2.5 nMol', 'LOT-d1aa610c', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'MGET FW 50uM', 'LOT-d40ef3be', 1.0, 'working', '2026-12-31'
+SELECT 'MGET FW 50uM', 'LOT-cdc16e52', 1.0, 'working', '2026-12-31'
         UNION ALL
-SELECT 'MGET RV 50uM', 'LOT-aba845a0', 1.0, 'working', '2026-12-31'
+SELECT 'MGET RV 50uM', 'LOT-fe5d0cf3', 1.0, 'working', '2026-12-31'
         UNION ALL
-SELECT 'CCp4 forward reverse 50uM', 'LOT-877474cf', 1.0, 'working', '2026-12-31'
+SELECT 'CCp4 forward reverse 50uM', 'LOT-abb8b082', 1.0, 'working', '2026-12-31'
         UNION ALL
-SELECT 'CCp4 forward  50uM', 'LOT-ce5d52e1', 1.0, 'working', '2026-12-31'
+SELECT 'CCp4 forward  50uM', 'LOT-da6277c5', 1.0, 'working', '2026-12-31'
         UNION ALL
-SELECT 'CCp4 reverse 50uM', 'LOT-f550f622', 1.0, 'working', '2026-12-31'
+SELECT 'CCp4 reverse 50uM', 'LOT-d100f00b', 1.0, 'working', '2026-12-31'
         UNION ALL
-SELECT 'HumTuBB RV 100mM', 'LOT-bc10e0f8', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'HumTuBB RV 100mM', 'LOT-81e5ea93', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT 'HumTuBB FW 100mM', 'LOT-145249bd', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'HumTuBB FW 100mM', 'LOT-b9e891b2', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT 'COX1 Plasmo F ', 'LOT-e64d5fd3', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'COX1 Plasmo F ', 'LOT-189567f8', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT 'COX1 Plasmo R', 'LOT-4989e815', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'COX1 Plasmo R', 'LOT-1b0aa06b', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT 'Cow 121 F', 'LOT-a1364f2f', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'Cow 121 F', 'LOT-f1e22472', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT 'Dog 368 F', 'LOT-ced2716a', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'Dog 368 F', 'LOT-c8c326fb', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT 'Human 741 F', 'LOT-938121bd', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'Human 741 F', 'LOT-2f6759b9', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT 'Pig 573 F', 'LOT-79371b9a', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'Pig 573 F', 'LOT-50c0d8c8', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT 'Got 894 F', 'LOT-4be9507a', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'Got 894 F', 'LOT-910c6f24', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT 'UnRev1025', 'LOT-c12e395e', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'UnRev1025', 'LOT-615e778e', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT '100 bp ladder (ready made)', 'LOT-276a3dc2', 7.0, '1.25', '2018-08-31'
+SELECT '100 bp ladder (ready made)', 'LOT-910d0f16', 7.0, '1.25', '2018-08-31'
         UNION ALL
-SELECT 'Ultera low range DNAladder, 0.5ug/ul', 'LOT-29c42209', 2.0, '', '2019-11-30'
+SELECT 'Ultera low range DNAladder, 0.5ug/ul', 'LOT-91042e97', 2.0, '', '2019-11-30'
         UNION ALL
-SELECT 'Trakit cyan/yellow loading buffer, 6x', 'LOT-0d483026', 4.0, '0.5', '2019-12-01'
+SELECT 'Trakit cyan/yellow loading buffer, 6x', 'LOT-3e815846', 4.0, '0.5', '2019-12-01'
         UNION ALL
-SELECT 'Ultera low range DNAladder, 0.5ug/ul (used)', 'LOT-d1f6fd01', 3.0, 'Used', '2019-11-30'
+SELECT 'Ultera low range DNAladder, 0.5ug/ul (used)', 'LOT-059156a0', 3.0, 'Used', '2019-11-30'
         UNION ALL
-SELECT '100bp DNA ladder', 'LOT-8e5d9936', 9.0, '250.0', '2025-02-04'
+SELECT '100bp DNA ladder', 'LOT-a6fe8ef3', 9.0, '250.0', '2025-02-04'
         UNION ALL
-SELECT 'blue/orange loading day 6X conc', 'LOT-661d5bac', 8.0, '1.0', '2025-02-04'
+SELECT 'blue/orange loading day 6X conc', 'LOT-3a104d65', 8.0, '1.0', '2025-02-04'
         UNION ALL
-SELECT 'gel loading dye purple 6X conc', 'LOT-bb6efa67', 1.0, '0.5', '2024-01-30'
+SELECT 'gel loading dye purple 6X conc', 'LOT-334cd514', 1.0, '0.5', '2024-01-30'
         UNION ALL
-SELECT 'gel loading dye Blue/orange 6X conc', 'LOT-20909b98', 1.0, '1.0', '2025-07-03'
+SELECT 'gel loading dye Blue/orange 6X conc', 'LOT-48e14506', 1.0, '1.0', '2025-07-03'
         UNION ALL
-SELECT '100bp DNA lader with loadind dye(Blue/orange 6x)', 'LOT-fb3e6f0d', 1.0, '250.0', '2026-09-13'
+SELECT '100bp DNA lader with loadind dye(Blue/orange 6x)', 'LOT-59a18d37', 1.0, '250.0', '2026-09-13'
         UNION ALL
-SELECT 'cyan/orange loading buffer', 'LOT-9338cbe1', 2.0, '0.2', '2026-12-31'
+SELECT 'cyan/orange loading buffer', 'LOT-23b8ff99', 2.0, '0.2', '2026-12-31'
         UNION ALL
-SELECT '50bp DNA ladder', 'LOT-8ef44257', 1.0, '50.0', '2026-12-31'
+SELECT '50bp DNA ladder', 'LOT-6a46835f', 1.0, '50.0', '2026-12-31'
         UNION ALL
-SELECT '100bp DNA ladder', 'LOT-e7f1b310', 2.0, '', '2026-12-31'
+SELECT '100bp DNA ladder', 'LOT-d7f663db', 2.0, '', '2026-12-31'
         UNION ALL
-SELECT '5x DNA loading buffer (blue)', 'LOT-44827642', 1.0, '', '2026-12-31'
+SELECT '5x DNA loading buffer (blue)', 'LOT-2ff41da5', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'blue/orange 6x oading dye', 'LOT-defbef3b', 5.0, '1.0', '2017-09-24'
+SELECT 'blue/orange 6x oading dye', 'LOT-3c0a3b40', 5.0, '1.0', '2017-09-24'
         UNION ALL
-SELECT 'ultra low rabge DNA ladder', 'LOT-8d770fc0', 1.0, '50.0', '2026-12-31'
+SELECT 'ultra low rabge DNA ladder', 'LOT-089bbe47', 1.0, '50.0', '2026-12-31'
         UNION ALL
-SELECT '1kb + DNA lader', 'LOT-e458e12d', 2.0, '250.0', '2026-12-31'
+SELECT '1kb + DNA lader', 'LOT-08f1a08f', 2.0, '250.0', '2026-12-31'
         UNION ALL
-SELECT 'hyper ladder 100bp 100 lans', 'LOT-526d5ed1', 2.0, '', '2026-12-31'
+SELECT 'hyper ladder 100bp 100 lans', 'LOT-d93acf21', 2.0, '', '2026-12-31'
         UNION ALL
-SELECT 'primer IPCF -2.5 mM', 'LOT-889f5408', 2.0, '1.0', '2022-02-01'
+SELECT 'primer IPCF -2.5 mM', 'LOT-5fe47f0e', 2.0, '1.0', '2022-02-01'
         UNION ALL
-SELECT 'primer west -26uM', 'LOT-490ffaba', 1.0, '1.0', '2022-02-01'
+SELECT 'primer west -26uM', 'LOT-5f497166', 1.0, '1.0', '2022-02-01'
         UNION ALL
-SELECT 'primer WT (west) 25uM', 'LOT-073ddba3', 1.0, '1.0', '2022-02-01'
+SELECT 'primer WT (west) 25uM', 'LOT-13419b03', 1.0, '1.0', '2022-02-01'
         UNION ALL
-SELECT 'primer WT (east) ', 'LOT-628af9c1', 1.0, '1.0', '2022-02-01'
+SELECT 'primer WT (east) ', 'LOT-935b30d8', 1.0, '1.0', '2022-02-01'
         UNION ALL
-SELECT 'primer east ', 'LOT-5351abfe', 1.0, '1.0', '2022-02-01'
+SELECT 'primer east ', 'LOT-5f8ce465', 1.0, '1.0', '2022-02-01'
         UNION ALL
-SELECT 'primer ALT rev ', 'LOT-2bb2a957', 2.0, '1.0', '2022-02-01'
+SELECT 'primer ALT rev ', 'LOT-b2a0aebc', 2.0, '1.0', '2022-02-01'
         UNION ALL
-SELECT 'An.gambiae RSP-ST', 'LOT-ec4da5ad', 1.0, '10.0', '2020-11-23'
+SELECT 'An.gambiae RSP-ST', 'LOT-ac4503d3', 1.0, '10.0', '2020-11-23'
         UNION ALL
-SELECT 'An.coluzzii AKDR', 'LOT-968a1570', 1.0, '10.0', '2020-11-24'
+SELECT 'An.coluzzii AKDR', 'LOT-62a77c63', 1.0, '10.0', '2020-11-24'
         UNION ALL
-SELECT 'ITS2A (1) ', 'LOT-f20c0d22', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'ITS2A (1) ', 'LOT-7aab3b09', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'ITS2-Steph-R(1) ', 'LOT-434c5218', 1.0, 'lyophilized', '2022-05-25'
+SELECT 'ITS2-Steph-R(1) ', 'LOT-a8719e4a', 1.0, 'lyophilized', '2022-05-25'
         UNION ALL
-SELECT 'QD', 'LOT-9959dacd', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'QD', 'LOT-d5ece5c6', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'UN', 'LOT-83ebdf66', 2.0, 'lyophilized', '2026-12-31'
+SELECT 'UN', 'LOT-b433038d', 2.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'GA', 'LOT-df86d6f0', 2.0, 'lyophilized', '2026-12-31'
+SELECT 'GA', 'LOT-469edde1', 2.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'AR', 'LOT-876ef8c9', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'AR', 'LOT-49264b7e', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'BW', 'LOT-22764cfa', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'BW', 'LOT-93eddfdc', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'QDA', 'LOT-47d9aafd', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'QDA', 'LOT-e528996d', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'ME', 'LOT-728625cc', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'ME', 'LOT-6771dd23', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'GA RV', 'LOT-5a312e22', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'GA RV', 'LOT-55c08e13', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT 'AR RV', 'LOT-ee9ae39a', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'AR RV', 'LOT-2bc25bc7', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT 'QDA RV', 'LOT-7e1e5f94', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'QDA RV', 'LOT-feecf109', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT 'ME RV', 'LOT-742629bf', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'ME RV', 'LOT-f2da0e25', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT 'QD RV', 'LOT-e7a3a273', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'QD RV', 'LOT-e939e55e', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT 'UN FW', 'LOT-9bfcfe88', 1.0, 'stock (100mM)', '2026-12-31'
+SELECT 'UN FW', 'LOT-877f2c2a', 1.0, 'stock (100mM)', '2026-12-31'
         UNION ALL
-SELECT 'IMP-S1', 'LOT-f7405e60', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'IMP-S1', 'LOT-43f8b606', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'QD-3T', 'LOT-eb6f1dff', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'QD-3T', 'LOT-c30ec6db', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'IMP-UN', 'LOT-7e662ea4', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'IMP-UN', 'LOT-0f24bb44', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'IMP-M1', 'LOT-db35c28d', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'IMP-M1', 'LOT-6bb2dbb2', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'AR-3T', 'LOT-2a74babe', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'AR-3T', 'LOT-e89b5be6', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'GA-3T', 'LOT-67365d99', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'GA-3T', 'LOT-0a5fc754', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'ME-3T', 'LOT-764061ff', 1.0, 'lyophilized', '2026-12-31'
+SELECT 'ME-3T', 'LOT-21e64174', 1.0, 'lyophilized', '2026-12-31'
         UNION ALL
-SELECT 'An. arabiensis Dong 5 F211', 'LOT-740d19b7', 1.0, '', '2026-12-31'
+SELECT 'An. arabiensis Dong 5 F211', 'LOT-21c7e7cf', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'An. merus, Maf F185', 'LOT-77427c20', 1.0, '', '2026-12-31'
+SELECT 'An. merus, Maf F185', 'LOT-95c94332', 1.0, '', '2026-12-31'
         UNION ALL
-SELECT 'An. quadriannus, Sangwe, F180', 'LOT-8b7c020c', 1.0, '', '2026-12-31'
+SELECT 'An. quadriannus, Sangwe, F180', 'LOT-cf676350', 1.0, '', '2026-12-31'
 )
 INSERT INTO clinlims.inventory_lot (
     id, fhir_uuid, inventory_item_id, lot_number, initial_quantity, current_quantity,

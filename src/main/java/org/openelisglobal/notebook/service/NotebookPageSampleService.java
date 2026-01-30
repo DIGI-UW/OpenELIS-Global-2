@@ -223,16 +223,17 @@ public interface NotebookPageSampleService extends BaseObjectService<NotebookPag
 
     /**
      * Bulk update status for multiple samples with optional pathway-based routing.
-     * Supports generic pathway routing where samples can be routed to different pages
-     * based on their pathway selection stored in JSONB data.
+     * Supports generic pathway routing where samples can be routed to different
+     * pages based on their pathway selection stored in JSONB data.
      *
-     * @param pageId           the notebook page ID
-     * @param sampleIds        list of sample item IDs to update
-     * @param status           the new status
-     * @param userId           the user performing the update
-     * @param pathwayRouting   if true, apply pathway-based routing logic
-     * @param sourcePageName   the source page name (used to find next page for path_a)
-     * @param targetPageName   the target page name (destination for path_b samples)
+     * @param pageId         the notebook page ID
+     * @param sampleIds      list of sample item IDs to update
+     * @param status         the new status
+     * @param userId         the user performing the update
+     * @param pathwayRouting if true, apply pathway-based routing logic
+     * @param sourcePageName the source page name (used to find next page for
+     *                       path_a)
+     * @param targetPageName the target page name (destination for path_b samples)
      * @return number of records updated
      */
     int bulkUpdateStatusWithPathwayRouting(Integer pageId, List<Integer> sampleIds, Status status, String userId,
@@ -243,13 +244,14 @@ public interface NotebookPageSampleService extends BaseObjectService<NotebookPag
      * pathway-based routing. Supports composite sample IDs (e.g., "123_cassette_0")
      * used in pathology workflow pages.
      *
-     * @param pageId           the notebook page ID
-     * @param sampleIds        list of sample item IDs as Strings to update
-     * @param status           the new status
-     * @param userId           the user performing the update
-     * @param pathwayRouting   if true, apply pathway-based routing logic
-     * @param sourcePageName   the source page name (used to find next page for path_a)
-     * @param targetPageName   the target page name (destination for path_b samples)
+     * @param pageId         the notebook page ID
+     * @param sampleIds      list of sample item IDs as Strings to update
+     * @param status         the new status
+     * @param userId         the user performing the update
+     * @param pathwayRouting if true, apply pathway-based routing logic
+     * @param sourcePageName the source page name (used to find next page for
+     *                       path_a)
+     * @param targetPageName the target page name (destination for path_b samples)
      * @return number of records updated
      */
     int bulkUpdateStatusStringWithPathwayRouting(Integer pageId, List<String> sampleIds, Status status, String userId,
