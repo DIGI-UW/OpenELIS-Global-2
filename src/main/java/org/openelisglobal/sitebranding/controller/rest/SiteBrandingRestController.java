@@ -21,6 +21,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -330,10 +331,10 @@ public class SiteBrandingRestController extends BaseRestController {
 
             // Serve file
             Resource resource = new FileSystemResource(logoPath);
-            String contentType = getContentType(logoPath);
+            MediaType contentType = MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM);
 
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.parseMediaType(contentType));
+            headers.setContentType(contentType);
             headers.setContentDispositionFormData("inline", resource.getFilename());
             headers.setCacheControl("public, max-age=300");
             headers.setETag(etag);
@@ -359,23 +360,6 @@ public class SiteBrandingRestController extends BaseRestController {
         default:
             return null;
         }
-    }
-
-    /**
-     * Get content type based on file extension
-     */
-    private String getContentType(String filePath) {
-        String lowerPath = filePath.toLowerCase();
-        if (lowerPath.endsWith(".png")) {
-            return "image/png";
-        } else if (lowerPath.endsWith(".svg")) {
-            return "image/svg+xml";
-        } else if (lowerPath.endsWith(".jpg") || lowerPath.endsWith(".jpeg")) {
-            return "image/jpeg";
-        } else if (lowerPath.endsWith(".ico")) {
-            return "image/x-icon";
-        }
-        return "application/octet-stream";
     }
 
     /**
