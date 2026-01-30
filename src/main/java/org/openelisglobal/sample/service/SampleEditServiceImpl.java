@@ -8,7 +8,6 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
@@ -23,7 +22,6 @@ import org.openelisglobal.common.services.registration.ResultUpdateRegister;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
-import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dataexchange.orderresult.OrderResponseWorker.Event;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
@@ -112,8 +110,7 @@ public class SampleEditServiceImpl implements SampleEditService {
     NoteService noteService;
     @Autowired
     private SampleStorageService sampleStorageService;
-    @Autowired
-    private FhirTransformService fhirTransformService;
+    private List<String> analysisList = new ArrayList<>();
 
     @Transactional
     @Override
@@ -313,11 +310,7 @@ public class SampleEditServiceImpl implements SampleEditService {
         request.getSession().setAttribute("lastAccessionNumber", updatedSample.getAccessionNumber());
         request.getSession().setAttribute("lastPatientId", patient.getId());
 
-        try {
-            fhirTransformService.transformAnalysisByIds(analysisIds);
-        } catch (Exception e) {
-            LogEvent.logError(e);
-        }
+        analysisList = analysisIds;
     }
 
     private void addExternalResultsToDeleteList(Analysis analysis, Patient patient, Sample updatedSample,
@@ -578,5 +571,10 @@ public class SampleEditServiceImpl implements SampleEditService {
                         e.getMessage(), e);
             }
         }
+    }
+
+    @Override
+    public List<String> getUpdatedAnalysisList() {
+        return analysisList;
     }
 }
