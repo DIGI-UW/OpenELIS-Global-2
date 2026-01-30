@@ -67,13 +67,14 @@
         <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
         <!-- AnalyzerConfiguration, AnalyzerError, CustomFieldType: annotation-based (no XML entity refs) -->
         <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerField</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
         <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
 
         <!-- RS232 Serial Port Configuration entity (011-madagascar-analyzer-integration M2) -->
         <class>org.openelisglobal.analyzer.valueholder.SerialPortConfiguration</class>
-        <!-- AnalyzerField, AnalyzerFieldMapping, QualitativeResultMapping, UnitMapping: XML-only in hibernate.cfg.xml
+        <!-- AnalyzerFieldMapping, QualitativeResultMapping, UnitMapping: XML-only in hibernate.cfg.xml
              (Pending migration in chore/011-analyzer-xml-to-annotations) -->
 
         <properties>

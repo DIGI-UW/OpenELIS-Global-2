@@ -1,6 +1,15 @@
 package org.openelisglobal.analyzer.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
 
@@ -8,28 +17,42 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * AnalyzerField entity - Represents a specific field or code emitted by an
  * analyzer (e.g., test code, measurement ID, qualifier field) that can be
  * mapped to OpenELIS concepts.
- * 
- * This entity is mapped via XML (AnalyzerField.hbm.xml) to match the legacy
- * mapping approach used by other analyzer entities.
+ *
+ * Migrated to JPA annotations in Phase 2A
+ * (chore/011-analyzer-xml-to-annotations).
  */
+@Entity
+@Table(name = "analyzer_field")
 public class AnalyzerField extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @Column(name = "id", length = 36, nullable = false)
     private String id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "analyzer_id", nullable = false)
     private Analyzer analyzer;
 
+    @Column(name = "field_name", length = 255, nullable = false)
     private String fieldName;
 
+    @Column(name = "astm_ref", length = 50)
     private String astmRef;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "field_type")
     private FieldType fieldType;
 
+    @Column(name = "unit", length = 50)
     private String unit;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "custom_field_type_id")
     private CustomFieldType customFieldType;
 
+    @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
     @PrePersist
