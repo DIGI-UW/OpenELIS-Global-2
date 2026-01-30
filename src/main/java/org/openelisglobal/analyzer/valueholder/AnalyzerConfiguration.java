@@ -63,6 +63,12 @@ public class AnalyzerConfiguration extends BaseObject<String> {
     @Enumerated(EnumType.STRING)
     private AnalyzerStatus status = AnalyzerStatus.SETUP;
 
+    @Column(name = "identifier_pattern", length = 255)
+    private String identifierPattern;
+
+    @Column(name = "is_generic_plugin", nullable = false)
+    private boolean genericPlugin = false;
+
     @Column(name = "last_activated_date")
     @Temporal(TemporalType.TIMESTAMP)
     private Date lastActivatedDate;
@@ -130,6 +136,22 @@ public class AnalyzerConfiguration extends BaseObject<String> {
 
     public void setStatus(AnalyzerStatus status) {
         this.status = status;
+    }
+
+    public String getIdentifierPattern() {
+        return identifierPattern;
+    }
+
+    public void setIdentifierPattern(String identifierPattern) {
+        this.identifierPattern = identifierPattern;
+    }
+
+    public boolean isGenericPlugin() {
+        return genericPlugin;
+    }
+
+    public void setGenericPlugin(boolean genericPlugin) {
+        this.genericPlugin = genericPlugin;
     }
 
     public Date getLastActivatedDate() {
