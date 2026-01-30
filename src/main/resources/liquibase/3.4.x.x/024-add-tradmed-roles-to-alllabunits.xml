@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================================= -->
+    <!-- ADD TMMRD ROLES TO ALLLABUNITS                                         -->
+    <!-- Ensures admin users get automatic access to Traditional Medicine roles -->
+    <!-- ======================================================================= -->
+
+    <changeSet id="add-tradmed-roles-to-alllabunits" author="openelis-admin-access">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="lab_roles" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.lab_unit_role_map WHERE lab_unit = 'AllLabUnits'
+            </sqlCheck>
+            <sqlCheck expectedResult="5">
+                SELECT COUNT(*) FROM clinlims.system_role
+                WHERE name IN ('TMMRD Lab Technician', 'TMMRD Researcher', 'TMMRD Pharmacognosist', 'TMMRD Lab Manager', 'TMMRD Principal Investigator')
+            </sqlCheck>
+            <!-- Only run if TMMRD roles are not already in AllLabUnits -->
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.lab_roles lr
+                JOIN clinlims.system_role sr ON lr.role::int = sr.id
+                WHERE lr.lab_unit_role_map_id = (SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'AllLabUnits')
+                AND sr.name IN ('TMMRD Lab Technician', 'TMMRD Researcher', 'TMMRD Pharmacognosist', 'TMMRD Lab Manager', 'TMMRD Principal Investigator')
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Traditional Medicine roles to AllLabUnits so admin users get automatic access (per TMMRD SRS Section 11)</comment>
+
+        <!-- TMMRD Lab Technician -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'AllLabUnits')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'TMMRD Lab Technician')"/>
+        </insert>
+
+        <!-- TMMRD Researcher -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'AllLabUnits')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'TMMRD Researcher')"/>
+        </insert>
+
+        <!-- TMMRD Pharmacognosist -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'AllLabUnits')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'TMMRD Pharmacognosist')"/>
+        </insert>
+
+        <!-- TMMRD Lab Manager -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'AllLabUnits')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'TMMRD Lab Manager')"/>
+        </insert>
+
+        <!-- TMMRD Principal Investigator -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'AllLabUnits')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'TMMRD Principal Investigator')"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

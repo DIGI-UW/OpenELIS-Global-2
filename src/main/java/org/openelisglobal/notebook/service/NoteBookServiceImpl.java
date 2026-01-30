@@ -1269,7 +1269,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         // Check for final storage pages by title
         if (title.contains("storage") || title.contains("inventory")) {
-            // Verify this is not bacteriology temporary storage by checking notebook type
+            // Verify this is not bacteriology or traditional medicine temporary storage by
+            // checking notebook type
             NoteBook notebook = page.getNotebook();
             if (notebook != null) {
                 Hibernate.initialize(notebook);
@@ -1286,6 +1287,18 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                     }
                     // Early storage pages (order <= 5) in bacteriology are temporary storage
                     if (page.getOrder() != null && page.getOrder() <= 5) {
+                        return false;
+                    }
+                }
+                // For traditional medicine, "Sample Storage & Herbarium Placement" (order 3) is
+                // TEMPORARY storage - samples should proceed to "Sample Preparation for
+                // Analysis" (page 4)
+                // NOT skip to archiving. Only the final page or higher is final storage.
+                // Check for "Traditional & Modern Medicine Research Lab" or "tmmrd"
+                if ((notebookTitle.contains("traditional") && notebookTitle.contains("medicine"))
+                        || notebookTitle.contains("tmmrd")) {
+                    // Only pages after formulation (order > 7) are final storage pages
+                    if (page.getOrder() != null && page.getOrder() <= 7) {
                         return false;
                     }
                 }
@@ -1320,6 +1333,13 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                         || notebookTitle.contains("neglected tropical")) {
                     // In MNTD, order 5 is "Aliquoting / Bulk Sample Import", not storage
                     // Samples should proceed to "Processing & Quality Control" (page 6)
+                    return false;
+                }
+                if ((notebookTitle.contains("traditional") && notebookTitle.contains("medicine"))
+                        || notebookTitle.contains("tmmrd")) {
+                    // In Traditional Medicine, order 5 is "Extraction, Filtration & Concentration",
+                    // not storage
+                    // Samples should proceed to "Analytical Pathways" (page 6)
                     return false;
                 }
             }

@@ -790,4 +790,160 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
     public NotebookPageSample getBySampleItemIdAndPageId(String sampleItemId, Integer pageId) {
         return baseObjectDAO.getBySampleItemIdAndPageId(sampleItemId, pageId);
     }
+
+    @Override
+    @Transactional
+    public int bulkUpdateStatusWithPathwayRouting(Integer pageId, List<Integer> sampleIds, Status status, String userId,
+            Boolean pathwayRouting, String sourcePageName, String targetPageName) {
+        // If pathway routing is not enabled, delegate to standard bulkUpdateStatus
+        if (pathwayRouting == null || !pathwayRouting) {
+            return bulkUpdateStatus(pageId, sampleIds, status, userId);
+        }
+
+        LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatusWithPathwayRouting",
+                "Pathway routing enabled: sourcePageName=" + sourcePageName + ", targetPageName=" + targetPageName);
+
+        // Delegate to the core implementation with pathway parameters
+        return bulkUpdateStatusWithPathwayRoutingInternal(pageId, sampleIds, status, userId, sourcePageName,
+                targetPageName);
+    }
+
+    @Override
+    @Transactional
+    public int bulkUpdateStatusStringWithPathwayRouting(Integer pageId, List<String> sampleIds, Status status,
+            String userId, Boolean pathwayRouting, String sourcePageName, String targetPageName) {
+        // If pathway routing is not enabled, delegate to standard bulkUpdateStatusString
+        if (pathwayRouting == null || !pathwayRouting) {
+            return bulkUpdateStatusString(pageId, sampleIds, status, userId);
+        }
+
+        LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatusStringWithPathwayRouting",
+                "Pathway routing enabled: sourcePageName=" + sourcePageName + ", targetPageName=" + targetPageName);
+
+        // For now, convert to integer-based handling
+        // In a future enhancement, this can be made more efficient
+        List<Integer> intSampleIds = new java.util.ArrayList<>();
+        for (String sampleId : sampleIds) {
+            try {
+                intSampleIds.add(Integer.parseInt(sampleId));
+            } catch (NumberFormatException e) {
+                LogEvent.logWarn(this.getClass().getName(), "bulkUpdateStatusStringWithPathwayRouting",
+                        "Could not parse sample ID as integer: " + sampleId + ", skipping for pathway routing");
+            }
+        }
+
+        return bulkUpdateStatusWithPathwayRoutingInternal(pageId, intSampleIds, status, userId, sourcePageName,
+                targetPageName);
+    }
+
+    /**
+     * Internal implementation of pathway-based routing. Routes samples to different
+     * pages based on their pathway selection (analyticalPathwayId in JSONB data).
+     *
+     * @param pageId        the source page ID
+     * @param sampleIds     list of sample item IDs
+     * @param status        the new status
+     * @param userId        the user performing the update
+     * @param sourcePageName the source page name (used to find next page)
+     * @param targetPageName the target page name (for path_b routing)
+     * @return number of samples updated
+     */
+    private int bulkUpdateStatusWithPathwayRoutingInternal(Integer pageId, List<Integer> sampleIds, Status status,
+            String userId, String sourcePageName, String targetPageName) {
+        int totalUpdated = 0;
+        SystemUser user = systemUserService.get(userId);
+
+        // Get source page and target page by name
+        NoteBookPage sourcePage = noteBookService.getPage(pageId);
+        if (sourcePage == null) {
+            LogEvent.logError(this.getClass().getName(), "bulkUpdateStatusWithPathwayRoutingInternal",
+                    "Source page not found: " + pageId);
+            return 0;
+        }
+
+        NoteBookPage nextPage = noteBookService.getNextPage(pageId);
+        NoteBookPage targetPageForPathB = null;
+
+        // Find target page by name
+        if (sourcePage.getNotebook() != null) {
+            org.hibernate.Hibernate.initialize(sourcePage.getNotebook().getPages());
+            java.util.List<NoteBookPage> allPages = sourcePage.getNotebook().getPages();
+            if (allPages != null) {
+                for (NoteBookPage p : allPages) {
+                    if (targetPageName != null && p.getTitle() != null
+                            && p.getTitle().contains(targetPageName)) {
+                        targetPageForPathB = p;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (targetPageForPathB == null) {
+            LogEvent.logWarn(this.getClass().getName(), "bulkUpdateStatusWithPathwayRoutingInternal",
+                    "Target page not found by name: " + targetPageName + ", will use default routing");
+        }
+
+        // Update status on current page
+        int updated = baseObjectDAO.bulkUpdateStatus(pageId, sampleIds, status);
+        totalUpdated += updated;
+
+        // Update completion info
+        if (status == Status.COMPLETED) {
+            updateCompletionInfo(pageId, sampleIds, user);
+
+            // Process pathway-based routing for completed samples
+            for (Integer sampleId : sampleIds) {
+                NoteBookPage targetPage = nextPage; // default to next page (path_a)
+
+                // Get sample data to check pathway selection
+                NotebookPageSample sourcePageSample = getByPageIdAndSampleItemId(pageId, sampleId);
+                if (sourcePageSample != null && sourcePageSample.getData() != null) {
+                    Map<String, Object> data = sourcePageSample.getData();
+                    String selectedPathway = (String) data.get("analyticalPathwayId");
+
+                    // If sample selected path_b and we found the target page, route to target page
+                    if ("path_b".equalsIgnoreCase(selectedPathway) && targetPageForPathB != null) {
+                        targetPage = targetPageForPathB;
+                        LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatusWithPathwayRoutingInternal",
+                                "Sample " + sampleId + " with pathway=" + selectedPathway + " routed to target page: "
+                                        + targetPageForPathB.getTitle());
+                    } else if ("path_a".equalsIgnoreCase(selectedPathway)) {
+                        LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatusWithPathwayRoutingInternal",
+                                "Sample " + sampleId + " with pathway=" + selectedPathway + " routed to next page: "
+                                        + (nextPage != null ? nextPage.getTitle() : "null"));
+                    }
+                }
+
+                // Create record on target page if it doesn't already exist
+                if (targetPage != null) {
+                    NotebookPageSample existingOnTargetPage = getByPageIdAndSampleItemId(targetPage.getId(),
+                            sampleId);
+                    if (existingOnTargetPage == null) {
+                        // Get source data to copy
+                        NotebookPageSample sourceSample = getByPageIdAndSampleItemId(pageId, sampleId);
+                        Map<String, Object> sourceData = null;
+                        if (sourceSample != null && sourceSample.getData() != null) {
+                            sourceData = new HashMap<>(sourceSample.getData());
+                        }
+
+                        // Create PENDING record on target page
+                        NotebookPageSample targetPageNps = new NotebookPageSample();
+                        targetPageNps.setNotebookPage(targetPage);
+                        targetPageNps.setSampleItemId(sampleId.toString());
+                        targetPageNps.setStatus(Status.PENDING);
+                        if (sourceData != null) {
+                            targetPageNps.setData(sourceData);
+                        }
+                        insert(targetPageNps);
+                        LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatusWithPathwayRoutingInternal",
+                                "Created PENDING record for sample " + sampleId + " on page: "
+                                        + targetPage.getTitle());
+                    }
+                }
+            }
+        }
+
+        return totalUpdated;
+    }
 }
