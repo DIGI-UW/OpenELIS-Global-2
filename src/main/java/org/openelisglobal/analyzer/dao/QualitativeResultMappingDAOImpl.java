@@ -1,7 +1,6 @@
 package org.openelisglobal.analyzer.dao;
 
 import java.util.List;
-import java.util.UUID;
 import org.hibernate.Session;
 import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -10,8 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * DAO implementation for QualitativeResultMapping. Uses XML-only mapping
- * (QualitativeResultMapping.hbm.xml).
+ * DAO implementation for QualitativeResultMapping. Entity uses JPA annotations.
  */
 @Component
 @Transactional
@@ -43,13 +41,7 @@ public class QualitativeResultMappingDAOImpl extends BaseDAOImpl<QualitativeResu
 
     @Override
     public String insert(QualitativeResultMapping mapping) {
-        // Generate UUID since @PrePersist doesn't work with XML-mapped entities
-        if (mapping.getId() == null || mapping.getId().trim().isEmpty()) {
-            mapping.setId(UUID.randomUUID().toString());
-        }
-        if (mapping.getLastupdated() == null) {
-            mapping.setLastupdatedFields();
-        }
+        // @PrePersist in entity handles UUID and lastupdated
         return super.insert(mapping);
     }
 }
