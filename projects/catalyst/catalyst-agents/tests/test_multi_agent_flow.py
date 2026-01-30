@@ -5,7 +5,6 @@ These tests verify that the RouterAgent correctly orchestrates the
 multi-agent workflow when in multi-agent mode.
 """
 
-
 import pytest
 from a2a.types import Part, TextPart
 

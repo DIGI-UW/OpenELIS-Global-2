@@ -3,7 +3,7 @@ def get_schema() -> str:
     return "sample\nanalysis\npatient\norganization\ntest"
 
 
-def get_query_context(query: str) -> dict:
+def get_query_context(_query: str) -> dict:
     """
     Get relevant schema context for a query (M0.2 mock).
 

@@ -32,8 +32,7 @@ def get_schema_context(user_query: str) -> dict[str, Any]:
             - tables: List of relevant table names
             - schema: Schema metadata (DDL, relationships, etc.)
     """
-    schema_context = mcp_client.get_query_context(user_query)
-    return schema_context
+    return mcp_client.get_query_context(user_query)
 
 
 class SchemaAgentExecutor(AgentExecutor):

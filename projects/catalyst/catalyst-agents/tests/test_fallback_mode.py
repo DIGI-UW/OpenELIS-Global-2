@@ -5,7 +5,6 @@ These tests verify that RouterAgent can fall back to using CatalystAgent
 directly when CATALYST_AGENT_MODE=single.
 """
 
-
 import pytest
 from a2a.types import Part, TextPart
 

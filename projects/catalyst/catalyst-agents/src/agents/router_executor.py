@@ -69,18 +69,15 @@ class RouterAgentExecutor(AgentExecutor):
         # Step 1: Get schema context from SchemaAgent
         schema_parts = await self._call_agent(self.schema_url, query)
 
-        # Extract schema context from response
-        schema_context = ""
+        # Extract schema context from response (for future M1+ task artifact use)
         for part in schema_parts:
             if hasattr(part.root, "text"):
-                schema_context = part.root.text
+                _ = part.root.text
                 break
 
         # Step 2: Call SQLGenAgent with query (SQLGenAgent will use its own schema context for now)
         # In M1+, we'll pass the schema context explicitly via task artifacts
-        sql_parts = await self._call_agent(self.sqlgen_url, query)
-
-        return sql_parts
+        return await self._call_agent(self.sqlgen_url, query)
 
     async def execute(
         self,
