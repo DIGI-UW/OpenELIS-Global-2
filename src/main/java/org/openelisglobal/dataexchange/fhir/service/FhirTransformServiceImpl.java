@@ -110,6 +110,7 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -643,7 +644,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             task.setStatus(TaskStatus.NULL);
         }
         task.setAuthoredOn(sample.getEnteredDate());
-        task.setPriority(TaskPriority.ROUTINE);
+        task.setPriority(convertToTaskPriority(sample.getPriority()));
         task.addIdentifier(
                 this.createIdentifier(fhirConfig.getOeFhirSystem() + "/order_uuid", sample.getFhirUuidAsString()));
         task.addIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/order_accessionNumber",
@@ -661,6 +662,44 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         task.setFor(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
 
         return task;
+    }
+
+    private TaskPriority convertToTaskPriority(OrderPriority orderPriority) {
+        if (orderPriority == null) {
+            return TaskPriority.ROUTINE;
+        }
+        switch (orderPriority) {
+        case ROUTINE:
+            return TaskPriority.ROUTINE;
+        case ASAP:
+            return TaskPriority.ASAP;
+        case STAT:
+        case FUTURE_STAT:
+            return TaskPriority.STAT;
+        case TIMED:
+            return TaskPriority.URGENT;
+        default:
+            return TaskPriority.ROUTINE;
+        }
+    }
+
+    private ServiceRequestPriority convertToServiceRequestPriority(OrderPriority orderPriority) {
+        if (orderPriority == null) {
+            return ServiceRequestPriority.ROUTINE;
+        }
+        switch (orderPriority) {
+        case ROUTINE:
+            return ServiceRequestPriority.ROUTINE;
+        case ASAP:
+            return ServiceRequestPriority.ASAP;
+        case STAT:
+        case FUTURE_STAT:
+            return ServiceRequestPriority.STAT;
+        case TIMED:
+            return ServiceRequestPriority.URGENT;
+        default:
+            return ServiceRequestPriority.ROUTINE;
+        }
     }
 
     private DateType transformToDateElement(String strDate) throws ParseException {
@@ -946,7 +985,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         if (program != null && !GenericValidator.isBlankOrNull(program.getValue())) {
             serviceRequest.addCategory(transformSampleProgramToCodeableConcept(program));
         }
-        serviceRequest.setPriority(ServiceRequestPriority.ROUTINE);
+        serviceRequest.setPriority(convertToServiceRequestPriority(sample.getPriority()));
         serviceRequest.setCode(transformTestToCodeableConcept(test.getId()));
         serviceRequest.setAuthoredOn(new Date());
         for (Note note : noteService.getNotes(analysis)) {
