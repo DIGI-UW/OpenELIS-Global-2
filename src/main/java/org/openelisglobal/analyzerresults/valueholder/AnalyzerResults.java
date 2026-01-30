@@ -26,9 +26,9 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * Migrated to JPA annotations in Phase 2B
- * (chore/011-analyzer-xml-to-annotations). Preserves legacy uppercase table and
- * mixed-case column names.
+ * Stores raw results from analyzer instruments before processing and
+ * validation. Uses legacy uppercase table name and mixed-case column
+ * conventions.
  */
 @Entity
 @Table(name = "ANALYZER_RESULTS")

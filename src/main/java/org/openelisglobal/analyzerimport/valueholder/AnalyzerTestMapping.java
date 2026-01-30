@@ -25,9 +25,8 @@ import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * Migrated to JPA annotations in Phase 2C
- * (chore/011-analyzer-xml-to-annotations). Uses composite primary key
- * (analyzerId + analyzerTestName).
+ * Maps analyzer-specific test names to OpenELIS test IDs. Uses composite
+ * primary key (@EmbeddedId) combining analyzerId and analyzerTestName.
  */
 @Entity
 @Table(name = "analyzer_test_map")

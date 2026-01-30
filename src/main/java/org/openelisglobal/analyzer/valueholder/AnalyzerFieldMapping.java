@@ -14,13 +14,10 @@ import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * AnalyzerFieldMapping entity - Represents the mapping configuration between an
- * AnalyzerField and one or more OpenELIS field entries, including mapping type
- * and activation state.
- *
- * Migrated to JPA annotations in Phase 3
- * (chore/011-analyzer-xml-to-annotations). Uses standard BaseObject versioning
- * pattern (lastupdated). Manual FKs converted to @ManyToOne relationships.
+ * Represents the mapping configuration between an AnalyzerField and OpenELIS
+ * field entries, including mapping type and activation state. Uses standard
+ * BaseObject versioning and @ManyToOne relationships for analyzer and field
+ * references.
  */
 @Entity
 @Table(name = "analyzer_field_mapping")
@@ -32,18 +29,15 @@ public class AnalyzerFieldMapping extends BaseObject<String> {
     @Column(name = "id", length = 36, nullable = false)
     private String id;
 
-    // Converted from manual FK to @ManyToOne relationship (Phase 3)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "analyzer_field_id", nullable = false)
     private AnalyzerField analyzerField;
 
-    // Converted from manual FK to @ManyToOne relationship (Phase 3)
-    // analyzerId uses LIMSStringNumberUserType in Analyzer entity
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "analyzer_id", nullable = false)
     private Analyzer analyzer;
 
-    // Polymorphic reference - kept as manual FK
+    // OpenELIS field ID - polymorphic reference to Test, Panel, Result, etc.
     @Column(name = "openelis_field_id", length = 36, nullable = false)
     private String openelisFieldId;
 
@@ -73,8 +67,9 @@ public class AnalyzerFieldMapping extends BaseObject<String> {
     private Long version = 0L;
 
     /**
-     * Generate UUID if not set. Now called by @PrePersist lifecycle hook. Also kept
-     * as public method for backward compatibility.
+     * Generates UUID for ID field if not set. Called automatically by
+     * JPA @PrePersist lifecycle hook. Public access maintained for explicit
+     * invocation if needed.
      */
     @PrePersist
     public void generateIdIfNeeded() {

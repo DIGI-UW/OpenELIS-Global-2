@@ -22,8 +22,8 @@ import java.util.Objects;
 import org.hibernate.annotations.Type;
 
 /**
- * Composite primary key for AnalyzerTestMapping. Migrated to JPA annotations in
- * Phase 2C (chore/011-analyzer-xml-to-annotations).
+ * Composite primary key for AnalyzerTestMapping, combining analyzer ID and
+ * analyzer-specific test name. Requires equals() and hashCode() implementation.
  */
 @Embeddable
 public class AnalyzerTestMappingPK implements Serializable {

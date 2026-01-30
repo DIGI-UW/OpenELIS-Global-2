@@ -14,12 +14,9 @@ import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * AnalyzerField entity - Represents a specific field or code emitted by an
- * analyzer (e.g., test code, measurement ID, qualifier field) that can be
- * mapped to OpenELIS concepts.
- *
- * Migrated to JPA annotations in Phase 2A
- * (chore/011-analyzer-xml-to-annotations).
+ * Represents a specific field or code emitted by an analyzer (e.g., test code,
+ * measurement ID, qualifier field) that can be mapped to OpenELIS concepts.
+ * Uses UUID-based primary key with automatic generation via @PrePersist.
  */
 @Entity
 @Table(name = "analyzer_field")
