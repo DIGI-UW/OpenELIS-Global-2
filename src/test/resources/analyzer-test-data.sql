@@ -9,13 +9,16 @@
 --   - No errors (clean state for testing initial workflow)
 -- This allows testing the complete workflow from newly-added analyzer to fully configured
 
+-- Ensure unqualified names resolve to clinlims (CI and local psql may differ)
+SET search_path TO clinlims;
+
 -- Note: This assumes the analyzer table already exists (legacy table)
 -- We'll create test analyzers with IDs starting from 1000 to avoid conflicts
 
--- Insert test analyzers (analyzer table has: id, name, analyzer_type, is_active, lastupdated)
+-- Insert test analyzers (analyzer table: id, name, analyzer_type, is_active, last_updated after Liquibase 047)
 -- Using INSERT ... ON CONFLICT DO NOTHING to allow re-running this script
 -- Note: analyzer_type must match form dropdown options: HEMATOLOGY, CHEMISTRY, IMMUNOLOGY, MICROBIOLOGY, OTHER
-INSERT INTO analyzer (id, name, analyzer_type, is_active, lastupdated)
+INSERT INTO analyzer (id, name, analyzer_type, is_active, last_updated)
 VALUES
   (1000, 'Mock Hematology Analyzer (ASTM Simulator)', 'HEMATOLOGY', true, NOW()),
   (1001, 'Chemistry Analyzer 1', 'CHEMISTRY', true, NOW()),

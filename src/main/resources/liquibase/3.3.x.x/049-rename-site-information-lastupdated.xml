@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="049-rename-site-information-lastupdated" author="jpa-migration">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="site_information" columnName="lastupdated" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Rename site_information.lastupdated to last_updated for consistency with BaseObject convention</comment>
+        <renameColumn schemaName="clinlims"
+            tableName="site_information"
+            oldColumnName="lastupdated"
+            newColumnName="last_updated"
+            columnDataType="DATE"/>
+        <rollback>
+            <renameColumn schemaName="clinlims"
+                tableName="site_information"
+                oldColumnName="last_updated"
+                newColumnName="lastupdated"
+                columnDataType="DATE"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

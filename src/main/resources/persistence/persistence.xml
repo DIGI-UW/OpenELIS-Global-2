@@ -77,8 +77,9 @@
 
         <!-- RS232 Serial Port Configuration entity (011-madagascar-analyzer-integration M2) -->
         <class>org.openelisglobal.analyzer.valueholder.SerialPortConfiguration</class>
-        <!-- QualitativeResultMapping, UnitMapping: XML-only in hibernate.cfg.xml
-             (Pending migration in chore/011-analyzer-xml-to-annotations) -->
+        <!-- Migrated from HBM to JPA annotations (004-astm-analyzer-mapping) -->
+        <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
 
         <properties>
             <property name="hibernate.cfg_xml_file"

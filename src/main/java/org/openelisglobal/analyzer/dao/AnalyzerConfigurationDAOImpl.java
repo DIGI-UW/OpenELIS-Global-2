@@ -1,7 +1,7 @@
 package org.openelisglobal.analyzer.dao;
 
-import java.util.Optional;
 import java.util.List;
+import java.util.Optional;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
@@ -100,9 +100,8 @@ public class AnalyzerConfigurationDAOImpl extends BaseDAOImpl<AnalyzerConfigurat
     @Override
     @Transactional(readOnly = true)
     public List<AnalyzerConfiguration> findGenericPluginConfigsWithPatterns() {
-        String hql = "SELECT ac FROM AnalyzerConfiguration ac " +
-                "JOIN FETCH ac.analyzer a " +
-                "WHERE ac.genericPlugin = true AND ac.identifierPattern IS NOT NULL";
+        String hql = "SELECT ac FROM AnalyzerConfiguration ac " + "JOIN FETCH ac.analyzer a "
+                + "WHERE ac.genericPlugin = true AND ac.identifierPattern IS NOT NULL";
         Query<AnalyzerConfiguration> query = entityManager.unwrap(Session.class).createQuery(hql,
                 AnalyzerConfiguration.class);
         return query.list();
