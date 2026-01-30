@@ -42,7 +42,6 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
 
     @Before
     public void setUp() throws Exception {
-        System.setProperty("test.environment", "true");
         // Load standard system user dataset (includes admin user)
         executeDataSetWithStateManagement("testdata/system-user.xml");
 

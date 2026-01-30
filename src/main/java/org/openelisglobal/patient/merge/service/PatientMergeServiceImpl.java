@@ -32,6 +32,7 @@ import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,6 +78,9 @@ public class PatientMergeServiceImpl implements PatientMergeService {
 
     @Autowired
     private FhirPersistanceService fhirPersistanceService;
+
+    @Value("${fhir.integration.enabled:false}")
+    private boolean fhirIntegrationEnabled;
 
     /**
      * Validates if two patients can be merged. Checks: same patient, patient not
@@ -351,7 +355,9 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         Patient mergedPatient = request.getPrimaryPatientId().equals(patient1.getId()) ? patient2 : patient1;
 
         // Validate FHIR consistency AFTER determining primary/merged
-        validateFhirConsistency(primaryPatient, mergedPatient);
+        if (fhirIntegrationEnabled) {
+            validateFhirConsistency(primaryPatient, mergedPatient);
+        }
 
         // Mark merged patient as inactive
         mergedPatient.setIsMerged(true);
@@ -400,19 +406,16 @@ public class PatientMergeServiceImpl implements PatientMergeService {
 
         // FR-016, FR-017: Update FHIR Patient links if both patients have FHIR
         // resources
-        // Skip FHIR operations in test environment (no FHIR server available)
-        if (!"true".equals(System.getProperty("test.environment"))) {
-            if (fhirPatientLinkService.hasFhirResource(primaryPatient.getId())
-                    && fhirPatientLinkService.hasFhirResource(mergedPatient.getId())) {
-                try {
-                    fhirPatientLinkService.updatePatientLinks(primaryPatient.getId(), mergedPatient.getId(),
-                            primaryPatient.getFhirUuidAsString(), mergedPatient.getFhirUuidAsString());
-                    LogEvent.logInfo(this.getClass().getName(), "executeMerge",
-                            "Successfully updated FHIR Patient links for merge: " + primaryPatient.getId() + " <- "
-                                    + mergedPatient.getId());
-                } catch (FhirLocalPersistingException e) {
-                    throw new IllegalStateException("FHIR link update failed during patient merge", e);
-                }
+        if (fhirIntegrationEnabled && fhirPatientLinkService.hasFhirResource(primaryPatient.getId())
+                && fhirPatientLinkService.hasFhirResource(mergedPatient.getId())) {
+            try {
+                fhirPatientLinkService.updatePatientLinks(primaryPatient.getId(), mergedPatient.getId(),
+                        primaryPatient.getFhirUuidAsString(), mergedPatient.getFhirUuidAsString());
+                LogEvent.logInfo(this.getClass().getName(), "executeMerge",
+                        "Successfully updated FHIR Patient links for merge: " + primaryPatient.getId() + " <- "
+                                + mergedPatient.getId());
+            } catch (FhirLocalPersistingException e) {
+                throw new IllegalStateException("FHIR link update failed during patient merge", e);
             }
         }
 
@@ -432,11 +435,6 @@ public class PatientMergeServiceImpl implements PatientMergeService {
      * IllegalStateException if merge would create inconsistent state.
      */
     private void validateFhirConsistency(Patient primaryPatient, Patient mergedPatient) {
-        // Skip FHIR validation during integration tests (no FHIR server available)
-        if ("true".equals(System.getProperty("test.environment"))) {
-            return;
-        }
-
         String primaryUuid = primaryPatient.getFhirUuidAsString();
         String mergedUuid = mergedPatient.getFhirUuidAsString();
 
@@ -538,7 +536,7 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         case "PC_NUMBER":
             return "PC Number";
         default:
-            return identityType;
+            return "identityType";
         }
     }
 }
