@@ -40,7 +40,8 @@ public class Analyzer extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
 
-    @Column(name = "script_id", length = 20)
+    @Column(name = "scrip_id", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String script_id;
 
     @Column(name = "name", length = 20)
