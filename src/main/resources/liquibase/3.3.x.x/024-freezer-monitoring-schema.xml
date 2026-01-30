@@ -386,7 +386,7 @@
         <insert schemaName="clinlims" tableName="site_information">
             <column name="id" valueSequenceNext="site_information_seq" />
             <column name="name" value="freezer.modbus.tcp.port" />
-            <column name="lastupdated" valueComputed="${now}" />
+            <column name="last_updated" valueComputed="${now}" />
             <column name="description" value="Modbus TCP port for freezer monitoring (default: 502)" />
             <column name="encrypted" value="false" />
             <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
@@ -399,7 +399,7 @@
         <insert schemaName="clinlims" tableName="site_information">
             <column name="id" valueSequenceNext="site_information_seq" />
             <column name="name" value="freezer.bacnet.udp.port" />
-            <column name="lastupdated" valueComputed="${now}" />
+            <column name="last_updated" valueComputed="${now}" />
             <column name="description" value="BACnet UDP port for freezer monitoring (default: 47808)" />
             <column name="encrypted" value="false" />
             <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />

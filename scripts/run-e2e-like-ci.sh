@@ -42,13 +42,9 @@ fi
 echo -e "${GREEN}✓ Containers running${NC}"
 echo ""
 
-# Step 2: Load test fixtures (EXACTLY like CI)
-echo -e "${YELLOW}[2/5] Loading test fixtures...${NC}"
-echo "  - Loading e2e-foundational-data.sql"
-docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims < src/test/resources/e2e-foundational-data.sql > /dev/null 2>&1 || true
-
-echo "  - Loading analyzer-test-data.sql"
-docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims < src/test/resources/analyzer-test-data.sql > /dev/null 2>&1 || true
+# Step 2: Load test fixtures (EXACTLY like CI - same files and ON_ERROR_STOP=on)
+echo -e "${YELLOW}[2/5] Loading test fixtures (CI parity)...${NC}"
+./scripts/load-ci-fixtures.sh -f build.docker-compose.yml
 echo -e "${GREEN}✓ Fixtures loaded${NC}"
 echo ""
 

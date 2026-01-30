@@ -7,8 +7,15 @@
  * SIMPLIFIED VERSION - Following analyzerHappyPathUserStories.cy.js patterns
  *
  * Execution:
- * - Development: npm run cy:run -- --spec "cypress/e2e/analyzerConfiguration.cy.js"
+ * - Development: npm run cy:spec "cypress/e2e/analyzerConfiguration.cy.js"
  * - CI/CD: npm run cy:run (full suite)
+ *
+ * Local debug (match CI):
+ *   1. Rebuild WAR: mvn clean install -DskipTests -Dmaven.test.skip=true
+ *   2. Reset Postgres: docker compose -f dev.docker-compose.yml down -v
+ *   3. Bring up: docker compose -f dev.docker-compose.yml up -d --force-recreate
+ *   4. Load CI fixtures: ./scripts/load-ci-fixtures.sh
+ *   5. Run: npm run cy:spec "cypress/e2e/analyzerConfiguration.cy.js"
  */
 
 let testAnalyzerId = null;
@@ -39,7 +46,7 @@ before("Setup test analyzer", () => {
     });
   });
 
-  // Create test analyzer via API
+  // Create test analyzer via API (ensures at least one exists even if fixture did not load)
   cy.request({
     method: "POST",
     url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
@@ -51,7 +58,6 @@ before("Setup test analyzer", () => {
       port: 5002,
       protocolVersion: "ASTM LIS2-A2",
       testUnitIds: [],
-      active: true,
     },
     failOnStatusCode: false,
   }).then((response) => {
@@ -59,10 +65,17 @@ before("Setup test analyzer", () => {
       `Create response: ${response.status} - ${JSON.stringify(response.body)}`,
     );
 
-    // The API returns the created analyzer directly with an "id" field
-    if (response.body?.id) {
+    if (response.status === 201 && response.body?.id) {
       testAnalyzerId = response.body.id;
       cy.log(`Created analyzer with ID: ${testAnalyzerId}`);
+    } else if (response.status !== 201) {
+      throw new Error(
+        `POST create analyzer failed: ${response.status} - ${JSON.stringify(response.body)}`,
+      );
+    } else if (!response.body?.id) {
+      throw new Error(
+        `POST create analyzer returned 201 but no id: ${JSON.stringify(response.body)}`,
+      );
     }
   });
 
@@ -74,10 +87,10 @@ before("Setup test analyzer", () => {
   }).then((response) => {
     expect(response.status).to.eq(200);
     expect(response.body).to.be.an("array");
-    expect(response.body.length).to.be.greaterThan(
-      0,
-      "No analyzers in database - test data required!",
-    );
+    expect(
+      response.body.length,
+      "No analyzers in database. Ensure analyzer-test-data.sql loaded (check CI step) or POST create succeeded.",
+    ).to.be.greaterThan(0);
 
     // Find our analyzer or use first available
     const ourAnalyzer = response.body.find(

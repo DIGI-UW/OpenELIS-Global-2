@@ -81,8 +81,8 @@ jobs:
 
       - name: Load test fixtures into database
         run: |
-          docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims < src/test/resources/e2e-foundational-data.sql
-          docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims < src/test/resources/analyzer-test-data.sql
+          docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims --set=ON_ERROR_STOP=on < src/test/resources/e2e-foundational-data.sql
+          docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims --set=ON_ERROR_STOP=on < src/test/resources/analyzer-test-data.sql
 
       - name: Run Frontend QA Workflow (Headless Chrome)
         run: npx cypress run --browser chrome --headless
