@@ -54,10 +54,11 @@ public interface AnalyzerConfigurationService extends BaseObjectService<Analyzer
     List<AnalyzerConfiguration> getAllWithAnalyzers();
 
     /**
-     * Find a generic-plugin AnalyzerConfiguration whose identifier_pattern matches the
-     * given analyzer identifier.
+     * Find a generic-plugin AnalyzerConfiguration whose identifier_pattern matches
+     * the given analyzer identifier.
      *
-     * @param analyzerIdentifier identifier extracted from inbound analyzer message (e.g. ASTM H-segment)
+     * @param analyzerIdentifier identifier extracted from inbound analyzer message
+     *                           (e.g. ASTM H-segment)
      * @return Optional matching AnalyzerConfiguration
      */
     Optional<AnalyzerConfiguration> findByIdentifierPatternMatch(String analyzerIdentifier);
