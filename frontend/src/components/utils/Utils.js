@@ -543,3 +543,61 @@ export const toBase64 = (file) =>
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
   });
+
+/**
+ * Converts a date to ISO format (yyyy-MM-dd).
+ * Accepts either a Date object or a display format string (MM/dd/yyyy or dd/MM/yyyy).
+ *
+ * @param {Date|string} date - Date object or date string in display format
+ * @returns {string} Date in ISO format (e.g., "2026-01-29") or empty string if invalid
+ */
+export function convertToISODate(date) {
+  if (!date) {
+    return "";
+  }
+
+  // Handle Date objects
+  if (date instanceof Date) {
+    if (isNaN(date.getTime())) {
+      return "";
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  // Handle string input
+  if (typeof date !== "string") {
+    return "";
+  }
+
+  // If already in ISO format (yyyy-MM-dd), return as-is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return date;
+  }
+
+  // Handle display formats with "/" separator
+  const parts = date.split("/");
+  if (parts.length !== 3) {
+    return "";
+  }
+
+  const [part1, part2, part3] = parts;
+
+  // Format: yyyy/MM/dd (year first)
+  if (part1.length === 4) {
+    return `${part1}-${part2.padStart(2, "0")}-${part3.padStart(2, "0")}`;
+  }
+
+  // Format: MM/dd/yyyy or dd/MM/yyyy (year last)
+  // Assume MM/dd/yyyy (US format) which is what CustomDatePicker returns
+  if (part3.length === 4) {
+    const month = part1.padStart(2, "0");
+    const day = part2.padStart(2, "0");
+    const year = part3;
+    return `${year}-${month}-${day}`;
+  }
+
+  return "";
+}

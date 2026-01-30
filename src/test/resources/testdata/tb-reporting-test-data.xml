@@ -1,0 +1,422 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Test data for TB Reporting Service Integration Tests -->
+<!-- Creates samples across all TB workflow pages with known values for metric
+    verification -->
+<!-- NOTE: JSONB 'data' column is populated via SQL in the test setup (DBUnit
+    doesn't support JSONB) -->
+<dataset>
+    <!-- ======================================================== -->
+    <!-- LOCALIZATION AND SAMPLE TYPE SETUP -->
+    <!-- ======================================================== -->
+    <localization id="200" description="Sputum"
+        english="Sputum" french="Crachat" />
+    <localization id="201" description="BAL" english="BAL"
+        french="LBA" />
+    <localization id="202" description="Pleural Fluid"
+        english="Pleural Fluid" french="Liquide Pleural" />
+
+    <type_of_sample id="200" description="Sputum" domain="H"
+        lastupdated="2024-01-01 12:00:00" local_abbrev="sputum"
+        is_active="true" sort_order="200" name_localization_id="200"
+        display_key="sample.type.Sputum" />
+    <type_of_sample id="201" description="BAL" domain="H"
+        lastupdated="2024-01-01 12:00:00" local_abbrev="bal" is_active="true"
+        sort_order="201" name_localization_id="201"
+        display_key="sample.type.BAL" />
+    <type_of_sample id="202" description="Pleural Fluid"
+        domain="H" lastupdated="2024-01-01 12:00:00" local_abbrev="pleural"
+        is_active="true" sort_order="202" name_localization_id="202"
+        display_key="sample.type.PleuralFluid" />
+
+    <!-- ======================================================== -->
+    <!-- PATIENT AND PERSON SETUP (10 patients) -->
+    <!-- ======================================================== -->
+    <person id="200" last_name="ReportTest" first_name="Patient1"
+        city="Addis Ababa" country="Ethiopia"
+        lastupdated="2024-01-01 12:00:00" />
+    <person id="201" last_name="ReportTest" first_name="Patient2"
+        city="Addis Ababa" country="Ethiopia"
+        lastupdated="2024-01-01 12:00:00" />
+    <person id="202" last_name="ReportTest" first_name="Patient3"
+        city="Dire Dawa" country="Ethiopia" lastupdated="2024-01-01 12:00:00" />
+    <person id="203" last_name="ReportTest" first_name="Patient4"
+        city="Dire Dawa" country="Ethiopia" lastupdated="2024-01-01 12:00:00" />
+    <person id="204" last_name="ReportTest" first_name="Patient5"
+        city="Bahir Dar" country="Ethiopia" lastupdated="2024-01-01 12:00:00" />
+    <person id="205" last_name="ReportTest" first_name="Patient6"
+        city="Bahir Dar" country="Ethiopia" lastupdated="2024-01-01 12:00:00" />
+    <person id="206" last_name="ReportTest" first_name="Patient7"
+        city="Hawassa" country="Ethiopia" lastupdated="2024-01-01 12:00:00" />
+    <person id="207" last_name="ReportTest" first_name="Patient8"
+        city="Hawassa" country="Ethiopia" lastupdated="2024-01-01 12:00:00" />
+    <person id="208" last_name="ReportTest" first_name="Patient9"
+        city="Mekelle" country="Ethiopia" lastupdated="2024-01-01 12:00:00" />
+    <person id="209" last_name="ReportTest" first_name="Patient10"
+        city="Mekelle" country="Ethiopia" lastupdated="2024-01-01 12:00:00" />
+
+    <patient id="200" person_id="200" gender="M"
+        birth_date="1990-01-01 00:00:00" national_id="RPT001"
+        lastupdated="2024-01-01 12:00:00" />
+    <patient id="201" person_id="201" gender="F"
+        birth_date="1985-05-15 00:00:00" national_id="RPT002"
+        lastupdated="2024-01-01 12:00:00" />
+    <patient id="202" person_id="202" gender="M"
+        birth_date="1975-03-20 00:00:00" national_id="RPT003"
+        lastupdated="2024-01-01 12:00:00" />
+    <patient id="203" person_id="203" gender="F"
+        birth_date="1992-08-10 00:00:00" national_id="RPT004"
+        lastupdated="2024-01-01 12:00:00" />
+    <patient id="204" person_id="204" gender="M"
+        birth_date="1988-12-25 00:00:00" national_id="RPT005"
+        lastupdated="2024-01-01 12:00:00" />
+    <patient id="205" person_id="205" gender="F"
+        birth_date="1995-07-04 00:00:00" national_id="RPT006"
+        lastupdated="2024-01-01 12:00:00" />
+    <patient id="206" person_id="206" gender="M"
+        birth_date="1980-11-11 00:00:00" national_id="RPT007"
+        lastupdated="2024-01-01 12:00:00" />
+    <patient id="207" person_id="207" gender="F"
+        birth_date="1998-02-28 00:00:00" national_id="RPT008"
+        lastupdated="2024-01-01 12:00:00" />
+    <patient id="208" person_id="208" gender="M"
+        birth_date="1970-06-15 00:00:00" national_id="RPT009"
+        lastupdated="2024-01-01 12:00:00" />
+    <patient id="209" person_id="209" gender="F"
+        birth_date="2000-09-30 00:00:00" national_id="RPT010"
+        lastupdated="2024-01-01 12:00:00" />
+
+    <!-- ======================================================== -->
+    <!-- SAMPLE AND SAMPLE_ITEM SETUP (10 samples) -->
+    <!-- 5 Sputum, 3 BAL, 2 Pleural Fluid -->
+    <!-- ======================================================== -->
+    <sample id="200" accession_number="TBRPT-001"
+        received_date="2024-01-15 08:00:00.0"
+        entered_date="2024-01-15 08:00:00.0"
+        collection_date="2024-01-14 10:00:00.0"
+        lastupdated="2024-01-15 12:00:00" />
+    <sample id="201" accession_number="TBRPT-002"
+        received_date="2024-01-15 09:00:00.0"
+        entered_date="2024-01-15 09:00:00.0"
+        collection_date="2024-01-14 11:00:00.0"
+        lastupdated="2024-01-15 12:00:00" />
+    <sample id="202" accession_number="TBRPT-003"
+        received_date="2024-01-16 08:00:00.0"
+        entered_date="2024-01-16 08:00:00.0"
+        collection_date="2024-01-15 10:00:00.0"
+        lastupdated="2024-01-16 12:00:00" />
+    <sample id="203" accession_number="TBRPT-004"
+        received_date="2024-01-16 09:00:00.0"
+        entered_date="2024-01-16 09:00:00.0"
+        collection_date="2024-01-15 11:00:00.0"
+        lastupdated="2024-01-16 12:00:00" />
+    <sample id="204" accession_number="TBRPT-005"
+        received_date="2024-01-17 08:00:00.0"
+        entered_date="2024-01-17 08:00:00.0"
+        collection_date="2024-01-16 10:00:00.0"
+        lastupdated="2024-01-17 12:00:00" />
+    <sample id="205" accession_number="TBRPT-006"
+        received_date="2024-01-17 09:00:00.0"
+        entered_date="2024-01-17 09:00:00.0"
+        collection_date="2024-01-16 11:00:00.0"
+        lastupdated="2024-01-17 12:00:00" />
+    <sample id="206" accession_number="TBRPT-007"
+        received_date="2024-01-18 08:00:00.0"
+        entered_date="2024-01-18 08:00:00.0"
+        collection_date="2024-01-17 10:00:00.0"
+        lastupdated="2024-01-18 12:00:00" />
+    <sample id="207" accession_number="TBRPT-008"
+        received_date="2024-01-18 09:00:00.0"
+        entered_date="2024-01-18 09:00:00.0"
+        collection_date="2024-01-17 11:00:00.0"
+        lastupdated="2024-01-18 12:00:00" />
+    <sample id="208" accession_number="TBRPT-009"
+        received_date="2024-01-19 08:00:00.0"
+        entered_date="2024-01-19 08:00:00.0"
+        collection_date="2024-01-18 10:00:00.0"
+        lastupdated="2024-01-19 12:00:00" />
+    <sample id="209" accession_number="TBRPT-010"
+        received_date="2024-01-19 09:00:00.0"
+        entered_date="2024-01-19 09:00:00.0"
+        collection_date="2024-01-18 11:00:00.0"
+        lastupdated="2024-01-19 12:00:00" />
+
+    <!-- Sample Items: 5 Sputum (200), 3 BAL (201), 2 Pleural (202) -->
+    <sample_item id="200" samp_id="200" sort_order="1"
+        status_id="1" typeosamp_id="200" external_id="TBRPT-001-1"
+        collection_date="2024-01-14 10:00:00.0"
+        lastupdated="2024-01-15 12:00:00" />
+    <sample_item id="201" samp_id="201" sort_order="1"
+        status_id="1" typeosamp_id="200" external_id="TBRPT-002-1"
+        collection_date="2024-01-14 11:00:00.0"
+        lastupdated="2024-01-15 12:00:00" />
+    <sample_item id="202" samp_id="202" sort_order="1"
+        status_id="1" typeosamp_id="200" external_id="TBRPT-003-1"
+        collection_date="2024-01-15 10:00:00.0"
+        lastupdated="2024-01-16 12:00:00" />
+    <sample_item id="203" samp_id="203" sort_order="1"
+        status_id="1" typeosamp_id="200" external_id="TBRPT-004-1"
+        collection_date="2024-01-15 11:00:00.0"
+        lastupdated="2024-01-16 12:00:00" />
+    <sample_item id="204" samp_id="204" sort_order="1"
+        status_id="1" typeosamp_id="200" external_id="TBRPT-005-1"
+        collection_date="2024-01-16 10:00:00.0"
+        lastupdated="2024-01-17 12:00:00" />
+    <sample_item id="205" samp_id="205" sort_order="1"
+        status_id="1" typeosamp_id="201" external_id="TBRPT-006-1"
+        collection_date="2024-01-16 11:00:00.0"
+        lastupdated="2024-01-17 12:00:00" />
+    <sample_item id="206" samp_id="206" sort_order="1"
+        status_id="1" typeosamp_id="201" external_id="TBRPT-007-1"
+        collection_date="2024-01-17 10:00:00.0"
+        lastupdated="2024-01-18 12:00:00" />
+    <sample_item id="207" samp_id="207" sort_order="1"
+        status_id="1" typeosamp_id="201" external_id="TBRPT-008-1"
+        collection_date="2024-01-17 11:00:00.0"
+        lastupdated="2024-01-18 12:00:00" />
+    <sample_item id="208" samp_id="208" sort_order="1"
+        status_id="1" typeosamp_id="202" external_id="TBRPT-009-1"
+        collection_date="2024-01-18 10:00:00.0"
+        lastupdated="2024-01-19 12:00:00" />
+    <sample_item id="209" samp_id="209" sort_order="1"
+        status_id="1" typeosamp_id="202" external_id="TBRPT-010-1"
+        collection_date="2024-01-18 11:00:00.0"
+        lastupdated="2024-01-19 12:00:00" />
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK AND NOTEBOOK_PAGE SETUP -->
+    <!-- Test TB Notebook with 6 pages matching current page order -->
+    <!-- ======================================================== -->
+    <notebook id="9999" title="Test TB Notebook"
+        objective="TB Reporting Test" protocol="TB" content="Test"
+        status="ACTIVE" is_template="false" last_updated="2024-01-15 12:00:00"
+        date_created="2024-01-15 12:00:00" />
+
+    <!-- Page 1: Sample Creation & Registration -->
+    <notebook_page id="9991" title="Sample Creation"
+        instructions="Sample registration" content="Page 1" page_order="1"
+        completed="false" page_type="BULK_DATA_ENTRY" notebook_id="9999"
+        last_updated="2024-01-15 12:00:00" />
+    <!-- Page 2: QC -->
+    <notebook_page id="9992" title="Quality Check"
+        instructions="QC page" content="Page 2" page_order="2"
+        completed="false" page_type="BATCH_VERIFICATION" notebook_id="9999"
+        last_updated="2024-01-15 12:00:00" />
+    <!-- Page 3: Initial Processing -->
+    <notebook_page id="9993" title="Initial Processing"
+        instructions="Processing page" content="Page 3" page_order="3"
+        completed="false" page_type="BULK_DATA_ENTRY" notebook_id="9999"
+        last_updated="2024-01-15 12:00:00" />
+    <!-- Page 4: Incubation & Monitoring -->
+    <notebook_page id="9994" title="Incubation Monitoring"
+        instructions="Incubation page" content="Page 4" page_order="4"
+        completed="false" page_type="INDIVIDUAL_PROCESSING" notebook_id="9999"
+        last_updated="2024-01-15 12:00:00" />
+    <!-- Page 5: Test Execution -->
+    <notebook_page id="9995" title="Test Execution"
+        instructions="Test execution page" content="Page 5" page_order="5"
+        completed="false" page_type="INDIVIDUAL_PROCESSING" notebook_id="9999"
+        last_updated="2024-01-15 12:00:00" />
+    <!-- Page 6: Isolate Storage -->
+    <notebook_page id="9996" title="Isolate Storage"
+        instructions="Storage page" content="Page 6" page_order="6"
+        completed="false" page_type="BULK_DATA_ENTRY" notebook_id="9999"
+        last_updated="2024-01-15 12:00:00" />
+    <!-- Page 7: Disposal & Archiving -->
+    <notebook_page id="9997" title="Disposal and Archiving"
+        instructions="Disposal page" content="Page 7" page_order="7"
+        completed="false" page_type="BULK_DATA_ENTRY" notebook_id="9999"
+        last_updated="2024-01-15 12:00:00" />
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_PAGE_SAMPLE - PAGE 1 (Registration) -->
+    <!-- 10 samples - JSONB data populated via SQL in test setup -->
+    <!-- ======================================================== -->
+    <notebook_page_sample id="10001"
+        notebook_page_id="9991" sample_item_id="200" status="COMPLETED"
+        completed_at="2024-01-15 10:00:00.0" />
+    <notebook_page_sample id="10002"
+        notebook_page_id="9991" sample_item_id="201" status="COMPLETED"
+        completed_at="2024-01-15 11:00:00.0" />
+    <notebook_page_sample id="10003"
+        notebook_page_id="9991" sample_item_id="202" status="COMPLETED"
+        completed_at="2024-01-16 10:00:00.0" />
+    <notebook_page_sample id="10004"
+        notebook_page_id="9991" sample_item_id="203" status="COMPLETED"
+        completed_at="2024-01-16 11:00:00.0" />
+    <notebook_page_sample id="10005"
+        notebook_page_id="9991" sample_item_id="204" status="COMPLETED"
+        completed_at="2024-01-17 10:00:00.0" />
+    <notebook_page_sample id="10006"
+        notebook_page_id="9991" sample_item_id="205" status="COMPLETED"
+        completed_at="2024-01-17 11:00:00.0" />
+    <notebook_page_sample id="10007"
+        notebook_page_id="9991" sample_item_id="206" status="COMPLETED"
+        completed_at="2024-01-18 10:00:00.0" />
+    <notebook_page_sample id="10008"
+        notebook_page_id="9991" sample_item_id="207" status="COMPLETED"
+        completed_at="2024-01-18 11:00:00.0" />
+    <notebook_page_sample id="10009"
+        notebook_page_id="9991" sample_item_id="208" status="COMPLETED"
+        completed_at="2024-01-19 10:00:00.0" />
+    <notebook_page_sample id="10010"
+        notebook_page_id="9991" sample_item_id="209" status="COMPLETED"
+        completed_at="2024-01-19 11:00:00.0" />
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_PAGE_SAMPLE - PAGE 2 (QC) -->
+    <!-- 10 samples: 8 PASS, 1 FAIL_DISCARD, 1 FAIL_PROCEED -->
+    <!-- ======================================================== -->
+    <notebook_page_sample id="10011"
+        notebook_page_id="9992" sample_item_id="200" status="COMPLETED"
+        completed_at="2024-01-15 12:00:00.0" />
+    <notebook_page_sample id="10012"
+        notebook_page_id="9992" sample_item_id="201" status="COMPLETED"
+        completed_at="2024-01-15 13:00:00.0" />
+    <notebook_page_sample id="10013"
+        notebook_page_id="9992" sample_item_id="202" status="COMPLETED"
+        completed_at="2024-01-16 12:00:00.0" />
+    <notebook_page_sample id="10014"
+        notebook_page_id="9992" sample_item_id="203" status="COMPLETED"
+        completed_at="2024-01-16 13:00:00.0" />
+    <notebook_page_sample id="10015"
+        notebook_page_id="9992" sample_item_id="204" status="COMPLETED"
+        completed_at="2024-01-17 12:00:00.0" />
+    <notebook_page_sample id="10016"
+        notebook_page_id="9992" sample_item_id="205" status="COMPLETED"
+        completed_at="2024-01-17 13:00:00.0" />
+    <notebook_page_sample id="10017"
+        notebook_page_id="9992" sample_item_id="206" status="COMPLETED"
+        completed_at="2024-01-18 12:00:00.0" />
+    <notebook_page_sample id="10018"
+        notebook_page_id="9992" sample_item_id="207" status="COMPLETED"
+        completed_at="2024-01-18 13:00:00.0" />
+    <!-- Sample 208: FAIL_DISCARD - insufficient volume -->
+    <notebook_page_sample id="10019"
+        notebook_page_id="9992" sample_item_id="208" status="REJECTED"
+        completed_at="2024-01-19 12:00:00.0" />
+    <!-- Sample 209: FAIL_PROCEED - temperature deviation but proceed with remarks -->
+    <notebook_page_sample id="10020"
+        notebook_page_id="9992" sample_item_id="209" status="COMPLETED"
+        completed_at="2024-01-19 13:00:00.0" />
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_PAGE_SAMPLE - PAGE 5 (Test Execution) -->
+    <!-- 7 samples with smear, GeneXpert, and DST results in JSONB -->
+    <!-- ======================================================== -->
+    <notebook_page_sample id="10051"
+        notebook_page_id="9995" sample_item_id="200" status="COMPLETED"
+        completed_at="2024-02-10 10:00:00.0" />
+    <notebook_page_sample id="10052"
+        notebook_page_id="9995" sample_item_id="201" status="COMPLETED"
+        completed_at="2024-02-15 10:00:00.0" />
+    <notebook_page_sample id="10053"
+        notebook_page_id="9995" sample_item_id="202" status="COMPLETED"
+        completed_at="2024-02-22 10:00:00.0" />
+    <notebook_page_sample id="10054"
+        notebook_page_id="9995" sample_item_id="203" status="COMPLETED"
+        completed_at="2024-03-01 10:00:00.0" />
+    <notebook_page_sample id="10055"
+        notebook_page_id="9995" sample_item_id="204" status="COMPLETED"
+        completed_at="2024-03-15 10:00:00.0" />
+    <notebook_page_sample id="10056"
+        notebook_page_id="9995" sample_item_id="205" status="COMPLETED"
+        completed_at="2024-03-15 11:00:00.0" />
+    <notebook_page_sample id="10057"
+        notebook_page_id="9995" sample_item_id="209" status="COMPLETED"
+        completed_at="2024-02-20 10:00:00.0" />
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_PAGE_SAMPLE - PAGE 7 (Disposal & Archiving) -->
+    <!-- 6 samples: 3 DISPOSED, 3 ARCHIVED (biorepository transfers) -->
+    <!-- ======================================================== -->
+    <notebook_page_sample id="10071"
+        notebook_page_id="9997" sample_item_id="200" status="COMPLETED"
+        completed_at="2024-03-20 10:00:00.0" />
+    <notebook_page_sample id="10072"
+        notebook_page_id="9997" sample_item_id="201" status="COMPLETED"
+        completed_at="2024-03-20 11:00:00.0" />
+    <notebook_page_sample id="10073"
+        notebook_page_id="9997" sample_item_id="202" status="COMPLETED"
+        completed_at="2024-03-21 10:00:00.0" />
+    <notebook_page_sample id="10074"
+        notebook_page_id="9997" sample_item_id="203" status="COMPLETED"
+        completed_at="2024-03-21 11:00:00.0" />
+    <notebook_page_sample id="10075"
+        notebook_page_id="9997" sample_item_id="204" status="COMPLETED"
+        completed_at="2024-03-22 10:00:00.0" />
+    <notebook_page_sample id="10076"
+        notebook_page_id="9997" sample_item_id="205" status="COMPLETED"
+        completed_at="2024-03-22 11:00:00.0" />
+
+    <!-- ======================================================== -->
+    <!-- TB_MEDIA_PREPARATION (Dedicated Table) -->
+    <!-- 2 batches for testing -->
+    <!-- ======================================================== -->
+    <tb_media_preparation id="9901"
+        batch_id="LJ-BATCH-001" media_type="LJ" qc_status="PASSED"
+        preparation_date="2024-01-14" expiry_date="2024-07-14"
+        last_updated="2024-01-15 12:00:00" />
+    <tb_media_preparation id="9902"
+        batch_id="MGIT-BATCH-001" media_type="MGIT" qc_status="PASSED"
+        preparation_date="2024-01-14" expiry_date="2024-07-14"
+        last_updated="2024-01-15 12:00:00" />
+
+    <!-- ======================================================== -->
+    <!-- TB_CULTURE_READING (Dedicated Table) -->
+    <!-- 8 samples with culture results: 4 POSITIVE, 3 NEGATIVE, 1 CONTAMINATED -->
+    <!-- TAT: inoculation_date to final_result_date (avg ~35 days) -->
+    <!-- ======================================================== -->
+    <!-- Sample 200: POSITIVE at Week 3 (21 days) -->
+    <tb_culture_reading id="9801" sample_item_id="200"
+        week_number="1" reading_date="2024-01-22 10:00:00.0"
+        culture_method="LJ" growth_observation="NO_GROWTH" is_delayed="false"
+        inoculation_date="2024-01-15" media_batch_id="9901"
+        culture_result="POSITIVE" positive_week="3"
+        final_result_date="2024-02-05" />
+    <!-- Sample 201: POSITIVE at Week 4 (28 days) -->
+    <tb_culture_reading id="9802" sample_item_id="201"
+        week_number="1" reading_date="2024-01-22 11:00:00.0"
+        culture_method="LJ" growth_observation="NO_GROWTH" is_delayed="false"
+        inoculation_date="2024-01-15" media_batch_id="9901"
+        culture_result="POSITIVE" positive_week="4"
+        final_result_date="2024-02-12" />
+    <!-- Sample 202: POSITIVE at Week 5 (35 days) -->
+    <tb_culture_reading id="9803" sample_item_id="202"
+        week_number="1" reading_date="2024-01-23 10:00:00.0"
+        culture_method="LJ" growth_observation="NO_GROWTH" is_delayed="false"
+        inoculation_date="2024-01-16" media_batch_id="9901"
+        culture_result="POSITIVE" positive_week="5"
+        final_result_date="2024-02-20" />
+    <!-- Sample 203: POSITIVE at Week 6 (42 days) -->
+    <tb_culture_reading id="9804" sample_item_id="203"
+        week_number="1" reading_date="2024-01-23 11:00:00.0"
+        culture_method="MGIT" growth_observation="NO_GROWTH"
+        is_delayed="false" inoculation_date="2024-01-16" media_batch_id="9902"
+        culture_result="POSITIVE" positive_week="6"
+        final_result_date="2024-02-27" />
+    <!-- Sample 204: NEGATIVE at Week 8 (56 days) -->
+    <tb_culture_reading id="9805" sample_item_id="204"
+        week_number="1" reading_date="2024-01-24 10:00:00.0"
+        culture_method="LJ" growth_observation="NO_GROWTH" is_delayed="false"
+        inoculation_date="2024-01-17" media_batch_id="9901"
+        culture_result="NEGATIVE" final_result_date="2024-03-13" />
+    <!-- Sample 205: NEGATIVE at Week 8 (56 days) -->
+    <tb_culture_reading id="9806" sample_item_id="205"
+        week_number="1" reading_date="2024-01-24 11:00:00.0"
+        culture_method="MGIT" growth_observation="NO_GROWTH"
+        is_delayed="false" inoculation_date="2024-01-17" media_batch_id="9902"
+        culture_result="NEGATIVE" final_result_date="2024-03-13" />
+    <!-- Sample 206: NEGATIVE at Week 8 (56 days) -->
+    <tb_culture_reading id="9807" sample_item_id="206"
+        week_number="1" reading_date="2024-01-25 10:00:00.0"
+        culture_method="LJ" growth_observation="NO_GROWTH" is_delayed="false"
+        inoculation_date="2024-01-18" media_batch_id="9901"
+        culture_result="NEGATIVE" final_result_date="2024-03-14" />
+    <!-- Sample 207: CONTAMINATED at Week 2 (14 days) -->
+    <tb_culture_reading id="9808" sample_item_id="207"
+        week_number="1" reading_date="2024-01-25 11:00:00.0"
+        culture_method="MGIT" growth_observation="NO_GROWTH"
+        is_delayed="false" inoculation_date="2024-01-18" media_batch_id="9902"
+        culture_result="CONTAMINATED" final_result_date="2024-02-01" />
+
+</dataset>

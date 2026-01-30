@@ -181,6 +181,28 @@ public class NotebookEntryServiceImpl extends AuditableBaseObjectServiceImpl<Not
 
     @Override
     @Transactional
+    public void addSampleWithData(Integer entryId, SampleItem sample, java.util.Map<String, Object> data,
+            String sysUserId) {
+        Optional<NotebookEntry> optEntry = notebookEntryDAO.get(entryId);
+        if (optEntry.isPresent()) {
+            NotebookEntry entry = optEntry.get();
+            Hibernate.initialize(entry.getSamples());
+            entry.addSample(sample);
+            entry.setSysUserId(sysUserId);
+            update(entry);
+
+            // Create NotebookPageSample records for all pages in the notebook with the
+            // provided data
+            NoteBook notebook = entry.getNotebook();
+            if (notebook != null) {
+                notebookPageSampleService.createPageSamplesForNotebookWithData(notebook.getId(),
+                        Integer.valueOf(sample.getId()), data);
+            }
+        }
+    }
+
+    @Override
+    @Transactional
     public void addSamples(Integer entryId, List<SampleItem> samples, String sysUserId) {
         LogEvent.logInfo("NotebookEntryServiceImpl", "addSamples",
                 "START: entryId=" + entryId + ", samples=" + samples.size());

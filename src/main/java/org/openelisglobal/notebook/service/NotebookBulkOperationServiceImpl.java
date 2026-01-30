@@ -283,6 +283,19 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
 
     @Override
     @Transactional
+    public int bulkUpdateStatus(Integer pageId, List<Integer> sampleIds, Status status, String userId,
+            boolean skipAutoRouting) {
+        if (sampleIds == null || sampleIds.isEmpty()) {
+            return 0;
+        }
+
+        // Delegate to NotebookPageSampleService which handles batch processing with
+        // skipAutoRouting control
+        return notebookPageSampleService.bulkUpdateStatus(pageId, sampleIds, status, userId, skipAutoRouting);
+    }
+
+    @Override
+    @Transactional
     public int bulkUpdateStatusString(Integer pageId, List<String> sampleIds, Status status, String userId) {
         if (sampleIds == null || sampleIds.isEmpty()) {
             return 0;

@@ -94,8 +94,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.storage", "org.openelisglobal.notebook", "org.openelisglobal.storage",
         "org.openelisglobal.coldstorage", "org.openelisglobal.alert", "org.openelisglobal.notification",
         "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler",
-        "org.openelisglobal.sitebranding" }, excludeFilters = {
-
+        "org.openelisglobal.sitebranding", "org.openelisglobal.equipmentusage", "org.openelisglobal.medlab",
+        "org.openelisglobal.biorepository", "org.openelisglobal.tb" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -332,6 +332,12 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean()
     public AnalyzerResultsController analyzerResultsController() {
         return mock(AnalyzerResultsController.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public org.openelisglobal.common.service.AccessionService accessionService() {
+        return mock(org.openelisglobal.common.service.AccessionService.class);
     }
 
 }

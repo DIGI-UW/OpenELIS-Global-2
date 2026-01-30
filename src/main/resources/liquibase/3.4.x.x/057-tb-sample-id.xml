@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- TB SAMPLE ID COLUMN AND SEQUENCE -->
+    <!-- Adds tb_sample_id column to sample_item table -->
+    <!-- Uses yearly sequence for NNN/YY format IDs -->
+    <!-- ======================================================== -->
+
+    <!-- Add tb_sample_id column to sample_item table -->
+    <changeSet id="add-tb-sample-id-column" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="sample_item" columnName="tb_sample_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding tb_sample_id column to sample_item for TB laboratory unique identifier.</comment>
+        <addColumn tableName="sample_item">
+            <column name="tb_sample_id" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- Create unique index for tb_sample_id -->
+    <changeSet id="add-tb-sample-id-unique-index" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="sample_item" columnName="tb_sample_id" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_sample_item_tb_sample_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating unique index for tb_sample_id on sample_item.</comment>
+        <createIndex tableName="sample_item" indexName="idx_sample_item_tb_sample_id" unique="true">
+            <column name="tb_sample_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Create base TB sample ID sequence (will be reset yearly) -->
+    <changeSet id="create-tb-sample-id-sequence" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="tb_sample_id_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating TB sample ID sequence for NNN/YY format generation.</comment>
+        <createSequence sequenceName="tb_sample_id_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <!-- Create function to generate TB sample ID in NNN/YY format -->
+    <changeSet id="create-tb-sample-id-function" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM pg_proc WHERE proname = 'generate_tb_sample_id'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating function to generate TB sample ID in NNN/YY format.</comment>
+        <sql splitStatements="false">
+            CREATE OR REPLACE FUNCTION clinlims.generate_tb_sample_id()
+            RETURNS VARCHAR(20) AS $$
+            DECLARE
+                current_year VARCHAR(2);
+                next_seq INTEGER;
+                result VARCHAR(20);
+            BEGIN
+                -- Get last two digits of current year
+                current_year := TO_CHAR(CURRENT_DATE, 'YY');
+
+                -- Get next sequence value
+                next_seq := NEXTVAL('clinlims.tb_sample_id_seq');
+
+                -- Format as NNN/YY (e.g., 001/25, 345/25)
+                result := LPAD(next_seq::VARCHAR, 3, '0') || '/' || current_year;
+
+                RETURN result;
+            END;
+            $$ LANGUAGE plpgsql;
+        </sql>
+        <rollback>
+            <sql>DROP FUNCTION IF EXISTS clinlims.generate_tb_sample_id();</sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Create yearly reset function for TB sample ID sequence -->
+    <changeSet id="create-tb-sample-id-yearly-reset-function" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM pg_proc WHERE proname = 'reset_tb_sample_id_seq_if_new_year'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating function to reset TB sample ID sequence on new year.</comment>
+        <sql splitStatements="false">
+            CREATE OR REPLACE FUNCTION clinlims.reset_tb_sample_id_seq_if_new_year()
+            RETURNS VOID AS $$
+            DECLARE
+                last_tb_id VARCHAR(20);
+                last_year VARCHAR(2);
+                current_year VARCHAR(2);
+            BEGIN
+                -- Get the most recent TB sample ID
+                SELECT tb_sample_id INTO last_tb_id
+                FROM clinlims.sample_item
+                WHERE tb_sample_id IS NOT NULL
+                ORDER BY id DESC
+                LIMIT 1;
+
+                IF last_tb_id IS NOT NULL THEN
+                    -- Extract year from last ID (format: NNN/YY)
+                    last_year := SPLIT_PART(last_tb_id, '/', 2);
+                    current_year := TO_CHAR(CURRENT_DATE, 'YY');
+
+                    -- Reset sequence if year has changed
+                    IF last_year != current_year THEN
+                        PERFORM SETVAL('clinlims.tb_sample_id_seq', 1, false);
+                    END IF;
+                END IF;
+            END;
+            $$ LANGUAGE plpgsql;
+        </sql>
+        <rollback>
+            <sql>DROP FUNCTION IF EXISTS clinlims.reset_tb_sample_id_seq_if_new_year();</sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Create table to track TB sample ID year state -->
+    <changeSet id="create-tb-sample-id-state-table" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="tb_sample_id_state" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating state table to track current year for TB sample ID sequence.</comment>
+        <createTable tableName="tb_sample_id_state">
+            <column name="id" type="INTEGER" defaultValue="1">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="current_year" type="VARCHAR(4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_reset" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+        <insert tableName="tb_sample_id_state">
+            <column name="id" value="1"/>
+            <column name="current_year" valueComputed="TO_CHAR(CURRENT_DATE, 'YYYY')"/>
+            <column name="last_reset" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

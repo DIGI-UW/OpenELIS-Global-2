@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- TB_QUALITY_CHECK TABLE -->
+    <!-- Stores TB-specific quality check results for raw samples -->
+    <!-- Tracks leak, temperature, packaging, labeling, volume checks -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tb-quality-check-sequence" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="tb_quality_check_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for tb_quality_check table.</comment>
+        <createSequence sequenceName="tb_quality_check_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-tb-quality-check-table" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="tb_quality_check" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating TB_QUALITY_CHECK table for TB sample quality assessment.</comment>
+        <createTable tableName="tb_quality_check">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="tb_quality_check_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_tb_quality_check"/>
+            </column>
+            <column name="sample_item_id" type="NUMERIC(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="qc_date" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Individual QC check fields (true = pass, false = fail) -->
+            <column name="leak_check" type="BOOLEAN">
+                <constraints nullable="true"/>
+            </column>
+            <column name="temperature_check" type="BOOLEAN">
+                <constraints nullable="true"/>
+            </column>
+            <column name="packaging_check" type="BOOLEAN">
+                <constraints nullable="true"/>
+            </column>
+            <column name="labeling_check" type="BOOLEAN">
+                <constraints nullable="true"/>
+            </column>
+            <column name="volume_check" type="BOOLEAN">
+                <constraints nullable="true"/>
+            </column>
+            <column name="request_match_check" type="BOOLEAN">
+                <constraints nullable="true"/>
+            </column>
+            <!-- Overall result and rejection handling -->
+            <column name="overall_result" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rejection_reason" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="rejection_remarks" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="destination" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="checked_by" type="NUMERIC(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="add-tb-quality-check-foreign-keys" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_quality_check" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraints to tb_quality_check table.</comment>
+        <addForeignKeyConstraint
+            baseTableName="tb_quality_check"
+            baseColumnNames="sample_item_id"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"
+            constraintName="fk_tb_qc_sample_item"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+            baseTableName="tb_quality_check"
+            baseColumnNames="checked_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_tb_qc_checked_by"/>
+    </changeSet>
+
+    <changeSet id="add-tb-quality-check-overall-result-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_quality_check" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for overall_result values.</comment>
+        <sql>
+            ALTER TABLE clinlims.tb_quality_check
+            ADD CONSTRAINT chk_tb_qc_overall_result
+            CHECK (overall_result IN ('PASS', 'PASS_TO_STORAGE', 'FAIL_DISCARD', 'FAIL_PROCEED'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.tb_quality_check DROP CONSTRAINT IF EXISTS chk_tb_qc_overall_result;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-tb-quality-check-rejection-reason-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_quality_check" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for rejection_reason values.</comment>
+        <sql>
+            ALTER TABLE clinlims.tb_quality_check
+            ADD CONSTRAINT chk_tb_qc_rejection_reason
+            CHECK (rejection_reason IS NULL OR rejection_reason IN (
+                'MISLABELING', 'INSUFFICIENT_SAMPLE', 'CONTAMINATED',
+                'TEMPERATURE_DEVIATION', 'PACKAGING_ISSUE', 'REQUEST_MISMATCH', 'OTHER'
+            ));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.tb_quality_check DROP CONSTRAINT IF EXISTS chk_tb_qc_rejection_reason;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-tb-quality-check-destination-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_quality_check" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for destination values.</comment>
+        <sql>
+            ALTER TABLE clinlims.tb_quality_check
+            ADD CONSTRAINT chk_tb_qc_destination
+            CHECK (destination IS NULL OR destination IN (
+                'PROCESSING', 'TEMPORARY_STORAGE', 'SHIPMENT', 'LONG_TERM_STORAGE', 'DISCARDED'
+            ));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.tb_quality_check DROP CONSTRAINT IF EXISTS chk_tb_qc_destination;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-tb-quality-check-indexes" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_quality_check" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for query optimization.</comment>
+        <createIndex tableName="tb_quality_check" indexName="idx_tb_qc_sample_item">
+            <column name="sample_item_id"/>
+        </createIndex>
+        <createIndex tableName="tb_quality_check" indexName="idx_tb_qc_overall_result">
+            <column name="overall_result"/>
+        </createIndex>
+        <createIndex tableName="tb_quality_check" indexName="idx_tb_qc_date">
+            <column name="qc_date"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="create-tb-quality-check-reference-table" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'TB_QUALITY_CHECK'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating TB_QUALITY_CHECK reference table entry for audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="TB_QUALITY_CHECK"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='TB_QUALITY_CHECK'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

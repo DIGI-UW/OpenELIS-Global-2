@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- TB_SAMPLE_PROCESSING TABLE -->
+    <!-- Tracks sample decontamination and processing before inoculation -->
+    <!-- Links samples to their processing status and method used -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tb-sample-processing-sequence" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="tb_sample_processing_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for tb_sample_processing table.</comment>
+        <createSequence sequenceName="tb_sample_processing_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-tb-sample-processing-table" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="tb_sample_processing" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating TB_SAMPLE_PROCESSING table for sample decontamination tracking.</comment>
+        <createTable tableName="tb_sample_processing">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="tb_sample_processing_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_tb_sample_processing"/>
+            </column>
+            <column name="sample_item_id" type="NUMERIC(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="processing_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="decontamination_method" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="method_notes" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="processed_by" type="NUMERIC(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="processing_status" type="VARCHAR(30)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="add-tb-sample-processing-foreign-keys" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_sample_processing" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraints to tb_sample_processing table.</comment>
+        <addForeignKeyConstraint
+            baseTableName="tb_sample_processing"
+            baseColumnNames="sample_item_id"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"
+            constraintName="fk_tb_processing_sample_item"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+            baseTableName="tb_sample_processing"
+            baseColumnNames="processed_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_tb_processing_processed_by"/>
+    </changeSet>
+
+    <changeSet id="add-tb-sample-processing-unique-constraint" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_sample_processing" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding unique constraint for sample_item_id (one processing record per sample).</comment>
+        <addUniqueConstraint
+            tableName="tb_sample_processing"
+            columnNames="sample_item_id"
+            constraintName="uq_tb_processing_sample"/>
+    </changeSet>
+
+    <changeSet id="add-tb-sample-processing-method-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_sample_processing" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for decontamination_method values.</comment>
+        <sql>
+            ALTER TABLE clinlims.tb_sample_processing
+            ADD CONSTRAINT chk_tb_processing_method
+            CHECK (decontamination_method IN ('NALC_NAOH', 'NAOH_ONLY', 'OTHER'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.tb_sample_processing DROP CONSTRAINT IF EXISTS chk_tb_processing_method;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-tb-sample-processing-status-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_sample_processing" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for processing_status values.</comment>
+        <sql>
+            ALTER TABLE clinlims.tb_sample_processing
+            ADD CONSTRAINT chk_tb_processing_status
+            CHECK (processing_status IN ('PENDING', 'PROCESSED', 'READY_FOR_INOCULATION'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.tb_sample_processing DROP CONSTRAINT IF EXISTS chk_tb_processing_status;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-tb-sample-processing-indexes" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_sample_processing" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for query optimization.</comment>
+        <createIndex tableName="tb_sample_processing" indexName="idx_tb_processing_sample_item">
+            <column name="sample_item_id"/>
+        </createIndex>
+        <createIndex tableName="tb_sample_processing" indexName="idx_tb_processing_status">
+            <column name="processing_status"/>
+        </createIndex>
+        <createIndex tableName="tb_sample_processing" indexName="idx_tb_processing_date">
+            <column name="processing_date"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="create-tb-sample-processing-reference-table" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'TB_SAMPLE_PROCESSING'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating TB_SAMPLE_PROCESSING reference table entry for audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="TB_SAMPLE_PROCESSING"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='TB_SAMPLE_PROCESSING'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

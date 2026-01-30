@@ -922,6 +922,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         Hibernate.initialize(template.getPages());
         Hibernate.initialize(template.getTags());
         Hibernate.initialize(template.getAnalysers());
+        Hibernate.initialize(template.getDepartments());
         if (template.getPages() != null) {
             for (NoteBookPage page : template.getPages()) {
                 Hibernate.initialize(page.getPanels());
@@ -954,6 +955,11 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         // Copy inventory instruments
         if (template.getInventoryInstrumentIds() != null) {
             instance.getInventoryInstrumentIds().addAll(template.getInventoryInstrumentIds());
+        }
+
+        // Copy departments (for sample type validation)
+        if (template.getDepartments() != null && !template.getDepartments().isEmpty()) {
+            instance.getDepartments().addAll(template.getDepartments());
         }
 
         // Set creator and technician

@@ -66,6 +66,21 @@ public interface NotebookPageSampleService extends BaseObjectService<NotebookPag
     int bulkUpdateStatus(Integer pageId, List<Integer> sampleIds, Status status, String userId);
 
     /**
+     * Bulk update status for multiple samples on a page with optional control over
+     * T150 auto-routing.
+     *
+     * @param pageId          the notebook page ID
+     * @param sampleIds       list of sample item IDs
+     * @param status          the new status
+     * @param userId          the user performing the update
+     * @param skipAutoRouting if true, skip T150 auto-routing logic (useful when
+     *                        frontend handles routing explicitly)
+     * @return number of records updated
+     */
+    int bulkUpdateStatus(Integer pageId, List<Integer> sampleIds, Status status, String userId,
+            boolean skipAutoRouting);
+
+    /**
      * Clear destinationType for multiple samples on a page (unroute them). This
      * makes samples available for re-routing.
      *
@@ -145,6 +160,17 @@ public interface NotebookPageSampleService extends BaseObjectService<NotebookPag
      * @param sampleItemId the sample item ID
      */
     void createPageSamplesForNotebook(Integer notebookId, Integer sampleItemId);
+
+    /**
+     * Create NotebookPageSample records for all pages in a notebook with associated
+     * metadata.
+     *
+     * @param notebookId   the notebook ID
+     * @param sampleItemId the sample item ID
+     * @param data         metadata to store with each page sample (e.g., manifest
+     *                     data)
+     */
+    void createPageSamplesForNotebookWithData(Integer notebookId, Integer sampleItemId, Map<String, Object> data);
 
     /**
      * Create a page sample record for a specific page. Used when child samples are

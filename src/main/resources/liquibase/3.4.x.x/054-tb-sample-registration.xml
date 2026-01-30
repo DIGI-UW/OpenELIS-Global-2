@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- TB_SAMPLE_REGISTRATION TABLE -->
+    <!-- Stores TB-specific sample registration metadata -->
+    <!-- Extended from sample_item for TB laboratory workflow -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tb-sample-registration-sequence" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="tb_sample_registration_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for tb_sample_registration table.</comment>
+        <createSequence sequenceName="tb_sample_registration_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-tb-sample-registration-table" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="tb_sample_registration" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating TB_SAMPLE_REGISTRATION table for TB-specific sample metadata.</comment>
+        <createTable tableName="tb_sample_registration">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="tb_sample_registration_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_tb_sample_registration"/>
+            </column>
+            <column name="sample_item_id" type="NUMERIC(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="document_number" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="specimen_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="specimen_quality" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="referring_facility" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="treatment_history" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="physician_phone" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="patient_phone" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="consent_status" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="test_requested" type="jsonb">
+                <constraints nullable="true"/>
+            </column>
+            <column name="received_site" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="received_datetime" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="registered_by" type="NUMERIC(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+            <column name="date_created" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="add-tb-sample-registration-foreign-keys" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_sample_registration" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraints to tb_sample_registration table.</comment>
+        <addForeignKeyConstraint
+            baseTableName="tb_sample_registration"
+            baseColumnNames="sample_item_id"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"
+            constraintName="fk_tb_reg_sample_item"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+            baseTableName="tb_sample_registration"
+            baseColumnNames="registered_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_tb_reg_registered_by"/>
+    </changeSet>
+
+    <changeSet id="add-tb-sample-registration-unique-constraint" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_sample_registration" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding unique constraint for sample_item_id (one registration per sample).</comment>
+        <addUniqueConstraint
+            tableName="tb_sample_registration"
+            columnNames="sample_item_id"
+            constraintName="uq_tb_reg_sample_item"/>
+    </changeSet>
+
+    <changeSet id="add-tb-sample-registration-specimen-type-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_sample_registration" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for specimen_type values.</comment>
+        <sql>
+            ALTER TABLE clinlims.tb_sample_registration
+            ADD CONSTRAINT chk_tb_reg_specimen_type
+            CHECK (specimen_type IN ('SPUTUM', 'BODY_FLUID', 'SWAB', 'TISSUE', 'OTHER'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.tb_sample_registration DROP CONSTRAINT IF EXISTS chk_tb_reg_specimen_type;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-tb-sample-registration-indexes" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_sample_registration" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for query optimization.</comment>
+        <createIndex tableName="tb_sample_registration" indexName="idx_tb_reg_sample_item">
+            <column name="sample_item_id"/>
+        </createIndex>
+        <createIndex tableName="tb_sample_registration" indexName="idx_tb_reg_received_datetime">
+            <column name="received_datetime"/>
+        </createIndex>
+        <createIndex tableName="tb_sample_registration" indexName="idx_tb_reg_referring_facility">
+            <column name="referring_facility"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="create-tb-sample-registration-reference-table" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'TB_SAMPLE_REGISTRATION'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating TB_SAMPLE_REGISTRATION reference table entry for audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="TB_SAMPLE_REGISTRATION"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='TB_SAMPLE_REGISTRATION'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
