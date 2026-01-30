@@ -527,7 +527,10 @@ function OEHeader(props) {
                           <div
                             style={{
                               position: "relative",
-                              display: "inline-block",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              height: "100%",
                             }}
                           >
                             {!notificationsOpen ? (
