@@ -113,7 +113,9 @@
         <mapping resource="hibernate/hbm/ObservationHistory.hbm.xml" />
         <mapping
             resource="hibernate/hbm/ObservationHistoryType.hbm.xml" />
-        <mapping resource="hibernate/hbm/AnalyzerTestMapping.hbm.xml" />
+        <!-- Migrated to JPA annotations (chore/011-analyzer-xml-to-annotations
+            Phase 2C) -->
+        <!-- <mapping resource="hibernate/hbm/AnalyzerTestMapping.hbm.xml" /> -->
         <mapping resource="hibernate/hbm/ReferralReason.hbm.xml" />
         <mapping resource="hibernate/hbm/ReferralType.hbm.xml" />
         <mapping resource="hibernate/hbm/Referral.hbm.xml" />

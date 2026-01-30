@@ -15,15 +15,34 @@
  */
 package org.openelisglobal.analyzerimport.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import org.apache.commons.validator.GenericValidator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
+/**
+ * Migrated to JPA annotations in Phase 2C
+ * (chore/011-analyzer-xml-to-annotations). Uses composite primary key
+ * (analyzerId + analyzerTestName).
+ */
+@Entity
+@Table(name = "analyzer_test_map")
 public class AnalyzerTestMapping extends BaseObject<AnalyzerTestMappingPK> {
 
     private static final long serialVersionUID = 1L;
 
+    @EmbeddedId
     private AnalyzerTestMappingPK compoundId = new AnalyzerTestMappingPK();
+
+    @Column(name = "test_id")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String testId;
+
+    @Transient
     private String uniqueIdentifyer;
 
     public void setCompoundId(AnalyzerTestMappingPK compoundId) {

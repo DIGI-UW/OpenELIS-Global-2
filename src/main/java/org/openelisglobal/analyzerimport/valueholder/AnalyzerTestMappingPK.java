@@ -15,13 +15,26 @@
  */
 package org.openelisglobal.analyzerimport.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
 import java.io.Serializable;
 import java.util.Objects;
+import org.hibernate.annotations.Type;
 
+/**
+ * Composite primary key for AnalyzerTestMapping. Migrated to JPA annotations in
+ * Phase 2C (chore/011-analyzer-xml-to-annotations).
+ */
+@Embeddable
 public class AnalyzerTestMappingPK implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
+    @Column(name = "analyzer_id")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String analyzerId;
+
+    @Column(name = "analyzer_test_name")
     private String analyzerTestName;
 
     public String getAnalyzerId() {

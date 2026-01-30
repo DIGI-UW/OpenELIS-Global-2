@@ -24,6 +24,7 @@ import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
 import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.analyzer.valueholder.UnitMapping;
 import org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration;
+import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 
 /**
@@ -51,6 +52,7 @@ public class HibernateMappingValidationTest {
         configuration.addAnnotatedClass(Analyzer.class); // Migrated in Phase 1
         configuration.addAnnotatedClass(AnalyzerField.class); // Migrated in Phase 2A
         configuration.addAnnotatedClass(AnalyzerResults.class); // Migrated in Phase 2B
+        configuration.addAnnotatedClass(AnalyzerTestMapping.class); // Migrated in Phase 2C
         configuration.addAnnotatedClass(AnalyzerConfiguration.class);
         configuration.addAnnotatedClass(AnalyzerError.class);
         configuration.addAnnotatedClass(CustomFieldType.class);
@@ -97,6 +99,8 @@ public class HibernateMappingValidationTest {
         assertNotNull("AnalyzerField should be registered", sessionFactory.getMetamodel().entity(AnalyzerField.class));
         assertNotNull("AnalyzerResults should be registered",
                 sessionFactory.getMetamodel().entity(AnalyzerResults.class)); // Phase 2B
+        assertNotNull("AnalyzerTestMapping should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerTestMapping.class)); // Phase 2C
         assertNotNull("AnalyzerFieldMapping should be registered",
                 sessionFactory.getMetamodel().entity(AnalyzerFieldMapping.class));
         assertNotNull("QualitativeResultMapping should be registered",
@@ -120,9 +124,9 @@ public class HibernateMappingValidationTest {
     @Test
     public void testAnalyzerEntitiesHaveNoGetterConflicts() {
         Class<?>[] entities = { Analyzer.class, AnalyzerConfiguration.class, AnalyzerField.class, AnalyzerResults.class,
-                AnalyzerFieldMapping.class, QualitativeResultMapping.class, UnitMapping.class, AnalyzerError.class,
-                CustomFieldType.class, ValidationRuleConfiguration.class, SerialPortConfiguration.class,
-                FileImportConfiguration.class };
+                AnalyzerTestMapping.class, AnalyzerFieldMapping.class, QualitativeResultMapping.class,
+                UnitMapping.class, AnalyzerError.class, CustomFieldType.class, ValidationRuleConfiguration.class,
+                SerialPortConfiguration.class, FileImportConfiguration.class };
 
         for (Class<?> entityClass : entities) {
             validateNoGetterConflicts(entityClass);
