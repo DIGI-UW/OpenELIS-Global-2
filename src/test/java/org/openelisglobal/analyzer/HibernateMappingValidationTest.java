@@ -13,6 +13,7 @@ import org.hibernate.cfg.Configuration;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
@@ -23,6 +24,8 @@ import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
 import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.analyzer.valueholder.UnitMapping;
 import org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration;
+import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
+import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 
 /**
  * Validates Hibernate ORM mappings WITHOUT requiring database connection. This
@@ -46,6 +49,11 @@ public class HibernateMappingValidationTest {
         Configuration configuration = new Configuration();
 
         // Annotation-based entities (no XML entity references)
+        configuration.addAnnotatedClass(Analyzer.class); // Migrated in Phase 1
+        configuration.addAnnotatedClass(AnalyzerField.class); // Migrated in Phase 2A
+        configuration.addAnnotatedClass(AnalyzerResults.class); // Migrated in Phase 2B
+        configuration.addAnnotatedClass(AnalyzerTestMapping.class); // Migrated in Phase 2C
+        configuration.addAnnotatedClass(AnalyzerFieldMapping.class); // Migrated in Phase 3
         configuration.addAnnotatedClass(AnalyzerConfiguration.class);
         configuration.addAnnotatedClass(AnalyzerError.class);
         configuration.addAnnotatedClass(CustomFieldType.class);
@@ -53,11 +61,8 @@ public class HibernateMappingValidationTest {
         configuration.addAnnotatedClass(ValidationRuleConfiguration.class);
         configuration.addAnnotatedClass(SerialPortConfiguration.class); // Task Reference: T022, M2
 
-        // XML-mapped entities (analyzer data model uses XML-only to match legacy
-        // pattern)
-        configuration.addResource("hibernate/hbm/Analyzer.hbm.xml");
-        configuration.addResource("hibernate/hbm/AnalyzerField.hbm.xml");
-        configuration.addResource("hibernate/hbm/AnalyzerFieldMapping.hbm.xml");
+        // XML-mapped entities (pending migration in
+        // chore/011-analyzer-xml-to-annotations)
         configuration.addResource("hibernate/hbm/QualitativeResultMapping.hbm.xml");
         configuration.addResource("hibernate/hbm/UnitMapping.hbm.xml");
 
@@ -88,9 +93,14 @@ public class HibernateMappingValidationTest {
         assertNotNull("SessionFactory should build successfully with all analyzer mappings", sessionFactory);
 
         // Verify each entity is registered in Hibernate metamodel
+        assertNotNull("Analyzer should be registered", sessionFactory.getMetamodel().entity(Analyzer.class)); // Phase 1
         assertNotNull("AnalyzerConfiguration should be registered",
                 sessionFactory.getMetamodel().entity(AnalyzerConfiguration.class));
         assertNotNull("AnalyzerField should be registered", sessionFactory.getMetamodel().entity(AnalyzerField.class));
+        assertNotNull("AnalyzerResults should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerResults.class)); // Phase 2B
+        assertNotNull("AnalyzerTestMapping should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerTestMapping.class)); // Phase 2C
         assertNotNull("AnalyzerFieldMapping should be registered",
                 sessionFactory.getMetamodel().entity(AnalyzerFieldMapping.class));
         assertNotNull("QualitativeResultMapping should be registered",
@@ -113,9 +123,10 @@ public class HibernateMappingValidationTest {
      */
     @Test
     public void testAnalyzerEntitiesHaveNoGetterConflicts() {
-        Class<?>[] entities = { AnalyzerConfiguration.class, AnalyzerField.class, AnalyzerFieldMapping.class,
-                QualitativeResultMapping.class, UnitMapping.class, AnalyzerError.class, CustomFieldType.class,
-                ValidationRuleConfiguration.class, SerialPortConfiguration.class, FileImportConfiguration.class };
+        Class<?>[] entities = { Analyzer.class, AnalyzerConfiguration.class, AnalyzerField.class, AnalyzerResults.class,
+                AnalyzerTestMapping.class, AnalyzerFieldMapping.class, QualitativeResultMapping.class,
+                UnitMapping.class, AnalyzerError.class, CustomFieldType.class, ValidationRuleConfiguration.class,
+                SerialPortConfiguration.class, FileImportConfiguration.class };
 
         for (Class<?> entityClass : entities) {
             validateNoGetterConflicts(entityClass);
