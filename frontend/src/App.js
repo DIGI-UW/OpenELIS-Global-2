@@ -131,22 +131,6 @@ export default function App() {
     return userSessionDetails;
   };
 
-  /**
-   * Force refresh user session details (useful when roles change)
-   * Can be called from browser console: window.refreshUserSession()
-   */
-  const refreshUserSession = async () => {
-    console.info("🔄 Forcing user session refresh...");
-    await getUserSessionDetails(true);
-  };
-
-  useEffect(() => {
-    window.refreshUserSession = refreshUserSession;
-    return () => {
-      delete window.refreshUserSession;
-    };
-  }, [refreshUserSession]);
-
   const logout = () => {
     if (userSessionDetails.loginMethod === "SAML") {
       fetch(config.serverBaseUrl + "/Logout?useSAML=true", {
@@ -247,7 +231,7 @@ export default function App() {
           errorLoadingSessionDetails,
           isCheckingLogin,
           logout,
-          refreshUserSession,
+          refresh,
         }}
       >
         <>
