@@ -73,4 +73,7 @@ public interface FhirTransformService {
     Provider transformToProvider(Practitioner practitioner);
 
     PatientSearchResults transformToOpenElisPatientSearchResults(org.hl7.fhir.r4.model.Patient externalPatient);
+
+    void transformAnalysisByIds(List<String> analysisIds) throws FhirTransformationException, FhirPersistanceException;
+
 }
