@@ -664,7 +664,11 @@ export const GBDPCRAmplificationPage = ({
                   render: (_value, sample) => {
                     if (!sample.positiveControl?.present) return "-";
                     return (
-                      <Tag type="green" size="sm" title={sample.positiveControl.notes || ""}>
+                      <Tag
+                        type="green"
+                        size="sm"
+                        title={sample.positiveControl.notes || ""}
+                      >
                         ✓
                       </Tag>
                     );
@@ -680,7 +684,10 @@ export const GBDPCRAmplificationPage = ({
                     let tagType = "green";
                     let displayText = "✓";
 
-                    if (result === "unexpected_band" || result === "contamination") {
+                    if (
+                      result === "unexpected_band" ||
+                      result === "contamination"
+                    ) {
                       tagType = "red";
                       displayText = "⚠";
                     } else if (result === "weak_band") {
@@ -689,7 +696,11 @@ export const GBDPCRAmplificationPage = ({
                     }
 
                     return (
-                      <Tag type={tagType} size="sm" title={sample.negativeControl.notes || ""}>
+                      <Tag
+                        type={tagType}
+                        size="sm"
+                        title={sample.negativeControl.notes || ""}
+                      >
                         {displayText}
                       </Tag>
                     );
@@ -769,8 +780,15 @@ export const GBDPCRAmplificationPage = ({
                   render: (_value, sample) => {
                     if (!sample.positiveControl?.present) return "-";
                     return (
-                      <Tag type="green" size="sm" title={sample.positiveControl.notes || ""}>
-                        ✓ {sample.positiveControl.bandSize ? `${sample.positiveControl.bandSize}bp` : ""}
+                      <Tag
+                        type="green"
+                        size="sm"
+                        title={sample.positiveControl.notes || ""}
+                      >
+                        ✓{" "}
+                        {sample.positiveControl.bandSize
+                          ? `${sample.positiveControl.bandSize}bp`
+                          : ""}
                       </Tag>
                     );
                   },
@@ -800,7 +818,11 @@ export const GBDPCRAmplificationPage = ({
                     }
 
                     return (
-                      <Tag type={tagType} size="sm" title={sample.negativeControl.notes || ""}>
+                      <Tag
+                        type={tagType}
+                        size="sm"
+                        title={sample.negativeControl.notes || ""}
+                      >
                         {displayText}
                       </Tag>
                     );
@@ -898,14 +920,22 @@ export const GBDPCRAmplificationPage = ({
               })}
               label="Select primer set"
               items={primerOptions}
-              selectedItem={primerOptions.find((p) => p.label === primers) || null}
+              selectedItem={
+                primerOptions.find((p) => p.label === primers) || null
+              }
               onChange={({ selectedItem }) => {
                 setPrimers(selectedItem?.label || "");
               }}
               itemToString={(item) => item?.label || ""}
             />
             {primers && !primerOptions.find((p) => p.label === primers) && (
-              <div style={{ marginTop: "0.5rem", fontSize: "0.875rem", color: "#525252" }}>
+              <div
+                style={{
+                  marginTop: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "#525252",
+                }}
+              >
                 Custom: {primers}
               </div>
             )}
@@ -930,17 +960,26 @@ export const GBDPCRAmplificationPage = ({
               })}
               label="Select PCR protocol"
               items={pcrProtocolOptions}
-              selectedItem={pcrProtocolOptions.find((p) => p.label === protocol) || null}
+              selectedItem={
+                pcrProtocolOptions.find((p) => p.label === protocol) || null
+              }
               onChange={({ selectedItem }) => {
                 setProtocol(selectedItem?.label || "");
               }}
               itemToString={(item) => item?.label || ""}
             />
-            {protocol && !pcrProtocolOptions.find((p) => p.label === protocol) && (
-              <div style={{ marginTop: "0.5rem", fontSize: "0.875rem", color: "#525252" }}>
-                Custom: {protocol}
-              </div>
-            )}
+            {protocol &&
+              !pcrProtocolOptions.find((p) => p.label === protocol) && (
+                <div
+                  style={{
+                    marginTop: "0.5rem",
+                    fontSize: "0.875rem",
+                    color: "#525252",
+                  }}
+                >
+                  Custom: {protocol}
+                </div>
+              )}
             {!protocol && (
               <TextInput
                 id="custom-protocol-input"
@@ -1119,7 +1158,6 @@ export const GBDPCRAmplificationPage = ({
               onChange={(e) => setDateTime(e.target.value)}
             />
           </Column>
-
 
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <TextArea

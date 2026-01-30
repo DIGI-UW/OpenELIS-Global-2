@@ -747,7 +747,6 @@ export const GBDDNARNAExtractionPage = ({
             />
           </Column>
 
-
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <TextArea
               id="notes"

@@ -7,13 +7,7 @@ import React, {
   useRef,
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import {
-  Grid,
-  Column,
-  Button,
-  Tile,
-  Tag,
-} from "@carbon/react";
+import { Grid, Column, Button, Tile, Tag } from "@carbon/react";
 import {
   Upload,
   Edit,
@@ -124,7 +118,6 @@ export const GBDSampleReceptionPageEnhanced = ({
       ),
     [pageSamples],
   );
-
 
   const renderStatus = (sample) => {
     const status = sample.status || "PENDING";

@@ -489,7 +489,8 @@ public class TbCultureReadingServiceTest extends BaseWebContextSensitiveTest {
         TbCultureReading readingToMark = initialReadings.get(0);
         tbCultureReadingService.determineFinalResult(readingToMark.getId(), CultureResult.POSITIVE, 1, "1");
 
-        // Act - Query again - should return ALL readings including the one with POSITIVE result
+        // Act - Query again - should return ALL readings including the one with
+        // POSITIVE result
         List<TbCultureReading> entry100Readings = tbCultureReadingService.findIncubatingSamplesByEntry(ENTRY_ID_100);
 
         // Assert - Should find readings for sample 100
@@ -497,18 +498,14 @@ public class TbCultureReadingServiceTest extends BaseWebContextSensitiveTest {
         assertFalse("Should have readings", entry100Readings.isEmpty());
 
         // Check that at least one reading has a cultureResult set (POSITIVE)
-        boolean hasReadingWithResult = entry100Readings.stream()
-                .anyMatch(r -> r.getCultureResult() != null);
+        boolean hasReadingWithResult = entry100Readings.stream().anyMatch(r -> r.getCultureResult() != null);
 
         assertTrue("Should include readings with cultureResult set (POSITIVE)", hasReadingWithResult);
 
-        // Verify we have readings WITH and WITHOUT cultureResult (to confirm we get ALL)
-        long readingsWithResult = entry100Readings.stream()
-                .filter(r -> r.getCultureResult() != null)
-                .count();
-        long readingsWithoutResult = entry100Readings.stream()
-                .filter(r -> r.getCultureResult() == null)
-                .count();
+        // Verify we have readings WITH and WITHOUT cultureResult (to confirm we get
+        // ALL)
+        long readingsWithResult = entry100Readings.stream().filter(r -> r.getCultureResult() != null).count();
+        long readingsWithoutResult = entry100Readings.stream().filter(r -> r.getCultureResult() == null).count();
 
         assertTrue("Should have at least one reading WITH cultureResult", readingsWithResult >= 1);
         assertTrue("Should have at least one reading WITHOUT cultureResult", readingsWithoutResult >= 1);
@@ -547,11 +544,8 @@ public class TbCultureReadingServiceTest extends BaseWebContextSensitiveTest {
                 assertTrue("Sample 100 should be detected as finalized (has POSITIVE reading)", isFinalized);
 
                 // Verify the specific result
-                CultureResult result = readings.stream()
-                        .filter(r -> r.getCultureResult() != null)
-                        .map(TbCultureReading::getCultureResult)
-                        .findFirst()
-                        .orElse(null);
+                CultureResult result = readings.stream().filter(r -> r.getCultureResult() != null)
+                        .map(TbCultureReading::getCultureResult).findFirst().orElse(null);
                 assertEquals("Sample 100 should have POSITIVE result", CultureResult.POSITIVE, result);
             }
         }

@@ -224,18 +224,31 @@ export const GBDBioinformaticsAnalysisPage = ({
                   bioinformaticsNotes: s.data?.bioinformatics?.notes,
                   // ALCOA+ Audit Trail
                   recordedBy: s.data?.bioinformatics?.auditTrail?.recordedBy,
-                  recordedDate: s.data?.bioinformatics?.auditTrail?.recordedDate,
-                  recordedTime: s.data?.bioinformatics?.auditTrail?.recordedTime,
-                  lastModifiedBy: s.data?.bioinformatics?.auditTrail?.lastModifiedBy,
-                  lastModifiedDate: s.data?.bioinformatics?.auditTrail?.lastModifiedDate,
-                  lastModifiedTime: s.data?.bioinformatics?.auditTrail?.lastModifiedTime,
+                  recordedDate:
+                    s.data?.bioinformatics?.auditTrail?.recordedDate,
+                  recordedTime:
+                    s.data?.bioinformatics?.auditTrail?.recordedTime,
+                  lastModifiedBy:
+                    s.data?.bioinformatics?.auditTrail?.lastModifiedBy,
+                  lastModifiedDate:
+                    s.data?.bioinformatics?.auditTrail?.lastModifiedDate,
+                  lastModifiedTime:
+                    s.data?.bioinformatics?.auditTrail?.lastModifiedTime,
                   // 3-Tier Review Workflow
-                  primaryReviewCompleted: s.data?.bioinformatics?.review?.primaryReview?.completed,
-                  primaryReviewedBy: s.data?.bioinformatics?.review?.primaryReview?.reviewedBy,
-                  bioReviewCompleted: s.data?.bioinformatics?.review?.bioinformaticsReview?.completed,
-                  bioReviewedBy: s.data?.bioinformatics?.review?.bioinformaticsReview?.reviewedBy,
-                  finalApprovalCompleted: s.data?.bioinformatics?.review?.finalApproval?.completed,
-                  finalApprovedBy: s.data?.bioinformatics?.review?.finalApproval?.approvedBy,
+                  primaryReviewCompleted:
+                    s.data?.bioinformatics?.review?.primaryReview?.completed,
+                  primaryReviewedBy:
+                    s.data?.bioinformatics?.review?.primaryReview?.reviewedBy,
+                  bioReviewCompleted:
+                    s.data?.bioinformatics?.review?.bioinformaticsReview
+                      ?.completed,
+                  bioReviewedBy:
+                    s.data?.bioinformatics?.review?.bioinformaticsReview
+                      ?.reviewedBy,
+                  finalApprovalCompleted:
+                    s.data?.bioinformatics?.review?.finalApproval?.completed,
+                  finalApprovedBy:
+                    s.data?.bioinformatics?.review?.finalApproval?.approvedBy,
                 }))
               : [],
           );
@@ -362,7 +375,9 @@ export const GBDBioinformaticsAnalysisPage = ({
             // ALCOA+ Audit Trail
             auditTrail: {
               recordedBy: recordedBy || null,
-              recordedDate: recordedDate ? `${recordedDate}T${recordedTime}:00Z` : null,
+              recordedDate: recordedDate
+                ? `${recordedDate}T${recordedTime}:00Z`
+                : null,
               lastModifiedBy: lastModifiedBy || null,
               lastModifiedDate: lastModifiedDate
                 ? `${lastModifiedDate}T${lastModifiedTime}:00Z`
@@ -372,24 +387,31 @@ export const GBDBioinformaticsAnalysisPage = ({
             review: {
               primaryReview: {
                 completed: primaryReviewCompleted,
-                reviewedBy: primaryReviewCompleted ? primaryReviewedBy || null : null,
-                reviewedDate: primaryReviewCompleted && primaryReviewedDate
-                  ? `${primaryReviewedDate}T${primaryReviewedTime}:00Z`
+                reviewedBy: primaryReviewCompleted
+                  ? primaryReviewedBy || null
                   : null,
+                reviewedDate:
+                  primaryReviewCompleted && primaryReviewedDate
+                    ? `${primaryReviewedDate}T${primaryReviewedTime}:00Z`
+                    : null,
               },
               bioinformaticsReview: {
                 completed: bioReviewCompleted,
                 reviewedBy: bioReviewCompleted ? bioReviewedBy || null : null,
-                reviewedDate: bioReviewCompleted && bioReviewedDate
-                  ? `${bioReviewedDate}T${bioReviewedTime}:00Z`
-                  : null,
+                reviewedDate:
+                  bioReviewCompleted && bioReviewedDate
+                    ? `${bioReviewedDate}T${bioReviewedTime}:00Z`
+                    : null,
               },
               finalApproval: {
                 completed: finalApprovalCompleted,
-                approvedBy: finalApprovalCompleted ? finalApprovedBy || null : null,
-                approvedDate: finalApprovalCompleted && finalApprovedDate
-                  ? `${finalApprovedDate}T${finalApprovedTime}:00Z`
+                approvedBy: finalApprovalCompleted
+                  ? finalApprovedBy || null
                   : null,
+                approvedDate:
+                  finalApprovalCompleted && finalApprovedDate
+                    ? `${finalApprovedDate}T${finalApprovedTime}:00Z`
+                    : null,
               },
             },
           },
@@ -1176,7 +1198,6 @@ export const GBDBioinformaticsAnalysisPage = ({
             />
           </Column>
 
-
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <TextArea
               id="bioinformatics-notes"
@@ -1292,7 +1313,9 @@ export const GBDBioinformaticsAnalysisPage = ({
           {/* Primary Review */}
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "0.5rem" }}>
             <div>
-              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
                 <input
                   type="checkbox"
                   checked={primaryReviewCompleted}
@@ -1354,7 +1377,9 @@ export const GBDBioinformaticsAnalysisPage = ({
           {/* Bioinformatics Review */}
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "0.5rem" }}>
             <div>
-              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
                 <input
                   type="checkbox"
                   checked={bioReviewCompleted}
@@ -1416,7 +1441,9 @@ export const GBDBioinformaticsAnalysisPage = ({
           {/* Final Approval */}
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "0.5rem" }}>
             <div>
-              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
                 <input
                   type="checkbox"
                   checked={finalApprovalCompleted}

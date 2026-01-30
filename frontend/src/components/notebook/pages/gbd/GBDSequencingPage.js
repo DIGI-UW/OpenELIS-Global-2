@@ -219,16 +219,26 @@ export const GBDSequencingPage = ({
                   recordedBy: s.data?.sequencing?.auditTrail?.recordedBy,
                   recordedDate: s.data?.sequencing?.auditTrail?.recordedDate,
                   recordedTime: s.data?.sequencing?.auditTrail?.recordedTime,
-                  lastModifiedBy: s.data?.sequencing?.auditTrail?.lastModifiedBy,
-                  lastModifiedDate: s.data?.sequencing?.auditTrail?.lastModifiedDate,
-                  lastModifiedTime: s.data?.sequencing?.auditTrail?.lastModifiedTime,
+                  lastModifiedBy:
+                    s.data?.sequencing?.auditTrail?.lastModifiedBy,
+                  lastModifiedDate:
+                    s.data?.sequencing?.auditTrail?.lastModifiedDate,
+                  lastModifiedTime:
+                    s.data?.sequencing?.auditTrail?.lastModifiedTime,
                   // 3-Tier Review Workflow
-                  primaryReviewCompleted: s.data?.sequencing?.review?.primaryReview?.completed,
-                  primaryReviewedBy: s.data?.sequencing?.review?.primaryReview?.reviewedBy,
-                  bioReviewCompleted: s.data?.sequencing?.review?.bioinformaticsReview?.completed,
-                  bioReviewedBy: s.data?.sequencing?.review?.bioinformaticsReview?.reviewedBy,
-                  finalApprovalCompleted: s.data?.sequencing?.review?.finalApproval?.completed,
-                  finalApprovedBy: s.data?.sequencing?.review?.finalApproval?.approvedBy,
+                  primaryReviewCompleted:
+                    s.data?.sequencing?.review?.primaryReview?.completed,
+                  primaryReviewedBy:
+                    s.data?.sequencing?.review?.primaryReview?.reviewedBy,
+                  bioReviewCompleted:
+                    s.data?.sequencing?.review?.bioinformaticsReview?.completed,
+                  bioReviewedBy:
+                    s.data?.sequencing?.review?.bioinformaticsReview
+                      ?.reviewedBy,
+                  finalApprovalCompleted:
+                    s.data?.sequencing?.review?.finalApproval?.completed,
+                  finalApprovedBy:
+                    s.data?.sequencing?.review?.finalApproval?.approvedBy,
                 }))
               : [],
           );
@@ -369,7 +379,9 @@ export const GBDSequencingPage = ({
             // ALCOA+ Audit Trail
             auditTrail: {
               recordedBy: recordedBy || null,
-              recordedDate: recordedDate ? `${recordedDate}T${recordedTime}:00Z` : null,
+              recordedDate: recordedDate
+                ? `${recordedDate}T${recordedTime}:00Z`
+                : null,
               lastModifiedBy: lastModifiedBy || null,
               lastModifiedDate: lastModifiedDate
                 ? `${lastModifiedDate}T${lastModifiedTime}:00Z`
@@ -379,24 +391,31 @@ export const GBDSequencingPage = ({
             review: {
               primaryReview: {
                 completed: primaryReviewCompleted,
-                reviewedBy: primaryReviewCompleted ? primaryReviewedBy || null : null,
-                reviewedDate: primaryReviewCompleted && primaryReviewedDate
-                  ? `${primaryReviewedDate}T${primaryReviewedTime}:00Z`
+                reviewedBy: primaryReviewCompleted
+                  ? primaryReviewedBy || null
                   : null,
+                reviewedDate:
+                  primaryReviewCompleted && primaryReviewedDate
+                    ? `${primaryReviewedDate}T${primaryReviewedTime}:00Z`
+                    : null,
               },
               bioinformaticsReview: {
                 completed: bioReviewCompleted,
                 reviewedBy: bioReviewCompleted ? bioReviewedBy || null : null,
-                reviewedDate: bioReviewCompleted && bioReviewedDate
-                  ? `${bioReviewedDate}T${bioReviewedTime}:00Z`
-                  : null,
+                reviewedDate:
+                  bioReviewCompleted && bioReviewedDate
+                    ? `${bioReviewedDate}T${bioReviewedTime}:00Z`
+                    : null,
               },
               finalApproval: {
                 completed: finalApprovalCompleted,
-                approvedBy: finalApprovalCompleted ? finalApprovedBy || null : null,
-                approvedDate: finalApprovalCompleted && finalApprovedDate
-                  ? `${finalApprovedDate}T${finalApprovedTime}:00Z`
+                approvedBy: finalApprovalCompleted
+                  ? finalApprovedBy || null
                   : null,
+                approvedDate:
+                  finalApprovalCompleted && finalApprovedDate
+                    ? `${finalApprovedDate}T${finalApprovedTime}:00Z`
+                    : null,
               },
             },
           },
@@ -890,9 +909,12 @@ export const GBDSequencingPage = ({
                   key: "sequencer",
                   header: "Sequencer",
                   render: (_value, sample) => {
-                    if (sample.sequencer === "nextseq-500") return "NextSeq 500";
-                    if (sample.sequencer === "nextseq-2000") return "NextSeq 2000";
-                    if (sample.sequencer === "dnbseq-g400") return "DNBSEQ G400";
+                    if (sample.sequencer === "nextseq-500")
+                      return "NextSeq 500";
+                    if (sample.sequencer === "nextseq-2000")
+                      return "NextSeq 2000";
+                    if (sample.sequencer === "dnbseq-g400")
+                      return "DNBSEQ G400";
                     return sample.sequencer || "-";
                   },
                 },
@@ -974,7 +996,18 @@ export const GBDSequencingPage = ({
 
         <Grid narrow>
           {/* Pre-Sequencing Section */}
-          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem", fontWeight: "bold", fontSize: "0.875rem", textTransform: "uppercase", color: "#525252" }}>
+          <Column
+            lg={16}
+            md={16}
+            sm={4}
+            style={{
+              marginBottom: "1rem",
+              fontWeight: "bold",
+              fontSize: "0.875rem",
+              textTransform: "uppercase",
+              color: "#525252",
+            }}
+          >
             Pre-Sequencing Preparation
           </Column>
 
@@ -983,7 +1016,8 @@ export const GBDSequencingPage = ({
               id="normalization-notes"
               labelText={intl.formatMessage({
                 id: "notebook.gbd.sequencing.normalization",
-                defaultMessage: "Normalization: Library Concentration Adjustment",
+                defaultMessage:
+                  "Normalization: Library Concentration Adjustment",
               })}
               value={normalizationNotes}
               onChange={(e) => setNormalizationNotes(e.target.value)}
@@ -1024,7 +1058,8 @@ export const GBDSequencingPage = ({
               id="loading-notes"
               labelText={intl.formatMessage({
                 id: "notebook.gbd.sequencing.loading",
-                defaultMessage: "Loading: Sequencing Instrument Loading Details",
+                defaultMessage:
+                  "Loading: Sequencing Instrument Loading Details",
               })}
               value={loadingNotes}
               onChange={(e) => setLoadingNotes(e.target.value)}
@@ -1034,7 +1069,19 @@ export const GBDSequencingPage = ({
           </Column>
 
           {/* Sequencing Run Section */}
-          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem", fontWeight: "bold", fontSize: "0.875rem", textTransform: "uppercase", color: "#525252", marginTop: "1rem" }}>
+          <Column
+            lg={16}
+            md={16}
+            sm={4}
+            style={{
+              marginBottom: "1rem",
+              fontWeight: "bold",
+              fontSize: "0.875rem",
+              textTransform: "uppercase",
+              color: "#525252",
+              marginTop: "1rem",
+            }}
+          >
             Sequencing Run Details
           </Column>
 
@@ -1198,7 +1245,6 @@ export const GBDSequencingPage = ({
             />
           </Column>
 
-
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <TextArea
               id="sequencing-notes"
@@ -1314,7 +1360,9 @@ export const GBDSequencingPage = ({
           {/* Primary Review */}
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "0.5rem" }}>
             <div>
-              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
                 <input
                   type="checkbox"
                   checked={primaryReviewCompleted}
@@ -1376,7 +1424,9 @@ export const GBDSequencingPage = ({
           {/* Bioinformatics Review */}
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "0.5rem" }}>
             <div>
-              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
                 <input
                   type="checkbox"
                   checked={bioReviewCompleted}
@@ -1438,7 +1488,9 @@ export const GBDSequencingPage = ({
           {/* Final Approval */}
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "0.5rem" }}>
             <div>
-              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
                 <input
                   type="checkbox"
                   checked={finalApprovalCompleted}

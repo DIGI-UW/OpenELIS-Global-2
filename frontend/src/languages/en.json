@@ -10627,7 +10627,7 @@
   "notebook.tradmed.pathway.success": "Processing pathway saved for {count} sample(s).",
   "notebook.tradmed.pathway.error.required": "Please select a processing pathway.",
   "notebook.tradmed.pathway.error.failed": "Failed to save processing pathway.",
-  "notebook.tradmed.column.pathway": "Processing Pathway"
+  "notebook.tradmed.column.pathway": "Processing Pathway",
   "notification.error.title": "Error",
   "notebook.gbd.reception.title": "Sample Reception & Registration",
   "notebook.gbd.reception.description": "Register incoming samples and capture initial metadata",

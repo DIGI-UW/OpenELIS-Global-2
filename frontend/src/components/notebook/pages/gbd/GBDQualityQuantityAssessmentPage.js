@@ -629,7 +629,8 @@ export const GBDQualityQuantityAssessmentPage = ({
         })}
         subtitle={intl.formatMessage({
           id: "notebook.gbd.qc.criteria.explanation",
-          defaultMessage: "A sample PASSES if all measurements meet thresholds: Nanodrop Conc ≥10 ng/µL | A260/280 (DNA: 1.8-2.0, RNA: 2.0-2.2) | A260/230 ≥1.8 | RIN ≥7 (RNA only). Any measurement below threshold results in FAIL.",
+          defaultMessage:
+            "A sample PASSES if all measurements meet thresholds: Nanodrop Conc ≥10 ng/µL | A260/280 (DNA: 1.8-2.0, RNA: 2.0-2.2) | A260/230 ≥1.8 | RIN ≥7 (RNA only). Any measurement below threshold results in FAIL.",
         })}
         lowContrast
         hideCloseButton
@@ -1103,7 +1104,6 @@ export const GBDQualityQuantityAssessmentPage = ({
               onChange={(e) => setDateTime(e.target.value)}
             />
           </Column>
-
 
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <TextArea

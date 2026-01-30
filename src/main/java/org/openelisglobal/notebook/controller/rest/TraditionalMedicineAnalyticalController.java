@@ -1,7 +1,6 @@
 package org.openelisglobal.notebook.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,18 +29,19 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * Per SRS Requirements - STAGE 6: Analytical Pathways
  *
- * Branching workflow:
- * - PATH A: Advanced Analysis (mandatory all 4 steps on Page 6)
- * - PATH B: Direct to Production (skip Page 6)
+ * Branching workflow: - PATH A: Advanced Analysis (mandatory all 4 steps on
+ * Page 6) - PATH B: Direct to Production (skip Page 6)
  *
- * Endpoints:
- * - POST /rest/notebook/tradmed/page/{pageId}/select-pathway - Select pathway at end of Page 5
- * - POST /rest/notebook/tradmed/page/{pageId}/record-fractionation - Step 1 for PATH A
- * - POST /rest/notebook/tradmed/page/{pageId}/record-identification - Step 2 for PATH A
- * - POST /rest/notebook/tradmed/page/{pageId}/record-purification - Step 3 for PATH A
- * - POST /rest/notebook/tradmed/page/{pageId}/record-characterization - Step 4 for PATH A
- * - GET /rest/notebook/tradmed/page/{pageId}/analytical-status - Get status
- * - POST /rest/notebook/tradmed/page/{pageId}/mark-analysis-complete - Mark complete and advance
+ * Endpoints: - POST /rest/notebook/tradmed/page/{pageId}/select-pathway -
+ * Select pathway at end of Page 5 - POST
+ * /rest/notebook/tradmed/page/{pageId}/record-fractionation - Step 1 for PATH A
+ * - POST /rest/notebook/tradmed/page/{pageId}/record-identification - Step 2
+ * for PATH A - POST /rest/notebook/tradmed/page/{pageId}/record-purification -
+ * Step 3 for PATH A - POST
+ * /rest/notebook/tradmed/page/{pageId}/record-characterization - Step 4 for
+ * PATH A - GET /rest/notebook/tradmed/page/{pageId}/analytical-status - Get
+ * status - POST /rest/notebook/tradmed/page/{pageId}/mark-analysis-complete -
+ * Mark complete and advance
  */
 @RestController
 @RequestMapping("/rest/notebook/tradmed")
@@ -51,16 +51,14 @@ public class TraditionalMedicineAnalyticalController extends BaseRestController 
     private TraditionalMedicineAnalyticalService analyticalService;
 
     /**
-     * Select analysis pathway (PATH A or PATH B) at end of Page 5.
-     * Pathway is LOCKED after selection and cannot be changed.
-     * POST /rest/notebook/tradmed/page/{pageId}/select-pathway
+     * Select analysis pathway (PATH A or PATH B) at end of Page 5. Pathway is
+     * LOCKED after selection and cannot be changed. POST
+     * /rest/notebook/tradmed/page/{pageId}/select-pathway
      */
     @PostMapping(value = "/page/{pageId}/select-pathway", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> selectPathway(
-            @PathVariable("pageId") Integer pageId,
-            @RequestBody PathwaySelectionRequest request,
-            HttpServletRequest httpRequest) {
+    public ResponseEntity<Map<String, Object>> selectPathway(@PathVariable("pageId") Integer pageId,
+            @RequestBody PathwaySelectionRequest request, HttpServletRequest httpRequest) {
 
         String sysUserId = getSysUserId(httpRequest);
         if (sysUserId == null) {
@@ -83,15 +81,13 @@ public class TraditionalMedicineAnalyticalController extends BaseRestController 
     }
 
     /**
-     * Record fractionation - MANDATORY STEP 1 for PATH A.
-     * POST /rest/notebook/tradmed/page/{pageId}/record-fractionation
+     * Record fractionation - MANDATORY STEP 1 for PATH A. POST
+     * /rest/notebook/tradmed/page/{pageId}/record-fractionation
      */
     @PostMapping(value = "/page/{pageId}/record-fractionation", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> recordFractionation(
-            @PathVariable("pageId") Integer pageId,
-            @RequestBody FractionationRequest request,
-            HttpServletRequest httpRequest) {
+    public ResponseEntity<Map<String, Object>> recordFractionation(@PathVariable("pageId") Integer pageId,
+            @RequestBody FractionationRequest request, HttpServletRequest httpRequest) {
 
         String sysUserId = getSysUserId(httpRequest);
         if (sysUserId == null) {
@@ -114,15 +110,13 @@ public class TraditionalMedicineAnalyticalController extends BaseRestController 
     }
 
     /**
-     * Record identification/isolation - MANDATORY STEP 2 for PATH A.
-     * POST /rest/notebook/tradmed/page/{pageId}/record-identification
+     * Record identification/isolation - MANDATORY STEP 2 for PATH A. POST
+     * /rest/notebook/tradmed/page/{pageId}/record-identification
      */
     @PostMapping(value = "/page/{pageId}/record-identification", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> recordIdentification(
-            @PathVariable("pageId") Integer pageId,
-            @RequestBody IdentificationRequest request,
-            HttpServletRequest httpRequest) {
+    public ResponseEntity<Map<String, Object>> recordIdentification(@PathVariable("pageId") Integer pageId,
+            @RequestBody IdentificationRequest request, HttpServletRequest httpRequest) {
 
         String sysUserId = getSysUserId(httpRequest);
         if (sysUserId == null) {
@@ -145,15 +139,13 @@ public class TraditionalMedicineAnalyticalController extends BaseRestController 
     }
 
     /**
-     * Record purification - MANDATORY STEP 3 for PATH A.
-     * POST /rest/notebook/tradmed/page/{pageId}/record-purification
+     * Record purification - MANDATORY STEP 3 for PATH A. POST
+     * /rest/notebook/tradmed/page/{pageId}/record-purification
      */
     @PostMapping(value = "/page/{pageId}/record-purification", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> recordPurification(
-            @PathVariable("pageId") Integer pageId,
-            @RequestBody PurificationRequest request,
-            HttpServletRequest httpRequest) {
+    public ResponseEntity<Map<String, Object>> recordPurification(@PathVariable("pageId") Integer pageId,
+            @RequestBody PurificationRequest request, HttpServletRequest httpRequest) {
 
         String sysUserId = getSysUserId(httpRequest);
         if (sysUserId == null) {
@@ -176,15 +168,13 @@ public class TraditionalMedicineAnalyticalController extends BaseRestController 
     }
 
     /**
-     * Record characterization - MANDATORY STEP 4 for PATH A.
-     * POST /rest/notebook/tradmed/page/{pageId}/record-characterization
+     * Record characterization - MANDATORY STEP 4 for PATH A. POST
+     * /rest/notebook/tradmed/page/{pageId}/record-characterization
      */
     @PostMapping(value = "/page/{pageId}/record-characterization", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> recordCharacterization(
-            @PathVariable("pageId") Integer pageId,
-            @RequestBody CharacterizationRequest request,
-            HttpServletRequest httpRequest) {
+    public ResponseEntity<Map<String, Object>> recordCharacterization(@PathVariable("pageId") Integer pageId,
+            @RequestBody CharacterizationRequest request, HttpServletRequest httpRequest) {
 
         String sysUserId = getSysUserId(httpRequest);
         if (sysUserId == null) {
@@ -207,8 +197,8 @@ public class TraditionalMedicineAnalyticalController extends BaseRestController 
     }
 
     /**
-     * Get analytical status for all samples on a page.
-     * GET /rest/notebook/tradmed/page/{pageId}/analytical-status
+     * Get analytical status for all samples on a page. GET
+     * /rest/notebook/tradmed/page/{pageId}/analytical-status
      */
     @GetMapping(value = "/page/{pageId}/analytical-status", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -221,17 +211,15 @@ public class TraditionalMedicineAnalyticalController extends BaseRestController 
     }
 
     /**
-     * Mark samples as analysis complete and ready for next stage (Page 7).
-     * For PATH A: All 4 steps must be complete before marking.
-     * For PATH B: Samples skip this page entirely.
-     * POST /rest/notebook/tradmed/page/{pageId}/mark-analysis-complete
+     * Mark samples as analysis complete and ready for next stage (Page 7). For PATH
+     * A: All 4 steps must be complete before marking. For PATH B: Samples skip this
+     * page entirely. POST
+     * /rest/notebook/tradmed/page/{pageId}/mark-analysis-complete
      */
     @PostMapping(value = "/page/{pageId}/mark-analysis-complete", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> markAnalysisComplete(
-            @PathVariable("pageId") Integer pageId,
-            @RequestBody Map<String, List<Integer>> request,
-            HttpServletRequest httpRequest) {
+    public ResponseEntity<Map<String, Object>> markAnalysisComplete(@PathVariable("pageId") Integer pageId,
+            @RequestBody Map<String, List<Integer>> request, HttpServletRequest httpRequest) {
 
         String sysUserId = getSysUserId(httpRequest);
         if (sysUserId == null) {

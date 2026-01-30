@@ -1,11 +1,12 @@
 package org.openelisglobal.notebook.form;
 
 /**
- * Form class for GBD (Genomic Bioanalytical Database) manifest CSV column mapping configuration.
+ * Form class for GBD (Genomic Bioanalytical Database) manifest CSV column
+ * mapping configuration.
  *
- * Allows mapping of CSV column names to GBD-specific fields during manifest import. This enables
- * flexibility in CSV format while maintaining consistent data validation for genomic sample reception
- * and processing metadata.
+ * Allows mapping of CSV column names to GBD-specific fields during manifest
+ * import. This enables flexibility in CSV format while maintaining consistent
+ * data validation for genomic sample reception and processing metadata.
  */
 public class GBDManifestImportForm {
 

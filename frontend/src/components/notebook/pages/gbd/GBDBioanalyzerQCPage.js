@@ -204,16 +204,27 @@ export const GBDBioanalyzerQCPage = ({
                   recordedBy: s.data?.bioanalyzerQc?.auditTrail?.recordedBy,
                   recordedDate: s.data?.bioanalyzerQc?.auditTrail?.recordedDate,
                   recordedTime: s.data?.bioanalyzerQc?.auditTrail?.recordedTime,
-                  lastModifiedBy: s.data?.bioanalyzerQc?.auditTrail?.lastModifiedBy,
-                  lastModifiedDate: s.data?.bioanalyzerQc?.auditTrail?.lastModifiedDate,
-                  lastModifiedTime: s.data?.bioanalyzerQc?.auditTrail?.lastModifiedTime,
+                  lastModifiedBy:
+                    s.data?.bioanalyzerQc?.auditTrail?.lastModifiedBy,
+                  lastModifiedDate:
+                    s.data?.bioanalyzerQc?.auditTrail?.lastModifiedDate,
+                  lastModifiedTime:
+                    s.data?.bioanalyzerQc?.auditTrail?.lastModifiedTime,
                   // 3-Tier Review Workflow
-                  primaryReviewCompleted: s.data?.bioanalyzerQc?.review?.primaryReview?.completed,
-                  primaryReviewedBy: s.data?.bioanalyzerQc?.review?.primaryReview?.reviewedBy,
-                  bioReviewCompleted: s.data?.bioanalyzerQc?.review?.bioinformaticsReview?.completed,
-                  bioReviewedBy: s.data?.bioanalyzerQc?.review?.bioinformaticsReview?.reviewedBy,
-                  finalApprovalCompleted: s.data?.bioanalyzerQc?.review?.finalApproval?.completed,
-                  finalApprovedBy: s.data?.bioanalyzerQc?.review?.finalApproval?.approvedBy,
+                  primaryReviewCompleted:
+                    s.data?.bioanalyzerQc?.review?.primaryReview?.completed,
+                  primaryReviewedBy:
+                    s.data?.bioanalyzerQc?.review?.primaryReview?.reviewedBy,
+                  bioReviewCompleted:
+                    s.data?.bioanalyzerQc?.review?.bioinformaticsReview
+                      ?.completed,
+                  bioReviewedBy:
+                    s.data?.bioanalyzerQc?.review?.bioinformaticsReview
+                      ?.reviewedBy,
+                  finalApprovalCompleted:
+                    s.data?.bioanalyzerQc?.review?.finalApproval?.completed,
+                  finalApprovedBy:
+                    s.data?.bioanalyzerQc?.review?.finalApproval?.approvedBy,
                 }))
               : [],
           );
@@ -335,7 +346,9 @@ export const GBDBioanalyzerQCPage = ({
             // ALCOA+ Audit Trail
             auditTrail: {
               recordedBy: recordedBy || null,
-              recordedDate: recordedDate ? `${recordedDate}T${recordedTime}:00Z` : null,
+              recordedDate: recordedDate
+                ? `${recordedDate}T${recordedTime}:00Z`
+                : null,
               lastModifiedBy: lastModifiedBy || null,
               lastModifiedDate: lastModifiedDate
                 ? `${lastModifiedDate}T${lastModifiedTime}:00Z`
@@ -345,24 +358,31 @@ export const GBDBioanalyzerQCPage = ({
             review: {
               primaryReview: {
                 completed: primaryReviewCompleted,
-                reviewedBy: primaryReviewCompleted ? primaryReviewedBy || null : null,
-                reviewedDate: primaryReviewCompleted && primaryReviewedDate
-                  ? `${primaryReviewedDate}T${primaryReviewedTime}:00Z`
+                reviewedBy: primaryReviewCompleted
+                  ? primaryReviewedBy || null
                   : null,
+                reviewedDate:
+                  primaryReviewCompleted && primaryReviewedDate
+                    ? `${primaryReviewedDate}T${primaryReviewedTime}:00Z`
+                    : null,
               },
               bioinformaticsReview: {
                 completed: bioReviewCompleted,
                 reviewedBy: bioReviewCompleted ? bioReviewedBy || null : null,
-                reviewedDate: bioReviewCompleted && bioReviewedDate
-                  ? `${bioReviewedDate}T${bioReviewedTime}:00Z`
-                  : null,
+                reviewedDate:
+                  bioReviewCompleted && bioReviewedDate
+                    ? `${bioReviewedDate}T${bioReviewedTime}:00Z`
+                    : null,
               },
               finalApproval: {
                 completed: finalApprovalCompleted,
-                approvedBy: finalApprovalCompleted ? finalApprovedBy || null : null,
-                approvedDate: finalApprovalCompleted && finalApprovedDate
-                  ? `${finalApprovedDate}T${finalApprovedTime}:00Z`
+                approvedBy: finalApprovalCompleted
+                  ? finalApprovedBy || null
                   : null,
+                approvedDate:
+                  finalApprovalCompleted && finalApprovedDate
+                    ? `${finalApprovedDate}T${finalApprovedTime}:00Z`
+                    : null,
               },
             },
           },
@@ -994,7 +1014,6 @@ export const GBDBioanalyzerQCPage = ({
             />
           </Column>
 
-
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <div
               style={{
@@ -1158,7 +1177,9 @@ export const GBDBioanalyzerQCPage = ({
           {/* Primary Review */}
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "0.5rem" }}>
             <div>
-              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
                 <input
                   type="checkbox"
                   checked={primaryReviewCompleted}
@@ -1220,7 +1241,9 @@ export const GBDBioanalyzerQCPage = ({
           {/* Bioinformatics Review */}
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "0.5rem" }}>
             <div>
-              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
                 <input
                   type="checkbox"
                   checked={bioReviewCompleted}
@@ -1282,7 +1305,9 @@ export const GBDBioanalyzerQCPage = ({
           {/* Final Approval */}
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "0.5rem" }}>
             <div>
-              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
                 <input
                   type="checkbox"
                   checked={finalApprovalCompleted}

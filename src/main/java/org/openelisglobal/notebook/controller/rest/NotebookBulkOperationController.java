@@ -1233,7 +1233,8 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
 
         // Route samples based on configured routing mode:
-        // 1. If pathway routing is enabled (pathwayrouting=true), use pathway-based routing
+        // 1. If pathway routing is enabled (pathwayrouting=true), use pathway-based
+        // routing
         // 2. Else if skipAutoRouting is enabled, skip T150 auto-routing
         // 3. Else use standard routing with T150 auto-routing (default)
         int updatedCount;
@@ -1331,8 +1332,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.badRequest().body(error);
         }
 
-        int updatedCount = bulkOperationService.bulkUpdateStatusStringWithPathwayRouting(pageId,
-                request.getSampleIds(), status, sysUserId, pathwayrouting, sourcepage, targetpage);
+        int updatedCount = bulkOperationService.bulkUpdateStatusStringWithPathwayRouting(pageId, request.getSampleIds(),
+                status, sysUserId, pathwayrouting, sourcepage, targetpage);
 
         Map<String, Object> result = new HashMap<>();
         result.put("updatedCount", updatedCount);

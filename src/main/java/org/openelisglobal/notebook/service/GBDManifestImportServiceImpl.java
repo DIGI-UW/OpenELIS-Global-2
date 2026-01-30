@@ -39,20 +39,20 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Genomic Bioanalytical Database (GBD) manifest import implementation.
  *
- * Parses GBD-specific CSV, creates samples + sample items, links to notebook entry,
- * and stores reception and processing metadata on page 1 NotebookPageSample in JSONB
- * format for flexible genomic data storage.
+ * Parses GBD-specific CSV, creates samples + sample items, links to notebook
+ * entry, and stores reception and processing metadata on page 1
+ * NotebookPageSample in JSONB format for flexible genomic data storage.
  *
- * Reception Metadata:
- * - Required: sampleId, sampleType, source, collectionDate, receptionDateTime
- * - Optional: projectStudyAssociation, volumeConcentration, A260/280, A260/230, RIN
+ * Reception Metadata: - Required: sampleId, sampleType, source, collectionDate,
+ * receptionDateTime - Optional: projectStudyAssociation, volumeConcentration,
+ * A260/280, A260/230, RIN
  *
- * Processing Metadata:
- * - Optional: extractionMethodKit, pcrProtocol, libraryPrepProtocol, sequencingPlatform,
- *   runId, operator, processingDateTime, notes
- * - Auto-generated: systemAssignedSampleId, barcodeQrCode
+ * Processing Metadata: - Optional: extractionMethodKit, pcrProtocol,
+ * libraryPrepProtocol, sequencingPlatform, runId, operator, processingDateTime,
+ * notes - Auto-generated: systemAssignedSampleId, barcodeQrCode
  *
- * Sample Types validated against GBD-specific list (DNA, RNA, cDNA, genomic materials).
+ * Sample Types validated against GBD-specific list (DNA, RNA, cDNA, genomic
+ * materials).
  */
 @Service
 public class GBDManifestImportServiceImpl implements GBDManifestImportService {
@@ -75,8 +75,8 @@ public class GBDManifestImportServiceImpl implements GBDManifestImportService {
             "cdna", "cdna - first strand", "cdna - double strand", "cdna - library",
 
             // Genomic materials
-            "whole blood", "saliva", "buccal swab", "tissue", "hair follicle", "nail",
-            "cultured cells", "bacterial culture", "viral lysate",
+            "whole blood", "saliva", "buccal swab", "tissue", "hair follicle", "nail", "cultured cells",
+            "bacterial culture", "viral lysate",
 
             // Quality control samples
             "positive control", "negative control", "reference standard", "quality control sample",
@@ -134,24 +134,19 @@ public class GBDManifestImportServiceImpl implements GBDManifestImportService {
             // Optional reception metadata indices
             Integer projectStudyAssociationIdx = getColumnIndex(columnIndex,
                     columnMapping.getProjectStudyAssociationColumn());
-            Integer volumeConcentrationIdx = getColumnIndex(columnIndex,
-                    columnMapping.getVolumeConcentrationColumn());
+            Integer volumeConcentrationIdx = getColumnIndex(columnIndex, columnMapping.getVolumeConcentrationColumn());
             Integer a260_280Idx = getColumnIndex(columnIndex, columnMapping.getA260_280Column());
             Integer a260_230Idx = getColumnIndex(columnIndex, columnMapping.getA260_230Column());
             Integer rinIdx = getColumnIndex(columnIndex, columnMapping.getRinColumn());
 
             // Optional processing metadata indices
-            Integer extractionMethodKitIdx = getColumnIndex(columnIndex,
-                    columnMapping.getExtractionMethodKitColumn());
+            Integer extractionMethodKitIdx = getColumnIndex(columnIndex, columnMapping.getExtractionMethodKitColumn());
             Integer pcrProtocolIdx = getColumnIndex(columnIndex, columnMapping.getPcrProtocolColumn());
-            Integer libraryPrepProtocolIdx = getColumnIndex(columnIndex,
-                    columnMapping.getLibraryPrepProtocolColumn());
-            Integer sequencingPlatformIdx = getColumnIndex(columnIndex,
-                    columnMapping.getSequencingPlatformColumn());
+            Integer libraryPrepProtocolIdx = getColumnIndex(columnIndex, columnMapping.getLibraryPrepProtocolColumn());
+            Integer sequencingPlatformIdx = getColumnIndex(columnIndex, columnMapping.getSequencingPlatformColumn());
             Integer runIdIdx = getColumnIndex(columnIndex, columnMapping.getRunIdColumn());
             Integer operatorIdx = getColumnIndex(columnIndex, columnMapping.getOperatorColumn());
-            Integer processingDateTimeIdx = getColumnIndex(columnIndex,
-                    columnMapping.getProcessingDateTimeColumn());
+            Integer processingDateTimeIdx = getColumnIndex(columnIndex, columnMapping.getProcessingDateTimeColumn());
             Integer notesIdx = getColumnIndex(columnIndex, columnMapping.getNotesColumn());
 
             String line;
@@ -183,10 +178,10 @@ public class GBDManifestImportServiceImpl implements GBDManifestImportService {
                 String processingDateTime = getFieldValue(fields, processingDateTimeIdx);
                 String notes = getFieldValue(fields, notesIdx);
 
-                rows.add(new GBDManifestRow(rowNumber, sampleId, sampleType, source, collectionDate,
-                        receptionDateTime, projectStudyAssociation, volumeConcentration, a260_280, a260_230, rin,
-                        extractionMethodKit, pcrProtocol, libraryPrepProtocol, sequencingPlatform, runId, operator,
-                        processingDateTime, notes));
+                rows.add(new GBDManifestRow(rowNumber, sampleId, sampleType, source, collectionDate, receptionDateTime,
+                        projectStudyAssociation, volumeConcentration, a260_280, a260_230, rin, extractionMethodKit,
+                        pcrProtocol, libraryPrepProtocol, sequencingPlatform, runId, operator, processingDateTime,
+                        notes));
             }
 
         } catch (IOException e) {
@@ -262,13 +257,13 @@ public class GBDManifestImportServiceImpl implements GBDManifestImportService {
                 try {
                     Double.parseDouble(row.rin());
                 } catch (NumberFormatException e) {
-                    errors.add(new ParseError(row.rowNumber(), "rin",
-                            "RIN must be a valid decimal number"));
+                    errors.add(new ParseError(row.rowNumber(), "rin", "RIN must be a valid decimal number"));
                 }
             }
 
             if (row.volumeConcentration() != null && !row.volumeConcentration().isBlank()) {
-                // Extract numeric part from values that may have units (e.g., "100 ng/µL", "5 mL")
+                // Extract numeric part from values that may have units (e.g., "100 ng/µL", "5
+                // mL")
                 String volumeValue = row.volumeConcentration().trim();
                 String numericPart = volumeValue.replaceAll("[^0-9.]", "");
                 if (numericPart.isEmpty()) {

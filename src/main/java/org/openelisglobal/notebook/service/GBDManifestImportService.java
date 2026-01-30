@@ -6,25 +6,27 @@ import java.util.Map;
 import org.openelisglobal.notebook.form.GBDManifestImportForm;
 
 /**
- * Service interface for Genomic Bioanalytical Database (GBD) manifest CSV import.
+ * Service interface for Genomic Bioanalytical Database (GBD) manifest CSV
+ * import.
  *
- * Supports genomic sample metadata with:
- * - Required: sampleId, sampleType, source, collectionDate, receptionDateTime
- * - Optional reception metadata: projectStudyAssociation, volumeConcentration, A260/280, A260/230, RIN
- * - Optional processing metadata: extractionMethodKit, pcrProtocol, libraryPrepProtocol,
- *   sequencingPlatform, runId, operator, processingDateTime, notes
+ * Supports genomic sample metadata with: - Required: sampleId, sampleType,
+ * source, collectionDate, receptionDateTime - Optional reception metadata:
+ * projectStudyAssociation, volumeConcentration, A260/280, A260/230, RIN -
+ * Optional processing metadata: extractionMethodKit, pcrProtocol,
+ * libraryPrepProtocol, sequencingPlatform, runId, operator, processingDateTime,
+ * notes
  *
- * Sample Types include DNA, RNA, cDNA, and various genomic materials.
- * All sample metadata is stored in JSONB format on the sample.data field for flexibility.
+ * Sample Types include DNA, RNA, cDNA, and various genomic materials. All
+ * sample metadata is stored in JSONB format on the sample.data field for
+ * flexibility.
  */
 public interface GBDManifestImportService {
 
     /**
-     * Represents a single row from the GBD manifest CSV. Each row creates one sample
-     * with its associated reception and processing metadata.
+     * Represents a single row from the GBD manifest CSV. Each row creates one
+     * sample with its associated reception and processing metadata.
      */
-    record GBDManifestRow(
-            int rowNumber,
+    record GBDManifestRow(int rowNumber,
             // Required fields
             String sampleId, String sampleType, String source, String collectionDate, String receptionDateTime,
             // Optional reception metadata

@@ -25,8 +25,7 @@ public interface TraditionalMedicineSamplePreparationService {
      * Processing type options per SRS.
      */
     enum ProcessingType {
-        GRINDING("GRINDING", "Grinding (to powder)"),
-        CHOPPING("CHOPPING", "Chopping (coarse pieces)"),
+        GRINDING("GRINDING", "Grinding (to powder)"), CHOPPING("CHOPPING", "Chopping (coarse pieces)"),
         POWDERING("POWDERING", "Powdering (fine powder for extraction)"),
         FRESHLY_PROCESSED("FRESHLY_PROCESSED", "Freshly processed samples: Used immediately");
 
@@ -56,8 +55,8 @@ public interface TraditionalMedicineSamplePreparationService {
         }
 
         /**
-         * Check if this processing type is a drying method.
-         * Note: Drying is now handled separately via DryingMethod enum.
+         * Check if this processing type is a drying method. Note: Drying is now handled
+         * separately via DryingMethod enum.
          */
         public boolean isDryingMethod() {
             return false; // All drying methods are now in DryingMethod enum
@@ -102,8 +101,7 @@ public interface TraditionalMedicineSamplePreparationService {
      * Drying method options for sample preparation.
      */
     enum DryingMethod {
-        AIR_DRYING("AIR_DRYING", "Air drying"),
-        OVEN_DRYING("OVEN_DRYING", "Oven drying (controlled temperature)"),
+        AIR_DRYING("AIR_DRYING", "Air drying"), OVEN_DRYING("OVEN_DRYING", "Oven drying (controlled temperature)"),
         FREEZE_DRYING("FREEZE_DRYING", "Freeze drying (for heat-sensitive materials)");
 
         private final String id;

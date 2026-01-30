@@ -33,19 +33,16 @@ import org.springframework.web.multipart.MultipartFile;
  * REST controller for Genomic Bioanalytical Database (GBD) manifest CSV import
  * operations.
  *
- * Supports genomic sample metadata including:
- * - Required: sampleId, sampleType, source, collectionDate, receptionDateTime
- * - Optional reception metadata: projectStudyAssociation, volumeConcentration,
- *   A260/280, A260/230, RIN
- * - Optional processing metadata: extractionMethodKit, pcrProtocol,
- *   libraryPrepProtocol, sequencingPlatform, runId, operator, processingDateTime,
- *   notes
- * - Auto-generated: systemAssignedSampleId, barcodeQrCode
+ * Supports genomic sample metadata including: - Required: sampleId, sampleType,
+ * source, collectionDate, receptionDateTime - Optional reception metadata:
+ * projectStudyAssociation, volumeConcentration, A260/280, A260/230, RIN -
+ * Optional processing metadata: extractionMethodKit, pcrProtocol,
+ * libraryPrepProtocol, sequencingPlatform, runId, operator, processingDateTime,
+ * notes - Auto-generated: systemAssignedSampleId, barcodeQrCode
  *
- * Endpoints:
- * - GET /sample-types - Get valid sample types
- * - POST /entry/{entryId}/samples/preview-manifest - Preview CSV before import
- * - POST /entry/{entryId}/samples/import-manifest - Execute manifest import
+ * Endpoints: - GET /sample-types - Get valid sample types - POST
+ * /entry/{entryId}/samples/preview-manifest - Preview CSV before import - POST
+ * /entry/{entryId}/samples/import-manifest - Execute manifest import
  */
 @RestController
 @RequestMapping("/rest/notebook/gbd")
@@ -86,10 +83,8 @@ public class GBDManifestImportController extends BaseRestController {
         List<Map<String, String>> filtered = allSampleTypes;
         if (filter != null && !filter.isBlank()) {
             String filterLower = filter.toLowerCase();
-            filtered = allSampleTypes.stream()
-                    .filter(st -> st.get("description").toLowerCase().contains(filterLower)
-                            || st.get("id").toLowerCase().contains(filterLower))
-                    .toList();
+            filtered = allSampleTypes.stream().filter(st -> st.get("description").toLowerCase().contains(filterLower)
+                    || st.get("id").toLowerCase().contains(filterLower)).toList();
         }
 
         // Apply pagination
@@ -161,9 +156,8 @@ public class GBDManifestImportController extends BaseRestController {
             }).toList());
 
             if (!allErrors.isEmpty()) {
-                response.put("errors", allErrors.stream()
-                        .map(err -> Map.of("rowNumber", err.rowNumber(), "column", err.column(), "message",
-                                err.message()))
+                response.put("errors", allErrors.stream().map(
+                        err -> Map.of("rowNumber", err.rowNumber(), "column", err.column(), "message", err.message()))
                         .toList());
             }
 
@@ -214,15 +208,13 @@ public class GBDManifestImportController extends BaseRestController {
                 errorResponse.put("success", false);
                 errorResponse.put("message", "Manifest validation failed");
                 errorResponse.put("totalErrors", allErrors.size());
-                errorResponse.put("errors", allErrors.stream()
-                        .map(err -> Map.of("rowNumber", err.rowNumber(), "column", err.column(), "message",
-                                err.message()))
+                errorResponse.put("errors", allErrors.stream().map(
+                        err -> Map.of("rowNumber", err.rowNumber(), "column", err.column(), "message", err.message()))
                         .toList());
                 return ResponseEntity.badRequest().body(errorResponse);
             }
 
-            GBDManifestImportResult result = gbdManifestImportService.createSamplesForEntry(entryId, parsed,
-                    sysUserId);
+            GBDManifestImportResult result = gbdManifestImportService.createSamplesForEntry(entryId, parsed, sysUserId);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", result.errors().isEmpty());
@@ -232,9 +224,8 @@ public class GBDManifestImportController extends BaseRestController {
 
             if (!result.errors().isEmpty()) {
                 response.put("partialSuccess", true);
-                response.put("errors", result.errors().stream()
-                        .map(err -> Map.of("rowNumber", err.rowNumber(), "column", err.column(), "message",
-                                err.message()))
+                response.put("errors", result.errors().stream().map(
+                        err -> Map.of("rowNumber", err.rowNumber(), "column", err.column(), "message", err.message()))
                         .toList());
             }
 

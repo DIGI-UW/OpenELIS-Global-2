@@ -211,16 +211,27 @@ export const GBDLibraryPreparationPage = ({
                   recordedBy: s.data?.libraryPrep?.auditTrail?.recordedBy,
                   recordedDate: s.data?.libraryPrep?.auditTrail?.recordedDate,
                   recordedTime: s.data?.libraryPrep?.auditTrail?.recordedTime,
-                  lastModifiedBy: s.data?.libraryPrep?.auditTrail?.lastModifiedBy,
-                  lastModifiedDate: s.data?.libraryPrep?.auditTrail?.lastModifiedDate,
-                  lastModifiedTime: s.data?.libraryPrep?.auditTrail?.lastModifiedTime,
+                  lastModifiedBy:
+                    s.data?.libraryPrep?.auditTrail?.lastModifiedBy,
+                  lastModifiedDate:
+                    s.data?.libraryPrep?.auditTrail?.lastModifiedDate,
+                  lastModifiedTime:
+                    s.data?.libraryPrep?.auditTrail?.lastModifiedTime,
                   // 3-Tier Review Workflow
-                  primaryReviewCompleted: s.data?.libraryPrep?.review?.primaryReview?.completed,
-                  primaryReviewedBy: s.data?.libraryPrep?.review?.primaryReview?.reviewedBy,
-                  bioReviewCompleted: s.data?.libraryPrep?.review?.bioinformaticsReview?.completed,
-                  bioReviewedBy: s.data?.libraryPrep?.review?.bioinformaticsReview?.reviewedBy,
-                  finalApprovalCompleted: s.data?.libraryPrep?.review?.finalApproval?.completed,
-                  finalApprovedBy: s.data?.libraryPrep?.review?.finalApproval?.approvedBy,
+                  primaryReviewCompleted:
+                    s.data?.libraryPrep?.review?.primaryReview?.completed,
+                  primaryReviewedBy:
+                    s.data?.libraryPrep?.review?.primaryReview?.reviewedBy,
+                  bioReviewCompleted:
+                    s.data?.libraryPrep?.review?.bioinformaticsReview
+                      ?.completed,
+                  bioReviewedBy:
+                    s.data?.libraryPrep?.review?.bioinformaticsReview
+                      ?.reviewedBy,
+                  finalApprovalCompleted:
+                    s.data?.libraryPrep?.review?.finalApproval?.completed,
+                  finalApprovedBy:
+                    s.data?.libraryPrep?.review?.finalApproval?.approvedBy,
                 }))
               : [],
           );
@@ -345,7 +356,9 @@ export const GBDLibraryPreparationPage = ({
             // ALCOA+ Audit Trail
             auditTrail: {
               recordedBy: recordedBy || null,
-              recordedDate: recordedDate ? `${recordedDate}T${recordedTime}:00Z` : null,
+              recordedDate: recordedDate
+                ? `${recordedDate}T${recordedTime}:00Z`
+                : null,
               lastModifiedBy: lastModifiedBy || null,
               lastModifiedDate: lastModifiedDate
                 ? `${lastModifiedDate}T${lastModifiedTime}:00Z`
@@ -355,24 +368,31 @@ export const GBDLibraryPreparationPage = ({
             review: {
               primaryReview: {
                 completed: primaryReviewCompleted,
-                reviewedBy: primaryReviewCompleted ? primaryReviewedBy || null : null,
-                reviewedDate: primaryReviewCompleted && primaryReviewedDate
-                  ? `${primaryReviewedDate}T${primaryReviewedTime}:00Z`
+                reviewedBy: primaryReviewCompleted
+                  ? primaryReviewedBy || null
                   : null,
+                reviewedDate:
+                  primaryReviewCompleted && primaryReviewedDate
+                    ? `${primaryReviewedDate}T${primaryReviewedTime}:00Z`
+                    : null,
               },
               bioinformaticsReview: {
                 completed: bioReviewCompleted,
                 reviewedBy: bioReviewCompleted ? bioReviewedBy || null : null,
-                reviewedDate: bioReviewCompleted && bioReviewedDate
-                  ? `${bioReviewedDate}T${bioReviewedTime}:00Z`
-                  : null,
+                reviewedDate:
+                  bioReviewCompleted && bioReviewedDate
+                    ? `${bioReviewedDate}T${bioReviewedTime}:00Z`
+                    : null,
               },
               finalApproval: {
                 completed: finalApprovalCompleted,
-                approvedBy: finalApprovalCompleted ? finalApprovedBy || null : null,
-                approvedDate: finalApprovalCompleted && finalApprovedDate
-                  ? `${finalApprovedDate}T${finalApprovedTime}:00Z`
+                approvedBy: finalApprovalCompleted
+                  ? finalApprovedBy || null
                   : null,
+                approvedDate:
+                  finalApprovalCompleted && finalApprovedDate
+                    ? `${finalApprovedDate}T${finalApprovedTime}:00Z`
+                    : null,
               },
             },
           },
@@ -791,7 +811,8 @@ export const GBDLibraryPreparationPage = ({
                   header: "Platform",
                   render: (_value, sample) => {
                     if (sample.platform === "nextseq-500") return "NextSeq 500";
-                    if (sample.platform === "nextseq-2000") return "NextSeq 2000";
+                    if (sample.platform === "nextseq-2000")
+                      return "NextSeq 2000";
                     if (sample.platform === "dnbseq-g400") return "DNBSEQ G400";
                     return "-";
                   },
@@ -866,7 +887,8 @@ export const GBDLibraryPreparationPage = ({
                   header: "Platform",
                   render: (_value, sample) => {
                     if (sample.platform === "nextseq-500") return "NextSeq 500";
-                    if (sample.platform === "nextseq-2000") return "NextSeq 2000";
+                    if (sample.platform === "nextseq-2000")
+                      return "NextSeq 2000";
                     if (sample.platform === "dnbseq-g400") return "DNBSEQ G400";
                     return "-";
                   },
@@ -1080,7 +1102,6 @@ export const GBDLibraryPreparationPage = ({
             />
           </Column>
 
-
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <TextArea
               id="library-notes"
@@ -1196,7 +1217,9 @@ export const GBDLibraryPreparationPage = ({
           {/* Primary Review */}
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "0.5rem" }}>
             <div>
-              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
                 <input
                   type="checkbox"
                   checked={primaryReviewCompleted}
@@ -1258,7 +1281,9 @@ export const GBDLibraryPreparationPage = ({
           {/* Bioinformatics Review */}
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "0.5rem" }}>
             <div>
-              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
                 <input
                   type="checkbox"
                   checked={bioReviewCompleted}
@@ -1320,7 +1345,9 @@ export const GBDLibraryPreparationPage = ({
           {/* Final Approval */}
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "0.5rem" }}>
             <div>
-              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
                 <input
                   type="checkbox"
                   checked={finalApprovalCompleted}
