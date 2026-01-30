@@ -169,7 +169,7 @@
         <!-- ASTM Analyzer Mapping mappings (004-astm-analyzer-mapping) -->
         <!-- Migrating to JPA annotations (chore/011-analyzer-xml-to-annotations) -->
         <!-- <mapping resource="hibernate/hbm/AnalyzerField.hbm.xml" /> -->
-        <mapping resource="hibernate/hbm/AnalyzerFieldMapping.hbm.xml" />
+        <!-- <mapping resource="hibernate/hbm/AnalyzerFieldMapping.hbm.xml" /> -->
         <mapping
             resource="hibernate/hbm/QualitativeResultMapping.hbm.xml" />
         <mapping resource="hibernate/hbm/UnitMapping.hbm.xml" />

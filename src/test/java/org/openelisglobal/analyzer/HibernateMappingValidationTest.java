@@ -53,6 +53,7 @@ public class HibernateMappingValidationTest {
         configuration.addAnnotatedClass(AnalyzerField.class); // Migrated in Phase 2A
         configuration.addAnnotatedClass(AnalyzerResults.class); // Migrated in Phase 2B
         configuration.addAnnotatedClass(AnalyzerTestMapping.class); // Migrated in Phase 2C
+        configuration.addAnnotatedClass(AnalyzerFieldMapping.class); // Migrated in Phase 3
         configuration.addAnnotatedClass(AnalyzerConfiguration.class);
         configuration.addAnnotatedClass(AnalyzerError.class);
         configuration.addAnnotatedClass(CustomFieldType.class);
@@ -62,7 +63,6 @@ public class HibernateMappingValidationTest {
 
         // XML-mapped entities (pending migration in
         // chore/011-analyzer-xml-to-annotations)
-        configuration.addResource("hibernate/hbm/AnalyzerFieldMapping.hbm.xml");
         configuration.addResource("hibernate/hbm/QualitativeResultMapping.hbm.xml");
         configuration.addResource("hibernate/hbm/UnitMapping.hbm.xml");
 
