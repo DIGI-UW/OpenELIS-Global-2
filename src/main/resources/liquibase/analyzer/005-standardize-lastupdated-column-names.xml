@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="analyzer-005-standardize-lastupdated-column" author="jpa-migration">
+        <preConditions onFail="MARK_RAN">
+            <or>
+                <columnExists tableName="analyzer" columnName="lastupdated"/>
+                <columnExists tableName="analyzer_test_map" columnName="lastupdated"/>
+                <columnExists tableName="ANALYZER_RESULTS" columnName="LASTUPDATED"/>
+            </or>
+        </preConditions>
+        <comment>
+            Rename 'lastupdated'/'LASTUPDATED' to 'last_updated' in legacy analyzer tables
+            to match BaseObject convention and newer analyzer tables.
+            Part of XML-to-annotations migration.
+        </comment>
+
+        <renameColumn tableName="analyzer"
+                      oldColumnName="lastupdated"
+                      newColumnName="last_updated"
+                      columnDataType="TIMESTAMP"/>
+
+        <renameColumn tableName="analyzer_test_map"
+                      oldColumnName="lastupdated"
+                      newColumnName="last_updated"
+                      columnDataType="TIMESTAMP"/>
+
+        <renameColumn tableName="ANALYZER_RESULTS"
+                      oldColumnName="LASTUPDATED"
+                      newColumnName="last_updated"
+                      columnDataType="TIMESTAMP"/>
+
+    </changeSet>
+
+</databaseChangeLog>
