@@ -68,12 +68,17 @@ function WeeklyReadingTable({
     (r) => r.weekNumber === 8 && r.growthObservation === "NO_GROWTH",
   );
 
-  // Determine which weeks are missing
+  // Determine which weeks are missing (only show gaps if readings exist)
   const recordedWeeks = readings.map((r) => r.weekNumber);
   const missingWeeks = [];
-  for (let w = 1; w <= Math.min(currentWeek, 8); w++) {
-    if (!recordedWeeks.includes(w)) {
-      missingWeeks.push(w);
+  // Only check for missing weeks if there are recorded readings
+  // and only warn about gaps before the highest recorded week
+  if (recordedWeeks.length > 0) {
+    const maxRecordedWeek = Math.max(...recordedWeeks);
+    for (let w = 1; w < maxRecordedWeek; w++) {
+      if (!recordedWeeks.includes(w)) {
+        missingWeeks.push(w);
+      }
     }
   }
 

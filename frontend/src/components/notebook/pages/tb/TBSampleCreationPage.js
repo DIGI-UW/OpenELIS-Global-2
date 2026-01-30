@@ -13,12 +13,13 @@ import {
   InlineNotification,
   Tag,
 } from "@carbon/react";
-import { Upload, Checkmark } from "@carbon/react/icons";
+import { Upload, Checkmark, Printer } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
 } from "../../../utils/Utils";
+import config from "../../../../config.json";
 import SampleGrid from "../../workflow/SampleGrid";
 import TBManifestImportModal from "../../workflow/TBManifestImportModal";
 import "../../workflow/NotebookWorkflow.css";
@@ -215,6 +216,34 @@ function TBSampleCreationPage({
     [samples],
   );
 
+  // Handle print barcodes for selected samples
+  const handlePrintBarcodes = useCallback(() => {
+    if (selectedSampleIds.length === 0) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.tb.error.noSelection",
+          defaultMessage: "Please select at least one sample.",
+        }),
+      );
+      return;
+    }
+
+    // Get selected samples for printing
+    const selectedSamples = pendingSamples.filter((s) =>
+      selectedSampleIds.includes(s.id),
+    );
+
+    // Print barcode labels for each selected sample using accession number
+    selectedSamples.forEach((sample) => {
+      if (sample.accessionNumber) {
+        const barcodesPdf =
+          config.serverBaseUrl +
+          `/LabelMakerServlet?labNo=${encodeURIComponent(sample.accessionNumber)}&type=order&quantity=1`;
+        window.open(barcodesPdf);
+      }
+    });
+  }, [selectedSampleIds, pendingSamples, intl]);
+
   const pendingCount = pendingSamples.length;
   const completedCount = completedSamples.length;
 
@@ -365,19 +394,34 @@ function TBSampleCreationPage({
         </Button>
 
         {selectedSampleIds.length > 0 && (
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={markAsVerified}
-            data-testid="mark-as-verified-button"
-          >
-            <FormattedMessage
-              id="notebook.page.tb.markAsVerified"
-              defaultMessage="Mark as Verified ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+          <>
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={markAsVerified}
+              data-testid="mark-as-verified-button"
+            >
+              <FormattedMessage
+                id="notebook.page.tb.markAsVerified"
+                defaultMessage="Mark as Verified ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+            <Button
+              kind="ghost"
+              size="sm"
+              renderIcon={Printer}
+              onClick={handlePrintBarcodes}
+              data-testid="print-barcodes-button"
+            >
+              <FormattedMessage
+                id="notebook.page.tb.printBarcodes"
+                defaultMessage="Print Barcodes ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          </>
         )}
       </div>
 

@@ -1,17 +1,19 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useContext } from "react";
 import {
   Modal,
   TextArea,
   Select,
   SelectItem,
-  DatePicker,
-  DatePickerInput,
   Grid,
   Column,
   InlineNotification,
   Checkbox,
+  TextInput,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import CustomDatePicker from "../../../../common/CustomDatePicker";
+import { ConfigurationContext } from "../../../../layout/Layout";
+import { convertToISODate } from "../../../../utils/Utils";
 
 /**
  * Decontamination Method Options for TB sample processing.
@@ -20,6 +22,19 @@ const DECONTAMINATION_METHODS = [
   { id: "NALC_NAOH", text: "NALC-NaOH (Standard)" },
   { id: "NAOH_ONLY", text: "NaOH Only" },
   { id: "OTHER", text: "Other" },
+];
+
+/**
+ * Type of Assay Options - defines what test the sample is being prepared for.
+ * Per SRS FR-016: "Type of assay documented"
+ */
+const ASSAY_TYPES = [
+  { id: "CULTURE", text: "Culture (LJ/MGIT)" },
+  { id: "SMEAR_MICROSCOPY", text: "Smear Microscopy (AFB)" },
+  { id: "GENEXPERT", text: "GeneXpert (MTB/RIF)" },
+  { id: "DST_1ST_LINE", text: "DST - 1st Line" },
+  { id: "DST_2ND_LINE", text: "DST - 2nd Line" },
+  { id: "MULTIPLE", text: "Multiple Assays" },
 ];
 
 /**
@@ -39,11 +54,15 @@ function SampleProcessingModal({
   selectedSamples = [],
 }) {
   const intl = useIntl();
+  const { configurationProperties } = useContext(ConfigurationContext);
 
   const [formData, setFormData] = useState({
     decontaminationMethod: "NALC_NAOH",
     methodNotes: "",
-    processingDate: new Date().toISOString().split("T")[0],
+    processingDate: configurationProperties?.currentDateAsText || "",
+    technicianInitials: "", // SRS FR-016: "technician initials recorded"
+    assayType: "", // SRS FR-016: "Type of assay documented"
+    equipmentUsed: "", // SRS FR-016: "Equipment used logged"
     markReadyForInoculation: false,
   });
 
@@ -73,6 +92,36 @@ function SampleProcessingModal({
       );
       return false;
     }
+    if (
+      !formData.technicianInitials ||
+      formData.technicianInitials.trim() === ""
+    ) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.tb.sampleProc.technicianRequired",
+          defaultMessage: "Technician initials are required",
+        }),
+      );
+      return false;
+    }
+    if (!formData.assayType) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.tb.sampleProc.assayTypeRequired",
+          defaultMessage: "Type of assay is required",
+        }),
+      );
+      return false;
+    }
+    if (!formData.equipmentUsed || formData.equipmentUsed.trim() === "") {
+      setError(
+        intl.formatMessage({
+          id: "notebook.tb.sampleProc.equipmentRequired",
+          defaultMessage: "Equipment used is required",
+        }),
+      );
+      return false;
+    }
     return true;
   }, [formData, intl]);
 
@@ -83,7 +132,10 @@ function SampleProcessingModal({
       method: formData.decontaminationMethod,
       methodNotes:
         formData.decontaminationMethod === "OTHER" ? formData.methodNotes : "",
-      processingDate: formData.processingDate,
+      processingDate: convertToISODate(formData.processingDate),
+      technicianInitials: formData.technicianInitials, // SRS FR-016
+      assayType: formData.assayType, // SRS FR-016
+      equipmentUsed: formData.equipmentUsed, // SRS FR-016
       markReadyForInoculation: formData.markReadyForInoculation,
     };
 
@@ -95,11 +147,14 @@ function SampleProcessingModal({
     setFormData({
       decontaminationMethod: "NALC_NAOH",
       methodNotes: "",
-      processingDate: new Date().toISOString().split("T")[0],
+      processingDate: configurationProperties?.currentDateAsText || "",
+      technicianInitials: "",
+      assayType: "",
+      equipmentUsed: "",
       markReadyForInoculation: false,
     });
     onClose();
-  }, [onClose]);
+  }, [onClose, configurationProperties]);
 
   return (
     <Modal
@@ -191,25 +246,72 @@ function SampleProcessingModal({
 
           {/* Processing Date */}
           <Column lg={8} md={4} sm={4}>
-            <DatePicker
-              datePickerType="single"
+            <CustomDatePicker
+              id="processingDate"
+              labelText={intl.formatMessage({
+                id: "notebook.tb.sampleProc.date",
+                defaultMessage: "Processing Date *",
+              })}
               value={formData.processingDate}
-              onChange={([date]) =>
-                handleInputChange(
-                  "processingDate",
-                  date?.toISOString().split("T")[0] || "",
-                )
+              onChange={(date) => handleInputChange("processingDate", date)}
+            />
+          </Column>
+
+          {/* Technician Initials - SRS FR-016 */}
+          <Column lg={8} md={4} sm={4}>
+            <TextInput
+              id="technicianInitials"
+              labelText={intl.formatMessage({
+                id: "notebook.tb.sampleProc.technicianInitials",
+                defaultMessage: "Technician Initials *",
+              })}
+              value={formData.technicianInitials}
+              onChange={(e) =>
+                handleInputChange("technicianInitials", e.target.value)
               }
+              placeholder={intl.formatMessage({
+                id: "notebook.tb.sampleProc.technicianPlaceholder",
+                defaultMessage: "e.g., JD, ABC",
+              })}
+              maxLength={10}
+            />
+          </Column>
+
+          {/* Type of Assay - SRS FR-016 */}
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="assayType"
+              labelText={intl.formatMessage({
+                id: "notebook.tb.sampleProc.assayType",
+                defaultMessage: "Type of Assay *",
+              })}
+              value={formData.assayType}
+              onChange={(e) => handleInputChange("assayType", e.target.value)}
             >
-              <DatePickerInput
-                id="processingDate"
-                labelText={intl.formatMessage({
-                  id: "notebook.tb.sampleProc.date",
-                  defaultMessage: "Processing Date *",
-                })}
-                placeholder="mm/dd/yyyy"
-              />
-            </DatePicker>
+              <SelectItem value="" text="Select assay type..." />
+              {ASSAY_TYPES.map((assay) => (
+                <SelectItem key={assay.id} value={assay.id} text={assay.text} />
+              ))}
+            </Select>
+          </Column>
+
+          {/* Equipment Used - SRS FR-016 */}
+          <Column lg={16} md={8} sm={4}>
+            <TextInput
+              id="equipmentUsed"
+              labelText={intl.formatMessage({
+                id: "notebook.tb.sampleProc.equipmentUsed",
+                defaultMessage: "Equipment Used *",
+              })}
+              value={formData.equipmentUsed}
+              onChange={(e) =>
+                handleInputChange("equipmentUsed", e.target.value)
+              }
+              placeholder={intl.formatMessage({
+                id: "notebook.tb.sampleProc.equipmentPlaceholder",
+                defaultMessage: "e.g., BSC-01, Centrifuge-02, Incubator-A",
+              })}
+            />
           </Column>
 
           {/* Method Notes (for OTHER) */}

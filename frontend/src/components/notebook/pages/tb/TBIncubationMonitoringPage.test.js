@@ -173,9 +173,7 @@ describe("TBIncubationMonitoringPage", () => {
         />,
       );
 
-      expect(
-        screen.getByText(/TB Incubation Monitoring/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/TB Incubation Monitoring/i)).toBeInTheDocument();
     });
 
     test("renders summary tile labels", () => {

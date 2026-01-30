@@ -106,4 +106,10 @@ public class TbMediaPreparationServiceImpl extends AuditableBaseObjectServiceImp
         }
         return mediaPrep;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TbMediaPreparation> findByNotebookEntryId(Integer notebookEntryId) {
+        return tbMediaPreparationDAO.findByNotebookEntryId(notebookEntryId);
+    }
 }

@@ -49,11 +49,19 @@ public class TbInitialProcessingController extends BaseRestController {
     // ==================== Media Preparation Endpoints ====================
 
     /**
-     * Get all media batches.
+     * Get all media batches, optionally filtered by notebook entry ID.
+     *
+     * @param entryId optional notebook entry ID to filter by
      */
     @GetMapping(value = "/media", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<TbMediaPreparation>> getAllMediaBatches() {
-        List<TbMediaPreparation> batches = tbMediaPreparationService.getAll();
+    public ResponseEntity<List<TbMediaPreparation>> getAllMediaBatches(
+            @RequestParam(required = false) Integer entryId) {
+        List<TbMediaPreparation> batches;
+        if (entryId != null) {
+            batches = tbMediaPreparationService.findByNotebookEntryId(entryId);
+        } else {
+            batches = tbMediaPreparationService.getAll();
+        }
         return ResponseEntity.ok(batches);
     }
 

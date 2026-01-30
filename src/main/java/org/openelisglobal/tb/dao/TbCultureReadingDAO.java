@@ -68,4 +68,22 @@ public interface TbCultureReadingDAO extends BaseDAO<TbCultureReading, Integer> 
      * Count samples by incubation week range.
      */
     Long countByIncubationWeekRange(int startWeek, int endWeek);
+
+    // ====== Notebook Entry-Filtered Methods ======
+
+    /**
+     * Find samples currently incubating for a specific notebook entry. Joins
+     * through notebook_page_sample to filter by entry.
+     */
+    List<TbCultureReading> findIncubatingSamplesByEntry(Integer notebookEntryId);
+
+    /**
+     * Find samples with a specific culture result for a specific notebook entry.
+     */
+    List<TbCultureReading> findByCultureResultAndEntry(CultureResult result, Integer notebookEntryId);
+
+    /**
+     * Count samples by incubation week range for a specific notebook entry.
+     */
+    Long countByIncubationWeekRangeAndEntry(int startWeek, int endWeek, Integer notebookEntryId);
 }

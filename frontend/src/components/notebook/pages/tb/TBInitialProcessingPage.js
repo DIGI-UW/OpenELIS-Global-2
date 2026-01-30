@@ -30,6 +30,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
+  postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import MediaPreparationModal from "./components/MediaPreparationModal";
@@ -132,6 +133,10 @@ function TBInitialProcessingPage({
               processingStatus: sample.data?.processingStatus || "PENDING",
               decontaminationMethod: sample.data?.decontaminationMethod,
               processingDate: sample.data?.processingDate,
+              // SRS FR-016 required fields
+              technicianInitials: sample.data?.technicianInitials,
+              assayType: sample.data?.assayType,
+              equipmentUsed: sample.data?.equipmentUsed,
               // Inoculation data
               inoculatedDate: sample.data?.inoculatedDate,
               mediaBatchId: sample.data?.mediaBatchId,
@@ -162,20 +167,28 @@ function TBInitialProcessingPage({
     });
   }, []);
 
-  // Load all media batches for display
+  // Load media batches filtered by notebook entry ID
   const loadMediaBatches = useCallback(() => {
+    if (!entryId) {
+      setMediaBatches([]);
+      setLoadingBatches(false);
+      return;
+    }
     setLoadingBatches(true);
-    getFromOpenElisServer("/rest/tb/processing/media", (response) => {
-      if (componentMounted.current) {
-        if (response && Array.isArray(response)) {
-          setMediaBatches(response);
-        } else {
-          setMediaBatches([]);
+    getFromOpenElisServer(
+      `/rest/tb/processing/media?entryId=${entryId}`,
+      (response) => {
+        if (componentMounted.current) {
+          if (response && Array.isArray(response)) {
+            setMediaBatches(response);
+          } else {
+            setMediaBatches([]);
+          }
+          setLoadingBatches(false);
         }
-        setLoadingBatches(false);
-      }
-    });
-  }, []);
+      },
+    );
+  }, [entryId]);
 
   // Update QC status for a media batch
   const handleUpdateMediaBatchQC = useCallback(
@@ -278,9 +291,14 @@ function TBInitialProcessingPage({
 
   const handleSaveMediaBatch = useCallback(
     (batchData) => {
+      // Include notebook entry ID for filtering
+      const dataWithEntryId = {
+        ...batchData,
+        notebookEntryId: entryId,
+      };
       postToOpenElisServer(
         "/rest/tb/processing/media",
-        JSON.stringify(batchData),
+        JSON.stringify(dataWithEntryId),
         (response) => {
           if (componentMounted.current) {
             if (response && !response.error) {
@@ -304,7 +322,7 @@ function TBInitialProcessingPage({
         },
       );
     },
-    [intl, loadMediaBatches, loadStatistics],
+    [entryId, intl, loadMediaBatches, loadStatistics],
   );
 
   // ==========================================
@@ -343,6 +361,10 @@ function TBInitialProcessingPage({
         decontaminationMethod: processingData.method,
         methodNotes: processingData.methodNotes,
         processingDate: processingData.processingDate,
+        // SRS FR-016 required fields
+        technicianInitials: processingData.technicianInitials,
+        assayType: processingData.assayType,
+        equipmentUsed: processingData.equipmentUsed,
       };
 
       postToOpenElisServer(
@@ -465,6 +487,9 @@ function TBInitialProcessingPage({
 
   const handleSaveInoculation = useCallback(
     (inoculationData) => {
+      console.log("=== INOCULATION START ===");
+      console.log("inoculationData:", inoculationData);
+
       // Determine if this is bulk mode (array) or single mode (object)
       const isBulk =
         bulkInoculationMode && Array.isArray(selectedSampleForInoculation);
@@ -472,7 +497,11 @@ function TBInitialProcessingPage({
         ? selectedSampleForInoculation
         : [selectedSampleForInoculation];
 
+      console.log("isBulk:", isBulk);
+      console.log("samplesToProcess:", samplesToProcess);
+
       if (!samplesToProcess || samplesToProcess.length === 0) {
+        console.error("No samples selected for inoculation");
         setError("No samples selected for inoculation.");
         return;
       }
@@ -481,12 +510,37 @@ function TBInitialProcessingPage({
       let successCount = 0;
       let errorCount = 0;
       const sampleIds = samplesToProcess.map((s) => parseInt(s.id, 10));
+      console.log("sampleIds to process:", sampleIds);
 
       // For bulk, we use a batch endpoint or process sequentially
       const processNextSample = (index) => {
+        console.log(`\n--- processNextSample(${index}) called ---`);
+        console.log(`Total samples: ${samplesToProcess.length}`);
+        console.log(`successCount: ${successCount}, errorCount: ${errorCount}`);
+
         if (index >= samplesToProcess.length) {
-          // All done - update notebook data
+          console.log("All samples processed - entering COMPLETION BLOCK");
+
+          // Close modal immediately after inoculation succeeds
+          if (successCount > 0) {
+            setSuccess(
+              intl.formatMessage(
+                {
+                  id: "notebook.tb.processing.samplesInoculated",
+                  defaultMessage: "{count} sample(s) inoculated successfully.",
+                },
+                { count: successCount },
+              ),
+            );
+            setInoculationModalOpen(false);
+            setSelectedSampleForInoculation(null);
+            setBulkInoculationMode(false);
+            setSelectedIds([]);
+          }
+
+          // Then update notebook data in background
           if (hasRealPageId && successCount > 0) {
+            console.log("Updating notebook JSONB data...");
             postToOpenElisServer(
               `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
               JSON.stringify({
@@ -499,7 +553,9 @@ function TBInitialProcessingPage({
                 },
               }),
               () => {
+                console.log("JSONB data updated successfully");
                 // Update status to COMPLETED
+                console.log("Marking samples as COMPLETED...");
                 postToOpenElisServer(
                   `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
                   JSON.stringify({
@@ -507,23 +563,11 @@ function TBInitialProcessingPage({
                     status: "COMPLETED",
                   }),
                   () => {
+                    console.log("Samples marked as COMPLETED");
                     // Route samples to Page 5 (Incubation Monitoring)
+                    console.log("Routing samples to Page 5...");
                     routeSamplesToPage(sampleIds, 5);
-
-                    setSuccess(
-                      intl.formatMessage(
-                        {
-                          id: "notebook.tb.processing.samplesInoculated",
-                          defaultMessage:
-                            "{count} sample(s) inoculated successfully.",
-                        },
-                        { count: successCount },
-                      ),
-                    );
-                    setInoculationModalOpen(false);
-                    setSelectedSampleForInoculation(null);
-                    setBulkInoculationMode(false);
-                    setSelectedIds([]);
+                    console.log("=== INOCULATION COMPLETE ===");
                     loadPageSamples();
                     loadStatistics();
                     if (onProgressUpdate) onProgressUpdate();
@@ -535,25 +579,39 @@ function TBInitialProcessingPage({
           return;
         }
 
+        console.log("Entering INOCULATION BLOCK");
         const sample = samplesToProcess[index];
+        console.log("Processing sample:", sample);
+
         const sampleData = {
-          sampleItemId: sample.sampleItemId || sample.id,
+          sampleItemId: parseInt(sample.sampleItemId || sample.id, 10),
           mediaBatchId: parseInt(inoculationData.mediaBatchId, 10),
           processingId: null,
           cultureMethod: inoculationData.cultureMethod,
           inoculationDate: inoculationData.inoculationDate,
         };
+        console.log("sampleData to POST:", sampleData);
 
-        postToOpenElisServer(
+        console.log("Calling POST /rest/tb/processing/inoculate...");
+        postToOpenElisServerJsonResponse(
           "/rest/tb/processing/inoculate",
           JSON.stringify(sampleData),
           (response) => {
+            console.log("Inoculation API response:", response);
             if (componentMounted.current) {
-              if (response && !response.error) {
+              // Check for successful response (has id field) vs error response
+              if (response && response.id && !response.error) {
+                console.log("Inoculation SUCCESS for sample", sample.id);
                 successCount++;
               } else {
+                console.error(
+                  "Inoculation FAILED for sample",
+                  sample.id,
+                  response,
+                );
                 errorCount++;
               }
+              console.log(`Calling processNextSample(${index + 1})`);
               processNextSample(index + 1);
             }
           },
@@ -653,6 +711,22 @@ function TBInitialProcessingPage({
         {sample.processingDate && (
           <div style={{ color: "#8d8d8d", fontSize: "11px" }}>
             {sample.processingDate}
+          </div>
+        )}
+        {/* SRS FR-016 fields */}
+        {sample.technicianInitials && (
+          <div style={{ marginTop: "2px", color: "#525252", fontSize: "11px" }}>
+            Tech: {sample.technicianInitials}
+          </div>
+        )}
+        {sample.assayType && (
+          <div style={{ color: "#8d8d8d", fontSize: "11px" }}>
+            Assay: {sample.assayType}
+          </div>
+        )}
+        {sample.equipmentUsed && (
+          <div style={{ color: "#8d8d8d", fontSize: "11px" }}>
+            Equipment: {sample.equipmentUsed}
           </div>
         )}
       </div>
@@ -1230,6 +1304,7 @@ function TBInitialProcessingPage({
         onSave={handleSaveInoculation}
         sample={selectedSampleForInoculation}
         bulkMode={bulkInoculationMode}
+        entryId={entryId}
       />
     </div>
   );

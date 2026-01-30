@@ -1,12 +1,9 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useContext } from "react";
 import {
   Modal,
-  TextInput,
   TextArea,
   Select,
   SelectItem,
-  DatePicker,
-  DatePickerInput,
   Grid,
   Column,
   InlineNotification,
@@ -15,6 +12,9 @@ import {
   Tag,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import CustomDatePicker from "../../../../common/CustomDatePicker";
+import { ConfigurationContext } from "../../../../layout/Layout";
+import { convertToISODate } from "../../../../utils/Utils";
 
 /**
  * Growth Observation Options.
@@ -44,10 +44,11 @@ function RecordReadingModal({
   currentWeek = 1,
 }) {
   const intl = useIntl();
+  const { configurationProperties } = useContext(ConfigurationContext);
 
   const [formData, setFormData] = useState({
     weekNumber: currentWeek,
-    readingDate: new Date().toISOString().split("T")[0],
+    readingDate: configurationProperties?.currentDateAsText || "",
     observation: "",
     notes: "",
   });
@@ -111,11 +112,12 @@ function RecordReadingModal({
     if (!validateForm()) return;
 
     const dataToSave = {
-      cultureReadingId: sample?.id,
+      // Use the first reading's ID since sample.id is now sampleItemId after grouping
+      cultureReadingId: sample?.readings?.[0]?.id || sample?.id,
       weekNumber: parseInt(formData.weekNumber, 10),
       observation: formData.observation,
       notes: formData.notes,
-      readingDate: formData.readingDate,
+      readingDate: convertToISODate(formData.readingDate),
     };
 
     onSave(dataToSave);
@@ -125,12 +127,12 @@ function RecordReadingModal({
     setError(null);
     setFormData({
       weekNumber: currentWeek,
-      readingDate: new Date().toISOString().split("T")[0],
+      readingDate: configurationProperties?.currentDateAsText || "",
       observation: "",
       notes: "",
     });
     onClose();
-  }, [currentWeek, onClose]);
+  }, [currentWeek, onClose, configurationProperties]);
 
   // Auto-determination hints based on observation
   const getAutoDeterminationHint = () => {
@@ -283,25 +285,15 @@ function RecordReadingModal({
 
           {/* Reading Date */}
           <Column lg={8} md={4} sm={4}>
-            <DatePicker
-              datePickerType="single"
+            <CustomDatePicker
+              id="readingDate"
+              labelText={intl.formatMessage({
+                id: "notebook.tb.reading.date",
+                defaultMessage: "Reading Date *",
+              })}
               value={formData.readingDate}
-              onChange={([date]) =>
-                handleInputChange(
-                  "readingDate",
-                  date?.toISOString().split("T")[0] || "",
-                )
-              }
-            >
-              <DatePickerInput
-                id="readingDate"
-                labelText={intl.formatMessage({
-                  id: "notebook.tb.reading.date",
-                  defaultMessage: "Reading Date *",
-                })}
-                placeholder="mm/dd/yyyy"
-              />
-            </DatePicker>
+              onChange={(date) => handleInputChange("readingDate", date)}
+            />
           </Column>
 
           {/* Growth Observation */}

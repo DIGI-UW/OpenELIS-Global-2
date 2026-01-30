@@ -56,4 +56,9 @@ public interface TbMediaPreparationService extends BaseObjectService<TbMediaPrep
      * Update the QC status of a media batch.
      */
     TbMediaPreparation updateQcStatus(Integer id, MediaQcStatus status, String notes, String sysUserId);
+
+    /**
+     * Find all media batches by notebook entry ID.
+     */
+    List<TbMediaPreparation> findByNotebookEntryId(Integer notebookEntryId);
 }

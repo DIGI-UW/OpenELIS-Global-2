@@ -60,19 +60,19 @@ public class TbMediaPreparationDAOTest extends BaseWebContextSensitiveTest {
         // LJ batch, PASSED status, not expired (available for inoculation)
         jdbcTemplate.update(
                 "INSERT INTO tb_media_preparation (id, batch_id, media_type, qc_status, preparation_date, expiry_date, last_updated) "
-                        + "VALUES (?, ?, ?, ?, '2025-01-01', '2025-12-31', CURRENT_TIMESTAMP)",
+                        + "VALUES (?, ?, ?, ?, '2026-01-01', '2027-12-31', CURRENT_TIMESTAMP)",
                 ID_LJ_PASSED, "LJ-TEST-001", "LJ", "PASSED");
 
         // MGIT batch, PENDING status
         jdbcTemplate.update(
                 "INSERT INTO tb_media_preparation (id, batch_id, media_type, qc_status, preparation_date, expiry_date, last_updated) "
-                        + "VALUES (?, ?, ?, ?, '2025-01-01', '2025-12-31', CURRENT_TIMESTAMP)",
+                        + "VALUES (?, ?, ?, ?, '2026-01-01', '2027-12-31', CURRENT_TIMESTAMP)",
                 ID_MGIT_PENDING, "MGIT-TEST-001", "MGIT", "PENDING");
 
         // LJ batch, FAILED status
         jdbcTemplate.update(
                 "INSERT INTO tb_media_preparation (id, batch_id, media_type, qc_status, preparation_date, expiry_date, last_updated) "
-                        + "VALUES (?, ?, ?, ?, '2025-01-01', '2025-12-31', CURRENT_TIMESTAMP)",
+                        + "VALUES (?, ?, ?, ?, '2026-01-01', '2027-12-31', CURRENT_TIMESTAMP)",
                 ID_LJ_FAILED, "LJ-TEST-002", "LJ", "FAILED");
 
         // MGIT batch, PASSED but expired (NOT available for inoculation)
@@ -257,5 +257,130 @@ public class TbMediaPreparationDAOTest extends BaseWebContextSensitiveTest {
         // Assert
         assertNotNull("Count should not be null", count);
         assertEquals("Should count 1 FAILED batch", Long.valueOf(1), count);
+    }
+
+    // ==================== findByNotebookEntryId Tests ====================
+
+    private static final int ID_LJ_ENTRY_100 = 9005;
+    private static final int ID_MGIT_ENTRY_100 = 9006;
+    private static final int ID_LJ_ENTRY_200 = 9007;
+    private static final int TEST_NOTEBOOK_ENTRY_100 = 9100;
+    private static final int TEST_NOTEBOOK_ENTRY_200 = 9200;
+    private static final int TEST_NOTEBOOK_ID = 9500;
+
+    private void insertNotebookEntryTestData() {
+        // First, create a notebook (notebook_entry has FK to notebook table)
+        Integer notebookCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM notebook WHERE id = ?", Integer.class,
+                TEST_NOTEBOOK_ID);
+        if (notebookCount == null || notebookCount == 0) {
+            jdbcTemplate.update(
+                    "INSERT INTO notebook (id, title, status, is_template, date_created, last_updated) "
+                            + "VALUES (?, 'Test Notebook', 'DRAFT', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                    TEST_NOTEBOOK_ID);
+        }
+
+        // Create notebook entries with correct column names (title, date_created per
+        // schema)
+        Integer count100 = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM notebook_entry WHERE id = ?",
+                Integer.class, TEST_NOTEBOOK_ENTRY_100);
+        if (count100 == null || count100 == 0) {
+            jdbcTemplate.update(
+                    "INSERT INTO notebook_entry (id, notebook_id, title, status, date_created, last_updated) "
+                            + "VALUES (?, ?, 'Test Entry 100', 'DRAFT', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                    TEST_NOTEBOOK_ENTRY_100, TEST_NOTEBOOK_ID);
+        }
+
+        Integer count200 = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM notebook_entry WHERE id = ?",
+                Integer.class, TEST_NOTEBOOK_ENTRY_200);
+        if (count200 == null || count200 == 0) {
+            jdbcTemplate.update(
+                    "INSERT INTO notebook_entry (id, notebook_id, title, status, date_created, last_updated) "
+                            + "VALUES (?, ?, 'Test Entry 200', 'DRAFT', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                    TEST_NOTEBOOK_ENTRY_200, TEST_NOTEBOOK_ID);
+        }
+
+        // LJ batch associated with notebook entry 100
+        jdbcTemplate.update(
+                "INSERT INTO tb_media_preparation (id, batch_id, media_type, qc_status, preparation_date, expiry_date, notebook_entry_id, last_updated) "
+                        + "VALUES (?, ?, ?, ?, '2025-01-01', '2025-12-31', ?, CURRENT_TIMESTAMP)",
+                ID_LJ_ENTRY_100, "LJ-ENTRY100-001", "LJ", "PASSED", TEST_NOTEBOOK_ENTRY_100);
+
+        // MGIT batch associated with notebook entry 100
+        jdbcTemplate.update(
+                "INSERT INTO tb_media_preparation (id, batch_id, media_type, qc_status, preparation_date, expiry_date, notebook_entry_id, last_updated) "
+                        + "VALUES (?, ?, ?, ?, '2025-01-01', '2025-12-31', ?, CURRENT_TIMESTAMP)",
+                ID_MGIT_ENTRY_100, "MGIT-ENTRY100-001", "MGIT", "PENDING", TEST_NOTEBOOK_ENTRY_100);
+
+        // LJ batch associated with notebook entry 200
+        jdbcTemplate.update(
+                "INSERT INTO tb_media_preparation (id, batch_id, media_type, qc_status, preparation_date, expiry_date, notebook_entry_id, last_updated) "
+                        + "VALUES (?, ?, ?, ?, '2025-01-01', '2025-12-31', ?, CURRENT_TIMESTAMP)",
+                ID_LJ_ENTRY_200, "LJ-ENTRY200-001", "LJ", "PASSED", TEST_NOTEBOOK_ENTRY_200);
+    }
+
+    private void cleanNotebookEntryTestData() {
+        try {
+            jdbcTemplate.execute("DELETE FROM tb_media_preparation WHERE id IN (9005, 9006, 9007)");
+            jdbcTemplate.execute("DELETE FROM notebook_entry WHERE id IN (9100, 9200)");
+            jdbcTemplate.execute("DELETE FROM notebook WHERE id = 9500");
+        } catch (Exception e) {
+            // Ignore cleanup errors
+        }
+    }
+
+    /**
+     * Test: findByNotebookEntryId returns only batches for the specified entry.
+     */
+    @Test
+    public void testFindByNotebookEntryId_Entry100_ReturnsTwoBatches() {
+        // Arrange
+        insertNotebookEntryTestData();
+
+        try {
+            // Act
+            List<TbMediaPreparation> results = tbMediaPreparationDAO.findByNotebookEntryId(TEST_NOTEBOOK_ENTRY_100);
+
+            // Assert
+            assertNotNull("Results should not be null", results);
+            assertEquals("Should return 2 batches for entry 100", 2, results.size());
+            assertTrue("All results should have notebook entry ID 100", results.stream().allMatch(
+                    mp -> mp.getNotebookEntryId() != null && mp.getNotebookEntryId().equals(TEST_NOTEBOOK_ENTRY_100)));
+        } finally {
+            cleanNotebookEntryTestData();
+        }
+    }
+
+    /**
+     * Test: findByNotebookEntryId returns only batches for a different entry.
+     */
+    @Test
+    public void testFindByNotebookEntryId_Entry200_ReturnsOneBatch() {
+        // Arrange
+        insertNotebookEntryTestData();
+
+        try {
+            // Act
+            List<TbMediaPreparation> results = tbMediaPreparationDAO.findByNotebookEntryId(TEST_NOTEBOOK_ENTRY_200);
+
+            // Assert
+            assertNotNull("Results should not be null", results);
+            assertEquals("Should return 1 batch for entry 200", 1, results.size());
+            assertEquals("Should be LJ-ENTRY200-001", "LJ-ENTRY200-001", results.get(0).getBatchId());
+        } finally {
+            cleanNotebookEntryTestData();
+        }
+    }
+
+    /**
+     * Test: findByNotebookEntryId returns empty list for non-existent entry.
+     */
+    @Test
+    public void testFindByNotebookEntryId_NonExistentEntry_ReturnsEmptyList() {
+        // Act
+        List<TbMediaPreparation> results = tbMediaPreparationDAO.findByNotebookEntryId(99999);
+
+        // Assert
+        assertNotNull("Results should not be null", results);
+        assertTrue("Should return empty list for non-existent entry", results.isEmpty());
     }
 }

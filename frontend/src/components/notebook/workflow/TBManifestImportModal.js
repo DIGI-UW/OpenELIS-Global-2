@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Modal,
   FileUploaderDropContainer,
@@ -281,43 +281,12 @@ function TBManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
   const [previewErrors, setPreviewErrors] = useState([]);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
-  // Dynamic specimen types from backend
-  const [validSpecimenTypes, setValidSpecimenTypes] = useState([]);
-  const [isSpecimenTypesLoading, setIsSpecimenTypesLoading] = useState(false);
-
-  // Fetch valid specimen types from backend when modal opens
-  useEffect(() => {
-    if (open && entryId) {
-      setIsSpecimenTypesLoading(true);
-      fetch(
-        `${config.serverBaseUrl}/rest/notebook/tb/entry/${entryId}/specimen-types`,
-        {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
-        },
-      )
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.specimenTypes) {
-            setValidSpecimenTypes(
-              data.specimenTypes.map((st) => st.description || st),
-            );
-          }
-        })
-        .catch((error) => {
-          console.error("Failed to fetch specimen types:", error);
-          // Fallback to empty array - validation will still happen on backend
-          setValidSpecimenTypes([]);
-        })
-        .finally(() => {
-          setIsSpecimenTypesLoading(false);
-        });
-    }
-  }, [open, entryId]);
+  // NOTE: Specimen type validation is currently disabled
+  // Previously fetched valid specimen types from backend endpoint (removed)
+  const validSpecimenTypes = [];
+  const isSpecimenTypesLoading = false;
 
   /**
    * Auto-detect and map CSV columns based on header names.
@@ -534,6 +503,7 @@ function TBManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
     });
     setPreviewData(null);
     setPreviewErrors([]);
+    setImportResult(null);
     setStep(1);
   };
 
@@ -613,11 +583,21 @@ function TBManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
       });
 
       const data = await response.json();
-      if (response.ok && data.success) {
+
+      // Handle partial success: some samples created even if there are errors
+      if (response.ok && data.totalCreated > 0) {
+        setImportResult(data);
         setStep(4);
         if (onImportSuccess) {
           onImportSuccess(data);
         }
+      } else if (
+        response.ok &&
+        data.totalCreated === 0 &&
+        data.errors?.length > 0
+      ) {
+        // All rows failed - show errors
+        setPreviewErrors(data.errors);
       } else {
         setPreviewErrors(
           data.errors || [
@@ -689,7 +669,7 @@ function TBManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
       primaryButtonDisabled={
         (step === 1 && !file) ||
         (step === 2 && !requiredColumnsMapped) ||
-        (step === 3 && previewErrors.length > 0) ||
+        (step === 3 && previewData && previewData.validRows === 0) ||
         isPreviewLoading ||
         isImporting
       }
@@ -774,7 +754,7 @@ function TBManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
                     </StructuredListWrapper>
                   </div>
 
-                  {/* Specimen Type Field (Validated) */}
+                  {/* Specimen Type Field (Validated)
                   <div className="datapoints-section">
                     <h5 className="section-title sampletype-title">
                       <FormattedMessage
@@ -849,7 +829,7 @@ function TBManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
                         </StructuredListRow>
                       </StructuredListBody>
                     </StructuredListWrapper>
-                  </div>
+                  </div> */}
 
                   {/* Optional Fields */}
                   <div className="datapoints-section">
@@ -1230,13 +1210,38 @@ function TBManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
               <Loading withOverlay={false} description="Loading preview..." />
             ) : (
               <>
-                {previewErrors.length > 0 && (
+                {/* Show summary of valid rows */}
+                {previewData && previewData.validRows > 0 && (
+                  <div className="preview-summary">
+                    <Tag type="green">
+                      <FormattedMessage
+                        id="notebook.manifest.preview.validRows"
+                        defaultMessage="{count} valid rows"
+                        values={{ count: previewData.validRows }}
+                      />
+                    </Tag>
+                    <Tag type="blue">
+                      <FormattedMessage
+                        id="notebook.manifest.preview.samples"
+                        defaultMessage="{count} samples to create"
+                        values={{ count: previewData.totalSamples }}
+                      />
+                    </Tag>
+                  </div>
+                )}
+
+                {/* Show warning about rows that will be skipped */}
+                {previewErrors.length > 0 && previewData?.validRows > 0 && (
                   <InlineNotification
-                    kind="error"
-                    title={intl.formatMessage({
-                      id: "notebook.manifest.validationErrors",
-                      defaultMessage: "Validation Errors",
-                    })}
+                    kind="warning"
+                    title={intl.formatMessage(
+                      {
+                        id: "notebook.manifest.rowsWillBeSkipped",
+                        defaultMessage:
+                          "{count} rows will be skipped due to validation errors",
+                      },
+                      { count: previewErrors.length },
+                    )}
                     subtitle={
                       <ul className="error-list">
                         {previewErrors.map((error, idx) => (
@@ -1254,23 +1259,30 @@ function TBManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
                   />
                 )}
 
-                {previewData && previewErrors.length === 0 && (
-                  <div className="preview-summary">
-                    <Tag type="blue">
-                      <FormattedMessage
-                        id="notebook.manifest.preview.rows"
-                        defaultMessage="{count} rows"
-                        values={{ count: previewData.totalRows }}
-                      />
-                    </Tag>
-                    <Tag type="green">
-                      <FormattedMessage
-                        id="notebook.manifest.preview.samples"
-                        defaultMessage="{count} samples to create"
-                        values={{ count: previewData.totalSamples }}
-                      />
-                    </Tag>
-                  </div>
+                {/* Show error when ALL rows are invalid */}
+                {previewErrors.length > 0 && previewData?.validRows === 0 && (
+                  <InlineNotification
+                    kind="error"
+                    title={intl.formatMessage({
+                      id: "notebook.manifest.allRowsInvalid",
+                      defaultMessage:
+                        "All rows have validation errors - no valid rows to import",
+                    })}
+                    subtitle={
+                      <ul className="error-list">
+                        {previewErrors.map((error, idx) => (
+                          <li key={idx}>
+                            {error.rowNumber > 0
+                              ? `Row ${error.rowNumber}: `
+                              : ""}
+                            {error.message}
+                          </li>
+                        ))}
+                      </ul>
+                    }
+                    lowContrast
+                    hideCloseButton
+                  />
                 )}
               </>
             )}
@@ -1286,12 +1298,64 @@ function TBManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
                 defaultMessage="Import Successful"
               />
             </h3>
-            <p>
-              <FormattedMessage
-                id="notebook.tb.manifest.success.message"
-                defaultMessage="TB samples have been created and linked to the notebook entry with accession metadata."
-              />
-            </p>
+
+            {/* Summary of import results */}
+            {importResult && (
+              <div className="import-result-summary">
+                <div className="preview-summary">
+                  <Tag type="green">
+                    <FormattedMessage
+                      id="notebook.manifest.success.created"
+                      defaultMessage="{count} samples created"
+                      values={{ count: importResult.totalCreated }}
+                    />
+                  </Tag>
+                  {importResult.errors?.length > 0 && (
+                    <Tag type="gray">
+                      <FormattedMessage
+                        id="notebook.manifest.success.skipped"
+                        defaultMessage="{count} rows skipped"
+                        values={{ count: importResult.errors.length }}
+                      />
+                    </Tag>
+                  )}
+                </div>
+
+                {/* Show skipped rows warning if any */}
+                {importResult.errors?.length > 0 && (
+                  <InlineNotification
+                    kind="warning"
+                    title={intl.formatMessage({
+                      id: "notebook.manifest.success.skippedRows",
+                      defaultMessage: "Some rows were skipped due to errors",
+                    })}
+                    subtitle={
+                      <ul className="error-list">
+                        {importResult.errors.map((error, idx) => (
+                          <li key={idx}>
+                            {error.rowNumber > 0
+                              ? `Row ${error.rowNumber}: `
+                              : ""}
+                            {error.message}
+                          </li>
+                        ))}
+                      </ul>
+                    }
+                    lowContrast
+                    hideCloseButton
+                  />
+                )}
+              </div>
+            )}
+
+            {!importResult && (
+              <p>
+                <FormattedMessage
+                  id="notebook.tb.manifest.success.message"
+                  defaultMessage="TB samples have been created and linked to the notebook entry with accession metadata."
+                />
+              </p>
+            )}
           </div>
         )}
       </div>

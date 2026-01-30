@@ -1,4 +1,11 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  useContext,
+} from "react";
 import {
   Grid,
   Column,
@@ -10,21 +17,20 @@ import {
   Tile,
   Modal,
   Tag,
-  DatePicker,
-  DatePickerInput,
 } from "@carbon/react";
-import { Checkmark, Add, Renew, View } from "@carbon/react/icons";
+import { Checkmark, Add, Renew } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
-} from "../../../utils/Utils";
-import SampleGrid from "../../workflow/SampleGrid";
-import "../../workflow/NotebookWorkflow.css";
+  convertToISODate,
+} from "../../../../utils/Utils";
+import SampleGrid from "../../../workflow/SampleGrid";
+import CustomDatePicker from "../../../../common/CustomDatePicker";
+import { ConfigurationContext } from "../../../../layout/Layout";
 
 /**
- * TBSmearResultsPage - Page 6 of the TB workflow.
- * Handles AFB (Acid-Fast Bacilli) smear microscopy results.
+ * SmearMicroscopyPanel - AFB Smear Microscopy results panel.
  *
  * Smear Methods:
  * - ZN (Ziehl-Neelsen)
@@ -39,14 +45,74 @@ import "../../workflow/NotebookWorkflow.css";
  * - PLUS2: 1-10 AFB per field
  * - PLUS3: >10 AFB per field
  */
-function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
+function SmearMicroscopyPanel({
+  pageData,
+  onProgressUpdate,
+  cultureSamples = [],
+}) {
   const intl = useIntl();
+  const { configurationProperties } = useContext(ConfigurationContext);
   const componentMounted = useRef(false);
 
-  const [samples, setSamples] = useState([]);
+  const [pageSamples, setPageSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
+
+  // Merge page samples with culture-positive samples
+  const samples = useMemo(() => {
+    // Create a map of culture data by sampleItemId for easy lookup
+    const cultureDataMap = new Map();
+    cultureSamples
+      .filter((s) => s.cultureResult === "POSITIVE")
+      .forEach((sample) => {
+        cultureDataMap.set(sample.sampleItemId, {
+          cultureResult: sample.cultureResult,
+          cultureMethod: sample.cultureMethod,
+          positiveWeek: sample.positiveWeek,
+        });
+      });
+
+    // Enrich page samples with culture data
+    const enrichedPageSamples = pageSamples.map((sample) => {
+      const cultureData = cultureDataMap.get(sample.id);
+      if (cultureData) {
+        return {
+          ...sample,
+          cultureResult: cultureData.cultureResult,
+          cultureMethod: cultureData.cultureMethod,
+          positiveWeek: cultureData.positiveWeek,
+        };
+      }
+      return sample;
+    });
+
+    // Add culture-positive samples that aren't in page samples
+    const pageSampleIds = new Set(pageSamples.map((s) => s.id));
+    const additionalCultureSamples = cultureSamples
+      .filter(
+        (s) =>
+          s.cultureResult === "POSITIVE" && !pageSampleIds.has(s.sampleItemId),
+      )
+      .map((sample) => ({
+        id: sample.sampleItemId,
+        externalId: sample.externalId,
+        accessionNumber: sample.accessionNumber,
+        sampleType: null,
+        specimenType: null,
+        status: "PENDING",
+        source: "culture",
+        cultureResult: sample.cultureResult,
+        cultureMethod: sample.cultureMethod,
+        positiveWeek: sample.positiveWeek,
+        smearMethod: null,
+        afbResult: null,
+        resultDate: null,
+        notes: null,
+      }));
+
+    return [...enrichedPageSamples, ...additionalCultureSamples];
+  }, [pageSamples, cultureSamples]);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
@@ -58,7 +124,7 @@ function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
   const [resultData, setResultData] = useState({
     method: "ZN",
     afbResult: "",
-    resultDate: new Date().toISOString().split("T")[0],
+    resultDate: configurationProperties?.currentDateAsText || "",
     notes: "",
   });
 
@@ -86,7 +152,7 @@ function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
       componentMounted.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryId, pageData?.id]);
+  }, [pageData?.id]);
 
   const loadPageSamples = useCallback(() => {
     if (!pageData?.id) {
@@ -121,9 +187,9 @@ function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
               resultDate: sample.data?.resultDate,
               notes: sample.data?.notes,
             }));
-            setSamples(transformedSamples);
+            setPageSamples(transformedSamples);
           } else {
-            setSamples([]);
+            setPageSamples([]);
           }
           setLoading(false);
         }
@@ -139,7 +205,7 @@ function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
     setResultData({
       method: "ZN",
       afbResult: "",
-      resultDate: new Date().toISOString().split("T")[0],
+      resultDate: configurationProperties?.currentDateAsText || "",
       notes: "",
     });
   };
@@ -209,7 +275,7 @@ function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
     const data = {
       smearMethod: resultData.method,
       afbResult: resultData.afbResult,
-      resultDate: resultData.resultDate,
+      resultDate: convertToISODate(resultData.resultDate),
       notes: resultData.notes,
     };
 
@@ -383,15 +449,16 @@ function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
   };
 
   return (
-    <div className="tb-smear-results-page">
-      <div className="page-section-header">
-        <h4>
+    <div className="smear-microscopy-panel">
+      {/* Section Header */}
+      <div className="panel-section-header">
+        <h5>
           <FormattedMessage
             id="notebook.page.tb.smear.title"
             defaultMessage="AFB Smear Microscopy"
           />
-        </h4>
-        <p className="page-description">
+        </h5>
+        <p className="panel-description">
           <FormattedMessage
             id="notebook.page.tb.smear.description"
             defaultMessage="Record Acid-Fast Bacilli (AFB) smear microscopy results. Select samples and enter results using the appropriate staining method."
@@ -523,11 +590,7 @@ function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
               defaultMessage="Samples Pending Smear"
             />
             <Tag type="gray" className="count-tag">
-              {
-                samples.filter(
-                  (s) => s.status !== "COMPLETED" && s.status !== "SKIPPED",
-                ).length
-              }
+              {samples.filter((s) => !s.afbResult).length}
             </Tag>
           </h5>
           <p className="table-section-description">
@@ -540,9 +603,7 @@ function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
         <div className="sample-grid-container">
           <SampleGrid
             gridId="smear-pending"
-            samples={samples.filter(
-              (s) => s.status !== "COMPLETED" && s.status !== "SKIPPED",
-            )}
+            samples={samples.filter((s) => !s.afbResult)}
             selectedIds={selectedSampleIds}
             onSelectionChange={setSelectedSampleIds}
             statusFilter={statusFilter}
@@ -572,6 +633,19 @@ function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
                 }),
               },
               {
+                key: "cultureResult",
+                header: intl.formatMessage({
+                  id: "notebook.grid.cultureResult",
+                  defaultMessage: "Culture",
+                }),
+                render: (value) =>
+                  value ? (
+                    <Tag type="red" size="sm">
+                      Culture+
+                    </Tag>
+                  ) : null,
+              },
+              {
                 key: "smearMethod",
                 header: intl.formatMessage({
                   id: "notebook.grid.smearMethod",
@@ -587,29 +661,19 @@ function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
                 }),
                 render: (value) => getAfbResultTag(value),
               },
-              {
-                key: "status",
-                header: intl.formatMessage({
-                  id: "notebook.grid.status",
-                  defaultMessage: "Status",
-                }),
-              },
             ]}
           />
         </div>
-        {!loading &&
-          samples.filter(
-            (s) => s.status !== "COMPLETED" && s.status !== "SKIPPED",
-          ).length === 0 && (
-            <div className="empty-table-state">
-              <p>
-                <FormattedMessage
-                  id="notebook.page.tb.smear.pendingTable.empty"
-                  defaultMessage="No samples pending smear microscopy."
-                />
-              </p>
-            </div>
-          )}
+        {!loading && samples.filter((s) => !s.afbResult).length === 0 && (
+          <div className="empty-table-state">
+            <p>
+              <FormattedMessage
+                id="notebook.page.tb.smear.pendingTable.empty"
+                defaultMessage="No samples pending smear microscopy."
+              />
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Completed Results Table */}
@@ -621,11 +685,7 @@ function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
               defaultMessage="Completed Smear Results"
             />
             <Tag type="green" className="count-tag">
-              {
-                samples.filter(
-                  (s) => s.status === "COMPLETED" || s.status === "SKIPPED",
-                ).length
-              }
+              {samples.filter((s) => s.afbResult).length}
             </Tag>
           </h5>
           <p className="table-section-description">
@@ -638,9 +698,7 @@ function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
         <div className="sample-grid-container">
           <SampleGrid
             gridId="smear-completed"
-            samples={samples.filter(
-              (s) => s.status === "COMPLETED" || s.status === "SKIPPED",
-            )}
+            samples={samples.filter((s) => s.afbResult)}
             selectedIds={[]}
             showSelection={false}
             loading={loading}
@@ -693,19 +751,16 @@ function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
             ]}
           />
         </div>
-        {!loading &&
-          samples.filter(
-            (s) => s.status === "COMPLETED" || s.status === "SKIPPED",
-          ).length === 0 && (
-            <div className="empty-table-state">
-              <p>
-                <FormattedMessage
-                  id="notebook.page.tb.smear.completedTable.empty"
-                  defaultMessage="No completed smear results yet."
-                />
-              </p>
-            </div>
-          )}
+        {!loading && samples.filter((s) => s.afbResult).length === 0 && (
+          <div className="empty-table-state">
+            <p>
+              <FormattedMessage
+                id="notebook.page.tb.smear.completedTable.empty"
+                defaultMessage="No completed smear results yet."
+              />
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Global empty state */}
@@ -786,24 +841,20 @@ function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
 
             {/* Result Date */}
             <Column lg={8} md={4} sm={4}>
-              <DatePicker
-                datePickerType="single"
-                onChange={([date]) =>
+              <CustomDatePicker
+                id="resultDate"
+                labelText={intl.formatMessage({
+                  id: "notebook.tb.smear.resultDate",
+                  defaultMessage: "Result Date",
+                })}
+                value={resultData.resultDate}
+                onChange={(date) =>
                   setResultData((prev) => ({
                     ...prev,
-                    resultDate: date?.toISOString().split("T")[0] || "",
+                    resultDate: date,
                   }))
                 }
-              >
-                <DatePickerInput
-                  id="resultDate"
-                  labelText={intl.formatMessage({
-                    id: "notebook.tb.smear.resultDate",
-                    defaultMessage: "Result Date",
-                  })}
-                  placeholder="mm/dd/yyyy"
-                />
-              </DatePicker>
+              />
             </Column>
 
             {/* AFB Result */}
@@ -917,4 +968,4 @@ function TBSmearResultsPage({ entryId, pageData, progress, onProgressUpdate }) {
   );
 }
 
-export default TBSmearResultsPage;
+export default SmearMicroscopyPanel;

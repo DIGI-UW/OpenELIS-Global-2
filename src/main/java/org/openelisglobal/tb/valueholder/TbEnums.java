@@ -186,4 +186,54 @@ public class TbEnums {
         /** Mycobacteria Growth Indicator Tube liquid culture */
         MGIT
     }
+
+    // ====== Page 7: Disposal & Archiving Enums ======
+
+    /**
+     * Sample disposal/archival status.
+     */
+    public enum DisposalStatus {
+        /** Sample pending disposal decision */
+        PENDING,
+        /** Sample has been disposed */
+        DISPOSED,
+        /** Sample has been transferred to biorepository/archive */
+        ARCHIVED
+    }
+
+    /**
+     * Reasons for sample disposal in TB workflow.
+     */
+    public enum DisposalReason {
+        /** No growth after 8-week incubation period */
+        CULTURE_NEGATIVE,
+        /** All requested tests have been completed */
+        TESTING_COMPLETE,
+        /** Sample or culture contaminated */
+        CONTAMINATED,
+        /** Sample no longer viable for testing */
+        DEGRADED,
+        /** Storage capacity limit reached */
+        STORAGE_LIMIT,
+        /** Redundant sample from same patient */
+        DUPLICATE,
+        /** Sample beyond usable timeframe */
+        EXPIRED,
+        /** Other reason (requires notes) */
+        OTHER
+    }
+
+    /**
+     * Methods for sample disposal in TB laboratory.
+     */
+    public enum DisposalMethod {
+        /** Biohazard autoclave - standard TB decontamination */
+        AUTOCLAVE,
+        /** High-temperature incineration */
+        INCINERATION,
+        /** Chemical neutralization/decontamination */
+        CHEMICAL,
+        /** Transfer to biorepository for long-term archiving */
+        BIOREPOSITORY
+    }
 }

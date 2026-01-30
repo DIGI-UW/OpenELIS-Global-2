@@ -1,10 +1,8 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useContext } from "react";
 import {
   Modal,
   Select,
   SelectItem,
-  DatePicker,
-  DatePickerInput,
   Grid,
   Column,
   InlineNotification,
@@ -12,7 +10,12 @@ import {
   Dropdown,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  convertToISODate,
+} from "../../../../utils/Utils";
+import CustomDatePicker from "../../../../common/CustomDatePicker";
+import { ConfigurationContext } from "../../../../layout/Layout";
 
 /**
  * Culture Method Options.
@@ -42,13 +45,15 @@ function InoculationModal({
   sample = null,
   processingRecord = null,
   bulkMode = false,
+  entryId = null,
 }) {
   const intl = useIntl();
+  const { configurationProperties } = useContext(ConfigurationContext);
 
   const [formData, setFormData] = useState({
     mediaBatchId: "",
     cultureMethod: "LJ",
-    inoculationDate: new Date().toISOString().split("T")[0],
+    inoculationDate: configurationProperties?.currentDateAsText || "",
   });
 
   const [availableMedia, setAvailableMedia] = useState([]);
@@ -62,22 +67,37 @@ function InoculationModal({
     }
   }, [open, formData.cultureMethod]);
 
-  const fetchAvailableMedia = useCallback((mediaType) => {
-    setLoadingMedia(true);
-    // For "BOTH", we need LJ media primarily
-    const typeToFetch = mediaType === "BOTH" ? "LJ" : mediaType;
-    getFromOpenElisServer(
-      `/rest/tb/processing/media/available?mediaType=${typeToFetch}`,
-      (response) => {
-        if (response && Array.isArray(response)) {
-          setAvailableMedia(response);
-        } else {
-          setAvailableMedia([]);
-        }
+  const fetchAvailableMedia = useCallback(
+    (mediaType) => {
+      if (!entryId) {
+        setAvailableMedia([]);
         setLoadingMedia(false);
-      },
-    );
-  }, []);
+        return;
+      }
+      setLoadingMedia(true);
+      // Fetch media batches filtered by notebook entry ID
+      getFromOpenElisServer(
+        `/rest/tb/processing/media?entryId=${entryId}`,
+        (response) => {
+          if (response && Array.isArray(response)) {
+            // Filter by media type and QC status (only PASSED batches)
+            const typeToMatch = mediaType === "BOTH" ? null : mediaType;
+            const filtered = response.filter(
+              (batch) =>
+                batch.qcStatus === "PASSED" &&
+                !batch.expired &&
+                (typeToMatch === null || batch.mediaType === typeToMatch),
+            );
+            setAvailableMedia(filtered);
+          } else {
+            setAvailableMedia([]);
+          }
+          setLoadingMedia(false);
+        },
+      );
+    },
+    [entryId],
+  );
 
   const handleInputChange = useCallback((field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -114,7 +134,7 @@ function InoculationModal({
       mediaBatchId: parseInt(formData.mediaBatchId, 10),
       processingId: processingRecord?.id || null,
       cultureMethod: formData.cultureMethod,
-      inoculationDate: formData.inoculationDate,
+      inoculationDate: convertToISODate(formData.inoculationDate),
     };
 
     onSave(dataToSave);
@@ -125,10 +145,10 @@ function InoculationModal({
     setFormData({
       mediaBatchId: "",
       cultureMethod: "LJ",
-      inoculationDate: new Date().toISOString().split("T")[0],
+      inoculationDate: configurationProperties?.currentDateAsText || "",
     });
     onClose();
-  }, [onClose]);
+  }, [onClose, configurationProperties]);
 
   const selectedBatch = availableMedia.find(
     (m) => String(m.id) === String(formData.mediaBatchId),
@@ -276,25 +296,15 @@ function InoculationModal({
 
           {/* Inoculation Date */}
           <Column lg={8} md={4} sm={4}>
-            <DatePicker
-              datePickerType="single"
+            <CustomDatePicker
+              id="inoculationDate"
+              labelText={intl.formatMessage({
+                id: "notebook.tb.inoculation.date",
+                defaultMessage: "Inoculation Date *",
+              })}
               value={formData.inoculationDate}
-              onChange={([date]) =>
-                handleInputChange(
-                  "inoculationDate",
-                  date?.toISOString().split("T")[0] || "",
-                )
-              }
-            >
-              <DatePickerInput
-                id="inoculationDate"
-                labelText={intl.formatMessage({
-                  id: "notebook.tb.inoculation.date",
-                  defaultMessage: "Inoculation Date *",
-                })}
-                placeholder="mm/dd/yyyy"
-              />
-            </DatePicker>
+              onChange={(date) => handleInputChange("inoculationDate", date)}
+            />
           </Column>
 
           {/* Media Batch Selection */}

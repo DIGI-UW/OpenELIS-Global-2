@@ -1,19 +1,22 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useContext } from "react";
 import {
   Modal,
   TextInput,
   TextArea,
   Select,
   SelectItem,
-  DatePicker,
-  DatePickerInput,
   Grid,
   Column,
   InlineNotification,
   Button,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../../../utils/Utils";
+import CustomDatePicker from "../../../../common/CustomDatePicker";
+import { ConfigurationContext } from "../../../../layout/Layout";
+import {
+  getFromOpenElisServer,
+  convertToISODate,
+} from "../../../../utils/Utils";
 
 /**
  * Media Type Options for TB culture.
@@ -42,12 +45,15 @@ const QC_STATUS_OPTIONS = [
  */
 function MediaPreparationModal({ open, onClose, onSave, initialData = null }) {
   const intl = useIntl();
+  const { configurationProperties } = useContext(ConfigurationContext);
 
   const [formData, setFormData] = useState({
     batchId: initialData?.batchId || "",
     mediaType: initialData?.mediaType || "LJ",
     preparationDate:
-      initialData?.preparationDate || new Date().toISOString().split("T")[0],
+      initialData?.preparationDate ||
+      configurationProperties?.currentDateAsText ||
+      "",
     expiryDate: initialData?.expiryDate || "",
     tubesCount: initialData?.tubesCount || "",
     qcStatus: initialData?.qcStatus || "PENDING",
@@ -118,6 +124,8 @@ function MediaPreparationModal({ open, onClose, onSave, initialData = null }) {
 
     const dataToSave = {
       ...formData,
+      preparationDate: convertToISODate(formData.preparationDate),
+      expiryDate: convertToISODate(formData.expiryDate),
       tubesCount: formData.tubesCount
         ? parseInt(formData.tubesCount, 10)
         : null,
@@ -131,14 +139,14 @@ function MediaPreparationModal({ open, onClose, onSave, initialData = null }) {
     setFormData({
       batchId: "",
       mediaType: "LJ",
-      preparationDate: new Date().toISOString().split("T")[0],
+      preparationDate: configurationProperties?.currentDateAsText || "",
       expiryDate: "",
       tubesCount: "",
       qcStatus: "PENDING",
       qcNotes: "",
     });
     onClose();
-  }, [onClose]);
+  }, [onClose, configurationProperties]);
 
   return (
     <Modal
@@ -224,48 +232,28 @@ function MediaPreparationModal({ open, onClose, onSave, initialData = null }) {
 
           {/* Preparation Date */}
           <Column lg={8} md={4} sm={4}>
-            <DatePicker
-              datePickerType="single"
+            <CustomDatePicker
+              id="preparationDate"
+              labelText={intl.formatMessage({
+                id: "notebook.tb.mediaPrep.prepDate",
+                defaultMessage: "Preparation Date *",
+              })}
               value={formData.preparationDate}
-              onChange={([date]) =>
-                handleInputChange(
-                  "preparationDate",
-                  date?.toISOString().split("T")[0] || "",
-                )
-              }
-            >
-              <DatePickerInput
-                id="preparationDate"
-                labelText={intl.formatMessage({
-                  id: "notebook.tb.mediaPrep.prepDate",
-                  defaultMessage: "Preparation Date *",
-                })}
-                placeholder="mm/dd/yyyy"
-              />
-            </DatePicker>
+              onChange={(date) => handleInputChange("preparationDate", date)}
+            />
           </Column>
 
           {/* Expiry Date */}
           <Column lg={8} md={4} sm={4}>
-            <DatePicker
-              datePickerType="single"
+            <CustomDatePicker
+              id="expiryDate"
+              labelText={intl.formatMessage({
+                id: "notebook.tb.mediaPrep.expiryDate",
+                defaultMessage: "Expiry Date",
+              })}
               value={formData.expiryDate}
-              onChange={([date]) =>
-                handleInputChange(
-                  "expiryDate",
-                  date?.toISOString().split("T")[0] || "",
-                )
-              }
-            >
-              <DatePickerInput
-                id="expiryDate"
-                labelText={intl.formatMessage({
-                  id: "notebook.tb.mediaPrep.expiryDate",
-                  defaultMessage: "Expiry Date",
-                })}
-                placeholder="mm/dd/yyyy"
-              />
-            </DatePicker>
+              onChange={(date) => handleInputChange("expiryDate", date)}
+            />
           </Column>
 
           {/* Tubes Count */}

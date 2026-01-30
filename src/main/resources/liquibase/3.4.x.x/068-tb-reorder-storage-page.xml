@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- TB WORKFLOW PAGE REORDERING -->
+    <!-- Move "Sample Storage Assignment" from page 3 to page 6 -->
+    <!-- and rename to "Isolate Storage" -->
+    <!-- ======================================================== -->
+
+    <changeSet id="tb-reorder-storage-page" author="openelis-tb">
+        <comment>Reorder TB workflow pages: move storage from page 3 to page 6 and rename to Isolate Storage</comment>
+
+        <!-- Step 1: Update Initial Sample Processing from page 4 to page 3 -->
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="3"/>
+            <where>
+                notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)
+                AND page_order = 4
+            </where>
+        </update>
+
+        <!-- Step 2: Update Incubation & Monitoring from page 5 to page 4 -->
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="4"/>
+            <where>
+                notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)
+                AND page_order = 5
+            </where>
+        </update>
+
+        <!-- Step 3: Update Sample-Linked Test Execution from page 6 to page 5 -->
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="5"/>
+            <where>
+                notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)
+                AND page_order = 6
+            </where>
+        </update>
+
+        <!-- Step 4: Update Sample Storage Assignment to page 6 and rename to Isolate Storage -->
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="6"/>
+            <column name="title" value="Isolate Storage"/>
+            <column name="instructions" value="Assign TB isolates to appropriate storage locations. Record storage location details and conditions for culture-positive samples."/>
+            <column name="content" value="Isolate Storage - Assign isolates to storage locations"/>
+            <where>
+                notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)
+                AND page_order = 3
+                AND title = 'Sample Storage Assignment'
+            </where>
+        </update>
+
+        <rollback>
+            <!-- Restore original order and title -->
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="page_order" value="3"/>
+                <column name="title" value="Sample Storage Assignment"/>
+                <column name="instructions" value="Assign samples to appropriate storage locations. Record storage location details and conditions."/>
+                <column name="content" value="Sample Storage Assignment - Assign samples to storage locations"/>
+                <where>
+                    notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)
+                    AND page_order = 6
+                    AND title = 'Isolate Storage'
+                </where>
+            </update>
+
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="page_order" value="6"/>
+                <where>
+                    notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)
+                    AND page_order = 5
+                </where>
+            </update>
+
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="page_order" value="5"/>
+                <where>
+                    notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)
+                    AND page_order = 4
+                </where>
+            </update>
+
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="page_order" value="4"/>
+                <where>
+                    notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)
+                    AND page_order = 3
+                </where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- UPDATE WORKFLOW PAGE TEMPLATE -->
+    <!-- Update the template dropdown entry to match new name -->
+    <!-- ======================================================== -->
+
+    <changeSet id="tb-update-storage-template" author="openelis-tb">
+        <comment>Update workflow page template for storage page to reflect new name and order</comment>
+
+        <update tableName="workflow_page_template" schemaName="clinlims">
+            <column name="name" value="Isolate Storage"/>
+            <column name="display_key" value="workflow.page.tb.isolateStorage"/>
+            <column name="description" value="Assign TB isolates to appropriate storage locations"/>
+            <column name="default_instructions" value="Assign TB isolates to appropriate storage locations. Record storage location details and conditions for culture-positive samples."/>
+            <column name="default_content" value="Isolate Storage - Assign isolates to storage locations"/>
+            <column name="display_order" value="6"/>
+            <where>
+                id = 203
+                AND workflow_category = 'TB'
+            </where>
+        </update>
+
+        <!-- Update display_order for other TB templates -->
+        <update tableName="workflow_page_template" schemaName="clinlims">
+            <column name="display_order" value="3"/>
+            <where>
+                id = 204
+                AND workflow_category = 'TB'
+            </where>
+        </update>
+
+        <update tableName="workflow_page_template" schemaName="clinlims">
+            <column name="display_order" value="4"/>
+            <where>
+                id = 205
+                AND workflow_category = 'TB'
+            </where>
+        </update>
+
+        <update tableName="workflow_page_template" schemaName="clinlims">
+            <column name="display_order" value="5"/>
+            <where>
+                id = 206
+                AND workflow_category = 'TB'
+            </where>
+        </update>
+
+        <rollback>
+            <update tableName="workflow_page_template" schemaName="clinlims">
+                <column name="name" value="Sample Storage Assignment"/>
+                <column name="display_key" value="workflow.page.tb.storageAssignment"/>
+                <column name="description" value="Assign TB samples to appropriate storage locations"/>
+                <column name="default_instructions" value="Assign samples to appropriate storage locations. Record storage location details and conditions."/>
+                <column name="default_content" value="Sample Storage Assignment - Assign samples to storage locations"/>
+                <column name="display_order" value="3"/>
+                <where>
+                    id = 203
+                    AND workflow_category = 'TB'
+                </where>
+            </update>
+
+            <update tableName="workflow_page_template" schemaName="clinlims">
+                <column name="display_order" value="4"/>
+                <where>
+                    id = 204
+                    AND workflow_category = 'TB'
+                </where>
+            </update>
+
+            <update tableName="workflow_page_template" schemaName="clinlims">
+                <column name="display_order" value="5"/>
+                <where>
+                    id = 205
+                    AND workflow_category = 'TB'
+                </where>
+            </update>
+
+            <update tableName="workflow_page_template" schemaName="clinlims">
+                <column name="display_order" value="6"/>
+                <where>
+                    id = 206
+                    AND workflow_category = 'TB'
+                </where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

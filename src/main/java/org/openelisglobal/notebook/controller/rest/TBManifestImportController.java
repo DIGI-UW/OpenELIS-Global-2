@@ -67,13 +67,13 @@ public class TBManifestImportController extends BaseRestController {
             // Parse the CSV
             ParsedManifest parsed = tbManifestImportService.parseManifestCsv(inputStream, form);
 
-            // Validate specimen types against linked organizations (falls back to global if
-            // none)
-            List<ParseError> validationErrors = tbManifestImportService.validateSpecimenTypesForEntry(entryId, parsed);
+            // NOTE: Department-based specimen type validation is disabled for now
+            // Validation can be re-enabled by uncommenting the following:
+            // List<ParseError> validationErrors =
+            // tbManifestImportService.validateSpecimenTypesForEntry(entryId, parsed);
 
-            // Combine all errors
+            // Use only parsing errors
             List<ParseError> allErrors = new java.util.ArrayList<>(parsed.errors());
-            allErrors.addAll(validationErrors);
 
             // Build response
             Map<String, Object> response = new HashMap<>();
@@ -159,22 +159,23 @@ public class TBManifestImportController extends BaseRestController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // Validate specimen types against linked organizations (falls back to global if
-            // none)
-            List<ParseError> validationErrors = tbManifestImportService.validateSpecimenTypesForEntry(entryId, parsed);
-            if (!validationErrors.isEmpty()) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", false);
-                response.put("error", "Specimen type validation errors");
-                response.put("errors", validationErrors.stream().map(error -> {
-                    Map<String, Object> errorMap = new HashMap<>();
-                    errorMap.put("rowNumber", error.rowNumber());
-                    errorMap.put("column", error.column());
-                    errorMap.put("message", error.message());
-                    return errorMap;
-                }).collect(Collectors.toList()));
-                return ResponseEntity.badRequest().body(response);
-            }
+            // NOTE: Department-based specimen type validation is disabled for now
+            // Validation can be re-enabled by uncommenting the following:
+            // List<ParseError> validationErrors =
+            // tbManifestImportService.validateSpecimenTypesForEntry(entryId, parsed);
+            // if (!validationErrors.isEmpty()) {
+            // Map<String, Object> response = new HashMap<>();
+            // response.put("success", false);
+            // response.put("error", "Specimen type validation errors");
+            // response.put("errors", validationErrors.stream().map(error -> {
+            // Map<String, Object> errorMap = new HashMap<>();
+            // errorMap.put("rowNumber", error.rowNumber());
+            // errorMap.put("column", error.column());
+            // errorMap.put("message", error.message());
+            // return errorMap;
+            // }).collect(Collectors.toList()));
+            // return ResponseEntity.badRequest().body(response);
+            // }
 
             // Create samples for the entry
             TBManifestImportResult result = tbManifestImportService.createSamplesForEntry(entryId, parsed, sysUserId);

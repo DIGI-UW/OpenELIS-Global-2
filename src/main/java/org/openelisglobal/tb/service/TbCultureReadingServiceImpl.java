@@ -111,6 +111,9 @@ public class TbCultureReadingServiceImpl extends AuditableBaseObjectServiceImpl<
             reading.setInoculatedBy(inoculatedBy);
         }
 
+        // CRITICAL: Set sys user ID for audit trail before insert
+        reading.setSysUserId(inoculatedById);
+
         Integer id = insert(reading);
         return get(id);
     }
@@ -143,29 +146,76 @@ public class TbCultureReadingServiceImpl extends AuditableBaseObjectServiceImpl<
     @Transactional
     public TbCultureReading recordReading(Integer cultureReadingId, Integer weekNumber, GrowthObservation observation,
             String notes, String readById) {
-        TbCultureReading reading = get(cultureReadingId);
-        if (reading == null) {
+        TbCultureReading existingReading = get(cultureReadingId);
+        if (existingReading == null) {
             throw new IllegalArgumentException("Culture reading not found: " + cultureReadingId);
         }
 
-        reading.setWeekNumber(weekNumber);
-        reading.setGrowthObservation(observation);
-        reading.setReadingDate(new Timestamp(System.currentTimeMillis()));
-        if (notes != null) {
-            reading.setNotes(notes);
+        String sampleItemId = existingReading.getSampleItem().getId();
+
+        // Check if we're updating the same week or recording a new week
+        if (existingReading.getWeekNumber() != null && existingReading.getWeekNumber().equals(weekNumber)) {
+            // Same week - update existing record
+            existingReading.setGrowthObservation(observation);
+            existingReading.setReadingDate(new Timestamp(System.currentTimeMillis()));
+            if (notes != null) {
+                existingReading.setNotes(notes);
+            }
+            if (readById != null) {
+                SystemUser readBy = systemUserService.get(readById);
+                existingReading.setReadBy(readBy);
+            }
+            existingReading.setSysUserId(readById);
+            return update(existingReading);
         }
 
+        // Different week - check if a record for this (sample, week) already exists
+        Optional<TbCultureReading> existingWeekReading = tbCultureReadingDAO.findBySampleItemIdAndWeek(sampleItemId,
+                weekNumber);
+        if (existingWeekReading.isPresent()) {
+            // Update existing week record
+            TbCultureReading weekReading = existingWeekReading.get();
+            weekReading.setGrowthObservation(observation);
+            weekReading.setReadingDate(new Timestamp(System.currentTimeMillis()));
+            if (notes != null) {
+                weekReading.setNotes(notes);
+            }
+            if (readById != null) {
+                SystemUser readBy = systemUserService.get(readById);
+                weekReading.setReadBy(readBy);
+            }
+            weekReading.setSysUserId(readById);
+            return update(weekReading);
+        }
+
+        // Create new record for this week
+        TbCultureReading newReading = new TbCultureReading();
+        newReading.setSampleItem(existingReading.getSampleItem());
+        newReading.setWeekNumber(weekNumber);
+        newReading.setGrowthObservation(observation);
+        newReading.setReadingDate(new Timestamp(System.currentTimeMillis()));
+        newReading.setCultureMethod(existingReading.getCultureMethod());
+        newReading.setInoculationDate(existingReading.getInoculationDate());
+        newReading.setMediaBatch(existingReading.getMediaBatch());
+        newReading.setSampleProcessing(existingReading.getSampleProcessing());
+        newReading.setInoculatedBy(existingReading.getInoculatedBy());
+        if (notes != null) {
+            newReading.setNotes(notes);
+        }
         if (readById != null) {
             SystemUser readBy = systemUserService.get(readById);
-            reading.setReadBy(readBy);
+            newReading.setReadBy(readBy);
         }
+        newReading.setSysUserId(readById);
 
-        return update(reading);
+        Integer id = insert(newReading);
+        return get(id);
     }
 
     @Override
     @Transactional
-    public TbCultureReading determineFinalResult(Integer cultureReadingId, CultureResult result, Integer positiveWeek) {
+    public TbCultureReading determineFinalResult(Integer cultureReadingId, CultureResult result, Integer positiveWeek,
+            String sysUserId) {
         TbCultureReading reading = get(cultureReadingId);
         if (reading == null) {
             throw new IllegalArgumentException("Culture reading not found: " + cultureReadingId);
@@ -177,6 +227,9 @@ public class TbCultureReadingServiceImpl extends AuditableBaseObjectServiceImpl<
         if (result == CultureResult.POSITIVE && positiveWeek != null) {
             reading.setPositiveWeek(positiveWeek);
         }
+
+        // CRITICAL: Set sys user ID for audit trail before update
+        reading.setSysUserId(sysUserId);
 
         return update(reading);
     }
@@ -195,6 +248,32 @@ public class TbCultureReadingServiceImpl extends AuditableBaseObjectServiceImpl<
         long week5to8 = countByIncubationWeekRange(5, 8);
         long positive = findByCultureResult(CultureResult.POSITIVE).size();
         long negative = findByCultureResult(CultureResult.NEGATIVE).size();
+
+        return new IncubationSummary(totalIncubating, week1to4, week5to8, positive, negative);
+    }
+
+    // ====== Notebook Entry-Filtered Methods ======
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TbCultureReading> findIncubatingSamplesByEntry(Integer notebookEntryId) {
+        return tbCultureReadingDAO.findIncubatingSamplesByEntry(notebookEntryId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TbCultureReading> findByCultureResultAndEntry(CultureResult result, Integer notebookEntryId) {
+        return tbCultureReadingDAO.findByCultureResultAndEntry(result, notebookEntryId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public IncubationSummary getIncubationSummaryByEntry(Integer notebookEntryId) {
+        long totalIncubating = findIncubatingSamplesByEntry(notebookEntryId).size();
+        long week1to4 = tbCultureReadingDAO.countByIncubationWeekRangeAndEntry(1, 4, notebookEntryId);
+        long week5to8 = tbCultureReadingDAO.countByIncubationWeekRangeAndEntry(5, 8, notebookEntryId);
+        long positive = findByCultureResultAndEntry(CultureResult.POSITIVE, notebookEntryId).size();
+        long negative = findByCultureResultAndEntry(CultureResult.NEGATIVE, notebookEntryId).size();
 
         return new IncubationSummary(totalIncubating, week1to4, week5to8, positive, negative);
     }

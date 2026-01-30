@@ -94,6 +94,15 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
     @Override
     @Transactional
     public int bulkUpdateStatus(Integer pageId, List<Integer> sampleIds, Status status, String userId) {
+        // Call overloaded method with skipAutoRouting = false (default behavior - T150
+        // enabled)
+        return bulkUpdateStatus(pageId, sampleIds, status, userId, false);
+    }
+
+    @Override
+    @Transactional
+    public int bulkUpdateStatus(Integer pageId, List<Integer> sampleIds, Status status, String userId,
+            boolean skipAutoRouting) {
         int totalUpdated = 0;
         SystemUser user = systemUserService.get(userId);
 
@@ -147,7 +156,9 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                 // For routing pages, samples routed to EXTERNAL_LAB or STORAGE go to archiving
                 // page
                 // Samples routed to INTERNAL_ANALYSIS go to the next page (Analysis)
-                if (!nextPageLoaded) {
+                // Skip T150 logic if skipAutoRouting is true (frontend handles routing
+                // explicitly)
+                if (!skipAutoRouting && !nextPageLoaded) {
                     LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
                             "T150: Loading next page for pageId=" + pageId);
                     NoteBookPage currentPageDebug = noteBookService.getPage(pageId);

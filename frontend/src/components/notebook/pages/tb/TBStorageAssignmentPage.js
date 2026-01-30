@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   Grid,
   Column,
@@ -10,7 +16,13 @@ import {
   TextInput,
   Dropdown,
 } from "@carbon/react";
-import { Archive, Checkmark, Renew, Location } from "@carbon/react/icons";
+import {
+  Archive,
+  Checkmark,
+  Renew,
+  Location,
+  TrashCan,
+} from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -37,13 +49,11 @@ import "../../workflow/NotebookWorkflow.css";
  * @param {number} props.entryId - The notebook entry ID
  * @param {Object} props.pageData - The notebook page data
  * @param {Object} props.progress - Page progress
- * @param {Array} props.pages - All workflow pages (to find QC page)
  * @param {function} props.onProgressUpdate - Callback when progress changes
  */
 function TBStorageAssignmentPage({
   entryId,
   pageData,
-  pages = [],
   progress,
   onProgressUpdate,
 }) {
@@ -51,10 +61,13 @@ function TBStorageAssignmentPage({
   const componentMounted = useRef(false);
 
   // State for samples
-  const [samples, setSamples] = useState([]);
+  const [pageSamples, setPageSamples] = useState([]);
+  const [cultureSamples, setCultureSamples] = useState([]);
+  const [completedSampleIds, setCompletedSampleIds] = useState(new Set()); // Track disposed samples
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
+  const [cultureSamplesLoading, setCultureSamplesLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
@@ -97,13 +110,9 @@ function TBStorageAssignmentPage({
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
 
-  // Load samples from Page 2 (QC page) where qcResult is stored
+  // Load samples from this storage page (page 6)
   const loadPageSamples = useCallback(() => {
-    // Page 2 has order=2 in the TB workflow
-    const qcPage = pages.find((p) => p.order === 2);
-    const qcPageId = qcPage?.id;
-
-    if (!qcPageId || String(qcPageId).startsWith("default-")) {
+    if (!pageData?.id || String(pageData.id).startsWith("default-")) {
       setLoading(false);
       return;
     }
@@ -111,29 +120,45 @@ function TBStorageAssignmentPage({
     setLoading(true);
     setError(null);
 
-    // Load samples from Page 2 (QC page) to get qcResult data
-    const url = `/rest/notebook/page/${qcPageId}/samples`;
+    // Load samples from this storage page
+    const url = `/rest/notebook/page/${pageData.id}/samples`;
 
     getFromOpenElisServer(url, (response) => {
       if (componentMounted.current) {
         if (response && Array.isArray(response)) {
-          // Filter to only show samples with PASS_TO_STORAGE QC result
-          const storageSamples = response.filter(
-            (sample) => sample.data?.qcResult === "PASS_TO_STORAGE",
+          // All samples on this page should be storage-bound samples
+          // (routed here from QC with PASS_TO_STORAGE result)
+          const storageSamples = response;
+
+          // Track completed sample IDs (for filtering culture samples in merge)
+          const completedIds = new Set(
+            storageSamples
+              .filter((sample) => sample.pageStatus === "COMPLETED")
+              .map((sample) => String(sample.id || sample.sampleItemId)),
+          );
+          setCompletedSampleIds(completedIds);
+
+          // Filter out COMPLETED samples (already routed to Disposal & Archiving)
+          const activeSamples = storageSamples.filter(
+            (sample) => sample.pageStatus !== "COMPLETED",
           );
 
-          const transformedSamples = storageSamples.map((sample) => {
-            const storageLocation = sample.data?.storageLocation || null;
-            const hasStorageAssignment = !!storageLocation;
+          const transformedSamples = activeSamples.map((sample) => {
+            // Backend stores storageWell, storagePath, storageBox - not storageLocation
+            const storageWell = sample.data?.storageWell || null;
+            const storagePath = sample.data?.storagePath || null;
+            const storageBox = sample.data?.storageBox || null;
+            // Build display string: "Box - Well" or just the path
+            const storageLocation = storageWell
+              ? `${storageBox || "Box"} - ${storageWell}`
+              : storagePath;
+            const hasStorageAssignment = !!(storageWell || storagePath);
 
-            // For storage page, status is based on storage assignment, NOT QC pageStatus
+            // For storage page, status is based on storage assignment
             // - PENDING: No storage assigned
             // - IN_PROGRESS: Storage location assigned
-            // - COMPLETED: Storage confirmed (needs explicit marking)
             let status = "PENDING";
-            if (sample.data?.storageCompleted) {
-              status = "COMPLETED";
-            } else if (hasStorageAssignment) {
+            if (hasStorageAssignment) {
               status = "IN_PROGRESS";
             }
 
@@ -168,49 +193,141 @@ function TBStorageAssignmentPage({
               storageLocation: storageLocation,
               storagePath: sample.data?.storagePath || null,
               hasStorageAssignment: hasStorageAssignment,
+              source: "PAGE", // Mark source for merge logic
               data: sample.data,
             };
           });
 
-          setSamples(transformedSamples);
-
-          const assigned = transformedSamples.filter(
-            (s) => s.hasStorageAssignment,
-          ).length;
-          const completed = transformedSamples.filter(
-            (s) => s.status === "COMPLETED",
-          ).length;
-          setStorageSummary({
-            pending: transformedSamples.length - assigned,
-            assigned: assigned,
-            completed: completed,
-            total: transformedSamples.length,
-          });
+          setPageSamples(transformedSamples);
         } else {
-          setSamples([]);
-          setStorageSummary({
-            pending: 0,
-            assigned: 0,
-            completed: 0,
-            total: 0,
-          });
+          setPageSamples([]);
+          setCompletedSampleIds(new Set());
         }
         setLoading(false);
       }
     });
-  }, [pages]);
+  }, [pageData?.id]);
 
-  // Load samples when pages are available
+  // Load culture-positive samples (processed isolates ready for storage)
+  const loadCultureSamples = useCallback(() => {
+    if (!entryId) {
+      setCultureSamples([]);
+      setCultureSamplesLoading(false);
+      return;
+    }
+
+    setCultureSamplesLoading(true);
+
+    getFromOpenElisServer(
+      `/rest/tb/incubation/samples/by-result/POSITIVE?entryId=${entryId}`,
+      (response) => {
+        if (componentMounted.current) {
+          if (response && Array.isArray(response)) {
+            const transformed = response.map((sample) => ({
+              id: String(sample.sampleItem?.id || sample.sampleItemId),
+              sampleItemId: String(
+                sample.sampleItem?.id || sample.sampleItemId,
+              ),
+              externalId: sample.sampleItem?.externalId,
+              accessionNumber: sample.sampleItem?.sample?.accessionNumber,
+              sampleType: sample.sampleItem?.typeOfSample?.description,
+              cultureMethod: sample.cultureMethod || "LJ",
+              cultureResult: sample.cultureResult,
+              positiveWeek: sample.positiveWeek,
+              finalResultDate: sample.finalResultDate,
+              inoculationDate: sample.inoculationDate,
+              source: "CULTURE", // Mark source for merge logic
+            }));
+            setCultureSamples(transformed);
+          } else {
+            setCultureSamples([]);
+          }
+          setCultureSamplesLoading(false);
+        }
+      },
+    );
+  }, [entryId]);
+
+  // Load samples when page is available
   useEffect(() => {
     componentMounted.current = true;
-    if (pages && pages.length > 0) {
-      loadPageSamples();
-    }
+    loadPageSamples();
+    loadCultureSamples();
 
     return () => {
       componentMounted.current = false;
     };
-  }, [pages, loadPageSamples]);
+  }, [loadPageSamples, loadCultureSamples]);
+
+  // Merge page samples with culture-positive samples (processed isolates)
+  const samples = useMemo(() => {
+    // Create a map of culture data by sampleItemId for enrichment
+    const cultureDataMap = new Map();
+    cultureSamples.forEach((sample) => {
+      cultureDataMap.set(sample.id, {
+        cultureResult: sample.cultureResult,
+        cultureMethod: sample.cultureMethod,
+        positiveWeek: sample.positiveWeek,
+        finalResultDate: sample.finalResultDate,
+      });
+    });
+
+    // Enrich page samples with culture data if available
+    const enrichedPageSamples = pageSamples.map((sample) => {
+      const cultureData = cultureDataMap.get(sample.id);
+      if (cultureData) {
+        return {
+          ...sample,
+          cultureResult: cultureData.cultureResult,
+          cultureMethod: cultureData.cultureMethod,
+          positiveWeek: cultureData.positiveWeek,
+          finalResultDate: cultureData.finalResultDate,
+        };
+      }
+      return sample;
+    });
+
+    // Add culture-positive samples that aren't already in page samples
+    // and haven't been disposed/archived (tracked in completedSampleIds)
+    const pageSampleIds = new Set(pageSamples.map((s) => s.id));
+    const additionalCultureSamples = cultureSamples
+      .filter((s) => !pageSampleIds.has(s.id) && !completedSampleIds.has(s.id))
+      .map((sample) => ({
+        id: sample.id,
+        externalId: sample.externalId,
+        accessionNumber: sample.accessionNumber,
+        sampleType: sample.sampleType,
+        status: "PENDING",
+        patientName: "-",
+        patientId: "-",
+        specimenType: sample.sampleType,
+        // destination: "LONG_TERM_STORAGE",
+        qcResult: null,
+        storageLocation: null,
+        storagePath: null,
+        hasStorageAssignment: false,
+        cultureResult: sample.cultureResult,
+        cultureMethod: sample.cultureMethod,
+        positiveWeek: sample.positiveWeek,
+        finalResultDate: sample.finalResultDate,
+        source: "CULTURE",
+        data: {},
+      }));
+
+    return [...enrichedPageSamples, ...additionalCultureSamples];
+  }, [pageSamples, cultureSamples, completedSampleIds]);
+
+  // Update storage summary when samples change
+  useEffect(() => {
+    const assigned = samples.filter((s) => s.hasStorageAssignment).length;
+    const completed = samples.filter((s) => s.status === "COMPLETED").length;
+    setStorageSummary({
+      pending: samples.length - assigned - completed,
+      assigned: assigned,
+      completed: completed,
+      total: samples.length,
+    });
+  }, [samples]);
 
   // Handle storage hierarchy selection change
   const handleStorageSelectionChange = useCallback((selection) => {
@@ -380,31 +497,48 @@ function TBStorageAssignmentPage({
       return;
     }
 
+    if (!hasRealPageId) {
+      setError("Cannot assign storage: Page not properly initialized.");
+      return;
+    }
+
     setAssigning(true);
     setError(null);
 
-    // Build wellAssignments map with integer keys (sample IDs)
-    const wellAssignmentsForBackend = {};
-    Object.entries(wellAssignments).forEach(([sampleId, wellCoord]) => {
-      wellAssignmentsForBackend[parseInt(sampleId, 10)] = wellCoord;
-    });
+    // Build storage path for display
+    const storagePath = [
+      storageSelection.room?.label,
+      storageSelection.device?.label,
+      storageSelection.shelf?.label,
+      storageSelection.rack?.label,
+      storageSelection.box?.label,
+    ]
+      .filter(Boolean)
+      .join(" > ");
 
-    // Find QC page ID for the pageId field
-    const qcPage = pages.find((p) => p.order === 2);
-
-    // Build payload matching backend AssignStorageRequest
-    // Known fields: locationId, positionCoordinate, reassign, boxId, wellAssignments,
-    //               pageId, condition, sampleIds, locationType, retentionYears
+    // Build payload matching bulk storage endpoint (same pattern as Biorepository)
+    // This endpoint updates NotebookPageSample records on the specified page
     const payload = {
       sampleIds: Object.keys(wellAssignments).map((id) => parseInt(id, 10)),
       boxId: parseInt(storageSelection.box.id, 10),
-      wellAssignments: wellAssignmentsForBackend,
-      pageId: qcPage?.id ? parseInt(qcPage.id, 10) : null,
-      condition: storageCondition, // Required: REFRIGERATED, FROZEN_MINUS20, FROZEN_MINUS80, ROOM_TEMP, LIQUID_NITROGEN
+      wellAssignments: wellAssignments, // String keys expected by bulk endpoint
+      data: {
+        storageRoom: storageSelection.room?.label,
+        storageFreezer: storageSelection.device?.label,
+        storageShelf: storageSelection.shelf?.label,
+        storageRack: storageSelection.rack?.label,
+        storageBox: storageSelection.box?.label,
+        storagePath: storagePath,
+        storageCondition: storageCondition,
+        assignedBy: assignedBy,
+        assignedDateTime: new Date().toISOString(),
+      },
     };
 
+    // Use the bulk endpoint with the current page ID in the URL
+    // This ensures storage info is saved to THIS page's samples (not QC page)
     postToOpenElisServer(
-      `/rest/notebook/${entryId}/samples/assign-storage`,
+      `/rest/notebook/bulk/page/${pageData.id}/samples/storage`,
       JSON.stringify(payload),
       (status) => {
         setAssigning(false);
@@ -439,21 +573,18 @@ function TBStorageAssignmentPage({
     );
   };
 
-  // Handle mark samples complete
+  // Handle routing samples to Disposal & Archiving page
   const handleMarkComplete = () => {
-    const samplesToComplete = samples.filter(
-      (s) =>
-        selectedSampleIds.includes(s.id) &&
-        s.status !== "COMPLETED" &&
-        s.hasStorageAssignment,
+    const samplesToRoute = samples.filter(
+      (s) => selectedSampleIds.includes(s.id) && s.status !== "COMPLETED",
     );
 
-    if (samplesToComplete.length === 0) {
+    if (samplesToRoute.length === 0) {
       setError(
         intl.formatMessage({
-          id: "notebook.tb.storage.noSamplesToComplete",
+          id: "notebook.tb.storage.noSamplesToRoute",
           defaultMessage:
-            "No eligible samples to complete. Samples must have storage assigned first.",
+            "No eligible samples to route. Selected samples may already be completed.",
         }),
       );
       return;
@@ -462,7 +593,7 @@ function TBStorageAssignmentPage({
     setAssigning(true);
     setError(null);
 
-    const sampleIds = samplesToComplete.map((s) => parseInt(s.id, 10));
+    const sampleIds = samplesToRoute.map((s) => parseInt(s.id, 10));
 
     postToOpenElisServer(
       `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
@@ -473,9 +604,9 @@ function TBStorageAssignmentPage({
           setSuccess(
             intl.formatMessage(
               {
-                id: "notebook.tb.storage.completeSuccess",
+                id: "notebook.tb.storage.disposeArchiveSuccess",
                 defaultMessage:
-                  "Successfully marked {count} samples as complete.",
+                  "Successfully routed {count} samples to Disposal & Archiving.",
               },
               { count: sampleIds.length },
             ),
@@ -488,8 +619,9 @@ function TBStorageAssignmentPage({
         } else {
           setError(
             intl.formatMessage({
-              id: "notebook.tb.storage.completeError",
-              defaultMessage: "Failed to mark samples complete.",
+              id: "notebook.tb.storage.disposeArchiveError",
+              defaultMessage:
+                "Failed to route samples to Disposal & Archiving.",
             }),
           );
         }
@@ -594,15 +726,18 @@ function TBStorageAssignmentPage({
     },
   ];
 
-  // Empty state for no PASS_TO_STORAGE samples
-  if (!loading && samples.length === 0) {
+  // Combined loading state
+  const isLoading = loading || cultureSamplesLoading;
+
+  // Empty state for no samples
+  if (!isLoading && samples.length === 0) {
     return (
       <div className="tb-storage-assignment-page">
         <div className="page-section-header">
           <h4>
             <FormattedMessage
               id="notebook.page.tb.storage.title"
-              defaultMessage="Sample Storage Assignment"
+              defaultMessage="Isolate Storage"
             />
           </h4>
           <p className="page-description">
@@ -698,8 +833,8 @@ function TBStorageAssignmentPage({
             <Tile className="progress-tile">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.tb.storage.completed"
-                  defaultMessage="Completed"
+                  id="notebook.tb.storage.routed"
+                  defaultMessage="Routed"
                 />
               </span>
               <span className="progress-value">{storageSummary.completed}</span>
@@ -723,27 +858,26 @@ function TBStorageAssignmentPage({
             values={{ count: selectedSampleIds.length }}
           />
         </Button>
-
         <Button
-          kind="tertiary"
+          kind="danger--tertiary"
           size="sm"
-          renderIcon={Checkmark}
+          renderIcon={TrashCan}
           onClick={handleMarkComplete}
-          disabled={
-            selectedSampleIds.length === 0 || assigning || !hasRealPageId
-          }
+          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
         >
           <FormattedMessage
-            id="notebook.tb.storage.markComplete"
-            defaultMessage="Mark Complete"
+            id="notebook.tb.storage.disposeArchive"
+            defaultMessage="Dispose/Archive"
           />
         </Button>
-
         <Button
           kind="ghost"
           size="sm"
           renderIcon={Renew}
-          onClick={loadPageSamples}
+          onClick={() => {
+            loadPageSamples();
+            loadCultureSamples();
+          }}
         >
           <FormattedMessage
             id="notebook.tb.storage.refresh"
@@ -756,7 +890,7 @@ function TBStorageAssignmentPage({
       <div className="sample-grid-container" style={{ marginTop: "1.5rem" }}>
         <SampleGrid
           samples={samples}
-          loading={loading}
+          loading={isLoading}
           columns={columns}
           onSelectionChange={handleSelectionChange}
           selectedIds={selectedSampleIds}

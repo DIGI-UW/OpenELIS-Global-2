@@ -216,7 +216,7 @@
     </changeSet>
 
     <!-- ======================================================== -->
-    <!-- PAGE 6: SAMPLE-LINKED TEST EXECUTION -->
+    <!-- PAGE 6: ASSAY/TEST EXECUTION -->
     <!-- ======================================================== -->
     <changeSet id="create-tb-page-6-test-execution" author="openelis-tb">
         <preConditions onFail="MARK_RAN">
@@ -229,13 +229,13 @@
                 WHERE n.title = 'Tuberculosis Laboratory' AND n.is_template = true AND np.page_order = 6
             </sqlCheck>
         </preConditions>
-        <comment>Create Sample-Linked Test Execution page for Tuberculosis Laboratory notebook</comment>
+        <comment>Create Assay/Test Execution page for Tuberculosis Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
-            <column name="title" value="Sample-Linked Test Execution"/>
+            <column name="title" value="Assay/Test Execution"/>
             <column name="instructions" value="Execute requested tests including culture, smear microscopy, GeneXpert, identification, and drug susceptibility testing. Record test results and methods used."/>
-            <column name="content" value="Sample-Linked Test Execution - Execute and record test results"/>
+            <column name="content" value="Assay/Test Execution - Execute and record test results"/>
             <column name="page_order" value="6"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="INDIVIDUAL_PROCESSING"/>

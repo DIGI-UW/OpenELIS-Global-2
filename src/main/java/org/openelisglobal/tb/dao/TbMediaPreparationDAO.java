@@ -46,4 +46,9 @@ public interface TbMediaPreparationDAO extends BaseDAO<TbMediaPreparation, Integ
      * Count batches by QC status.
      */
     Long countByQcStatus(MediaQcStatus qcStatus);
+
+    /**
+     * Find all media batches by notebook entry ID.
+     */
+    List<TbMediaPreparation> findByNotebookEntryId(Integer notebookEntryId);
 }

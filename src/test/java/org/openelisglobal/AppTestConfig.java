@@ -332,4 +332,10 @@ public class AppTestConfig implements WebMvcConfigurer {
         return mock(AnalyzerResultsController.class);
     }
 
+    @Bean()
+    @Profile("test")
+    public org.openelisglobal.common.service.AccessionService accessionService() {
+        return mock(org.openelisglobal.common.service.AccessionService.class);
+    }
+
 }

@@ -58,6 +58,9 @@ public class TbMediaPreparation extends BaseObject<Integer> {
     @JoinColumn(name = "prepared_by")
     private SystemUser preparedBy;
 
+    @Column(name = "notebook_entry_id")
+    private Integer notebookEntryId;
+
     // Getters and setters
     @Override
     public Integer getId() {
@@ -123,6 +126,14 @@ public class TbMediaPreparation extends BaseObject<Integer> {
 
     public void setPreparedBy(SystemUser preparedBy) {
         this.preparedBy = preparedBy;
+    }
+
+    public Integer getNotebookEntryId() {
+        return notebookEntryId;
+    }
+
+    public void setNotebookEntryId(Integer notebookEntryId) {
+        this.notebookEntryId = notebookEntryId;
     }
 
     /**

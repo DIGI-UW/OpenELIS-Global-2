@@ -54,6 +54,11 @@
         status_id="1" typeosamp_id="101" external_id="TB2024-002-1"
         collection_date="2024-01-15 11:00:00.0"
         lastupdated="2024-01-16 12:00:00" />
+    <!-- Sample 102: Used for inoculation tests - no pre-existing culture readings -->
+    <sample_item id="102" samp_id="100" sort_order="2"
+        status_id="1" typeosamp_id="100" external_id="TB2024-001-2"
+        collection_date="2024-01-14 10:00:00.0"
+        lastupdated="2024-01-15 12:00:00" />
 
     <!-- TB Sample Registrations -->
     <tb_sample_registration id="1"
@@ -79,26 +84,30 @@
         qc_date="2024-01-15 09:00:00.0" leak_check="true"
         temperature_check="true" packaging_check="true" labeling_check="true"
         volume_check="true" request_match_check="true" overall_result="PASS"
-        destination="CULTURE" />
+        destination="PROCESSING" />
     <tb_quality_check id="2" sample_item_id="101"
         qc_date="2024-01-16 10:00:00.0" leak_check="true"
         temperature_check="false" packaging_check="true" labeling_check="true"
         volume_check="true" request_match_check="true"
         overall_result="FAIL_PROCEED" rejection_reason="TEMPERATURE_BREACH"
         rejection_remarks="Temperature was 8C, above 4C threshold"
-        destination="CULTURE" />
+        destination="PROCESSING" />
 
-    <!-- TB Culture Readings -->
-    <tb_culture_reading id="1" sample_item_id="100"
+    <!-- TB Culture Readings - with inoculation dates for incubation testing -->
+    <!-- Using IDs >= 1000 to avoid conflicts with sequence-generated IDs -->
+    <tb_culture_reading id="1001" sample_item_id="100"
         week_number="1" reading_date="2024-01-22 10:00:00.0"
-        culture_method="LJ" growth_observation="NO_GROWTH" is_delayed="false" />
-    <tb_culture_reading id="2" sample_item_id="100"
+        culture_method="LJ" growth_observation="NO_GROWTH" is_delayed="false"
+        inoculation_date="2024-01-20" />
+    <tb_culture_reading id="1002" sample_item_id="100"
         week_number="2" reading_date="2024-01-29 10:00:00.0"
-        culture_method="LJ" growth_observation="NO_GROWTH" is_delayed="false" />
-    <tb_culture_reading id="3" sample_item_id="100"
+        culture_method="LJ" growth_observation="NO_GROWTH" is_delayed="false"
+        inoculation_date="2024-01-20" />
+    <tb_culture_reading id="1003" sample_item_id="100"
         week_number="3" reading_date="2024-02-05 10:00:00.0"
         culture_method="LJ" growth_observation="GROWTH_DETECTED"
-        notes="Colonies visible on LJ medium" is_delayed="false" />
+        notes="Colonies visible on LJ medium" is_delayed="false"
+        inoculation_date="2024-01-20" />
 
     <!-- TB Smear Results -->
     <tb_smear_result id="1" sample_item_id="100"
@@ -113,4 +122,70 @@
         sample_item_id="100" result="MTB" method="RAPID_TEST_KIT"
         result_date="2024-02-06 10:00:00.0"
         notes="MTB confirmed by SD Bioline" />
+
+    <!-- ============================================================ -->
+    <!-- NOTEBOOK DATA FOR ENTRY FILTERING TESTS -->
+    <!-- ============================================================ -->
+
+    <!-- Dictionary entry for notebook type -->
+    <dictionary id="999" />
+
+    <!-- Notebook template for TB workflow -->
+    <notebook id="100" title="TB Laboratory Workflow" type="999"
+        protocol="TB Testing Protocol" content="TB workflow content"
+        objective="TB sample processing" status="DRAFT" is_template="true"
+        date_created="2024-01-01 10:00:00" last_updated="2024-01-01 10:00:00" />
+
+    <!-- Notebook pages for TB workflow -->
+    <notebook_page id="100" notebook_id="100" page_order="1"
+        title="Sample Registration" page_id="sample-registration"
+        instructions="Register incoming TB samples" content="Page 1" />
+    <notebook_page id="101" notebook_id="100" page_order="2"
+        title="Incubation Monitoring" page_id="incubation-monitoring"
+        instructions="Monitor culture incubation" content="Page 2" />
+
+    <!-- Notebook Entry 1 - linked to sample_item 100 -->
+    <notebook_entry id="100" notebook_id="100"
+        title="TB Entry 1" status="DRAFT" date_created="2024-01-15 08:00:00"
+        last_updated="2024-01-15 08:00:00" />
+
+    <!-- Notebook Entry 2 - linked to sample_item 101 (different entry for isolation
+        test) -->
+    <notebook_entry id="101" notebook_id="100"
+        title="TB Entry 2" status="DRAFT" date_created="2024-01-16 09:00:00"
+        last_updated="2024-01-16 09:00:00" />
+
+    <!-- Notebook Page Samples - linking samples to pages/entries -->
+    <!-- Sample 100 belongs to Entry 100 -->
+    <notebook_page_sample id="100"
+        notebook_page_id="101" sample_item_id="100" status="PENDING"
+        last_updated="2024-01-15 08:00:00" />
+
+    <!-- Sample 101 belongs to Entry 101 (different entry) -->
+    <notebook_page_sample id="101"
+        notebook_page_id="101" sample_item_id="101" status="PENDING"
+        last_updated="2024-01-16 09:00:00" />
+
+    <!-- Notebook Entry Samples - direct entry to sample linkage for filtering -->
+    <!-- Sample 100 belongs to Entry 100 -->
+    <notebook_entry_sample notebook_entry_id="100"
+        sample_item_id="100" />
+
+    <!-- Sample 101 belongs to Entry 101 (different entry for isolation test) -->
+    <notebook_entry_sample notebook_entry_id="101"
+        sample_item_id="101" />
+
+    <!-- Sample 101 - incubating (different entry) -->
+    <tb_culture_reading id="1004" sample_item_id="101"
+        week_number="1" reading_date="2024-01-23 10:00:00.0"
+        culture_method="LJ" growth_observation="NO_GROWTH" is_delayed="false"
+        inoculation_date="2024-01-21" />
+
+    <!-- Sample 100 - culture positive (to test findByCultureResultAndEntry) -->
+    <tb_culture_reading id="1005" sample_item_id="100"
+        week_number="4" reading_date="2024-02-17 10:00:00.0"
+        culture_method="LJ" growth_observation="GROWTH_DETECTED"
+        is_delayed="false" inoculation_date="2024-01-20"
+        culture_result="POSITIVE" positive_week="4"
+        final_result_date="2024-02-17" />
 </dataset>

@@ -142,4 +142,20 @@ public class TbMediaPreparationDAOImpl extends BaseDAOImpl<TbMediaPreparation, I
             throw new LIMSRuntimeException("Error counting media by QC status: " + qcStatus, e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TbMediaPreparation> findByNotebookEntryId(Integer notebookEntryId) {
+        try {
+            String hql = "FROM TbMediaPreparation mp LEFT JOIN FETCH mp.preparedBy "
+                    + "WHERE mp.notebookEntryId = :notebookEntryId ORDER BY mp.preparationDate DESC";
+            Query<TbMediaPreparation> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    TbMediaPreparation.class);
+            query.setParameter("notebookEntryId", notebookEntryId);
+            return query.list();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error finding media preparation by notebook entry ID: " + notebookEntryId,
+                    e);
+        }
+    }
 }

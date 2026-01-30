@@ -26,6 +26,8 @@ import org.springframework.http.ResponseEntity;
 @RunWith(MockitoJUnitRunner.class)
 public class TbIncubationMonitoringControllerTest {
 
+    private static final Integer TEST_ENTRY_ID = 1;
+
     @Mock
     private TbCultureReadingService tbCultureReadingService;
 
@@ -48,25 +50,25 @@ public class TbIncubationMonitoringControllerTest {
         sample2.setGrowthObservation(GrowthObservation.GROWTH_DETECTED);
 
         List<TbCultureReading> mockSamples = Arrays.asList(sample1, sample2);
-        when(tbCultureReadingService.findIncubatingSamples()).thenReturn(mockSamples);
+        when(tbCultureReadingService.findIncubatingSamplesByEntry(TEST_ENTRY_ID)).thenReturn(mockSamples);
 
         // Act
-        ResponseEntity<List<TbCultureReading>> response = controller.getIncubatingSamples();
+        ResponseEntity<List<TbCultureReading>> response = controller.getIncubatingSamples(TEST_ENTRY_ID);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(2, response.getBody().size());
-        verify(tbCultureReadingService).findIncubatingSamples();
+        verify(tbCultureReadingService).findIncubatingSamplesByEntry(TEST_ENTRY_ID);
     }
 
     @Test
     public void testGetIncubatingSamples_ReturnsEmptyListWhenNoSamples() {
         // Arrange
-        when(tbCultureReadingService.findIncubatingSamples()).thenReturn(Arrays.asList());
+        when(tbCultureReadingService.findIncubatingSamplesByEntry(TEST_ENTRY_ID)).thenReturn(Arrays.asList());
 
         // Act
-        ResponseEntity<List<TbCultureReading>> response = controller.getIncubatingSamples();
+        ResponseEntity<List<TbCultureReading>> response = controller.getIncubatingSamples(TEST_ENTRY_ID);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -109,11 +111,12 @@ public class TbIncubationMonitoringControllerTest {
         positiveSample.setCultureResult(CultureResult.POSITIVE);
         positiveSample.setPositiveWeek(4);
 
-        when(tbCultureReadingService.findByCultureResult(CultureResult.POSITIVE))
+        when(tbCultureReadingService.findByCultureResultAndEntry(CultureResult.POSITIVE, TEST_ENTRY_ID))
                 .thenReturn(Arrays.asList(positiveSample));
 
         // Act
-        ResponseEntity<List<TbCultureReading>> response = controller.getSamplesByResult(CultureResult.POSITIVE);
+        ResponseEntity<List<TbCultureReading>> response = controller.getSamplesByResult(CultureResult.POSITIVE,
+                TEST_ENTRY_ID);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -128,11 +131,12 @@ public class TbIncubationMonitoringControllerTest {
         negativeSample.setId(1);
         negativeSample.setCultureResult(CultureResult.NEGATIVE);
 
-        when(tbCultureReadingService.findByCultureResult(CultureResult.NEGATIVE))
+        when(tbCultureReadingService.findByCultureResultAndEntry(CultureResult.NEGATIVE, TEST_ENTRY_ID))
                 .thenReturn(Arrays.asList(negativeSample));
 
         // Act
-        ResponseEntity<List<TbCultureReading>> response = controller.getSamplesByResult(CultureResult.NEGATIVE);
+        ResponseEntity<List<TbCultureReading>> response = controller.getSamplesByResult(CultureResult.NEGATIVE,
+                TEST_ENTRY_ID);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -149,10 +153,11 @@ public class TbIncubationMonitoringControllerTest {
         positiveSample.setId(1);
         positiveSample.setCultureResult(CultureResult.POSITIVE);
 
-        when(tbCultureReadingService.findCulturePositiveSamples()).thenReturn(Arrays.asList(positiveSample));
+        when(tbCultureReadingService.findByCultureResultAndEntry(CultureResult.POSITIVE, TEST_ENTRY_ID))
+                .thenReturn(Arrays.asList(positiveSample));
 
         // Act
-        ResponseEntity<List<TbCultureReading>> response = controller.getCulturePositiveSamples();
+        ResponseEntity<List<TbCultureReading>> response = controller.getCulturePositiveSamples(TEST_ENTRY_ID);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -165,10 +170,10 @@ public class TbIncubationMonitoringControllerTest {
     public void testGetIncubationSummary_ReturnsSummaryStats() {
         // Arrange
         IncubationSummary mockSummary = new IncubationSummary(10, 6, 4, 3, 2);
-        when(tbCultureReadingService.getIncubationSummary()).thenReturn(mockSummary);
+        when(tbCultureReadingService.getIncubationSummaryByEntry(TEST_ENTRY_ID)).thenReturn(mockSummary);
 
         // Act
-        ResponseEntity<IncubationSummary> response = controller.getIncubationSummary();
+        ResponseEntity<IncubationSummary> response = controller.getIncubationSummary(TEST_ENTRY_ID);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -203,13 +208,13 @@ public class TbIncubationMonitoringControllerTest {
     @Test
     public void testGetIncubatingSamples_VerifiesServiceIsCalled() {
         // Arrange
-        when(tbCultureReadingService.findIncubatingSamples()).thenReturn(Arrays.asList());
+        when(tbCultureReadingService.findIncubatingSamplesByEntry(TEST_ENTRY_ID)).thenReturn(Arrays.asList());
 
         // Act
-        controller.getIncubatingSamples();
+        controller.getIncubatingSamples(TEST_ENTRY_ID);
 
         // Assert - verify the service method was called exactly once
-        verify(tbCultureReadingService, times(1)).findIncubatingSamples();
+        verify(tbCultureReadingService, times(1)).findIncubatingSamplesByEntry(TEST_ENTRY_ID);
     }
 
     @Test
@@ -228,14 +233,14 @@ public class TbIncubationMonitoringControllerTest {
     @Test
     public void testGetSamplesByResult_PassesCorrectResultType() {
         // Arrange
-        when(tbCultureReadingService.findByCultureResult(CultureResult.CONTAMINATED))
+        when(tbCultureReadingService.findByCultureResultAndEntry(CultureResult.CONTAMINATED, TEST_ENTRY_ID))
                 .thenReturn(Arrays.asList());
 
         // Act
-        controller.getSamplesByResult(CultureResult.CONTAMINATED);
+        controller.getSamplesByResult(CultureResult.CONTAMINATED, TEST_ENTRY_ID);
 
         // Assert - verify exact enum value was passed
-        verify(tbCultureReadingService).findByCultureResult(CultureResult.CONTAMINATED);
+        verify(tbCultureReadingService).findByCultureResultAndEntry(CultureResult.CONTAMINATED, TEST_ENTRY_ID);
     }
 
     @Test
@@ -260,10 +265,10 @@ public class TbIncubationMonitoringControllerTest {
         sample.setGrowthObservation(GrowthObservation.CONTAMINATED);
         sample.setCultureResult(CultureResult.CONTAMINATED);
 
-        when(tbCultureReadingService.findIncubatingSamples()).thenReturn(Arrays.asList(sample));
+        when(tbCultureReadingService.findIncubatingSamplesByEntry(TEST_ENTRY_ID)).thenReturn(Arrays.asList(sample));
 
         // Act
-        ResponseEntity<List<TbCultureReading>> response = controller.getIncubatingSamples();
+        ResponseEntity<List<TbCultureReading>> response = controller.getIncubatingSamples(TEST_ENTRY_ID);
 
         // Assert - verify the actual data is returned, not just size
         TbCultureReading returnedSample = response.getBody().get(0);
@@ -277,10 +282,10 @@ public class TbIncubationMonitoringControllerTest {
     public void testGetIncubationSummary_ReturnsAllFieldsCorrectly() {
         // Arrange - use distinct values to ensure each field is mapped correctly
         IncubationSummary mockSummary = new IncubationSummary(100, 25, 75, 15, 10);
-        when(tbCultureReadingService.getIncubationSummary()).thenReturn(mockSummary);
+        when(tbCultureReadingService.getIncubationSummaryByEntry(TEST_ENTRY_ID)).thenReturn(mockSummary);
 
         // Act
-        ResponseEntity<IncubationSummary> response = controller.getIncubationSummary();
+        ResponseEntity<IncubationSummary> response = controller.getIncubationSummary(TEST_ENTRY_ID);
 
         // Assert - verify each field is correctly mapped (distinct values prevent false
         // positives)

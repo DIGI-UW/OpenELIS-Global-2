@@ -106,8 +106,6 @@
         <mapping resource="hibernate/hbm/Analyzer.hbm.xml" />
         <mapping resource="hibernate/hbm/AnalyzerResults.hbm.xml" />
         <mapping resource="hibernate/hbm/OrganizationType.hbm.xml" />
-        <mapping
-            resource="hibernate/hbm/OrganizationSampleType.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleRequester.hbm.xml" />
         <mapping resource="hibernate/hbm/DatabaseChangeLog.hbm.xml" />
         <mapping resource="hibernate/hbm/SiteInformation.hbm.xml" />

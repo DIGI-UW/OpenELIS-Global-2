@@ -48,7 +48,8 @@ public class TbSampleProcessingDAOImpl extends BaseDAOImpl<TbSampleProcessing, I
                     + "ORDER BY sp.processingDate DESC";
             Query<TbSampleProcessing> query = entityManager.unwrap(Session.class).createQuery(hql,
                     TbSampleProcessing.class);
-            query.setParameter("status", status);
+            // Convert enum to string to avoid Hibernate 6 bytea serialization bug
+            query.setParameter("status", status.name());
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding sample processing by status: " + status, e);
@@ -83,8 +84,12 @@ public class TbSampleProcessingDAOImpl extends BaseDAOImpl<TbSampleProcessing, I
         try {
             String hql = "SELECT COUNT(sp) FROM TbSampleProcessing sp WHERE sp.sampleItem.id = :sampleItemId";
             Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
-            query.setParameter("sampleItemId", sampleItemId);
-            return query.uniqueResult() > 0;
+            // Parse to Long to match database NUMERIC type
+            query.setParameter("sampleItemId", Long.parseLong(sampleItemId));
+            Long result = query.uniqueResult();
+            return result != null && result > 0;
+        } catch (NumberFormatException e) {
+            throw new LIMSRuntimeException("Invalid sample item ID format: " + sampleItemId, e);
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error checking sample processing existence: " + sampleItemId, e);
         }
@@ -96,7 +101,8 @@ public class TbSampleProcessingDAOImpl extends BaseDAOImpl<TbSampleProcessing, I
         try {
             String hql = "SELECT COUNT(sp) FROM TbSampleProcessing sp WHERE sp.processingStatus = :status";
             Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
-            query.setParameter("status", status);
+            // Convert enum to string to avoid Hibernate 6 bytea serialization bug
+            query.setParameter("status", status.name());
             return query.uniqueResult();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error counting samples by processing status: " + status, e);

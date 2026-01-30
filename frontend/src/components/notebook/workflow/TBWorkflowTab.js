@@ -17,17 +17,21 @@ import TBQualityCheckPage from "../pages/tb/TBQualityCheckPage";
 import TBStorageAssignmentPage from "../pages/tb/TBStorageAssignmentPage";
 import TBInitialProcessingPage from "../pages/tb/TBInitialProcessingPage";
 import TBIncubationMonitoringPage from "../pages/tb/TBIncubationMonitoringPage";
-import TBSmearResultsPage from "../pages/tb/TBSmearResultsPage";
+import TBTestExecutionPage from "../pages/tb/TBTestExecutionPage";
+import TBReportingPage from "../pages/tb/TBReportingPage";
+import TBDisposalArchivingPage from "../pages/tb/TBDisposalArchivingPage";
 import "./NotebookWorkflow.css";
 
 /**
  * Default workflow pages for Tuberculosis workflow.
  * Page 1: Sample Accession & Registration
  * Page 2: Raw Sample Quality Check (QC)
- * Page 3: Sample Storage Assignment
- * Page 4: Initial Sample Processing
- * Page 5: Incubation & Monitoring
- * Page 6: AFB Smear Microscopy
+ * Page 3: Initial Sample Processing
+ * Page 4: Incubation & Monitoring
+ * Page 5: Test Execution (AFB Smear Microscopy)
+ * Page 6: Isolate Storage
+ * Page 7: Disposal & Archiving
+ * Page 8: Reporting
  */
 const DEFAULT_TB_WORKFLOW_PAGES = [
   {
@@ -36,14 +40,16 @@ const DEFAULT_TB_WORKFLOW_PAGES = [
     title: "Sample Accession & Registration",
   },
   { id: "default-2", order: 2, title: "Raw Sample Quality Check (QC)" },
-  { id: "default-3", order: 3, title: "Sample Storage Assignment" },
-  { id: "default-4", order: 4, title: "Initial Sample Processing" },
+  { id: "default-3", order: 3, title: "Initial Sample Processing" },
   {
-    id: "default-5",
-    order: 5,
+    id: "default-4",
+    order: 4,
     title: "Incubation & Monitoring",
   },
-  { id: "default-6", order: 6, title: "AFB Smear Microscopy" },
+  { id: "default-5", order: 5, title: "Test Execution" },
+  { id: "default-6", order: 6, title: "Isolate Storage" },
+  { id: "default-7", order: 7, title: "Disposal & Archiving" },
+  { id: "default-8", order: 8, title: "Reporting" },
 ];
 
 /**
@@ -289,19 +295,7 @@ function TBWorkflowTab({ notebookId, entryId: propEntryId }) {
           />
         );
       case 3:
-        // Page 3: Sample Storage Assignment
-        return (
-          <TBStorageAssignmentPage
-            key={`storage-assignment-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            pages={effectivePages}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 4:
-        // Page 4: Initial Sample Processing
+        // Page 3: Initial Sample Processing
         return (
           <TBInitialProcessingPage
             key={`initial-processing-${page.id}`}
@@ -312,8 +306,8 @@ function TBWorkflowTab({ notebookId, entryId: propEntryId }) {
             onProgressUpdate={handleProgressUpdate}
           />
         );
-      case 5:
-        // Page 5: Incubation & Monitoring
+      case 4:
+        // Page 4: Incubation & Monitoring
         return (
           <TBIncubationMonitoringPage
             key={`incubation-monitoring-${page.id}`}
@@ -323,15 +317,47 @@ function TBWorkflowTab({ notebookId, entryId: propEntryId }) {
             onProgressUpdate={handleProgressUpdate}
           />
         );
-      case 6:
-        // Page 6: AFB Smear Microscopy
+      case 5:
+        // Page 5: Test Execution
         return (
-          <TBSmearResultsPage
-            key={`smear-results-${page.id}`}
+          <TBTestExecutionPage
+            key={`test-execution-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
+          />
+        );
+      case 6:
+        // Page 6: Isolate Storage
+        return (
+          <TBStorageAssignmentPage
+            key={`isolate-storage-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            pages={effectivePages}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+          />
+        );
+      case 7:
+        // Page 7: Disposal & Archiving
+        return (
+          <TBDisposalArchivingPage
+            key={`disposal-archiving-${page.id}`}
+            entryId={entryId}
+            notebookId={notebook?.id}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+          />
+        );
+      case 8:
+        // Page 8: Reporting Dashboard
+        return (
+          <TBReportingPage
+            key={`reporting-${page.id}`}
+            notebookId={notebook?.id}
           />
         );
       default:

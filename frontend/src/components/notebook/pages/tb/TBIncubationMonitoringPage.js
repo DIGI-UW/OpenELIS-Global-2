@@ -37,6 +37,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
+  putToOpenElisServer,
 } from "../../../utils/Utils";
 import WeeklyReadingTable from "./components/WeeklyReadingTable";
 import RecordReadingModal from "./components/RecordReadingModal";
@@ -79,64 +80,118 @@ function TBIncubationMonitoringPage({ entryId, pageData, onProgressUpdate }) {
   const [selectedSample, setSelectedSample] = useState(null);
   const [sampleReadings, setSampleReadings] = useState([]);
 
+  // Refresh trigger for expanded rows
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Compute summary from grouped samples (consistent with displayed data)
+  const computeSummary = useCallback((samples) => {
+    const incubating = samples.filter((s) => !s.cultureResult);
+    const positive = samples.filter((s) => s.cultureResult === "POSITIVE");
+    const negative = samples.filter((s) => s.cultureResult === "NEGATIVE");
+
+    // Week ranges based on current week number
+    const week1to4 = incubating.filter(
+      (s) => s.weekNumber >= 1 && s.weekNumber <= 4,
+    );
+    const week5to8 = incubating.filter(
+      (s) => s.weekNumber >= 5 && s.weekNumber <= 8,
+    );
+
+    setSummary({
+      totalIncubating: incubating.length,
+      week1to4: week1to4.length,
+      week5to8: week5to8.length,
+      positive: positive.length,
+      negative: negative.length,
+    });
+  }, []);
+
+  const loadIncubatingSamples = useCallback(() => {
+    if (!entryId) {
+      setIncubatingSamples([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    getFromOpenElisServer(
+      `/rest/tb/incubation/samples?entryId=${entryId}`,
+      (response) => {
+        if (componentMounted.current) {
+          if (response && Array.isArray(response)) {
+            // Group readings by sampleItemId to create one row per sample
+            const sampleMap = new Map();
+
+            response.forEach((reading) => {
+              const sampleItemId = String(reading.sampleItemId);
+
+              if (!sampleMap.has(sampleItemId)) {
+                // First reading for this sample - create the sample entry
+                sampleMap.set(sampleItemId, {
+                  id: sampleItemId, // Use sampleItemId as unique row ID
+                  sampleItemId: sampleItemId,
+                  accessionNumber:
+                    reading.sampleItem?.sample?.accessionNumber ||
+                    `Sample-${reading.id}`,
+                  sampleType:
+                    reading.sampleItem?.typeOfSample?.description || "Sputum",
+                  cultureMethod: reading.cultureMethod || "LJ",
+                  inoculationDate: reading.inoculationDate,
+                  weekNumber: reading.weekNumber || 1,
+                  growthObservation: reading.growthObservation,
+                  cultureResult: reading.cultureResult || null,
+                  positiveWeek: reading.positiveWeek,
+                  mediaBatch: reading.mediaBatch,
+                  readings: [reading],
+                });
+              } else {
+                // Additional reading for existing sample - add to readings array
+                const sample = sampleMap.get(sampleItemId);
+                sample.readings.push(reading);
+
+                // Update to reflect the latest (highest weekNumber) reading's status
+                if (reading.weekNumber > sample.weekNumber) {
+                  sample.weekNumber = reading.weekNumber;
+                  sample.growthObservation = reading.growthObservation;
+                }
+
+                // IMPORTANT: If ANY reading has a cultureResult, the sample is finalized
+                if (reading.cultureResult && !sample.cultureResult) {
+                  sample.cultureResult = reading.cultureResult;
+                  sample.positiveWeek = reading.positiveWeek;
+                }
+              }
+            });
+
+            // Get all samples (including finalized ones for summary stats)
+            const allSamples = Array.from(sampleMap.values());
+
+            // Filter to only show incubating samples (those without cultureResult)
+            const samples = allSamples.filter((s) => !s.cultureResult);
+            setIncubatingSamples(samples);
+            // Use allSamples for summary so positive/negative counts are correct
+            computeSummary(allSamples);
+          } else {
+            setIncubatingSamples([]);
+            computeSummary([]);
+          }
+          setLoading(false);
+        }
+      },
+    );
+  }, [entryId, computeSummary]);
+
   // Load data on mount
   useEffect(() => {
     componentMounted.current = true;
     loadIncubatingSamples();
-    loadSummary();
 
     return () => {
       componentMounted.current = false;
     };
-  }, [entryId, pageData?.id]);
-
-  const loadIncubatingSamples = useCallback(() => {
-    setLoading(true);
-    setError(null);
-
-    getFromOpenElisServer("/rest/tb/incubation/samples", (response) => {
-      if (componentMounted.current) {
-        if (response && Array.isArray(response)) {
-          // Transform for DataTable
-          const samples = response.map((sample) => ({
-            id: String(sample.id),
-            sampleItemId: sample.sampleItem?.id || sample.sampleItemId,
-            accessionNumber:
-              sample.sampleItem?.sample?.accessionNumber ||
-              sample.accessionNumber ||
-              `Sample-${sample.id}`,
-            sampleType:
-              sample.sampleItem?.typeOfSample?.description || "Sputum",
-            cultureMethod: sample.cultureMethod || "LJ",
-            inoculationDate: sample.inoculationDate,
-            weekNumber: sample.weekNumber || 1,
-            growthObservation: sample.growthObservation,
-            cultureResult: sample.cultureResult,
-            positiveWeek: sample.positiveWeek,
-            mediaBatch: sample.mediaBatch,
-          }));
-          setIncubatingSamples(samples);
-        } else {
-          setIncubatingSamples([]);
-        }
-        setLoading(false);
-      }
-    });
-  }, []);
-
-  const loadSummary = useCallback(() => {
-    getFromOpenElisServer("/rest/tb/incubation/summary", (response) => {
-      if (componentMounted.current && response) {
-        setSummary({
-          totalIncubating: response.totalIncubating || 0,
-          week1to4: response.week1to4 || 0,
-          week5to8: response.week5to8 || 0,
-          positive: response.positive || 0,
-          negative: response.negative || 0,
-        });
-      }
-    });
-  }, []);
+  }, [entryId, loadIncubatingSamples]);
 
   // Load readings for a specific sample
   const loadSampleReadings = useCallback((sampleItemId, callback) => {
@@ -193,7 +248,7 @@ function TBIncubationMonitoringPage({ entryId, pageData, onProgressUpdate }) {
               setSelectedSample(null);
               setSampleReadings([]);
               loadIncubatingSamples();
-              loadSummary();
+              setRefreshTrigger((prev) => prev + 1);
               if (onProgressUpdate) onProgressUpdate();
 
               // Check for auto-determination prompts
@@ -211,16 +266,18 @@ function TBIncubationMonitoringPage({ entryId, pageData, onProgressUpdate }) {
         },
       );
     },
-    [intl, loadIncubatingSamples, loadSummary, onProgressUpdate],
+    [intl, loadIncubatingSamples, onProgressUpdate],
   );
 
   // Mark culture as positive
   const handleMarkPositive = useCallback(
     (sample) => {
       const currentWeek = calculateCurrentWeek(sample.inoculationDate);
+      // Use the first reading's ID since sample.id is now sampleItemId after grouping
+      const cultureReadingId = sample.readings?.[0]?.id || sample.id;
 
-      postToOpenElisServer(
-        `/rest/tb/incubation/result/${sample.id}/positive`,
+      putToOpenElisServer(
+        `/rest/tb/incubation/result/${cultureReadingId}/positive`,
         JSON.stringify({ positiveWeek: currentWeek }),
         (response) => {
           if (componentMounted.current) {
@@ -233,30 +290,26 @@ function TBIncubationMonitoringPage({ entryId, pageData, onProgressUpdate }) {
                 }),
               );
               loadIncubatingSamples();
-              loadSummary();
+              setRefreshTrigger((prev) => prev + 1);
               if (onProgressUpdate) onProgressUpdate();
             } else {
               setError(response?.error || "Failed to mark as positive.");
             }
           }
         },
-        "PUT",
       );
     },
-    [
-      calculateCurrentWeek,
-      intl,
-      loadIncubatingSamples,
-      loadSummary,
-      onProgressUpdate,
-    ],
+    [calculateCurrentWeek, intl, loadIncubatingSamples, onProgressUpdate],
   );
 
   // Mark culture as negative
   const handleMarkNegative = useCallback(
     (sample) => {
-      postToOpenElisServer(
-        `/rest/tb/incubation/result/${sample.id}/negative`,
+      // Use the first reading's ID since sample.id is now sampleItemId after grouping
+      const cultureReadingId = sample.readings?.[0]?.id || sample.id;
+
+      putToOpenElisServer(
+        `/rest/tb/incubation/result/${cultureReadingId}/negative`,
         JSON.stringify({}),
         (response) => {
           if (componentMounted.current) {
@@ -269,17 +322,16 @@ function TBIncubationMonitoringPage({ entryId, pageData, onProgressUpdate }) {
                 }),
               );
               loadIncubatingSamples();
-              loadSummary();
+              setRefreshTrigger((prev) => prev + 1);
               if (onProgressUpdate) onProgressUpdate();
             } else {
               setError(response?.error || "Failed to mark as negative.");
             }
           }
         },
-        "PUT",
       );
     },
-    [intl, loadIncubatingSamples, loadSummary, onProgressUpdate],
+    [intl, loadIncubatingSamples, onProgressUpdate],
   );
 
   // Filter samples by search term
@@ -356,11 +408,11 @@ function TBIncubationMonitoringPage({ entryId, pageData, onProgressUpdate }) {
       );
     }
 
-    const currentWeek = calculateCurrentWeek(sample.inoculationDate);
-    if (currentWeek <= 4) {
-      return <Tag type="teal">Incubating (Week 1-4)</Tag>;
-    }
-    return <Tag type="purple">Incubating (Week 5-8)</Tag>;
+    // const currentWeek = calculateCurrentWeek(sample.inoculationDate);
+    // if (currentWeek <= 4) {
+    //   return <Tag type="teal">Incubating (Week 1-4)</Tag>;
+    // }
+    return <Tag type="teal">Incubating (Week 1-8)</Tag>;
   };
 
   // Render expanded row content
@@ -378,6 +430,7 @@ function TBIncubationMonitoringPage({ entryId, pageData, onProgressUpdate }) {
         onMarkPositive={() => handleMarkPositive(sample)}
         onMarkNegative={() => handleMarkNegative(sample)}
         loadSampleReadings={loadSampleReadings}
+        refreshTrigger={refreshTrigger}
       />
     );
   };
@@ -523,7 +576,7 @@ function TBIncubationMonitoringPage({ entryId, pageData, onProgressUpdate }) {
                   renderIcon={Renew}
                   onClick={() => {
                     loadIncubatingSamples();
-                    loadSummary();
+                    setRefreshTrigger((prev) => prev + 1);
                   }}
                 >
                   <FormattedMessage
@@ -616,6 +669,7 @@ function ExpandedRowContent({
   onMarkPositive,
   onMarkNegative,
   loadSampleReadings,
+  refreshTrigger,
 }) {
   const [readings, setReadings] = useState([]);
   const [loadingReadings, setLoadingReadings] = useState(true);
@@ -628,7 +682,7 @@ function ExpandedRowContent({
         setLoadingReadings(false);
       });
     }
-  }, [sample?.sampleItemId, loadSampleReadings]);
+  }, [sample?.sampleItemId, loadSampleReadings, refreshTrigger]);
 
   if (loadingReadings) {
     return (

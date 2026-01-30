@@ -12,6 +12,10 @@ import {
   RadioButtonGroup,
   RadioButton,
   Tag,
+  Accordion,
+  AccordionItem,
+  Checkbox,
+  NumberInput,
 } from "@carbon/react";
 import { Checkmark, Edit } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -78,6 +82,23 @@ function TBQualityCheckPage({
     destination: "",
     rejectionReason: "",
     rejectionRemarks: "",
+    // Culture QC
+    culturePositiveControl: null,
+    cultureNegativeControl: null,
+    cultureContaminationRate: "",
+    // Smear Microscopy QC
+    smearPositiveControl: null,
+    smearNegativeControl: null,
+    smearInternalQC: null,
+    smearEQA: null,
+    // GeneXpert QC
+    genexpertCalibration: null,
+    genexpertRunControls: null,
+    genexpertErrorRate: "",
+    // DST QC
+    dstReferenceStrains: null,
+    dstMICRanges: null,
+    dstEQA: null,
   });
 
   useEffect(() => {
@@ -149,16 +170,35 @@ function TBQualityCheckPage({
   // Route samples to a target page after QC completion
   const routeSamplesToPage = useCallback(
     (sampleIds, targetPageOrder) => {
+      console.log(
+        `[routeSamplesToPage] Called with sampleIds:`,
+        sampleIds,
+        `targetPageOrder: ${targetPageOrder}`,
+      );
+
       if (!pages || sampleIds.length === 0) return;
 
       const targetPage = pages.find((p) => p.order === targetPageOrder);
+      console.log(
+        `[routeSamplesToPage] Found target page:`,
+        targetPage
+          ? `ID=${targetPage.id}, order=${targetPage.order}, title=${targetPage.title}`
+          : "NOT FOUND",
+      );
+
       if (targetPage && !String(targetPage.id).startsWith("default-")) {
+        console.log(
+          `[routeSamplesToPage] Posting to /rest/notebook/bulk/page/${targetPage.id}/samples/add`,
+        );
         postToOpenElisServer(
           `/rest/notebook/bulk/page/${targetPage.id}/samples/add`,
           JSON.stringify({
             sampleIds: sampleIds.map((id) => parseInt(id, 10)),
           }),
           (status) => {
+            console.log(
+              `[routeSamplesToPage] Response status: ${status} for page ${targetPageOrder}`,
+            );
             if (status === 200) {
               console.log(
                 `Routed ${sampleIds.length} sample(s) to page ${targetPageOrder}`,
@@ -184,19 +224,49 @@ function TBQualityCheckPage({
       destination: "",
       rejectionReason: "",
       rejectionRemarks: "",
+      // Culture QC
+      culturePositiveControl: null,
+      cultureNegativeControl: null,
+      cultureContaminationRate: "",
+      // Smear Microscopy QC
+      smearPositiveControl: null,
+      smearNegativeControl: null,
+      smearInternalQC: null,
+      smearEQA: null,
+      // GeneXpert QC
+      genexpertCalibration: null,
+      genexpertRunControls: null,
+      genexpertErrorRate: "",
+      // DST QC
+      dstReferenceStrains: null,
+      dstMICRanges: null,
+      dstEQA: null,
     });
     setQcResultManuallySet(false);
   };
 
-  // Auto-calculate QC result based on checklist items
+  // Auto-calculate QC result based on checklist items and destination
   const calculateQcResult = useCallback(() => {
     const checks = [
+      // Basic QC checks
       bulkApplyValues.leakCheck,
       bulkApplyValues.temperatureCheck,
       bulkApplyValues.packagingCheck,
       bulkApplyValues.labelingCheck,
       bulkApplyValues.volumeCheck,
       bulkApplyValues.requestMatchCheck,
+      // Culture QC
+      bulkApplyValues.culturePositiveControl,
+      bulkApplyValues.cultureNegativeControl,
+      // Smear Microscopy QC
+      bulkApplyValues.smearPositiveControl,
+      bulkApplyValues.smearNegativeControl,
+      // GeneXpert QC
+      bulkApplyValues.genexpertCalibration,
+      bulkApplyValues.genexpertRunControls,
+      // DST QC
+      bulkApplyValues.dstReferenceStrains,
+      bulkApplyValues.dstMICRanges,
     ];
 
     let hasAnyFail = false;
@@ -209,8 +279,46 @@ function TBQualityCheckPage({
       }
     });
 
+    // Check numeric fields with thresholds
+    // Contamination Rate should be <5%
+    if (
+      bulkApplyValues.cultureContaminationRate !== "" &&
+      bulkApplyValues.cultureContaminationRate !== null
+    ) {
+      hasAnyCheck = true;
+      const rate = parseFloat(bulkApplyValues.cultureContaminationRate);
+      if (!isNaN(rate) && rate >= 5) {
+        hasAnyFail = true;
+      }
+    }
+
+    // Error Rate - consider any value >10% as a failure (monitoring threshold)
+    if (
+      bulkApplyValues.genexpertErrorRate !== "" &&
+      bulkApplyValues.genexpertErrorRate !== null
+    ) {
+      hasAnyCheck = true;
+      const rate = parseFloat(bulkApplyValues.genexpertErrorRate);
+      if (!isNaN(rate) && rate > 10) {
+        hasAnyFail = true;
+      }
+    }
+
     if (!hasAnyCheck) return "";
-    return hasAnyFail ? "FAIL_PROCEED" : "PASS";
+
+    // If failed, return FAIL_PROCEED
+    if (hasAnyFail) return "FAIL_PROCEED";
+
+    // If passed, determine result based on destination
+    const destination = bulkApplyValues.destination;
+    if (
+      destination === "TEMPORARY_STORAGE" ||
+      destination === "LONG_TERM_STORAGE"
+    ) {
+      return "PASS_TO_STORAGE";
+    }
+
+    return "PASS";
   }, [bulkApplyValues]);
 
   // Update QC result when checks change (only if not manually set by user)
@@ -277,6 +385,39 @@ function TBQualityCheckPage({
       data.rejectionReason = bulkApplyValues.rejectionReason;
     if (bulkApplyValues.rejectionRemarks)
       data.rejectionRemarks = bulkApplyValues.rejectionRemarks;
+
+    // Add Culture QC checks
+    if (bulkApplyValues.culturePositiveControl !== null)
+      data.culturePositiveControl = bulkApplyValues.culturePositiveControl;
+    if (bulkApplyValues.cultureNegativeControl !== null)
+      data.cultureNegativeControl = bulkApplyValues.cultureNegativeControl;
+    if (bulkApplyValues.cultureContaminationRate)
+      data.cultureContaminationRate = bulkApplyValues.cultureContaminationRate;
+
+    // Add Smear Microscopy QC checks
+    if (bulkApplyValues.smearPositiveControl !== null)
+      data.smearPositiveControl = bulkApplyValues.smearPositiveControl;
+    if (bulkApplyValues.smearNegativeControl !== null)
+      data.smearNegativeControl = bulkApplyValues.smearNegativeControl;
+    if (bulkApplyValues.smearInternalQC !== null)
+      data.smearInternalQC = bulkApplyValues.smearInternalQC;
+    if (bulkApplyValues.smearEQA !== null)
+      data.smearEQA = bulkApplyValues.smearEQA;
+
+    // Add GeneXpert QC checks
+    if (bulkApplyValues.genexpertCalibration !== null)
+      data.genexpertCalibration = bulkApplyValues.genexpertCalibration;
+    if (bulkApplyValues.genexpertRunControls !== null)
+      data.genexpertRunControls = bulkApplyValues.genexpertRunControls;
+    if (bulkApplyValues.genexpertErrorRate)
+      data.genexpertErrorRate = bulkApplyValues.genexpertErrorRate;
+
+    // Add DST QC checks
+    if (bulkApplyValues.dstReferenceStrains !== null)
+      data.dstReferenceStrains = bulkApplyValues.dstReferenceStrains;
+    if (bulkApplyValues.dstMICRanges !== null)
+      data.dstMICRanges = bulkApplyValues.dstMICRanges;
+    if (bulkApplyValues.dstEQA !== null) data.dstEQA = bulkApplyValues.dstEQA;
 
     // Check if any QC checks were actually performed
     const hasAnyCheck = Object.keys(data).length > 0;
@@ -351,6 +492,13 @@ function TBQualityCheckPage({
 
   // Mark samples as QC complete
   const handleMarkQcComplete = useCallback(() => {
+    console.log(
+      "[handleMarkQcComplete] Function called at",
+      new Date().toISOString(),
+      "with selectedSampleIds:",
+      selectedSampleIds,
+    );
+
     if (selectedSampleIds.length === 0) return;
 
     if (!hasRealPageId) {
@@ -434,13 +582,47 @@ function TBQualityCheckPage({
           setSuccessMessage(message);
           setSelectedSampleIds([]);
 
+          // DEBUG: Log passing samples with their destinations
+          console.log("=== ROUTING DEBUG ===");
+          console.log(
+            "Passing samples:",
+            passingSamples.map((s) => ({
+              id: s.id,
+              accessionNumber: s.accessionNumber,
+              destination: s.destination,
+              qcResult: s.qcResult,
+            })),
+          );
+
           // Route samples to next page based on destination
           const processingIds = passingSamples
             .filter((s) => s.destination === "PROCESSING")
             .map((s) => parseInt(s.id, 10));
 
+          const storageIds = passingSamples
+            .filter(
+              (s) =>
+                s.destination === "TEMPORARY_STORAGE" ||
+                s.destination === "LONG_TERM_STORAGE",
+            )
+            .map((s) => parseInt(s.id, 10));
+
+          console.log(
+            "Processing IDs (destination=PROCESSING):",
+            processingIds,
+          );
+          console.log(
+            "Storage IDs (destination=TEMPORARY_STORAGE or LONG_TERM_STORAGE):",
+            storageIds,
+          );
+          console.log("==================");
+
           if (processingIds.length > 0) {
-            routeSamplesToPage(processingIds, 4); // Route to Page 4 (Initial Processing)
+            routeSamplesToPage(processingIds, 3); // Route to Page 3 (Initial Sample Processing)
+          }
+
+          if (storageIds.length > 0) {
+            routeSamplesToPage(storageIds, 6); // Route to Page 6 (Storage Assignment)
           }
 
           loadPageSamples();
@@ -465,6 +647,7 @@ function TBQualityCheckPage({
         JSON.stringify({
           sampleIds: passingSamples.map((s) => parseInt(s.id, 10)),
           status: "COMPLETED",
+          skipAutoRouting: true, // TB workflow handles routing explicitly based on destination
         }),
         (status) => {
           if (status !== 200) {
@@ -482,6 +665,7 @@ function TBQualityCheckPage({
         JSON.stringify({
           sampleIds: discardedSamples.map((s) => parseInt(s.id, 10)),
           status: "SKIPPED",
+          skipAutoRouting: true, // TB workflow handles routing explicitly
         }),
         (status) => {
           if (status !== 200) {
@@ -1173,6 +1357,443 @@ function TBQualityCheckPage({
             </Grid>
           </div>
 
+          {/* Additional QC Checks (Optional) */}
+          <div className="qc-section">
+            <h5 className="qc-section-header">
+              <FormattedMessage
+                id="notebook.tb.qc.section.additionalQC"
+                defaultMessage="Additional QC Checks (Optional)"
+              />
+            </h5>
+            <p
+              style={{
+                marginBottom: "1rem",
+                fontSize: "0.875rem",
+                color: "#525252",
+              }}
+            >
+              <FormattedMessage
+                id="notebook.tb.qc.section.additionalQC.description"
+                defaultMessage="Expand sections below to record method-specific quality control results."
+              />
+            </p>
+            <Accordion>
+              {/* Culture QC */}
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "notebook.tb.qc.cultureQC",
+                  defaultMessage: "Culture QC",
+                })}
+              >
+                <Grid fullWidth>
+                  <Column lg={8} md={4} sm={4}>
+                    <RadioButtonGroup
+                      legendText={intl.formatMessage({
+                        id: "notebook.tb.qc.culturePositiveControl",
+                        defaultMessage: "Positive Control (known MTB strain)",
+                      })}
+                      name="culturePositiveControl"
+                      valueSelected={
+                        bulkApplyValues.culturePositiveControl === true
+                          ? "pass"
+                          : bulkApplyValues.culturePositiveControl === false
+                            ? "fail"
+                            : ""
+                      }
+                      onChange={(value) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          culturePositiveControl: value === "pass",
+                        }))
+                      }
+                      orientation="horizontal"
+                    >
+                      <RadioButton
+                        labelText="Pass"
+                        value="pass"
+                        id="culture-pos-control-pass"
+                      />
+                      <RadioButton
+                        labelText="Fail"
+                        value="fail"
+                        id="culture-pos-control-fail"
+                      />
+                    </RadioButtonGroup>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <RadioButtonGroup
+                      legendText={intl.formatMessage({
+                        id: "notebook.tb.qc.cultureNegativeControl",
+                        defaultMessage: "Negative Control (sterile media)",
+                      })}
+                      name="cultureNegativeControl"
+                      valueSelected={
+                        bulkApplyValues.cultureNegativeControl === true
+                          ? "pass"
+                          : bulkApplyValues.cultureNegativeControl === false
+                            ? "fail"
+                            : ""
+                      }
+                      onChange={(value) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          cultureNegativeControl: value === "pass",
+                        }))
+                      }
+                      orientation="horizontal"
+                    >
+                      <RadioButton
+                        labelText="Pass"
+                        value="pass"
+                        id="culture-neg-control-pass"
+                      />
+                      <RadioButton
+                        labelText="Fail"
+                        value="fail"
+                        id="culture-neg-control-fail"
+                      />
+                    </RadioButtonGroup>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <NumberInput
+                      id="cultureContaminationRate"
+                      label={intl.formatMessage({
+                        id: "notebook.tb.qc.cultureContaminationRate",
+                        defaultMessage: "Contamination Rate (%)",
+                      })}
+                      helperText={intl.formatMessage({
+                        id: "notebook.tb.qc.cultureContaminationRate.helper",
+                        defaultMessage: "Should be <5%",
+                      })}
+                      min={0}
+                      max={100}
+                      step={0.1}
+                      value={bulkApplyValues.cultureContaminationRate}
+                      onChange={(e, { value }) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          cultureContaminationRate: value,
+                        }))
+                      }
+                      invalid={false}
+                      allowEmpty={true}
+                    />
+                  </Column>
+                </Grid>
+              </AccordionItem>
+
+              {/* Smear Microscopy QC */}
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "notebook.tb.qc.smearMicroscopyQC",
+                  defaultMessage: "Smear Microscopy QC",
+                })}
+              >
+                <Grid fullWidth>
+                  <Column lg={8} md={4} sm={4}>
+                    <RadioButtonGroup
+                      legendText={intl.formatMessage({
+                        id: "notebook.tb.qc.smearPositiveControl",
+                        defaultMessage: "Positive Control Slide",
+                      })}
+                      name="smearPositiveControl"
+                      valueSelected={
+                        bulkApplyValues.smearPositiveControl === true
+                          ? "pass"
+                          : bulkApplyValues.smearPositiveControl === false
+                            ? "fail"
+                            : ""
+                      }
+                      onChange={(value) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          smearPositiveControl: value === "pass",
+                        }))
+                      }
+                      orientation="horizontal"
+                    >
+                      <RadioButton
+                        labelText="Pass"
+                        value="pass"
+                        id="smear-pos-control-pass"
+                      />
+                      <RadioButton
+                        labelText="Fail"
+                        value="fail"
+                        id="smear-pos-control-fail"
+                      />
+                    </RadioButtonGroup>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <RadioButtonGroup
+                      legendText={intl.formatMessage({
+                        id: "notebook.tb.qc.smearNegativeControl",
+                        defaultMessage: "Negative Control Slide",
+                      })}
+                      name="smearNegativeControl"
+                      valueSelected={
+                        bulkApplyValues.smearNegativeControl === true
+                          ? "pass"
+                          : bulkApplyValues.smearNegativeControl === false
+                            ? "fail"
+                            : ""
+                      }
+                      onChange={(value) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          smearNegativeControl: value === "pass",
+                        }))
+                      }
+                      orientation="horizontal"
+                    >
+                      <RadioButton
+                        labelText="Pass"
+                        value="pass"
+                        id="smear-neg-control-pass"
+                      />
+                      <RadioButton
+                        labelText="Fail"
+                        value="fail"
+                        id="smear-neg-control-fail"
+                      />
+                    </RadioButtonGroup>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <Checkbox
+                      id="smearInternalQC"
+                      labelText={intl.formatMessage({
+                        id: "notebook.tb.qc.smearInternalQC",
+                        defaultMessage: "Internal QC (10% re-read)",
+                      })}
+                      checked={bulkApplyValues.smearInternalQC === true}
+                      onChange={(e, { checked }) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          smearInternalQC: checked,
+                        }))
+                      }
+                    />
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <Checkbox
+                      id="smearEQA"
+                      labelText={intl.formatMessage({
+                        id: "notebook.tb.qc.smearEQA",
+                        defaultMessage: "External Quality Assessment (EQA)",
+                      })}
+                      checked={bulkApplyValues.smearEQA === true}
+                      onChange={(e, { checked }) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          smearEQA: checked,
+                        }))
+                      }
+                    />
+                  </Column>
+                </Grid>
+              </AccordionItem>
+
+              {/* GeneXpert QC */}
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "notebook.tb.qc.genexpertQC",
+                  defaultMessage: "GeneXpert QC",
+                })}
+              >
+                <Grid fullWidth>
+                  <Column lg={8} md={4} sm={4}>
+                    <RadioButtonGroup
+                      legendText={intl.formatMessage({
+                        id: "notebook.tb.qc.genexpertCalibration",
+                        defaultMessage: "Daily Calibration Check",
+                      })}
+                      name="genexpertCalibration"
+                      valueSelected={
+                        bulkApplyValues.genexpertCalibration === true
+                          ? "pass"
+                          : bulkApplyValues.genexpertCalibration === false
+                            ? "fail"
+                            : ""
+                      }
+                      onChange={(value) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          genexpertCalibration: value === "pass",
+                        }))
+                      }
+                      orientation="horizontal"
+                    >
+                      <RadioButton
+                        labelText="Pass"
+                        value="pass"
+                        id="genexpert-cal-pass"
+                      />
+                      <RadioButton
+                        labelText="Fail"
+                        value="fail"
+                        id="genexpert-cal-fail"
+                      />
+                    </RadioButtonGroup>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <RadioButtonGroup
+                      legendText={intl.formatMessage({
+                        id: "notebook.tb.qc.genexpertRunControls",
+                        defaultMessage: "Run Controls (per manufacturer)",
+                      })}
+                      name="genexpertRunControls"
+                      valueSelected={
+                        bulkApplyValues.genexpertRunControls === true
+                          ? "pass"
+                          : bulkApplyValues.genexpertRunControls === false
+                            ? "fail"
+                            : ""
+                      }
+                      onChange={(value) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          genexpertRunControls: value === "pass",
+                        }))
+                      }
+                      orientation="horizontal"
+                    >
+                      <RadioButton
+                        labelText="Pass"
+                        value="pass"
+                        id="genexpert-controls-pass"
+                      />
+                      <RadioButton
+                        labelText="Fail"
+                        value="fail"
+                        id="genexpert-controls-fail"
+                      />
+                    </RadioButtonGroup>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <NumberInput
+                      id="genexpertErrorRate"
+                      label={intl.formatMessage({
+                        id: "notebook.tb.qc.genexpertErrorRate",
+                        defaultMessage: "Error Rate (%)",
+                      })}
+                      helperText={intl.formatMessage({
+                        id: "notebook.tb.qc.genexpertErrorRate.helper",
+                        defaultMessage: "Monitor error rate trends",
+                      })}
+                      min={0}
+                      max={100}
+                      step={0.1}
+                      value={bulkApplyValues.genexpertErrorRate}
+                      onChange={(e, { value }) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          genexpertErrorRate: value,
+                        }))
+                      }
+                      invalid={false}
+                      allowEmpty={true}
+                    />
+                  </Column>
+                </Grid>
+              </AccordionItem>
+
+              {/* DST QC */}
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "notebook.tb.qc.dstQC",
+                  defaultMessage: "Drug Susceptibility Testing (DST) QC",
+                })}
+              >
+                <Grid fullWidth>
+                  <Column lg={8} md={4} sm={4}>
+                    <RadioButtonGroup
+                      legendText={intl.formatMessage({
+                        id: "notebook.tb.qc.dstReferenceStrains",
+                        defaultMessage: "ATCC Reference Strains (per batch)",
+                      })}
+                      name="dstReferenceStrains"
+                      valueSelected={
+                        bulkApplyValues.dstReferenceStrains === true
+                          ? "pass"
+                          : bulkApplyValues.dstReferenceStrains === false
+                            ? "fail"
+                            : ""
+                      }
+                      onChange={(value) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          dstReferenceStrains: value === "pass",
+                        }))
+                      }
+                      orientation="horizontal"
+                    >
+                      <RadioButton
+                        labelText="Pass"
+                        value="pass"
+                        id="dst-ref-strains-pass"
+                      />
+                      <RadioButton
+                        labelText="Fail"
+                        value="fail"
+                        id="dst-ref-strains-fail"
+                      />
+                    </RadioButtonGroup>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <RadioButtonGroup
+                      legendText={intl.formatMessage({
+                        id: "notebook.tb.qc.dstMICRanges",
+                        defaultMessage: "MIC Ranges (within acceptable limits)",
+                      })}
+                      name="dstMICRanges"
+                      valueSelected={
+                        bulkApplyValues.dstMICRanges === true
+                          ? "pass"
+                          : bulkApplyValues.dstMICRanges === false
+                            ? "fail"
+                            : ""
+                      }
+                      onChange={(value) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          dstMICRanges: value === "pass",
+                        }))
+                      }
+                      orientation="horizontal"
+                    >
+                      <RadioButton
+                        labelText="Pass"
+                        value="pass"
+                        id="dst-mic-ranges-pass"
+                      />
+                      <RadioButton
+                        labelText="Fail"
+                        value="fail"
+                        id="dst-mic-ranges-fail"
+                      />
+                    </RadioButtonGroup>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <Checkbox
+                      id="dstEQA"
+                      labelText={intl.formatMessage({
+                        id: "notebook.tb.qc.dstEQA",
+                        defaultMessage: "EQA Participation",
+                      })}
+                      checked={bulkApplyValues.dstEQA === true}
+                      onChange={(e, { checked }) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          dstEQA: checked,
+                        }))
+                      }
+                    />
+                  </Column>
+                </Grid>
+              </AccordionItem>
+            </Accordion>
+          </div>
+
           {/* QC Result Summary */}
           <div className="qc-section qc-result-section">
             <h5 className="qc-section-header">
@@ -1184,12 +1805,19 @@ function TBQualityCheckPage({
             <Grid fullWidth>
               <Column lg={8} md={4} sm={4}>
                 <div className="qc-result-display">
-                  {(bulkApplyValues.qcResult === "PASS" ||
-                    bulkApplyValues.qcResult === "PASS_TO_STORAGE") && (
+                  {bulkApplyValues.qcResult === "PASS" && (
                     <Tag type="green" size="lg">
                       <FormattedMessage
                         id="notebook.tb.qc.result.pass"
                         defaultMessage="PASS - Proceed"
+                      />
+                    </Tag>
+                  )}
+                  {bulkApplyValues.qcResult === "PASS_TO_STORAGE" && (
+                    <Tag type="teal" size="lg">
+                      <FormattedMessage
+                        id="notebook.tb.qc.result.passToStorage"
+                        defaultMessage="PASS - Route to Storage"
                       />
                     </Tag>
                   )}

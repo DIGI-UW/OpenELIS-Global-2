@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -35,11 +36,14 @@ public class TbIncubationMonitoringController extends BaseRestController {
     // ==================== Incubation Sample Endpoints ====================
 
     /**
-     * Get all incubating samples (inoculated but no final result).
+     * Get incubating samples (inoculated but no final result) for a specific
+     * notebook entry.
+     *
+     * @param entryId Required notebook entry ID to filter samples by entry
      */
     @GetMapping(value = "/samples", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<TbCultureReading>> getIncubatingSamples() {
-        List<TbCultureReading> samples = tbCultureReadingService.findIncubatingSamples();
+    public ResponseEntity<List<TbCultureReading>> getIncubatingSamples(@RequestParam(required = true) Integer entryId) {
+        List<TbCultureReading> samples = tbCultureReadingService.findIncubatingSamplesByEntry(entryId);
         return ResponseEntity.ok(samples);
     }
 
@@ -53,20 +57,28 @@ public class TbIncubationMonitoringController extends BaseRestController {
     }
 
     /**
-     * Get samples by culture result.
+     * Get samples by culture result for a specific notebook entry.
+     *
+     * @param result  The culture result to filter by
+     * @param entryId Required notebook entry ID to filter samples by entry
      */
     @GetMapping(value = "/samples/by-result/{result}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<TbCultureReading>> getSamplesByResult(@PathVariable CultureResult result) {
-        List<TbCultureReading> samples = tbCultureReadingService.findByCultureResult(result);
+    public ResponseEntity<List<TbCultureReading>> getSamplesByResult(@PathVariable CultureResult result,
+            @RequestParam(required = true) Integer entryId) {
+        List<TbCultureReading> samples = tbCultureReadingService.findByCultureResultAndEntry(result, entryId);
         return ResponseEntity.ok(samples);
     }
 
     /**
-     * Get culture-positive samples (for downstream processing in Stage 5).
+     * Get culture-positive samples for a specific notebook entry.
+     *
+     * @param entryId Required notebook entry ID to filter samples by entry
      */
     @GetMapping(value = "/samples/positive", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<TbCultureReading>> getCulturePositiveSamples() {
-        List<TbCultureReading> samples = tbCultureReadingService.findCulturePositiveSamples();
+    public ResponseEntity<List<TbCultureReading>> getCulturePositiveSamples(
+            @RequestParam(required = true) Integer entryId) {
+        List<TbCultureReading> samples = tbCultureReadingService.findByCultureResultAndEntry(CultureResult.POSITIVE,
+                entryId);
         return ResponseEntity.ok(samples);
     }
 
@@ -83,8 +95,8 @@ public class TbIncubationMonitoringController extends BaseRestController {
             return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
         }
 
-        Integer cultureReadingId = (Integer) body.get("cultureReadingId");
-        Integer weekNumber = (Integer) body.get("weekNumber");
+        Integer cultureReadingId = parseInteger(body.get("cultureReadingId"));
+        Integer weekNumber = parseInteger(body.get("weekNumber"));
         GrowthObservation observation = GrowthObservation.valueOf((String) body.get("observation"));
         String notes = (String) body.get("notes");
 
@@ -135,10 +147,10 @@ public class TbIncubationMonitoringController extends BaseRestController {
             return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
         }
 
-        Integer positiveWeek = (Integer) body.get("positiveWeek");
+        Integer positiveWeek = parseInteger(body.get("positiveWeek"));
 
         TbCultureReading reading = tbCultureReadingService.determineFinalResult(id, CultureResult.POSITIVE,
-                positiveWeek);
+                positiveWeek, sysUserId);
         if (reading == null) {
             return ResponseEntity.notFound().build();
         }
@@ -161,7 +173,8 @@ public class TbIncubationMonitoringController extends BaseRestController {
             return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
         }
 
-        TbCultureReading reading = tbCultureReadingService.determineFinalResult(id, CultureResult.NEGATIVE, null);
+        TbCultureReading reading = tbCultureReadingService.determineFinalResult(id, CultureResult.NEGATIVE, null,
+                sysUserId);
         if (reading == null) {
             return ResponseEntity.notFound().build();
         }
@@ -183,7 +196,8 @@ public class TbIncubationMonitoringController extends BaseRestController {
             return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
         }
 
-        TbCultureReading reading = tbCultureReadingService.determineFinalResult(id, CultureResult.CONTAMINATED, null);
+        TbCultureReading reading = tbCultureReadingService.determineFinalResult(id, CultureResult.CONTAMINATED, null,
+                sysUserId);
         if (reading == null) {
             return ResponseEntity.notFound().build();
         }
@@ -198,22 +212,27 @@ public class TbIncubationMonitoringController extends BaseRestController {
     // ==================== Statistics Endpoints ====================
 
     /**
-     * Get incubation monitoring summary for dashboard tiles.
+     * Get incubation monitoring summary for dashboard tiles for a specific notebook
+     * entry.
+     *
+     * @param entryId Required notebook entry ID to filter summary by entry
      */
     @GetMapping(value = "/summary", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<IncubationSummary> getIncubationSummary() {
-        IncubationSummary summary = tbCultureReadingService.getIncubationSummary();
+    public ResponseEntity<IncubationSummary> getIncubationSummary(@RequestParam(required = true) Integer entryId) {
+        IncubationSummary summary = tbCultureReadingService.getIncubationSummaryByEntry(entryId);
         return ResponseEntity.ok(summary);
     }
 
     /**
-     * Get detailed incubation statistics.
+     * Get detailed incubation statistics for a specific notebook entry.
+     *
+     * @param entryId Required notebook entry ID to filter statistics by entry
      */
     @GetMapping(value = "/statistics", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> getIncubationStatistics() {
+    public ResponseEntity<Map<String, Object>> getIncubationStatistics(@RequestParam(required = true) Integer entryId) {
         Map<String, Object> stats = new HashMap<>();
 
-        IncubationSummary summary = tbCultureReadingService.getIncubationSummary();
+        IncubationSummary summary = tbCultureReadingService.getIncubationSummaryByEntry(entryId);
         stats.put("totalIncubating", summary.totalIncubating());
         stats.put("week1to4", summary.week1to4());
         stats.put("week5to8", summary.week5to8());
@@ -224,5 +243,31 @@ public class TbIncubationMonitoringController extends BaseRestController {
         stats.put("growthDetectedCount", tbCultureReadingService.countGrowthDetected());
 
         return ResponseEntity.ok(stats);
+    }
+
+    // ==================== Helper Methods ====================
+
+    /**
+     * Safely parse an Object to Integer. Handles Integer, Long, String, and Number
+     * types.
+     */
+    private Integer parseInteger(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Integer) {
+            return (Integer) value;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        if (value instanceof String) {
+            try {
+                return Integer.parseInt((String) value);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
     }
 }

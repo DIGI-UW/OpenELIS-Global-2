@@ -81,7 +81,8 @@ public interface TbCultureReadingService extends BaseObjectService<TbCultureRead
     /**
      * Determine and set the final culture result.
      */
-    TbCultureReading determineFinalResult(Integer cultureReadingId, CultureResult result, Integer positiveWeek);
+    TbCultureReading determineFinalResult(Integer cultureReadingId, CultureResult result, Integer positiveWeek,
+            String sysUserId);
 
     /**
      * Count samples by incubation week range.
@@ -98,4 +99,21 @@ public interface TbCultureReadingService extends BaseObjectService<TbCultureRead
      */
     record IncubationSummary(long totalIncubating, long week1to4, long week5to8, long positive, long negative) {
     }
+
+    // ====== Notebook Entry-Filtered Methods ======
+
+    /**
+     * Find samples currently incubating for a specific notebook entry.
+     */
+    List<TbCultureReading> findIncubatingSamplesByEntry(Integer notebookEntryId);
+
+    /**
+     * Find samples with a specific culture result for a specific notebook entry.
+     */
+    List<TbCultureReading> findByCultureResultAndEntry(CultureResult result, Integer notebookEntryId);
+
+    /**
+     * Get incubation monitoring summary statistics for a specific notebook entry.
+     */
+    IncubationSummary getIncubationSummaryByEntry(Integer notebookEntryId);
 }

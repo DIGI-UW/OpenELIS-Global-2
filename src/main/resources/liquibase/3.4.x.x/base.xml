@@ -110,14 +110,8 @@
     <include file="liquibase/3.4.x.x/058-tb-smear-result.xml"/>
     <include file="liquibase/3.4.x.x/059-tb-identification-result.xml"/>
 
-    <!-- Organization-SampleType Association -->
-    <include file="liquibase/3.4.x.x/060-organization-sample-type.xml"/>
-
     <!-- TB Page 1 Rename: Sample Creation -> Sample Accession & Registration -->
     <include file="liquibase/3.4.x.x/061-tb-page1-rename.xml"/>
-
-    <!-- TB Organization, Sample Types, and Notebook Linking -->
-    <include file="liquibase/3.4.x.x/062-tb-organization-sample-types.xml"/>
 
     <!-- Department-Sample Type Association (for specimen type validation) -->
     <include file="liquibase/3.4.x.x/063-department-sample-type.xml"/>
@@ -130,5 +124,16 @@
     <include file="liquibase/3.4.x.x/066-tb-sample-processing.xml"/>
     <include file="liquibase/3.4.x.x/067-tb-culture-reading-enhance.xml"/>
 
+    <!-- TB Page Reordering: Move Storage to page 6 and rename -->
+    <include file="liquibase/3.4.x.x/068-tb-reorder-storage-page.xml"/>
+
+    <!-- TB Page 7: Reporting (created here, moved to Page 8 by 070) -->
+    <include file="liquibase/3.4.x.x/069-tb-reporting-page.xml"/>
+
+    <!-- TB Page 7: Disposal & Archiving (moves Reporting to Page 8, creates Disposal at Page 7) -->
+    <include file="liquibase/3.4.x.x/070-tb-disposal-archiving-page.xml"/>
+
+    <!-- TB Media Preparation: Add notebook_entry_id for entry-scoped filtering -->
+    <include file="liquibase/3.4.x.x/071-tb-media-preparation-notebook-entry.xml"/>
 
 </databaseChangeLog>
