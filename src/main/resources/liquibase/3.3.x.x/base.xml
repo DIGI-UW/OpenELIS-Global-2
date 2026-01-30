@@ -50,7 +50,29 @@
   <include relativeToChangelogFile="true" file="028-create-report-definition-table.xml"/>
 
   <!-- ASTM Analyzer Field Mapping Feature (004-astm-analyzer-mapping) -->
-  <include relativeToChangelogFile="true" file="../analyzer/base.xml"/>
+  <!-- Core analyzer tables -->
+  <include relativeToChangelogFile="true" file="028-create-analyzer-configuration-table.xml"/>
+  <include relativeToChangelogFile="true" file="029-create-analyzer-field-table.xml"/>
+  <include relativeToChangelogFile="true" file="030-create-analyzer-field-mapping-table.xml"/>
+  <include relativeToChangelogFile="true" file="031-create-qualitative-result-mapping-table.xml"/>
+  <include relativeToChangelogFile="true" file="032-create-unit-mapping-table.xml"/>
+  <include relativeToChangelogFile="true" file="033-create-analyzer-error-table.xml"/>
+  <include relativeToChangelogFile="true" file="034-create-indexes.xml"/>
+  <include relativeToChangelogFile="true" file="035-create-custom-field-type-table.xml"/>
+  <include relativeToChangelogFile="true" file="036-add-menu-items.xml"/>
+  <include relativeToChangelogFile="true" file="037-add-query-timeout-config.xml"/>
+  <!-- Madagascar 011: RS232 serial adapter (M2) -->
+  <include relativeToChangelogFile="true" file="038-create-serial-port-configuration-table.xml"/>
+  <!-- Additional analyzer changesets (moved from analyzer/ for constitution compliance) -->
+  <include relativeToChangelogFile="true" file="039-add-version-column-to-mapping.xml"/>
+  <include relativeToChangelogFile="true" file="040-add-qc-mapping-incomplete-error-type.xml"/>
+  <include relativeToChangelogFile="true" file="041-create-validation-rule-configuration-table.xml"/>
+  <include relativeToChangelogFile="true" file="042-add-lifecycle-columns-to-analyzer-configuration.xml"/>
+  <include relativeToChangelogFile="true" file="043-add-custom-field-type-id-to-analyzer-field.xml"/>
+  <include relativeToChangelogFile="true" file="044-add-analyzer-id-to-field-mapping.xml"/>
+  <include relativeToChangelogFile="true" file="045-add-qc-service-unavailable-error-type.xml"/>
+  <include relativeToChangelogFile="true" file="046-add-generic-plugin-columns-to-analyzer-configuration.xml"/>
+  <include relativeToChangelogFile="true" file="047-standardize-lastupdated-column-names.xml"/>
   <!-- Madagascar Analyzer Integration Feature (011-madagascar-analyzer-integration) -->
   <include relativeToChangelogFile="true" file="011-004-create-file-import-configuration-table.xml"/>
 </databaseChangeLog>
