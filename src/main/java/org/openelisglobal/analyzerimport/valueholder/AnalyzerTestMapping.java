@@ -15,7 +15,6 @@
  */
 package org.openelisglobal.analyzerimport.valueholder;
 
-import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -31,7 +30,6 @@ import org.openelisglobal.common.valueholder.BaseObject;
  */
 @Entity
 @Table(name = "analyzer_test_map")
-@AttributeOverride(name = "lastupdated", column = @Column(name = "lastupdated"))
 public class AnalyzerTestMapping extends BaseObject<AnalyzerTestMappingPK> {
 
     private static final long serialVersionUID = 1L;

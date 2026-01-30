@@ -15,7 +15,6 @@
  */
 package org.openelisglobal.analyzer.valueholder;
 
-import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -29,7 +28,6 @@ import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
 @Table(name = "analyzer")
-@AttributeOverride(name = "lastupdated", column = @Column(name = "lastupdated"))
 @DynamicUpdate
 public class Analyzer extends BaseObject<String> {
 
