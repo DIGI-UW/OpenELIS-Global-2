@@ -101,10 +101,9 @@
         <mapping resource="hibernate/hbm/Role.hbm.xml" />
         <mapping resource="hibernate/hbm/UserRole.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemRoleModule.hbm.xml" />
-        <!-- Migrated to JPA annotations (chore/011-analyzer-xml-to-annotations
-            Phase 1) -->
+        <!-- Migrated to JPA annotations (chore/011-analyzer-xml-to-annotations) -->
         <!-- <mapping resource="hibernate/hbm/Analyzer.hbm.xml" /> -->
-        <mapping resource="hibernate/hbm/AnalyzerResults.hbm.xml" />
+        <!-- <mapping resource="hibernate/hbm/AnalyzerResults.hbm.xml" /> -->
         <mapping resource="hibernate/hbm/OrganizationType.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleRequester.hbm.xml" />
         <mapping resource="hibernate/hbm/DatabaseChangeLog.hbm.xml" />

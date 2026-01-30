@@ -24,6 +24,7 @@ import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
 import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.analyzer.valueholder.UnitMapping;
 import org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration;
+import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 
 /**
  * Validates Hibernate ORM mappings WITHOUT requiring database connection. This
@@ -49,6 +50,7 @@ public class HibernateMappingValidationTest {
         // Annotation-based entities (no XML entity references)
         configuration.addAnnotatedClass(Analyzer.class); // Migrated in Phase 1
         configuration.addAnnotatedClass(AnalyzerField.class); // Migrated in Phase 2A
+        configuration.addAnnotatedClass(AnalyzerResults.class); // Migrated in Phase 2B
         configuration.addAnnotatedClass(AnalyzerConfiguration.class);
         configuration.addAnnotatedClass(AnalyzerError.class);
         configuration.addAnnotatedClass(CustomFieldType.class);
@@ -90,10 +92,11 @@ public class HibernateMappingValidationTest {
 
         // Verify each entity is registered in Hibernate metamodel
         assertNotNull("Analyzer should be registered", sessionFactory.getMetamodel().entity(Analyzer.class)); // Phase 1
-                                                                                                              // migration
         assertNotNull("AnalyzerConfiguration should be registered",
                 sessionFactory.getMetamodel().entity(AnalyzerConfiguration.class));
         assertNotNull("AnalyzerField should be registered", sessionFactory.getMetamodel().entity(AnalyzerField.class));
+        assertNotNull("AnalyzerResults should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerResults.class)); // Phase 2B
         assertNotNull("AnalyzerFieldMapping should be registered",
                 sessionFactory.getMetamodel().entity(AnalyzerFieldMapping.class));
         assertNotNull("QualitativeResultMapping should be registered",
@@ -116,7 +119,7 @@ public class HibernateMappingValidationTest {
      */
     @Test
     public void testAnalyzerEntitiesHaveNoGetterConflicts() {
-        Class<?>[] entities = { Analyzer.class, AnalyzerConfiguration.class, AnalyzerField.class,
+        Class<?>[] entities = { Analyzer.class, AnalyzerConfiguration.class, AnalyzerField.class, AnalyzerResults.class,
                 AnalyzerFieldMapping.class, QualitativeResultMapping.class, UnitMapping.class, AnalyzerError.class,
                 CustomFieldType.class, ValidationRuleConfiguration.class, SerialPortConfiguration.class,
                 FileImportConfiguration.class };
