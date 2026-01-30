@@ -316,7 +316,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         // Act: GET /rest/site-branding/logo/header
         // Then: Expect 200 OK with file content and caching headers
         mockMvc.perform(get("/rest/site-branding/logo/header")).andExpect(status().isOk())
-                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "public, max-age=3600"))
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "public, max-age=300"))
                 .andExpect(content().bytes("test image content".getBytes()));
 
         // Cleanup
