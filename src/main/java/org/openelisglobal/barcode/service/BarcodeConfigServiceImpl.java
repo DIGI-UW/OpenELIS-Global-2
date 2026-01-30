@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class BarcodeInformationServiceImpl implements BarcodeInformationService {
+public class BarcodeConfigServiceImpl implements BarcodeConfigService {
 
         @Autowired
         private SiteInformationService siteInformationService;
