@@ -324,6 +324,38 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
     }
 
     /**
+     * Test: GET /rest/site-branding/logo/header with If-None-Match - returns 304
+     * when ETag matches
+     */
+    @Test
+    public void testGetHeaderLogo_WithMatchingETag_Returns304() throws Exception {
+        // Arrange: Create test branding with header logo
+        Path brandingPath = Paths.get(brandingDir);
+        Files.createDirectories(brandingPath);
+        String logoPath = brandingPath.resolve("header-etag-test.png").toString();
+        Files.write(Paths.get(logoPath), "test image content".getBytes());
+
+        SiteBranding branding = siteBrandingService.getBranding();
+        branding.setHeaderLogoPath(logoPath);
+        branding.setPrimaryColor("#1d4ed8");
+        branding.setSysUserId("1");
+        siteBrandingService.saveBranding(branding);
+
+        // First request to get the ETag
+        String etag = mockMvc.perform(get("/rest/site-branding/logo/header")).andExpect(status().isOk()).andReturn()
+                .getResponse().getHeader(HttpHeaders.ETAG);
+
+        assertNotNull("ETag header should be present", etag);
+
+        // Second request with If-None-Match header should return 304
+        mockMvc.perform(get("/rest/site-branding/logo/header").header(HttpHeaders.IF_NONE_MATCH, etag))
+                .andExpect(status().isNotModified());
+
+        // Cleanup
+        Files.deleteIfExists(Paths.get(logoPath));
+    }
+
+    /**
      * Test: POST /rest/site-branding/logo/login - upload login logo Task Reference:
      * T036
      */

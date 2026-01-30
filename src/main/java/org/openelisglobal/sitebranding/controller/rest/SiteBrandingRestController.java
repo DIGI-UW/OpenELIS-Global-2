@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -298,7 +299,7 @@ public class SiteBrandingRestController extends BaseRestController {
      * GET /rest/site-branding/logo/{type} - Serve logo file Task Reference: T034
      */
     @GetMapping("/logo/{type}")
-    public ResponseEntity<Resource> getLogo(@PathVariable String type) {
+    public ResponseEntity<Resource> getLogo(@PathVariable String type, WebRequest request) {
         try {
             // Validate logo type
             LogoType logoType;
@@ -317,20 +318,25 @@ public class SiteBrandingRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
+            // Calculate ETag from file modification time
+            long lastModified = java.nio.file.Files.getLastModifiedTime(java.nio.file.Paths.get(logoPath)).toMillis();
+            String etag = "\"" + lastModified + "\"";
+
+            // Check If-None-Match header - return 304 Not Modified if client's cached
+            // version is current
+            if (request.checkNotModified(etag)) {
+                return null;
+            }
+
             // Serve file
             Resource resource = new FileSystemResource(logoPath);
             String contentType = getContentType(logoPath);
 
-            // Task Reference: T102 - Optimize logo file serving with caching headers
-            // Use shorter cache time to allow logo updates to be visible quickly
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType(contentType));
             headers.setContentDispositionFormData("inline", resource.getFilename());
-            headers.setCacheControl("public, max-age=300"); // Cache for 5 minutes (reduced from 1 hour for faster
-                                                            // updates)
-            // Use file modification time for ETag to detect changes
-            long lastModified = java.nio.file.Files.getLastModifiedTime(java.nio.file.Paths.get(logoPath)).toMillis();
-            headers.setETag("\"" + lastModified + "\""); // ETag based on file modification time
+            headers.setCacheControl("public, max-age=300");
+            headers.setETag(etag);
 
             return ResponseEntity.ok().headers(headers).body(resource);
         } catch (Exception e) {
