@@ -15,11 +15,13 @@
  */
 package org.openelisglobal.analyzer.valueholder;
 
+import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
@@ -27,6 +29,8 @@ import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
 @Table(name = "analyzer")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "lastupdated"))
+@DynamicUpdate
 public class Analyzer extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
