@@ -1,56 +1,77 @@
 package org.openelisglobal.analyzer.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * AnalyzerFieldMapping entity - Represents the mapping configuration between an
- * AnalyzerField and one or more OpenELIS field entries, including mapping type
- * and activation state.
- *
- * This entity is mapped via XML (AnalyzerFieldMapping.hbm.xml) to match the
- * legacy mapping approach used by other analyzer entities. The XML mapping
- * provides: - Custom version column for optimistic locking (instead of
- * BaseObject's) - LIMSStringNumberUserType for analyzerId (INTEGER in DB,
- * String in Java) - Proper column name mapping for all fields
+ * Represents the mapping configuration between an AnalyzerField and OpenELIS
+ * field entries, including mapping type and activation state. Uses standard
+ * BaseObject versioning and @ManyToOne relationships for analyzer and field
+ * references.
  */
+@Entity
+@Table(name = "analyzer_field_mapping")
 public class AnalyzerFieldMapping extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @Column(name = "id", length = 36, nullable = false)
     private String id;
 
-    private String analyzerFieldId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "analyzer_field_id", nullable = false)
+    private AnalyzerField analyzerField;
 
-    // analyzerId uses LIMSStringNumberUserType: stored as INTEGER in DB, String in
-    // Java (matches legacy Analyzer entity ID type)
-    private String analyzerId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "analyzer_id", nullable = false)
+    private Analyzer analyzer;
 
-    // Transient fields for manually hydrated relationships (not persisted, set by
-    // service layer)
-    private transient AnalyzerField analyzerField;
-    private transient Analyzer analyzer;
-
+    // OpenELIS field ID - polymorphic reference to Test, Panel, Result, etc.
+    @Column(name = "openelis_field_id", length = 36, nullable = false)
     private String openelisFieldId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "openelis_field_type", nullable = false)
     private OpenELISFieldType openelisFieldType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "mapping_type", nullable = false)
     private MappingType mappingType;
 
+    @Column(name = "is_required")
     private Boolean isRequired = false;
 
+    @Column(name = "is_active")
     private Boolean isActive = false;
 
+    @Column(name = "specimen_type_constraint", length = 255)
     private String specimenTypeConstraint;
 
+    @Column(name = "panel_constraint", length = 255)
     private String panelConstraint;
 
+    // Version column exists in DB but not used for optimistic locking
+    // (BaseObject's lastupdated handles versioning like all other entities)
+    @Column(name = "version", nullable = false)
     private Long version = 0L;
 
     /**
-     * Generate UUID if not set. Called by DAO before insert since @PrePersist
-     * doesn't work with XML-mapped entities.
+     * Generates UUID for ID field if not set. Called automatically by
+     * JPA @PrePersist lifecycle hook. Public access maintained for explicit
+     * invocation if needed.
      */
+    @PrePersist
     public void generateIdIfNeeded() {
         if (id == null) {
             id = UUID.randomUUID().toString();
@@ -71,67 +92,48 @@ public class AnalyzerFieldMapping extends BaseObject<String> {
         this.id = id;
     }
 
-    public String getAnalyzerFieldId() {
-        return analyzerFieldId;
-    }
-
-    public void setAnalyzerFieldId(String analyzerFieldId) {
-        this.analyzerFieldId = analyzerFieldId;
-    }
-
-    public String getAnalyzerId() {
-        return analyzerId;
-    }
-
-    public void setAnalyzerId(String analyzerId) {
-        this.analyzerId = analyzerId;
-    }
-
     /**
-     * Get the hydrated AnalyzerField entity (transient, set by service layer).
-     * Returns null if not hydrated. Use this for read-only access after service
-     * layer hydration.
+     * Get the AnalyzerField relationship. Lazy-loaded by Hibernate.
      */
     public AnalyzerField getAnalyzerField() {
         return analyzerField;
     }
 
     /**
-     * Set the hydrated AnalyzerField entity (transient, set by service layer). Also
-     * updates analyzerFieldId and analyzerId to keep them in sync.
+     * Set the AnalyzerField relationship.
      */
     public void setAnalyzerField(AnalyzerField analyzerField) {
         this.analyzerField = analyzerField;
-        if (analyzerField != null) {
-            if (analyzerField.getId() != null) {
-                this.analyzerFieldId = analyzerField.getId();
-            }
-            // Also set analyzerId if analyzer is available
-            if (analyzerField.getAnalyzer() != null && analyzerField.getAnalyzer().getId() != null) {
-                this.analyzerId = analyzerField.getAnalyzer().getId();
-                this.analyzer = analyzerField.getAnalyzer();
-            }
-        }
     }
 
     /**
-     * Get the hydrated Analyzer entity (transient, set by service layer). Returns
-     * null if not hydrated. Use this for read-only access after service layer
-     * hydration.
+     * Get the Analyzer relationship. Lazy-loaded by Hibernate.
      */
     public Analyzer getAnalyzer() {
         return analyzer;
     }
 
     /**
-     * Set the hydrated Analyzer entity (transient, set by service layer). Also
-     * updates analyzerId to keep them in sync.
+     * Set the Analyzer relationship.
      */
     public void setAnalyzer(Analyzer analyzer) {
         this.analyzer = analyzer;
-        if (analyzer != null && analyzer.getId() != null) {
-            this.analyzerId = analyzer.getId();
-        }
+    }
+
+    /**
+     * Convenience getter for backward compatibility. Returns the ID from the
+     * AnalyzerField relationship.
+     */
+    public String getAnalyzerFieldId() {
+        return analyzerField != null ? analyzerField.getId() : null;
+    }
+
+    /**
+     * Convenience getter for backward compatibility. Returns the ID from the
+     * Analyzer relationship.
+     */
+    public String getAnalyzerId() {
+        return analyzer != null ? analyzer.getId() : null;
     }
 
     public String getOpenelisFieldId() {

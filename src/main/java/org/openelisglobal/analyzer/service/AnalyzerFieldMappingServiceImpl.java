@@ -130,10 +130,10 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         }
         validateTypeCompatibility(mapping);
 
-        // Set analyzerId from analyzerField if not already set
-        if (mapping.getAnalyzerId() == null && mapping.getAnalyzerField() != null
+        // Set analyzer relationship from analyzerField if not already set
+        if (mapping.getAnalyzer() == null && mapping.getAnalyzerField() != null
                 && mapping.getAnalyzerField().getAnalyzer() != null) {
-            mapping.setAnalyzerId(mapping.getAnalyzerField().getAnalyzer().getId());
+            mapping.setAnalyzer(mapping.getAnalyzerField().getAnalyzer());
         }
 
         // Set audit fields (who, when)
@@ -386,11 +386,8 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             throw new LIMSRuntimeException("Analyzer field does not belong to analyzer: " + analyzerId);
         }
 
-        // Create mapping entity with ID fields
+        // Create mapping entity with relationship objects
         AnalyzerFieldMapping mapping = new AnalyzerFieldMapping();
-        mapping.setAnalyzerFieldId(analyzerFieldId);
-        mapping.setAnalyzerId(analyzerId);
-        // Also set transient fields for validation
         mapping.setAnalyzerField(field);
         mapping.setAnalyzer(field.getAnalyzer());
         mapping.setOpenelisFieldId(openelisFieldId);

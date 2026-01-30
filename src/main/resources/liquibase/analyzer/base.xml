@@ -26,5 +26,9 @@
   <include relativeToChangelogFile="true" file="004-017-add-qc-service-unavailable-error-type.xml"/>
   <!-- Madagascar 011: RS232 serial adapter (M2) -->
   <include relativeToChangelogFile="true" file="../3.3.x.x/038-create-serial-port-configuration-table.xml"/>
+  <!-- Generic Plugin Support: Dashboard-configured analyzers (004 + 011) -->
+  <include relativeToChangelogFile="true" file="004-018-add-generic-plugin-columns-to-analyzer-configuration.xml"/>
+  <!-- Standardize legacy analyzer tables to use last_updated column name -->
+  <include relativeToChangelogFile="true" file="005-standardize-lastupdated-column-names.xml"/>
 
 </databaseChangeLog>
