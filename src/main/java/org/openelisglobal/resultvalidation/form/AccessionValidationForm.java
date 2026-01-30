@@ -5,7 +5,6 @@ import java.util.List;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.paging.PagingBean;
 import org.openelisglobal.common.util.IdValuePair;
-import org.openelisglobal.inventory.form.InventoryKitItem;
 import org.openelisglobal.patient.form.PatientInfoForm;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 
@@ -32,7 +31,8 @@ public class AccessionValidationForm extends BaseForm implements PatientInfoForm
 
     private Boolean displayTestKit = false;
 
-    private List<InventoryKitItem> inventoryItems;
+    // TODO: Re-enable after new inventory frontend integration
+    // private List<InventoryKitItem> inventoryItems;
 
     private List<String> hivKits;
 
@@ -168,13 +168,15 @@ public class AccessionValidationForm extends BaseForm implements PatientInfoForm
         this.displayTestKit = displayTestKit;
     }
 
-    public List<InventoryKitItem> getInventoryItems() {
-        return inventoryItems;
-    }
+    // TODO: Re-enable after new inventory frontend integration
+    // public List<InventoryKitItem> getInventoryItems() {
+    // return inventoryItems;
+    // }
 
-    public void setInventoryItems(List<InventoryKitItem> inventoryItems) {
-        this.inventoryItems = inventoryItems;
-    }
+    // TODO: Re-enable after new inventory frontend integration
+    // public void setInventoryItems(List<InventoryKitItem> inventoryItems) {
+    // this.inventoryItems = inventoryItems;
+    // }
 
     public List<String> getHivKits() {
         return hivKits;

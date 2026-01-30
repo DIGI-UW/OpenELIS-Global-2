@@ -17,7 +17,6 @@ import jakarta.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.action.IActionConstants;
-import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.util.IdValuePair;
 
 public class PagingUtility<E> {
@@ -57,9 +56,20 @@ public class PagingUtility<E> {
     public E getPage(int page, HttpSession session) {
         if (page > 0) {
             List<E> pagedResults = (List<E>) session.getAttribute(getSessionCache());
+            if (pagedResults == null) {
+                org.openelisglobal.common.log.LogEvent.logWarn(this.getClass().getSimpleName(), "getPage",
+                        "pagedResults is null in session cache for page " + page);
+                return null;
+            }
             totalPages = pagedResults.size();
-            if (pagedResults != null && pagedResults.size() >= page) {
+            org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getPage",
+                    "Requesting page " + page + ", totalPages=" + totalPages + ", pagedResults.size()="
+                            + pagedResults.size());
+            if (pagedResults.size() >= page) {
                 return pagedResults.get(page - 1);
+            } else {
+                org.openelisglobal.common.log.LogEvent.logWarn(this.getClass().getSimpleName(), "getPage",
+                        "Page " + page + " requested but only " + pagedResults.size() + " pages available");
             }
         }
 
@@ -124,9 +134,8 @@ public class PagingUtility<E> {
         PagingBean paging = new PagingBean();
         paging.setCurrentPage(String.valueOf(currentPage));
         paging.setTotalPages(String.valueOf(totalPages));
-        if (!ControllerUtills.isRestCall()) {
-            paging.setSearchTermToPage(getPageMapping(session));
-        }
+
+        paging.setSearchTermToPage(getPageMapping(session));
 
         return paging;
     }

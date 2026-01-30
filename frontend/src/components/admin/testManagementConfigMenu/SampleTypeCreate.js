@@ -49,15 +49,15 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage#testManagementConfigMenu",
+    link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
     label: "configuration.sampleType.manage",
-    link: "/MasterListsPage#SampleTypeManagement",
+    link: "/MasterListsPage/SampleTypeManagement",
   },
   {
     label: "configuration.sampleType.create",
-    link: "/MasterListsPage#SampleTypeCreate",
+    link: "/MasterListsPage/SampleTypeCreate",
   },
 ];
 

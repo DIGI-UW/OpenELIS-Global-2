@@ -30,7 +30,7 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
  */
 public interface SampleItemDAO extends BaseDAO<SampleItem, String> {
 
-    // public boolean insertData(SampleItem sampleItem) throws LIMSRuntimeException;
+    public boolean insertData(SampleItem sampleItem) throws LIMSRuntimeException;
 
     // public void deleteData(List<SampleItem> sampleItems) throws
     // LIMSRuntimeException;
@@ -54,4 +54,21 @@ public interface SampleItemDAO extends BaseDAO<SampleItem, String> {
             throws LIMSRuntimeException;
 
     public SampleItem getData(String sampleItemId) throws LIMSRuntimeException;
+
+    public List<SampleItem> getSampleItemsByExternalID(String externalId) throws LIMSRuntimeException;
+
+    public boolean insertAliquots(SampleItem lastSampleItem, List<SampleItem> sampleItemsToInsert,
+            List<List<String>> analysisGroups) throws LIMSRuntimeException;
+
+    /**
+     * Get sample items with their full aliquot hierarchy eagerly loaded. Uses JOIN
+     * FETCH to prevent LazyInitializationException when accessing parent/child
+     * relationships outside transaction boundaries.
+     *
+     * @param sampleItemIds list of sample item IDs to retrieve with hierarchy
+     * @return list of sample items with parent and child aliquots eagerly loaded
+     * @throws LIMSRuntimeException if database error occurs
+     */
+    public List<SampleItem> getSampleItemsWithHierarchy(List<String> sampleItemIds) throws LIMSRuntimeException;
+
 }

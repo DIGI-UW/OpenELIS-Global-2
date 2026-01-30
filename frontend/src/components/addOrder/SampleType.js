@@ -8,6 +8,7 @@ import {
   SelectItem,
   Tag,
   Tile,
+  TextInput,
   Loading,
 } from "@carbon/react";
 import CustomCheckBox from "../common/CustomCheckBox";
@@ -22,6 +23,7 @@ import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvide
 import CustomTextInput from "../common/CustomTextInput";
 import OrderReferralRequest from "../addOrder/OrderReferralRequest";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import StorageLocationSelector from "../storage/StorageLocationSelector";
 
 const SampleType = (props) => {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -57,6 +59,7 @@ const SampleType = (props) => {
   const [selectedPanels, setSelectedPanels] = useState([]);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [searchBoxPanels, setSearchBoxPanels] = useState([]);
+  const [uomList, setUomList] = useState([]);
   const [sampleXml, setSampleXml] = useState(
     sample?.sampleXML != null
       ? sample.sampleXML
@@ -66,6 +69,8 @@ const SampleType = (props) => {
               ? configurationProperties.currentDateAsText
               : "",
           collector: "",
+          quantity: "",
+          uom: "",
           rejected: false,
           rejectionReason: "",
           collectionTime:
@@ -110,13 +115,34 @@ const SampleType = (props) => {
     });
   }
 
+  function handleStorageLocationChange(location, positionCoordinate) {
+    setSampleXml({
+      ...sampleXml,
+      storageLocation: {
+        ...location,
+        positionCoordinate: positionCoordinate || "",
+      },
+      storagePositionId: location?.position?.id || null,
+    });
+  }
+
+  function handleQuantity(value) {
+    setSampleXml({
+      ...sampleXml,
+      quantity: value.target.value,
+    });
+  }
+
+  function handleUom(value) {
+    setSampleXml({
+      ...sampleXml,
+      uom: value,
+    });
+  }
+
   useEffect(() => {
     updateSampleXml(sampleXml, index);
   }, [sampleXml]);
-
-  const handleRemoveSampleTest = (index) => {
-    removeSample(index);
-  };
 
   const handleReferralRequest = () => {
     setRequestTestReferral(!requestTestReferral);
@@ -219,20 +245,6 @@ const SampleType = (props) => {
       index++;
     }
   };
-
-  function addReferralRequest(test) {
-    setReferralRequests([
-      ...referralRequests,
-      {
-        reasonForReferral: referralReasons[0].id,
-        referrer:
-          userSessionDetails.firstName + " " + userSessionDetails.lastName,
-        institute: referralOrganizations[0].id,
-        sentDate: "",
-        testId: test.id,
-      },
-    ]);
-  }
 
   function removeReferralRequest(test) {
     let index = 0;
@@ -397,6 +409,16 @@ const SampleType = (props) => {
   }, [selectedSampleType.id]);
 
   useEffect(() => {
+    getFromOpenElisServer(`/rest/UomCreate`, fetchUomCreate);
+  }, []);
+
+  const fetchUomCreate = (res) => {
+    if (componentMounted.current) {
+      setUomList(res.existingUomList || []);
+    }
+  };
+
+  useEffect(() => {
     props.sampleTypeObject({
       sampleRejected: rejectionReasonsDisabled,
       sampleObjectIndex: index,
@@ -485,7 +507,31 @@ const SampleType = (props) => {
             onChange={(e) => handleReasons(e)}
           />
         )}
+        <div className="inlineDiv" style={{ display: "flex", gap: "1rem" }}>
+          <TextInput
+            value={sampleXml.quantity}
+            name="quantity"
+            labelText={intl.formatMessage({
+              id: "sample.quantity.label",
+            })}
+            id="quantity"
+            type="number"
+            min="0"
+            onChange={(value) => handleQuantity(value)}
+            placeholder={intl.formatMessage({
+              id: "sample.quantity.label",
+            })}
+          />
 
+          <CustomSelect
+            id={"uomId_" + index}
+            labelText={intl.formatMessage({ id: "sample.uom.label" })}
+            options={uomList}
+            disabled={false}
+            value={sampleXml.uom}
+            onChange={(value) => handleUom(value)}
+          />
+        </div>
         <div className="inlineDiv">
           <CustomDatePicker
             id={"collectionDate_" + index}
@@ -518,6 +564,32 @@ const SampleType = (props) => {
             value={sampleXml.collector}
             labelText={intl.formatMessage({ id: "collector.label" })}
             className="inputText"
+          />
+        </div>
+        {/* Storage Location Selector - INT-001: Integration point */}
+        {/* NOTE: In order entry workflow, SampleItems are created after Sample is saved.
+            Storage assignment operates at SampleItem level, so actual assignment happens
+            after SampleItems are created. The location preference is stored here for
+            later assignment to the first/default SampleItem. */}
+        <div className="inlineDiv">
+          <StorageLocationSelector
+            workflow="orders"
+            optional={true}
+            sampleInfo={{
+              // Note: sampleId here is temporary/placeholder - actual SampleItem ID will be available after SampleItems are created
+              sampleId: sample?.id || sample?.sampleId || `TEMP-${index}`,
+              type: selectedSampleType?.name || sampleXml?.sampleTypeName || "",
+              status: sampleXml?.rejected ? "Rejected" : "Active",
+            }}
+            initialLocation={sampleXml?.storageLocation || null}
+            onLocationChange={(locationData) => {
+              // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
+              // Extract newLocation and positionCoordinate from locationData
+              // Store location preference - will be assigned to SampleItem after SampleItems are created
+              const location = locationData?.newLocation || locationData;
+              const positionCoordinate = locationData?.positionCoordinate || "";
+              handleStorageLocationChange(location, positionCoordinate);
+            }}
           />
         </div>
         <div className="testPanels">
@@ -594,7 +666,7 @@ const SampleType = (props) => {
                         <Tile className={"emptyFilterTests"}>
                           <span>
                             <FormattedMessage id="sample.panel.search.error.msg" />{" "}
-                            <strong>"{panelSearchTerm}"</strong>{" "}
+                            <strong>&quot;{panelSearchTerm}&quot;</strong>{" "}
                           </span>
                         </Tile>
                       </Layer>
@@ -694,7 +766,7 @@ const SampleType = (props) => {
                       <Tile className={"emptyFilterTests"}>
                         <span>
                           <FormattedMessage id="title.notestfoundmatching" />
-                          <strong> "{testSearchTerm}"</strong>{" "}
+                          <strong> &quot;{testSearchTerm}&quot;</strong>{" "}
                         </span>
                       </Tile>
                     </Layer>

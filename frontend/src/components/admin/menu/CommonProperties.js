@@ -70,7 +70,7 @@ export const CommonProperties = () => {
             { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
             {
               label: "common properties",
-              link: "/MasterListsPage#commonproperties",
+              link: "/MasterListsPage/commonproperties",
             },
           ]}
         />
@@ -111,6 +111,7 @@ export const CommonProperties = () => {
                             id={key + "-input"}
                             labelText={shortKey} // Use the modified key without the prefix
                             value={commonProperties[key]}
+                            readOnly
                             onChange={(e) => {
                               setCommonProperties({
                                 ...commonProperties,
@@ -144,6 +145,7 @@ export const CommonProperties = () => {
                             id={key + "-input"}
                             labelText={shortKey} // Use the modified key without the prefix
                             value={commonProperties[key]}
+                            readOnly
                             onChange={(e) => {
                               setCommonProperties({
                                 ...commonProperties,

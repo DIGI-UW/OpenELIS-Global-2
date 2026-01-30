@@ -46,6 +46,8 @@ import org.openelisglobal.dataexchange.order.action.DBOrderExistanceChecker;
 import org.openelisglobal.dataexchange.order.action.IOrderPersister;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.provider.service.ProviderService;
+import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.referral.fhir.service.FhirReferralService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.spring.util.SpringContext;
@@ -74,6 +76,8 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
     private FhirTransformService fhirTransformService;
     @Autowired
     private OrganizationService organizationService;
+    @Autowired
+    private ProviderService providerService;
 
     @Value("${org.openelisglobal.fhirstore.uri}")
     private String localFhirStorePath;
@@ -417,6 +421,11 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
                         LogEvent.logError(e);
                         LogEvent.logError(this.getClass().getSimpleName(), "beginTaskImportOrderPath",
                                 "could not process Task with identifier : " + remoteTask.getId());
+                    } catch (Exception e) {
+                        // General catch block for any other unexpected exceptions
+                        LogEvent.logError(e);
+                        LogEvent.logError(this.getClass().getSimpleName(), "beginTaskImportOrderPath",
+                                "Unexpected error while processing Task with identifier : " + remoteTask.getId());
                     }
                 }
             }
@@ -546,6 +555,14 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
             remotePatientForTask = getForPatientFromServer(sourceFhirClient, remoteServiceRequests);
         }
         Practitioner remotePractitionerForTask = getPractitionerFromServer(sourceFhirClient, remoteTask);
+        if (remotePractitionerForTask != null) {
+            Provider provider = providerService
+                    .getProviderByFhirId(UUID.fromString(remotePractitionerForTask.getIdElement().getIdPart()));
+            if (provider == null || !providerService.getProviderByFhirId(provider.getFhirUuid()).isDesynchronized()) {
+                provider = fhirTransformService.transformToProvider(remotePractitionerForTask);
+                providerService.insertOrUpdateProviderByFhirUuid(provider.getFhirUuid(), provider);
+            }
+        }
         String originalRemoteTaskId = remoteTask.getIdElement().getIdPart();
         Optional<Task> existingLocalTask = getTaskWithSameIdentifier(remoteTask, remoteStorePath);
         if (existingLocalTask.isEmpty()) {
@@ -918,6 +935,13 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
                 && remoteTask.getRequester().getReference().contains(ResourceType.Practitioner.toString())) {
             practitioner = fhirClient.read().resource(Practitioner.class)
                     .withId(remoteTask.getRequester().getReferenceElement().getIdPart()).execute();
+        }
+        if (practitioner == null) {
+            if (!GenericValidator.isBlankOrNull(remoteTask.getOwner().getReferenceElement().getIdPart())
+                    && remoteTask.getOwner().getReference().contains(ResourceType.Practitioner.toString())) {
+                practitioner = fhirClient.read().resource(Practitioner.class)
+                        .withId(remoteTask.getOwner().getReferenceElement().getIdPart()).execute();
+            }
         }
 
         if (practitioner == null) {

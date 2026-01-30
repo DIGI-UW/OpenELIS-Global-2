@@ -27,7 +27,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "Billing Menu Management",
-    link: "/MasterListsPage#billingMenuManagement",
+    link: "/MasterListsPage/billingMenuManagement",
   },
 ];
 function BillingMenuManagement() {
@@ -106,7 +106,7 @@ function BillingMenuManagement() {
               <Form onSubmit={handleSubmit}>
                 <div className="formInlineDiv">
                   <TextInput
-                    id="billing address"
+                    id="billing_address"
                     labelText={intl.formatMessage({
                       id: "menu.billing.address",
                     })}

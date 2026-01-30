@@ -18,6 +18,7 @@ import {
   FormGroup,
 } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import {
   AlertDialog,
@@ -40,7 +41,7 @@ const breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "unifiedSystemUser.browser.title",
-    link: "/MasterListsPage#userManagement",
+    link: "/MasterListsPage/userManagement",
   },
 ];
 
@@ -85,11 +86,11 @@ function UserAddModify() {
     confirmPassword: false,
   });
 
+  const location = useLocation();
   const ID = (() => {
-    const hash = window.location.hash;
-    if (hash.includes("?")) {
-      const queryParams = hash.split("?")[1];
-      const urlParams = new URLSearchParams(queryParams);
+    const search = location.search;
+    if (search) {
+      const urlParams = new URLSearchParams(search);
       return urlParams.get("ID");
     }
     return "0";
@@ -105,7 +106,7 @@ function UserAddModify() {
       );
     } else {
       setTimeout(() => {
-        window.location.assign("/MasterListsPage#userManagement");
+        window.location.assign("/MasterListsPage/userManagement");
       }, 200);
     }
     return () => {
@@ -1212,6 +1213,7 @@ function UserAddModify() {
                   </Column>
                   <br />
                   <Button
+                    data-cy="apply-button"
                     disabled={copyUserPermission === "0"}
                     type="button"
                     onClick={() => {
@@ -1395,6 +1397,7 @@ function UserAddModify() {
                       </Column>
                       <Column lg={4} md={4} sm={4}>
                         <Button
+                          data-cy="removePermission"
                           onClick={() => removeSection(key)}
                           kind="tertiary"
                           type="button"
@@ -1407,7 +1410,11 @@ function UserAddModify() {
                 </>
                 <Grid fullWidth={true}>
                   <Column lg={16} md={8} sm={4}>
-                    <Button onClick={addNewSection} type="button">
+                    <Button
+                      data-cy="addNewPermission"
+                      onClick={addNewSection}
+                      type="button"
+                    >
                       <FormattedMessage id="systemuserrole.newpermissions" />
                     </Button>
                   </Column>
@@ -1420,6 +1427,7 @@ function UserAddModify() {
                       disabled={Object.values(validation).some(
                         (value) => !value,
                       )}
+                      data-cy="saveButton"
                       onClick={userSavePostCall}
                       type="button"
                     >
@@ -1428,9 +1436,10 @@ function UserAddModify() {
                     <Button
                       onClick={() =>
                         window.location.assign(
-                          "/MasterListsPage#userManagement",
+                          "/MasterListsPage/userManagement",
                         )
                       }
+                      data-cy="exitButton"
                       kind="tertiary"
                       type="button"
                     >

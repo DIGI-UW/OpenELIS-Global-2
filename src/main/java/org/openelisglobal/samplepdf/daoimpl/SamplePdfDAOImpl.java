@@ -62,7 +62,7 @@ public class SamplePdfDAOImpl extends BaseDAOImpl<SamplePdf, String> implements 
         try {
             String sql = "from SamplePdf s where s.accessionNumber = :param";
             Query<SamplePdf> query = entityManager.unwrap(Session.class).createQuery(sql, SamplePdf.class);
-            query.setParameter("param", samplePdf.getAccessionNumber());
+            query.setParameter("param", Integer.parseInt(samplePdf.getAccessionNumber()));
 
             List<SamplePdf> list = query.list();
             if ((list != null) && !list.isEmpty()) {

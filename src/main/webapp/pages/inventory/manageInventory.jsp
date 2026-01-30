@@ -1,6 +1,7 @@
+<%-- TODO: Re-enable after new inventory frontend integration --%>
+<%-- import="org.openelisglobal.inventory.form.InventoryKitItem" --%>
 <%@ page language="java" contentType="text/html; charset=UTF-8" %>
 <%@ page import="org.openelisglobal.common.action.IActionConstants,
-				org.openelisglobal.inventory.form.InventoryKitItem,
 				org.openelisglobal.common.util.DateUtil,
 				org.openelisglobal.common.util.IdValuePair,
 				org.openelisglobal.internationalization.MessageUtil,
@@ -15,7 +16,8 @@
 
 <%@ taglib prefix="fn" uri="jakarta.tags.functions"%>
 
-	
+<%-- TODO: Re-enable after new inventory frontend integration --%>
+<%-- 
 <c:set var="kitSources" value="${form.sources}" />
 <c:set var="kitTypeList" value="${form.kitTypes}"/>
 <c:set var="currentKitCount" value="${fn:length(form.inventoryItems)}"/>
@@ -369,3 +371,4 @@ function /*void*/ makeDirty(){
 
 
 </div>
+--%>

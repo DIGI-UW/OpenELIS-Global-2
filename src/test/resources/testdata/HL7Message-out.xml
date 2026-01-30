@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <hl7_message_out id="1"
+        data="MSH|^~\SendingApp|SendingFac|ReceivingApp|ReceivingFac|20250619||ADT^A01|123456|P|2.3"
+        lastupdated="2025-12-31 00:00:00" status="PENDING" />
+
+    <hl7_message_out id="2"
+        data="You are requested submit the tests"
+        lastupdated="2026-01-15 00:00:00" status="SENT" />
+
+    <hl7_message_out id="3"
+        data="MSH|^~\SendingApp|SendingFac|ReceivingApp|ReceivingFac|20250617||ORM^O01|987654|P|2.3"
+        lastupdated="2025-11-30 00:00:00" status="FAILED" />
+</dataset>

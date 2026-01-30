@@ -12,10 +12,11 @@ import {
   Button,
   Loading,
 } from "@carbon/react";
-import { useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import CustomLabNumberInput from "../common/CustomLabNumberInput";
 
 let breadcrumbs = [{ label: "home.label", link: "/" }];
 
@@ -32,6 +33,8 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [url, setUrl] = useState("");
   const [sampleGroup, setSampleGroup] = useState([]);
+  const [searchTermToPage, setSearchTermToPage] = useState({});
+  const [labNumber, setLabNumber] = useState("");
   const intl = useIntl();
 
   useEffect(() => {
@@ -47,6 +50,7 @@ const Index = () => {
 
   useEffect(() => {
     if (url) {
+      setIsLoading(true);
       getFromOpenElisServer(
         "/rest/AnalyzerResults?type=" + type,
         handleResults,
@@ -80,11 +84,12 @@ const Index = () => {
       setResults(data);
       setIsLoading(false);
       if (data.paging) {
-        var { totalPages, currentPage } = data.paging;
+        var { totalPages, currentPage, searchTermToPage } = data.paging;
         if (totalPages > 1) {
           setPagination(true);
           setCurrentApiPage(currentPage);
           setTotalApiPages(totalPages);
+          setSearchTermToPage(searchTermToPage);
           if (parseInt(currentPage) < parseInt(totalPages)) {
             setNextPage(parseInt(currentPage) + 1);
           } else {
@@ -128,43 +133,73 @@ const Index = () => {
         {notificationVisible === true ? <AlertDialog /> : ""}
         {isLoading && <Loading></Loading>}
         <>
-          {pagination && (
-            <Grid>
-              <Column lg={14} />
-              <Column
-                lg={2}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "10px",
-                  width: "110%",
+          <Grid>
+            <Column lg={8} md={4} sm={4}>
+              <CustomLabNumberInput
+                name="Lab Number"
+                value={labNumber}
+                labelText={intl.formatMessage({
+                  id: "input.placeholder.labNo",
+                  defaultMessage: "input.placeholder.labNo",
+                })}
+                id="Lab Number"
+                onChange={(e, rawVal) => {
+                  setLabNumber(rawVal ? rawVal : e?.target?.value);
+                }}
+              />
+            </Column>
+            <Column lg={2} md={8} sm={4}>
+              <Button
+                style={{ marginTop: "20px" }}
+                onClick={() => {
+                  const page = searchTermToPage.find(
+                    (item) => item.id === labNumber,
+                  ).value;
+                  setIsLoading(true);
+                  getFromOpenElisServer(url + "&page=" + page, handleResults);
                 }}
               >
-                <Link>
-                  {currentApiPage} / {totalApiPages}
-                </Link>
-                <div style={{ display: "flex", gap: "10px" }}>
-                  <Button
-                    hasIconOnly
-                    id="loadpreviousresults"
-                    onClick={loadPreviousResultsPage}
-                    disabled={previousPage != null ? false : true}
-                    renderIcon={ArrowLeft}
-                    iconDescription="previous"
-                  ></Button>
-                  <Button
-                    hasIconOnly
-                    id="loadnextresults"
-                    onClick={loadNextResultsPage}
-                    disabled={nextPage != null ? false : true}
-                    renderIcon={ArrowRight}
-                    iconDescription="next"
-                  ></Button>
-                </div>
-              </Column>
-            </Grid>
-          )}
+                <FormattedMessage id="referral.search" />{" "}
+              </Button>
+            </Column>
+            {pagination && (
+              <>
+                <Column lg={4} md={4} sm={2}></Column>
+                <Column
+                  lg={2}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "10px",
+                    width: "110%",
+                  }}
+                >
+                  <Link>
+                    {currentApiPage} / {totalApiPages}
+                  </Link>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <Button
+                      hasIconOnly
+                      id="loadpreviousresults"
+                      onClick={loadPreviousResultsPage}
+                      disabled={previousPage != null ? false : true}
+                      renderIcon={ArrowLeft}
+                      iconDescription="previous"
+                    ></Button>
+                    <Button
+                      hasIconOnly
+                      id="loadnextresults"
+                      onClick={loadNextResultsPage}
+                      disabled={nextPage != null ? false : true}
+                      renderIcon={ArrowRight}
+                      iconDescription="next"
+                    ></Button>
+                  </div>
+                </Column>
+              </>
+            )}
+          </Grid>
         </>
         <AnalyserResults
           type={type}

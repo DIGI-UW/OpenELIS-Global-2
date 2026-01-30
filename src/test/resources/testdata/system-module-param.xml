@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <system_module_param id="1" name="enableFeatureX"
+        value="true" />
+    <system_module_param id="2" name="maxUploadSizeMB"
+        value="50" />
+    <system_module_param id="3" name="defaultLanguage"
+        value="en" />
+    <system_module_param id="4" name="maxUploadSizeMB"
+        value="50" />
+    <system_module_param id="5" name="maxUploadSizeMB"
+        value="50" />
+</dataset>

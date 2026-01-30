@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+
+    <report_queue_type id="101" name="DailyReport"
+        description="Queue for daily reports" />
+
+    <report_queue_type id="102" name="WeeklySummary"
+        description="Queue for weekly summary generation" />
+
+    <report_queue_type id="103" name="UrgentAlert"
+        description="Queue for urgent alerts" />
+
+    <report_external_export id="1"
+        event_date="2022-11-01 12:00:00" collection_date="2023-01-01 00:00:00"
+        sent_date="2024-02-11 00:00:00" type="101"
+        data="{'status':'exported','source':'systemA'}"
+        lastupdated="2025-05-11 00:30:00" send_flag="true"
+        bookkeeping="Initial export by system A" />
+
+    <report_external_export id="2"
+        event_date="2022-01-01 00:00:00" collection_date="2023-01-11 00:00:00"
+        sent_date="2024-05-21 00:00:00" type="102"
+        data="{'status':'exported','source':'systemB'}"
+        lastupdated="2025-01-01 00:00:00" send_flag="false"
+        bookkeeping="Export flagged for review" />
+
+    <report_external_export id="3"
+        event_date="2019-01-01 00:00:00" collection_date="2021-01-11 00:00:00"
+        sent_date="2023-07-12 00:10:00" type="103"
+        data="{'status':'queued','source':'systemC'}"
+        lastupdated="2025-01-01 00:00:00" send_flag="true"
+        bookkeeping="Awaiting confirmation" />
+
+</dataset>

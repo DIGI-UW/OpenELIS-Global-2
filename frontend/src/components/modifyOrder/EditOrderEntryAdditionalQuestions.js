@@ -93,17 +93,21 @@ const EditOrderEntryAdditionalQuestions = ({
 
   function setAdditionalQuestions(res) {
     console.debug(res);
-    setQuestionnaire(res);
-    var convertedQuestionnaireResponse = convertQuestionnaireToResponse(res);
-    setQuestionnaireResponse(convertedQuestionnaireResponse);
+    if (res !== "Check server logs") {
+      setQuestionnaire(res);
+      var convertedQuestionnaireResponse = convertQuestionnaireToResponse(res);
+      setQuestionnaireResponse(convertedQuestionnaireResponse);
+    }
   }
 
   function setDefaultAdditionalQuestions(res) {
     console.debug(res);
-    setQuestionnaire(res);
-    setQuestionnaireResponse(
-      orderFormValues.sampleOrderItems.additionalQuestions,
-    );
+    if (res !== "Check server logs") {
+      setQuestionnaire(res);
+      setQuestionnaireResponse(
+        orderFormValues.sampleOrderItems.additionalQuestions,
+      );
+    }
     if (loading) {
       setLoading(false);
     }
@@ -118,28 +122,28 @@ const EditOrderEntryAdditionalQuestions = ({
     );
     switch (questionnaireItem.type) {
       case "boolean":
-        return responseItem?.answer ? responseItem?.answer[0].valueBoolean : "";
+        return responseItem?.answer?.[0]?.valueBoolean ?? "";
       case "decimal":
-        return responseItem?.answer ? responseItem?.answer[0].valueDecimal : "";
+        return responseItem?.answer?.[0]?.valueDecimal ?? "";
       case "integer":
-        return responseItem?.answer ? responseItem?.answer[0].valueInteger : "";
+        return responseItem?.answer?.[0]?.valueInteger ?? "";
       case "date":
-        return responseItem?.answer ? responseItem?.answer[0].valueDate : "";
+        return responseItem?.answer?.[0]?.valueDate ?? "";
       case "time":
-        return responseItem?.answer ? responseItem?.answer[0].valueTime : "";
+        return responseItem?.answer?.[0]?.valueTime ?? "";
       case "string":
       case "text":
-        return responseItem?.answer ? responseItem?.answer[0].valueString : "";
+        return responseItem?.answer?.[0]?.valueString ?? "";
       case "quantity":
-        return responseItem?.answer
-          ? responseItem?.answer[0].valueQuantity
-          : "";
+        return responseItem?.answer?.[0]?.valueQuantity ?? "";
       case "choice":
-        if (responseItem?.answer) {
-          return responseItem.answer[0].valueCoding
-            ? responseItem?.answer[0].valueCoding.code
-            : responseItem?.answer[0].valueString;
+        if (responseItem?.answer?.[0]) {
+          const firstAnswer = responseItem.answer[0];
+          return (
+            firstAnswer?.valueCoding?.code ?? firstAnswer?.valueString ?? ""
+          );
         }
+        return "";
     }
   };
 

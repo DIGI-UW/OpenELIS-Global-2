@@ -13,7 +13,6 @@ import org.mockito.Mockito;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.barcode.controller.PrintBarcodeController;
 import org.openelisglobal.common.services.DisplayListService;
-import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.common.services.RequesterService;
 import org.openelisglobal.common.services.SampleOrderService;
@@ -22,16 +21,22 @@ import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
-import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.externalconnections.service.BasicAuthenticationDataService;
 import org.openelisglobal.externalconnections.service.ExternalConnectionService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.service.AnalysisNotificationConfigService;
 import org.openelisglobal.notification.service.TestNotificationConfigService;
+import org.openelisglobal.notification.service.TestNotificationService;
+import org.openelisglobal.notification.service.TestNotificationServiceImpl;
+import org.openelisglobal.odoo.client.OdooClient;
+import org.openelisglobal.odoo.client.OdooConnection;
+import org.openelisglobal.odoo.config.TestProductMapping;
 import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.referral.fhir.service.FhirReferralService;
 import org.openelisglobal.reports.service.WHONetReportServiceImpl;
 import org.openelisglobal.requester.service.RequesterTypeService;
+import org.openelisglobal.result.controller.AnalyzerResultsController;
+import org.ozeki.sms.service.OzekiMessageOutService;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
@@ -45,19 +50,20 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
-@ComponentScan(basePackages = { "org.openelisglobal.spring", "org.openelisglobal.patient",
-        "org.openelisglobal.patientidentity", "org.openelisglobal.gender", "org.openelisglobal.patientidentitytype",
-        "org.openelisglobal.patienttype", "org.openelisglobal.address", "org.openelisglobal.dictionary",
-        "org.openelisglobal.person", "org.openelisglobal.audittrail", "org.openelisglobal.referencetables",
-        "org.openelisglobal.history", "org.openelisglobal.menu", "org.openelisglobal.login",
-        "org.openelisglobal.systemusermodule", "org.openelisglobal.rolemodule", "org.openelisglobal.view",
-        "org.openelisglobal.search", "org.openelisglobal.common.util", "org.openelisglobal.view",
+@ComponentScan(basePackages = { "org.openelisglobal.spring", "org.openelisglobal.common.services",
+        "org.openelisglobal.patient", "org.openelisglobal.patientidentity", "org.openelisglobal.gender",
+        "org.openelisglobal.patientidentitytype", "org.openelisglobal.patienttype", "org.openelisglobal.address",
+        "org.openelisglobal.dictionary", "org.openelisglobal.person", "org.openelisglobal.audittrail",
+        "org.openelisglobal.referencetables", "org.openelisglobal.history", "org.openelisglobal.menu",
+        "org.openelisglobal.login", "org.openelisglobal.systemusermodule", "org.openelisglobal.rolemodule",
+        "org.openelisglobal.view", "org.openelisglobal.search", "org.openelisglobal.common.util",
         "org.openelisglobal.sample", "org.openelisglobal.sampleitem", "org.openelisglobal.analysis",
         "org.openelisglobal.result", "org.openelisglobal.resultlimit", "org.openelisglobal.resultlimits",
         "org.openelisglobal.typeoftestresult", "org.openelisglobal.samplehuman", "org.openelisglobal.provider",
@@ -68,21 +74,26 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.userrole", "org.openelisglobal.unitofmeasure", "org.openelisglobal.testtrailer",
         "org.openelisglobal.scriptlet", "org.openelisglobal.localization", "org.openelisglobal.systemuser",
         "org.openelisglobal.systemmodule", "org.openelisglobal.testdictionary", "org.openelisglobal.dictionarycategory",
-
-        "org.openelisglobal.sampleproject", "org.openelisglobal.observationhistorytype",
-        "org.openelisglobal.statusofsample", "org.openelisglobal.test", "org.openelisglobal.analyzerimport",
-        "org.openelisglobal.analyzer", "org.openelisglobal.systemusersection",
-
+        "org.openelisglobal.sampledomain", "org.openelisglobal.sampleproject",
         "org.openelisglobal.observationhistorytype", "org.openelisglobal.statusofsample", "org.openelisglobal.test",
         "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.testanalyte",
         "org.openelisglobal.observationhistory", "org.openelisglobal.systemusersection",
         "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample", "org.openelisglobal.siteinformation",
         "org.openelisglobal.config", "org.openelisglobal.image", "org.openelisglobal.testresult",
         "org.openelisglobal.barcode", "org.openelisglobal.referral", "org.openelisglobal.qaevent",
-        "org.openelisglobal.sampleproject", "org.openelisglobal.project", "org.openelisglobal.sampleqaevent",
-        "org.openelisglobal.patientrelation", "org.openelisglobal.inventory",
-        "org.openelisglobal.testcodes" }, excludeFilters = {
-                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.barcode.controller.*"),
+        "org.openelisglobal.project", "org.openelisglobal.sampleqaevent", "org.openelisglobal.patientrelation",
+        "org.openelisglobal.inventory", "org.openelisglobal.testcodes", "org.openelisglobal.datasubmission",
+        "org.openelisglobal.label", "org.openelisglobal.renametestsection", "org.openelisglobal.action",
+        "org.openelisglobal.analysisqaevent", "org.openelisglobal.analysisqaeventaction",
+        "org.openelisglobal.dataexchange", "org.openelisglobal.samplepdf", "org.openelisglobal.samplenewborn",
+        "org.openelisglobal.sampleqaeventaction", "org.openelisglobal.analyzerresults", "org.openelisglobal.testreflex",
+        "org.openelisglobal.county", "org.openelisglobal.sampletracking", "org.openelisglobal.testresultsview",
+        "org.openelisglobal.projectorganization", "org.openelisglobal.sourceofsample",
+        "org.openelisglobal.testconfiguration", "org.openelisglobal.usertestsection",
+        "org.openelisglobal.testcalculated", "org.openelisglobal.odoo", "org.openelisglobal.ocl",
+        "org.openelisglobal.storage", "org.openelisglobal.notebook", "org.openelisglobal.storage",
+        "org.openelisglobal.coldstorage", "org.openelisglobal.alert", "org.openelisglobal.notification",
+        "org.openelisglobal.scheduler" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -93,8 +104,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.config.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.fhir.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.*.fhir.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.odoo.config.OdooConnectionConfig"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.scheduler.SchedulerConfig"),
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PrintBarcodeController.class),
-                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = WHONetReportServiceImpl.class) })
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = WHONetReportServiceImpl.class),
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TestNotificationServiceImpl.class) })
 @EnableWebMvc
 public class AppTestConfig implements WebMvcConfigurer {
 
@@ -178,14 +192,14 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean()
     @Profile("test")
-    public UnsatisfiedDependencyException unsatisfiedDependencyException() {
-        return mock(UnsatisfiedDependencyException.class);
+    public TestNotificationService testNotificationService() {
+        return mock(TestNotificationService.class);
     }
 
     @Bean()
     @Profile("test")
-    public ElectronicOrderService electronicOrderService() {
-        return mock(ElectronicOrderService.class);
+    public UnsatisfiedDependencyException unsatisfiedDependencyException() {
+        return mock(UnsatisfiedDependencyException.class);
     }
 
     @Bean()
@@ -236,6 +250,18 @@ public class AppTestConfig implements WebMvcConfigurer {
         return new BCryptPasswordEncoder();
     }
 
+    @Bean()
+    @Profile("test")
+    public JavaMailSender javaMailSender() {
+        return mock(JavaMailSender.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public OzekiMessageOutService ozekiMessageOutService() {
+        return mock(OzekiMessageOutService.class);
+    }
+
     @Bean
     public MessageSource messageSource() {
         ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
@@ -259,10 +285,26 @@ public class AppTestConfig implements WebMvcConfigurer {
         return jsonConverter;
     }
 
-    @Bean()
+    // Removed IStatusService mock - integration tests need the real StatusService
+    // to properly load status maps from the database. Unit tests use @Mock
+    // directly.
+
+    @Bean
     @Profile("test")
-    public IStatusService iStatusService() {
-        return mock(IStatusService.class);
+    public OdooClient odooClient() {
+        return mock(OdooClient.class);
+    }
+
+    @Bean
+    @Profile("test")
+    public OdooConnection odooConnection() {
+        return mock(OdooConnection.class);
+    }
+
+    @Bean
+    @Profile("test")
+    public TestProductMapping testProductMapping() {
+        return mock(TestProductMapping.class);
     }
 
     @Bean()
@@ -282,6 +324,11 @@ public class AppTestConfig implements WebMvcConfigurer {
         WebMvcConfigurer.super.configureMessageConverters(converters);
         converters.add(new StringHttpMessageConverter());
         converters.add(jsonConverter());
+    }
+
+    @Bean()
+    public AnalyzerResultsController analyzerResultsController() {
+        return mock(AnalyzerResultsController.class);
     }
 
 }

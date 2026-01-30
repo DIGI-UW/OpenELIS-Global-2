@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Form,
   FormLabel,
@@ -25,6 +25,15 @@ function EditAdditionalOrderEntryQuestions({
   const intl = useIntl();
 
   const [showJson, setShowJson] = useState(true);
+  const [
+    additionalOrderEntryQuestionsAreJson,
+    setAdditionalOrderEntryQuestionsAreJson,
+  ] = useState(false);
+
+  const [
+    additionalOrderEntryQuestionsJsonFormat,
+    setAdditionalOrderEntryQuestionsJsonFormat,
+  ] = useState(null);
 
   function isJson(item) {
     let value = typeof item !== "string" ? JSON.stringify(item) : item;
@@ -37,14 +46,17 @@ function EditAdditionalOrderEntryQuestions({
     return typeof value === "object" && value !== null;
   }
 
-  const additionalOrderEntryQuestionsAreJson = isJson(
-    additionalOrderEntryQuestions,
-  );
+  useEffect(() => {
+    setAdditionalOrderEntryQuestionsAreJson(
+      isJson(additionalOrderEntryQuestions),
+    );
 
-  let additionalOrderEntryQuestionsJsonFormat =
-    additionalOrderEntryQuestionsAreJson
-      ? JSON.parse(additionalOrderEntryQuestions)
-      : null;
+    setAdditionalOrderEntryQuestionsJsonFormat(
+      isJson(additionalOrderEntryQuestions)
+        ? JSON.parse(additionalOrderEntryQuestions)
+        : null,
+    );
+  }, [additionalOrderEntryQuestions]);
 
   const QuestionBuilder = ({ item }) => {
     const [itemText, setitemText] = useState(item?.text || "");
@@ -454,11 +466,27 @@ function EditAdditionalOrderEntryQuestions({
             <Column lg={8} md={4} sm={2}>
               <br></br>
             </Column>
-            {/* <Column>
-            <Button lg={8} md={4} sm={2}>
-              Add New Question
-            </Button>
-          </Column> */}
+            <Column>
+              <Button
+                lg={4}
+                md={4}
+                sm={2}
+                onClick={() => {
+                  const newField = {
+                    linkId: "",
+                    text: "New Field",
+                    type: "string",
+                  };
+                  newField.linkId = crypto.randomUUID();
+                  setAdditionalOrderEntryQuestionsJsonFormat((prev) => ({
+                    ...prev,
+                    item: [...(prev.item || []), newField],
+                  }));
+                }}
+              >
+                <FormattedMessage id="Add New Question" />
+              </Button>
+            </Column>
           </Grid>
         )}
       </Column>

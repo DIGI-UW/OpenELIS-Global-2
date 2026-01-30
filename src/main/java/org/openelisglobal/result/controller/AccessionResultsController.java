@@ -12,8 +12,6 @@ import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
-import org.openelisglobal.inventory.action.InventoryUtility;
-import org.openelisglobal.inventory.form.InventoryKitItem;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
 import org.openelisglobal.result.action.util.ResultsPaging;
@@ -40,7 +38,9 @@ public class AccessionResultsController extends BaseController {
 
     private final String RESULT_EDIT_ROLE_ID;
 
-    private InventoryUtility inventoryUtility = SpringContext.getBean(InventoryUtility.class);
+    // TODO: Re-enable after new inventory frontend integration
+    // private InventoryUtility inventoryUtility =
+    // SpringContext.getBean(InventoryUtility.class);
     @Autowired
     private SampleService sampleService;
     @Autowired
@@ -156,24 +156,31 @@ public class AccessionResultsController extends BaseController {
     private void addInventory(AccessionResultsForm form)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
-        List<InventoryKitItem> list = inventoryUtility.getExistingActiveInventory();
-        List<String> hivKits = new ArrayList<>();
-        List<String> syphilisKits = new ArrayList<>();
-        for (InventoryKitItem item : list) {
-            if (item.getType().equals("HIV")) {
-                hivKits.add(item.getInventoryLocationId());
-            } else {
-                syphilisKits.add(item.getInventoryLocationId());
-            }
-        }
-        form.setHivKits(hivKits);
-        form.setSyphilisKits(syphilisKits);
-        form.setInventoryItems(list);
+        // TODO: Re-enable after new inventory frontend integration
+        // List<InventoryKitItem> list = inventoryUtility.getExistingActiveInventory();
+        // List<String> hivKits = new ArrayList<>();
+        // List<String> syphilisKits = new ArrayList<>();
+        // for (InventoryKitItem item : list) {
+        // if (item.getType().equals("HIV")) {
+        // hivKits.add(item.getInventoryLocationId());
+        // } else {
+        // syphilisKits.add(item.getInventoryLocationId());
+        // }
+        // }
+        // form.setHivKits(hivKits);
+        // form.setSyphilisKits(syphilisKits);
+
+        // Temporary fix: Set empty lists
+        form.setHivKits(new ArrayList<String>());
+        form.setSyphilisKits(new ArrayList<String>());
+        // TODO: Re-enable after new inventory frontend integration
+        // form.setInventoryItems(list);
     }
 
     private void addEmptyInventoryList(AccessionResultsForm form, String accessionNumber)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        form.setInventoryItems(new ArrayList<InventoryKitItem>());
+        // TODO: Re-enable after new inventory frontend integration
+        // form.setInventoryItems(new ArrayList<InventoryKitItem>());
         form.setHivKits(new ArrayList<String>());
         form.setSyphilisKits(new ArrayList<String>());
     }

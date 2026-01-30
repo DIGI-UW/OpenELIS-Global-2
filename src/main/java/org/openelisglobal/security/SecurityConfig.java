@@ -291,10 +291,13 @@ public class SecurityConfig {
         authenticationProvider.setAssertionValidator(validator);
         http.securityMatcher(new SamlRequestedMatcher())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                .saml2Logout(saml2 -> saml2.logoutUrl("/Logout"))
                 .saml2Login(saml2 -> saml2.failureHandler(customSamlAuthenticationFailureHandler())
                         .successHandler(customSamlAuthenticationSuccessHandler())
                         .relyingPartyRegistrationRepository(relyingPartyRegistrationRepository()))
+                .saml2Logout(saml2 -> saml2.logoutUrl("/Logout")
+                        .logoutRequest(request -> request.logoutUrl("/logout/saml2/slo"))
+                        .logoutResponse(response -> response.logoutUrl("/logout/saml2/slo")))
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/logout/saml2/slo/**"))
                 .authenticationManager(new ProviderManager(authenticationProvider))
 
         ;
@@ -419,7 +422,8 @@ public class SecurityConfig {
                         .invalidateHttpSession(true))
                 .sessionManagement(sessionManagement -> sessionManagement.invalidSessionUrl("/LoginPage")
                         .sessionFixation().migrateSession())
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/ValidateLogin"))
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/ValidateLogin", "/rest/**",
+                        "/api/OpenELIS-Global/rest/**"))
                 // add security headers
                 .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
         return http.build();

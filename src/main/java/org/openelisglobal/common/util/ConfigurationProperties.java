@@ -205,6 +205,10 @@ public abstract class ConfigurationProperties {
         BLOCK_BARCODE_WIDTH("widthBlockLabels", "text"), //
         SLIDE_BARCODE_HEIGHT("heightSlideLabels", "text"), //
         SLIDE_BARCODE_WIDTH("widthSlideLabels", "text"), //
+        STORAGE_LOCATION_BARCODE_HEIGHT("heightStorageLocationLabels", "text"), // Height of storage location barcode
+                                                                                // labels
+        STORAGE_LOCATION_BARCODE_WIDTH("widthStorageLocationLabels", "text"), // Width of storage location barcode
+                                                                              // labels
         ALT_ACCESSION_PREFIX("prePrintAltAccessionPrefix", "text"), //
         USE_ALT_ACCESSION_PREFIX("prePrintUseAltAccession", "text"), //
         USE_ALPHANUM_ACCESSION_PREFIX("useAlphanumAccessionPrefix", "text"), //

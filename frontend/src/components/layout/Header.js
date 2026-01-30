@@ -25,6 +25,7 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import "../Style.css";
 import { ConfigurationContext } from "../layout/Layout";
 import SlideOver from "../notifications/SlideOver";
+import { languages } from "../../languages";
 
 import {
   Header,
@@ -483,7 +484,10 @@ function OEHeader(props) {
                           <div
                             style={{
                               position: "relative",
-                              display: "inline-block",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              height: "100%",
                             }}
                           >
                             {!notificationsOpen ? (
@@ -584,10 +588,15 @@ function OEHeader(props) {
                           }}
                           value={props.intl.locale}
                         >
-                          <SelectItem text="English" value="en" />
-                          <SelectItem text="Français" value="fr" />
-                          <SelectItem text="Español" value="es" />
-                          <SelectItem text="Indonesia" value="id" />
+                          {Object.entries(languages).map(
+                            ([code, { label }]) => (
+                              <SelectItem
+                                key={code}
+                                text={label}
+                                value={code}
+                              />
+                            ),
+                          )}
                         </Select>
                       </li>
                       <li className="userDetails">

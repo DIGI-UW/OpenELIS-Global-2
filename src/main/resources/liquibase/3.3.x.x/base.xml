@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Sample Storage Management POC (001-sample-storage) -->
+  <!-- Clean consolidated migrations - assumes no storage management data exists -->
+  <include relativeToChangelogFile="true" file="001-create-storage-hierarchy-tables.xml"/>
+  <include relativeToChangelogFile="true" file="002-create-assignment-tables.xml"/>
+  <include relativeToChangelogFile="true" file="003-create-indexes.xml"/>
+  <!-- NOTE: Storage test fixtures are loaded via DBUnit datasets in tests.
+       Keep Liquibase focused on schema migrations; do not seed storage hierarchy
+       test data here to avoid dual sources of truth. -->
+  <!-- <include relativeToChangelogFile="true" file="004-insert-test-storage-data.xml" context="test"/> -->
+  <include relativeToChangelogFile="true" file="005-add-storage-menu-item.xml"/>
+  <include relativeToChangelogFile="true" file="006-add-storage-menu-localization.xml"/>
+  <include relativeToChangelogFile="true" file="008-add-short-code-columns.xml"/>
+  <include relativeToChangelogFile="true" file="009-create-print-history-table.xml"/>
+  <include relativeToChangelogFile="true" file="010-remove-odoo-site-information.xml"/>
+  <include relativeToChangelogFile="true" file="011-make-short-code-optional.xml"/>
+  <include relativeToChangelogFile="true" file="012-update-code-column-length.xml"/>
+  <include relativeToChangelogFile="true" file="013-remove-short-code-columns.xml"/>
+  <include relativeToChangelogFile="true" file="014-rename-print-history-short-code-to-location-code.xml"/>
+  <include relativeToChangelogFile="true" file="015-add-sample-disposed-status.xml"/>
+  <include relativeToChangelogFile="true" file="016-inventory-management-system.xml"/>
+  <include relativeToChangelogFile="true" file="017-inventory-add-last-updated.xml"/>
+  <include relativeToChangelogFile="true" file="018-allow-null-location-for-disposed.xml"/>
+  <include relativeToChangelogFile="true" file="019-fix-assignment-location-type-check.xml"/>
+  <include relativeToChangelogFile="true" file="020-storage-box-use-code-not-short-code.xml"/>
+  <include relativeToChangelogFile="true" file="021-add-patient-merge-menu-item.xml"/>
+  <include relativeToChangelogFile="true" file="022-add-patient-merge-menu-localization.xml"/>
+  <!-- Add device connectivity fields for network-connected storage equipment -->
+  <include relativeToChangelogFile="true" file="023-storage-device-connectivity.xml"/>
+  <!-- Freezer monitoring - formerly 011 (renumbered to avoid duplicate sequence) -->
+  <include relativeToChangelogFile="true" file="024-freezer-monitoring-schema.xml"/>
+  <include relativeToChangelogFile="true" file="generic-program-menu.xml"/>
+  <!-- Freezer audit trail - formerly 012 (renumbered to avoid duplicate sequence) -->
+  <include relativeToChangelogFile="true" file="025-register-freezer-audit-trail.xml"/>
+  <!-- Patient Merge (008-patient-merge) - formerly 019/020 (renumbered to avoid duplicate sequence) -->
+  <include relativeToChangelogFile="true" file="026-patient-merge-create-audit-table.xml"/>
+  <include relativeToChangelogFile="true" file="027-patient-merge-alter-patient-table.xml"/>
+</databaseChangeLog>
