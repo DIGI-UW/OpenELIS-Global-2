@@ -34,6 +34,7 @@ public class OrderLabel extends Label {
             height = Float
                     .parseFloat(ConfigurationProperties.getInstance()
                             .getPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT));
+            // TODO determine which specific exceptions to catch
         } catch (Exception e) {
             LogEvent.logError("OrderLabel", "OrderLabel OrderLabel()", e.toString());
         }
@@ -153,20 +154,33 @@ public class OrderLabel extends Label {
             dob = StringUtil.replaceNullWithEmptyString(patient.getBirthDateForDisplay());
         }
 
+        boolean useDob = "true".equals(ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_DOB));
+        boolean usePatientId = "true".equals(ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_ID));
+        boolean usePatientName = "true".equals(ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_NAME));
+        boolean useSiteId = "true".equals(ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.ORDER_LABEL_FIELD_SITE_ID));
         // adding fields above bar code
         aboveFields = new ArrayList<>();
-        aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientName"), patientName, 12));
-        aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientdob"), dob, 8));
-        if (patient != null) {
-            aboveFields.add(getAvailableIdField(patient));
-        } else {
-            // Add empty patient ID field for generic samples
-            aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientId"), "", 6));
+        if (usePatientName)
+            aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientName"), patientName, 12));
+        if (useDob)
+            aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientdob"), dob, 8));
+        if (usePatientId)
+            if (patient != null) {
+                aboveFields.add(getAvailableIdField(patient));
+            } else {
+                // Add empty patient ID field for generic samples
+                aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientId"), "", 6));
+            }
+        if (useSiteId) {
+            LabelField siteField = new LabelField(MessageUtil.getMessage("barcode.label.info.site"),
+                    StringUtils.substring(referringFacility, 0, 20), 8);
+            siteField.setDisplayFieldName(true);
+            aboveFields.add(siteField);
         }
-        LabelField siteField = new LabelField(MessageUtil.getMessage("barcode.label.info.site"),
-                StringUtils.substring(referringFacility, 0, 20), 8);
-        siteField.setDisplayFieldName(true);
-        aboveFields.add(siteField);
 
         // adding bar code
         if (AccessionFormat.ALPHANUM.toString()

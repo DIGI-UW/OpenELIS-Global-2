@@ -5,7 +5,7 @@ import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.barcode.form.BarcodeConfigurationForm;
-import org.openelisglobal.barcode.service.BarcodeInformationService;
+import org.openelisglobal.barcode.service.BarcodeConfigService;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -46,7 +46,7 @@ public class BarcodeConfigurationController extends BaseController {
                         "prePrintDontUseAltAccession", "prePrintAltAccessionPrefix" };
 
         @Autowired
-        private BarcodeInformationService barcodeInformationService;
+        private BarcodeConfigService barcodeConfigService;
 
         @InitBinder
         public void initBinder(WebDataBinder binder) {
@@ -196,7 +196,7 @@ public class BarcodeConfigurationController extends BaseController {
 
                 // ensure transaction block
                 try {
-                        barcodeInformationService.updateBarcodeInfoFromForm(form, getSysUserId(request));
+                        barcodeConfigService.updateBarcodeInfoFromForm(form, getSysUserId(request));
                 } catch (LIMSRuntimeException e) {
                         result.reject("barcode.config.error.insert");
                 } finally {
