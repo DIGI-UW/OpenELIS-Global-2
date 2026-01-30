@@ -132,6 +132,7 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
                     // Create new mapping
                     AnalyzerFieldMapping newMapping = new AnalyzerFieldMapping();
                     newMapping.setAnalyzerField(targetField);
+                    newMapping.setAnalyzer(targetField.getAnalyzer()); // Required after annotation migration
                     newMapping.setOpenelisFieldId(sourceMapping.getOpenelisFieldId());
                     newMapping.setOpenelisFieldType(sourceMapping.getOpenelisFieldType());
                     newMapping.setMappingType(sourceMapping.getMappingType());
