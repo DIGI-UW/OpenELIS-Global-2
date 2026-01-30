@@ -369,7 +369,8 @@ function SampleGrid({
   }));
 
   // Check if custom columns already include an "actions" column to avoid duplicates
-  const hasActionsColumn = columns && columns.some(col => col.key === "actions");
+  const hasActionsColumn =
+    columns && columns.some((col) => col.key === "actions");
 
   const headers = [
     ...baseHeaders,

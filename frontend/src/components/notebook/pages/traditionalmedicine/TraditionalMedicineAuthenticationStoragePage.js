@@ -314,13 +314,7 @@ function TraditionalMedicineAuthenticationStoragePage({
         ),
       });
     }
-  }, [
-    storageSelection.box,
-    selectedSampleIds,
-    boxLayout,
-    intl,
-    notify,
-  ]);
+  }, [storageSelection.box, selectedSampleIds, boxLayout, intl, notify]);
 
   // Get combined layout - following immunology pattern exactly
   const getCombinedLayout = useCallback(() => {
@@ -1010,7 +1004,6 @@ function TraditionalMedicineAuthenticationStoragePage({
     onProgressUpdate,
   ]);
 
-
   // Split samples by storage completion status (only 2 tables: IN_PROGRESS and COMPLETED)
   // IN_PROGRESS: Authenticated samples (from Page 2) ready for storage assignment
   // COMPLETED: Samples that have been assigned storage and marked complete to move to Page 4
@@ -1280,7 +1273,6 @@ function TraditionalMedicineAuthenticationStoragePage({
     );
   };
 
-
   // Check page access - show access denied if user lacks required roles
   if (!canAccessPage) {
     return (
@@ -1469,7 +1461,8 @@ function TraditionalMedicineAuthenticationStoragePage({
                   key: "collector",
                   header: "Collector",
                   render: (_value, sample) => {
-                    const collector = sample.data?.collector || sample.collector;
+                    const collector =
+                      sample.data?.collector || sample.collector;
                     if (!collector) {
                       return <span>—</span>;
                     }
@@ -1554,7 +1547,8 @@ function TraditionalMedicineAuthenticationStoragePage({
                   key: "collector",
                   header: "Collector",
                   render: (_value, sample) => {
-                    const collector = sample.data?.collector || sample.collector;
+                    const collector =
+                      sample.data?.collector || sample.collector;
                     if (!collector) {
                       return <span>—</span>;
                     }
@@ -1979,7 +1973,6 @@ function TraditionalMedicineAuthenticationStoragePage({
           </Column>
         </Grid>
       </Modal>
-
     </div>
   );
 }

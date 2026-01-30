@@ -117,14 +117,20 @@ function TraditionalMedicinePreparationPage({
     { id: "grinding", label: "Grinding (to powder)" },
     { id: "chopping", label: "Chopping (coarse pieces)" },
     { id: "powdering", label: "Powdering (fine powder for extraction)" },
-    { id: "freshly_processed", label: "Freshly processed samples: Used immediately" },
+    {
+      id: "freshly_processed",
+      label: "Freshly processed samples: Used immediately",
+    },
   ];
 
   // Drying method options (per SRS)
   const dryingMethodOptions = [
     { id: "air_drying", label: "Air drying" },
     { id: "oven_drying", label: "Oven drying (controlled temperature)" },
-    { id: "freeze_drying", label: "Freeze drying (for heat-sensitive materials)" },
+    {
+      id: "freeze_drying",
+      label: "Freeze drying (for heat-sensitive materials)",
+    },
   ];
 
   // Notification callback
@@ -777,7 +783,8 @@ function TraditionalMedicinePreparationPage({
             })}
             subtitle={intl.formatMessage({
               id: "notebook.page.tradmed.prep.yieldCalculation.description",
-              defaultMessage: "Yield % = ((Weight Before - Weight After) / Weight Before) × 100. Example: If you start with 100g and end with 75g, the yield is 25%.",
+              defaultMessage:
+                "Yield % = ((Weight Before - Weight After) / Weight Before) × 100. Example: If you start with 100g and end with 75g, the yield is 25%.",
             })}
             hideCloseButton
           />

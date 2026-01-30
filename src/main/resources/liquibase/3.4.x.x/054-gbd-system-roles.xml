@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- GENOMICS & BIOINFORMATICS WORKFLOW SYSTEM ROLES -->
+    <!-- Adds 5 new system roles for GBD laboratory -->
+    <!-- Per GBD_IMPLEMENTATION_GUIDE.md Section 10: Role-Based Permissions -->
+    <!-- ======================================================== -->
+
+    <!-- ROLE 1: Lab Technician - Performs sample preparation and extraction -->
+    <changeSet id="add-gbd-lab-technician-role" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'GBD Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add GBD Lab Technician role for sample reception and extraction</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="GBD Lab Technician"/>
+            <column name="description" value="Handles sample reception, extraction, PCR, gel analysis, and library prep"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.gbd.lab.technician"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ROLE 2: Bioinformatician - Performs QC, sequencing, and data analysis -->
+    <changeSet id="add-gbd-bioinformatician-role" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'GBD Bioinformatician'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add GBD Bioinformatician role for QC assessment and data analysis</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="GBD Bioinformatician"/>
+            <column name="description" value="Performs QC assessments, bioanalyzer analysis, sequencing, and bioinformatics"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.gbd.bioinformatician"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ROLE 3: GBD Manager - Supervises laboratory operations and reviews work -->
+    <changeSet id="add-gbd-manager-role" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'GBD Manager'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add GBD Manager role for laboratory supervision and approval</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="GBD Manager"/>
+            <column name="description" value="Supervises lab operations, reviews and approves sample processing results"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.gbd.manager"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ROLE 4: Principal Investigator (PI) - Manages research projects and data access -->
+    <changeSet id="add-gbd-principal-investigator-role" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'GBD Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add GBD Principal Investigator role for research project management</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="GBD Principal Investigator"/>
+            <column name="description" value="Manages research projects, reviews analysis, controls data access"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.gbd.principal.investigator"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ROLE 5: Data Manager - Manages data archival, exports, and repository submissions -->
+    <changeSet id="add-gbd-data-manager-role" author="openelis-gbd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'GBD Data Manager'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add GBD Data Manager role for data management and repository submission</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="GBD Data Manager"/>
+            <column name="description" value="Manages data archival, exports, and repository submissions"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.gbd.data.manager"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

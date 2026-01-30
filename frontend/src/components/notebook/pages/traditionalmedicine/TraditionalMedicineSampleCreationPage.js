@@ -1,12 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useContext } from "react";
-import {
-  Grid,
-  Column,
-  Button,
-  Tile,
-  Tag,
-  Loading,
-} from "@carbon/react";
+import { Grid, Column, Button, Tile, Tag, Loading } from "@carbon/react";
 import {
   Upload,
   Checkmark,

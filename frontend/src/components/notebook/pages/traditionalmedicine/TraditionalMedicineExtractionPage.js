@@ -116,7 +116,8 @@ function TraditionalMedicineExtractionPage({
   const [concentrationNotes, setConcentrationNotes] = useState("");
 
   // Pathway selection state (end of Page 5)
-  const [pathwaySelectionModalOpen, setPathwaySelectionModalOpen] = useState(false);
+  const [pathwaySelectionModalOpen, setPathwaySelectionModalOpen] =
+    useState(false);
   const [isSelectingPathway, setIsSelectingPathway] = useState(false);
   const [selectedPathway, setSelectedPathway] = useState(null);
 
@@ -158,12 +159,14 @@ function TraditionalMedicineExtractionPage({
     {
       id: "path_a",
       label: "Advanced Analysis",
-      description: "Proceed with Fractionation → Identification → Purification → Characterization (Page 6)",
+      description:
+        "Proceed with Fractionation → Identification → Purification → Characterization (Page 6)",
     },
     {
       id: "path_b",
       label: "Direct to Production",
-      description: "Skip Advanced Analysis and proceed directly to Product Development (Page 7)",
+      description:
+        "Skip Advanced Analysis and proceed directly to Product Development (Page 7)",
     },
   ];
 
@@ -334,7 +337,8 @@ function TraditionalMedicineExtractionPage({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
           id: "notebook.page.tradmed.extraction.error.noExtracted",
-          defaultMessage: "Selected samples must have extraction data recorded before filtration.",
+          defaultMessage:
+            "Selected samples must have extraction data recorded before filtration.",
         }),
       });
       return;
@@ -356,7 +360,8 @@ function TraditionalMedicineExtractionPage({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
           id: "notebook.page.tradmed.extraction.error.noFiltered",
-          defaultMessage: "Selected samples must have extraction and filtration data recorded before concentration.",
+          defaultMessage:
+            "Selected samples must have extraction and filtration data recorded before concentration.",
         }),
       });
       return;
@@ -715,7 +720,8 @@ function TraditionalMedicineExtractionPage({
               intl.formatMessage(
                 {
                   id: "notebook.page.tradmed.concentration.success",
-                  defaultMessage: "Concentration recorded for {count} sample(s).",
+                  defaultMessage:
+                    "Concentration recorded for {count} sample(s).",
                 },
                 {
                   count: response.updatedCount || selectedSampleIds.length,
@@ -1002,7 +1008,9 @@ function TraditionalMedicineExtractionPage({
           renderIcon={Edit}
           onClick={openPathwaySelectionModal}
           disabled={
-            !canOpenPathwaySelection() || !hasRealPageId || hasAnySelectedPathway()
+            !canOpenPathwaySelection() ||
+            !hasRealPageId ||
+            hasAnySelectedPathway()
           }
         >
           <FormattedMessage
@@ -1533,7 +1541,9 @@ function TraditionalMedicineExtractionPage({
                   {pathway.label}
                 </label>
               </div>
-              <p style={{ margin: "0", color: "#525252", fontSize: "0.875rem" }}>
+              <p
+                style={{ margin: "0", color: "#525252", fontSize: "0.875rem" }}
+              >
                 {pathway.description}
               </p>
             </div>

@@ -1040,7 +1040,8 @@ function TraditionalMedicineAnalyticalPage({
                   header: "Analysis Pathway",
                   render: (value, sample) => {
                     if (!value) return null;
-                    const isPathA = sample?.data?.analyticalPathwayId === "path_a";
+                    const isPathA =
+                      sample?.data?.analyticalPathwayId === "path_a";
                     return (
                       <Tag type={isPathA ? "blue" : "purple"} size="sm">
                         {value.split("(")[0].trim()}
@@ -1138,7 +1139,8 @@ function TraditionalMedicineAnalyticalPage({
                   header: "Analysis Pathway",
                   render: (value, sample) => {
                     if (!value) return null;
-                    const isPathA = sample?.data?.analyticalPathwayId === "path_a";
+                    const isPathA =
+                      sample?.data?.analyticalPathwayId === "path_a";
                     return (
                       <Tag type={isPathA ? "blue" : "purple"} size="sm">
                         {value.split("(")[0].trim()}

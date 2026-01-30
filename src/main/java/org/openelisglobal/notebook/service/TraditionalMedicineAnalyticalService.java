@@ -9,13 +9,11 @@ import java.util.Map;
  *
  * Per SRS Requirements - STAGE 6: Analytical Pathways
  *
- * Branching Workflow:
- * PATH A: Advanced Analysis (Mandatory all 4 steps)
- *   - Fractionation: Separate extract using chromatography
- *   - Identification/Isolation: Detect active constituents
- *   - Purification: Remove impurities, assess purity
- *   - Characterization: Determine structure (NMR, MS, IR)
- * PATH B: Direct to Production (skips this page)
+ * Branching Workflow: PATH A: Advanced Analysis (Mandatory all 4 steps) -
+ * Fractionation: Separate extract using chromatography -
+ * Identification/Isolation: Detect active constituents - Purification: Remove
+ * impurities, assess purity - Characterization: Determine structure (NMR, MS,
+ * IR) PATH B: Direct to Production (skips this page)
  *
  * Pathway is selected at end of Page 5 and LOCKED (cannot be changed).
  */
@@ -58,8 +56,7 @@ public interface TraditionalMedicineAnalyticalService {
      * Fractionation - Chromatography methods.
      */
     enum ChromatographyMethod {
-        COLUMN_CHROMATOGRAPHY("column_chromatography", "Column Chromatography"),
-        HPLC_PREP("hplc_prep", "HPLC Prep"),
+        COLUMN_CHROMATOGRAPHY("column_chromatography", "Column Chromatography"), HPLC_PREP("hplc_prep", "HPLC Prep"),
         OTHER("other", "Other");
 
         private final String id;
@@ -92,11 +89,9 @@ public interface TraditionalMedicineAnalyticalService {
      * Identification/Isolation - Detection methods.
      */
     enum DetectionMethod {
-        TLC("tlc", "TLC (Thin Layer Chromatography)"),
-        HPLC("hplc", "HPLC (High Performance Liquid Chromatography)"),
+        TLC("tlc", "TLC (Thin Layer Chromatography)"), HPLC("hplc", "HPLC (High Performance Liquid Chromatography)"),
         GC_MS("gc_ms", "GC-MS (Gas Chromatography-Mass Spectrometry)"),
-        LC_MS("lc_ms", "LC-MS (Liquid Chromatography-Mass Spectrometry)"),
-        OTHER("other", "Other");
+        LC_MS("lc_ms", "LC-MS (Liquid Chromatography-Mass Spectrometry)"), OTHER("other", "Other");
 
         private final String id;
         private final String label;
@@ -128,10 +123,8 @@ public interface TraditionalMedicineAnalyticalService {
      * Purification - Methods to remove impurities.
      */
     enum PurificationMethod {
-        RECRYSTALLIZATION("recrystallization", "Recrystallization"),
-        PREP_HPLC("prep_hplc", "Prep-HPLC"),
-        COLUMN_CHROMATOGRAPHY("column_chromatography", "Column Chromatography"),
-        OTHER("other", "Other");
+        RECRYSTALLIZATION("recrystallization", "Recrystallization"), PREP_HPLC("prep_hplc", "Prep-HPLC"),
+        COLUMN_CHROMATOGRAPHY("column_chromatography", "Column Chromatography"), OTHER("other", "Other");
 
         private final String id;
         private final String label;
@@ -163,9 +156,7 @@ public interface TraditionalMedicineAnalyticalService {
      * Purity assessment method.
      */
     enum PurityAssessmentMethod {
-        HPLC("hplc", "HPLC"),
-        NMR("nmr", "NMR"),
-        OTHER("other", "Other");
+        HPLC("hplc", "HPLC"), NMR("nmr", "NMR"), OTHER("other", "Other");
 
         private final String id;
         private final String label;
@@ -199,8 +190,7 @@ public interface TraditionalMedicineAnalyticalService {
     enum SpectroscopyTechnique {
         NMR("nmr", "NMR (Nuclear Magnetic Resonance)"),
         MASS_SPECTROMETRY("mass_spectrometry", "Mass Spectrometry (MS)"),
-        IR_FTIR("ir_ftir", "IR/FTIR (Infrared Spectroscopy)"),
-        OTHER("other", "Other");
+        IR_FTIR("ir_ftir", "IR/FTIR (Infrared Spectroscopy)"), OTHER("other", "Other");
 
         private final String id;
         private final String label;
@@ -237,32 +227,29 @@ public interface TraditionalMedicineAnalyticalService {
     /**
      * Fractionation request for PAGE 6.
      */
-    record FractionationRequest(List<Integer> sampleIds, String chromatographyMethod,
-            Integer numberOfFractions, String fractionLabels, String fractionDescription,
-            String fractionationNotes) {
+    record FractionationRequest(List<Integer> sampleIds, String chromatographyMethod, Integer numberOfFractions,
+            String fractionLabels, String fractionDescription, String fractionationNotes) {
     }
 
     /**
      * Identification request for PAGE 6.
      */
-    record IdentificationRequest(List<Integer> sampleIds, String detectionMethod,
-            String activeConstituentsFound, String knownCompoundsIdentified,
-            String identificationNotes) {
+    record IdentificationRequest(List<Integer> sampleIds, String detectionMethod, String activeConstituentsFound,
+            String knownCompoundsIdentified, String identificationNotes) {
     }
 
     /**
      * Purification request for PAGE 6.
      */
-    record PurificationRequest(List<Integer> sampleIds, String purificationMethod,
-            BigDecimal purityLevel, String purityAssessmentMethod, String purificationNotes) {
+    record PurificationRequest(List<Integer> sampleIds, String purificationMethod, BigDecimal purityLevel,
+            String purityAssessmentMethod, String purificationNotes) {
     }
 
     /**
      * Characterization request for PAGE 6.
      */
     record CharacterizationRequest(List<Integer> sampleIds, List<String> spectroscopyTechniques,
-            String structureDetermination, String propertiesIdentified,
-            String characterizationNotes) {
+            String structureDetermination, String propertiesIdentified, String characterizationNotes) {
     }
 
     /**
@@ -280,8 +267,8 @@ public interface TraditionalMedicineAnalyticalService {
     }
 
     /**
-     * Select analysis pathway (PATH A or PATH B) at end of Page 5.
-     * Once selected, pathway is LOCKED and cannot be changed.
+     * Select analysis pathway (PATH A or PATH B) at end of Page 5. Once selected,
+     * pathway is LOCKED and cannot be changed.
      *
      * @param pageId    the notebook page ID (Page 5 - Extraction)
      * @param request   the pathway selection request
@@ -339,8 +326,8 @@ public interface TraditionalMedicineAnalyticalService {
     Map<Integer, Map<String, Object>> getAnalyticalStatus(Integer pageId);
 
     /**
-     * Validate that all 4 mandatory steps are complete for PATH A samples.
-     * Used before marking samples as complete and advancing to next page.
+     * Validate that all 4 mandatory steps are complete for PATH A samples. Used
+     * before marking samples as complete and advancing to next page.
      *
      * @param pageId    the notebook page ID
      * @param sampleIds list of sample IDs to check
@@ -349,9 +336,9 @@ public interface TraditionalMedicineAnalyticalService {
     List<String> validateAllStepsComplete(Integer pageId, List<Integer> sampleIds);
 
     /**
-     * Mark samples as analysis complete and ready for next stage (Page 7).
-     * For PATH A: All 4 steps must be complete before marking.
-     * For PATH B: Samples skip this page entirely.
+     * Mark samples as analysis complete and ready for next stage (Page 7). For PATH
+     * A: All 4 steps must be complete before marking. For PATH B: Samples skip this
+     * page entirely.
      *
      * @param pageId    the notebook page ID
      * @param sampleIds list of sample IDs to mark complete

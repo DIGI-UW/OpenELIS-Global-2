@@ -75,7 +75,7 @@ export default function App() {
     getUserSessionDetails();
   }, []);
 
-  const getUserSessionDetails = async () => {
+  const getUserSessionDetails = async (forceRefresh = false) => {
     let counter = 0;
     while (counter < 10) {
       try {
@@ -91,6 +91,7 @@ export default function App() {
             localStorage.setItem("CSRF", jsonResp.csrf);
           }
           if (
+            forceRefresh ||
             !Object.keys(jsonResp).every(
               (key) => jsonResp[key] === userSessionDetails[key],
             )
@@ -129,6 +130,22 @@ export default function App() {
     setErrorLoadingSessionDetails(true);
     return userSessionDetails;
   };
+
+  /**
+   * Force refresh user session details (useful when roles change)
+   * Can be called from browser console: window.refreshUserSession()
+   */
+  const refreshUserSession = async () => {
+    console.info("🔄 Forcing user session refresh...");
+    await getUserSessionDetails(true);
+  };
+
+  useEffect(() => {
+    window.refreshUserSession = refreshUserSession;
+    return () => {
+      delete window.refreshUserSession;
+    };
+  }, [refreshUserSession]);
 
   const logout = () => {
     if (userSessionDetails.loginMethod === "SAML") {
@@ -230,7 +247,7 @@ export default function App() {
           errorLoadingSessionDetails,
           isCheckingLogin,
           logout,
-          refresh,
+          refreshUserSession,
         }}
       >
         <>
