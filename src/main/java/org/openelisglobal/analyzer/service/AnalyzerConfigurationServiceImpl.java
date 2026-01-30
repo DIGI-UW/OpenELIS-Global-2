@@ -6,6 +6,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import org.openelisglobal.analyzer.dao.AnalyzerConfigurationDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
@@ -89,6 +91,41 @@ public class AnalyzerConfigurationServiceImpl extends BaseObjectServiceImpl<Anal
     @Transactional(readOnly = true)
     public List<AnalyzerConfiguration> getAllWithAnalyzers() {
         return analyzerConfigurationDAO.getAll();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<AnalyzerConfiguration> findByIdentifierPatternMatch(String analyzerIdentifier) {
+        if (analyzerIdentifier == null || analyzerIdentifier.trim().isEmpty()) {
+            return Optional.empty();
+        }
+
+        List<AnalyzerConfiguration> candidates = analyzerConfigurationDAO.findGenericPluginConfigsWithPatterns();
+        if (candidates == null || candidates.isEmpty()) {
+            return Optional.empty();
+        }
+
+        String identifier = analyzerIdentifier.trim();
+        for (AnalyzerConfiguration config : candidates) {
+            if (config == null || config.getIdentifierPattern() == null) {
+                continue;
+            }
+
+            try {
+                Pattern p = Pattern.compile(config.getIdentifierPattern());
+                if (p.matcher(identifier).find()) {
+                    return Optional.of(config);
+                }
+            } catch (PatternSyntaxException e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
+                        "Invalid identifier_pattern regex for analyzer_configuration id=" + config.getId());
+            } catch (Exception e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
+                        "Error evaluating identifier_pattern for analyzer_configuration id=" + config.getId());
+            }
+        }
+
+        return Optional.empty();
     }
 
     @Override

@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.dao;
 
 import java.util.Optional;
+import java.util.List;
 import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.common.dao.BaseDAO;
 
@@ -32,4 +33,11 @@ public interface AnalyzerConfigurationDAO extends BaseDAO<AnalyzerConfiguration,
      * @return Optional AnalyzerConfiguration
      */
     Optional<AnalyzerConfiguration> findByAnalyzerName(String name);
+
+    /**
+     * Find all analyzer configurations enabled for generic plugin matching.
+     *
+     * @return list of AnalyzerConfigurations with is_generic_plugin=true and a non-null identifier_pattern
+     */
+    List<AnalyzerConfiguration> findGenericPluginConfigsWithPatterns();
 }
