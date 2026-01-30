@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- Add notebook_entry_id to TB_MEDIA_PREPARATION -->
+    <!-- Allows filtering media batches by notebook entry context -->
+    <!-- ======================================================== -->
+    <changeSet id="add-notebook-entry-id-to-tb-media-preparation" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_media_preparation" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="tb_media_preparation" columnName="notebook_entry_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding notebook_entry_id column to tb_media_preparation for entry-scoped filtering.</comment>
+        <addColumn tableName="tb_media_preparation">
+            <column name="notebook_entry_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add-tb-media-preparation-notebook-entry-fk" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="tb_media_preparation" columnName="notebook_entry_id" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraint for notebook_entry_id.</comment>
+        <addForeignKeyConstraint
+            baseTableName="tb_media_preparation"
+            baseColumnNames="notebook_entry_id"
+            referencedTableName="notebook_entry"
+            referencedColumnNames="id"
+            constraintName="fk_tb_media_notebook_entry"/>
+    </changeSet>
+
+    <changeSet id="add-tb-media-preparation-notebook-entry-index" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="tb_media_preparation" columnName="notebook_entry_id" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating index on notebook_entry_id for efficient filtering.</comment>
+        <createIndex tableName="tb_media_preparation" indexName="idx_tb_media_notebook_entry">
+            <column name="notebook_entry_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

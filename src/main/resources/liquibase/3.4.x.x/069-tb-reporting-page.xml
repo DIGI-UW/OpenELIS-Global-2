@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 7: REPORTING -->
+    <!-- Adds a reporting/analytics page to the TB workflow -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tb-page-7-reporting" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Tuberculosis Laboratory' AND n.is_template = true AND np.page_order = 7
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Reporting page for Tuberculosis Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Reporting"/>
+            <column name="instructions" value="View laboratory performance metrics, turnaround times, positivity rates, and resistance trends. Filter by date range to analyze workflow data."/>
+            <column name="content" value="Reporting - Analytics and metrics for TB laboratory workflow"/>
+            <column name="page_order" value="7"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true) AND page_order = 7</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- WORKFLOW PAGE TEMPLATE FOR REPORTING -->
+    <!-- Adds template for dropdown selection -->
+    <!-- ======================================================== -->
+    <changeSet id="insert-tb-reporting-page-template" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE id = 207
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert TB Reporting workflow page template</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="207"/>
+            <column name="name" value="Reporting"/>
+            <column name="display_key" value="workflow.page.tb.reporting"/>
+            <column name="description" value="Laboratory performance metrics and analytics"/>
+            <column name="default_instructions" value="View laboratory performance metrics, turnaround times, positivity rates, and resistance trends. Filter by date range to analyze workflow data."/>
+            <column name="default_content" value="Reporting - Analytics and metrics for TB laboratory workflow"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="display_order" value="7"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="TB"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>id = 207 AND workflow_category = 'TB'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

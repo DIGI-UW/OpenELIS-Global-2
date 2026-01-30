@@ -43,6 +43,21 @@ public interface NotebookBulkOperationService {
     int bulkUpdateStatus(Integer pageId, List<Integer> sampleIds, Status status, String userId);
 
     /**
+     * Update status for multiple samples on a page with control over T150
+     * auto-routing.
+     *
+     * @param pageId          the notebook page ID
+     * @param sampleIds       list of sample item IDs to update
+     * @param status          the new status
+     * @param userId          the user performing the update
+     * @param skipAutoRouting if true, skip T150 auto-routing (frontend handles
+     *                        routing)
+     * @return number of samples updated
+     */
+    int bulkUpdateStatus(Integer pageId, List<Integer> sampleIds, Status status, String userId,
+            boolean skipAutoRouting);
+
+    /**
      * Update status for multiple samples on a page using String IDs. Supports
      * composite sample IDs (e.g., "123_cassette_0") used in pathology workflow
      * pages where samples are expanded from parent items.

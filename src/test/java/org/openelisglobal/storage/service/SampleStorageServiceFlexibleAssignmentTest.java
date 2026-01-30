@@ -54,6 +54,7 @@ public class SampleStorageServiceFlexibleAssignmentTest {
     private StorageDevice testDevice;
     private StorageShelf testShelf;
     private StorageRack testRack;
+    private StorageBox testBox;
     private StorageRoom testRoom;
     private static final String TEST_EXTERNAL_ID = "EXT-2024-001";
     private static final String TEST_SAMPLE_ITEM_ID = "123";
@@ -87,6 +88,13 @@ public class SampleStorageServiceFlexibleAssignmentTest {
         testRack.setCode("RACKR1");
         testRack.setParentShelf(testShelf);
         testRack.setActive(true);
+
+        testBox = new StorageBox();
+        testBox.setId(40);
+        testBox.setLabel("Box-001");
+        testBox.setParentRack(testRack);
+        testBox.setRows(8);
+        testBox.setColumns(12);
 
         testSampleItem = new SampleItem();
         testSampleItem.setId(TEST_SAMPLE_ITEM_ID);
@@ -403,5 +411,126 @@ public class SampleStorageServiceFlexibleAssignmentTest {
         assertTrue("Path should contain shelf", path.contains("Shelf-A"));
         assertTrue("Path should contain rack", path.contains("Rack R1"));
         assertTrue("Path should contain position coordinate", path.contains("B3"));
+    }
+
+    @Test
+    public void testAssignSampleItemWithLocation_BoxLevel_Valid() {
+        // Setup - external ID lookup is mocked in setUp()
+        when(storageLocationService.get(40, StorageBox.class)).thenReturn(testBox);
+        when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class))).thenReturn(100);
+        when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(200);
+
+        // Execute
+        Map<String, Object> result = sampleStorageService.assignSampleItemWithLocation(
+                TEST_EXTERNAL_ID, "40", "box", "A1", "Test notes");
+
+        // Verify
+        assertNotNull(result);
+        assertEquals("100", result.get("assignmentId"));
+        assertNotNull(result.get("hierarchicalPath"));
+        String path = result.get("hierarchicalPath").toString();
+        assertTrue("Path should contain room", path.contains("Main Laboratory"));
+        assertTrue("Path should contain device", path.contains("Freezer Unit 1"));
+        assertTrue("Path should contain shelf", path.contains("Shelf-A"));
+        assertTrue("Path should contain rack", path.contains("Rack R1"));
+        assertTrue("Path should contain box", path.contains("Box-001"));
+        assertTrue("Path should contain well coordinate", path.contains("A1"));
+
+        // Verify assignment was created with correct fields
+        verify(sampleStorageAssignmentDAO).insert(argThat(assignment -> {
+            SampleStorageAssignment a = (SampleStorageAssignment) assignment;
+            return a.getLocationId().equals(40) &&
+                   a.getLocationType().equals("box") &&
+                   "A1".equals(a.getPositionCoordinate());
+        }));
+    }
+
+    @Test
+    public void testAssignSampleItemWithLocation_BoxLevel_NoCoordinate_UsesBoxLabel() {
+        // Setup - external ID lookup is mocked in setUp()
+        when(storageLocationService.get(40, StorageBox.class)).thenReturn(testBox);
+        when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class))).thenReturn(100);
+        when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(200);
+
+        // Execute - no well coordinate provided
+        Map<String, Object> result = sampleStorageService.assignSampleItemWithLocation(
+                TEST_EXTERNAL_ID, "40", "box", null, "Test notes");
+
+        // Verify
+        assertNotNull(result);
+        assertEquals("100", result.get("assignmentId"));
+        assertNotNull(result.get("hierarchicalPath"));
+        String path = result.get("hierarchicalPath").toString();
+        assertTrue("Path should contain box label", path.contains("Box-001"));
+
+        // Verify assignment uses box label as effective coordinate
+        verify(sampleStorageAssignmentDAO).insert(argThat(assignment -> {
+            SampleStorageAssignment a = (SampleStorageAssignment) assignment;
+            return a.getLocationId().equals(40) &&
+                   a.getLocationType().equals("box") &&
+                   "Box-001".equals(a.getPositionCoordinate());
+        }));
+    }
+
+    @Test
+    public void testGetSampleItemLocation_WithBoxLevel_ReturnsFullPath() {
+        // Setup - box level assignment
+        SampleStorageAssignment assignment = new SampleStorageAssignment();
+        assignment.setId(100);
+        assignment.setSampleItem(testSampleItem);
+        assignment.setLocationId(40);
+        assignment.setLocationType("box");
+        assignment.setPositionCoordinate("A1");
+        assignment.setAssignedByUserId(1);
+        assignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
+
+        when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(assignment);
+        when(storageLocationService.get(40, StorageBox.class)).thenReturn(testBox);
+
+        // Execute
+        Map<String, Object> result = sampleStorageService.getSampleItemLocation(TEST_SAMPLE_ITEM_ID);
+
+        // Verify - this test will FAIL until we add "box" case to
+        // buildHierarchicalPathForAssignment
+        assertNotNull("Result should not be null", result);
+        String path = (String) result.get("hierarchicalPath");
+        assertNotNull("HierarchicalPath should not be null for box type", path);
+        assertFalse("HierarchicalPath should not be empty for box type", path.isEmpty());
+        assertTrue("Path should contain room", path.contains("Main Laboratory"));
+        assertTrue("Path should contain device", path.contains("Freezer Unit 1"));
+        assertTrue("Path should contain shelf", path.contains("Shelf-A"));
+        assertTrue("Path should contain rack", path.contains("Rack R1"));
+        assertTrue("Path should contain box", path.contains("Box-001"));
+        assertTrue("Path should contain position coordinate", path.contains("A1"));
+    }
+
+    @Test
+    public void testMoveSampleItemWithLocation_RackToBox_Valid() {
+        // Setup - existing assignment at rack level
+        SampleStorageAssignment existingAssignment = new SampleStorageAssignment();
+        existingAssignment.setId(50);
+        existingAssignment.setSampleItem(testSampleItem);
+        existingAssignment.setLocationId(30);
+        existingAssignment.setLocationType("rack");
+
+        when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(existingAssignment);
+        when(storageLocationService.get(40, StorageBox.class)).thenReturn(testBox);
+        when(sampleStorageAssignmentDAO.update(any(SampleStorageAssignment.class))).thenReturn(existingAssignment);
+        when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(300);
+
+        // Execute
+        String movementId = sampleStorageService.moveSampleItemWithLocation(TEST_EXTERNAL_ID, "40", "box", "B2",
+                "Moving to box", null);
+
+        // Verify
+        assertNotNull(movementId);
+        assertEquals("300", movementId);
+
+        // Verify assignment was updated with box type and coordinate
+        verify(sampleStorageAssignmentDAO).update(argThat(assignment -> {
+            SampleStorageAssignment a = (SampleStorageAssignment) assignment;
+            return a.getLocationId().equals(40) && a.getLocationType().equals("box")
+                    && "B2".equals(a.getPositionCoordinate());
+        }));
     }
 }

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- RENAME TB PAGE 1: Sample Creation -> Sample Accession    -->
+    <!-- Per SRS requirements, Page 1 should be named             -->
+    <!-- "Sample Accession & Registration"                        -->
+    <!-- ======================================================== -->
+
+    <changeSet id="rename-tb-page1-notebook-page" author="openelis-tb">
+        <comment>Rename TB Page 1 from 'Sample Creation &amp; Full Metadata Capture' to 'Sample Accession &amp; Registration' in notebook_page table</comment>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="title" value="Sample Accession &amp; Registration"/>
+            <column name="instructions" value="Import TB samples from delivery manifest with complete metadata. Verify sample information and mark as verified to proceed."/>
+            <column name="content" value="Sample Accession &amp; Registration - Complete metadata entry and verification for TB samples"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <where>
+                notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory')
+                AND page_order = 1
+                AND title = 'Sample Creation &amp; Full Metadata Capture'
+            </where>
+        </update>
+    </changeSet>
+
+    <changeSet id="rename-tb-page1-workflow-template" author="openelis-tb">
+        <comment>Rename TB Page 1 template from 'Sample Creation &amp; Full Metadata Capture' to 'Sample Accession &amp; Registration' in workflow_page_template table</comment>
+
+        <update tableName="workflow_page_template" schemaName="clinlims">
+            <column name="name" value="Sample Accession &amp; Registration"/>
+            <column name="display_key" value="workflow.page.tb.sampleAccession"/>
+            <column name="description" value="Import and register TB samples from delivery manifest with complete metadata"/>
+            <column name="default_instructions" value="Import TB samples from delivery manifest with complete metadata. Verify sample information and mark as verified to proceed."/>
+            <column name="default_content" value="Sample Accession &amp; Registration - Complete metadata entry and verification for TB samples"/>
+            <where>
+                workflow_category = 'TB'
+                AND display_order = 1
+                AND name = 'Sample Creation &amp; Full Metadata Capture'
+            </where>
+        </update>
+    </changeSet>
+
+    <changeSet id="rename-tb-page1-entry-pages" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry_page" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Rename TB Page 1 in existing notebook entries (notebook_entry_page if it exists)</comment>
+
+        <update tableName="notebook_entry_page" schemaName="clinlims">
+            <column name="title" value="Sample Accession &amp; Registration"/>
+            <column name="content" value="Sample Accession &amp; Registration - Complete metadata entry and verification for TB samples"/>
+            <where>
+                notebook_entry_id IN (
+                    SELECT ne.id FROM clinlims.notebook_entry ne
+                    JOIN clinlims.notebook n ON ne.notebook_id = n.id
+                    WHERE n.title = 'Tuberculosis Laboratory'
+                )
+                AND page_order = 1
+                AND title = 'Sample Creation &amp; Full Metadata Capture'
+            </where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

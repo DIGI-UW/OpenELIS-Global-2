@@ -1,0 +1,13 @@
+sample_id,specimen_type,specimen_quality,document_number,referring_facility,patient_name,patient_age,patient_sex,patient_id,study_id,patient_address,patient_phone,physician_phone,consent_status,treatment_history,culture,smear_microscopy,genexpert,identification,dst_first_line,dst_second_line,intended_method,received_site,received_date,received_time,num_of_samples
+TB-VAL-001,Sputum,Good,DOC-001,Nairobi Hospital,John Doe,45,M,PAT-001,STD-001,123 Main St,+254700000001,+254700000002,Consented,New,Yes,Yes,No,No,No,No,Culture,TB Lab,2025-01-15,09:00,1
+TB-VAL-002,Blood,Good,DOC-002,Mombasa Clinic,Jane Smith,32,F,PAT-002,STD-002,456 Oak Ave,+254700000003,+254700000004,Consented,Relapse,Yes,Yes,Yes,No,No,No,GeneXpert,TB Lab,2025-01-15,09:30,2
+TB-VAL-003,BAL,Fair,DOC-003,Kisumu Hospital,Peter Ochieng,58,M,PAT-003,STD-003,789 River Rd,+254700000005,+254700000006,Consented,New,Yes,No,No,Yes,Yes,No,Culture,TB Lab,2025-01-15,10:00,1
+TB-VAL-004,Urine,Good,DOC-004,Nakuru Medical,Mary Wanjiku,28,F,PAT-004,STD-004,321 Hill St,+254700000007,+254700000008,Consented,MDR,Yes,Yes,Yes,Yes,Yes,Yes,DST,TB Lab,2025-01-15,10:30,3
+TB-VAL-005,Pleural Fluid,Good,DOC-005,Eldoret Referral,James Kiprop,67,M,PAT-005,STD-005,654 Valley Ln,+254700000009,+254700000010,Consented,New,Yes,Yes,No,No,No,No,Smear,TB Lab,2025-01-15,11:00,1
+TB-VAL-006,Stool,Fair,DOC-006,Thika Hospital,Grace Njeri,41,F,PAT-006,STD-006,987 Garden Rd,+254700000011,+254700000012,Consented,Retreatment,Yes,No,Yes,No,No,No,GeneXpert,TB Lab,2025-01-15,11:30,2
+TB-VAL-007,CSF,Good,DOC-007,Machakos General,David Mutua,55,M,PAT-007,STD-007,147 Palm Ave,+254700000013,+254700000014,Consented,New,Yes,Yes,No,Yes,No,No,Culture,TB Lab,2025-01-15,12:00,1
+TB-VAL-008,Serum,Good,DOC-008,Nyeri County,Susan Wambui,36,F,PAT-008,STD-008,258 Cedar Ln,+254700000015,+254700000016,Consented,XDR,Yes,Yes,Yes,Yes,Yes,Yes,DST,TB Lab,2025-01-15,12:30,2
+TB-VAL-009,Tissue,Good,DOC-009,Kakamega Hospital,Michael Omondi,49,M,PAT-009,STD-009,369 Maple St,+254700000017,+254700000018,Consented,New,Yes,No,No,Yes,Yes,No,Culture,TB Lab,2025-01-15,13:00,1
+TB-VAL-010,Plasma,Fair,DOC-010,Meru Teaching,Lucy Muthoni,62,F,PAT-010,STD-010,471 Birch Rd,+254700000019,+254700000020,Consented,Relapse,Yes,Yes,Yes,No,No,No,GeneXpert,TB Lab,2025-01-15,13:30,1
+TB-VAL-011,Gastric Aspirate,Good,DOC-011,Kenyatta National,Paul Kimani,8,M,PAT-011,STD-011,582 Elm Ave,+254700000021,+254700000022,Consented,New,Yes,Yes,No,No,No,No,Smear,TB Lab,2025-01-15,14:00,2
+TB-VAL-012,Whole Blood,Good,DOC-012,Coast General,Alice Adhiambo,73,F,PAT-012,STD-012,693 Pine Ln,+254700000023,+254700000024,Consented,New,Yes,No,Yes,No,No,No,GeneXpert,TB Lab,2025-01-15,14:30,1

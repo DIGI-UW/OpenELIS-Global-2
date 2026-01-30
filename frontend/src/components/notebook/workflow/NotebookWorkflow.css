@@ -1583,3 +1583,102 @@
 .validation-error-item:last-child {
   margin-bottom: 0;
 }
+
+/* ========================================== */
+/* TB Reporting Page Styles                    */
+/* ========================================== */
+
+.tb-reporting-page {
+  padding: 1rem 0;
+}
+
+.tb-reporting-page h3 {
+  display: flex;
+  align-items: center;
+  margin: 0 0 1.5rem 0;
+}
+
+.tb-reporting-page h4 {
+  margin: 1.5rem 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.tb-reporting-page h5 {
+  margin: 1rem 0 0.75rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Metric Tile Styles */
+.metric-tile {
+  height: 100%;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+  background: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle-01);
+  border-radius: 4px;
+}
+
+.metric-tile .metric-title {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.metric-tile .metric-value {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--cds-text-primary);
+  line-height: 1.2;
+}
+
+.metric-tile .metric-value .cds--tag {
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+}
+
+.metric-tile .metric-subtitle {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  margin-top: 0.5rem;
+}
+
+/* Reporting Page Tab Panel Styles */
+.tb-reporting-page .cds--tabs {
+  margin-top: 1.5rem;
+}
+
+.tb-reporting-page .cds--tab-content {
+  padding: 1.5rem 0;
+}
+
+/* Responsive adjustments for reporting page */
+@media (max-width: 1056px) {
+  .tb-reporting-page .progress-tiles .cds--col {
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 672px) {
+  .metric-tile {
+    min-height: 80px;
+    padding: 0.75rem;
+  }
+
+  .metric-tile .metric-value {
+    font-size: 1.5rem;
+  }
+
+  .metric-tile .metric-title,
+  .metric-tile .metric-subtitle {
+    font-size: 0.6875rem;
+  }
+}

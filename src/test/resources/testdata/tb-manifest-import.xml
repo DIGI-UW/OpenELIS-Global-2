@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Type of sample (specimen types) - uses existing type_of_sample table -->
+    <type_of_sample id="901" description="Sputum" domain="H"
+        is_active="Y" local_abbrev="SPT" lastupdated="2023-11-01 12:00:00" />
+    <type_of_sample id="902" description="Fluid" domain="H"
+        is_active="Y" local_abbrev="FLD" lastupdated="2023-11-01 12:00:00" />
+    <type_of_sample id="903" description="Respiratory Swab"
+        domain="H" is_active="Y" local_abbrev="RSW"
+        lastupdated="2023-11-01 12:00:00" />
+    <type_of_sample id="904" description="Tissue antemortem"
+        domain="H" is_active="Y" local_abbrev="TIS"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Accession number info for proper generation -->
+    <accession_number_info prefix="DEV0125"
+        type="SITEYEARNUM" cur_val="100" />
+</dataset>

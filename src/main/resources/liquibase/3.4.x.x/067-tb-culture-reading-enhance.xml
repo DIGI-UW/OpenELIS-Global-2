@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- TB_CULTURE_READING TABLE ENHANCEMENTS -->
+    <!-- Adds inoculation tracking, media batch linkage, and final result fields -->
+    <!-- Supports Stage 4 workflow: Inoculation + Weekly Monitoring -->
+    <!-- ======================================================== -->
+
+    <changeSet id="add-tb-culture-reading-inoculation-date" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_culture_reading" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="tb_culture_reading" columnName="inoculation_date" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding inoculation_date column to track when sample was inoculated to media.</comment>
+        <addColumn tableName="tb_culture_reading">
+            <column name="inoculation_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add-tb-culture-reading-media-batch-id" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_culture_reading" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="tb_culture_reading" columnName="media_batch_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding media_batch_id column to link sample to prepared media batch.</comment>
+        <addColumn tableName="tb_culture_reading">
+            <column name="media_batch_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add-tb-culture-reading-sample-processing-id" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_culture_reading" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="tb_culture_reading" columnName="sample_processing_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding sample_processing_id column to link to decontamination record.</comment>
+        <addColumn tableName="tb_culture_reading">
+            <column name="sample_processing_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add-tb-culture-reading-culture-result" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_culture_reading" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="tb_culture_reading" columnName="culture_result" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding culture_result column for final culture outcome (denormalized for quick queries).</comment>
+        <addColumn tableName="tb_culture_reading">
+            <column name="culture_result" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add-tb-culture-reading-positive-week" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_culture_reading" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="tb_culture_reading" columnName="positive_week" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding positive_week column to record week when growth was first detected (null if negative).</comment>
+        <addColumn tableName="tb_culture_reading">
+            <column name="positive_week" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add-tb-culture-reading-final-result-date" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_culture_reading" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="tb_culture_reading" columnName="final_result_date" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding final_result_date column to record when final culture result was determined.</comment>
+        <addColumn tableName="tb_culture_reading">
+            <column name="final_result_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add-tb-culture-reading-inoculated-by" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_culture_reading" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="tb_culture_reading" columnName="inoculated_by" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding inoculated_by column to track who performed inoculation.</comment>
+        <addColumn tableName="tb_culture_reading">
+            <column name="inoculated_by" type="NUMERIC(10)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- Foreign key constraints for new columns -->
+    <changeSet id="add-tb-culture-reading-media-batch-fk" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_culture_reading" schemaName="clinlims"/>
+            <tableExists tableName="tb_media_preparation" schemaName="clinlims"/>
+            <columnExists tableName="tb_culture_reading" columnName="media_batch_id" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraint for media_batch_id.</comment>
+        <addForeignKeyConstraint
+            baseTableName="tb_culture_reading"
+            baseColumnNames="media_batch_id"
+            referencedTableName="tb_media_preparation"
+            referencedColumnNames="id"
+            constraintName="fk_tb_culture_media_batch"/>
+    </changeSet>
+
+    <changeSet id="add-tb-culture-reading-processing-fk" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_culture_reading" schemaName="clinlims"/>
+            <tableExists tableName="tb_sample_processing" schemaName="clinlims"/>
+            <columnExists tableName="tb_culture_reading" columnName="sample_processing_id" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraint for sample_processing_id.</comment>
+        <addForeignKeyConstraint
+            baseTableName="tb_culture_reading"
+            baseColumnNames="sample_processing_id"
+            referencedTableName="tb_sample_processing"
+            referencedColumnNames="id"
+            constraintName="fk_tb_culture_sample_processing"/>
+    </changeSet>
+
+    <changeSet id="add-tb-culture-reading-inoculated-by-fk" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_culture_reading" schemaName="clinlims"/>
+            <columnExists tableName="tb_culture_reading" columnName="inoculated_by" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraint for inoculated_by.</comment>
+        <addForeignKeyConstraint
+            baseTableName="tb_culture_reading"
+            baseColumnNames="inoculated_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_tb_culture_inoculated_by"/>
+    </changeSet>
+
+    <!-- Check constraints for new columns -->
+    <changeSet id="add-tb-culture-reading-culture-result-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_culture_reading" schemaName="clinlims"/>
+            <columnExists tableName="tb_culture_reading" columnName="culture_result" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for culture_result values.</comment>
+        <sql>
+            ALTER TABLE clinlims.tb_culture_reading
+            ADD CONSTRAINT chk_tb_culture_result
+            CHECK (culture_result IS NULL OR culture_result IN ('POSITIVE', 'NEGATIVE', 'CONTAMINATED'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.tb_culture_reading DROP CONSTRAINT IF EXISTS chk_tb_culture_result;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-tb-culture-reading-positive-week-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_culture_reading" schemaName="clinlims"/>
+            <columnExists tableName="tb_culture_reading" columnName="positive_week" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for positive_week values (1-8).</comment>
+        <sql>
+            ALTER TABLE clinlims.tb_culture_reading
+            ADD CONSTRAINT chk_tb_culture_positive_week
+            CHECK (positive_week IS NULL OR (positive_week >= 1 AND positive_week &lt;= 8));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.tb_culture_reading DROP CONSTRAINT IF EXISTS chk_tb_culture_positive_week;</sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Indexes for new columns -->
+    <changeSet id="add-tb-culture-reading-enhancement-indexes" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_culture_reading" schemaName="clinlims"/>
+            <columnExists tableName="tb_culture_reading" columnName="culture_result" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for new columns for query optimization.</comment>
+        <createIndex tableName="tb_culture_reading" indexName="idx_tb_culture_result">
+            <column name="culture_result"/>
+        </createIndex>
+        <createIndex tableName="tb_culture_reading" indexName="idx_tb_culture_inoculation_date">
+            <column name="inoculation_date"/>
+        </createIndex>
+        <createIndex tableName="tb_culture_reading" indexName="idx_tb_culture_media_batch">
+            <column name="media_batch_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

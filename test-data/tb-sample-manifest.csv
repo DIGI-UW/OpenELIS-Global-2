@@ -1,0 +1,9 @@
+Sample ID,Specimen Type,Num Of Samples,Specimen Quality,Document Number,Referring Facility,Patient Name,Patient Age,Patient Sex,Patient ID,Study ID,Treatment History,Culture,Smear Microscopy,GeneXpert,Identification,DST First Line,DST Second Line,Received Site,Received Date,Received Time
+TB-2024-001,Sputum,1,Good,DOC-001,District Hospital Lilongwe,John Banda,45,M,PAT-001,STUDY-001,New,Yes,Yes,Yes,No,No,No,TB Lab Main,2024-12-20,08:30
+TB-2024-002,Sputum,2,Good,DOC-002,Queen Elizabeth Central Hospital,Mary Phiri,32,F,PAT-002,STUDY-001,Retreatment,Yes,Yes,No,Yes,Yes,No,TB Lab Main,2024-12-20,09:15
+TB-2024-003,BAL,1,Acceptable,DOC-003,Kamuzu Central Hospital,James Moyo,58,M,PAT-003,STUDY-002,MDR-TB,Yes,Yes,Yes,Yes,Yes,Yes,TB Lab Main,2024-12-20,10:00
+TB-2024-004,Pleural Fluid,1,Good,DOC-004,Mzuzu Central Hospital,Grace Tembo,28,F,PAT-004,,New,Yes,No,Yes,No,No,No,TB Lab Satellite,2024-12-20,10:45
+TB-2024-005,Sputum,3,Good,DOC-005,Zomba Central Hospital,Peter Chirwa,41,M,PAT-005,STUDY-003,Retreatment,Yes,Yes,Yes,Yes,Yes,No,TB Lab Main,2024-12-20,11:30
+TB-2024-006,CSF,1,Good,DOC-006,District Hospital Blantyre,Sarah Mwale,35,F,PAT-006,STUDY-003,New,Yes,No,Yes,Yes,No,No,TB Lab Main,2024-12-20,14:00
+TB-2024-007,Sputum,1,Poor,DOC-007,Thyolo District Hospital,David Ngoma,52,M,PAT-007,,MDR-TB,Yes,Yes,Yes,Yes,Yes,Yes,TB Lab Satellite,2024-12-21,08:00
+TB-2024-008,Tissue,1,Good,DOC-008,Mangochi District Hospital,Ruth Kamanga,29,F,PAT-008,STUDY-004,New,Yes,No,No,Yes,No,No,TB Lab Main,2024-12-21,09:30

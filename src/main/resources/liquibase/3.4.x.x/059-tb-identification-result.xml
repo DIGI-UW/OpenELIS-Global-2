@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- TB_IDENTIFICATION_RESULT TABLE -->
+    <!-- Stores species identification results -->
+    <!-- Results: MTB, NTM, Negative, Contaminated -->
+    <!-- Methods: Smear morphology, BHI/BA, Rapid test kit -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tb-identification-result-sequence" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="tb_identification_result_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for tb_identification_result table.</comment>
+        <createSequence sequenceName="tb_identification_result_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-tb-identification-result-table" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="tb_identification_result" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating TB_IDENTIFICATION_RESULT table for species identification.</comment>
+        <createTable tableName="tb_identification_result">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="tb_identification_result_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_tb_identification_result"/>
+            </column>
+            <column name="sample_item_id" type="NUMERIC(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="result" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="method" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="result_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tested_by" type="NUMERIC(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="reviewed_by" type="NUMERIC(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="notes" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="add-tb-identification-result-foreign-keys" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_identification_result" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraints to tb_identification_result table.</comment>
+        <addForeignKeyConstraint
+            baseTableName="tb_identification_result"
+            baseColumnNames="sample_item_id"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"
+            constraintName="fk_tb_id_sample_item"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+            baseTableName="tb_identification_result"
+            baseColumnNames="tested_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_tb_id_tested_by"/>
+        <addForeignKeyConstraint
+            baseTableName="tb_identification_result"
+            baseColumnNames="reviewed_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_tb_id_reviewed_by"/>
+    </changeSet>
+
+    <changeSet id="add-tb-identification-result-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_identification_result" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for result values.</comment>
+        <sql>
+            ALTER TABLE clinlims.tb_identification_result
+            ADD CONSTRAINT chk_tb_id_result
+            CHECK (result IN ('MTB', 'NTM', 'NEGATIVE', 'CONTAMINATED'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.tb_identification_result DROP CONSTRAINT IF EXISTS chk_tb_id_result;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-tb-identification-method-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_identification_result" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for method values.</comment>
+        <sql>
+            ALTER TABLE clinlims.tb_identification_result
+            ADD CONSTRAINT chk_tb_id_method
+            CHECK (method IN ('SMEAR_MORPHOLOGY', 'BHI_BA', 'RAPID_TEST_KIT'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.tb_identification_result DROP CONSTRAINT IF EXISTS chk_tb_id_method;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-tb-identification-result-indexes" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_identification_result" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for query optimization.</comment>
+        <createIndex tableName="tb_identification_result" indexName="idx_tb_id_sample_item">
+            <column name="sample_item_id"/>
+        </createIndex>
+        <createIndex tableName="tb_identification_result" indexName="idx_tb_id_result">
+            <column name="result"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="create-tb-identification-result-reference-table" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'TB_IDENTIFICATION_RESULT'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating TB_IDENTIFICATION_RESULT reference table entry for audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="TB_IDENTIFICATION_RESULT"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='TB_IDENTIFICATION_RESULT'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- DEPARTMENT SAMPLE TYPE ASSOCIATION                       -->
+    <!-- Creates a many-to-many relationship between TestSection  -->
+    <!-- (Department) and TypeOfSample, enabling departments to   -->
+    <!-- define which sample types they support.                  -->
+    <!-- ======================================================== -->
+
+    <!-- Create sequence for primary key generation -->
+    <changeSet id="create-department-sample-type-seq" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="department_sample_type_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <createSequence sequenceName="department_sample_type_seq"
+                        schemaName="clinlims"
+                        startValue="1"
+                        incrementBy="1"/>
+    </changeSet>
+
+    <!-- Create the join table -->
+    <changeSet id="create-department-sample-type-table" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <createTable tableName="department_sample_type" schemaName="clinlims">
+            <column name="id" type="NUMERIC(10,0)">
+                <constraints primaryKey="true" primaryKeyName="pk_department_sample_type"/>
+            </column>
+            <column name="test_section_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sample_type_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="CHAR(1)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sort_order" type="INTEGER" defaultValueNumeric="0"/>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Add unique constraint to prevent duplicate associations -->
+    <changeSet id="add-department-sample-type-unique-constraint" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="uk_dept_sample_type" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <addUniqueConstraint tableName="department_sample_type"
+                             schemaName="clinlims"
+                             columnNames="test_section_id, sample_type_id"
+                             constraintName="uk_dept_sample_type"/>
+    </changeSet>
+
+    <!-- Add foreign key to test_section (department) -->
+    <changeSet id="add-department-sample-type-dept-fk" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_dept_sample_type_dept" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <addForeignKeyConstraint baseTableName="department_sample_type"
+                                 baseTableSchemaName="clinlims"
+                                 baseColumnNames="test_section_id"
+                                 referencedTableName="test_section"
+                                 referencedTableSchemaName="clinlims"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_dept_sample_type_dept"
+                                 onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Add foreign key to type_of_sample -->
+    <changeSet id="add-department-sample-type-sample-fk" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_dept_sample_type_sample" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <addForeignKeyConstraint baseTableName="department_sample_type"
+                                 baseTableSchemaName="clinlims"
+                                 baseColumnNames="sample_type_id"
+                                 referencedTableName="type_of_sample"
+                                 referencedTableSchemaName="clinlims"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_dept_sample_type_sample"
+                                 onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Add index on test_section_id for faster lookups by department -->
+    <changeSet id="add-department-sample-type-dept-idx" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_dept_sample_type_dept" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="idx_dept_sample_type_dept"
+                     tableName="department_sample_type"
+                     schemaName="clinlims">
+            <column name="test_section_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Add index on sample_type_id for faster lookups by sample type -->
+    <changeSet id="add-department-sample-type-sample-idx" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_dept_sample_type_sample" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="idx_dept_sample_type_sample"
+                     tableName="department_sample_type"
+                     schemaName="clinlims">
+            <column name="sample_type_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

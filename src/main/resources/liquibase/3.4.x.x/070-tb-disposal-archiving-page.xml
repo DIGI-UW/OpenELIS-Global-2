@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- STEP 1: MOVE REPORTING PAGE FROM 7 TO 8 -->
+    <!-- This allows Disposal to be inserted at page 7 -->
+    <!-- ======================================================== -->
+    <changeSet id="move-tb-reporting-page-to-8" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Tuberculosis Laboratory' AND n.is_template = true
+                AND np.page_order = 7 AND np.title = 'Reporting'
+            </sqlCheck>
+        </preConditions>
+        <comment>Move Reporting page from order 7 to order 8</comment>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="8"/>
+            <where>
+                notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)
+                AND page_order = 7
+                AND title = 'Reporting'
+            </where>
+        </update>
+
+        <rollback>
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="page_order" value="7"/>
+                <where>
+                    notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)
+                    AND page_order = 8
+                    AND title = 'Reporting'
+                </where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <!-- Update reporting template to order 8 -->
+    <changeSet id="update-tb-reporting-template-to-8" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE id = 207 AND display_order = 7
+            </sqlCheck>
+        </preConditions>
+        <comment>Update TB Reporting workflow page template to display_order 8</comment>
+
+        <update tableName="workflow_page_template" schemaName="clinlims">
+            <column name="display_order" value="8"/>
+            <where>id = 207 AND workflow_category = 'TB'</where>
+        </update>
+
+        <rollback>
+            <update tableName="workflow_page_template" schemaName="clinlims">
+                <column name="display_order" value="7"/>
+                <where>id = 207 AND workflow_category = 'TB'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- STEP 2: CREATE PAGE 7: DISPOSAL & ARCHIVING -->
+    <!-- Adds a disposal/archiving page to the TB workflow -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tb-page-7-disposal" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Tuberculosis Laboratory' AND n.is_template = true AND np.page_order = 7
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Disposal and Archiving page for Tuberculosis Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Disposal &amp; Archiving"/>
+            <column name="instructions" value="Dispose of completed samples or transfer to biorepository for long-term archiving. Track disposal reasons, methods, and maintain complete audit trail."/>
+            <column name="content" value="Disposal &amp; Archiving - Sample lifecycle management"/>
+            <column name="page_order" value="7"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true) AND page_order = 7</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- WORKFLOW PAGE TEMPLATE FOR DISPOSAL & ARCHIVING -->
+    <!-- Adds template for dropdown selection -->
+    <!-- ======================================================== -->
+    <changeSet id="insert-tb-disposal-page-template" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE id = 208
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert TB Disposal and Archiving workflow page template</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="208"/>
+            <column name="name" value="Disposal &amp; Archiving"/>
+            <column name="display_key" value="workflow.page.tb.disposal"/>
+            <column name="description" value="Sample disposal and biorepository archiving"/>
+            <column name="default_instructions" value="Dispose of completed samples or transfer to biorepository for long-term archiving. Track disposal reasons, methods, and maintain complete audit trail."/>
+            <column name="default_content" value="Disposal &amp; Archiving - Sample lifecycle management"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="display_order" value="7"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="TB"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>id = 208 AND workflow_category = 'TB'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

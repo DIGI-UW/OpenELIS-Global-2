@@ -1229,7 +1229,10 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.badRequest().body(error);
         }
 
-        int updatedCount = bulkOperationService.bulkUpdateStatus(pageId, request.getSampleIds(), status, sysUserId);
+        // Check if skipAutoRouting is provided (defaults to false if not provided)
+        boolean skipAutoRouting = request.getSkipAutoRouting() != null && request.getSkipAutoRouting();
+        int updatedCount = bulkOperationService.bulkUpdateStatus(pageId, request.getSampleIds(), status, sysUserId,
+                skipAutoRouting);
 
         // Also persist any additional data fields (containerType, collectionDate, etc.)
         Map<String, Object> additionalData = new HashMap<>();
@@ -1883,6 +1886,7 @@ public class NotebookBulkOperationController extends BaseRestController {
         private String collectorId;
         private String volume;
         private String notes;
+        private Boolean skipAutoRouting; // If true, skip T150 auto-routing (frontend handles routing)
 
         public List<Integer> getSampleIds() {
             return sampleIds;
@@ -1946,6 +1950,14 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         public void setNotes(String notes) {
             this.notes = notes;
+        }
+
+        public Boolean getSkipAutoRouting() {
+            return skipAutoRouting;
+        }
+
+        public void setSkipAutoRouting(Boolean skipAutoRouting) {
+            this.skipAutoRouting = skipAutoRouting;
         }
     }
 

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- TB_MEDIA_PREPARATION TABLE -->
+    <!-- Tracks culture media batch preparation with QC status -->
+    <!-- Used for traceability of inoculated samples to media batches -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tb-media-preparation-sequence" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="tb_media_preparation_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for tb_media_preparation table.</comment>
+        <createSequence sequenceName="tb_media_preparation_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-tb-media-preparation-table" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="tb_media_preparation" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating TB_MEDIA_PREPARATION table for culture media batch tracking.</comment>
+        <createTable tableName="tb_media_preparation">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="tb_media_preparation_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_tb_media_preparation"/>
+            </column>
+            <column name="batch_id" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_tb_media_batch_id"/>
+            </column>
+            <column name="media_type" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="preparation_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiry_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="qc_status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="qc_notes" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="prepared_by" type="NUMERIC(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="add-tb-media-preparation-foreign-keys" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_media_preparation" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraint to tb_media_preparation table.</comment>
+        <addForeignKeyConstraint
+            baseTableName="tb_media_preparation"
+            baseColumnNames="prepared_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_tb_media_prepared_by"/>
+    </changeSet>
+
+    <changeSet id="add-tb-media-preparation-media-type-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_media_preparation" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for media_type values.</comment>
+        <sql>
+            ALTER TABLE clinlims.tb_media_preparation
+            ADD CONSTRAINT chk_tb_media_type
+            CHECK (media_type IN ('LJ', 'MGIT'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.tb_media_preparation DROP CONSTRAINT IF EXISTS chk_tb_media_type;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-tb-media-preparation-qc-status-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_media_preparation" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for qc_status values.</comment>
+        <sql>
+            ALTER TABLE clinlims.tb_media_preparation
+            ADD CONSTRAINT chk_tb_media_qc_status
+            CHECK (qc_status IN ('PENDING', 'PASSED', 'FAILED'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.tb_media_preparation DROP CONSTRAINT IF EXISTS chk_tb_media_qc_status;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-tb-media-preparation-expiry-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_media_preparation" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint to ensure expiry_date is after preparation_date.</comment>
+        <sql>
+            ALTER TABLE clinlims.tb_media_preparation
+            ADD CONSTRAINT chk_tb_media_expiry
+            CHECK (expiry_date > preparation_date);
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.tb_media_preparation DROP CONSTRAINT IF EXISTS chk_tb_media_expiry;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-tb-media-preparation-indexes" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_media_preparation" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for query optimization.</comment>
+        <createIndex tableName="tb_media_preparation" indexName="idx_tb_media_batch_id">
+            <column name="batch_id"/>
+        </createIndex>
+        <createIndex tableName="tb_media_preparation" indexName="idx_tb_media_type">
+            <column name="media_type"/>
+        </createIndex>
+        <createIndex tableName="tb_media_preparation" indexName="idx_tb_media_qc_status">
+            <column name="qc_status"/>
+        </createIndex>
+        <createIndex tableName="tb_media_preparation" indexName="idx_tb_media_expiry">
+            <column name="expiry_date"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="create-tb-media-preparation-reference-table" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'TB_MEDIA_PREPARATION'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating TB_MEDIA_PREPARATION reference table entry for audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="TB_MEDIA_PREPARATION"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='TB_MEDIA_PREPARATION'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
