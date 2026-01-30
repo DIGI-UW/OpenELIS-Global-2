@@ -74,7 +74,7 @@ services:
             - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
             - ./volume/configuration:/var/lib/openelis-global/configuration
             - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
-        devices:
+        # devices:
             # Serial port device mapping example for RS232 analyzer integration (Task Reference: T039, M2)
             # Uncomment and adjust device path as needed for your system
             # - /dev/ttyUSB0:/dev/ttyUSB0
