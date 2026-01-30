@@ -94,9 +94,6 @@ public class PatientMergeExecutionTest {
         patient2.setMergedIntoPatientId(null);
         patient2.setPerson(person2);
 
-        // Mock FHIR service to return false (no FHIR resources) by default
-        when(fhirPatientLinkService.hasFhirResource(any())).thenReturn(false);
-
         // Mock consolidation service to return empty result
         when(consolidationService.consolidateClinicalData(any(), any(), any()))
                 .thenReturn(new PatientMergeConsolidationService.ConsolidationResult());
