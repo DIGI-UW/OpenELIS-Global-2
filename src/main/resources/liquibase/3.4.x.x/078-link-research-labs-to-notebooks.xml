@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- LINK RESEARCH LAB TEST SECTIONS TO NOTEBOOK TEMPLATES -->
+    <!-- Creates notebook_departments entries so users can see notebooks -->
+    <!-- ======================================================== -->
+
+    <changeSet id="link-traditional-medicine-notebook-to-department" author="openelis-notebook-linking">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Traditional &amp; Modern Medicine Research Lab'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_departments nd
+                JOIN clinlims.notebook n ON nd.notebook_id = n.id
+                JOIN clinlims.test_section ts ON nd.test_section_id = ts.id
+                WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab'
+                  AND ts.name = 'Traditional &amp; Modern Medicine Research Lab'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Traditional Medicine notebook to test section for user access</comment>
+
+        <sql>
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT n.id, ts.id
+            FROM clinlims.notebook n, clinlims.test_section ts
+            WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab'
+              AND n.is_template = true
+              AND ts.name = 'Traditional &amp; Modern Medicine Research Lab';
+        </sql>
+    </changeSet>
+
+    <changeSet id="link-bioanalytical-notebook-to-department" author="openelis-notebook-linking">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bioanalytical Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Bioanalytical Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_departments nd
+                JOIN clinlims.notebook n ON nd.notebook_id = n.id
+                JOIN clinlims.test_section ts ON nd.test_section_id = ts.id
+                WHERE n.title = 'Bioanalytical Laboratory'
+                  AND ts.name = 'Bioanalytical Laboratory'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Bioanalytical notebook to test section for user access</comment>
+
+        <sql>
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT n.id, ts.id
+            FROM clinlims.notebook n, clinlims.test_section ts
+            WHERE n.title = 'Bioanalytical Laboratory'
+              AND n.is_template = true
+              AND ts.name = 'Bioanalytical Laboratory';
+        </sql>
+    </changeSet>
+
+    <changeSet id="link-bioequivalence-notebook-to-department" author="openelis-notebook-linking">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Bioequivalence Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_departments nd
+                JOIN clinlims.notebook n ON nd.notebook_id = n.id
+                JOIN clinlims.test_section ts ON nd.test_section_id = ts.id
+                WHERE n.title = 'Bioequivalence Laboratory'
+                  AND ts.name = 'Bioequivalence Laboratory'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Bioequivalence notebook to test section for user access</comment>
+
+        <sql>
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT n.id, ts.id
+            FROM clinlims.notebook n, clinlims.test_section ts
+            WHERE n.title = 'Bioequivalence Laboratory'
+              AND n.is_template = true
+              AND ts.name = 'Bioequivalence Laboratory';
+        </sql>
+    </changeSet>
+
+    <changeSet id="link-gbd-notebook-to-department" author="openelis-notebook-linking">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Genomics &amp; Bioinformatics Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Genomics &amp; Bioinformatics Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_departments nd
+                JOIN clinlims.notebook n ON nd.notebook_id = n.id
+                JOIN clinlims.test_section ts ON nd.test_section_id = ts.id
+                WHERE n.title = 'Genomics &amp; Bioinformatics Laboratory'
+                  AND ts.name = 'Genomics &amp; Bioinformatics Laboratory'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Genomics &amp; Bioinformatics notebook to test section for user access</comment>
+
+        <sql>
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT n.id, ts.id
+            FROM clinlims.notebook n, clinlims.test_section ts
+            WHERE n.title = 'Genomics &amp; Bioinformatics Laboratory'
+              AND n.is_template = true
+              AND ts.name = 'Genomics &amp; Bioinformatics Laboratory';
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

@@ -197,7 +197,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
                 JOIN clinlims.notebook n ON np.notebook_id = n.id
-                WHERE n.title = 'Bioanalytical Laboratory' AND n.is_template = true AND (np.page_title ILIKE '%result%' OR np.page_title ILIKE '%entry%' OR np.page_order = 3)
+                WHERE n.title = 'Bioanalytical Laboratory' AND n.is_template = true AND np.page_order = 3
             </sqlCheck>
         </preConditions>
         <comment>Add role restrictions for Result Entry per permission matrix</comment>

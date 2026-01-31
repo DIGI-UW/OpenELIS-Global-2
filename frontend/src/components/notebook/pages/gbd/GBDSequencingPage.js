@@ -84,13 +84,6 @@ export const GBDSequencingPage = ({
   const canModifyData = canSaveData(pagePermissionLevel);
   const isViewOnly = isReadOnly(pagePermissionLevel); // Bioinformaticians (View), Principal Investigator (View)
 
-  // Layer 1: Page access check - use both GBD-specific and role-based checking
-  const canAccessPage = canAccessSequencing() || hasAnyRole(allowedRoles);
-
-  // Layer 2: Action permission check - what can user do on this page
-  const pagePermissionLevel = getPagePermissionLevel("Sequencing");
-  const canPerformSequencing = canSaveData(pagePermissionLevel);
-
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
