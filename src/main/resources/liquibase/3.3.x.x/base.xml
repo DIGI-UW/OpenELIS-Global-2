@@ -37,8 +37,6 @@
 
   <!-- Add device connectivity fields for network-connected storage equipment -->
   <include relativeToChangelogFile="true" file="023-storage-device-connectivity.xml"/>
-  <!-- Standardize site_information.lastupdated before 024 inserts -->
-  <include relativeToChangelogFile="true" file="049-rename-site-information-lastupdated.xml"/>
   <!-- Freezer monitoring - formerly 011 (renumbered to avoid duplicate sequence) -->
   <include relativeToChangelogFile="true" file="024-freezer-monitoring-schema.xml"/>
   <include relativeToChangelogFile="true" file="generic-program-menu.xml"/>
