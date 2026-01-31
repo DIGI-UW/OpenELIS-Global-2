@@ -165,4 +165,20 @@
     <!-- Add bioequivalence roles to AllLabUnits so admin users get automatic access -->
     <include file="liquibase/3.4.x.x/076-add-bioequivalence-roles-to-alllabunits.xml"/>
 
+    <!-- Bioanalytical Permission Matrix Fix -->
+    <!-- Corrects page role assignments to match test.pdf Section 11 permission matrix exactly -->
+    <include file="liquibase/3.4.x.x/047-bioanalytical-page-roles-corrected.xml"/>
+
+    <!-- Bioequivalence Permission Matrix Fix -->
+    <!-- Corrects page role assignments to match test.pdf Section 11 permission matrix exactly -->
+    <include file="liquibase/3.4.x.x/052-bioequivalence-page-roles-corrected.xml"/>
+
+    <!-- Traditional Medicine Permission Matrix Fix -->
+    <!-- Corrects page role assignments to match permission matrix from Section 11 exactly -->
+    <include file="liquibase/3.4.x.x/021-tradmed-page-roles-corrected.xml"/>
+
+    <!-- GBD Permission Matrix Fix -->
+    <!-- Corrects page role assignments to match permission matrix from Section 11 exactly -->
+    <include file="liquibase/3.4.x.x/055-gbd-page-roles-corrected.xml"/>
+
 </databaseChangeLog>

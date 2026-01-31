@@ -65,11 +65,26 @@ function TraditionalMedicineSampleCreationPage({
     getPagePermissionLevel,
     canRegisterData,
     canSaveData,
-    canApproveData,
+    canPerformWork,
     hasFullControl,
     isReadOnly,
-    canAccessStage1,
+    canAccessRegistration,
+    TMMRD_ROLES,
+    TMMRD_PAGES,
   } = useTMMRDPermissions();
+
+  // Page access check
+  const canAccessPage = canAccessRegistration();
+
+  // Get user's action-level permission for this page
+  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.REGISTRATION);
+
+  // Function-level permissions per permission matrix
+  // Matrix: Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (View), Lab Manager (Full), Principal Investigator (View)
+  const canCreateSamples = canRegisterData(pagePermissionLevel); // Lab Technicians (Yes), Researchers (Yes), Lab Manager (Full)
+  const canModifyData = canSaveData(pagePermissionLevel);
+  const canMarkComplete = canPerformWork(pagePermissionLevel);
+  const isViewOnly = isReadOnly(pagePermissionLevel); // Pharmacognosists (View), Principal Investigator (View)
 
   // All state must be declared before any conditional returns (React Hooks Rule)
   const [samples, setSamples] = useState([]);
@@ -77,25 +92,7 @@ function TraditionalMedicineSampleCreationPage({
   const [loading, setLoading] = useState(true);
   const [importModalOpen, setImportModalOpen] = useState(false);
 
-  // STAGE 1 allowed roles per TMMRD SRS Section 11
-  const allowedRoles = [
-    "TMMRD Lab Technician",
-    "TMMRD Researcher",
-    "TMMRD Pharmacognosist",
-    "TMMRD Lab Manager",
-    "TMMRD Principal Investigator",
-  ];
-
-  const canAccessPage = canAccessStage1();
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(
-    "Sample Intake & Registration",
-  );
-  const canImportSamples = canRegisterData(pagePermissionLevel);
-  const canEditMetadata = canSaveData(pagePermissionLevel);
-  const canSaveDataLocal = canEditMetadata; // Alias for button conditions
-  const canAuthenticateSamples = canApproveData(pagePermissionLevel);
+  // Remove duplicate permissions - using the matrix-compliant versions above
 
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
@@ -438,7 +435,13 @@ function TraditionalMedicineSampleCreationPage({
       <AccessDeniedMessage
         page="Sample Intake & Registration"
         reason="This page requires specific Traditional Medicine laboratory roles to access."
-        requiredRoles={allowedRoles}
+        requiredRoles={[
+          TMMRD_ROLES.LAB_TECHNICIAN,
+          TMMRD_ROLES.RESEARCHER,
+          TMMRD_ROLES.PHARMACOGNOSIST,
+          TMMRD_ROLES.LAB_MANAGER,
+          TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
+        ]}
       />
     );
   }
@@ -503,7 +506,20 @@ function TraditionalMedicineSampleCreationPage({
           size="sm"
           renderIcon={Upload}
           onClick={() => setImportModalOpen(true)}
-          disabled={!canImportSamples}
+          disabled={!canCreateSamples || isViewOnly}
+          title={
+            !canCreateSamples
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.registration.insufficientPermissions.import",
+                  defaultMessage: "Insufficient permissions to import samples. Only Lab Technicians, Researchers, and Lab Manager (with appropriate permissions) can create samples.",
+                })
+              : isViewOnly
+                ? intl.formatMessage({
+                    id: "notebook.tradmed.registration.viewOnlyAccess",
+                    defaultMessage: "You have view-only access to this page.",
+                  })
+                : undefined
+          }
         >
           <FormattedMessage
             id="notebook.page.tradmed.importManifest"
@@ -516,7 +532,24 @@ function TraditionalMedicineSampleCreationPage({
           size="sm"
           renderIcon={Checkmark}
           onClick={markAsRegistered}
-          disabled={!canSaveDataLocal || selectedSampleIds.length === 0}
+          disabled={
+            !canMarkComplete ||
+            isViewOnly ||
+            selectedSampleIds.length === 0
+          }
+          title={
+            !canMarkComplete
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.registration.insufficientPermissions.complete",
+                  defaultMessage: "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
+                })
+              : isViewOnly
+                ? intl.formatMessage({
+                    id: "notebook.tradmed.registration.viewOnlyAccess",
+                    defaultMessage: "You have view-only access to this page.",
+                  })
+                : undefined
+          }
         >
           <FormattedMessage
             id="notebook.page.tradmed.markAsRegistered"

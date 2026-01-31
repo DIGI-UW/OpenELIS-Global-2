@@ -69,8 +69,16 @@ function TraditionalMedicineAuthenticationPage({
   const { hasAnyRole } = usePermissions();
 
   // TMMRD permissions per SRS Section 11
-  const { getPagePermissionLevel, canApproveData, canAccessStage2 } =
-    useTMMRDPermissions();
+  const {
+    getPagePermissionLevel,
+    canPerformWork,
+    canAuthenticate,
+    hasFullControl,
+    isReadOnly,
+    canAccessAuthentication,
+    TMMRD_ROLES,
+    TMMRD_PAGES,
+  } = useTMMRDPermissions();
 
   // All state must be declared before any conditional returns (React Hooks Rule)
   const [samples, setSamples] = useState([]);
@@ -89,20 +97,23 @@ function TraditionalMedicineAuthenticationPage({
   );
   const [authNotes, setAuthNotes] = useState("");
 
-  // STAGE 2 allowed roles per TMMRD SRS Section 11 - Pharmacognosists lead authentication
+  // Page access check
+  const canAccessPage = canAccessAuthentication();
+
+  // Get user's permission level for this specific page
+  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.AUTHENTICATION);
+
+  // STAGE 2 allowed roles per TMMRD matrix
   const allowedRoles = [
-    "TMMRD Pharmacognosist",
-    "TMMRD Lab Manager",
-    "TMMRD Principal Investigator",
+    TMMRD_ROLES.PHARMACOGNOSIST,
+    TMMRD_ROLES.LAB_MANAGER,
+    TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
   ];
 
-  const canAccessPage = canAccessStage2();
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(
-    "Authentication & Verification",
-  );
-  const canAuthenticate = canApproveData(pagePermissionLevel);
+  // Function-level permissions based on matrix
+  const canPerformAuthentication = canAuthenticate(pagePermissionLevel);
+  const canMarkComplete = canPerformWork(pagePermissionLevel);
+  const isViewOnly = isReadOnly(pagePermissionLevel);
 
   // Check if page has a real ID
   const hasRealPageId =
@@ -506,15 +517,39 @@ function TraditionalMedicineAuthenticationPage({
   if (!canAccessPage) {
     return (
       <AccessDeniedMessage
-        page="Authentication & Verification"
-        reason="This page requires specific Traditional Medicine authentication roles to access."
+        page="Traditional Medicine Botanical Authentication & Verification"
+        reason={intl.formatMessage({
+          id: "notebook.tradmed.authentication.accessDenied",
+          defaultMessage:
+            "Access to the Traditional Medicine Botanical Authentication & Verification page requires specialized botanical expertise. This page is restricted to roles responsible for species identification and authentication verification.",
+        })}
         requiredRoles={allowedRoles}
+        additionalInfo={intl.formatMessage({
+          id: "notebook.tradmed.authentication.accessRequirements",
+          defaultMessage:
+            "Required permissions: Botanical identification, Morphological analysis, Microscopic examination, and Molecular authentication capabilities.",
+        })}
       />
     );
   }
 
   return (
     <div className="tradmed-authentication-page">
+      {/* View-only banner */}
+      {isViewOnly && (
+        <div className="view-only-banner">
+          <div className="view-only-content">
+            <WarningAltFilled size={16} />
+            <span>
+              <FormattedMessage
+                id="notebook.tradmed.authentication.viewOnlyMode"
+                defaultMessage="View-only mode: Your role permissions allow viewing but not modifying authentication data."
+              />
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="page-section-header">
         <h4>
@@ -567,7 +602,24 @@ function TraditionalMedicineAuthenticationPage({
           renderIcon={Edit}
           onClick={openAuthModal}
           disabled={
-            !canAuthenticate || selectedSampleIds.length === 0 || !hasRealPageId
+            !canPerformAuthentication ||
+            selectedSampleIds.length === 0 ||
+            !hasRealPageId ||
+            isViewOnly
+          }
+          title={
+            !canPerformAuthentication || isViewOnly
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.tooltip.authenticatePermission",
+                  defaultMessage:
+                    "Requires TMMRD Pharmacognosist or higher role to perform authentication",
+                })
+              : selectedSampleIds.length === 0
+                ? intl.formatMessage({
+                    id: "notebook.tradmed.tooltip.selectSamples",
+                    defaultMessage: "Select samples to authenticate",
+                  })
+                : ""
           }
         >
           <FormattedMessage
@@ -584,7 +636,21 @@ function TraditionalMedicineAuthenticationPage({
               size="sm"
               renderIcon={CheckmarkFilled}
               onClick={handleMarkComplete}
-              disabled={isCompleting || !hasRealPageId}
+              disabled={
+                isCompleting ||
+                !hasRealPageId ||
+                !canMarkComplete ||
+                isViewOnly
+              }
+              title={
+                !canMarkComplete || isViewOnly
+                  ? intl.formatMessage({
+                      id: "notebook.tradmed.tooltip.markCompletePermission",
+                      defaultMessage:
+                        "Requires TMMRD Pharmacognosist or higher role to mark authentication complete",
+                    })
+                  : ""
+              }
             >
               <FormattedMessage
                 id="notebook.tradmed.auth.markComplete"
@@ -643,7 +709,7 @@ function TraditionalMedicineAuthenticationPage({
               samples={pendingSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={true}
+              showSelection={!isViewOnly}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

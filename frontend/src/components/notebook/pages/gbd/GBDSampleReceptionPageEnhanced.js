@@ -58,21 +58,30 @@ export const GBDSampleReceptionPageEnhanced = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { getPagePermissionLevel, canSaveData, canAccessSampleReception } =
-    useGBDPermissions();
+  const {
+    getPagePermissionLevel,
+    canSaveData,
+    canRegisterData,
+    canPerformWork,
+    hasFullControl,
+    isReadOnly,
+    canAccessRegistration,
+    GBD_ROLES,
+    GBD_PAGES,
+  } = useGBDPermissions();
 
-  const allowedRoles = [
-    "GBD Lab Technician",
-    "GBD Bioinformatician",
-    "GBD Manager",
-    "GBD Principal Investigator",
-  ];
+  // Page access check
+  const canAccessPage = canAccessRegistration();
 
-  const canAccessPage = canAccessSampleReception();
-  const pagePermissionLevel = getPagePermissionLevel(
-    "Sample Reception & Registration",
-  );
-  const canCreateSamples = canSaveData(pagePermissionLevel);
+  // Get user's action-level permission for this page
+  const pagePermissionLevel = getPagePermissionLevel(GBD_PAGES.REGISTRATION);
+
+  // Function-level permissions per permission matrix
+  // Matrix: Lab Technicians (Yes), Bioinformaticians (View), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
+  const canCreateSamples = canRegisterData(pagePermissionLevel); // Lab Technicians (Yes), Lab Manager (Full)
+  const canModifyData = canSaveData(pagePermissionLevel);
+  const canMarkReceived = canPerformWork(pagePermissionLevel);
+  const isViewOnly = isReadOnly(pagePermissionLevel); // Bioinformaticians (View), Principal Investigator (View)
 
   const componentMounted = useRef(false);
   const [isManifestModalOpen, setIsManifestModalOpen] = useState(false);
@@ -277,12 +286,17 @@ export const GBDSampleReceptionPageEnhanced = ({
       <AccessDeniedMessage
         page="Sample Reception & Registration"
         reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={allowedRoles}
+        requiredRoles={[
+          GBD_ROLES.LAB_TECHNICIAN,
+          GBD_ROLES.BIOINFORMATICIAN,
+          GBD_ROLES.MANAGER,
+          GBD_ROLES.PRINCIPAL_INVESTIGATOR,
+        ]}
       />
     );
   }
 
-  const isReadOnly = !canCreateSamples;
+  const isReadOnlyAccess = isViewOnly;
 
   return (
     <div className="gbd-sample-reception-page">
@@ -335,7 +349,20 @@ export const GBDSampleReceptionPageEnhanced = ({
           size="sm"
           renderIcon={Upload}
           onClick={() => setIsManifestModalOpen(true)}
-          disabled={isReadOnly}
+          disabled={!canCreateSamples || isViewOnly}
+          title={
+            !canCreateSamples
+              ? intl.formatMessage({
+                  id: "notebook.gbd.reception.insufficientPermissions.import",
+                  defaultMessage: "Insufficient permissions to import samples. Only Lab Technicians and Lab Manager (with appropriate permissions) can create samples.",
+                })
+              : isViewOnly
+                ? intl.formatMessage({
+                    id: "notebook.gbd.reception.viewOnlyAccess",
+                    defaultMessage: "You have view-only access to this page.",
+                  })
+                : undefined
+          }
         >
           <FormattedMessage
             id="notebook.gbd.reception.importManifest"
@@ -347,7 +374,24 @@ export const GBDSampleReceptionPageEnhanced = ({
           size="sm"
           renderIcon={Checkmark}
           onClick={handleMarkComplete}
-          disabled={isReadOnly || selectedSampleIds.length === 0}
+          disabled={
+            !canMarkReceived ||
+            isViewOnly ||
+            selectedSampleIds.length === 0
+          }
+          title={
+            !canMarkReceived
+              ? intl.formatMessage({
+                  id: "notebook.gbd.reception.insufficientPermissions.complete",
+                  defaultMessage: "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
+                })
+              : isViewOnly
+                ? intl.formatMessage({
+                    id: "notebook.gbd.reception.viewOnlyAccess",
+                    defaultMessage: "You have view-only access to this page.",
+                  })
+                : undefined
+          }
         >
           <FormattedMessage
             id="notebook.gbd.reception.markComplete"

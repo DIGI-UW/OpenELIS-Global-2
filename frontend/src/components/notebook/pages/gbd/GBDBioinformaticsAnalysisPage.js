@@ -75,24 +75,26 @@ export const GBDBioinformaticsAnalysisPage = ({
   const {
     getPagePermissionLevel,
     canSaveData,
-    canAccessBioinformaticsAnalysis,
+    canPerformWork,
+    hasFullControl,
+    isReadOnly,
+    canAccessBioinformatics,
+    GBD_ROLES,
+    GBD_PAGES,
   } = useGBDPermissions();
-  const { hasAnyRole } = usePermissions();
 
-  const allowedRoles = [
-    "GBD Bioinformatician",
-    "GBD Manager",
-    "GBD Principal Investigator",
-    "GBD Data Manager",
-  ];
+  // Page access check
+  const canAccessPage = canAccessBioinformatics();
 
-  const canAccessPage =
-    canAccessBioinformaticsAnalysis() || hasAnyRole(allowedRoles);
+  // Get user's action-level permission for this page
+  const pagePermissionLevel = getPagePermissionLevel(GBD_PAGES.BIOINFORMATICS);
 
-  const pagePermissionLevel = getPagePermissionLevel(
-    "Bioinformatics Analysis & Data Submission",
-  );
-  const canPerformBioinformatics = canSaveData(pagePermissionLevel);
+  // Function-level permissions per permission matrix
+  // Matrix: Lab Technicians (No), Bioinformaticians (Full), Lab Manager (View), Principal Investigator (View), Data Managers (View)
+  const canPerformBioinformatics = canPerformWork(pagePermissionLevel); // For Bioinformaticians with Full access
+  const canModifyData = canSaveData(pagePermissionLevel);
+  const canMarkComplete = canPerformWork(pagePermissionLevel);
+  const isViewOnly = isReadOnly(pagePermissionLevel);
 
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
@@ -602,8 +604,13 @@ export const GBDBioinformaticsAnalysisPage = ({
     return (
       <AccessDeniedMessage
         page="Bioinformatics Analysis & Data Submission"
-        reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={allowedRoles}
+        reason="This page requires specific GBD bioinformatics roles to access."
+        requiredRoles={[
+          GBD_ROLES.BIOINFORMATICIAN,
+          GBD_ROLES.MANAGER,
+          GBD_ROLES.PRINCIPAL_INVESTIGATOR,
+          GBD_ROLES.DATA_MANAGER,
+        ]}
       />
     );
   }
@@ -759,7 +766,21 @@ export const GBDBioinformaticsAnalysisPage = ({
           disabled={
             selectedSampleIds.length === 0 ||
             !hasRealPageId ||
+            !canPerformBioinformatics ||
+            isViewOnly
+          }
+          title={
             !canPerformBioinformatics
+              ? intl.formatMessage({
+                  id: "notebook.gbd.bioinformatics.insufficientPermissions.record",
+                  defaultMessage: "Insufficient permissions to record bioinformatics analysis. Only Bioinformaticians (with Full access) can record analysis.",
+                })
+              : isViewOnly
+                ? intl.formatMessage({
+                    id: "notebook.gbd.bioinformatics.viewOnlyAccess",
+                    defaultMessage: "You have view-only access to this page.",
+                  })
+                : undefined
           }
         >
           <FormattedMessage
@@ -778,7 +799,21 @@ export const GBDBioinformaticsAnalysisPage = ({
             eligibleForCompletionCount === 0 ||
             isCompleting ||
             !hasRealPageId ||
-            !canPerformBioinformatics
+            !canMarkComplete ||
+            isViewOnly
+          }
+          title={
+            !canMarkComplete
+              ? intl.formatMessage({
+                  id: "notebook.gbd.bioinformatics.insufficientPermissions.complete",
+                  defaultMessage: "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
+                })
+              : isViewOnly
+                ? intl.formatMessage({
+                    id: "notebook.gbd.bioinformatics.viewOnlyAccess",
+                    defaultMessage: "You have view-only access to this page.",
+                  })
+                : undefined
           }
         >
           <FormattedMessage
@@ -1005,7 +1040,9 @@ export const GBDBioinformaticsAnalysisPage = ({
           id: "label.cancel",
           defaultMessage: "Cancel",
         })}
-        primaryButtonDisabled={isApplyingAnalysis}
+        primaryButtonDisabled={
+          isApplyingAnalysis || !canModifyData || isViewOnly
+        }
         size="lg"
       >
         {isApplyingAnalysis && <Loading withOverlay={false} small />}

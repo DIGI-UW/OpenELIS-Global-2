@@ -1104,7 +1104,19 @@ function BioequivalenceTestAssignmentPage({
                   }}
                 >
                   {selectedSamples.size > 0 && (
-                    <Button kind="primary" onClick={handleShowAssignmentForm}>
+                    <Button
+                      kind="primary"
+                      onClick={handleShowAssignmentForm}
+                      disabled={!canAssignTests}
+                      title={
+                        !canAssignTests
+                          ? intl.formatMessage({
+                              id: "notebook.bioequivalence.testassignment.insufficientPermissions",
+                              defaultMessage: "Insufficient permissions to configure test assignments. Only Pharmacists and Lab Supervisors can assign tests.",
+                            })
+                          : undefined
+                      }
+                    >
                       <FormattedMessage
                         id="notebook.bioequivalence.testassignment.configureTests"
                         defaultMessage="Configure Tests for {count} Sample(s)"
@@ -1118,7 +1130,15 @@ function BioequivalenceTestAssignmentPage({
                     <Button
                       kind="secondary"
                       onClick={handleMarkCompleteAndAdvance}
-                      disabled={isAdvancing}
+                      disabled={isAdvancing || !canAssignTests}
+                      title={
+                        !canAssignTests
+                          ? intl.formatMessage({
+                              id: "notebook.bioequivalence.testassignment.completeInsufficientPermissions",
+                              defaultMessage: "Insufficient permissions to complete test assignments. Only Pharmacists and Lab Supervisors can complete assignments.",
+                            })
+                          : undefined
+                      }
                     >
                       <FormattedMessage
                         id="notebook.bioequivalence.testassignment.completeAndAdvance"

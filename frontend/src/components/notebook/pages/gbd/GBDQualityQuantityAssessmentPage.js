@@ -68,26 +68,26 @@ export const GBDQualityQuantityAssessmentPage = ({
   const {
     getPagePermissionLevel,
     canSaveData,
-    canAccessQualityQuantityAssessment,
+    canPerformWork,
+    hasFullControl,
+    isReadOnly,
+    canAccessQC,
+    GBD_ROLES,
+    GBD_PAGES,
   } = useGBDPermissions();
-  const { hasAnyRole } = usePermissions();
 
-  // Quality & Quantity Assessment allowed roles - per GBD permission mapping
-  const allowedRoles = [
-    "GBD Lab Technician",
-    "GBD Manager",
-    "GBD Principal Investigator",
-  ];
+  // Page access check
+  const canAccessPage = canAccessQC();
 
-  // Layer 1: Page access check - use both GBD-specific and role-based checking
-  const canAccessPage =
-    canAccessQualityQuantityAssessment() || hasAnyRole(allowedRoles);
+  // Get user's action-level permission for this page
+  const pagePermissionLevel = getPagePermissionLevel(GBD_PAGES.QC);
 
-  // Layer 2: Action permission check - what can user do on this page
-  const pagePermissionLevel = getPagePermissionLevel(
-    "Quality & Quantity Assessment",
-  );
-  const canPerformQC = canSaveData(pagePermissionLevel);
+  // Function-level permissions per permission matrix
+  // Matrix: Lab Technicians (Yes), Bioinformaticians (No), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
+  const canPerformQC = canPerformWork(pagePermissionLevel); // Lab Technicians (Yes), Lab Manager (Full)
+  const canModifyData = canSaveData(pagePermissionLevel);
+  const canMarkComplete = canPerformWork(pagePermissionLevel);
+  const isViewOnly = isReadOnly(pagePermissionLevel); // Principal Investigator (View)
 
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
@@ -528,7 +528,11 @@ export const GBDQualityQuantityAssessmentPage = ({
       <AccessDeniedMessage
         page="Quality & Quantity Assessment"
         reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={allowedRoles}
+        requiredRoles={[
+          GBD_ROLES.LAB_TECHNICIAN,
+          GBD_ROLES.MANAGER,
+          GBD_ROLES.PRINCIPAL_INVESTIGATOR,
+        ]}
       />
     );
   }
@@ -671,7 +675,23 @@ export const GBDQualityQuantityAssessmentPage = ({
           renderIcon={Chemistry}
           onClick={openModal}
           disabled={
-            selectedSampleIds.length === 0 || !hasRealPageId || !canPerformQC
+            selectedSampleIds.length === 0 ||
+            !hasRealPageId ||
+            !canPerformQC ||
+            isViewOnly
+          }
+          title={
+            !canPerformQC
+              ? intl.formatMessage({
+                  id: "notebook.gbd.qc.insufficientPermissions.record",
+                  defaultMessage: "Insufficient permissions to record QC data. Only Lab Technicians and Lab Manager (with appropriate permissions) can perform QC.",
+                })
+              : isViewOnly
+                ? intl.formatMessage({
+                    id: "notebook.gbd.qc.viewOnlyAccess",
+                    defaultMessage: "You have view-only access to this page.",
+                  })
+                : undefined
           }
         >
           <FormattedMessage
@@ -690,7 +710,21 @@ export const GBDQualityQuantityAssessmentPage = ({
             eligibleForCompletionCount === 0 ||
             isCompleting ||
             !hasRealPageId ||
-            !canPerformQC
+            !canMarkComplete ||
+            isViewOnly
+          }
+          title={
+            !canMarkComplete
+              ? intl.formatMessage({
+                  id: "notebook.gbd.qc.insufficientPermissions.complete",
+                  defaultMessage: "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
+                })
+              : isViewOnly
+                ? intl.formatMessage({
+                    id: "notebook.gbd.qc.viewOnlyAccess",
+                    defaultMessage: "You have view-only access to this page.",
+                  })
+                : undefined
           }
         >
           <FormattedMessage
@@ -909,7 +943,7 @@ export const GBDQualityQuantityAssessmentPage = ({
           id: "label.cancel",
           defaultMessage: "Cancel",
         })}
-        primaryButtonDisabled={isApplyingQC}
+        primaryButtonDisabled={isApplyingQC || !canModifyData || isViewOnly}
         size="lg"
       >
         {isApplyingQC && <Loading withOverlay={false} small />}

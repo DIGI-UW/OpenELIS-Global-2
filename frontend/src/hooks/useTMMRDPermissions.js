@@ -3,104 +3,213 @@ import { usePermissions } from "./usePermissions";
 /**
  * TMMRD (Traditional Medicine & Modern Research Development) Permissions Hook
  *
- * Based on bioanalytical permissions model with TMMRD-specific adaptations
+ * Based on permission matrix from Section 11 requirements
  * Implements three-layer RBAC system per TMMRD SRS Section 11:
  *
  * Layer 1: System Roles (Lab Technician, Researcher, Pharmacognosist, Lab Manager, Principal Investigator)
  * Layer 2: Page-level Access (which roles can access each page)
  * Layer 3: Action-level Permissions (what actions roles can perform)
  *
- * Permission Levels:
+ * Permission Levels from Matrix:
  * - VIEW: Read-only access
- * - REGISTER: Can register/import samples (Stage 1)
- * - UPDATE: Can edit and update data
+ * - YES: Can perform work and update data
  * - APPROVE: Can approve operations
  * - FULL: Complete control including save and submit
- * - LIMITED: Restricted access with minimal modifications
- * - YES: Can perform work (legacy from SRS table)
+ * - FINAL_APPROVE: Can provide final approval
+ * - NO: No access (excluded from page/function)
  */
 export const useTMMRDPermissions = () => {
-  const { userSessionDetails, hasRole, hasAnyRole, hasLabUnitRole } =
+  const { userSessionDetails, hasRole, hasAnyRole, hasLabUnitRole, isGlobalAdmin } =
     usePermissions();
 
   // Traditional Medicine lab unit name
   const TMMRD_LAB_UNIT = "TraditionalMedicine";
 
+  // Traditional Medicine Roles
+  const TMMRD_ROLES = {
+    LAB_TECHNICIAN: "TMMRD Lab Technician",
+    RESEARCHER: "TMMRD Researcher",
+    PHARMACOGNOSIST: "TMMRD Pharmacognosist",
+    LAB_MANAGER: "TMMRD Lab Manager",
+    PRINCIPAL_INVESTIGATOR: "TMMRD Principal Investigator",
+  };
+
+  // Traditional Medicine Pages
+  const TMMRD_PAGES = {
+    REGISTRATION: "Registration",
+    AUTHENTICATION: "Authentication",
+    PROCESSING: "Processing",
+    EXTRACTION: "Extraction",
+    ANALYSIS: "Analysis",
+    PRODUCT_DEVELOPMENT: "Product Development",
+    APPROVAL: "Approval",
+    HERBARIUM: "Herbarium",
+  };
+
   // Permission hierarchy (lowest to highest)
   const permissionHierarchy = [
     "VIEW", // Read-only
-    "LIMITED", // Minimal modifications
-    "REGISTER", // Can import/register samples
-    "UPDATE", // Can edit data
-    "YES", // Can perform work (legacy compatibility)
+    "YES", // Can perform work and update data
     "APPROVE", // Can approve operations
+    "FINAL_APPROVE", // Can provide final approval
     "FULL", // Complete control
   ];
 
   /**
-   * Get the user's permission level for a specific page based on their roles
+   * Get the user's permission level for a specific page based on the permission matrix
    */
   const getPagePermissionLevel = (pageName) => {
-    if (!userSessionDetails?.roles) {
-      return "VIEW";
-    }
-
-    // Debug logging can be enabled if needed
-    // console.log("TMMRD Permissions Debug:", {
-    //   pageName,
-    //   userRoles: userSessionDetails.roles
-    // });
-
-    // Determine permission level based on user's highest role
-    // Using the TMMRD role hierarchy per SRS Section 11
-    // Check lab unit roles for Traditional Medicine
-    if (hasLabUnitRole(TMMRD_LAB_UNIT, "TMMRD Principal Investigator")) {
+    // Global admins get full access
+    if (isGlobalAdmin()) {
       return "FULL";
     }
-    if (hasLabUnitRole(TMMRD_LAB_UNIT, "TMMRD Lab Manager")) {
-      return "FULL";
-    }
-    if (hasLabUnitRole(TMMRD_LAB_UNIT, "TMMRD Pharmacognosist")) {
-      return "APPROVE";
-    }
-    if (hasLabUnitRole(TMMRD_LAB_UNIT, "TMMRD Researcher")) {
-      return "UPDATE";
-    }
-    if (hasLabUnitRole(TMMRD_LAB_UNIT, "TMMRD Lab Technician")) {
-      return "REGISTER";
+
+    if (!userSessionDetails?.userLabRolesMap) {
+      return null;
     }
 
-    // Default for users without TMMRD roles
-    return "VIEW";
+    const userTMMRDRoles = Object.values(TMMRD_ROLES).filter((role) => {
+      // Check "AllLabUnits" for global lab access
+      const allLabUnitsRoles = userSessionDetails.userLabRolesMap["AllLabUnits"] || [];
+      if (allLabUnitsRoles.includes(role)) {
+        return true;
+      }
+      // Check specific lab unit
+      const labUnitRoles = userSessionDetails.userLabRolesMap[TMMRD_LAB_UNIT] || [];
+      return labUnitRoles.includes(role);
+    });
+
+    if (userTMMRDRoles.length === 0) {
+      return null;
+    }
+
+    // Permission map based on the permission matrix from Section 11
+    const permissionMap = {
+      [TMMRD_PAGES.REGISTRATION]: {
+        // Matrix: Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (View), Lab Manager (Full), Principal Investigator (View)
+        [TMMRD_ROLES.LAB_TECHNICIAN]: "YES",
+        [TMMRD_ROLES.RESEARCHER]: "YES",
+        [TMMRD_ROLES.PHARMACOGNOSIST]: "VIEW",
+        [TMMRD_ROLES.LAB_MANAGER]: "FULL",
+        [TMMRD_ROLES.PRINCIPAL_INVESTIGATOR]: "VIEW",
+      },
+      [TMMRD_PAGES.AUTHENTICATION]: {
+        // Matrix: Lab Technicians (No), Researchers (No), Pharmacognosists (Yes), Lab Manager (Full), Principal Investigator (View)
+        // Lab Technicians and Researchers excluded per matrix (No)
+        [TMMRD_ROLES.PHARMACOGNOSIST]: "YES",
+        [TMMRD_ROLES.LAB_MANAGER]: "FULL",
+        [TMMRD_ROLES.PRINCIPAL_INVESTIGATOR]: "VIEW",
+      },
+      [TMMRD_PAGES.PROCESSING]: {
+        // Matrix: Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (View), Lab Manager (Full), Principal Investigator (View)
+        [TMMRD_ROLES.LAB_TECHNICIAN]: "YES",
+        [TMMRD_ROLES.RESEARCHER]: "YES",
+        [TMMRD_ROLES.PHARMACOGNOSIST]: "VIEW",
+        [TMMRD_ROLES.LAB_MANAGER]: "FULL",
+        [TMMRD_ROLES.PRINCIPAL_INVESTIGATOR]: "VIEW",
+      },
+      [TMMRD_PAGES.EXTRACTION]: {
+        // Matrix: Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (View), Lab Manager (Full), Principal Investigator (View)
+        [TMMRD_ROLES.LAB_TECHNICIAN]: "YES",
+        [TMMRD_ROLES.RESEARCHER]: "YES",
+        [TMMRD_ROLES.PHARMACOGNOSIST]: "VIEW",
+        [TMMRD_ROLES.LAB_MANAGER]: "FULL",
+        [TMMRD_ROLES.PRINCIPAL_INVESTIGATOR]: "VIEW",
+      },
+      [TMMRD_PAGES.ANALYSIS]: {
+        // Matrix: Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (View), Lab Manager (Full), Principal Investigator (View)
+        [TMMRD_ROLES.LAB_TECHNICIAN]: "YES",
+        [TMMRD_ROLES.RESEARCHER]: "YES",
+        [TMMRD_ROLES.PHARMACOGNOSIST]: "VIEW",
+        [TMMRD_ROLES.LAB_MANAGER]: "FULL",
+        [TMMRD_ROLES.PRINCIPAL_INVESTIGATOR]: "VIEW",
+      },
+      [TMMRD_PAGES.PRODUCT_DEVELOPMENT]: {
+        // Matrix: Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (Yes), Lab Manager (Full), Principal Investigator (View)
+        [TMMRD_ROLES.LAB_TECHNICIAN]: "YES",
+        [TMMRD_ROLES.RESEARCHER]: "YES",
+        [TMMRD_ROLES.PHARMACOGNOSIST]: "YES",
+        [TMMRD_ROLES.LAB_MANAGER]: "FULL",
+        [TMMRD_ROLES.PRINCIPAL_INVESTIGATOR]: "VIEW",
+      },
+      [TMMRD_PAGES.APPROVAL]: {
+        // Matrix: Lab Technicians (No), Researchers (No), Pharmacognosists (Approve), Lab Manager (Final Approve), Principal Investigator (Final Approve)
+        // Lab Technicians and Researchers excluded per matrix (No)
+        [TMMRD_ROLES.PHARMACOGNOSIST]: "APPROVE",
+        [TMMRD_ROLES.LAB_MANAGER]: "FINAL_APPROVE",
+        [TMMRD_ROLES.PRINCIPAL_INVESTIGATOR]: "FINAL_APPROVE",
+      },
+      [TMMRD_PAGES.HERBARIUM]: {
+        // Matrix: Lab Technicians (View), Researchers (View), Pharmacognosists (Full), Lab Manager (Full), Principal Investigator (View)
+        [TMMRD_ROLES.LAB_TECHNICIAN]: "VIEW",
+        [TMMRD_ROLES.RESEARCHER]: "VIEW",
+        [TMMRD_ROLES.PHARMACOGNOSIST]: "FULL",
+        [TMMRD_ROLES.LAB_MANAGER]: "FULL",
+        [TMMRD_ROLES.PRINCIPAL_INVESTIGATOR]: "VIEW",
+      },
+    };
+
+    const pagePermissions = permissionMap[pageName] || {};
+
+    // Get all permission levels for this page from all user roles
+    const userPermissionLevels = userTMMRDRoles
+      .map((role) => pagePermissions[role])
+      .filter((level) => level !== undefined);
+
+    // If no permissions found, return null
+    if (userPermissionLevels.length === 0) {
+      return null;
+    }
+
+    // Return the highest permission level among all user roles
+    const highestLevel = userPermissionLevels.reduce((highest, current) => {
+      const currentIndex = permissionHierarchy.indexOf(current);
+      const highestIndex = permissionHierarchy.indexOf(highest);
+      return currentIndex > highestIndex ? current : highest;
+    });
+
+    return highestLevel || null;
   };
 
   /**
    * Check if user can save/update data
+   * Allows: YES, APPROVE, FINAL_APPROVE, FULL
    */
   const canSaveData = (permissionLevel) => {
-    return ["UPDATE", "YES", "REGISTER", "APPROVE", "FULL"].includes(
+    return ["YES", "APPROVE", "FINAL_APPROVE", "FULL"].includes(
       permissionLevel?.toUpperCase(),
     );
   };
 
   /**
    * Check if user can register/import samples
+   * Allows: YES, APPROVE, FINAL_APPROVE, FULL
    */
   const canRegisterData = (permissionLevel) => {
-    return ["REGISTER", "UPDATE", "YES", "APPROVE", "FULL"].includes(
+    return ["YES", "APPROVE", "FINAL_APPROVE", "FULL"].includes(
       permissionLevel?.toUpperCase(),
     );
   };
 
   /**
    * Check if user can approve operations
+   * Allows: APPROVE, FINAL_APPROVE, FULL
    */
   const canApproveData = (permissionLevel) => {
-    return ["APPROVE", "FULL"].includes(permissionLevel?.toUpperCase());
+    return ["APPROVE", "FINAL_APPROVE", "FULL"].includes(permissionLevel?.toUpperCase());
+  };
+
+  /**
+   * Check if user can provide final approval
+   * Allows: FINAL_APPROVE, FULL
+   */
+  const canFinalApprove = (permissionLevel) => {
+    return ["FINAL_APPROVE", "FULL"].includes(permissionLevel?.toUpperCase());
   };
 
   /**
    * Check if user has full control
+   * Allows: FULL only
    */
   const hasFullControl = (permissionLevel) => {
     return permissionLevel?.toUpperCase() === "FULL";
@@ -108,25 +217,38 @@ export const useTMMRDPermissions = () => {
 
   /**
    * Check if user has read-only access
+   * True for: VIEW only
    */
   const isReadOnly = (permissionLevel) => {
-    return ["VIEW", "LIMITED"].includes(permissionLevel?.toUpperCase());
+    return permissionLevel?.toUpperCase() === "VIEW";
   };
 
   /**
    * Check if user can modify data
+   * Allows: YES, APPROVE, FINAL_APPROVE, FULL
    */
   const canModify = (permissionLevel) => {
-    return ["LIMITED", "UPDATE", "YES", "REGISTER", "APPROVE", "FULL"].includes(
+    return ["YES", "APPROVE", "FINAL_APPROVE", "FULL"].includes(
       permissionLevel?.toUpperCase(),
     );
   };
 
   /**
-   * Check if user can perform work (legacy YES permission)
+   * Check if user can perform work (YES permission)
+   * Allows: YES, APPROVE, FINAL_APPROVE, FULL
    */
   const canPerformWork = (permissionLevel) => {
-    return ["YES", "UPDATE", "REGISTER", "APPROVE", "FULL"].includes(
+    return ["YES", "APPROVE", "FINAL_APPROVE", "FULL"].includes(
+      permissionLevel?.toUpperCase(),
+    );
+  };
+
+  /**
+   * Check if user can authenticate samples
+   * Allows: YES, APPROVE, FINAL_APPROVE, FULL (for Authentication page specifically)
+   */
+  const canAuthenticate = (permissionLevel) => {
+    return ["YES", "APPROVE", "FINAL_APPROVE", "FULL"].includes(
       permissionLevel?.toUpperCase(),
     );
   };
@@ -150,18 +272,18 @@ export const useTMMRDPermissions = () => {
 
   /**
    * TMMRD-specific role checks based on SRS Section 11
-   * Now using lab unit roles for Traditional Medicine with TMMRD prefix
+   * Using lab unit roles for Traditional Medicine with TMMRD prefix
    */
   const isTMMRDLabTechnician = () =>
-    hasLabUnitRole(TMMRD_LAB_UNIT, "TMMRD Lab Technician");
+    hasLabUnitRole(TMMRD_LAB_UNIT, TMMRD_ROLES.LAB_TECHNICIAN);
   const isTMMRDResearcher = () =>
-    hasLabUnitRole(TMMRD_LAB_UNIT, "TMMRD Researcher");
+    hasLabUnitRole(TMMRD_LAB_UNIT, TMMRD_ROLES.RESEARCHER);
   const isTMMRDPharmacognosist = () =>
-    hasLabUnitRole(TMMRD_LAB_UNIT, "TMMRD Pharmacognosist");
+    hasLabUnitRole(TMMRD_LAB_UNIT, TMMRD_ROLES.PHARMACOGNOSIST);
   const isTMMRDLabManager = () =>
-    hasLabUnitRole(TMMRD_LAB_UNIT, "TMMRD Lab Manager");
+    hasLabUnitRole(TMMRD_LAB_UNIT, TMMRD_ROLES.LAB_MANAGER);
   const isTMMRDPrincipalInvestigator = () =>
-    hasLabUnitRole(TMMRD_LAB_UNIT, "TMMRD Principal Investigator");
+    hasLabUnitRole(TMMRD_LAB_UNIT, TMMRD_ROLES.PRINCIPAL_INVESTIGATOR);
 
   /**
    * Helper function to check if user has any of the specified TMMRD lab unit roles
@@ -171,70 +293,110 @@ export const useTMMRDPermissions = () => {
   };
 
   /**
-   * Stage-specific permission checks per TMMRD workflow
+   * Page-specific access checks per TMMRD permission matrix
+   * Based on Section 11 permission matrix requirements
    */
-  const canAccessStage1 = () => {
-    // Sample Intake & Registration - Lab Technicians lead, others view
+  const canAccessRegistration = () => {
+    // Matrix: Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (View), Lab Manager (Full), Principal Investigator (View)
     const allowedRoles = [
-      "TMMRD Lab Technician",
-      "TMMRD Researcher",
-      "TMMRD Pharmacognosist",
-      "TMMRD Lab Manager",
-      "TMMRD Principal Investigator",
+      TMMRD_ROLES.LAB_TECHNICIAN,
+      TMMRD_ROLES.RESEARCHER,
+      TMMRD_ROLES.PHARMACOGNOSIST,
+      TMMRD_ROLES.LAB_MANAGER,
+      TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
     ];
     return hasAnyTMMRDRole(allowedRoles);
   };
 
-  const canAccessStage2 = () => {
-    // Authentication & Storage - Pharmacognosists lead
+  const canAccessAuthentication = () => {
+    // Matrix: Lab Technicians (No), Researchers (No), Pharmacognosists (Yes), Lab Manager (Full), Principal Investigator (View)
     const allowedRoles = [
-      "TMMRD Pharmacognosist",
-      "TMMRD Lab Manager",
-      "TMMRD Principal Investigator",
+      // Lab Technicians and Researchers excluded per matrix (No)
+      TMMRD_ROLES.PHARMACOGNOSIST,
+      TMMRD_ROLES.LAB_MANAGER,
+      TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
     ];
     return hasAnyTMMRDRole(allowedRoles);
   };
 
-  const canAccessStage3to4 = () => {
-    // Preparation & Extraction - Lab Technicians and Researchers
+  const canAccessProcessing = () => {
+    // Matrix: Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (View), Lab Manager (Full), Principal Investigator (View)
     const allowedRoles = [
-      "TMMRD Lab Technician",
-      "TMMRD Researcher",
-      "TMMRD Pharmacognosist",
-      "TMMRD Lab Manager",
-      "TMMRD Principal Investigator",
+      TMMRD_ROLES.LAB_TECHNICIAN,
+      TMMRD_ROLES.RESEARCHER,
+      TMMRD_ROLES.PHARMACOGNOSIST,
+      TMMRD_ROLES.LAB_MANAGER,
+      TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
     ];
     return hasAnyTMMRDRole(allowedRoles);
   };
 
-  const canAccessStage5to6 = () => {
-    // Analytics & Testing - Researchers lead
+  const canAccessExtraction = () => {
+    // Matrix: Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (View), Lab Manager (Full), Principal Investigator (View)
     const allowedRoles = [
-      "TMMRD Researcher",
-      "TMMRD Pharmacognosist",
-      "TMMRD Lab Manager",
-      "TMMRD Principal Investigator",
+      TMMRD_ROLES.LAB_TECHNICIAN,
+      TMMRD_ROLES.RESEARCHER,
+      TMMRD_ROLES.PHARMACOGNOSIST,
+      TMMRD_ROLES.LAB_MANAGER,
+      TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
     ];
     return hasAnyTMMRDRole(allowedRoles);
   };
 
-  const canAccessStage7 = () => {
-    // Formulation - Pharmacognosists lead
+  const canAccessAnalysis = () => {
+    // Matrix: Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (View), Lab Manager (Full), Principal Investigator (View)
     const allowedRoles = [
-      "TMMRD Lab Technician",
-      "TMMRD Researcher",
-      "TMMRD Pharmacognosist",
-      "TMMRD Lab Manager",
-      "TMMRD Principal Investigator",
+      TMMRD_ROLES.LAB_TECHNICIAN,
+      TMMRD_ROLES.RESEARCHER,
+      TMMRD_ROLES.PHARMACOGNOSIST,
+      TMMRD_ROLES.LAB_MANAGER,
+      TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
     ];
     return hasAnyTMMRDRole(allowedRoles);
   };
 
-  const canAccessStage8 = () => {
-    // Archival - Management only
-    const allowedRoles = ["TMMRD Lab Manager", "TMMRD Principal Investigator"];
+  const canAccessProductDevelopment = () => {
+    // Matrix: Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (Yes), Lab Manager (Full), Principal Investigator (View)
+    const allowedRoles = [
+      TMMRD_ROLES.LAB_TECHNICIAN,
+      TMMRD_ROLES.RESEARCHER,
+      TMMRD_ROLES.PHARMACOGNOSIST,
+      TMMRD_ROLES.LAB_MANAGER,
+      TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
+    ];
     return hasAnyTMMRDRole(allowedRoles);
   };
+
+  const canAccessApproval = () => {
+    // Matrix: Lab Technicians (No), Researchers (No), Pharmacognosists (Approve), Lab Manager (Final Approve), Principal Investigator (Final Approve)
+    const allowedRoles = [
+      // Lab Technicians and Researchers excluded per matrix (No)
+      TMMRD_ROLES.PHARMACOGNOSIST,
+      TMMRD_ROLES.LAB_MANAGER,
+      TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
+    ];
+    return hasAnyTMMRDRole(allowedRoles);
+  };
+
+  const canAccessHerbarium = () => {
+    // Matrix: Lab Technicians (View), Researchers (View), Pharmacognosists (Full), Lab Manager (Full), Principal Investigator (View)
+    const allowedRoles = [
+      TMMRD_ROLES.LAB_TECHNICIAN,
+      TMMRD_ROLES.RESEARCHER,
+      TMMRD_ROLES.PHARMACOGNOSIST,
+      TMMRD_ROLES.LAB_MANAGER,
+      TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
+    ];
+    return hasAnyTMMRDRole(allowedRoles);
+  };
+
+  // Legacy stage access functions (kept for backward compatibility)
+  const canAccessStage1 = canAccessRegistration;
+  const canAccessStage2 = canAccessAuthentication;
+  const canAccessStage3to4 = () => canAccessProcessing() || canAccessExtraction();
+  const canAccessStage5to6 = () => canAccessAnalysis() || canAccessProductDevelopment();
+  const canAccessStage7 = canAccessProductDevelopment;
+  const canAccessStage8 = canAccessHerbarium;
 
   return {
     // Core permission checks
@@ -242,6 +404,8 @@ export const useTMMRDPermissions = () => {
     canSaveData,
     canRegisterData,
     canApproveData,
+    canFinalApprove,
+    canAuthenticate,
     hasFullControl,
     isReadOnly,
     canModify,
@@ -263,7 +427,17 @@ export const useTMMRDPermissions = () => {
     isTMMRDPrincipalInvestigator,
     hasAnyTMMRDRole,
 
-    // Stage-specific access checks
+    // Page-specific access checks (TMMRD workflow pages)
+    canAccessRegistration,
+    canAccessAuthentication,
+    canAccessProcessing,
+    canAccessExtraction,
+    canAccessAnalysis,
+    canAccessProductDevelopment,
+    canAccessApproval,
+    canAccessHerbarium,
+
+    // Legacy stage access checks (for backward compatibility)
     canAccessStage1,
     canAccessStage2,
     canAccessStage3to4,
@@ -271,7 +445,10 @@ export const useTMMRDPermissions = () => {
     canAccessStage7,
     canAccessStage8,
 
-    // Utility
+    // Constants
+    TMMRD_ROLES,
+    TMMRD_PAGES,
+    TMMRD_LAB_UNIT,
     permissionHierarchy,
   };
 };
