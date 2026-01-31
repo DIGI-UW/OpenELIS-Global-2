@@ -27,4 +27,7 @@
   <include relativeToChangelogFile="true" file="019-standardize-analyzer-lastupdated-column-names.xml"/>
   <include relativeToChangelogFile="true" file="020-add-has-setup-page-to-analyzer.xml"/>
   <include relativeToChangelogFile="true" file="021-analyzer-structural-config.xml"/>
+  <include relativeToChangelogFile="true" file="022-create-analyzer-type-table.xml"/>
+  <include relativeToChangelogFile="true" file="023-add-menu-items.xml"/>
+  <include relativeToChangelogFile="true" file="024-add-query-timeout-config.xml"/>
 </databaseChangeLog>
