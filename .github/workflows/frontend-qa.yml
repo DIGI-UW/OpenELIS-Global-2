@@ -76,6 +76,11 @@ jobs:
         env:
           CI: true
 
+      # Use .env.example as single source of truth: copy to .env so Docker Compose
+      # loads it for ${VAR} substitution (OE_DB_PASSWORD, SSL_*, etc.).
+      - name: Prepare .env from template
+        run: cp .env.example .env
+
       - name: Build OpenELIS Images and Run containers
         run: docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
 
