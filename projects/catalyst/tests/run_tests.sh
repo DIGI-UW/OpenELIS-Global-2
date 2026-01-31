@@ -38,16 +38,21 @@ wait_for_url() {
 
 start_services() {
   # Run honcho from ROOT_DIR so Procfile.dev relative paths work correctly
-  # Find honcho in gateway's uv virtualenv
-  GATEWAY_VENV="${ROOT_DIR}/catalyst-gateway/.venv"
-  if [ -n "${GATEWAY_VENV}" ] && [ -f "${GATEWAY_VENV}/bin/honcho" ]; then
-    HONCHO_CMD="${GATEWAY_VENV}/bin/honcho"
+  # Find honcho in any component's uv virtualenv
+  HONCHO_CMD=""
+  for component in catalyst-agents catalyst-gateway catalyst-mcp; do
+    if [ -f "${ROOT_DIR}/${component}/.venv/bin/honcho" ]; then
+      HONCHO_CMD="${ROOT_DIR}/${component}/.venv/bin/honcho"
+      break
+    fi
+  done
+
+  if [ -n "${HONCHO_CMD}" ]; then
     (cd "${ROOT_DIR}" && ${HONCHO_CMD} -f "${PROCFILE}" start) \
       >> "${LOG_DIR}/honcho.out" 2>&1 &
   else
-    # Fallback to uv run (must run from ROOT_DIR)
-    (cd "${ROOT_DIR}/catalyst-gateway" && uv run honcho -f "${PROCFILE}" start) \
-      >> "${LOG_DIR}/honcho.out" 2>&1 &
+    echo "ERROR: honcho not found. Run 'uv sync --extra dev' in a component directory first." >&2
+    exit 1
   fi
   HONCHO_PID=$!
 }
