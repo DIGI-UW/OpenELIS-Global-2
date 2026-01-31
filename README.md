@@ -65,6 +65,18 @@ see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
 
 ### For Running OpenELIS Global2 from Source Code
 
+#### Environment variables (docker compose from source)
+
+Docker Compose loads a `.env` file from the project root for variable
+substitution (e.g. `OE_DB_PASSWORD`, `SSL_KEYSTORE_PATH`). The `.env` file is
+gitignored and must not be committed. For local runs, copy the template and
+customize:
+
+    cp .env.example .env
+
+CI copies `.env.example` to `.env` before running docker compose so the same
+template is used.
+
 #### Running OpenELIS Global2 using docker compose With published docker images on dockerhub
 
     docker compose up -d

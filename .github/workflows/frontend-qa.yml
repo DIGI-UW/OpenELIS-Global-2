@@ -76,6 +76,11 @@ jobs:
         env:
           CI: true
 
+      # Use .env.example as single source of truth: copy to .env so Docker Compose
+      # loads it for ${VAR} substitution (OE_DB_PASSWORD, SSL_*, etc.).
+      - name: Prepare .env from template
+        run: cp .env.example .env
+
       - name: Build OpenELIS Images and Run containers
         run: docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
 
@@ -89,6 +94,7 @@ jobs:
         working-directory: frontend
         env:
           E2E_FAIL_FAST: true  # Stop on first failure (saves CI time)
+          CYPRESS_BASE_URL: https://localhost  # Use localhost in CI (containers run locally)
 
       # Upload Cypress screenshots on failure for debugging
       - name: Upload Cypress screenshots on failure

@@ -483,8 +483,11 @@ Ordered by implementation priority (Romain's deployment list):
 | Sysmex XN Series     | HL7           | M1 (HL7Adapter)    | `sysmex_xn.json`                                            | ✅ Existing (SysmexXN-L plugin) | P2       |
 
 - **FR-007**: System MUST integrate with existing analyzer plugins (Mindray,
-  SysmexXN-L, GeneXpertHL7, GeneXpertFile, QuantStudio3) to leverage proven
-  implementations.
+  SysmexXN-L, GeneXpertHL7, GeneXpertFile, QuantStudio3) via the **external
+  plugin JAR pattern** (`plugins/analyzers/`). All new analyzers (M9-M13) MUST
+  also be external plugin JARs following this pattern. See
+  [docs/analyzer.md](../../docs/analyzer.md) for the mandatory external plugin
+  model documentation.
 
 #### Instrument Metadata (Contract Critical - Deadline: 2026-02-28)
 
@@ -704,9 +707,12 @@ Ordered by implementation priority (Romain's deployment list):
 
 ### Assumptions
 
-1. **Existing Plugin Availability**: The 19+ plugins at
-   https://github.com/DIGI-UW/openelisglobal-plugins are accessible and can be
-   integrated. Plugin code quality is sufficient for production use.
+1. **External Plugin JAR Pattern**: All analyzer plugins are external JARs in
+   `plugins/analyzers/` (git submodule from I-TECH-UW/openelisglobal-plugins).
+   Plugins register via `connect()` method called by PluginLoader at startup. NO
+   analyzer code belongs in `src/main/java/`. See
+   [docs/analyzer.md](../../docs/analyzer.md) for the mandatory external plugin
+   model documentation.
 
 2. **Physical Connectivity**: Madagascar laboratories have necessary network
    infrastructure (Ethernet switches, IP addressing) and RS232 hardware
@@ -758,6 +764,12 @@ Ordered by implementation priority (Romain's deployment list):
    > integration. Verify with Madagascar lab whether middleware is deployed. If
    > so, OpenELIS connects to middleware (standard HL7), not directly to
    > analyzer.
+
+7. **External Plugin Architecture**: Per `docs/analyzer.md`, all new analyzer
+   implementations MUST use the external plugin model. Plugins live in
+   `plugins/analyzers/{PluginName}/`, build as standalone JARs, and deploy to
+   `/var/lib/openelis-global/plugins/`. Do NOT create `@Component` classes in
+   `src/main/java/` for analyzer plugins.
 
 ---
 
@@ -831,27 +843,35 @@ complete:
 
 ### Existing Plugin Coverage
 
-| Plugin Name      | Repository             | Analyzers Covered                | Protocol  |
-| ---------------- | ---------------------- | -------------------------------- | --------- |
-| Mindray          | openelisglobal-plugins | BC-5380, BS-360E, BC2000, BA-88A | HL7/RS232 |
-| SysmexXN-L       | openelisglobal-plugins | Sysmex XN Series                 | HL7       |
-| GeneXpertHL7     | openelisglobal-plugins | Cepheid GeneXpert                | HL7       |
-| GeneXpertFile    | openelisglobal-plugins | Cepheid GeneXpert                | File      |
-| GeneXpert (ASTM) | openelisglobal-plugins | Cepheid GeneXpert                | ASTM      |
-| QuantStudio3     | openelisglobal-plugins | QuantStudio 7 Flex (adapted)     | File      |
+| Plugin Name      | Location                           | Analyzers Covered                | Protocol  |
+| ---------------- | ---------------------------------- | -------------------------------- | --------- |
+| Mindray          | `plugins/analyzers/Mindray/`       | BC-5380, BS-360E, BC2000, BA-88A | HL7/RS232 |
+| SysmexXN-L       | `plugins/analyzers/SysmexXN-L/`    | Sysmex XN Series                 | HL7       |
+| GeneXpertHL7     | `plugins/analyzers/GeneXpertHL7/`  | Cepheid GeneXpert                | HL7       |
+| GeneXpertFile    | `plugins/analyzers/GeneXpertFile/` | Cepheid GeneXpert                | File      |
+| GeneXpert (ASTM) | `plugins/analyzers/GeneXpert/`     | Cepheid GeneXpert                | ASTM      |
+| QuantStudio3     | `plugins/analyzers/QuantStudio3/`  | QuantStudio 7 Flex (adapted)     | File      |
 
-**Analyzers requiring new plugins** (5 total):
+> **Architecture rule**: All plugins follow the **external plugin JAR pattern**
+> in `plugins/analyzers/`. NO analyzer code in `src/main/java/`. See
+> [docs/analyzer.md](../../docs/analyzer.md).
 
-- Horiba Pentra 60 (M9)
-- Horiba Micros 60 (M10)
-- Stago STart 4 (M11)
-- Abbott Architect (M12)
-- Hain FluoroCycler XT (M13)
+**Analyzers requiring new external plugin JARs** (5 total, in
+`plugins/analyzers/`):
+
+- Horiba Pentra 60 → `plugins/analyzers/HoribaPentra60/` (M9)
+- Horiba Micros 60 → `plugins/analyzers/HoribaMicros60/` (M10)
+- Stago STart 4 → `plugins/analyzers/StagoSTart4/` (M11)
+- Abbott Architect → `plugins/analyzers/AbbottArchitect/` (M12)
+- Hain FluoroCycler XT → `plugins/analyzers/FluoroCyclerXT/` (M13)
 
 ---
 
 ## References
 
+- **Plugin Architecture Guide (CRITICAL)**:
+  [docs/analyzer.md](../../docs/analyzer.md) — External plugin JAR pattern
+  documentation. All new analyzers MUST follow this guide.
 - **Research Report**:
   `.specify/artifacts/ANALYZER-MADAGASCAR-RESEARCH-REPORT.md`
 - **Executive Summary**:
