@@ -8,6 +8,7 @@
 #local use files
 liqubase.properties
 id_file
+.env
 
 # IDE files #
 .idea/
