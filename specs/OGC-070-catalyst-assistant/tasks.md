@@ -1,11 +1,16 @@
 # Tasks: Catalyst - LLM-Powered Lab Data Assistant
 
-**Branch**: `spec/OGC-070-catalyst-assistant` | **Date**: 2026-01-21  
+**Branch**: `spec/OGC-070-catalyst-assistant` | **Date**: 2026-01-29  
 **Input**: Design documents from `/specs/OGC-070-catalyst-assistant/`  
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
 
 **Organization**: Tasks are organized by **Milestone** per Constitution
 Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
+
+**Terminology**: MVP operates in **CloudSafe mode** (schema-only context, cloud
+providers allowed). **LocalPHI mode** (patient data via MCP tools, local
+providers only) is Phase 2. See plan.md Terminology section for full
+definitions.
 
 ## Format: `[ID] [P?] [M#] Description`
 
@@ -27,8 +32,9 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 - **M3 (Frontend Chat)**: 19 tasks (reduced - token handling deferred)
 - **M4 (Integration)**: ~20 tasks (wiring, controller, export, basic E2E without
   security)
-- **M5 (Security Features)**: ~17 tasks (RBAC, PHI detection, confirmation
-  tokens, security tests)
+- **M5 (Security Framework)**: ~17 tasks (RBAC interface, PHI detection
+  interface, confirmation token interface, framework tests - placeholder
+  implementations, Phase 2 hardening required)
 - **Total**: 183 tasks (sequentially renumbered, no duplicates)
 
 ---
@@ -329,8 +335,8 @@ fallback works
       natural language queries (research.md Section 13). This dataset is used by
       M0.2.9 tasks T037b-T037f for model evaluation.
 - [ ] T037b [M0.2] Run balanced scorecard evaluation on Tier A Orchestrator
-      candidates (Llama 3.1 8B, Gemma 2 9B) — document results in
-      `projects/catalyst/docs/model-evaluation-m0.2.md`
+      candidates (Primary: Gemma 2 9B, Fallback: Llama 3.1 8B) — document
+      results in `projects/catalyst/docs/model-evaluation-m0.2.md`
 - [ ] T037c [M0.2] Run balanced scorecard evaluation on Tier A SQLGen candidates
       (CodeLlama 13B, Llama 3.1 8B fallback) — document results
 - [ ] T037d [M0.2] Write trajectory validation tests per research.md Section
@@ -343,12 +349,6 @@ fallback works
       `projects/catalyst/docs/model-evaluation-m0.2.md` (when Tier B hardware
       unavailable, document skip rationale; NFR-001 satisfied by Tier A + Tier B
       task presence)
-- [ ] T037g [P] [M0.2] Create comprehensive golden query dataset file
-      `projects/catalyst/tests/fixtures/golden_queries.json` with 26+ robust
-      queries including metadata fields for LLM validation toolkit compatibility
-      (ragas, promptfoo, langfuse). Each query MUST include: natural_language,
-      expected_sql, context, difficulty, tables_involved, expected_row_count,
-      explanation (FR-022). File format must be JSON array of query objects.
 
 ### M0.2 Sign-off Checklist
 
@@ -403,14 +403,14 @@ support via accurate schema metadata)
 - [ ] T039 [P] [M1] Write pytest test for RAG retriever in
       `projects/catalyst/catalyst-agents/tests/test_rag_retrieval.py`
 - [ ] T040 [P] [M1] Write pytest test for PostgreSQL schema extraction in
-      `projects/catalyst/catalyst-agents/tests/test_schema_extraction.py`
+      `projects/catalyst/catalyst-mcp/tests/test_schema_extraction.py`
 - [ ] T041 [P] [M1] Write pytest test for `get_relevant_tables` with RAG in
-      `projects/catalyst/catalyst-agents/tests/test_mcp_tools.py` (update
-      existing test)
+      `projects/catalyst/catalyst-mcp/tests/test_mcp_tools.py` (update existing
+      test)
 - [ ] T042 [P] [M1] Write pytest test for `get_table_ddl` in
-      `projects/catalyst/catalyst-agents/tests/test_mcp_tools.py`
+      `projects/catalyst/catalyst-mcp/tests/test_mcp_tools.py`
 - [ ] T043 [P] [M1] Write pytest test for `get_relationships` in
-      `projects/catalyst/catalyst-agents/tests/test_mcp_tools.py`
+      `projects/catalyst/catalyst-mcp/tests/test_mcp_tools.py`
 
 ### M1.3: PostgreSQL Schema Extraction
 
@@ -753,6 +753,8 @@ translations
 - [ ] T093b [M3] Add example prompts i18n keys to
       `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
       (FR-014)
+- [ ] T087a [M3] Add query reformulation suggestions to error messages when SQL
+      generation fails (SC-007 requirement)
 - [ ] T093c [POST-MVP] Polish example prompts with user-tested, domain-expert
       validated queries. MVP uses basic placeholder examples from research.md
       for functional testing only. Polished, production-ready examples deferred
@@ -849,6 +851,9 @@ to M5 to allow independent testing
 - [ ] T108 [M4] Add Agent Card discovery endpoint proxy at
       `/.well-known/agent.json` in
       `src/main/java/org/openelisglobal/catalyst/controller/CatalystRestController.java`
+- [ ] T098a [M4] Implement RouterAgent clarification flow when query is
+      ambiguous (e.g., "samples" without specifying sample/patient/date) per US1
+      scenario 3
 
 ### M4.4: Response Formatting & Export
 
@@ -886,39 +891,49 @@ to M5 to allow independent testing
 
 ---
 
-## Milestone 5: Security Features (Estimate: 2-3 days) [SEQUENTIAL - depends on M4]
+## Milestone 5: Security Framework (Estimate: 2-3 days) [SEQUENTIAL - depends on M4]
 
-**Branch**: `feat/OGC-070-catalyst-assistant-m5-security`  
-**Goal**: Implement and thoroughly test security features with independent unit
-tests before integration  
-**Verification**: Security unit tests pass, security integration tests pass,
-full E2E test with security features passes  
-**FR Coverage**: FR-016 (confirmation token workflow), FR-018 (PHI detection +
-provider routing), FR-019 (audit metadata capture - security fields), FR-021
-(role-based endpoint access control)
+**Branch**: `feat/OGC-070-catalyst-assistant-m5-security-framework`  
+**Goal**: Establish security architecture with placeholder implementations. Full
+hardening deferred to Phase 2 (before patient data use).  
+**Verification**: Framework components in place, basic tests pass (verify
+interfaces work, not security strength)  
+**FR Coverage**: FR-016 (confirmation token workflow - interface), FR-018 (PHI
+detection + provider routing - basic patterns), FR-019 (audit metadata capture -
+security fields), FR-021 (role-based endpoint access control - permissive
+placeholder)
+
+**CRITICAL**: M5 implements **architectural components** (interfaces, extension
+points, configuration flags) with **placeholder/rudimentary implementations**.
+Full hardened implementation MUST be completed in Phase 2 Security Hardening
+milestone BEFORE ANY patient data use.
 
 ### M5.1: Branch Setup
 
 - [ ] T118 [M5] Create milestone branch
-      `feat/OGC-070-catalyst-assistant-m5-security` from `develop` (after M4
-      merged)
+      `feat/OGC-070-catalyst-assistant-m5-security-framework` from `develop`
+      (after M4 merged)
 
-### M5.2: Security Unit Tests (TDD - MANDATORY)
+### M5.2: Security Framework Unit Tests (TDD - MANDATORY)
 
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+> **NOTE: Write these tests FIRST, ensure they FAIL before implementation** >
+> **NOTE: Tests verify interfaces work, NOT security strength (placeholder
+> implementations)**
 
 - [ ] T111a [P] [M5] Write integration test for role-based access control in
       `src/test/java/org/openelisglobal/catalyst/controller/CatalystRestControllerSecurityTest.java`:
       (1) user with `Global Administrator` → 200 OK; (2) user with `Reports` →
       200 OK; (3) user with non-privileged role (e.g. Lab Technician) → 403
       Forbidden; (4) unauthenticated request → 401 or 403 per app behavior
-      (FR-021).
+      (FR-021). **Note**: RBAC check exists but may be permissive in MVP.
 - [ ] T102i [P] [M5] Write pytest test for RouterAgent PHI detection and
       provider routing in
-      `projects/catalyst/catalyst-agents/tests/test_router_agent.py` (FR-018)
+      `projects/catalyst/catalyst-agents/tests/test_router_agent.py` (FR-018).
+      **Note**: PHI patterns are basic regex in MVP; comprehensive patterns in
+      Phase 2.
 - [ ] T102j [P] [M5] Write unit test for confirmation token validation in
       `src/test/java/org/openelisglobal/catalyst/service/CatalystQueryServiceSecurityTest.java`
-      (test token mismatch rejection)
+      (test token mismatch rejection). **Note**: Minimal validation in MVP.
 - [ ] T102k [P] [M5] Write unit test for PHI gating in
       `src/test/java/org/openelisglobal/catalyst/service/CatalystQueryServiceSecurityTest.java`
 
@@ -986,29 +1001,36 @@ provider routing), FR-019 (audit metadata capture - security fields), FR-021
 
 ### M5.8: Verification & PR
 
-- [ ] T120 [M5] Run security unit tests (MUST pass independently)
-- [ ] T121 [M5] Run security integration tests (MUST pass)
+- [ ] T120 [M5] Run security framework unit tests (MUST pass independently -
+      verify interfaces work)
+- [ ] T121 [M5] Run security framework integration tests (MUST pass - verify
+      components connect)
 - [ ] T122 [M5] Run Cypress E2E test with security features individually with
       `npm run cy:run -- --spec "cypress/e2e/catalyst-security.cy.js"`
       (Constitution V.5)
-- [ ] T123 [M5] Verify role-based access control works (privileged users can
-      access, non-privileged users get 403)
-- [ ] T124 [M5] Verify PHI detection routes to local provider or blocks
-      appropriately
-- [ ] T125 [M5] Verify confirmation token workflow (generation, validation,
-      execution)
-- [ ] T126 [M5] Create PR `feat/OGC-070-catalyst-assistant-m5-security` →
-      `develop`
+- [ ] T123 [M5] Verify role-based access control interface works (privileged
+      users can access, non-privileged users get 403)
+- [ ] T124 [M5] Verify PHI detection interface routes to local provider or
+      blocks appropriately (basic patterns only)
+- [ ] T125 [M5] Verify confirmation token workflow interface (generation,
+      validation, execution)
+- [ ] T126 [M5] Create PR
+      `feat/OGC-070-catalyst-assistant-m5-security-framework` → `develop`
 
 ### M5 Sign-off Checklist
 
-- [ ] All security unit tests pass
+**Note**: M5 verifies framework/interfaces work, NOT security strength. Full
+hardened implementation required in Phase 2 before patient data use.
+
+- [ ] All security framework unit tests pass (interface tests)
 - [ ] Cypress E2E: Admin user can query → 200 OK
 - [ ] Cypress E2E: Reports user can query → 200 OK
 - [ ] Cypress E2E: Lab Technician blocked → 403 Forbidden
 - [ ] Cypress E2E: Unauthenticated request → 401/403
-- [ ] PHI detection test: Query with PHI keywords routes to local LLM
-- [ ] Confirmation token: Query requires ACCEPTED state before execution
+- [ ] PHI detection interface: Basic patterns detect MRN/DOB formats
+- [ ] Confirmation token interface: Token generation/validation flow works
+- [ ] **CRITICAL**: Document which security components are placeholder vs
+      implemented (for Phase 2 hardening tracking)
 
 ---
 
@@ -1024,7 +1046,7 @@ graph TD
     M02 --> M2["M2: Backend Core"]
     M02 --> M3["M3: Frontend Chat"]
     M1 --> M4["M4: Integration"]
-    M4 --> M5["M5: Security Features"]
+    M4 --> M5["M5: Security Framework"]
     M2 --> M4
     M3 --> M4
 
@@ -1081,9 +1103,9 @@ graph TD
    Specialization)
 2. **Week 2**: M1 (RAG-based Schema) + M2 (Backend Core) + M3 (Frontend Chat) in
    parallel
-3. **Week 3**: M4 (Integration) + M5 (Security Features) + Testing + Bug fixes
+3. **Week 3**: M4 (Integration) + M5 (Security Framework) + Testing + Bug fixes
 4. **Deploy MVP**: Full chat→agents→SQL→results flow validated with security
-   features
+   framework (placeholder implementations; full hardening in Phase 2)
 
 ### Constitution Checkpoints (MANDATORY)
 
@@ -1096,8 +1118,9 @@ graph TD
 - **After M2**: ORM test + unit tests MUST pass (>80% coverage)
 - **After M3**: Jest tests MUST pass (>70% coverage)
 - **After M4**: Basic E2E test MUST pass (without security features)
-- **After M5**: Security unit tests + security integration tests + full E2E test
-  with security features MUST pass (Constitution V.5)
+- **After M5**: Security framework unit tests + integration tests MUST pass
+  (verify interfaces work, not security strength). Full hardened implementation
+  in Phase 2 (Constitution V.5)
 
 ### Pre-Commit Checklist (MANDATORY)
 
