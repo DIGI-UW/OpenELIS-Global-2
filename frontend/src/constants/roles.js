@@ -46,6 +46,16 @@ export const Roles = {
   BIOANALYTICAL_STUDY_DIRECTOR: "Bioanalytical Study Director",
   BIOANALYTICAL_QA_OFFICER: "Bioanalytical QA Officer",
   BIOANALYTICAL_DATA_MANAGER: "Bioanalytical Data Manager",
+
+  // Bioequivalence Laboratory Roles
+  BIOEQUIVALENCE_SAMPLE_RECEIVER: "Bioequivalence Sample Receiver",
+  BIOEQUIVALENCE_CHEMICAL_ANALYST: "Bioequivalence Chemical Analyst",
+  BIOEQUIVALENCE_PHARMACIST: "Bioequivalence Pharmacist",
+  BIOEQUIVALENCE_RESEARCHER: "Bioequivalence Researcher",
+  BIOEQUIVALENCE_LAB_SUPERVISOR: "Bioequivalence Lab Supervisor",
+  BIOEQUIVALENCE_STUDY_DIRECTOR: "Bioequivalence Study Director",
+  BIOEQUIVALENCE_QA_OFFICER: "Bioequivalence QA Officer",
+  BIOEQUIVALENCE_DATA_MANAGER: "Bioequivalence Data Manager",
 };
 
 /**

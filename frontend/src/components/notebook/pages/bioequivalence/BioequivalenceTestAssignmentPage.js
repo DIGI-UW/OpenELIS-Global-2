@@ -217,12 +217,12 @@ function BioequivalenceTestAssignmentPage({
 
   // PAGE 2 allowed roles per test.pdf Section 11
   const allowedRoles = [
-    "Chemical Analyst",
-    "Pharmacist",
-    "Lab Supervisor",
-    "Study Director",
-    "QA Officer",
-    "Researcher",
+    "Bioequivalence Chemical Analyst",
+    "Bioequivalence Pharmacist",
+    "Bioequivalence Lab Supervisor",
+    "Bioequivalence Study Director",
+    "Bioequivalence QA Officer",
+    "Bioequivalence Researcher",
   ];
 
   const canAccessPage = hasAnyRole(allowedRoles);

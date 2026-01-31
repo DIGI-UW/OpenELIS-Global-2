@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================================= -->
+    <!-- CREATE BIOEQUIVALENCE LAB UNIT                                         -->
+    <!-- Creates Bioequivalence lab unit and assigns bioequivalence roles       -->
+    <!-- following GBD pattern                                                  -->
+    <!-- ======================================================================= -->
+
+    <changeSet id="create-bioequivalence-lab-unit-entry" author="openelis-bioequivalence">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="lab_unit_role_map" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.lab_unit_role_map WHERE lab_unit = 'Bioequivalence'
+            </sqlCheck>
+            <sqlCheck expectedResult="8">
+                SELECT COUNT(*) FROM clinlims.system_role
+                WHERE name IN ('Bioequivalence Sample Receiver', 'Bioequivalence Chemical Analyst', 'Bioequivalence Pharmacist', 'Bioequivalence Researcher', 'Bioequivalence Lab Supervisor', 'Bioequivalence Study Director', 'Bioequivalence QA Officer', 'Bioequivalence Data Manager')
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Bioequivalence lab unit entry in lab_unit_role_map</comment>
+        <insert tableName="lab_unit_role_map" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueSequenceNext="lab_unit_role_map_lab_unit_role_map_id_seq"/>
+            <column name="lab_unit" value="Bioequivalence"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="assign-bioequivalence-roles-to-bioequivalence-lab-unit" author="openelis-bioequivalence">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="lab_roles" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.lab_unit_role_map WHERE lab_unit = 'Bioequivalence'
+            </sqlCheck>
+            <sqlCheck expectedResult="8">
+                SELECT COUNT(*) FROM clinlims.system_role
+                WHERE name IN ('Bioequivalence Sample Receiver', 'Bioequivalence Chemical Analyst', 'Bioequivalence Pharmacist', 'Bioequivalence Researcher', 'Bioequivalence Lab Supervisor', 'Bioequivalence Study Director', 'Bioequivalence QA Officer', 'Bioequivalence Data Manager')
+            </sqlCheck>
+            <!-- Only run if bioequivalence roles are not already assigned -->
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.lab_roles lr
+                JOIN clinlims.system_role sr ON lr.role::int = sr.id
+                WHERE lr.lab_unit_role_map_id = (SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'Bioequivalence')
+                AND sr.name IN ('Bioequivalence Sample Receiver', 'Bioequivalence Chemical Analyst', 'Bioequivalence Pharmacist', 'Bioequivalence Researcher', 'Bioequivalence Lab Supervisor', 'Bioequivalence Study Director', 'Bioequivalence QA Officer', 'Bioequivalence Data Manager')
+            </sqlCheck>
+        </preConditions>
+        <comment>Assign all bioequivalence roles to Bioequivalence lab unit</comment>
+
+        <!-- Bioequivalence Sample Receiver -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'Bioequivalence')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Bioequivalence Sample Receiver')"/>
+        </insert>
+
+        <!-- Bioequivalence Chemical Analyst -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'Bioequivalence')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Bioequivalence Chemical Analyst')"/>
+        </insert>
+
+        <!-- Bioequivalence Pharmacist -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'Bioequivalence')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Bioequivalence Pharmacist')"/>
+        </insert>
+
+        <!-- Bioequivalence Researcher -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'Bioequivalence')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Bioequivalence Researcher')"/>
+        </insert>
+
+        <!-- Bioequivalence Lab Supervisor -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'Bioequivalence')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Bioequivalence Lab Supervisor')"/>
+        </insert>
+
+        <!-- Bioequivalence Study Director -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'Bioequivalence')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Bioequivalence Study Director')"/>
+        </insert>
+
+        <!-- Bioequivalence QA Officer -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'Bioequivalence')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Bioequivalence QA Officer')"/>
+        </insert>
+
+        <!-- Bioequivalence Data Manager -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'Bioequivalence')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Bioequivalence Data Manager')"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

@@ -118,7 +118,8 @@ export const useBioanalyticalPermissions = () => {
       }
 
       const userBioanalyticalRoles = Object.values(BIOANALYTICAL_ROLES).filter(
-        (role) => hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, role),
+        (role) =>
+          hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, role),
       );
 
       if (userBioanalyticalRoles.length === 0) {
@@ -346,42 +347,74 @@ export const useBioanalyticalPermissions = () => {
    * These use strict checking that does NOT bypass for Global Admins
    */
   const isBioanalyticalSampleReceiver = useCallback(
-    () => hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, BIOANALYTICAL_ROLES.SAMPLE_RECEIVER),
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.SAMPLE_RECEIVER,
+      ),
     [hasBioanalyticalLabUnitRoleStrict],
   );
 
   const isBioanalyticalChemicalAnalyst = useCallback(
-    () => hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, BIOANALYTICAL_ROLES.CHEMICAL_ANALYST),
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.CHEMICAL_ANALYST,
+      ),
     [hasBioanalyticalLabUnitRoleStrict],
   );
 
   const isBioanalyticalPharmacist = useCallback(
-    () => hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, BIOANALYTICAL_ROLES.PHARMACIST),
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.PHARMACIST,
+      ),
     [hasBioanalyticalLabUnitRoleStrict],
   );
 
   const isBioanalyticalResearcher = useCallback(
-    () => hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, BIOANALYTICAL_ROLES.RESEARCHER),
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.RESEARCHER,
+      ),
     [hasBioanalyticalLabUnitRoleStrict],
   );
 
   const isBioanalyticalLabSupervisor = useCallback(
-    () => hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, BIOANALYTICAL_ROLES.LAB_SUPERVISOR),
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
+      ),
     [hasBioanalyticalLabUnitRoleStrict],
   );
 
   const isBioanalyticalStudyDirector = useCallback(
-    () => hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, BIOANALYTICAL_ROLES.STUDY_DIRECTOR),
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
+      ),
     [hasBioanalyticalLabUnitRoleStrict],
   );
 
   const isBioanalyticalQAOfficer = useCallback(
-    () => hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, BIOANALYTICAL_ROLES.QA_OFFICER),
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.QA_OFFICER,
+      ),
     [hasBioanalyticalLabUnitRoleStrict],
   );
 
   const isBioanalyticalDataManager = useCallback(
-    () => hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, BIOANALYTICAL_ROLES.DATA_MANAGER),
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.DATA_MANAGER,
+      ),
     [hasBioanalyticalLabUnitRoleStrict],
   );
 
@@ -391,7 +424,9 @@ export const useBioanalyticalPermissions = () => {
    */
   const hasAnyBioanalyticalLabUnitRole = useCallback(
     (roles) => {
-      return roles.some((role) => hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, role));
+      return roles.some((role) =>
+        hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, role),
+      );
     },
     [hasBioanalyticalLabUnitRoleStrict],
   );

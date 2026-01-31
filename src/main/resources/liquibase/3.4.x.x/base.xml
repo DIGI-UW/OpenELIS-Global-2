@@ -155,4 +155,14 @@
     <!-- Add bioanalytical roles to AllLabUnits so admin users get automatic access -->
     <include file="liquibase/3.4.x.x/073-add-bioanalytical-roles-to-alllabunits.xml"/>
 
+    <!-- Bioequivalence Lab Unit Configuration -->
+    <!-- Creates bioequivalence system roles with prefixes -->
+    <include file="liquibase/3.4.x.x/074-bioequivalence-system-roles.xml"/>
+
+    <!-- Creates Bioequivalence lab unit and assigns bioequivalence roles following GBD pattern -->
+    <include file="liquibase/3.4.x.x/075-create-bioequivalence-lab-unit.xml"/>
+
+    <!-- Add bioequivalence roles to AllLabUnits so admin users get automatic access -->
+    <include file="liquibase/3.4.x.x/076-add-bioequivalence-roles-to-alllabunits.xml"/>
+
 </databaseChangeLog>
