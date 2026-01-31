@@ -162,9 +162,9 @@ public class PatientResourceProvider {
             else if (family != null || given != null || name != null) {
                 oePatients = searchByName(family, given, name);
             }
-            // Return all patients (with pagination)
+            // Return all patients (with pagination) - use 1-based page number
             else {
-                oePatients = patientService.getPageOfPatients(0);
+                oePatients = patientService.getPageOfPatients(1);
             }
 
             // Limit results
@@ -244,7 +244,8 @@ public class PatientResourceProvider {
      */
     private List<org.openelisglobal.patient.valueholder.Patient> searchByName(String family, String given,
             String name) {
-        List<org.openelisglobal.patient.valueholder.Patient> allPatients = patientService.getPageOfPatients(0);
+        // Use 1-based page number for pagination
+        List<org.openelisglobal.patient.valueholder.Patient> allPatients = patientService.getPageOfPatients(1);
         List<org.openelisglobal.patient.valueholder.Patient> results = new ArrayList<>();
 
         for (org.openelisglobal.patient.valueholder.Patient patient : allPatients) {
