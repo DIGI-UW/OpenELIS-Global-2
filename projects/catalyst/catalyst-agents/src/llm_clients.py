@@ -5,6 +5,7 @@ from google import genai
 
 from .config import LlmConfig
 
+
 class LLMClient(Protocol):
     """Protocol for LLM clients - all providers must implement this interface."""
 

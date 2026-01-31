@@ -28,15 +28,11 @@ def test_sqlgen_executor_generates_sql_from_schema_context(monkeypatch):
     )
     monkeypatch.setattr(sqlgen_executor, "load_llm_config", lambda: mock_config)
 
-    # Mock LLM client
     class DummyClient:
-        def __init__(self, base_url: str, model: str) -> None:
-            pass
-
         def generate_sql(self, prompt: str) -> str:
             return "SELECT COUNT(*) FROM sample"
 
-    monkeypatch.setattr(sqlgen_executor, "LMStudioClient", DummyClient)
+    monkeypatch.setattr(sqlgen_executor, "create_llm_client", lambda _: DummyClient())
 
     # Call SQLGen with schema context
     schema_context = {
@@ -71,15 +67,14 @@ def test_sqlgen_executor_uses_schema_context_in_prompt(monkeypatch):
     monkeypatch.setattr(sqlgen_executor, "load_llm_config", lambda: mock_config)
 
     class PromptCaptureClient:
-        def __init__(self, base_url: str, model: str) -> None:
-            pass
-
         def generate_sql(self, prompt: str) -> str:
             nonlocal captured_prompt
             captured_prompt = prompt
             return "SELECT * FROM sample"
 
-    monkeypatch.setattr(sqlgen_executor, "LMStudioClient", PromptCaptureClient)
+    monkeypatch.setattr(
+        sqlgen_executor, "create_llm_client", lambda _: PromptCaptureClient()
+    )
 
     schema_context = {"tables": ["sample"], "schema": "sample(id, entered_date)"}
     user_query = "get all samples"
@@ -109,13 +104,10 @@ def test_sqlgen_executor_handles_empty_schema_context(monkeypatch):
     monkeypatch.setattr(sqlgen_executor, "load_llm_config", lambda: mock_config)
 
     class DummyClient:
-        def __init__(self, base_url: str, model: str) -> None:
-            pass
-
         def generate_sql(self, prompt: str) -> str:
             return "-- No relevant tables found"
 
-    monkeypatch.setattr(sqlgen_executor, "LMStudioClient", DummyClient)
+    monkeypatch.setattr(sqlgen_executor, "create_llm_client", lambda _: DummyClient())
 
     schema_context = {"tables": [], "schema": ""}
     user_query = "count samples"
