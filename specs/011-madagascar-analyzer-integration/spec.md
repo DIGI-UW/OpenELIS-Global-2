@@ -439,6 +439,20 @@ the simulated messages.
   ASTM header parsing, HL7 MSH segment sender ID, client IP address, or serial
   port assignment.
 
+  **Identification precedence (deterministic)**:
+
+  1. **Protocol-native identity**:
+     - HL7: MSH sender fields (MSH-3/MSH-4)
+     - ASTM: H-segment identity fields (sender / instrument ID)
+     - File: import configuration for the watched directory + file pattern
+  2. **Transport identity**:
+     - Network client IP (when protocol-native identity is missing/blank)
+     - Serial port assignment (when receiving via RS232 bridge)
+  3. **Conflict handling**:
+     - If multiple analyzers match, the message MUST NOT be processed.
+     - An error record MUST be created with the raw message and matching
+       candidates for operator resolution.
+
 #### Analyzer Coverage (Contract Critical - Deadline: 2026-02-28)
 
 - **FR-006**: System MUST support all 12 contract-required analyzers with
@@ -527,13 +541,24 @@ Ordered by implementation priority (Romain's deployment list):
 - **FR-016**: System MUST track order export status: pending, sent,
   acknowledged, results received, expired.
 
+  **Acknowledgment semantics (by protocol)**:
+
+  - HL7: `ACKNOWLEDGED` means OpenELIS received a valid HL7 ACK for the exported
+    ORM^O01 message (or vendor middleware ACK if middleware is used).
+  - ASTM: `ACKNOWLEDGED` is supported only when the analyzer/bridge provides an
+    explicit acknowledgment signal; otherwise the highest state is `SENT` until
+    results are received.
+  - For the contract deadline, lack of an acknowledgment mechanism MUST NOT
+    block order export; status MUST still progress to `SENT` and eventually to
+    `RESULTS_RECEIVED` when matching results arrive.
+
 - **FR-017**: System MUST support order cancellation with notification to
   analyzers that support cancel messages.
 
 - **FR-018**: System MUST automatically match incoming results to exported
   orders using sample/accession identifiers.
 
-#### GeneXpert Module Management (Post-Deadline)
+#### GeneXpert Module Management (Post-Deadline; Out of Scope for 2026-02-28)
 
 - **FR-019**: System MUST track GeneXpert module status
   (enabled/disabled/replaced) with automatic detection polling.
@@ -544,7 +569,7 @@ Ordered by implementation priority (Romain's deployment list):
 - **FR-021**: System MUST generate alerts when module failure rate exceeds
   configurable thresholds.
 
-#### Maintenance Tracking (Post-Deadline)
+#### Maintenance Tracking (Post-Deadline; Out of Scope for 2026-02-28)
 
 - **FR-022**: System MUST record maintenance events (calibration, preventative,
   curative) with: event type, date, performer, results, and next scheduled date.
