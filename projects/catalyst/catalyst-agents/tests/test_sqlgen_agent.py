@@ -23,6 +23,8 @@ def test_sqlgen_executor_generates_sql_from_schema_context(monkeypatch):
         provider="lmstudio",
         lmstudio_base_url="http://localhost:1234",
         lmstudio_model="local-model",
+        gemini_api_key="",
+        gemini_model="gemini-pro",
     )
     monkeypatch.setattr(sqlgen_executor, "load_llm_config", lambda: mock_config)
 
@@ -63,6 +65,8 @@ def test_sqlgen_executor_uses_schema_context_in_prompt(monkeypatch):
         provider="lmstudio",
         lmstudio_base_url="http://localhost:1234",
         lmstudio_model="local-model",
+        gemini_api_key="",
+        gemini_model="gemini-pro",
     )
     monkeypatch.setattr(sqlgen_executor, "load_llm_config", lambda: mock_config)
 
@@ -99,6 +103,8 @@ def test_sqlgen_executor_handles_empty_schema_context(monkeypatch):
         provider="lmstudio",
         lmstudio_base_url="http://localhost:1234",
         lmstudio_model="local-model",
+        gemini_api_key="",
+        gemini_model="gemini-pro",
     )
     monkeypatch.setattr(sqlgen_executor, "load_llm_config", lambda: mock_config)
 
