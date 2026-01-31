@@ -38,11 +38,14 @@ export const Roles = {
   // Bioanalytical Laboratory Roles
   BIOANALYTICAL_ANALYST: "Bioanalytical Analyst",
   BIOANALYTICAL_SUPERVISOR: "Bioanalytical Supervisor",
-  SAMPLE_RECEIVER: "Sample Receiver",
-  CHEMICAL_ANALYST: "Chemical Analyst",
-  PHARMACIST: "Pharmacist",
-  STUDY_DIRECTOR: "Study Director",
-  QA_AUDITOR: "QA Auditor",
+  BIOANALYTICAL_SAMPLE_RECEIVER: "Bioanalytical Sample Receiver",
+  BIOANALYTICAL_CHEMICAL_ANALYST: "Bioanalytical Chemical Analyst",
+  BIOANALYTICAL_PHARMACIST: "Bioanalytical Pharmacist",
+  BIOANALYTICAL_RESEARCHER: "Bioanalytical Researcher",
+  BIOANALYTICAL_LAB_SUPERVISOR: "Bioanalytical Lab Supervisor",
+  BIOANALYTICAL_STUDY_DIRECTOR: "Bioanalytical Study Director",
+  BIOANALYTICAL_QA_OFFICER: "Bioanalytical QA Officer",
+  BIOANALYTICAL_DATA_MANAGER: "Bioanalytical Data Manager",
 };
 
 /**

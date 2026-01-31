@@ -96,20 +96,25 @@ function BioanalyticalAnalyticalExecutionPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { hasAnyRole } = usePermissions();
-  const { getPagePermissionLevel, hasFullControl, canSaveData } =
-    useBioanalyticalPermissions();
+  const {
+    getPagePermissionLevel,
+    hasFullControl,
+    canSaveData,
+    canAccessAnalyticalExecution,
+    BIOANALYTICAL_ROLES
+  } = useBioanalyticalPermissions();
   const isMountedRef = useRef(true);
 
   const allowedRoles = [
-    "Chemical Analyst",
-    "Pharmacist",
-    "Lab Supervisor",
-    "Study Director",
-    "QA Officer",
-    "Researcher",
+    BIOANALYTICAL_ROLES.CHEMICAL_ANALYST,
+    BIOANALYTICAL_ROLES.PHARMACIST,
+    BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
+    BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
+    BIOANALYTICAL_ROLES.QA_OFFICER,
+    BIOANALYTICAL_ROLES.RESEARCHER,
   ];
 
-  const canAccessPage = hasAnyRole(allowedRoles);
+  const canAccessPage = canAccessAnalyticalExecution();
 
   const pagePermissionLevel = getPagePermissionLevel("Analytical Execution");
   const canExecuteAnalysis = hasFullControl(pagePermissionLevel);
