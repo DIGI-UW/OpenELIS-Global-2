@@ -269,7 +269,9 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
 
     /**
      * Test: Patient merge with FHIR UUIDs - verify database merge works. Note: FHIR
-     * validation is skipped in integration tests (no FHIR server available).
+     * integration is disabled in integration tests
+     * (org.openelisglobal.fhir.integration.enabled=false), so FHIR validation is
+     * bypassed.
      */
     @Test
     public void testMergeExecution_WithFhirUuids_ShouldCompleteSuccessfully() {
