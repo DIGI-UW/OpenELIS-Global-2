@@ -1,7 +1,0 @@
-testSectionName,description,isActive,sortOrder,isExternal,englishName,frenchName
-Genomics & Bioinformatics Laboratory,Genomics and Bioinformatics Laboratory Department,Y,11,N,Genomics & Bioinformatics Laboratory,Génomique et Laboratoire de Bioinformatique
-Traditional & Modern Medicine Research Lab,Traditional and Modern Medicine Research and Development Laboratory,Y,12,N,Traditional & Modern Medicine Research Lab,Laboratoire de Recherche en Médecine Traditionnelle et Moderne
-Bioanalytical Laboratory,Bioanalytical Testing Laboratory Department,Y,13,N,Bioanalytical Laboratory,Laboratoire Bianalytique
-Bioequivalence Laboratory,Bioequivalence Testing Laboratory Department,Y,14,N,Bioequivalence Laboratory,Laboratoire de Bioéquivalence
-# Forces reprocessing of the CSV file by changing checksum
-# This comment line makes the file 'different' so it will be processed again

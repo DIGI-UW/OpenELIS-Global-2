@@ -186,4 +186,8 @@
     <!-- Corrects page role assignments to match permission matrix from Section 11 exactly -->
     <include file="liquibase/3.4.x.x/055-gbd-page-roles-corrected.xml"/>
 
+    <!-- Storage Code Length Increases -->
+    <!-- Increases storage entity code columns from 10 to 50 characters for hierarchical naming -->
+    <include file="liquibase/3.4.x.x/079-increase-storage-code-lengths.xml"/>
+
 </databaseChangeLog>
