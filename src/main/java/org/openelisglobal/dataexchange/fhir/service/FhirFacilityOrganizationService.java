@@ -27,6 +27,22 @@ public interface FhirFacilityOrganizationService {
     String getFacilityUuid();
 
     /**
+     * Gets the facility ID. Returns the configured facility.id property if set,
+     * otherwise falls back to the facility UUID.
+     *
+     * @return the facility ID
+     */
+    String getFacilityId();
+
+    /**
+     * Gets the identifier system used for facility identifiers.
+     *
+     * @return the facility identifier system (e.g.,
+     *         "http://openelis-global.org/facility_id")
+     */
+    String getFacilityIdentifierSystem();
+
+    /**
      * Gets a Reference to the facility Organization for use as an identifier
      * assigner.
      *
