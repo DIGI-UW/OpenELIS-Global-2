@@ -1,26 +1,29 @@
 # Git Hooks
 
-## Auto-Format Hook
+## Pre-commit Hook
 
-A pre-commit hook that automatically formats **staged files only** before
-commits to prevent CI failures.
+A pre-commit hook that formats and lints **staged files only** before commits to
+prevent CI failures (format + Catalyst Python lint).
 
 ### Setup (One-Time)
 
+Run once per clone so commits use these hooks:
+
 ```bash
-# Configure git to use this hooks directory
-git config core.hooksPath .githooks
+./.githooks/setup.sh
 ```
+
+Or manually: `git config core.hooksPath .githooks` (omit `--global` for
+repo-only).
 
 ### What It Does
 
-The hook automatically runs formatters on **staged files only**:
+The hook runs on **staged files only**:
 
-- **Java**: `mvn spotless:apply`
-- **Frontend** (JS/TS/CSS): `npm run format` in frontend directory
-- **Python** (Catalyst): `ruff format` in catalyst projects
-
-Formatted files are automatically re-staged.
+- **Format**: Java (spotless), frontend (prettier), Python (ruff format).
+  Formatted files are re-staged.
+- **Lint**: For staged Catalyst Python files, runs `ruff check` (same as
+  Catalyst CI). Commit is blocked if lint fails.
 
 ### How It Works
 
