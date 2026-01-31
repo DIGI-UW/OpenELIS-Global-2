@@ -58,20 +58,35 @@ open https://localhost/
 For development without physical analyzers:
 
 ```bash
-# Start the analyzer simulator (from tools directory)
-cd tools/astm-mock-server
-docker compose up -d
+# Bring up OpenELIS with the ASTM/HL7 simulator (from repo root)
+docker compose -f dev.docker-compose.yml -f docker-compose.astm-test.yml up -d
 
-# Simulator endpoints:
-# - ASTM: TCP port 4011
-# - HL7: TCP port 4012 (after M4)
-# - HTTP API: http://localhost:4010
-
-# Test HL7 simulation (after M4)
-curl -X POST http://localhost:4010/simulate/hl7/mindray-bc5380 \
-  -H "Content-Type: application/json" \
-  -d '{"patientId": "P001", "sampleId": "S001", "tests": ["WBC", "RBC"]}'
+# ASTM simulator: TCP port 5000 (openelis-astm-simulator)
+# OpenELIS: https://localhost/ (or your DOMAIN)
 ```
+
+**Abbott Architect HL7 scenario**
+
+The simulator can generate HL7 ORU^R01 messages from the Abbott template so OpenELIS routes them to the Abbott plugin (MSH-3=ARCHITECT, MSH-4=LAB). Run the simulator locally with HL7 push:
+
+```bash
+# From repo root, ensure OpenELIS is up, then:
+cd tools/astm-mock-server
+pip install -r requirements.txt   # optional: for template validation
+python server.py --hl7 --push https://localhost:8443 --hl7-template abbott_architect_hl7
+
+# One-shot: push one message
+python server.py --hl7 --push https://localhost:8443 --push-count 1
+
+# With HTTP API (generate or push via curl):
+python server.py --push https://localhost:8443 --api-port 8080
+curl http://localhost:8080/simulate/hl7/abbott_architect_hl7   # generate one message
+curl -X POST http://localhost:8080/simulate/hl7/abbott_architect_hl7 \
+  -H "Content-Type: application/json" \
+  -d '{"count": 1, "destination": "https://localhost:8443"}'
+```
+
+See `tools/astm-mock-server/README.md` for full HL7 options.
 
 ---
 
