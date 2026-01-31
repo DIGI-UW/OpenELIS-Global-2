@@ -43,8 +43,10 @@ git push origin feat/011-madagascar-analyzer-integration-m11-stago
 ## Important Notes
 
 - **Parallel PRs**: Both repositories need separate PRs
-- **Submodule Reference**: Main repo PR will reference the plugin submodule commit
-- **Branch Names**: Match for consistency (`feat/011-madagascar-analyzer-integration-m11-stago`)
+- **Submodule Reference**: Main repo PR will reference the plugin submodule
+  commit
+- **Branch Names**: Match for consistency
+  (`feat/011-madagascar-analyzer-integration-m11-stago`)
 
 ## Files Committed in Plugin Repository
 
