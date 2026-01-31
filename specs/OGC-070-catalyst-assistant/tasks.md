@@ -333,24 +333,25 @@ fallback works
 - [x] T037a [P] [M0.2] Create golden query dataset in
       `projects/catalyst/tests/fixtures/golden_queries.json` with 26 OpenELIS
       natural language queries (research.md Section 13). This dataset is used by
-      M0.2.9 tasks T037b-T037f for model evaluation.
-      **Status**: 26 queries with full metadata (query_text, expected_tables,
-      validation_criteria, expected_sql_patterns, ambiguous/phi_like) created.
+      M0.2.9 tasks T037b-T037f for model evaluation. **Status**: 26 queries with
+      full metadata (query_text, expected_tables, validation_criteria,
+      expected_sql_patterns, ambiguous/phi_like) created.
 - [ ] T037b [M0.2] Run balanced scorecard evaluation on Tier A Orchestrator
       candidates (Gemma 2 9B and Llama 3.1 8B) — document results in
       `projects/catalyst/docs/model-evaluation-m0.2.md`. **Note**: Model
       selection is deferred until evaluation results; both candidates are equal.
       External research suggests Gemma 2 9B may excel at RAG tasks, but final
       selection MUST be based on empirical evaluation harness results (per
-      spec.md clarification 2026-01-27).
-      **Status**: Doc template and procedure in place; run requires Tier A GPU/LM Studio.
+      spec.md clarification 2026-01-27). **Status**: Doc template and procedure
+      in place; run requires Tier A GPU/LM Studio.
 - [ ] T037c [M0.2] Run balanced scorecard evaluation on Tier A SQLGen candidates
-      (CodeLlama 13B, Llama 3.1 8B fallback) — document results.
-      **Status**: Doc template in model-evaluation-m0.2.md; run requires Tier A GPU/LM Studio.
+      (CodeLlama 13B, Llama 3.1 8B fallback) — document results. **Status**: Doc
+      template in model-evaluation-m0.2.md; run requires Tier A GPU/LM Studio.
 - [x] T037d [M0.2] Write trajectory validation tests per research.md Section
       14.2 in
       `projects/catalyst/catalyst-agents/tests/test_trajectory_validation.py`
-      **Status**: Four trajectory tests added (order, task completion, fallback, query passed); all pass.
+      **Status**: Four trajectory tests added (order, task completion, fallback,
+      query passed); all pass.
 - [ ] T037e [POST-MVP] Run balanced scorecard evaluation on Tier B SQLGen
       candidates (CodeLlama 34B, Llama 3.1 70B) when 40GB+ GPU available —
       document results in `projects/catalyst/docs/model-evaluation-post-mvp.md`
@@ -364,7 +365,8 @@ fallback works
 
 ### M0.2 Sign-off Checklist
 
-- [x] All pytest unit tests pass (31 catalyst-agents tests, including 4 trajectory validation)
+- [x] All pytest unit tests pass (31 catalyst-agents tests, including 4
+      trajectory validation)
 - [ ] Multi-agent flow E2E: Query routed through SchemaAgent → SQLGenAgent
 - [ ] Single-agent fallback: CatalystAgent works when SchemaAgent/SQLGenAgent
       unavailable
@@ -375,7 +377,8 @@ fallback works
       queries created in `projects/catalyst/tests/fixtures/golden_queries.json`
       with full metadata (FR-022)
 - [ ] **Model evaluation**: At least one Tier A config evaluated using scorecard
-      (template in `projects/catalyst/docs/model-evaluation-m0.2.md`; run requires GPU)
+      (template in `projects/catalyst/docs/model-evaluation-m0.2.md`; run
+      requires GPU)
 - [ ] **Tier B evaluation**: Tier B SQLGen scorecard run when 40GB+ GPU
       available; otherwise procedure/skip documented (NFR-001)
 - [ ] **Deterministic guards**: 100% pass rate on non-ambiguous queries (18/18)

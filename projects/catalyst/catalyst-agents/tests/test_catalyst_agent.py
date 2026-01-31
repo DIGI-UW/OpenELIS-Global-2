@@ -35,9 +35,7 @@ def test_fr004_llm_prompt_contains_only_schema_and_query_no_phi(monkeypatch):
             captured_prompt = prompt
             return "SELECT COUNT(*) FROM test"
 
-    monkeypatch.setattr(
-        catalyst_executor, "create_llm_client", lambda _: PromptCaptureClient()
-    )
+    monkeypatch.setattr(catalyst_executor, "create_llm_client", lambda _: PromptCaptureClient())
 
     # Test with user query that does NOT contain PHI
     user_query = "How many tests are in the catalog?"

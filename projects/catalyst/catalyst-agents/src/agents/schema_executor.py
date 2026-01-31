@@ -6,6 +6,7 @@ based on the user's natural language query, enabling the SQLGenAgent to
 generate accurate SQL without needing the entire schema.
 """
 
+import json
 import logging
 from typing import Any
 
@@ -65,9 +66,9 @@ class SchemaAgentExecutor(AgentExecutor):
         # Get schema context via MCP
         schema_context = get_schema_context(query)
 
-        # Return schema context as artifact
+        # Return schema context as artifact (JSON for A2A/interop consumers)
         await task_updater.add_artifact(
-            [Part(root=TextPart(text=str(schema_context)))],
+            [Part(root=TextPart(text=json.dumps(schema_context)))],
             name="schema_context",
         )
         await task_updater.complete()

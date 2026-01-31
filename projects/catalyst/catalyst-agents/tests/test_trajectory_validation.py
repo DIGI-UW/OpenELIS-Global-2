@@ -35,9 +35,9 @@ async def test_trajectory_schema_then_sqlgen_order(monkeypatch):
 
     result = await executor.delegate_query_multi_agent("How many samples today?")
 
-    assert len(trajectory_steps) >= 2, (
-        "Trajectory must have at least SchemaAgent and SQLGenAgent steps"
-    )
+    assert (
+        len(trajectory_steps) >= 2
+    ), "Trajectory must have at least SchemaAgent and SQLGenAgent steps"
     assert trajectory_steps[0][0] == "SchemaAgent", "First step must be SchemaAgent"
     assert trajectory_steps[1][0] == "SQLGenAgent", "Second step must be SQLGenAgent"
     assert len(result) > 0, "Final output must be present"
@@ -49,6 +49,7 @@ async def test_trajectory_task_completion_rate(monkeypatch):
     """
     Trajectory metric: Task completion — agent must produce final answer (Section 14).
     """
+
     async def mock_call_agent(self, agent_url: str, query: str):
         if "9102" in agent_url:
             return [Part(root=TextPart(text="{'schema': 'sample(id)'}"))]

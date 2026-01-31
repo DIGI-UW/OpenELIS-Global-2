@@ -87,6 +87,12 @@ if [ -n "$PYTHON_FILES" ]; then
                 echo "❌ Ruff check failed in projects/catalyst/$project. Fix lint errors before committing."
                 exit 1
             fi
+            # Ruff may have modified files; re-stage them so the commit matches the linted content
+            echo "$PROJECT_FILES" | while IFS= read -r file; do
+                if [ -f "$file" ]; then
+                    git add "$file"
+                fi
+            done
         fi
     done
 fi

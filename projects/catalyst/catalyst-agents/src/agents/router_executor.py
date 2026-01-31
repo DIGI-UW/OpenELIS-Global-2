@@ -20,8 +20,9 @@ class RouterAgentExecutor(AgentExecutor):
         self.schema_url = os.getenv("CATALYST_SCHEMA_AGENT_URL", "http://localhost:9102")
         self.sqlgen_url = os.getenv("CATALYST_SQLGEN_AGENT_URL", "http://localhost:9103")
 
-        # Agent mode: "multi" for SchemaAgent → SQLGenAgent, "single" for CatalystAgent fallback
-        self.mode = os.getenv("CATALYST_AGENT_MODE", "multi")
+        # Agent mode: "multi" for SchemaAgent → SQLGenAgent, "single" for CatalystAgent fallback.
+        # Default "single" so dev (Procfile/docker-compose without specialist agents) works.
+        self.mode = os.getenv("CATALYST_AGENT_MODE", "single")
 
         self.http_client = httpx.AsyncClient(timeout=30.0)
 

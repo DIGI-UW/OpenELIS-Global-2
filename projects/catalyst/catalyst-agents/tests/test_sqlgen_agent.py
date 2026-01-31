@@ -72,9 +72,7 @@ def test_sqlgen_executor_uses_schema_context_in_prompt(monkeypatch):
             captured_prompt = prompt
             return "SELECT * FROM sample"
 
-    monkeypatch.setattr(
-        sqlgen_executor, "create_llm_client", lambda _: PromptCaptureClient()
-    )
+    monkeypatch.setattr(sqlgen_executor, "create_llm_client", lambda _: PromptCaptureClient())
 
     schema_context = {"tables": ["sample"], "schema": "sample(id, entered_date)"}
     user_query = "get all samples"
