@@ -772,7 +772,7 @@ Adapt QuantStudio3 plugin for QuantStudio 7 Flex **User Stories**: US-4, US-6
 
 ---
 
-## [P] M9: Horiba Pentra 60 Plugin (2 days) ✅ **COMPLETED**
+## [P] M9: Horiba Pentra 60 Plugin (2 days)
 
 **Branch**: `feat/011-madagascar-analyzer-integration-m9-m10-horiba` (combined
 with M10) **Goal**: Build new Horiba Pentra 60 plugin **User Stories**: US-3
@@ -814,7 +814,7 @@ Plugin built, committed (b93e04b), documented (59d454d), PR created (#33)
 
 ---
 
-## [P] M10: Horiba Micros 60 Plugin (2 days) ✅ **COMPLETED**
+## [P] M10: Horiba Micros 60 Plugin (2 days)
 
 **Branch**: `feat/011-madagascar-analyzer-integration-m9-m10-horiba` (combined
 with M9) **Goal**: Build new Horiba Micros 60 plugin **User Stories**: US-3
@@ -1293,6 +1293,12 @@ All **Depends On**: M15, M16, M17 **Workstream**: All
 - [ ] T304 [M18] Performance test: 5+ concurrent analyzers via simulator
 - [ ] T305 [M18] Stress test: 1000+ messages through system
 - [ ] T306 [M18] Verify message routing with multiple simultaneous analyzers
+- [ ] T306a [M18] RS232 reliability soak test (8+ hours) using RS232 bridge +
+      simulator (or virtual serial ports) and verify no message loss (SC-007)
+- [ ] T306b [M18] Validate analyzer communication service uptime measurement and
+      monitoring approach for lab operating hours (SC-010)
+- [ ] T306c [M18] Verify timestamps are stored in UTC and rendered correctly for
+      analyzer results and order export workflows (Edge Case: time zones)
 
 ### Documentation for M18
 
@@ -1473,6 +1479,8 @@ M14). Plugin tasks added to respective milestones.
 - **M0 only blocks M7** - GeneXpert Multi requires M0 for ASTM variant
 - Tests are MANDATORY per Constitution Principle V
 - Each milestone = 1 PR per Constitution Principle IX
+- **Plugins submodule prerequisite** (M5-M13): ensure `plugins/` is initialized
+  before starting plugin milestone work (`git submodule update --init plugins`).
 - Run `mvn spotless:apply` and `cd frontend && npm run format` before every PR
 - Use BOTH flags when skipping tests: `-DskipTests -Dmaven.test.skip=true`
 - Run E2E tests individually during development:
