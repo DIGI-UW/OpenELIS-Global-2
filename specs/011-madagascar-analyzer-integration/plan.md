@@ -14,8 +14,9 @@ analyzers with bidirectional communication. The implementation leverages:
    status management, TCP/IP connectivity via ASTM-HTTP Bridge
 2. **19+ existing analyzer plugins**: Mindray, SysmexXN-L, GeneXpertHL7,
    GeneXpertFile, QuantStudio3
-3. **Plugin-first approach**: Integrate proven plugins before building new
-   protocol adapters
+3. **External plugin JAR approach**: All analyzer plugins are external JARs in
+   `plugins/analyzers/` per `docs/analyzer.md`. New plugins (M9-M13) are built
+   in the plugins submodule, NOT in `src/main/java/`.
 4. **Bridge-based RS232**: Extend ASTM-HTTP Bridge to handle RS232→TCP locally
 
 **Key Technical Additions**:
@@ -167,11 +168,11 @@ Per user request:
 | **M6**      | m6-mindray-serial  | Mindray BA-88A via RS232 bridge                  | C          | US-3, US-6   | BA-88A via bridge works                          | M2            | 1         |
 | **M7**      | m7-genexpert-multi | GeneXpert all variants (ASTM, HL7, File)         | A, B, D    | US-6         | All 3 GeneXpert variants work                    | M0, M1, M3    | 2         |
 | **M8**      | m8-quantstudio     | QuantStudio 7 Flex (adapt QS3 plugin)            | D          | US-4, US-6   | QS7 CSV import works                             | M3            | 2         |
-| **[P] M9**  | m9-horiba-micros   | Build Horiba Micros 60 plugin (RS232/ASTM)       | C          | US-3         | Micros 60 via bridge works                       | M2            | 2         |
-| **[P] M10** | m10-horiba-pentra  | Build Horiba Pentra 60 plugin (RS232/ASTM)       | C          | US-3         | Pentra 60 via bridge works                       | M2            | 2         |
-| **[P] M11** | m11-stago          | Build Stago STart 4 plugin (ASTM/HL7)            | B, C       | US-1, US-3   | Stago via HL7 or bridge works                    | M1, M2        | 2         |
-| **[P] M12** | m12-abbott         | Build Abbott Architect plugin (HL7)              | B          | US-1         | Abbott HL7 works                                 | M1            | 2         |
-| **[P] M13** | m13-fluorocycler   | Build Hain FluoroCycler XT plugin (File)         | D          | US-4         | FluoroCycler CSV import works                    | M3            | 2         |
+| **[P] M9**  | m9-horiba-micros   | Build Horiba Micros 60 external plugin JAR       | C          | US-3         | Micros 60 via bridge works                       | M2            | 2         |
+| **[P] M10** | m10-horiba-pentra  | Build Horiba Pentra 60 external plugin JAR       | C          | US-3         | Pentra 60 via bridge works                       | M2            | 2         |
+| **[P] M11** | m11-stago          | Build Stago STart 4 external plugin JAR          | B, C       | US-1, US-3   | Stago via HL7 or bridge works                    | M1, M2        | 2         |
+| **[P] M12** | m12-abbott         | Build Abbott Architect external plugin JAR       | B          | US-1         | Abbott HL7 works                                 | M1            | 2         |
+| **[P] M13** | m13-fluorocycler   | Build Hain FluoroCycler XT external plugin JAR   | D          | US-4         | FluoroCycler CSV import works                    | M3            | 2         |
 | **M14**     | m14-p2-validation  | P2 analyzers: BC2000, Sysmex XN (HL7 validation) | B          | US-1, US-6   | P2 analyzers via HL7                             | M5            | 1         |
 | **M15**     | m15-order-export   | Order export workflow (manual trigger)           | All        | US-2         | Orders export; status tracking works             | M5-M14        | 3         |
 | **M16**     | m16-metadata-form  | Enhanced instrument metadata form                | All        | US-5         | Metadata form; location history                  | M15           | 2         |
@@ -425,6 +426,43 @@ tools/astm-mock-server/
 │   ├── horiba_micros60.json
 │   └── ... (12 total analyzer templates)
 └── requirements.txt
+
+# External Analyzer Plugins (plugins/ submodule → I-TECH-UW/openelisglobal-plugins)
+plugins/analyzers/
+├── HoribaPentra60/                          # NEW (M9): External plugin JAR
+│   ├── pom.xml
+│   └── src/main/java/uw/edu/itech/HoribaPentra60/
+│       ├── HoribaPentra60Analyzer.java
+│       └── HoribaPentra60AnalyzerLineInserter.java
+├── HoribaMicros60/                          # NEW (M10): External plugin JAR
+│   ├── pom.xml
+│   └── src/main/java/uw/edu/itech/HoribaMicros60/
+│       ├── HoribaMicros60Analyzer.java
+│       └── HoribaMicros60AnalyzerLineInserter.java
+├── StagoSTart4/                             # NEW (M11): External plugin JAR
+│   ├── pom.xml
+│   └── src/main/java/uw/edu/itech/StagoSTart4/
+│       ├── StagoSTart4Analyzer.java
+│       └── StagoSTart4AnalyzerLineInserter.java
+├── AbbottArchitect/                         # NEW (M12): External plugin JAR
+│   ├── pom.xml
+│   └── src/main/java/uw/edu/itech/AbbottArchitect/
+│       ├── AbbottArchitectAnalyzer.java
+│       └── AbbottArchitectAnalyzerLineInserter.java
+├── FluoroCyclerXT/                          # NEW (M13): External plugin JAR
+│   ├── pom.xml
+│   └── src/main/java/uw/edu/itech/FluoroCyclerXT/
+│       ├── FluoroCyclerXTAnalyzer.java
+│       └── FluoroCyclerXTAnalyzerLineInserter.java
+├── Mindray/                                 # EXISTING
+├── SysmexXN-L/                              # EXISTING
+├── GeneXpertHL7/                            # EXISTING
+├── GeneXpertFile/                           # EXISTING
+├── GeneXpert/                               # EXISTING
+└── QuantStudio3/                            # EXISTING
+
+# IMPORTANT: New analyzer plugins go in plugins/analyzers/, NOT src/main/java/.
+# See docs/analyzer.md for the mandatory external plugin JAR pattern.
 ```
 
 ## Testing Strategy
@@ -606,10 +644,19 @@ building new infrastructure.
 
 See milestone table above. Each milestone follows the pattern:
 
-- Validate existing plugin OR build new plugin
+**For existing plugins (M5-M8, M14)**: Validate plugin from `plugins/analyzers/`
+**For new plugins (M9-M13)**: Build external plugin JAR in `plugins/analyzers/`
+
+Steps:
+
+- Build/validate external plugin JAR in `plugins/analyzers/{PluginName}/`
+- Register via `connect()` method (NOT @Component/@PostConstruct)
 - Integration tests with simulator
 - Field mapping verification
 - Error dashboard verification
+
+> **CRITICAL**: New plugin code goes in `plugins/analyzers/`, NOT
+> `src/main/java/`. See `docs/analyzer.md`.
 
 ---
 
@@ -741,7 +788,14 @@ Per specification, these are deferred:
 
 ---
 
-**Plan Created**: 2026-01-22 | **Updated**: 2026-01-27 (clarification session:
-priority reordering, RS232 bridge architecture, parallel workstreams, simulator
-validation approach) **Plan Author**: Claude Code with /speckit.plan **Next
+**Plan Created**: 2026-01-22 | **Updated**: 2026-01-29 (external plugin
+architecture alignment) **Plan Author**: Claude Code with /speckit.plan **Next
 Step**: Run `/speckit.tasks` to generate task breakdown by milestone
+
+---
+
+## Critical Architecture References
+
+- **`docs/analyzer.md`**: Mandatory external plugin model documentation
+- **`docs/astm.md`**: ASTM protocol and bridge configuration
+- **`plugins/README.md`**: Plugin development guide

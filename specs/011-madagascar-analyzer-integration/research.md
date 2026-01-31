@@ -770,6 +770,233 @@ describes how to generate realistic messages for a specific analyzer type.
 
 ---
 
+## 12. Horiba ABX Analyzer Implementation (M9-M10)
+
+### Overview
+
+The Horiba ABX Pentra 60 and Micros 60 are hematology analyzers used in
+Madagascar facilities. Both use ASTM LIS2-A2 protocol over RS232 serial
+connections. Since they share the same manufacturer and protocol, they are
+implemented together in M9-M10.
+
+### Analyzer Specifications
+
+| Feature            | Horiba Pentra 60 C+        | Horiba Micros 60           |
+| ------------------ | -------------------------- | -------------------------- |
+| **Manufacturer**   | Horiba ABX                 | Horiba ABX                 |
+| **Type**           | 5-Part Differential        | 3-Part Differential        |
+| **Throughput**     | 60 samples/hour            | 60 samples/hour            |
+| **Parameters**     | 26 (CBC + 5-DIFF)          | 18 (CBC + 3-DIFF)          |
+| **Protocol**       | ASTM LIS2-A2               | ASTM LIS2-A2               |
+| **Transport**      | RS232 Serial               | RS232 Serial               |
+| **Baud Rate**      | 9600                       | 9600                       |
+| **Data Bits**      | 8                          | 8                          |
+| **Parity**         | None                       | None                       |
+| **Stop Bits**      | 1                          | 1                          |
+| **ASTM Header ID** | `ABX^PENTRA60` or `PENTRA` | `ABX^MICROS60` or `MICROS` |
+
+### Test Parameters
+
+**Horiba Pentra 60 (26 Parameters)**:
+
+- CBC: WBC, RBC, HGB, HCT, MCV, MCH, MCHC, PLT, RDW, PDW, PCT, MPV
+- 5-Part Differential: LYM%, LYM#, MON%, MON#, NEU%, NEU#, EOS%, EOS#, BAS%,
+  BAS#
+- Additional: LIC (Large Immature Cells), ALY (Atypical Lymphocytes)
+
+**Horiba Micros 60 (18 Parameters)**:
+
+- CBC: WBC, RBC, HGB, HCT, MCV, MCH, MCHC, PLT, RDW, PDW, PCT, MPV
+- 3-Part Differential: LYM%, LYM#, MXD%, MXD#, NEU%, NEU#
+
+### ASTM Message Format
+
+Both analyzers follow the standard ASTM LIS2-A2 format. Sample message:
+
+```astm
+H|\^&|||ABX^PENTRA60^V2.0|||||||LIS2-A2|20250128080000
+P|1||PAT-001|Rakoto^Jean||M|19800515
+O|1|SAMPLE-001^LAB|CBC||20250128075500
+R|1|^^^WBC|5.8|10^3/uL|4.0-10.0|N||F|20250128080100
+R|2|^^^RBC|4.92|10^6/uL|4.0-5.5|N||F|20250128080100
+R|3|^^^HGB|14.8|g/dL|12.0-17.5|N||F|20250128080100
+R|4|^^^HCT|43.2|%|36-54|N||F|20250128080100
+R|5|^^^MCV|87.8|fL|80-100|N||F|20250128080100
+R|6|^^^MCH|30.1|pg|27-33|N||F|20250128080100
+R|7|^^^MCHC|34.3|g/dL|32-36|N||F|20250128080100
+R|8|^^^PLT|245|10^3/uL|150-400|N||F|20250128080100
+R|9|^^^LYM%|32.5|%|20-40|N||F|20250128080100
+R|10|^^^LYM#|1.89|10^3/uL|1.0-4.0|N||F|20250128080100
+R|11|^^^MON%|6.2|%|2-8|N||F|20250128080100
+R|12|^^^MON#|0.36|10^3/uL|0.2-0.8|N||F|20250128080100
+R|13|^^^NEU%|58.1|%|40-70|N||F|20250128080100
+R|14|^^^NEU#|3.37|10^3/uL|2.0-7.0|N||F|20250128080100
+L|1|N
+```
+
+### Analyzer Identification Strategy
+
+The plugins identify messages by examining the ASTM Header (H) segment:
+
+1. **Primary**: Parse `H|...|ABX^PENTRA60^...` for manufacturer/model
+2. **Fallback**: Check for `PENTRA` or `MICROS` in the sender field
+3. **IP-based**: Use ASTM-HTTP bridge source IP for identification
+
+### Implementation Architecture (Data Flow)
+
+> **NOTE**: This diagram shows RUNTIME data flow. For plugin DEPLOYMENT
+> architecture (where plugin files live, how they're built and loaded), see the
+> "Plugin Deployment Architecture" section below.
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                    RS232 → OpenELIS Data Flow                         │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌─────────────┐    ┌─────────────────┐    ┌─────────────────────┐  │
+│  │ Horiba      │    │ ASTM-HTTP       │    │ OpenELIS            │  │
+│  │ Pentra/     │───▶│ Bridge          │───▶│ /analyzer/astm      │  │
+│  │ Micros 60   │    │ (RS232→TCP)     │    │ POST endpoint       │  │
+│  └─────────────┘    └─────────────────┘    └──────────┬──────────┘  │
+│       RS232              HTTP/ASTM                    │             │
+│                                                       ▼             │
+│                                          ┌─────────────────────┐    │
+│                                          │ ASTMAnalyzerReader  │    │
+│                                          │ → identifies plugin │    │
+│                                          └──────────┬──────────┘    │
+│                                                     │               │
+│                          ┌──────────────────────────┴───────┐       │
+│                          ▼                                  ▼       │
+│                ┌─────────────────────┐      ┌─────────────────────┐ │
+│                │ Pentra60Analyzer    │      │ Micros60Analyzer    │ │
+│                │ LineInserter        │      │ LineInserter        │ │
+│                └──────────┬──────────┘      └──────────┬──────────┘ │
+│                          │                            │             │
+│                          └────────────┬───────────────┘             │
+│                                       ▼                             │
+│                          ┌─────────────────────┐                    │
+│                          │ MappingAware        │                    │
+│                          │ AnalyzerLineInserter│                    │
+│                          │ (wraps if mappings) │                    │
+│                          └──────────┬──────────┘                    │
+│                                     │                               │
+│                                     ▼                               │
+│                          ┌─────────────────────┐                    │
+│                          │ AnalyzerResults     │                    │
+│                          │ (persisted to DB)   │                    │
+│                          └─────────────────────┘                    │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### Plugin Class Structure
+
+Each Horiba plugin consists of:
+
+1. **`HoribaXxxAnalyzer.java`**: Implements `AnalyzerImporterPlugin` interface
+
+   - `isTargetAnalyzer(List<String> lines)`: Check ASTM header for
+     identification
+   - `isAnalyzerResult(List<String> lines)`: Check for R-segments (vs queries)
+   - `getAnalyzerLineInserter()`: Return the line inserter instance
+   - `getAnalyzerResponder()`: Return null (no bidirectional queries supported)
+
+2. **`HoribaXxxAnalyzerLineInserter.java`**: Extends `AnalyzerLineInserter`
+   - `insert(List<String> lines, String currentUserId)`: Parse ASTM and persist
+   - `getError()`: Return error message if insert fails
+
+### Test Field Mappings
+
+| ASTM Code | LOINC Code | OpenELIS Test Name | Units   |
+| --------- | ---------- | ------------------ | ------- |
+| WBC       | 6690-2     | White Blood Cells  | 10^3/μL |
+| RBC       | 789-8      | Red Blood Cells    | 10^6/μL |
+| HGB       | 718-7      | Hemoglobin         | g/dL    |
+| HCT       | 4544-3     | Hematocrit         | %       |
+| MCV       | 787-2      | MCV                | fL      |
+| MCH       | 785-6      | MCH                | pg      |
+| MCHC      | 786-4      | MCHC               | g/dL    |
+| PLT       | 777-3      | Platelet Count     | 10^3/μL |
+| LYM%      | 736-9      | Lymphocyte %       | %       |
+| LYM#      | 731-0      | Lymphocyte Count   | 10^3/μL |
+| NEU%      | 770-8      | Neutrophil %       | %       |
+| NEU#      | 751-8      | Neutrophil Count   | 10^3/μL |
+| MON%      | 5905-5     | Monocyte %         | %       |
+| MON#      | 742-7      | Monocyte Count     | 10^3/μL |
+| EOS%      | 713-8      | Eosinophil %       | %       |
+| EOS#      | 711-2      | Eosinophil Count   | 10^3/μL |
+| BAS%      | 706-2      | Basophil %         | %       |
+| BAS#      | 704-7      | Basophil Count     | 10^3/μL |
+
+### Plugin Deployment Architecture (CRITICAL)
+
+Per `docs/analyzer.md` (lines 5-8):
+
+> "The older model, which we are phasing out, has the code for importing
+> analyzer results as part of the core of OpenELIS. **The newer model which all
+> new analyzers should use is a plugin model.**"
+
+**External Plugin JAR Pattern (MANDATORY for all new analyzers):**
+
+| Aspect           | Detail                                                            |
+| ---------------- | ----------------------------------------------------------------- |
+| **Location**     | `plugins/analyzers/{PluginName}/` (git submodule)                 |
+| **Build**        | Maven with `pom.xml` → standalone JAR                             |
+| **Deploy**       | Copy JAR to `/var/lib/openelis-global/plugins/`                   |
+| **Discovery**    | PluginLoader scans `/var/lib/openelis-global/plugins/` at startup |
+| **Registration** | `connect()` method called by PluginLoader                         |
+| **Spring**       | NO `@Component`, `@PostConstruct`, or `@DependsOn`                |
+| **Package**      | `uw.edu.itech.{PluginName}` (convention from WeberAnalyzer)       |
+
+**Registration Code Pattern:**
+
+```java
+// In plugins/analyzers/{PluginName}/src/main/java/.../
+public class MyAnalyzer implements AnalyzerImporterPlugin {
+
+    @Override
+    public boolean connect() {
+        // Called by PluginLoader AFTER Spring context is ready
+        List<TestMapping> mappings = createTestMappings();
+        PluginAnalyzerService.getInstance()
+            .addAnalyzerDatabaseParts(name, desc, mappings, true);
+        PluginAnalyzerService.getInstance().registerAnalyzer(this);
+        return true;
+    }
+}
+```
+
+**Anti-Pattern (DO NOT USE):**
+
+```java
+// DO NOT put analyzer code in src/main/java/
+@Component  // ❌ WRONG
+@DependsOn("pluginAnalyzerService")  // ❌ WRONG
+public class MyAnalyzer implements AnalyzerImporterPlugin {
+    @PostConstruct  // ❌ WRONG
+    public void register() { ... }
+}
+```
+
+**Canonical References:**
+
+- `docs/analyzer.md` — External plugin model documentation
+- `docs/astm.md` — ASTM protocol and bridge setup
+- Commit 511754dae (2021) — Removed ALL bundled JARs from
+  `src/main/resources/plugin/`
+- `plugins/analyzers/WeberAnalyzer/` — Reference implementation
+
+### References
+
+- **`docs/analyzer.md`** — External plugin model (MANDATORY reading)
+- **`docs/astm.md`** — ASTM protocol configuration
+- **`plugins/analyzers/WeberAnalyzer/`** — Reference plugin implementation
+- [Horiba ABX Pentra 60 C+ Brochure](https://www.cardinalhealth.com/content/dam/corp/web/documents/brochure/horiba-hematology-ABX-pentra-60C-plus-brochure.pdf)
+- [ABX Micros 60 Product Page](https://www.horiba.com/usa/healthcare/products/detail/action/show/Product/abx-micros-60-1835/)
+- [CLSI LIS02-A2 Standard](https://clsi.org/shop/standards/lis02/)
+
+---
+
 ## Summary of Key Decisions
 
 | Area               | Decision                         | Rationale                                |
