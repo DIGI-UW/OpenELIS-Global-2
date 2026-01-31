@@ -655,6 +655,8 @@ Ordered by implementation priority (Romain's deployment list):
 - **InstrumentLocation**: Links instruments to existing OpenELIS
   Organization/Location entities (reusing existing facility hierarchy). Optional
   room-level extension for more granular placement tracking within facilities.
+  Implemented as a location reference (e.g. locationId) on InstrumentMetadata
+  and/or InstrumentLocationHistory; no separate InstrumentLocation table required.
 
 - **InstrumentLocationHistory**: Historical record of instrument locations with
   effective dates for audit trail.
@@ -681,8 +683,9 @@ Ordered by implementation priority (Romain's deployment list):
 ### Measurable Outcomes
 
 - **SC-001**: All 12 contract-required analyzers successfully receive test
-  results in OpenELIS within 60 seconds of analyzer transmission (measured via
-  end-to-end timing tests with actual instruments).
+  results in OpenELIS within 60 seconds of analyzer transmission. For go-live,
+  timing may be measured via simulator-based end-to-end tests; post-deployment
+  validation with actual instruments is recommended.
 
 - **SC-002**: All 12 contract-required analyzers successfully receive test
   orders exported from OpenELIS (verified by order appearing on analyzer pending

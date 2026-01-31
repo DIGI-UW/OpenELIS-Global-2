@@ -118,7 +118,7 @@ development velocity while respecting dependencies:
 │                                                                             │
 │  Workstream E: Simulator Development                                        │
 │  ────────────────────────────────────────────────────────────────────────   │
-│  M4 → M16 (Multi-protocol simulator base → Advanced features)               │
+│  M4 → M17 (Multi-protocol simulator base → Advanced features)               │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
