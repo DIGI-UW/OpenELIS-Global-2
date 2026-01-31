@@ -1,8 +1,8 @@
 # Implementation Plan: Catalyst - LLM-Powered Lab Data Assistant
 
-**Branch**: `spec/OGC-070-catalyst-assistant` | **Date**: 2026-01-21 | **Spec**:
-[spec.md](./spec.md)  
-**Jira**: [OGC-70](https://uwdigi.atlassian.net/browse/OGC-70)
+**Branch**: `spec/OGC-070-catalyst-assistant` | **Date**: 2026-01-27 (Updated
+post-clarification) | **Spec**: [spec.md](./spec.md) **Jira**:
+[OGC-70](https://uwdigi.atlassian.net/browse/OGC-70)
 
 ## Summary
 
@@ -27,6 +27,24 @@ protocol + MCP for tools).
    MCP protocol.
 3. **Standards-First**: Validate A2A + MCP architecture early to enable future
    scaling without refactoring.
+
+### Key Clarifications (2026-01-27 Session)
+
+Based on spec clarification session, the following decisions were made:
+
+1. **FR-009 Row Estimation**: Deferred entirely to M2 (not M0/M1) - implement
+   only when Java backend has read-only DB access for cleaner UX
+2. **NFR-001 Default Models**: Llama 3.1 8B as default Orchestrator (fallback:
+   Gemma 2 9B); CodeLlama 13B for SQLGen in Tier A
+3. **NFR-001 Tier B Evaluation**: Deferred to post-MVP - M0.2 sign-off does not
+   require 40GB+ GPU hardware
+4. **FR-018 PHI Detection**: Uses regex/keyword matching with configurable
+   disable option (deployments using only local models may turn off)
+5. **FR-022 Golden Query Dataset**: 26+ comprehensive, toolkit-compatible
+   queries (ragas, promptfoo, langfuse format) based on lit review + web
+   research, with full metadata for professional validation tooling
+6. **FR-014 UI Examples**: Polished examples deferred to post-MVP; MVP may use
+   placeholder examples
 
 ## Technical Context
 
@@ -53,6 +71,18 @@ protocol + MCP for tools).
 - **Cloud**: Google Gemini (latest available)
 - **Local**: LM Studio (exposes an OpenAI-compatible HTTP API for locally hosted
   models)
+
+**Local Model Selection Protocol** (per research.md Section 13):
+
+- **Tier A (RTX 4070 Super, 12GB) - MVP Scope**: Orchestrator = **Default: Llama
+  3.1 8B** (fallback: Gemma 2 9B) (Q4_K_M); SQLGen = CodeLlama 13B (Q4_K_M)
+- **Tier B (Server GPU, 40GB+) - Post-MVP**: Same Orchestrator models; SQLGen =
+  CodeLlama 34B or Llama 3.1 70B (deferred until appropriate hardware available)
+- **Evaluation**: Use balanced scorecard (research.md Section 15) with 26+
+  comprehensive, toolkit-compatible golden queries (ragas, promptfoo, langfuse
+  format)
+- **Validation**: Tier A validation in M0.2; execution accuracy added in M2+
+  when DB access available
 
 **Storage**: PostgreSQL 14+ (OpenELIS database - read-only connection for
 Catalyst SQL query execution; audit logging writes to `catalyst_query` table via
@@ -88,6 +118,10 @@ _GATE: Verified before research. Re-check after design._
   - ORM validation test for entity mappings
   - One E2E test for MVP (chat→SQL→results flow)
   - Cypress best practices (V.5): individual test execution, console log review
+  - **Validation pyramid** per research.md Section 14 (component → workflow →
+    RAG → execution)
+  - **Evaluation harness** per FR-022 (golden queries, retrieval metrics, model
+    scorecard)
 - [x] **Schema Management (VI)**: Liquibase changesets for audit log table
 - [x] **Internationalization (VII)**: All UI strings via React Intl (en, fr
       minimum)
@@ -111,16 +145,16 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 
 ### Milestone Table
 
-| ID     | Branch Suffix           | Scope                                           | User Stories            | Verification                       | Depends On       |
-| ------ | ----------------------- | ----------------------------------------------- | ----------------------- | ---------------------------------- | ---------------- |
-| M0.0   | m0-foundation-poc       | Gateway + Router + CatalystAgent + MCP skeleton | US1 (partial), US2      | Router → Agent → MCP flow works    | -                |
-| M0.1   | m0-provider-switching   | LLM provider switching (Gemini + LM Studio)     | US3                     | Both providers work                | M0.0             |
-| M0.2   | m0-agent-specialization | Split into SchemaAgent + SQLGenAgent            | US1 (partial), US2      | Multi-agent flow works             | M0.1             |
-| [P] M1 | m1-rag-schema           | ChromaDB RAG-based schema retrieval             | US1 (partial), US2      | MCP tools with real schema work    | M0.2             |
-| [P] M2 | m2-backend-core         | Java OpenELIS integration, SQL execution        | US1 (partial), US2, US3 | Unit tests pass, ORM test passes   | M0.2             |
-| [P] M3 | m3-frontend-chat        | Carbon chat sidebar, i18n, basic UI             | US1 (partial)           | Jest tests pass, renders correctly | -                |
-| M4     | m4-integration          | Wire agents + backend + frontend, basic E2E     | US1, US4                | Integration + basic E2E test pass  | M0.2, M1, M2, M3 |
-| M5     | m5-security             | Security features (PHI detection, RBAC, tokens) | US2                     | Security unit + integration tests  | M4               |
+| ID     | Branch Suffix           | Scope                                           | User Stories            | Verification                                        | Depends On       |
+| ------ | ----------------------- | ----------------------------------------------- | ----------------------- | --------------------------------------------------- | ---------------- |
+| M0.0   | m0-foundation-poc       | Gateway + Router + CatalystAgent + MCP skeleton | US1 (partial), US2      | Router → Agent → MCP flow works                     | -                |
+| M0.1   | m0-provider-switching   | LLM provider switching (Gemini + LM Studio)     | US3                     | Both providers work                                 | M0.0             |
+| M0.2   | m0-agent-specialization | Split into SchemaAgent + SQLGenAgent            | US1 (partial), US2      | Multi-agent flow + trajectory validation (Sec 14.2) | M0.1             |
+| [P] M1 | m1-rag-schema           | ChromaDB RAG-based schema retrieval             | US1 (partial), US2      | Retrieval metrics Recall@5 >= 80% (Sec 14.3)        | M0.2             |
+| [P] M2 | m2-backend-core         | Java OpenELIS integration, SQL execution        | US1 (partial), US2, US3 | Unit tests + ORM + guardrails (Sec 17)              | M0.2             |
+| [P] M3 | m3-frontend-chat        | Carbon chat sidebar, i18n, basic UI             | US1 (partial)           | Jest tests pass, renders correctly                  | -                |
+| M4     | m4-integration          | Wire agents + backend + frontend, basic E2E     | US1, US4                | Integration + basic E2E test pass                   | M0.2, M1, M2, M3 |
+| M5     | m5-security             | Security features (PHI detection, RBAC, tokens) | US2                     | Security unit + integration tests                   | M4               |
 
 **Note**: M0 represents the foundational POC milestones (M0.0 → M0.1 → M0.2)
 that validate the A2A + MCP architecture before full feature implementation.
@@ -130,6 +164,20 @@ that validate the A2A + MCP architecture before full feature implementation.
 - **[P]**: Parallel milestone
 - **Sequential** (no prefix): M4 requires all parallel milestones (M1, M2, M3)
   to complete; M5 requires M4 to complete
+
+### Validation Framework Reference
+
+Each milestone's verification criteria align with research.md Sections 14-17:
+
+| Milestone | Validation Layer (Sec 14) | Key Metrics                                     | Reference        |
+| --------- | ------------------------- | ----------------------------------------------- | ---------------- |
+| M0.1      | Component (Layer 1)       | Deterministic guards pass                       | Sec 14.1         |
+| M0.2      | Workflow (Layer 2)        | Trajectory tests pass, model scorecard complete | Sec 14.2, Sec 15 |
+| M1        | RAG (Layer 3)             | Recall@5 >= 80%, HitRate@5 >= 90%               | Sec 14.3         |
+| M2+       | Execution (Layer 4)       | SQL results match expected (seeded DB)          | Sec 14.4         |
+
+**Model Comparison**: Use balanced scorecard template (research.md Section 15)
+to evaluate candidate models before finalizing selection for each tier.
 
 ### Milestone Details
 
@@ -253,10 +301,10 @@ projects/catalyst/catalyst-agents/
 
 ```bash
 # Test with LM Studio (local)
-CATALYST_LLM_PROVIDER=lmstudio pytest tests/test_provider_switching.py
+LLM_PROVIDER=lmstudio pytest tests/test_provider_switching.py
 
 # Test with Gemini (cloud)
-CATALYST_LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
+LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
 ```
 
 ---
@@ -275,6 +323,14 @@ CATALYST_LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
 - Single-agent fallback mode (CatalystAgent still works)
 - NO PHI detection (defer to M5)
 - NO confirmation tokens (defer to M5)
+- **Model selection validation**: Run 26+ comprehensive, toolkit-compatible
+  golden queries against candidate Tier A models (Default: Llama 3.1 8B for
+  Orchestrator, CodeLlama 13B for SQLGen; evaluate fallback: Gemma 2 9B)
+- **Trajectory validation tests**: Verify Router → SchemaAgent → SQLGenAgent
+  delegation order per research.md Section 14.2
+- Document model comparison results using balanced scorecard template
+  (research.md Section 15)
+- **Note**: Tier B evaluation (40GB+ VRAM) deferred to post-MVP
 
 **Files to Create/Modify**:
 
@@ -320,7 +376,9 @@ projects/catalyst/catalyst-agents/src/agent_cards/
   - PostgreSQL introspection via `pg_catalog` (authoritative FK/constraint data)
   - ChromaDB operational guardrails (version pinning, persistence, rebuild
     procedure)
-  - Evaluation harness (golden queries, Recall@K, execution accuracy)
+  - Evaluation harness with 26+ comprehensive, toolkit-compatible golden queries
+    (ragas, promptfoo, langfuse format) including metadata for query management,
+    prompt versioning, and model comparison
 
 **Files to Create/Modify**:
 
@@ -352,8 +410,10 @@ projects/catalyst/catalyst-mcp/
   header + session ID)
 - SchemaAgent retrieves relevant tables based on query semantics
 - SQLGenAgent pre-validates SQL via MCP validate_sql before submitting
-- Evaluation harness exists with golden query set defined (metric thresholds
-  deferred to future phase)
+- **Retrieval metrics**: Recall@5 >= 80%, HitRate@5 >= 90% on golden query set
+- **Groundedness**: No hallucinated tables/columns in generated SQL
+- Evaluation harness tests pass (golden queries → retrieval → deterministic
+  checks)
 
 ---
 
@@ -388,7 +448,7 @@ src/main/java/org/openelisglobal/catalyst/
 │   └── CatalystQueryDAOImpl.java
 └── guardrails/SQLGuardrails.java          # Blocked tables, validation
 
-src/main/resources/liquibase/catalyst/     # Audit table changeset
+src/main/resources/liquibase/3.4.x.x/001-catalyst-create-audit-table.xml  # Audit table; new version folder 3.4.x.x; add base.xml + include in base-changelog.xml
 volume/properties/catalyst.properties      # Agent + database configuration
 ```
 
@@ -460,9 +520,12 @@ tests before integration
   using `UserRoleService.userInRole()`. Return 403 Forbidden for unauthorized
   users.
 - **PHI detection in RouterAgent (FR-018)**: Detect likely PHI/identifiers in
-  user queries
+  user queries using **regex/keyword matching** for common patterns (MRN
+  formats, DOB patterns, "patient name", accession numbers). **PHI detection is
+  configurable** - deployments using only local LLM providers may disable this
+  safeguard via configuration.
 - **Provider routing for PHI-flagged queries**: Route to local provider or block
-  if PHI detected and cloud provider configured
+  if PHI detected and cloud provider configured (when PHI detection enabled)
 - **Confirmation token generation and validation (FR-016)**: Generate and
   validate confirmation tokens for SQL execution
 - **Add security fields to CatalystQuery entity**: `phi_gated`,
@@ -489,8 +552,7 @@ src/test/java/org/openelisglobal/catalyst/
 
 frontend/cypress/e2e/catalyst-security.cy.js         # New: E2E test with security features
 
-src/main/resources/liquibase/catalyst/
-└── catalyst-002-add-security-fields.xml            # New: Add security fields to audit table
+src/main/resources/liquibase/3.4.x.x/002-catalyst-add-security-fields.xml  # New: Add security fields to audit table (include from 3.4.x.x/base.xml)
 ```
 
 **Files to Create (M4)**:
@@ -573,13 +635,20 @@ architecture (includes security milestone)
 
 **Independent Future Work** (can proceed in parallel with Phase 2/3):
 
+- **Tier B (40GB+ VRAM) Model Evaluation**: Evaluate CodeLlama 34B / Llama 3.1
+  70B for SQLGen on server-class GPU hardware using golden query dataset and
+  balanced scorecard. Deferred from MVP (M0.2) until appropriate hardware
+  available.
+- **Polished UI Example Queries (FR-014)**: Conduct user research to refine
+  example queries shown in chat interface. MVP uses placeholder examples; final
+  user-tested examples deferred pending user research.
 - **Advanced Multi-Agent Orchestration**: Dynamic agent discovery, external
   agent federation, more sophisticated routing patterns. This work is
   independent of Phase 2 row-level RBAC and can proceed in parallel if resources
   allow.
-- **Performance Evaluation & Optimization**: Establish evaluation harness with
-  golden query sets, measure SQL generation accuracy, response time benchmarks,
-  and optimize based on real-world usage patterns.
+- **Performance Evaluation & Optimization**: Expand evaluation harness usage
+  with professional LLM validation frameworks (ragas, promptfoo, langfuse) for
+  continuous query management, prompt versioning, and model comparison.
 - **Multi-Language Query Support**: Extend natural language query understanding
   to all OpenELIS-supported languages (fr, ar, es, hi, pt, sw), building on the
   English-first MVP foundation.
@@ -678,8 +747,7 @@ src/main/java/org/openelisglobal/catalyst/
 ├── service/             # Business logic
 └── valueholder/         # JPA entities
 
-src/main/resources/liquibase/catalyst/
-└── catalyst-001-create-audit-table.xml
+src/main/resources/liquibase/3.4.x.x/001-catalyst-create-audit-table.xml
 
 src/test/java/org/openelisglobal/catalyst/
 ├── service/             # Unit tests
@@ -934,18 +1002,19 @@ def validate_sql(sql: str, user_query: str) -> dict:
     Checks:
     - SQL syntax validity
     - Blocked table access (sys_user, login_user, user_role)
-    - Estimated row count via EXPLAIN (warn if >10k)
+    - **Note**: Row estimation via EXPLAIN (FR-009) is deferred to M2 when Java
+      backend has read-only DB access. M1 validate_sql performs syntax and
+      blocked table validation only.
 
     Returns:
         {
             "valid": bool,
             "blockedTables": list[str],  # Empty if none
-            "estimatedRows": int,
             "syntaxError": str | None,
             "warnings": list[str]
         }
     """
-    # Full validation logic (mirrors Java SQLGuardrails)
+    # Validation logic (mirrors Java SQLGuardrails, minus row estimation in M1)
     return validator.validate(sql, user_query)
 ```
 
@@ -962,6 +1031,10 @@ catalyst.gateway.api-key=not-required-for-mvp  # Gateway may require auth in fut
 catalyst.guardrails.max-rows=10000
 catalyst.guardrails.query-timeout=30s
 catalyst.guardrails.blocked-tables=sys_user,login_user,user_role
+
+# Security (FR-018, FR-021)
+catalyst.security.phi-detection-enabled=true  # Set false for local-only deployments
+catalyst.security.required-roles=Global Administrator,Reports
 ```
 
 **Agent Runtime Dependency Pinning (Security)**:
@@ -1007,6 +1080,15 @@ llm:
 # MCP Server (SchemaAgent)
 mcp:
   server_url: http://catalyst-mcp:8000/mcp
+
+# Security (RouterAgent - FR-018)
+security:
+  phi_detection_enabled: true # Set false for local-only deployments
+  phi_patterns: # Regex patterns for PHI detection
+    - '\b\d{6,10}\b' # MRN-like numbers
+    - '\b\d{2}/\d{2}/\d{4}\b' # DOB patterns
+    - 'patient\s+name' # Patient name mentions
+    - 'accession\s+number' # Accession references
 ```
 
 ### PHI-Aware Provider Gating (MVP Safety)
@@ -1014,7 +1096,13 @@ mcp:
 **Goal**: Preserve the privacy-first constraint even when users include
 identifiers/PHI in the _question text_.
 
-**Rule (MVP)**:
+**Detection Method**: RouterAgent uses **regex/keyword matching** for common PHI
+patterns (MRN formats, DOB patterns, "patient name", accession numbers).
+
+**Configuration**: PHI detection is **configurable** - deployments using only
+local LLM providers may disable this safeguard via configuration setting.
+
+**Rule (MVP)** (when PHI detection enabled):
 
 - RouterAgent detects likely PHI/identifiers in user query
 - If PHI detected **and** configured provider is externally-hosted (Gemini),
