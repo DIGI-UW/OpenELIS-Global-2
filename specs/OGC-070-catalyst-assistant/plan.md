@@ -294,7 +294,7 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 
 ---
 
-#### M0.1: Provider Switching (Estimate: 1 day)
+#### M0.1: Provider Switching (Estimate: 0.5 days)
 
 **Goal**: Prove same agent works with local AND cloud providers
 
@@ -325,10 +325,10 @@ projects/catalyst/catalyst-agents/
 
 ```bash
 # Test with LM Studio (local)
-LLM_PROVIDER=lmstudio pytest tests/test_provider_switching.py
+CATALYST_LLM_PROVIDER=lmstudio pytest tests/test_provider_switching.py
 
 # Test with Gemini (cloud)
-LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
+CATALYST_LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
 ```
 
 ---
