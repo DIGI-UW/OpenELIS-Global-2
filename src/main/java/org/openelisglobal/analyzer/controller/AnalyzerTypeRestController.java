@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.analyzer.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -155,7 +156,7 @@ public class AnalyzerTypeRestController extends BaseRestController {
      */
     @PostMapping("/{id}/instances")
     public ResponseEntity<Map<String, Object>> createInstance(@PathVariable String id,
-            @RequestBody Map<String, Object> request) {
+            @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
         try {
             AnalyzerType type = analyzerTypeService.get(id);
             if (type == null) {
@@ -165,10 +166,9 @@ public class AnalyzerTypeRestController extends BaseRestController {
             }
 
             String name = (String) request.get("name");
-            if (name == null || name.trim().isEmpty()) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("error", "Instance name is required");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            ResponseEntity<Map<String, Object>> nameValidation = validateRequiredField(name, "Instance name");
+            if (nameValidation != null) {
+                return nameValidation;
             }
 
             // Check for duplicate name
@@ -187,7 +187,7 @@ public class AnalyzerTypeRestController extends BaseRestController {
             instance.setMachineId((String) request.get("machineId"));
             instance.setAnalyzerType(type);
             instance.setActive(true);
-            instance.setSysUserId("1");
+            instance.setSysUserId(getSysUserId(httpRequest));
 
             String instanceId = analyzerService.insert(instance);
 
@@ -216,13 +216,13 @@ public class AnalyzerTypeRestController extends BaseRestController {
      * POST /rest/analyzer-types Create a new analyzer type (for generic plugins).
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createAnalyzerType(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<Map<String, Object>> createAnalyzerType(@RequestBody Map<String, Object> request,
+            HttpServletRequest httpRequest) {
         try {
             String name = (String) request.get("name");
-            if (name == null || name.trim().isEmpty()) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("error", "Type name is required");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            ResponseEntity<Map<String, Object>> nameValidation = validateRequiredField(name, "Type name");
+            if (nameValidation != null) {
+                return nameValidation;
             }
 
             // Check for duplicate name
@@ -241,7 +241,7 @@ public class AnalyzerTypeRestController extends BaseRestController {
             type.setIdentifierPattern((String) request.get("identifierPattern"));
             type.setGenericPlugin(Boolean.TRUE.equals(request.get("isGenericPlugin")));
             type.setActive(true);
-            type.setSysUserId("1");
+            type.setSysUserId(getSysUserId(httpRequest));
 
             analyzerTypeService.insert(type);
 
@@ -261,7 +261,7 @@ public class AnalyzerTypeRestController extends BaseRestController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateAnalyzerType(@PathVariable String id,
-            @RequestBody Map<String, Object> request) {
+            @RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
         try {
             AnalyzerType type = analyzerTypeService.get(id);
             if (type == null) {
@@ -287,7 +287,7 @@ public class AnalyzerTypeRestController extends BaseRestController {
                 type.setGenericPlugin(Boolean.TRUE.equals(request.get("isGenericPlugin")));
             }
 
-            type.setSysUserId("1");
+            type.setSysUserId(getSysUserId(httpRequest));
             analyzerTypeService.update(type);
 
             return ResponseEntity.ok(analyzerTypeToMap(type, false));
@@ -297,6 +297,22 @@ public class AnalyzerTypeRestController extends BaseRestController {
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
+    }
+
+    /**
+     * Validates that a required string field is not null or empty.
+     * 
+     * @param value     the field value to validate
+     * @param fieldName the name of the field for error messages
+     * @return ResponseEntity with BAD_REQUEST if invalid, null if valid
+     */
+    private ResponseEntity<Map<String, Object>> validateRequiredField(String value, String fieldName) {
+        if (value == null || value.trim().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", fieldName + " is required");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+        return null;
     }
 
     /**
