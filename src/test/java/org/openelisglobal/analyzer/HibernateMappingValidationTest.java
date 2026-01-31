@@ -62,11 +62,8 @@ public class HibernateMappingValidationTest {
         configuration.addAnnotatedClass(FileImportConfiguration.class);
         configuration.addAnnotatedClass(ValidationRuleConfiguration.class);
         configuration.addAnnotatedClass(SerialPortConfiguration.class); // Task Reference: T022, M2
-
-        // XML-mapped entities (pending migration in
-        // chore/011-analyzer-xml-to-annotations)
-        configuration.addResource("hibernate/hbm/QualitativeResultMapping.hbm.xml");
-        configuration.addResource("hibernate/hbm/UnitMapping.hbm.xml");
+        configuration.addAnnotatedClass(QualitativeResultMapping.class); // Migrated to annotations
+        configuration.addAnnotatedClass(UnitMapping.class); // Migrated to annotations
 
         // Configure minimal properties (no actual DB connection)
         configuration.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
@@ -120,7 +117,10 @@ public class HibernateMappingValidationTest {
 
     /**
      * Test that analyzer entities follow JavaBean conventions Catches: Conflicting
-     * getters (getActive() vs isActive())
+     * getters (getActive() vs isActive()) within a SINGLE entity.
+     * 
+     * Note: Hibernate requires consistent getter conventions per-entity, but
+     * different entities can use different conventions.
      */
     @Test
     public void testAnalyzerEntitiesHaveNoGetterConflicts() {
@@ -129,9 +129,10 @@ public class HibernateMappingValidationTest {
                 QualitativeResultMapping.class, UnitMapping.class, AnalyzerError.class, CustomFieldType.class,
                 ValidationRuleConfiguration.class, SerialPortConfiguration.class, FileImportConfiguration.class };
 
-        Map<String, Set<String>> getterMap = new HashMap<>();
-
         for (Class<?> entityClass : entities) {
+            // Check each entity independently for getter conflicts
+            Map<String, Set<String>> getterMap = new HashMap<>();
+
             for (Method method : entityClass.getMethods()) {
                 String methodName = method.getName();
                 if (methodName.startsWith("get") && method.getParameterCount() == 0) {
@@ -143,13 +144,14 @@ public class HibernateMappingValidationTest {
                     getterMap.computeIfAbsent(propertyName, k -> new HashSet<>()).add("is" + propertyName);
                 }
             }
-        }
 
-        // Check for conflicts
-        for (Map.Entry<String, Set<String>> entry : getterMap.entrySet()) {
-            Set<String> getters = entry.getValue();
-            if (getters.size() > 1) {
-                assertNotNull("Property " + entry.getKey() + " should not have conflicting getters: " + getters, null);
+            // Check for conflicts within this entity
+            for (Map.Entry<String, Set<String>> entry : getterMap.entrySet()) {
+                Set<String> getters = entry.getValue();
+                if (getters.size() > 1) {
+                    assertNotNull(entityClass.getSimpleName() + ": Property " + entry.getKey()
+                            + " should not have conflicting getters: " + getters, null);
+                }
             }
         }
     }
