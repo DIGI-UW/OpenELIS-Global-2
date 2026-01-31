@@ -1,0 +1,6 @@
+MSH|^~\&|ARCHITECT|LAB|OpenELIS|LAB|20260123123000||ORU^R01|ARCH001|P|2.5.1||||||||
+PID|1||PAT003^^^HOSPITAL||RAKOTO^JAO||19850412|F||||||||||||||||||||
+ORC|RE|PLACER789|FILLER012|||||||||||||||||||||||||
+OBR|1|PLACER789|FILLER012|1|^^^IMMUNO^IMMUNOASSAY PANEL|||20260123121500|||||||||||||||||||||||F|||||||||||||||||||||||||
+OBX|1|ST|^^^HIV^HIV 1/2 Ag/Ab||NEGATIVE|||N|||F||||||
+OBX|2|ST|^^^HBSAG^Hepatitis B Surface Ag||POSITIVE|||N|||F||||||

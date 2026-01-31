@@ -907,30 +907,30 @@ Build new Abbott Architect plugin **User Stories**: US-1 **Depends On**: M1
 
 ### Setup for M12
 
-- [ ] T195 [M12] Create branch
+- [x] T195 [M12] Create branch
       `feat/011-madagascar-analyzer-integration-m12-abbott` from
       `demo/madagascar`
 
 ### Tests for M12 (MANDATORY)
 
-- [ ] T196 [P] [M12] Unit test for AbbottArchitectAnalyzerLineInserter in
+- [x] T196 [P] [M12] Unit test for AbbottArchitectAnalyzerLineInserter in
       `plugins/analyzers/AbbottArchitect/src/test/java/uw/edu/itech/AbbottArchitect/AbbottArchitectAnalyzerLineInserterTest.java`
-- [ ] T197 [P] [M12] Create HL7 test fixtures for Abbott Architect in
+- [x] T197 [P] [M12] Create HL7 test fixtures for Abbott Architect in
       `src/test/resources/testdata/hl7/abbott-architect-result.hl7`
 
 ### Implementation for M12
 
-- [ ] T198 [M12] Create AbbottArchitectAnalyzer external plugin class in
+- [x] T198 [M12] Create AbbottArchitectAnalyzer external plugin class in
       `plugins/analyzers/AbbottArchitect/src/main/java/uw/edu/itech/AbbottArchitect/AbbottArchitectAnalyzer.java`
-- [ ] T199 [M12] Create AbbottArchitectAnalyzerLineInserter in
+- [x] T199 [M12] Create AbbottArchitectAnalyzerLineInserter in
       `plugins/analyzers/AbbottArchitect/src/main/java/uw/edu/itech/AbbottArchitect/AbbottArchitectAnalyzerLineInserter.java`
-- [ ] T200 [M12] Implement HL7 message parsing for Abbott format
-- [ ] T201 [M12] Integrate with MappingAware wrapper pattern
-- [ ] T202 [M12] Document Abbott plugin
+- [x] T200 [M12] Implement HL7 message parsing for Abbott format
+- [x] T201 [M12] Integrate with MappingAware wrapper pattern
+- [x] T202 [M12] Document Abbott plugin
 
 ### Finalization for M12
 
-- [ ] T203 [M12] Verify unit tests pass
+- [x] T203 [M12] Verify unit tests pass
 - [ ] T204 [M12] Create PR `feat/011-madagascar-analyzer-integration-m12-abbott`
       → `demo/madagascar`
 
