@@ -5,45 +5,15 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
 
-    <!-- Changeset 1a: Add ip_address column -->
     <changeSet id="storage-ogc68-001-add-device-connectivity-columns" author="dev-team">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <columnExists tableName="storage_device" columnName="ip_address"/>
-            </not>
-        </preConditions>
         <comment>Add connectivity configuration fields (IP, port, protocol) to storage_device table for network-connected equipment</comment>
         <addColumn tableName="storage_device">
             <column name="ip_address" type="VARCHAR(45)">
                 <constraints nullable="true"/>
             </column>
-        </addColumn>
-    </changeSet>
-
-    <!-- Changeset 1b: Add port column -->
-    <changeSet id="storage-ogc68-001b-add-port-column" author="dev-team">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <columnExists tableName="storage_device" columnName="port"/>
-            </not>
-        </preConditions>
-        <comment>Add port column to storage_device table</comment>
-        <addColumn tableName="storage_device">
             <column name="port" type="INTEGER">
                 <constraints nullable="true"/>
             </column>
-        </addColumn>
-    </changeSet>
-
-    <!-- Changeset 1c: Add communication_protocol column -->
-    <changeSet id="storage-ogc68-001c-add-protocol-column" author="dev-team">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <columnExists tableName="storage_device" columnName="communication_protocol"/>
-            </not>
-        </preConditions>
-        <comment>Add communication_protocol column to storage_device table</comment>
-        <addColumn tableName="storage_device">
             <column name="communication_protocol" type="VARCHAR(20)">
                 <constraints nullable="true"/>
             </column>
@@ -55,19 +25,7 @@
         </rollback>
     </changeSet>
 
-    <!-- Changeset 2: Add port check constraint -->
     <changeSet id="storage-ogc68-002-add-port-check-constraint" author="dev-team">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <sqlCheck expectedResult="0">
-                    SELECT COUNT(*)
-                    FROM information_schema.table_constraints
-                    WHERE table_schema = 'clinlims'
-                    AND table_name = 'storage_device'
-                    AND constraint_name = 'chk_storage_device_port_range'
-                </sqlCheck>
-            </not>
-        </preConditions>
         <comment>Add check constraint for valid port range (1-65535)</comment>
         <sql>
             ALTER TABLE storage_device

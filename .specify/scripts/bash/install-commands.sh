@@ -180,6 +180,17 @@ install_commands() {
         count=$((count + 1))
     done
 
+    # OE-only commands (e.g. download-ci-logs.md) — no core counterpart
+    if [[ -d "$OE_DIR" ]]; then
+        for f in "$OE_DIR"/*.md; do
+            [[ -f "$f" ]] || continue
+            base=$(basename "$f")
+            [[ "$base" == speckit.* ]] && continue
+            cp "$f" "$dir/$base"
+            count=$((count + 1))
+        done
+    fi
+
     echo "  ✓ Installed $count command(s) to $dir"
 }
 

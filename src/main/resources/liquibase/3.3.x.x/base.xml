@@ -32,8 +32,6 @@
   <include relativeToChangelogFile="true" file="022-add-patient-merge-menu-localization.xml"/>
   <!-- Add device connectivity fields for network-connected storage equipment -->
   <include relativeToChangelogFile="true" file="023-storage-device-connectivity.xml"/>
-  <!-- Standardize site_information.lastupdated before 024 inserts -->
-  <include relativeToChangelogFile="true" file="049-rename-site-information-lastupdated.xml"/>
   <!-- Freezer monitoring - formerly 011 (renumbered to avoid duplicate sequence) -->
   <include relativeToChangelogFile="true" file="024-freezer-monitoring-schema.xml"/>
   <include relativeToChangelogFile="true" file="generic-program-menu.xml"/>
@@ -42,31 +40,4 @@
   <!-- Patient Merge (008-patient-merge) - formerly 019/020 (renumbered to avoid duplicate sequence) -->
   <include relativeToChangelogFile="true" file="026-patient-merge-create-audit-table.xml"/>
   <include relativeToChangelogFile="true" file="027-patient-merge-alter-patient-table.xml"/>
-  <!-- ASTM Analyzer Field Mapping Feature (004-astm-analyzer-mapping) -->
-  <!-- Core analyzer tables -->
-  <include relativeToChangelogFile="true" file="028-create-analyzer-configuration-table.xml"/>
-  <include relativeToChangelogFile="true" file="029-create-analyzer-field-table.xml"/>
-  <include relativeToChangelogFile="true" file="030-create-analyzer-field-mapping-table.xml"/>
-  <include relativeToChangelogFile="true" file="031-create-qualitative-result-mapping-table.xml"/>
-  <include relativeToChangelogFile="true" file="032-create-unit-mapping-table.xml"/>
-  <include relativeToChangelogFile="true" file="033-create-analyzer-error-table.xml"/>
-  <include relativeToChangelogFile="true" file="034-create-indexes.xml"/>
-  <include relativeToChangelogFile="true" file="035-create-custom-field-type-table.xml"/>
-  <include relativeToChangelogFile="true" file="036-add-menu-items.xml"/>
-  <include relativeToChangelogFile="true" file="037-add-query-timeout-config.xml"/>
-  <!-- Madagascar 011: RS232 serial adapter (M2) -->
-  <include relativeToChangelogFile="true" file="038-create-serial-port-configuration-table.xml"/>
-  <!-- Additional analyzer changesets (moved from analyzer/ for constitution compliance) -->
-  <include relativeToChangelogFile="true" file="039-add-version-column-to-mapping.xml"/>
-  <include relativeToChangelogFile="true" file="040-add-qc-mapping-incomplete-error-type.xml"/>
-  <include relativeToChangelogFile="true" file="041-create-validation-rule-configuration-table.xml"/>
-  <include relativeToChangelogFile="true" file="042-add-lifecycle-columns-to-analyzer-configuration.xml"/>
-  <include relativeToChangelogFile="true" file="043-add-custom-field-type-id-to-analyzer-field.xml"/>
-  <include relativeToChangelogFile="true" file="044-add-analyzer-id-to-field-mapping.xml"/>
-  <include relativeToChangelogFile="true" file="045-add-qc-service-unavailable-error-type.xml"/>
-  <include relativeToChangelogFile="true" file="046-add-generic-plugin-columns-to-analyzer-configuration.xml"/>
-  <include relativeToChangelogFile="true" file="047-standardize-lastupdated-column-names.xml"/>
-  <include relativeToChangelogFile="true" file="048-add-has-setup-page-to-analyzer.xml"/>
-  <!-- Madagascar Analyzer Integration Feature (011-madagascar-analyzer-integration) -->
-  <include relativeToChangelogFile="true" file="011-004-create-file-import-configuration-table.xml"/>
 </databaseChangeLog>
