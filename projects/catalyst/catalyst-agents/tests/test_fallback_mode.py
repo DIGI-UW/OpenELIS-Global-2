@@ -61,13 +61,14 @@ async def test_router_single_agent_mode_calls_catalyst_agent(monkeypatch):
 async def test_router_mode_switch_via_env_var(monkeypatch):
     """
     Test that RouterAgent mode can be controlled via CATALYST_AGENT_MODE env var.
+
+    Default is single so dev environments without specialist agents work out of the box.
     """
+    # Default (no env) is single
+    executor_default = RouterAgentExecutor()
+    assert executor_default.mode == "single", "Default mode should be 'single'"
 
-    # Test multi mode (default)
+    # Multi mode via env var
+    monkeypatch.setenv("CATALYST_AGENT_MODE", "multi")
     executor_multi = RouterAgentExecutor()
-    assert executor_multi.mode == "multi", "Default mode should be 'multi'"
-
-    # Test single mode via env var
-    monkeypatch.setenv("CATALYST_AGENT_MODE", "single")
-    executor_single = RouterAgentExecutor()
-    assert executor_single.mode == "single", "Mode should be 'single' when env var set"
+    assert executor_multi.mode == "multi", "Mode should be 'multi' when env var set"
