@@ -9,8 +9,8 @@ development environment restart workflow with:
 - **E2E test fixture loading** (by default)
 - **Let's Encrypt setup** (only for non-localhost domains)
 
-This command is **action-oriented**: it builds and restarts by default. Use flags
-to skip steps when iterating quickly. The command reports progress at each
+This command is **action-oriented**: it builds and restarts by default. Use
+flags to skip steps when iterating quickly. The command reports progress at each
 checkpoint so you can monitor the restart process.
 
 ## User Input
@@ -21,9 +21,12 @@ $ARGUMENTS
 
 Interpret arguments best-effort. Support these patterns:
 
-- `/restart-dev-env` → Full restart (build WAR, restart containers, load fixtures)
-- `/restart-dev-env --full-reset` → Drop database volumes before restart (clean slate)
-- `/restart-dev-env --skip-build` → Skip WAR rebuild (use existing target/OpenELIS-Global.war)
+- `/restart-dev-env` → Full restart (build WAR, restart containers, load
+  fixtures)
+- `/restart-dev-env --full-reset` → Drop database volumes before restart (clean
+  slate)
+- `/restart-dev-env --skip-build` → Skip WAR rebuild (use existing
+  target/OpenELIS-Global.war)
 - `/restart-dev-env --skip-fixtures` → Skip loading E2E test fixtures
 - Combine flags as needed: `/restart-dev-env --full-reset --skip-build`
 
@@ -36,7 +39,8 @@ defaults.
 - **Never** drop database volumes unless `--full-reset` is explicitly passed.
 - **Always** wait for webapp readiness before loading fixtures.
 - **Report** container status after restart (even if some containers fail).
-- If Let's Encrypt generation fails, **warn but continue** (use self-signed certs).
+- If Let's Encrypt generation fails, **warn but continue** (use self-signed
+  certs).
 
 ## Workflow
 
@@ -49,7 +53,8 @@ Run these and summarize the results:
   ```bash
   set -a; [ -f .env ] && . ./.env; set +a
   ```
-  Then `LETSENCRYPT_DOMAIN` and `LETSENCRYPT_EMAIL` from .env are available for the rest of the workflow.
+  Then `LETSENCRYPT_DOMAIN` and `LETSENCRYPT_EMAIL` from .env are available for
+  the rest of the workflow.
 - `git status --porcelain` (warn if uncommitted changes)
 - Check `LETSENCRYPT_DOMAIN` env var (default: `localhost`)
 - Check `LETSENCRYPT_EMAIL` env var (required for cert generation)
@@ -69,6 +74,7 @@ Report the detected configuration before proceeding.
 **Skip if `--skip-build` was passed.**
 
 Run:
+
 ```bash
 mvn clean install -DskipTests -Dmaven.test.skip=true
 ```
@@ -76,6 +82,7 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 This follows AGENTS.md guidance: always use BOTH flags to properly skip tests.
 
 After build completes:
+
 - Verify `target/OpenELIS-Global.war` exists
 - Report build success or failure
 
@@ -86,9 +93,11 @@ After build completes:
 Choose command based on `--full-reset` flag:
 
 - **With `--full-reset`**:
+
   ```bash
   docker compose -f dev.docker-compose.yml down -v
   ```
+
   This removes ALL volumes including database data.
 
 - **Without `--full-reset`** (default):
@@ -106,6 +115,7 @@ Report which mode was used.
 Only if `LETSENCRYPT_DOMAIN` is set and not `localhost`:
 
 1. Check if certificates exist:
+
    ```bash
    CERT_PATH="./volume/letsencrypt/live/${DOMAIN}/fullchain.pem"
    ```
@@ -113,6 +123,7 @@ Only if `LETSENCRYPT_DOMAIN` is set and not `localhost`:
 2. If certificates exist: Report "Using existing Let's Encrypt certificates"
 
 3. If certificates don't exist AND `LETSENCRYPT_EMAIL` is set:
+
    - Start proxy first (required for ACME challenge):
      ```bash
      docker compose -f dev.docker-compose.yml up -d proxy
@@ -133,6 +144,7 @@ Only if `LETSENCRYPT_DOMAIN` is set and not `localhost`:
 Choose compose command based on Let's Encrypt status:
 
 - **With Let's Encrypt certificates**:
+
   ```bash
   docker compose -f dev.docker-compose.yml -f docker-compose.letsencrypt.yml up -d
   ```
@@ -143,6 +155,7 @@ Choose compose command based on Let's Encrypt status:
   ```
 
 Then force-recreate the webapp container to pick up the new WAR:
+
 ```bash
 docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
 ```
@@ -159,11 +172,13 @@ curl -sk https://localhost/api/OpenELIS-Global/LoginPage
 
 - Wait up to 120 seconds
 - Check every 5 seconds
-- Report progress: "Waiting for webapp... (10s)", "Waiting for webapp... (20s)", etc.
+- Report progress: "Waiting for webapp... (10s)", "Waiting for webapp... (20s)",
+  etc.
 
 **If webapp ready**: Report success with elapsed time.
 
 **If timeout (120s)**: Report failure and show:
+
 ```bash
 docker logs openelisglobal-webapp --tail 50
 ```
@@ -173,11 +188,13 @@ docker logs openelisglobal-webapp --tail 50
 **Skip if `--skip-fixtures` was passed.**
 
 Run:
+
 ```bash
 ./src/test/resources/load-test-fixtures.sh --no-verify
 ```
 
 This script:
+
 - Automatically detects Docker container
 - Loads foundational data (providers, organizations)
 - Loads storage fixtures + E2E test data
@@ -189,6 +206,7 @@ This script:
 Produce a concise report including:
 
 **Environment Status:**
+
 - Domain: {DOMAIN}
 - Full reset performed: yes/no
 - WAR build: skipped/success
@@ -196,17 +214,18 @@ Produce a concise report including:
 - Fixtures loaded: yes/skipped/failed
 
 **Container Status:**
+
 ```bash
 docker compose -f dev.docker-compose.yml ps --format "table {{.Name}}\t{{.Status}}"
 ```
 
-**Access Points:**
-| Instance     | URL                                    | Credentials          |
-|--------------|----------------------------------------|----------------------|
-| React UI     | https://localhost/                     | admin / adminADMIN!  |
-| Legacy UI    | https://localhost/api/OpenELIS-Global/ | admin / adminADMIN!  |
+| **Access Points:**                     | Instance            | URL                 | Credentials |
+| -------------------------------------- | ------------------- | ------------------- | ----------- | --------- |
+| React UI                               | https://localhost/  | admin / adminADMIN! |             | Legacy UI |
+| https://localhost/api/OpenELIS-Global/ | admin / adminADMIN! |
 
 **Next Steps:**
+
 - If any containers failed: Show relevant logs
 - If fixtures failed: Suggest manual reload command
 - If Let's Encrypt failed: Suggest checking DNS and email config

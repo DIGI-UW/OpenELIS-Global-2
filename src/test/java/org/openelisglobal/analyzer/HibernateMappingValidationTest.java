@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -149,8 +150,8 @@ public class HibernateMappingValidationTest {
             for (Map.Entry<String, Set<String>> entry : getterMap.entrySet()) {
                 Set<String> getters = entry.getValue();
                 if (getters.size() > 1) {
-                    assertNotNull(entityClass.getSimpleName() + ": Property " + entry.getKey()
-                            + " should not have conflicting getters: " + getters, null);
+                    fail(entityClass.getSimpleName() + ": Property " + entry.getKey()
+                            + " should not have conflicting getters: " + getters);
                 }
             }
         }
