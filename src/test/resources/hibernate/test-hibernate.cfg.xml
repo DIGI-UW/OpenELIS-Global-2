@@ -160,11 +160,8 @@
         <!-- Moved to annotation-based mappings (JPA) - entities registered in
             test-persistence.xml -->
 
-        <!-- ASTM Analyzer Mapping mappings (004-astm-analyzer-mapping) -->
-        <!-- Remaining XML mappings (pending future migration) -->
-        <mapping
-            resource="hibernate/hbm/QualitativeResultMapping.hbm.xml" />
-        <mapping resource="hibernate/hbm/UnitMapping.hbm.xml" />
+        <!-- ASTM Analyzer Mapping: QualitativeResultMapping and UnitMapping are
+            JPA-annotated; entities are declared in test-persistence.xml -->
 
     </session-factory>
 
