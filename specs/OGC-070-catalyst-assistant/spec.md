@@ -325,8 +325,26 @@ This delivers enhanced usability and workflow integration.
 
 - What happens when a query requires data from tables that don't exist in the
   schema?
+
   - System should inform the user that the requested data is not available in
     the database schema.
+
+- What happens when a user query is ambiguous (e.g., "samples" without
+  specifying sample/patient/date context)?
+
+  - **Ambiguity Detection Criteria**: A query is considered ambiguous when:
+    - (a) Multiple tables match the query intent (e.g., "samples" could refer to
+      `sample`, `sample_item`, or `sample_patient`)
+    - (b) Required filtering context is missing (e.g., date range, patient
+      identifier, test type)
+    - (c) SchemaAgent RAG retrieval returns >5 relevant tables with similar
+      relevance scores (within 10% of top score)
+  - **Clarification Flow**: RouterAgent MUST detect ambiguity and prompt the
+    user for clarification before delegating to SchemaAgent. The clarification
+    prompt should ask specific questions (e.g., "Do you mean samples collected
+    today, or all samples? Do you need patient information included?"). Once
+    clarified, the query proceeds through the normal Router → SchemaAgent →
+    SQLGenAgent flow.
 
 ## Requirements _(mandatory)_
 

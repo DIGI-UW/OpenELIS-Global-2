@@ -335,20 +335,27 @@ fallback works
       natural language queries (research.md Section 13). This dataset is used by
       M0.2.9 tasks T037b-T037f for model evaluation.
 - [ ] T037b [M0.2] Run balanced scorecard evaluation on Tier A Orchestrator
-      candidates (Primary: Gemma 2 9B, Fallback: Llama 3.1 8B) — document
-      results in `projects/catalyst/docs/model-evaluation-m0.2.md`
+      candidates (Gemma 2 9B and Llama 3.1 8B) — document results in
+      `projects/catalyst/docs/model-evaluation-m0.2.md`. **Note**: Model
+      selection is deferred until evaluation results; both candidates are equal.
+      External research suggests Gemma 2 9B may excel at RAG tasks, but final
+      selection MUST be based on empirical evaluation harness results (per
+      spec.md clarification 2026-01-27).
 - [ ] T037c [M0.2] Run balanced scorecard evaluation on Tier A SQLGen candidates
       (CodeLlama 13B, Llama 3.1 8B fallback) — document results
 - [ ] T037d [M0.2] Write trajectory validation tests per research.md Section
       14.2 in
       `projects/catalyst/catalyst-agents/tests/test_trajectory_validation.py`
-- [ ] T037e [M0.2] Run balanced scorecard evaluation on Tier B SQLGen candidates
-      (CodeLlama 34B, Llama 3.1 70B) when 40GB+ GPU available — document results
-      in `projects/catalyst/docs/model-evaluation-m0.2.md` (Tier B section)
-- [ ] T037f [M0.2] Document Tier B evaluation procedure in
-      `projects/catalyst/docs/model-evaluation-m0.2.md` (when Tier B hardware
-      unavailable, document skip rationale; NFR-001 satisfied by Tier A + Tier B
-      task presence)
+- [ ] T037e [POST-MVP] Run balanced scorecard evaluation on Tier B SQLGen
+      candidates (CodeLlama 34B, Llama 3.1 70B) when 40GB+ GPU available —
+      document results in `projects/catalyst/docs/model-evaluation-post-mvp.md`
+      (Tier B section). **Note**: Tier B evaluation deferred to post-MVP per
+      spec.md clarification 2026-01-27; M0.2 sign-off does not require 40GB+ GPU
+      hardware.
+- [ ] T037f [POST-MVP] Document Tier B evaluation procedure in
+      `projects/catalyst/docs/model-evaluation-post-mvp.md`. **Note**: Tier B
+      evaluation is post-MVP scope; NFR-001 satisfied by Tier A evaluation for
+      MVP.
 
 ### M0.2 Sign-off Checklist
 
