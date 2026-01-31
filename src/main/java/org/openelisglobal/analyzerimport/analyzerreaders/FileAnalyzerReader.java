@@ -6,8 +6,10 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -31,6 +33,8 @@ public class FileAnalyzerReader extends AnalyzerReader {
     private AnalyzerLineInserter inserter;
     private String error;
     private FileImportConfiguration configuration;
+    private static final List<String> PREFERRED_FIELD_ORDER = List.of("sampleId", "testCode", "result",
+            "interpretation", "position", "testDate", "testTime");
 
     public FileAnalyzerReader() {
         this.lines = new ArrayList<>();
@@ -96,14 +100,7 @@ public class FileAnalyzerReader extends AnalyzerReader {
                     StringBuilder lineBuilder = new StringBuilder();
 
                     if (configuration.getHasHeader() != null && configuration.getHasHeader()) {
-                        // Use column mappings to extract values
-                        for (Map.Entry<String, String> mapping : columnMappings.entrySet()) {
-                            String csvColumn = mapping.getKey();
-                            String value = record.get(csvColumn);
-                            if (value != null && !value.isEmpty()) {
-                                lineBuilder.append(value).append("\t");
-                            }
-                        }
+                        buildLineFromRecord(record, columnMappings, lineBuilder);
                     } else {
                         // No header - use record values directly
                         for (int i = 0; i < record.size(); i++) {
@@ -149,6 +146,14 @@ public class FileAnalyzerReader extends AnalyzerReader {
     private void setInserter() {
         // Try to find matching plugin analyzer
         PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
+        if (configuration != null && configuration.getAnalyzerId() != null) {
+            AnalyzerImporterPlugin configuredPlugin = pluginService
+                    .getPluginByAnalyzerId(configuration.getAnalyzerId().toString());
+            if (configuredPlugin != null) {
+                inserter = configuredPlugin.getAnalyzerLineInserter();
+                return;
+            }
+        }
         for (AnalyzerImporterPlugin plugin : pluginService.getAnalyzerPlugins()) {
             try {
                 if (plugin.isTargetAnalyzer(lines)) {
@@ -163,6 +168,40 @@ public class FileAnalyzerReader extends AnalyzerReader {
         // If no plugin matches, we might need a generic CSV inserter
         // For now, set error if no inserter found
         error = "No matching analyzer plugin found for file format";
+    }
+
+    private void buildLineFromRecord(CSVRecord record, Map<String, String> columnMappings, StringBuilder lineBuilder) {
+        Map<String, List<String>> internalToCsv = new HashMap<>();
+        for (Map.Entry<String, String> mapping : columnMappings.entrySet()) {
+            internalToCsv.computeIfAbsent(mapping.getValue(), key -> new ArrayList<>()).add(mapping.getKey());
+        }
+
+        Set<String> usedColumns = new HashSet<>();
+        for (String internalField : PREFERRED_FIELD_ORDER) {
+            List<String> csvColumns = internalToCsv.get(internalField);
+            if (csvColumns == null) {
+                continue;
+            }
+            for (String csvColumn : csvColumns) {
+                String value = record.get(csvColumn);
+                if (value != null && !value.isEmpty()) {
+                    lineBuilder.append(value).append("\t");
+                    usedColumns.add(csvColumn);
+                    break;
+                }
+            }
+        }
+
+        for (Map.Entry<String, String> mapping : columnMappings.entrySet()) {
+            String csvColumn = mapping.getKey();
+            if (usedColumns.contains(csvColumn)) {
+                continue;
+            }
+            String value = record.get(csvColumn);
+            if (value != null && !value.isEmpty()) {
+                lineBuilder.append(value).append("\t");
+            }
+        }
     }
 
     @Override

@@ -954,20 +954,20 @@ On**: M3 (File) **Workstream**: D (File)
 
 ### Tests for M13 (MANDATORY)
 
-- [ ] T206 [P] [M13] Unit test for FluoroCyclerXTAnalyzerLineInserter in
+- [x] T206 [P] [M13] Unit test for FluoroCyclerXTAnalyzerLineInserter in
       `plugins/analyzers/FluoroCyclerXT/src/test/java/uw/edu/itech/FluoroCyclerXT/FluoroCyclerXTAnalyzerLineInserterTest.java`
-- [ ] T207 [P] [M13] Create CSV test fixtures for FluoroCycler in
+- [x] T207 [P] [M13] Create CSV test fixtures for FluoroCycler in
       `src/test/resources/testdata/files/fluorocycler-results.csv`
 
 ### Implementation for M13
 
-- [ ] T208 [M13] Create FluoroCyclerXTAnalyzer external plugin class in
+- [x] T208 [M13] Create FluoroCyclerXTAnalyzer external plugin class in
       `plugins/analyzers/FluoroCyclerXT/src/main/java/uw/edu/itech/FluoroCyclerXT/FluoroCyclerXTAnalyzer.java`
-- [ ] T209 [M13] Create FluoroCyclerXTAnalyzerLineInserter in
+- [x] T209 [M13] Create FluoroCyclerXTAnalyzerLineInserter in
       `plugins/analyzers/FluoroCyclerXT/src/main/java/uw/edu/itech/FluoroCyclerXT/FluoroCyclerXTAnalyzerLineInserter.java`
-- [ ] T210 [M13] Implement CSV parsing for FluoroCycler format
-- [ ] T211 [M13] Integrate with FileAnalyzerReader
-- [ ] T212 [M13] Document FluoroCycler plugin
+- [x] T210 [M13] Implement CSV parsing for FluoroCycler format
+- [x] T211 [M13] Integrate with FileAnalyzerReader
+- [x] T212 [M13] Document FluoroCycler plugin
 
 ### Finalization for M13
 
