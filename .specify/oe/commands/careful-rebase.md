@@ -49,7 +49,8 @@ Run these and summarize the results:
 
 - `git rev-parse --show-toplevel`
 - `git status --porcelain`
-- `git branch --show-current` (if detached, stop and ask user what branch to use)
+- `git branch --show-current` (if detached, stop and ask user what branch to
+  use)
 - `git remote -v`
 - `git fetch --prune` (safe; ensures base is current)
 
@@ -87,7 +88,8 @@ Produce a short plan the user can review before any rebase starts:
 - **High-level change summary**:
   - `git diff --stat <FORK_SHA>..HEAD`
 
-If there are merge commits on the branch (detect via `git rev-list --merges <base>..HEAD`):
+If there are merge commits on the branch (detect via
+`git rev-list --merges <base>..HEAD`):
 
 - Recommend `--preserve-merges` by default
 - Ask the user whether to preserve merges or linearize history
@@ -116,17 +118,21 @@ Important: Call out any “special” hotspots (examples):
 If hotspots exist (or if the user requests), run an “answer session”:
 
 - Ask the user for **resolution preferences** for hotspot categories, e.g.:
-  - “If we hit a lockfile conflict, should we regenerate post-rebase rather than hand-merge?”
+  - “If we hit a lockfile conflict, should we regenerate post-rebase rather than
+    hand-merge?”
   - “For translation JSON conflicts, should we merge keys and then format?”
-  - “If a file is deleted on one side and modified on the other, do we keep the file or accept deletion?”
+  - “If a file is deleted on one side and modified on the other, do we keep the
+    file or accept deletion?”
 - For any single hotspot file that looks high-risk, ask:
   - “Should we prefer our changes, their changes, or do a manual merge?”
 
-Record these decisions in the chat and apply them consistently if conflicts occur.
+Record these decisions in the chat and apply them consistently if conflicts
+occur.
 
 ### 5) Optional squash-before-rebase (checkpoint #3)
 
-Only do this if the user explicitly requested `--squash` (or answers “yes” when asked).
+Only do this if the user explicitly requested `--squash` (or answers “yes” when
+asked).
 
 Explain the trade-off briefly:
 
@@ -177,12 +183,15 @@ Then run validation level:
   `mvn clean install -DskipTests -Dmaven.test.skip=true`
 - **standard**: quick + backend unit/integration tests:  
   `mvn test`  
-  (If available, prefer CI-equivalent checks via `./scripts/run-ci-checks.sh --skip-submodules`.)
+  (If available, prefer CI-equivalent checks via
+  `./scripts/run-ci-checks.sh --skip-submodules`.)
 - **thorough**: standard + frontend CI checks (and optionally E2E):  
   `./scripts/run-ci-checks.sh` and `./scripts/run-frontend-ci-checks.sh`  
-  (If the user wants to skip E2E, `./scripts/run-frontend-ci-checks.sh --skip-e2e`.)
+  (If the user wants to skip E2E,
+  `./scripts/run-frontend-ci-checks.sh --skip-e2e`.)
 
-If any validation fails, stop and report failures clearly before suggesting fixes.
+If any validation fails, stop and report failures clearly before suggesting
+fixes.
 
 ### 8) Post-rebase report
 
@@ -194,7 +203,6 @@ Produce a concise report including:
 - Key output from `git range-diff` (or a short summary)
 - Validations run + pass/fail
 - Next steps:
-  - If the branch has an upstream, recommend `git push --force-with-lease`
-    (only after user confirmation)
+  - If the branch has an upstream, recommend `git push --force-with-lease` (only
+    after user confirmation)
   - Otherwise, show `git push -u origin HEAD`
-
