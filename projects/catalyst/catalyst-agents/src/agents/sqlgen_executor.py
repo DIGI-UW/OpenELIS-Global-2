@@ -15,7 +15,7 @@ from a2a.types import Part, TaskState, TextPart
 from a2a.utils import new_agent_text_message, new_task
 
 from ..config import load_llm_config
-from ..llm_clients import LMStudioClient
+from ..llm_clients import create_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def generate_sql_from_context(user_query: str, schema_context: dict[str, Any]) -
     """
     schema = schema_context.get("schema", "")
     config = load_llm_config()
-    client = LMStudioClient(config.lmstudio_base_url, config.lmstudio_model)
+    client = create_llm_client(config)
 
     # Build prompt with schema context + user query
     prompt = f"Schema:\n{schema}\n\nQuestion:\n{user_query}\n\nSQL:"

@@ -64,7 +64,8 @@ class RouterAgentExecutor(AgentExecutor):
 
         Flow:
         1. Call SchemaAgent to get relevant schema context
-        2. Pass schema context + query to SQLGenAgent for SQL generation
+        2. Call SQLGenAgent with query (M0.2: SQLGenAgent uses its own placeholder schema;
+           M1+ will pass schema context explicitly via task artifacts)
         """
         # Step 1: Get schema context from SchemaAgent
         schema_parts = await self._call_agent(self.schema_url, query)
