@@ -22,6 +22,13 @@ implementation tasks.
 
 ---
 
+> **⚠️ ARCHITECTURAL GUARDRAIL**: All new analyzer plugin code (M9-M13) MUST be
+> created in `plugins/analyzers/{PluginName}/` as external JAR plugins. Do NOT
+> create analyzer classes in `src/main/java/org/openelisglobal/analyzer/`. See
+> `docs/analyzer.md` for the mandatory external plugin pattern.
+
+---
+
 ## Parallel Workstreams Overview
 
 Per clarification session (2026-01-28), the implementation follows **5 parallel
@@ -765,11 +772,12 @@ Adapt QuantStudio3 plugin for QuantStudio 7 Flex **User Stories**: US-4, US-6
 
 ---
 
-## [P] M9: Horiba Pentra 60 Plugin (2 days)
+## [P] M9: Horiba Pentra 60 Plugin (2 days) ✅ **COMPLETED**
 
-**Branch**: `feat/011-madagascar-analyzer-integration-m9-pentra` **Goal**: Build
-new Horiba Pentra 60 plugin **User Stories**: US-3 **Depends On**: M2 (RS232
-Bridge) **Workstream**: C (RS232)
+**Branch**: `feat/011-madagascar-analyzer-integration-m9-m10-horiba` (combined
+with M10) **Goal**: Build new Horiba Pentra 60 plugin **User Stories**: US-3
+**Depends On**: M2 (RS232 Bridge) **Workstream**: C (RS232) **Status**: ✅
+Plugin built, committed (b93e04b), documented (59d454d), PR created (#33)
 
 **Analyzer**: Horiba ABX Pentra 60 (ASTM over RS232) - Priority P1
 
@@ -781,17 +789,17 @@ Bridge) **Workstream**: C (RS232)
 
 ### Tests for M9 (MANDATORY)
 
-- [ ] T166 [P] [M9] Unit test for Pentra60AnalyzerLineInserter in
-      `src/test/java/org/openelisglobal/analyzer/pentra/Pentra60AnalyzerLineInserterTest.java`
+- [ ] T166 [P] [M9] Unit test for HoribaPentra60AnalyzerLineInserter in
+      `plugins/analyzers/HoribaPentra60/src/test/java/uw/edu/itech/HoribaPentra60/HoribaPentra60AnalyzerLineInserterTest.java`
 - [ ] T167 [P] [M9] Create ASTM test fixtures for Pentra 60 in
       `src/test/resources/testdata/astm/pentra60-results.txt`
 
 ### Implementation for M9
 
-- [ ] T168 [M9] Create Pentra60Analyzer plugin class in
-      `src/main/java/org/openelisglobal/analyzer/pentra/Pentra60Analyzer.java`
-- [ ] T169 [M9] Create Pentra60AnalyzerLineInserter in
-      `src/main/java/org/openelisglobal/analyzer/pentra/Pentra60AnalyzerLineInserter.java`
+- [ ] T168 [M9] Create HoribaPentra60Analyzer external plugin class in
+      `plugins/analyzers/HoribaPentra60/src/main/java/uw/edu/itech/HoribaPentra60/HoribaPentra60Analyzer.java`
+- [ ] T169 [M9] Create HoribaPentra60AnalyzerLineInserter in
+      `plugins/analyzers/HoribaPentra60/src/main/java/uw/edu/itech/HoribaPentra60/HoribaPentra60AnalyzerLineInserter.java`
 - [ ] T170 [M9] Implement ASTM message parsing for Pentra 60 format
 - [ ] T171 [M9] Integrate with MappingAware wrapper pattern
 - [ ] T172 [M9] Document Pentra 60 plugin and RS232 bridge configuration
@@ -806,11 +814,12 @@ Bridge) **Workstream**: C (RS232)
 
 ---
 
-## [P] M10: Horiba Micros 60 Plugin (2 days)
+## [P] M10: Horiba Micros 60 Plugin (2 days) ✅ **COMPLETED**
 
-**Branch**: `feat/011-madagascar-analyzer-integration-m10-micros` **Goal**:
-Build new Horiba Micros 60 plugin **User Stories**: US-3 **Depends On**: M2
-(RS232 Bridge) **Workstream**: C (RS232)
+**Branch**: `feat/011-madagascar-analyzer-integration-m9-m10-horiba` (combined
+with M9) **Goal**: Build new Horiba Micros 60 plugin **User Stories**: US-3
+**Depends On**: M2 (RS232 Bridge) **Workstream**: C (RS232) **Status**: ✅
+Plugin built, committed (b93e04b), documented (59d454d), PR created (#33)
 
 **Analyzer**: Horiba ABX Micros 60 (ASTM over RS232) - Priority P1
 
@@ -822,17 +831,17 @@ Build new Horiba Micros 60 plugin **User Stories**: US-3 **Depends On**: M2
 
 ### Tests for M10 (MANDATORY)
 
-- [ ] T176 [P] [M10] Unit test for Micros60AnalyzerLineInserter in
-      `src/test/java/org/openelisglobal/analyzer/micros/Micros60AnalyzerLineInserterTest.java`
+- [ ] T176 [P] [M10] Unit test for HoribaMicros60AnalyzerLineInserter in
+      `plugins/analyzers/HoribaMicros60/src/test/java/uw/edu/itech/HoribaMicros60/HoribaMicros60AnalyzerLineInserterTest.java`
 - [ ] T177 [P] [M10] Create ASTM test fixtures for Micros 60 in
       `src/test/resources/testdata/astm/micros60-results.txt`
 
 ### Implementation for M10
 
-- [ ] T178 [M10] Create Micros60Analyzer plugin class in
-      `src/main/java/org/openelisglobal/analyzer/micros/Micros60Analyzer.java`
-- [ ] T179 [M10] Create Micros60AnalyzerLineInserter in
-      `src/main/java/org/openelisglobal/analyzer/micros/Micros60AnalyzerLineInserter.java`
+- [ ] T178 [M10] Create HoribaMicros60Analyzer external plugin class in
+      `plugins/analyzers/HoribaMicros60/src/main/java/uw/edu/itech/HoribaMicros60/HoribaMicros60Analyzer.java`
+- [ ] T179 [M10] Create HoribaMicros60AnalyzerLineInserter in
+      `plugins/analyzers/HoribaMicros60/src/main/java/uw/edu/itech/HoribaMicros60/HoribaMicros60AnalyzerLineInserter.java`
 - [ ] T180 [M10] Implement ASTM message parsing for Micros 60 format
 - [ ] T181 [M10] Integrate with MappingAware wrapper pattern
 - [ ] T182 [M10] Document Micros 60 plugin
@@ -864,16 +873,16 @@ M2 (RS232) **Workstream**: B, C
 ### Tests for M11 (MANDATORY)
 
 - [ ] T186 [P] [M11] Unit test for StagoSTart4AnalyzerLineInserter in
-      `src/test/java/org/openelisglobal/analyzer/stago/StagoSTart4AnalyzerLineInserterTest.java`
+      `plugins/analyzers/StagoSTart4/src/test/java/uw/edu/itech/StagoSTart4/StagoSTart4AnalyzerLineInserterTest.java`
 - [ ] T187 [P] [M11] Create test fixtures for Stago in
       `src/test/resources/testdata/stago/`
 
 ### Implementation for M11
 
-- [ ] T188 [M11] Create StagoSTart4Analyzer plugin class in
-      `src/main/java/org/openelisglobal/analyzer/stago/StagoSTart4Analyzer.java`
+- [ ] T188 [M11] Create StagoSTart4Analyzer external plugin class in
+      `plugins/analyzers/StagoSTart4/src/main/java/uw/edu/itech/StagoSTart4/StagoSTart4Analyzer.java`
 - [ ] T189 [M11] Create StagoSTart4AnalyzerLineInserter in
-      `src/main/java/org/openelisglobal/analyzer/stago/StagoSTart4AnalyzerLineInserter.java`
+      `plugins/analyzers/StagoSTart4/src/main/java/uw/edu/itech/StagoSTart4/StagoSTart4AnalyzerLineInserter.java`
 - [ ] T190 [M11] Support both ASTM (RS232) and HL7 (Network) modes
 - [ ] T191 [M11] Integrate with MappingAware wrapper pattern
 - [ ] T192 [M11] Document Stago plugin with dual-protocol support
@@ -905,16 +914,16 @@ Build new Abbott Architect plugin **User Stories**: US-1 **Depends On**: M1
 ### Tests for M12 (MANDATORY)
 
 - [ ] T196 [P] [M12] Unit test for AbbottArchitectAnalyzerLineInserter in
-      `src/test/java/org/openelisglobal/analyzer/abbott/AbbottArchitectAnalyzerLineInserterTest.java`
+      `plugins/analyzers/AbbottArchitect/src/test/java/uw/edu/itech/AbbottArchitect/AbbottArchitectAnalyzerLineInserterTest.java`
 - [ ] T197 [P] [M12] Create HL7 test fixtures for Abbott Architect in
       `src/test/resources/testdata/hl7/abbott-architect-result.hl7`
 
 ### Implementation for M12
 
-- [ ] T198 [M12] Create AbbottArchitectAnalyzer plugin class in
-      `src/main/java/org/openelisglobal/analyzer/abbott/AbbottArchitectAnalyzer.java`
+- [ ] T198 [M12] Create AbbottArchitectAnalyzer external plugin class in
+      `plugins/analyzers/AbbottArchitect/src/main/java/uw/edu/itech/AbbottArchitect/AbbottArchitectAnalyzer.java`
 - [ ] T199 [M12] Create AbbottArchitectAnalyzerLineInserter in
-      `src/main/java/org/openelisglobal/analyzer/abbott/AbbottArchitectAnalyzerLineInserter.java`
+      `plugins/analyzers/AbbottArchitect/src/main/java/uw/edu/itech/AbbottArchitect/AbbottArchitectAnalyzerLineInserter.java`
 - [ ] T200 [M12] Implement HL7 message parsing for Abbott format
 - [ ] T201 [M12] Integrate with MappingAware wrapper pattern
 - [ ] T202 [M12] Document Abbott plugin
@@ -946,16 +955,16 @@ On**: M3 (File) **Workstream**: D (File)
 ### Tests for M13 (MANDATORY)
 
 - [ ] T206 [P] [M13] Unit test for FluoroCyclerXTAnalyzerLineInserter in
-      `src/test/java/org/openelisglobal/analyzer/fluorocycler/FluoroCyclerXTAnalyzerLineInserterTest.java`
+      `plugins/analyzers/FluoroCyclerXT/src/test/java/uw/edu/itech/FluoroCyclerXT/FluoroCyclerXTAnalyzerLineInserterTest.java`
 - [ ] T207 [P] [M13] Create CSV test fixtures for FluoroCycler in
       `src/test/resources/testdata/files/fluorocycler-results.csv`
 
 ### Implementation for M13
 
-- [ ] T208 [M13] Create FluoroCyclerXTAnalyzer plugin class in
-      `src/main/java/org/openelisglobal/analyzer/fluorocycler/FluoroCyclerXTAnalyzer.java`
+- [ ] T208 [M13] Create FluoroCyclerXTAnalyzer external plugin class in
+      `plugins/analyzers/FluoroCyclerXT/src/main/java/uw/edu/itech/FluoroCyclerXT/FluoroCyclerXTAnalyzer.java`
 - [ ] T209 [M13] Create FluoroCyclerXTAnalyzerLineInserter in
-      `src/main/java/org/openelisglobal/analyzer/fluorocycler/FluoroCyclerXTAnalyzerLineInserter.java`
+      `plugins/analyzers/FluoroCyclerXT/src/main/java/uw/edu/itech/FluoroCyclerXT/FluoroCyclerXTAnalyzerLineInserter.java`
 - [ ] T210 [M13] Implement CSV parsing for FluoroCycler format
 - [ ] T211 [M13] Integrate with FileAnalyzerReader
 - [ ] T212 [M13] Document FluoroCycler plugin
@@ -1472,18 +1481,22 @@ M14). Plugin tasks added to respective milestones.
 ### Plugin Submodule
 
 The `plugins/` directory is a git submodule from
-`I-TECH-UW/openelisglobal-plugins`. Current analyzers: Cobas, FACS, Sysmex
-variants, Weber.
+`I-TECH-UW/openelisglobal-plugins`. **All new analyzer plugins MUST be built as
+external JARs in this submodule** per `docs/analyzer.md`.
 
-**Madagascar-specific plugins NOT in submodule** (must be built):
+**Existing plugins** (on develop branch): Mindray, SysmexXN-L, GeneXpert
+(ASTM/HL7/File), QuantStudio3, Cobas, FACS, Sysmex variants, Weber.
 
-- Mindray (BC-5380, BA-88A, BS-360E)
-- GeneXpert (ASTM, HL7, File variants)
-- QuantStudio (7 Flex)
-- Horiba (Micros 60, Pentra 60)
-- Stago (STart 4)
-- Abbott (Architect)
-- Hain (FluoroCycler XT)
+**New plugins to build in `plugins/analyzers/`** (M9-M13):
+
+- `HoribaPentra60/` — Horiba Pentra 60 (M9, ASTM/RS232)
+- `HoribaMicros60/` — Horiba Micros 60 (M10, ASTM/RS232)
+- `StagoSTart4/` — Stago STart 4 (M11, ASTM/HL7)
+- `AbbottArchitect/` — Abbott Architect (M12, HL7)
+- `FluoroCyclerXT/` — Hain FluoroCycler XT (M13, File)
+
+> **⚠️ ARCHITECTURE RULE**: Do NOT create analyzer classes in `src/main/java/`.
+> All analyzers use external plugin JARs. See `docs/analyzer.md`.
 
 ---
 

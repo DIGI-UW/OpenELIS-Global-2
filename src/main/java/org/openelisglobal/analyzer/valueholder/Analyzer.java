@@ -17,8 +17,11 @@ package org.openelisglobal.analyzer.valueholder;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.GenericGenerator;
@@ -64,6 +67,10 @@ public class Analyzer extends BaseObject<String> {
 
     @Column(name = "has_setup_page", length = 1)
     private boolean hasSetupPage;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "analyzer_type_id")
+    private AnalyzerType analyzerType;
 
     @Override
     public String getId() {
@@ -137,5 +144,13 @@ public class Analyzer extends BaseObject<String> {
 
     public void setHasSetupPage(boolean hasSetupPage) {
         this.hasSetupPage = hasSetupPage;
+    }
+
+    public AnalyzerType getAnalyzerType() {
+        return analyzerType;
+    }
+
+    public void setAnalyzerType(AnalyzerType analyzerType) {
+        this.analyzerType = analyzerType;
     }
 }

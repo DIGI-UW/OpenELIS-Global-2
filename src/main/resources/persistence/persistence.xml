@@ -77,6 +77,7 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerType</class>
 
         <!-- RS232 Serial Port Configuration entity (011-madagascar-analyzer-integration M2) -->
         <class>org.openelisglobal.analyzer.valueholder.SerialPortConfiguration</class>

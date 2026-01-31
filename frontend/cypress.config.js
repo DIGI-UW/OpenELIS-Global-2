@@ -1,9 +1,65 @@
 const { defineConfig } = require("cypress");
 const fs = require("fs");
 const path = require("path");
+const { execSync } = require("child_process");
 
 // Get project root - cypress.config.js is in frontend/, so go up one level
 const PROJECT_ROOT = path.resolve(__dirname, "..");
+
+/**
+ * Auto-detect base URL for cross-environment testing (localhost vs subdomains).
+ * Three-tier fallback:
+ * 1. CYPRESS_BASE_URL env override (highest priority)
+ * 2. LETSENCRYPT_DOMAIN from Docker proxy container
+ * 3. .env file in project root
+ * 4. Default to localhost (fallback)
+ *
+ * @returns {string} The detected base URL (e.g., "https://localhost" or "https://analyzers.openelis-global.org")
+ */
+function detectBaseUrl() {
+  // 1. Check CYPRESS_BASE_URL override (highest priority)
+  if (process.env.CYPRESS_BASE_URL) {
+    console.log(`🔧 Using CYPRESS_BASE_URL: ${process.env.CYPRESS_BASE_URL}`);
+    return process.env.CYPRESS_BASE_URL;
+  }
+
+  // 2. Detect from Let's Encrypt domain (Docker proxy container)
+  try {
+    const domain = execSync(
+      "docker exec openelisglobal-proxy env 2>/dev/null | grep LETSENCRYPT_DOMAIN | cut -d= -f2",
+      { encoding: "utf-8", timeout: 5000, stdio: ["pipe", "pipe", "pipe"] },
+    ).trim();
+
+    if (domain && domain !== "") {
+      console.log(
+        `🌐 Detected subdomain from LETSENCRYPT_DOMAIN: https://${domain}`,
+      );
+      return `https://${domain}`;
+    }
+  } catch (e) {
+    // Docker not running or proxy container not found - continue to fallback
+  }
+
+  // 3. Fallback to .env file in project root
+  try {
+    const envPath = path.join(PROJECT_ROOT, ".env");
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, "utf-8");
+      const match = envContent.match(/LETSENCRYPT_DOMAIN=(.+)/);
+      if (match && match[1]) {
+        const domain = match[1].trim();
+        console.log(`🌐 Detected from .env: https://${domain}`);
+        return `https://${domain}`;
+      }
+    }
+  } catch (e) {
+    // .env not found or unreadable - continue to default
+  }
+
+  // 4. Default to localhost
+  console.log("🏠 Using default: https://localhost");
+  return "https://localhost";
+}
 
 module.exports = defineConfig({
   defaultCommandTimeout: 3000, // 3 seconds - use Cypress retry-ability instead of long timeouts
@@ -407,7 +463,7 @@ module.exports = defineConfig({
         return config;
       }
     },
-    baseUrl: "https://localhost",
+    baseUrl: detectBaseUrl(),
     testIsolation: false,
     // Storage tests are now enabled for M2 frontend verification
     // No excludeSpecPattern - all storage tests should run
