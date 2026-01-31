@@ -842,11 +842,11 @@ All schema changes will be placed in `src/main/resources/liquibase/3.8.x.x/`
 
 | Entity                    | Table                       | Purpose                | Milestone     |
 | ------------------------- | --------------------------- | ---------------------- | ------------- |
-| InstrumentMetadata        | instrument_metadata         | Extended analyzer info | M15           |
-| InstrumentLocationHistory | instrument_location_history | Location audit trail   | M15           |
+| InstrumentMetadata        | instrument_metadata         | Extended analyzer info | M16           |
+| InstrumentLocationHistory | instrument_location_history | Location audit trail   | M16           |
 | SerialPortConfiguration   | serial_port_configuration   | RS232 settings         | M2            |
 | FileImportConfiguration   | file_import_configuration   | File import settings   | M3            |
-| OrderExport               | order_export                | Order tracking         | M14           |
+| OrderExport               | order_export                | Order tracking         | M15           |
 | GeneXpertModule           | genexpert_module            | Module tracking        | Post-deadline |
 | MaintenanceEvent          | maintenance_event           | Maintenance records    | Post-deadline |
 
