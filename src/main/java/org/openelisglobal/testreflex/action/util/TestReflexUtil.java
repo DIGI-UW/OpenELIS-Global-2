@@ -62,7 +62,7 @@ public class TestReflexUtil {
 
     private static String CONCLUSION_ANAYLETE_ID = null;
     private static Analyte CD4_ANAYLETE = null;
-    public static String CD4_SCRIPTLET_ID = null;
+    private static String CD4_SCRIPTLET_ID = null;
     private static Set<String> TRIGGERING_REFLEX_TEST_IDS;
     private static Set<String> TRIGGERING_UC_REFLEX_TEST_IDS;
     private static Map<String, List<TestReflex>> TEST_TO_REFLEX_MAP;

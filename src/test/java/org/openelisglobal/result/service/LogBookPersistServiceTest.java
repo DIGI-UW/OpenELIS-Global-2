@@ -1,7 +1,8 @@
-package org.openelisglobal.result.utils;
+package org.openelisglobal.result.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,14 +19,12 @@ import org.openelisglobal.common.services.ResultSaveService;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
 import org.openelisglobal.dataexchange.orderresult.OrderResponseWorker.Event;
+import org.openelisglobal.method.service.MethodService;
+import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
-import org.openelisglobal.result.service.LogbookResultsPersistService;
-import org.openelisglobal.result.service.ResultInventoryService;
-import org.openelisglobal.result.service.ResultService;
-import org.openelisglobal.result.service.ResultSignatureService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultInventory;
 import org.openelisglobal.result.valueholder.ResultSignature;
@@ -38,6 +37,7 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.util.ReflectionTestUtils;
 
 public class LogBookPersistServiceTest extends BaseWebContextSensitiveTest {
 
@@ -59,37 +59,39 @@ public class LogBookPersistServiceTest extends BaseWebContextSensitiveTest {
     AnalyteService analyteService;
     @Autowired
     ScriptletService scriptletService;
+    @Autowired
+    MethodService methodService;
 
     @Before
     public void setUp() throws Exception {
-        executeDataSetWithStateManagement("testdata/inventory.xml");
-
+        executeDataSetWithStateManagement("testdata/logbook-db.xml");
         Scriptlet cd4Scriptlet = new Scriptlet();
         cd4Scriptlet.setScriptletName("Calculate CD4");
         cd4Scriptlet = scriptletService.getScriptletByName(cd4Scriptlet);
 
         if (cd4Scriptlet != null && cd4Scriptlet.getId() != null) {
-            TestReflexUtil.CD4_SCRIPTLET_ID = cd4Scriptlet.getId();
+            ReflectionTestUtils.setField(TestReflexUtil.class, "CD4_SCRIPTLET_ID", cd4Scriptlet.getId());
         }
     }
 
     private TestResultItem getTestResultItem() {
         Result result = resultService.getAll().get(0);
-        DemoData demoData = new DemoData();
+        Method method = methodService.getAll().get(0);
+
         TestResultItem item = new TestResultItem();
-        item.setAccessionNumber(demoData.getAnalyses().get(0).getSampleItem().getSample().getAccessionNumber());
+        item.setAccessionNumber("S-TEST-001");
         item.setSequenceNumber("1");
         item.setShowSampleDetails(true);
-        item.setResultValue(demoData.getResults().get(0).getValue());
-        item.setResultType(demoData.getResults().get(0).getResultType());
+        item.setResultValue("6.8");
+        item.setResultType("N");
         item.setValid(true);
         item.setShadowRejected(false);
         item.setRefer(false);
         item.setResult(result);
         item.setResultId(result.getId());
-        item.setTestDate(demoData.getAnalyses().get(0).getTest().getActiveBeginDateForDisplay());
-        item.setTestMethod(demoData.getAnalyses().get(0).getTest().getMethod().getMethodName());
-        item.setAnalysisId(demoData.getAnalyses().get(0).getId());
+        item.setTestDate("2024-01-15");
+        item.setTestMethod(method.getMethodName());
+        item.setAnalysisId("1");
         item.setTechnician("John Doe");
         item.setTechnicianSignatureId(null);
         return item;
@@ -140,8 +142,10 @@ public class LogBookPersistServiceTest extends BaseWebContextSensitiveTest {
         logbookPersistService.persistDataSet(dataSet, resultUpdates, systemUser.getId());
 
         List<Result> savedResults = resultService.getAll();
+        assertTrue(savedResults.size() > 0);
         assertEquals("6.8", savedResults.get(0).getValue());
-        assertFalse("Results should be persisted", savedResults.isEmpty());
+        assertEquals("N", savedResults.get(0).getResultType());
+
     }
 
     @Test
@@ -187,6 +191,7 @@ public class LogBookPersistServiceTest extends BaseWebContextSensitiveTest {
 
         List<Result> savedResults = resultService.getAll();
         assertEquals("6.8", savedResults.get(0).getValue());
+        assertEquals("N", savedResults.get(0).getResultType());
         assertFalse("Results should be persisted", savedResults.isEmpty());
 
     }
