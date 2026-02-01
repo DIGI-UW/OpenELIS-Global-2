@@ -98,7 +98,7 @@ public abstract class AbstractMindrayIntegrationTest extends BaseWebContextSensi
 
         Integer count = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM clinlims.analyzer_results WHERE analyzer_id = ?", Integer.class,
-                mindrayAnalyzer.getId());
+                Integer.parseInt(mindrayAnalyzer.getId()));
         assertTrue("Expected at least one analyzer result", count != null && count >= 1);
     }
 
