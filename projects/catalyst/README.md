@@ -37,14 +37,16 @@ area.
 # 1. Copy env template
 cp projects/catalyst/env.recommended projects/catalyst/.env
 
-# 2. Install Python deps (per component)
-cd projects/catalyst/catalyst-gateway && uv sync && cd ../..
-cd projects/catalyst/catalyst-agents && uv sync && cd ../..
-cd projects/catalyst/catalyst-mcp && uv sync && cd ../..
+# 2. Install Python deps (per component, --extra dev includes honcho/ruff/mypy)
+cd projects/catalyst/catalyst-gateway && uv sync --extra dev && cd ..
+cd catalyst-agents && uv sync --extra dev && cd ..
+cd catalyst-mcp && uv sync --extra dev && cd ..
 
-# 3. Start services
-cd projects/catalyst
-cd catalyst-gateway && uv run honcho -f ../Procfile.dev start
+# 3. Create logs directory
+mkdir -p logs
+
+# 4. Start all services (run from projects/catalyst/)
+./catalyst-agents/.venv/bin/honcho -f Procfile.dev start
 ```
 
 ### Smoke tests (M0.0)
@@ -53,6 +55,49 @@ cd catalyst-gateway && uv run honcho -f ../Procfile.dev start
 cd projects/catalyst
 ./tests/run_tests.sh all
 ```
+
+### E2E testing (milestone sign-off)
+
+Use these steps to verify functionality end-to-end before signing off on a
+milestone. See `specs/OGC-070-catalyst-assistant/tasks.md` for each milestone’s
+sign-off checklist.
+
+**Prerequisites**
+
+- **LM Studio (M0.1+)** For provider E2E with `CATALYST_LLM_PROVIDER=lmstudio`:
+  run LM Studio and expose an OpenAI-compatible API on `http://localhost:1234`.
+- **Gemini (M0.1+)** For provider E2E with `CATALYST_LLM_PROVIDER=gemini`: set
+  `GOOGLE_API_KEY` in `.env` (see `env.recommended` for `GEMINI_MODEL`).
+
+**Commands**
+
+1. Copy env and configure provider:
+   ```bash
+   cp projects/catalyst/env.recommended projects/catalyst/.env
+   # Edit .env: set CATALYST_LLM_PROVIDER=lmstudio or gemini; add GOOGLE_API_KEY if using Gemini.
+   ```
+2. Start services (Gateway, Router, Catalyst Agent, MCP), e.g. via
+   `Procfile.dev` or by running `./tests/run_tests.sh all` (it starts services
+   then runs pytest).
+3. In another terminal, run the provider E2E script:
+   ```bash
+   cd projects/catalyst
+   ./tests/e2e/test_provider_e2e.sh
+   ```
+4. For full M0.1 sign-off: run the same script once with LM Studio configured,
+   then again with Gemini configured. Both runs must succeed.
+5. For M0.2+ multi-agent sign-off: with the M0.2 stack running, run:
+   ```bash
+   ./tests/e2e/test_multiagent_e2e.sh
+   ```
+
+**Expected output**
+
+- `test_provider_e2e.sh` and `test_multiagent_e2e.sh` print `PASS: ...` and exit
+  0 when the Gateway is up and returns a valid completion (e.g. SQL or
+  structured content).
+- If the Gateway is unreachable, scripts exit 1 and instruct you to start
+  services first.
 
 ### Docker compose (M0.0)
 

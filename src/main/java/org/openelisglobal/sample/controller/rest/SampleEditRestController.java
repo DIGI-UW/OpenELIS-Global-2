@@ -25,6 +25,7 @@ import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.service.PatientService;
@@ -71,6 +72,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class SampleEditRestController extends BaseSampleEntryController {
     @Autowired
     SampleEditFormValidator formValidator;
+    @Autowired
+    private FhirTransformService fhirTransformService;
 
     // private ObservationHistory paymentObservation = null;
     private static final SampleEditItemComparator testComparator = new SampleEditItemComparator();
@@ -242,6 +245,12 @@ public class SampleEditRestController extends BaseSampleEntryController {
                 result.reject("errors.UpdateException", "errors.UpdateException");
             }
             saveErrors(result);
+        }
+
+        try {
+            fhirTransformService.transformAnalysisByIds(sampleEditService.getUpdatedAnalysisList());
+        } catch (Exception e) {
+            LogEvent.logError(e);
         }
     }
 
