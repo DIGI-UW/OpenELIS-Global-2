@@ -72,7 +72,7 @@ public class MindrayBS360EIntegrationTest extends BaseWebContextSensitiveTest {
     private void cleanTestData() {
         try {
             jdbcTemplate.update(
-                    "DELETE FROM analyzer_results WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = ?)",
+                    "DELETE FROM \"ANALYZER_RESULTS\" WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = ?)",
                     MINDRAY_ANALYZER_NAME);
             jdbcTemplate.update(
                     "DELETE FROM analyzer_configuration WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = ?)",
@@ -95,7 +95,7 @@ public class MindrayBS360EIntegrationTest extends BaseWebContextSensitiveTest {
         boolean insertOk = reader.insertAnalyzerData("1");
         assertTrue("insertAnalyzerData should succeed: " + reader.getError(), insertOk);
 
-        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM analyzer_results WHERE analyzer_id = ?",
+        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM \"ANALYZER_RESULTS\" WHERE analyzer_id = ?",
                 Integer.class, mindrayAnalyzer.getId());
         assertTrue("Expected at least one analyzer result", count != null && count >= 1);
     }
