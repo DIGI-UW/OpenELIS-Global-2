@@ -179,16 +179,8 @@ public class FileAnalyzerReader extends AnalyzerReader {
         Set<String> usedColumns = new HashSet<>();
         for (String internalField : PREFERRED_FIELD_ORDER) {
             List<String> csvColumns = internalToCsv.get(internalField);
-            if (csvColumns == null) {
-                continue;
-            }
-            for (String csvColumn : csvColumns) {
-                String value = record.get(csvColumn);
-                if (value != null && !value.isEmpty()) {
-                    lineBuilder.append(value).append("\t");
-                    usedColumns.add(csvColumn);
-                    break;
-                }
+            if (csvColumns != null) {
+                appendFirstNonEmptyValue(record, csvColumns, lineBuilder, usedColumns);
             }
         }
 
@@ -200,6 +192,18 @@ public class FileAnalyzerReader extends AnalyzerReader {
             String value = record.get(csvColumn);
             if (value != null && !value.isEmpty()) {
                 lineBuilder.append(value).append("\t");
+            }
+        }
+    }
+
+    private void appendFirstNonEmptyValue(CSVRecord record, List<String> csvColumns, StringBuilder lineBuilder,
+            Set<String> usedColumns) {
+        for (String csvColumn : csvColumns) {
+            String value = record.get(csvColumn);
+            if (value != null && !value.isEmpty()) {
+                lineBuilder.append(value).append("\t");
+                usedColumns.add(csvColumn);
+                return;
             }
         }
     }
