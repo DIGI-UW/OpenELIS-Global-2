@@ -7,6 +7,36 @@
 
 ## Clarifications
 
+### Session 2026-01-29
+
+- Q: The MedGemma methodology alignment plan introduces a "LocalPHI mode" where
+  local LLMs can access actual patient/row data. Should this be in MVP scope or
+  Phase 2? → A: LocalPHI mode is Phase 2 scope. MVP focuses on CloudSafe
+  (schema-only) workflow. For MVP, security guardrails for non-orchestrator LLMs
+  are placeholder/lax (not working with real patient data). Orchestrator
+  security is rudimentary framework only. **CRITICAL WARNING**: Full security
+  implementation MUST be completed before ANY actual patient data is used in
+  LocalPHI mode. This is explicitly deferred, not forgotten.
+- Q: Should MVP security requirements (FR-018 PHI detection, FR-021 RBAC, FR-016
+  confirmation tokens) be fully implemented or placeholder? → A: Security
+  **architectural components/hooks** MUST be in place for MVP (interfaces,
+  extension points, configuration flags). However, **implementation is
+  rudimentary/placeholder** until Phase 2 (patient data stage). Example: PHI
+  detection interface exists but patterns are basic; RBAC check method exists
+  but may be permissive; confirmation token flow exists but validation is
+  minimal. Full hardened implementation required before patient data use.
+- Q: Should the spec mandate flat JSON (not FHIR) for AI data tools per the
+  MedGemma plan's "FHIR verbosity tax" finding? → A: FHIR constraint not
+  directly applicable — Catalyst uses SQL against base OpenELIS data model, not
+  FHIR endpoints. However, any data returned to LLMs (current or future) MUST be
+  **compact and LLM-friendly** (minimize token usage). This is a general
+  principle, not FHIR-specific.
+- Q: Should the spec adopt "CloudSafe" and "LocalPHI" mode terminology from the
+  methodology plan? → A: Yes. Adopt terminology now for consistent naming:
+  **CloudSafe mode** (MVP) = schema-only context, cloud providers allowed;
+  **LocalPHI mode** (Phase 2) = patient/row data via MCP tools, local providers
+  only. See Terminology section below.
+
 ### Session 2026-01-27
 
 - Q: FR-009 specifies row estimation to warn users about queries
@@ -17,8 +47,11 @@
   available (cleaner UX).
 - Q: NFR-001 specifies "Llama 3.1 8B / Gemma 2 9B for Orchestrator" but doesn't
   indicate which should be the primary default configuration. Which model should
-  be documented as the default? → A: Llama 3.1 8B as default, Gemma 2 9B as
-  fallback (stronger reasoning for orchestration).
+  be documented as the default? → A: **Deferred** - Both Llama 3.1 8B and Gemma
+  2 9B are equal candidates for Orchestrator. External analysis (Gemini/MedGemma
+  research) suggests Gemma 2 9B may have superior RAG performance, but final
+  selection MUST be based on empirical evaluation harness results during M0.2.
+  Document both; decide after validation with golden query dataset.
 - Q: FR-018 requires detecting "likely PHI/identifiers" in user queries to
   prevent sending sensitive data to external LLM providers. What approach should
   MVP use for PHI detection? → A: Simple regex/keyword matching for MRN, DOB
@@ -129,9 +162,11 @@ knowledge.
 ### User Story 2 - Privacy-First Architecture (Priority: P1)
 
 A privacy officer or system administrator needs assurance that Catalyst never
-exposes patient data to any AI service. The system must guarantee that only
-database schema metadata is used as AI context, never actual patient records or
-test results.
+exposes patient data to external/cloud AI services (CloudSafe mode). For local
+deployments, future LocalPHI mode may allow controlled patient data access with
+strict guardrails (Phase 2). The system must guarantee that only database schema
+metadata is used as AI context for cloud providers, never actual patient records
+or test results.
 
 **Why this priority**: This is a non-negotiable security and compliance
 requirement. Violation of this principle could result in HIPAA violations,
@@ -139,22 +174,24 @@ SLIPTA non-compliance, and loss of user trust. This must be enforced from day
 one.
 
 **Independent Test**: Can be fully tested by reviewing the system's audit
-records for AI-assisted query generation and confirming they contain only schema
-metadata and the user's question (no patient identifiers, test results, or other
-PHI), and by confirming execution uses read-only database access.
+records for AI-assisted query generation in CloudSafe mode and confirming they
+contain only schema metadata and the user's question (no patient identifiers,
+test results, or other PHI), and by confirming execution uses read-only database
+access.
 
 This delivers security assurance and regulatory compliance.
 
 **Acceptance Scenarios**:
 
-1. **Given** the system generates a proposed query, **When** it prepares AI
-   context, **Then** the context contains only database schema information
-   (table names, column names, data types, relationships) and the user's natural
-   language question, with no patient data values.
+1. **Given** the system generates a proposed query in CloudSafe mode, **When**
+   it prepares AI context, **Then** the context contains only database schema
+   information (table names, column names, data types, relationships) and the
+   user's natural language question, with no patient data values.
 
 2. **Given** a user queries for information that could involve patient
-   identifiers or results, **When** the system processes the request, **Then**
-   patient identifiers and test results are never included in AI context.
+   identifiers or results in CloudSafe mode, **When** the system processes the
+   request, **Then** patient identifiers and test results are never included in
+   AI context sent to cloud/external providers.
 
 3. **Given** the system executes generated SQL, **When** it connects to the
    database, **Then** it uses a read-only database connection that cannot modify
@@ -166,6 +203,9 @@ This delivers security assurance and regulatory compliance.
    external provider, **And** the user is either routed to a local provider (if
    configured and available) or prompted to remove PHI from the question and
    retry.
+
+**Note**: These scenarios apply to CloudSafe mode (MVP). LocalPHI mode (Phase 2)
+will have separate acceptance criteria for controlled local data access.
 
 ---
 
@@ -285,8 +325,26 @@ This delivers enhanced usability and workflow integration.
 
 - What happens when a query requires data from tables that don't exist in the
   schema?
+
   - System should inform the user that the requested data is not available in
     the database schema.
+
+- What happens when a user query is ambiguous (e.g., "samples" without
+  specifying sample/patient/date context)?
+
+  - **Ambiguity Detection Criteria**: A query is considered ambiguous when:
+    - (a) Multiple tables match the query intent (e.g., "samples" could refer to
+      `sample`, `sample_item`, or `sample_patient`)
+    - (b) Required filtering context is missing (e.g., date range, patient
+      identifier, test type)
+    - (c) SchemaAgent RAG retrieval returns >5 relevant tables with similar
+      relevance scores (within 10% of top score)
+  - **Clarification Flow**: RouterAgent MUST detect ambiguity and prompt the
+    user for clarification before delegating to SchemaAgent. The clarification
+    prompt should ask specific questions (e.g., "Do you mean samples collected
+    today, or all samples? Do you need patient information included?"). Once
+    clarified, the query proceeds through the normal Router → SchemaAgent →
+    SQLGenAgent flow.
 
 ## Requirements _(mandatory)_
 
@@ -302,9 +360,11 @@ This delivers enhanced usability and workflow integration.
   using a RAG (Retrieval-Augmented Generation) or MCP (Model Context Protocol)
   approach to support the full clinical schema without exceeding context limits.
 
-- **FR-004**: System MUST ensure that LLM prompts contain ONLY schema metadata
-  and the user's query text, with NO patient data, test results, or other PHI
-  (Protected Health Information).
+- **FR-004**: In **CloudSafe mode** (MVP), system MUST ensure that LLM prompts
+  contain ONLY schema metadata and the user's query text, with NO patient data,
+  test results, or other PHI (Protected Health Information). This requirement
+  applies unconditionally to all cloud/external providers. LocalPHI mode
+  (Phase 2) defines separate rules for local-only providers.
 
 - **FR-005**: System MUST execute generated SQL queries against the OpenELIS
   database using a read-only connection.
@@ -321,9 +381,16 @@ This delivers enhanced usability and workflow integration.
   access to blocked tables (e.g., sys_user, login_user, user_role).
 
 - **FR-009**: System MUST estimate the number of rows a query will return before
-  execution and warn users if the estimate exceeds 10,000 rows. **Implementation
-  deferred to M2** when read-only database access is available. Estimation uses
-  PostgreSQL EXPLAIN to calculate row count.
+  execution and warn users if the estimate exceeds 10,000 rows.
+
+  **Implementation (defense-in-depth)**:
+
+  - M0.0-M0.2: Placeholder returns 0 (no estimation)
+  - M1+: MCP `validate_sql` tool performs EXPLAIN-based estimation (agent
+    pre-validation)
+  - M2+: Java `SQLGuardrails` re-validates estimation (defense-in-depth)
+
+  Both layers use PostgreSQL EXPLAIN to estimate row count.
 
 - **FR-010**: System MUST log all generated SQL queries and their execution
   results for audit purposes, including user ID and timestamp.
@@ -337,11 +404,15 @@ This delivers enhanced usability and workflow integration.
   sys_user, login_user, user_role). Full row-level RBAC integration with
   OpenELIS permissions is deferred to Phase 2.
 
-- **FR-014**: System SHOULD provide example queries or prompts to help users
-  understand how to phrase their questions effectively. UI displays 3-5 simple
-  representative examples covering: count queries, JOIN queries, aggregation
-  queries, and date filtering queries. **Final examples deferred to post-MVP**
-  pending user testing; MVP may use placeholder examples.
+- **FR-014**: System MUST provide example queries or prompts to help users
+  understand how to phrase their questions effectively. Examples are served from
+  the frontend (no backend endpoint required). Minimum 5 example queries:
+
+  1. Count: "How many samples were entered today?"
+  2. JOIN: "Show all HIV test results from last week"
+  3. Aggregation: "What is the average turnaround time for malaria tests?"
+  4. Date filter: "List samples collected in January 2026"
+  5. Status: "How many tests are pending validation?"
 
 - **FR-015**: System MUST support queries that require JOINs across multiple
   tables, aggregations (COUNT, SUM, AVG), and date filtering.
@@ -351,11 +422,12 @@ This delivers enhanced usability and workflow integration.
   token matching the generated SQL. Workflow: SUBMITTED → VALIDATED → ACCEPTED →
   EXECUTED.
 
-  **Note**: FR-016 is implemented in M5 (Security Features milestone), not in
-  MVP POC milestones (M0.0-M0.2). This allows bare-bones POC validation before
-  adding security complexity.
+  **Note**: FR-016 architectural components (token generation interface,
+  validation hooks) are in place for MVP. **Implementation is placeholder** in
+  M0-M4; M5 implements framework interface.
 
-- **FR-017**: (Reserved for future use)
+- **FR-017**: (Reserved - placeholder for LocalPHI mode row-level access control
+  in Phase 2)
 
 - **FR-018**: System MUST detect likely PHI/identifiers in user-submitted
   questions using **regex/keyword matching** for common patterns (MRN formats,
@@ -369,9 +441,10 @@ This delivers enhanced usability and workflow integration.
   is configurable** - deployments using only local LLM providers may disable
   this safeguard via configuration.
 
-  **Note**: FR-018 is implemented in M5 (Security Features milestone), not in
-  MVP POC milestones (M0.0-M0.2). This allows bare-bones POC validation before
-  adding security complexity.
+  **Note**: FR-018 architectural components (interface, configuration flags,
+  extension points) are implemented in M5. **MVP (M0-M2) includes placeholder
+  implementation only** - basic regex patterns, permissive defaults. Full
+  hardened implementation required before patient data use (Phase 2+).
 
 - **FR-019**: Audit records for query generation and execution MUST include
   enough metadata to verify compliance without storing sensitive context. At
@@ -437,15 +510,17 @@ This delivers enhanced usability and workflow integration.
 - **NFR-001**: Local LLM deployment MUST support **Tier A** (12GB VRAM)
   configuration for MVP:
 
-  - **Tier A** (12GB VRAM) - **MVP Scope**: **Default: Llama 3.1 8B** for
-    Orchestrator (fallback: Gemma 2 9B), CodeLlama 13B for SQLGen (Q4_K_M
-    quantization)
-  - **Tier B** (40GB+ VRAM) - **Post-MVP**: Same Orchestrator models, CodeLlama
-    34B / Llama 3.1 70B for SQLGen (deferred to post-MVP when hardware
+  - **Tier A** (12GB VRAM) - **MVP Scope**: **Orchestrator: Primary Gemma 2 9B,
+    Fallback Llama 3.1 8B** (validated per 2026-01-29 clarification); CodeLlama
+    13B for SQLGen (Q4_K_M quantization)
+  - **Tier B** (40GB+ VRAM) - **Post-MVP**: Same Orchestrator candidates,
+    CodeLlama 34B / Llama 3.1 70B for SQLGen (deferred to post-MVP when hardware
     available)
 
   Tier A model selection MUST be validated against the evaluation harness
-  (FR-022) using the balanced scorecard (research.md Section 15).
+  (FR-022) using the balanced scorecard (research.md Section 15). **Note**:
+  External research (Gemini/MedGemma analysis) suggests Gemma 2 9B may excel at
+  RAG tasks; this hypothesis is validated empirically, not assumed.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -542,15 +617,20 @@ principles for this feature:_
 - **SC-004**: System blocks all attempts to query restricted tables (sys_user,
   login_user, user_role) with clear error messages.
 
-- **SC-005**: Zero instances of patient data or PHI appearing in LLM API
-  requests (verified via audit logs of all LLM prompts).
+- **SC-005**: Zero instances of patient data or PHI appearing in
+  **cloud/external** LLM API requests (verified via audit logs). This criterion
+  applies to CloudSafe mode; LocalPHI mode (Phase 2) has separate validation.
 
 - **SC-006**: 100% of questions flagged as containing PHI/identifiers are
   prevented from being sent to externally-hosted AI providers (verified via
   audit logs).
 
-- **SC-007**: System provides helpful error messages that guide users to
-  rephrase queries when SQL generation fails.
+- **SC-007**: System provides error messages that:
+
+  - Include suggested query reformulation when SQL generation fails
+  - Do NOT expose technical implementation details (stack traces, raw SQL
+    errors)
+  - Are internationalized (en/fr minimum per Constitution VII)
 
 - **SC-008**: Users can export query results in CSV or JSON format.
 
@@ -570,6 +650,28 @@ principles for this feature:_
 benchmarks (e.g., response time targets, SQL generation success rates, query
 accuracy percentages) are deferred to future phases. MVP focuses on functional
 validation that the core workflow operates correctly.
+
+## Terminology
+
+- **CloudSafe mode**: (MVP) The default operating mode where LLM context
+  contains **only schema metadata** (table names, column names, types,
+  relationships) and user query text. No patient data, test results, or PHI is
+  sent to the LLM. Cloud providers (e.g., Gemini) are permitted. This is the
+  only mode implemented in MVP.
+
+- **LocalPHI mode**: (Phase 2) A future operating mode based on MedGemma EHR
+  Navigator patterns where local LLMs may access **patient/row data via MCP
+  tools** using a manifest→plan→fetch→filter→synthesize workflow. Cloud
+  providers are **blocked**; only local/on-prem LLMs (e.g., LM Studio, Ollama)
+  permitted. Requires full security hardening before use. See
+  `plans/medgemma-methodology-alignment.md`.
+
+- **MCP (Model Context Protocol)**: Standardized protocol for LLM tool access.
+  Used by Catalyst agents to retrieve schema metadata and (in LocalPHI mode)
+  patient data.
+
+- **A2A (Agent2Agent)**: Protocol for multi-agent coordination. Catalyst uses
+  A2A for Router→Schema→SQLGen agent delegation.
 
 ## Assumptions & Constraints
 
@@ -595,9 +697,11 @@ validation that the core workflow operates correctly.
 
 ### Constraints
 
-- **Privacy Constraint**: LLM must NEVER receive patient data, only schema
-  metadata. This is non-negotiable and must be enforced at the architecture
-  level.
+- **Privacy Constraint (CloudSafe mode)**: In CloudSafe mode (MVP), LLM prompts
+  MUST contain only schema metadata and user query text - no patient data, test
+  results, or PHI. This applies to ALL cloud/external providers unconditionally.
+  LocalPHI mode (Phase 2) relaxes this for local-only LLMs with full security
+  hardening. See Terminology section.
 - **Read-Only Constraint**: All database queries must execute with read-only
   permissions. No INSERT, UPDATE, DELETE, or DDL operations are permitted.
 - **Performance Constraint**: Queries returning more than 10,000 rows may be
@@ -617,6 +721,11 @@ validation that the core workflow operates correctly.
 
 ### Out of Scope (MVP)
 
+- **LocalPHI Mode** (Phase 2) - MedGemma-style workflow where local LLMs access
+  patient/row data via MCP tools (manifest→plan→fetch→filter→synthesize). MVP
+  uses CloudSafe mode only (schema metadata, no patient data to LLM). See
+  `plans/medgemma-methodology-alignment.md` for architecture. **CRITICAL**: Full
+  security guardrails MUST be implemented before ANY patient data is used.
 - Report storage, scheduling, and sharing (Phase 3)
 - Dashboard widgets and visualizations (Phase 3)
 - **Complex multi-agent orchestration** (Phase 2) - MVP implements a simple
