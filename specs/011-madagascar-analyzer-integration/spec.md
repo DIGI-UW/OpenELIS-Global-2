@@ -656,7 +656,8 @@ Ordered by implementation priority (Romain's deployment list):
   Organization/Location entities (reusing existing facility hierarchy). Optional
   room-level extension for more granular placement tracking within facilities.
   Implemented as a location reference (e.g. locationId) on InstrumentMetadata
-  and/or InstrumentLocationHistory; no separate InstrumentLocation table required.
+  and/or InstrumentLocationHistory; no separate InstrumentLocation table
+  required.
 
 - **InstrumentLocationHistory**: Historical record of instrument locations with
   effective dates for audit trail.
