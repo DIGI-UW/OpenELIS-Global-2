@@ -74,12 +74,12 @@ public abstract class AbstractMindrayIntegrationTest extends BaseWebContextSensi
     private void cleanTestData() {
         try {
             jdbcTemplate.update(
-                    "DELETE FROM analyzer_results WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = ?)",
+                    "DELETE FROM clinlims.analyzer_results WHERE analyzer_id IN (SELECT id FROM clinlims.analyzer WHERE name = ?)",
                     MINDRAY_ANALYZER_NAME);
             jdbcTemplate.update(
-                    "DELETE FROM analyzer_configuration WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = ?)",
+                    "DELETE FROM clinlims.analyzer_configuration WHERE analyzer_id IN (SELECT id FROM clinlims.analyzer WHERE name = ?)",
                     MINDRAY_ANALYZER_NAME);
-            jdbcTemplate.update("DELETE FROM analyzer WHERE name = ?", MINDRAY_ANALYZER_NAME);
+            jdbcTemplate.update("DELETE FROM clinlims.analyzer WHERE name = ?", MINDRAY_ANALYZER_NAME);
         } catch (Exception e) {
             // best-effort cleanup
         }
@@ -96,8 +96,9 @@ public abstract class AbstractMindrayIntegrationTest extends BaseWebContextSensi
         boolean insertOk = reader.insertAnalyzerData("1");
         assertTrue("insertAnalyzerData should succeed: " + reader.getError(), insertOk);
 
-        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM analyzer_results WHERE analyzer_id = ?",
-                Integer.class, mindrayAnalyzer.getId());
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.analyzer_results WHERE analyzer_id = ?", Integer.class,
+                mindrayAnalyzer.getId());
         assertTrue("Expected at least one analyzer result", count != null && count >= 1);
     }
 
