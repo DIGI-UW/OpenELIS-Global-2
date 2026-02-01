@@ -587,6 +587,10 @@ CI/CD testing without physical hardware
 Validate existing Mindray plugin with HL7 analyzers (BC-5380, BS-360E) **User
 Stories**: US-1, US-6 **Depends On**: M1 (HL7 Adapter) **Workstream**: B (HL7)
 
+**Plugins submodule**: Use parallel branch `feat/011-m5-mindray-hl7` in
+`plugins` (DIGI-UW/openelisglobal-plugins). Open a PR there for any plugin
+changes; main-repo PR holds integration tests and HL7 adapter work.
+
 **Analyzers**: Mindray BC-5380, BS-360E (HL7 over Network) - Priority P1
 
 **Acceptance Criteria**:
