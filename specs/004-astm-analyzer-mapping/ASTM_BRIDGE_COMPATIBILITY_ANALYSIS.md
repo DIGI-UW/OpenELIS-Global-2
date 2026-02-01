@@ -16,8 +16,8 @@ After thorough analysis of both the **astm-http-bridge** submodule and the
 bi-directional communication capabilities and specification coverage.
 
 **Conclusion**: The `astm-http-bridge` **CAN support bi-directional
-communication** with the `analyzer-mock-server` for all workflows required by the
-004-astm-analyzer-mapping feature.
+communication** with the `analyzer-mock-server` for all workflows required by
+the 004-astm-analyzer-mapping feature.
 
 ---
 
@@ -121,7 +121,7 @@ The `analyzer-mock-server` implements **full CLSI LIS1-A compliance**:
 
 ### 3.1 Compatibility Matrix
 
-| Workflow                      | analyzer-mock-server            | astm-http-bridge                   | Compatible?    |
+| Workflow                      | analyzer-mock-server        | astm-http-bridge                   | Compatible?    |
 | ----------------------------- | --------------------------- | ---------------------------------- | -------------- |
 | Analyzer → OpenELIS (results) | ✅ Sends frames             | ✅ Receives, forwards to HTTP      | ✅ **YES**     |
 | OpenELIS → Analyzer (query)   | ✅ Receives query, responds | ✅ Forwards HTTP → ASTM            | ✅ **YES**     |
@@ -321,8 +321,8 @@ services:
 ## 7. Conclusion
 
 **The `astm-http-bridge` CAN support bi-directional communication with the
-`analyzer-mock-server`** for all workflows required by the 004-astm-analyzer-mapping
-feature:
+`analyzer-mock-server`** for all workflows required by the
+004-astm-analyzer-mapping feature:
 
 | Workflow                                                     | Support Status  |
 | ------------------------------------------------------------ | --------------- |
