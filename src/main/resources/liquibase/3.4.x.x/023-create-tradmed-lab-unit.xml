@@ -14,13 +14,17 @@
     <changeSet id="create-tradmed-lab-unit" author="openelis-admin-access">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="lab_unit_role_map" schemaName="clinlims"/>
+            <tableExists tableName="test_section" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Traditional & Modern Medicine Research Lab'
+            </sqlCheck>
             <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM clinlims.lab_unit_role_map WHERE lab_unit = 'TraditionalMedicine'
+                SELECT COUNT(*) FROM clinlims.lab_unit_role_map WHERE lab_unit = (SELECT CAST(id AS VARCHAR) FROM clinlims.test_section WHERE name = 'Traditional & Modern Medicine Research Lab')
             </sqlCheck>
         </preConditions>
-        <comment>Create Traditional Medicine lab unit to enable admin access to TMMRD roles</comment>
+        <comment>Create Traditional Medicine lab unit using TestSection ID</comment>
         <insert tableName="lab_unit_role_map" schemaName="clinlims">
-            <column name="lab_unit" value="TraditionalMedicine"/>
+            <column name="lab_unit" valueComputed="(SELECT CAST(id AS VARCHAR) FROM clinlims.test_section WHERE name = 'Traditional & Modern Medicine Research Lab')"/>
         </insert>
     </changeSet>
 
@@ -29,7 +33,7 @@
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="lab_roles" schemaName="clinlims"/>
             <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM clinlims.lab_unit_role_map WHERE lab_unit = 'TraditionalMedicine'
+                SELECT COUNT(*) FROM clinlims.lab_unit_role_map WHERE lab_unit = (SELECT CAST(id AS VARCHAR) FROM clinlims.test_section WHERE name = 'Traditional & Modern Medicine Research Lab')
             </sqlCheck>
             <sqlCheck expectedResult="5">
                 SELECT COUNT(*) FROM clinlims.system_role
@@ -40,31 +44,31 @@
 
         <!-- TMMRD Lab Technician -->
         <insert tableName="lab_roles" schemaName="clinlims">
-            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'TraditionalMedicine')"/>
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = (SELECT CAST(id AS VARCHAR) FROM clinlims.test_section WHERE name = 'Traditional & Modern Medicine Research Lab'))"/>
             <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'TMMRD Lab Technician')"/>
         </insert>
 
         <!-- TMMRD Researcher -->
         <insert tableName="lab_roles" schemaName="clinlims">
-            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'TraditionalMedicine')"/>
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = (SELECT CAST(id AS VARCHAR) FROM clinlims.test_section WHERE name = 'Traditional & Modern Medicine Research Lab'))"/>
             <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'TMMRD Researcher')"/>
         </insert>
 
         <!-- TMMRD Pharmacognosist -->
         <insert tableName="lab_roles" schemaName="clinlims">
-            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'TraditionalMedicine')"/>
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = (SELECT CAST(id AS VARCHAR) FROM clinlims.test_section WHERE name = 'Traditional & Modern Medicine Research Lab'))"/>
             <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'TMMRD Pharmacognosist')"/>
         </insert>
 
         <!-- TMMRD Lab Manager -->
         <insert tableName="lab_roles" schemaName="clinlims">
-            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'TraditionalMedicine')"/>
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = (SELECT CAST(id AS VARCHAR) FROM clinlims.test_section WHERE name = 'Traditional & Modern Medicine Research Lab'))"/>
             <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'TMMRD Lab Manager')"/>
         </insert>
 
         <!-- TMMRD Principal Investigator -->
         <insert tableName="lab_roles" schemaName="clinlims">
-            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'TraditionalMedicine')"/>
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = (SELECT CAST(id AS VARCHAR) FROM clinlims.test_section WHERE name = 'Traditional & Modern Medicine Research Lab'))"/>
             <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'TMMRD Principal Investigator')"/>
         </insert>
     </changeSet>
