@@ -67,7 +67,9 @@ docker compose -f dev.docker-compose.yml -f docker-compose.astm-test.yml up -d
 
 **Abbott Architect HL7 scenario**
 
-The simulator can generate HL7 ORU^R01 messages from the Abbott template so OpenELIS routes them to the Abbott plugin (MSH-3=ARCHITECT, MSH-4=LAB). Run the simulator locally with HL7 push:
+The simulator can generate HL7 ORU^R01 messages from the Abbott template so
+OpenELIS routes them to the Abbott plugin (MSH-3=ARCHITECT, MSH-4=LAB). Run the
+simulator locally with HL7 push:
 
 ```bash
 # From repo root, ensure OpenELIS is up, then:
