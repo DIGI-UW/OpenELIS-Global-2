@@ -7,14 +7,10 @@ def test_catalyst_executor_generates_sql_with_schema(monkeypatch):
     monkeypatch.setattr(mcp_client, "get_schema", lambda: "sample\nanalysis")
 
     class DummyClient:
-        def __init__(self, base_url: str, model: str) -> None:
-            # Accept init params but ignore them for test
-            pass
-
         def generate_sql(self, prompt: str) -> str:
             return "SELECT 1"
 
-    monkeypatch.setattr(catalyst_executor, "LMStudioClient", DummyClient)
+    monkeypatch.setattr(catalyst_executor, "create_llm_client", lambda _: DummyClient())
 
     result = catalyst_executor.generate_sql("count samples")
     assert result["sql"] == "SELECT 1"
@@ -34,17 +30,12 @@ def test_fr004_llm_prompt_contains_only_schema_and_query_no_phi(monkeypatch):
     captured_prompt = None
 
     class PromptCaptureClient:
-        def __init__(self, base_url: str, model: str) -> None:
-            # Accept init params but ignore them for test
-            pass
-
         def generate_sql(self, prompt: str) -> str:
             nonlocal captured_prompt
             captured_prompt = prompt
             return "SELECT COUNT(*) FROM test"
 
-    # Patch the class in the module where it's used (catalyst_executor imports it)
-    monkeypatch.setattr(catalyst_executor, "LMStudioClient", PromptCaptureClient)
+    monkeypatch.setattr(catalyst_executor, "create_llm_client", lambda _: PromptCaptureClient())
 
     # Test with user query that does NOT contain PHI
     user_query = "How many tests are in the catalog?"
@@ -156,8 +147,11 @@ def test_provider_switching_lmstudio(monkeypatch):
             assert "Question:" in prompt
             return "SELECT COUNT(*) FROM sample"
 
-    # Patch the client class - this prevents real HTTP calls to LM Studio
-    monkeypatch.setattr(catalyst_executor, "LMStudioClient", MockLMStudioClient)
+    monkeypatch.setattr(
+        catalyst_executor,
+        "create_llm_client",
+        lambda _: MockLMStudioClient("http://localhost:1234", "local"),
+    )
     monkeypatch.setenv("CATALYST_LLM_PROVIDER", "lmstudio")
 
     result = catalyst_executor.generate_sql("How many samples?")
@@ -197,8 +191,11 @@ def test_provider_switching_gemini(monkeypatch):
             assert "Question:" in prompt
             return "SELECT COUNT(*) FROM sample"
 
-    # Patch the client class - this prevents real API calls to Gemini
-    monkeypatch.setattr(catalyst_executor, "GeminiClient", MockGeminiClient)
+    monkeypatch.setattr(
+        catalyst_executor,
+        "create_llm_client",
+        lambda _: MockGeminiClient("test-key", "gemini-pro"),
+    )
     monkeypatch.setenv("CATALYST_LLM_PROVIDER", "gemini")
     monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
 
@@ -235,12 +232,20 @@ def test_provider_switching_same_query_different_providers(monkeypatch):
             return "SELECT COUNT(*) FROM sample WHERE entered_date = CURRENT_DATE"
 
     # Test LM Studio
-    monkeypatch.setattr(catalyst_executor, "LMStudioClient", MockLMStudioClient)
+    monkeypatch.setattr(
+        catalyst_executor,
+        "create_llm_client",
+        lambda _: MockLMStudioClient("http://localhost:1234", "local"),
+    )
     monkeypatch.setenv("CATALYST_LLM_PROVIDER", "lmstudio")
     result_lmstudio = catalyst_executor.generate_sql(user_query)
 
     # Test Gemini
-    monkeypatch.setattr(catalyst_executor, "GeminiClient", MockGeminiClient)
+    monkeypatch.setattr(
+        catalyst_executor,
+        "create_llm_client",
+        lambda _: MockGeminiClient("test-key", "gemini-pro"),
+    )
     monkeypatch.setenv("CATALYST_LLM_PROVIDER", "gemini")
     monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
     result_gemini = catalyst_executor.generate_sql(user_query)
@@ -279,25 +284,25 @@ def test_provider_switching_no_real_api_calls(monkeypatch):
         def generate_sql(self, prompt: str) -> str:
             return "SELECT COUNT(*) FROM sample"
 
-    # Patch the classes BEFORE they're imported/used
-    monkeypatch.setattr(catalyst_executor, "LMStudioClient", MockLMStudioClient)
-    monkeypatch.setattr(catalyst_executor, "GeminiClient", MockGeminiClient)
+    def make_lmstudio_mock(_):
+        return MockLMStudioClient("http://localhost:1234", "local")
+
+    def make_gemini_mock(_):
+        return MockGeminiClient("test-key", "gemini-pro")
 
     # Test LM Studio - should use mock, no real API call
+    monkeypatch.setattr(catalyst_executor, "create_llm_client", make_lmstudio_mock)
     monkeypatch.setenv("CATALYST_LLM_PROVIDER", "lmstudio")
     result_lmstudio = catalyst_executor.generate_sql("How many samples?")
     assert result_lmstudio["sql"] == "SELECT COUNT(*) FROM sample"
-    # Verify mock was used by checking the client type
-    config = load_llm_config()
-    client = catalyst_executor._create_llm_client(config)
+    client = catalyst_executor.create_llm_client(load_llm_config())
     assert isinstance(client, MockLMStudioClient), "Should use mocked LMStudioClient, not real one"
 
     # Test Gemini - should use mock, no real API call
+    monkeypatch.setattr(catalyst_executor, "create_llm_client", make_gemini_mock)
     monkeypatch.setenv("CATALYST_LLM_PROVIDER", "gemini")
     monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
     result_gemini = catalyst_executor.generate_sql("How many samples?")
     assert result_gemini["sql"] == "SELECT COUNT(*) FROM sample"
-    # Verify mock was used
-    config = load_llm_config()
-    client = catalyst_executor._create_llm_client(config)
+    client = catalyst_executor.create_llm_client(load_llm_config())
     assert isinstance(client, MockGeminiClient), "Should use mocked GeminiClient, not real one"

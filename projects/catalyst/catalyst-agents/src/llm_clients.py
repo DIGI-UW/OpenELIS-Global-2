@@ -3,6 +3,8 @@ from typing import Protocol
 import httpx
 from google import genai
 
+from .config import LlmConfig
+
 
 class LLMClient(Protocol):
     """Protocol for LLM clients - all providers must implement this interface."""
@@ -71,3 +73,14 @@ class GeminiClient:
             ),
         )
         return response.text.strip()
+
+
+def create_llm_client(config: LlmConfig) -> LLMClient:
+    """Create LLM client based on configured provider (provider-agnostic)."""
+    if config.provider == "gemini":
+        if not config.gemini_api_key:
+            raise ValueError("GOOGLE_API_KEY environment variable required for Gemini provider")
+        return GeminiClient(config.gemini_api_key, config.gemini_model)
+    if config.provider == "lmstudio":
+        return LMStudioClient(config.lmstudio_base_url, config.lmstudio_model)
+    raise ValueError(f"Unsupported LLM provider: {config.provider}. Supported: gemini, lmstudio")

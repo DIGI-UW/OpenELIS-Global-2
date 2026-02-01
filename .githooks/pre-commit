@@ -81,12 +81,18 @@ if [ -n "$PYTHON_FILES" ]; then
                 rel_path=${file#"projects/catalyst/$project/"}
                 REL_PATHS+=("$rel_path")
             done <<< "$PROJECT_FILES"
-            if (cd "projects/catalyst/$project" && uv run ruff check "${REL_PATHS[@]}"); then
+            if (cd "projects/catalyst/$project" && uv run ruff check "${REL_PATHS[@]}" --fix); then
                 : # lint passed
             else
                 echo "❌ Ruff check failed in projects/catalyst/$project. Fix lint errors before committing."
                 exit 1
             fi
+            # Ruff may have modified files; re-stage them so the commit matches the linted content
+            echo "$PROJECT_FILES" | while IFS= read -r file; do
+                if [ -f "$file" ]; then
+                    git add "$file"
+                fi
+            done
         fi
     done
 fi
