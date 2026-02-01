@@ -176,7 +176,12 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
                     ))}
                   </div>
                 ) : (
-                  <p>No logs available</p>
+                  <p>
+                    <FormattedMessage
+                      id="analyzer.errorDetails.noLogsAvailable"
+                      defaultMessage="No logs available"
+                    />
+                  </p>
                 )}
               </AccordionItem>
             </Accordion>

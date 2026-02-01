@@ -2,7 +2,7 @@ name: OpenELIS Frontend QA framework workflow
 
 on:
   pull_request:
-     branches: [develop, demo/madagascar]
+    # Run frontend QA on PRs to any branch
   workflow_dispatch:
   workflow_call: 
 
