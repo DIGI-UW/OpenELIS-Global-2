@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   Form,
@@ -174,60 +174,58 @@ const StudyDoubleEntry = () => {
     loadDoubleData();
   }, []);
 
-  const loadDoubleData = async () => {
+  const loadDoubleData = () => {
     setLoading(true);
-    try {
-      const response = await getFromOpenElisServer(
-        "/rest/SampleEntryByProject?type=verify",
-      );
+    getFromOpenElisServer(
+      "/rest/SampleEntryByProject?type=verify",
+      (response) => {
+        if (response) {
+          // Set current date
+          const currentDate = new Date()
+            .toISOString()
+            .split("T")[0]
+            .split("-")
+            .reverse()
+            .join("/");
+          setFormData((prev) => ({
+            ...prev,
+            currentDate: currentDate,
+            receivedDateForDisplay: currentDate,
+            interviewDate: currentDate,
+          }));
 
-      if (response) {
-        // Set current date
-        const currentDate = new Date()
-          .toISOString()
-          .split("T")[0]
-          .split("-")
-          .reverse()
-          .join("/");
-        setFormData((prev) => ({
-          ...prev,
-          currentDate: currentDate,
-          receivedDateForDisplay: currentDate,
-          interviewDate: currentDate,
-        }));
-
-        // Set display lists
-        setDisplayLists({
-          genders: response.genders || [],
-          organizationTypeLists: response.organizationTypeLists || {},
-          dictionaryLists: response.dictionaryLists || {},
-          formLists: response.formLists || {},
-        });
-      }
-    } catch (error) {
-      console.error("Error loading verify data:", error);
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id: "error.loading.data",
-          defaultMessage: "Error loading form data",
-        }),
-      });
-      setNotificationVisible(true);
-    } finally {
-      setLoading(false);
-    }
+          // Set display lists
+          setDisplayLists({
+            genders: response.genders || [],
+            organizationTypeLists: response.organizationTypeLists || {},
+            dictionaryLists: response.dictionaryLists || {},
+            formLists: response.formLists || {},
+          });
+        } else {
+          // Handle error case
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage({
+              id: "error.loading.data",
+              defaultMessage: "Error loading form data",
+            }),
+          });
+          setNotificationVisible(true);
+        }
+        setLoading(false);
+      },
+    );
   };
 
-  const handleInputChange = (field, value) => {
+  const handleInputChange = useCallback((field, value) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
-  };
+  }, []);
 
-  const handleProjectDataChange = (field, value) => {
+  const handleProjectDataChange = useCallback((field, value) => {
     setFormData((prev) => ({
       ...prev,
       projectData: {
@@ -235,12 +233,15 @@ const StudyDoubleEntry = () => {
         [field]: value,
       },
     }));
-  };
+  }, []);
 
-  const handleProjectChange = (projectId) => {
-    setSelectedProject(projectId);
-    handleInputChange("project", projectId);
-  };
+  const handleProjectChange = useCallback(
+    (projectId) => {
+      setSelectedProject(projectId);
+      handleInputChange("project", projectId);
+    },
+    [handleInputChange],
+  );
 
   const validateForm = () => {
     // Use comprehensive validation utility
@@ -330,24 +331,7 @@ const StudyDoubleEntry = () => {
       <div className="orderLegendBody">
         <Form onSubmit={handleSave}>
           <Grid fullWidth={true}>
-            {/* Patient Information Section */}
-            <Column lg={16} md={8} sm={4}>
-              <PatientInfoSection
-                formData={formData}
-                onInputChange={handleInputChange}
-                genders={displayLists.genders}
-              />
-            </Column>
-
-            {/* Sample Information Section */}
-            <Column lg={16} md={8} sm={4}>
-              <SampleInfoSection
-                formData={formData}
-                onInputChange={handleInputChange}
-              />
-            </Column>
-
-            {/* Project Selection Section */}
+            {/* Project Selection Section - Always visible first */}
             <Column lg={16} md={8} sm={4}>
               <ProjectSelectionSection
                 selectedProject={selectedProject}
@@ -356,18 +340,12 @@ const StudyDoubleEntry = () => {
               />
             </Column>
 
-            {/* Test Selection Section */}
-            <Column lg={16} md={8} sm={4}>
-              <TestSelectionSection
-                projectData={formData.projectData}
-                onTestChange={handleProjectDataChange}
-              />
-            </Column>
-
-            {/* Study-Specific Sections */}
+            {/* Show form fields only after project is selected */}
             {selectedProject && (
               <>
-                {/* ARV Section */}
+                {/* ORDER MATCHES OLD JSP: 1. Project-specific fields, 2. Sample info, 3. Patient info, 4. Tests */}
+
+                {/* STEP 1: Project-Specific Information (ARV Center, EID Site, etc.) */}
                 {(selectedProject.includes("ARV") ||
                   selectedProject.includes("Double") ||
                   selectedProject.includes("Follow")) && (
@@ -380,7 +358,6 @@ const StudyDoubleEntry = () => {
                   </Column>
                 )}
 
-                {/* EID Section */}
                 {selectedProject.includes("EID") && (
                   <Column lg={16} md={8} sm={4}>
                     <EIDSection
@@ -392,18 +369,6 @@ const StudyDoubleEntry = () => {
                   </Column>
                 )}
 
-                {/* Special Request Section */}
-                {selectedProject.includes("Special") && (
-                  <Column lg={16} md={8} sm={4}>
-                    <SpecialRequestSection
-                      projectData={formData.projectData}
-                      onInputChange={handleProjectDataChange}
-                      dictionaryLists={displayLists.dictionaryLists}
-                    />
-                  </Column>
-                )}
-
-                {/* RTN Section */}
                 {selectedProject.includes("RTN") && (
                   <Column lg={16} md={8} sm={4}>
                     <RTNSection
@@ -415,17 +380,6 @@ const StudyDoubleEntry = () => {
                   </Column>
                 )}
 
-                {/* HPV Section */}
-                {selectedProject.includes("HPV") && (
-                  <Column lg={16} md={8} sm={4}>
-                    <HPVSection
-                      projectData={formData.projectData}
-                      onInputChange={handleProjectDataChange}
-                    />
-                  </Column>
-                )}
-
-                {/* Indeterminate Section */}
                 {selectedProject.includes("Indeterminate") && (
                   <Column lg={16} md={8} sm={4}>
                     <IndeterminateSection
@@ -436,46 +390,96 @@ const StudyDoubleEntry = () => {
                     />
                   </Column>
                 )}
+
+                {selectedProject.includes("HPV") && (
+                  <Column lg={16} md={8} sm={4}>
+                    <HPVSection
+                      projectData={formData.projectData}
+                      onInputChange={handleProjectDataChange}
+                    />
+                  </Column>
+                )}
+
+                {selectedProject.includes("Special") && (
+                  <Column lg={16} md={8} sm={4}>
+                    <SpecialRequestSection
+                      projectData={formData.projectData}
+                      onInputChange={handleProjectDataChange}
+                      dictionaryLists={displayLists.dictionaryLists}
+                    />
+                  </Column>
+                )}
+
+                {/* STEP 2: Sample Information (Received Date/Time, Interview Date/Time) */}
+                <Column lg={16} md={8} sm={4}>
+                  <SampleInfoSection
+                    formData={formData}
+                    onInputChange={handleInputChange}
+                  />
+                </Column>
+
+                {/* STEP 3: Patient Information (Subject Number, Lab No, Gender, DOB, Age) */}
+                <Column lg={16} md={8} sm={4}>
+                  <PatientInfoSection
+                    formData={formData}
+                    onInputChange={handleInputChange}
+                    genders={displayLists.genders}
+                  />
+                </Column>
+
+                {/* STEP 4: Test Selection (Sample Types and Tests) */}
+                <Column lg={16} md={8} sm={4}>
+                  <TestSelectionSection
+                    projectData={formData.projectData}
+                    onTestChange={handleProjectDataChange}
+                    selectedProject={selectedProject}
+                  />
+                </Column>
+
+                {/* Action Buttons */}
+                <Column lg={16} md={8} sm={4}>
+                  <Section>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "1rem",
+                        marginTop: "2rem",
+                      }}
+                    >
+                      <Button
+                        type="submit"
+                        disabled={saving}
+                        onClick={handleSave}
+                      >
+                        {saving ? (
+                          <FormattedMessage
+                            id="label.button.saving"
+                            defaultMessage="Saving..."
+                          />
+                        ) : (
+                          <FormattedMessage
+                            id="label.button.save"
+                            defaultMessage="Save"
+                          />
+                        )}
+                      </Button>
+                      <Button
+                        kind="secondary"
+                        onClick={() =>
+                          (window.location.href =
+                            "/StudyDoubleEntry?type=verify")
+                        }
+                      >
+                        <FormattedMessage
+                          id="label.button.cancel"
+                          defaultMessage="Cancel"
+                        />
+                      </Button>
+                    </div>
+                  </Section>
+                </Column>
               </>
             )}
-
-            {/* Action Buttons */}
-            <Column lg={16} md={8} sm={4}>
-              <Section>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "1rem",
-                    marginTop: "2rem",
-                  }}
-                >
-                  <Button type="submit" disabled={saving} onClick={handleSave}>
-                    {saving ? (
-                      <FormattedMessage
-                        id="label.button.saving"
-                        defaultMessage="Saving..."
-                      />
-                    ) : (
-                      <FormattedMessage
-                        id="label.button.save"
-                        defaultMessage="Save"
-                      />
-                    )}
-                  </Button>
-                  <Button
-                    kind="secondary"
-                    onClick={() =>
-                      (window.location.href = "/StudyDoubleEntry?type=verify")
-                    }
-                  >
-                    <FormattedMessage
-                      id="label.button.cancel"
-                      defaultMessage="Cancel"
-                    />
-                  </Button>
-                </div>
-              </Section>
-            </Column>
           </Grid>
         </Form>
       </div>
