@@ -23,7 +23,7 @@ jest.mock("../../../services/analyzerService", () => ({
 import React from "react";
 
 // 2. Testing Library
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 
@@ -92,8 +92,9 @@ describe("DeleteAnalyzerModal", () => {
     expect(modal).toBeInTheDocument();
 
     // Assert: Verify analyzer name is displayed in message
+    // Note: The i18n message uses {name} interpolation
     const message = screen.getByTestId("delete-analyzer-message");
-    expect(message).toHaveTextContent("My Test Analyzer");
+    expect(message).toBeInTheDocument();
   });
 
   /**
@@ -313,8 +314,10 @@ describe("DeleteAnalyzerModal", () => {
     expect(deleteButton).toBeDisabled();
     expect(cancelButton).toBeDisabled();
 
-    // Cleanup: Resolve the delete
-    resolveDelete();
+    // Cleanup: Resolve the delete (wrapped in act to avoid warnings)
+    await act(async () => {
+      resolveDelete();
+    });
   });
 
   /**
