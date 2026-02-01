@@ -45,16 +45,25 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const [locationModalOpen, setLocationModalOpen] = useState(false);
 
   const qcStatusOptions = [
-    { id: "PENDING", text: "Pending" },
-    { id: "PASSED", text: "Passed" },
-    { id: "FAILED", text: "Failed" },
-    { id: "QUARANTINED", text: "Quarantined" },
+    {
+      id: "PENDING",
+      text: intl.formatMessage({ id: "lot.qcStatus.pending" }),
+    },
+    { id: "PASSED", text: intl.formatMessage({ id: "lot.qcStatus.passed" }) },
+    { id: "FAILED", text: intl.formatMessage({ id: "lot.qcStatus.failed" }) },
+    {
+      id: "QUARANTINED",
+      text: intl.formatMessage({ id: "lot.qcStatus.quarantined" }),
+    },
   ];
 
   const statusOptions = [
-    { id: "ACTIVE", text: "Active" },
-    { id: "IN_USE", text: "In Use" },
-    { id: "QUARANTINED", text: "Quarantined" },
+    { id: "ACTIVE", text: intl.formatMessage({ id: "lot.status.active" }) },
+    { id: "IN_USE", text: intl.formatMessage({ id: "lot.status.inUse" }) },
+    {
+      id: "QUARANTINED",
+      text: intl.formatMessage({ id: "lot.status.quarantined" }),
+    },
   ];
 
   useEffect(() => {
@@ -110,7 +119,12 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       }
     } catch (err) {
       console.error("Error fetching items:", err);
-      setError("Failed to load catalog items: " + err.message);
+      setError(
+        intl.formatMessage(
+          { id: "lot.error.fetchItems" },
+          { error: err.message },
+        ),
+      );
       setItems([]);
     } finally {
       setItemsLoading(false);
@@ -147,22 +161,22 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
 
   const validate = () => {
     if (!formData.inventoryItem) {
-      setError("Please select a catalog item");
+      setError(intl.formatMessage({ id: "lot.validation.itemRequired" }));
       return false;
     }
 
     if (!formData.lotNumber?.trim()) {
-      setError("Lot number is required");
+      setError(intl.formatMessage({ id: "lot.validation.lotNumberRequired" }));
       return false;
     }
 
     if (!formData.currentQuantity || formData.currentQuantity <= 0) {
-      setError("Quantity must be greater than 0");
+      setError(intl.formatMessage({ id: "lot.validation.quantityInvalid" }));
       return false;
     }
 
     if (!formData.storageLocation) {
-      setError("Please select a storage location");
+      setError(intl.formatMessage({ id: "lot.validation.locationRequired" }));
       return false;
     }
 
@@ -203,7 +217,12 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       onSave();
     } catch (err) {
       console.error("Error saving lot:", err);
-      setError(err.message || "Error saving lot");
+      setError(
+        intl.formatMessage(
+          { id: "lot.save.error" },
+          { error: err.message || "" },
+        ),
+      );
     } finally {
       setSaving(false);
     }
@@ -232,7 +251,13 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           <Dropdown
             id="inventoryItem"
             titleText={<FormattedMessage id="lot.selectItem" />}
-            label={itemsLoading ? "Loading..." : (items.length === 0 ? "No catalog items available" : "Select catalog item")}
+            label={
+              itemsLoading
+                ? intl.formatMessage({ id: "lot.selectItem.loading" })
+                : items.length === 0
+                  ? intl.formatMessage({ id: "lot.selectItem.noItems" })
+                  : intl.formatMessage({ id: "lot.selectItem.placeholder" })
+            }
             items={items}
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={
@@ -246,7 +271,9 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             required
             disabled={isEdit || itemsLoading}
             warn={!itemsLoading && items.length === 0}
-            warnText="No catalog items found. Please create catalog items first."
+            warnText={intl.formatMessage({
+              id: "lot.selectItem.warning.noItems",
+            })}
           />
 
           <TextInput
@@ -276,7 +303,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             <DatePickerInput
               id="expirationDate"
               labelText={<FormattedMessage id="lot.expirationDate" />}
-              placeholder="mm/dd/yyyy"
+              placeholder={intl.formatMessage({ id: "lot.date.placeholder" })}
             />
           </DatePicker>
 
@@ -288,7 +315,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             <DatePickerInput
               id="receiptDate"
               labelText={<FormattedMessage id="lot.receiptDate" />}
-              placeholder="mm/dd/yyyy"
+              placeholder={intl.formatMessage({ id: "lot.date.placeholder" })}
             />
           </DatePicker>
 
@@ -316,7 +343,9 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             </div>
             <Dropdown
               id="storageLocation"
-              label="Select storage location"
+              label={intl.formatMessage({
+                id: "lot.selectLocation.placeholder",
+              })}
               items={locations}
               itemToString={(item) => (item ? item.text : "")}
               selectedItem={
@@ -334,7 +363,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           <Dropdown
             id="qcStatus"
             titleText={<FormattedMessage id="lot.qcStatus" />}
-            label="Select QC status"
+            label={intl.formatMessage({ id: "lot.selectQCStatus.placeholder" })}
             items={qcStatusOptions}
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={qcStatusOptions.find(
@@ -348,7 +377,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           <Dropdown
             id="status"
             titleText={<FormattedMessage id="lot.status" />}
-            label="Select status"
+            label={intl.formatMessage({ id: "lot.selectStatus.placeholder" })}
             items={statusOptions}
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={statusOptions.find((s) => s.id === formData.status)}
@@ -362,7 +391,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             labelText={<FormattedMessage id="lot.barcode" />}
             value={formData.barcode}
             onChange={(e) => handleChange("barcode", e.target.value)}
-            placeholder="Optional"
+            placeholder={intl.formatMessage({ id: "label.optional" })}
           />
         </Stack>
       </Modal>

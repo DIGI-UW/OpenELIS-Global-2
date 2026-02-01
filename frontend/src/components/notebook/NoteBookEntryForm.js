@@ -683,7 +683,10 @@ const NoteBookEntryForm = () => {
           ? data.items
           : [];
       if (validTypes.length === 0 && data) {
-        console.warn("NoteBookEntryForm: Received data but couldn't extract items", data);
+        console.warn(
+          "NoteBookEntryForm: Received data but couldn't extract items",
+          data,
+        );
       }
       setTypes(validTypes);
     });
