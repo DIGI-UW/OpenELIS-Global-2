@@ -675,7 +675,9 @@ public abstract class BaseDAOImpl<T extends BaseObject<PK>, PK extends Serializa
             Predicate predicate;
             switch (comparisonOperation.getComparison()) {
             case EQ:
-                // Fix for bytea comparison error when null parameter is passed
+                // Use IS NULL predicate for null values instead of = NULL to follow SQL
+                // standards
+                // and avoid type inference issues across different database providers
                 if (propertyValue == null) {
                     predicate = criteriaBuilder.isNull(pathToProperty);
                 } else {
