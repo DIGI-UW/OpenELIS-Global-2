@@ -280,7 +280,7 @@ curl -X GET https://${DOMAIN}/api/OpenELIS-Global/rest/analyzer-list \
 
 ```bash
 # Start ASTM mock server in simulator mode
-cd tools/astm-mock-server
+cd tools/analyzer-mock-server
 python server.py --analyzer horiba-pentra60 --host localhost --port 9100 --send-once
 
 # Or manually send test fixture via netcat

@@ -11,10 +11,10 @@ implementation **Created**: 2026-01-29 **Plan Reference**:
 
 ### Schema & Core Files
 
-- [x] `tools/astm-mock-server/templates/schema.json` created with JSON Schema
+- [x] `tools/analyzer-mock-server/templates/schema.json` created with JSON Schema
       validation
-- [x] `tools/astm-mock-server/template_loader.py` created with schema validation
-- [x] `tools/astm-mock-server/template_generator.py` created with deterministic
+- [x] `tools/analyzer-mock-server/template_loader.py` created with schema validation
+- [x] `tools/analyzer-mock-server/template_generator.py` created with deterministic
       mode
 - [x] Schema validates required fields: analyzer, protocol, identification,
       fields
@@ -22,7 +22,7 @@ implementation **Created**: 2026-01-29 **Plan Reference**:
 ### Smoke Test: Template System
 
 ```bash
-cd tools/astm-mock-server
+cd tools/analyzer-mock-server
 python -c "from template_loader import TemplateLoader; loader = TemplateLoader(); print('✅ Template loader imports')"
 python -m json.tool templates/schema.json > /dev/null && echo "✅ Schema valid JSON"
 ```
@@ -36,9 +36,9 @@ python -m json.tool templates/schema.json > /dev/null && echo "✅ Schema valid 
 
 ### Template Files
 
-- [x] `tools/astm-mock-server/templates/horiba_pentra60.json` created (20
+- [x] `tools/analyzer-mock-server/templates/horiba_pentra60.json` created (20
       fields)
-- [x] `tools/astm-mock-server/templates/horiba_micros60.json` created (16
+- [x] `tools/analyzer-mock-server/templates/horiba_micros60.json` created (16
       fields)
 - [x] Pentra 60 fields match plugin TestMapping array exactly
 - [x] Micros 60 fields match plugin TestMapping array exactly
@@ -48,7 +48,7 @@ python -m json.tool templates/schema.json > /dev/null && echo "✅ Schema valid 
 ### Smoke Test: Template Validation
 
 ```bash
-cd tools/astm-mock-server
+cd tools/analyzer-mock-server
 python template_loader.py --validate templates/horiba_pentra60.json
 python template_loader.py --validate templates/horiba_micros60.json
 ```
@@ -59,7 +59,7 @@ python template_loader.py --validate templates/horiba_micros60.json
 ### Smoke Test: ASTM Generation
 
 ```bash
-cd tools/astm-mock-server
+cd tools/analyzer-mock-server
 python template_generator.py --template horiba_pentra60 --deterministic > /tmp/pentra.astm
 wc -l /tmp/pentra.astm  # Should be ~25 lines (H + P + O + 20 R + L)
 grep "^^^WBC" /tmp/pentra.astm && echo "✅ WBC field present"
@@ -284,7 +284,7 @@ curl -k -X POST "https://${DOMAIN}/api/OpenELIS-Global/analyzer/astm" \
 
 ### Documentation
 
-- [x] `tools/astm-mock-server/templates/README.md` created
+- [x] `tools/analyzer-mock-server/templates/README.md` created
 - [ ] `frontend/cypress/ENVIRONMENT-DETECTION.md` exists
 - [ ] Plan checklist completed (this file)
 

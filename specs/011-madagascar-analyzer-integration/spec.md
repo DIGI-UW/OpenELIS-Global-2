@@ -909,7 +909,6 @@ complete:
 - **Existing Plugins**:
   https://github.com/DIGI-UW/openelisglobal-plugins/tree/develop/analyzers
 - **ASTM-HTTP Bridge**: https://github.com/DIGI-UW/astm-http-bridge
-- **ASTM Mock Server** (to be expanded to Multi-Protocol Analyzer Simulator):
-  https://github.com/DIGI-UW/astm-mock-server - Currently supports ASTM
-  protocol; will be extended to support HL7 v2.x, RS232 simulation, and
-  file-based result generation for all 12 contract analyzers
+- **Analyzer Mock Server** (Multi-Protocol Analyzer Simulator):
+  https://github.com/DIGI-UW/analyzer-mock-server - Supports ASTM, HL7 v2.x,
+  RS232 simulation, and file-based result generation for analyzer testing

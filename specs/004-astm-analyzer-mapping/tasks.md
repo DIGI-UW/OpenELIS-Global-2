@@ -143,11 +143,11 @@ SiteInformation (`clinlims.site_information`) keys.
       (`analyzer.validation.rule.type.regex`,
       `analyzer.validation.rule.expression`, `analyzer.validation.rule.test`)
 - [x] T011a [P] Update `dev.docker-compose.yml` to include `astm-http-bridge`
-      and `astm-mock-server` services - Add service definition for
+      and `analyzer-mock-server` services - Add service definition for
       `astm-http-bridge` using latest image from `tools/astm-http-bridge` (mount
       `volume/astm-bridge/configuration.yml` for configuration) - Add service
-      definition for `astm-mock-server` using Dockerfile from
-      `tools/astm-mock-server` (expose port 5000 for analyzer simulation) -
+      definition for `analyzer-mock-server` using Dockerfile from
+      `tools/analyzer-mock-server` (expose port 5000 for analyzer simulation) -
       Configure network connectivity to allow OpenELIS → Bridge → Mock Server
       bi-directional communication - Verify services start with
       `docker compose -f dev.docker-compose.yml up -d` and check logs for

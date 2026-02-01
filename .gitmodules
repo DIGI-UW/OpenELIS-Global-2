@@ -19,6 +19,6 @@
 [submodule "tools/astm-http-bridge"]
 	path = tools/astm-http-bridge
 	url = https://github.com/DIGI-UW/astm-http-bridge.git
-[submodule "tools/astm-mock-server"]
-	path = tools/astm-mock-server
+[submodule "tools/analyzer-mock-server"]
+	path = tools/analyzer-mock-server
 	url = https://github.com/DIGI-UW/analyzer-mock-server.git

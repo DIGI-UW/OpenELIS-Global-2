@@ -1,10 +1,10 @@
-# Docker Compose Override for ASTM Mock Server Testing
-# 
-# Purpose: Enable analyzer testing with mock ASTM server
+# Docker Compose Override for Analyzer Mock Server Testing
+#
+# Purpose: Enable analyzer testing with mock analyzer server (supports ASTM, HL7, etc.)
 # Reference: specs/004-astm-analyzer-mapping/plan.md
 #
 # Usage:
-#   docker compose -f dev.docker-compose.yml -f docker-compose.astm-test.yml up -d
+#   docker compose -f dev.docker-compose.yml -f docker-compose.analyzer-test.yml up -d
 #
 # This adds an ASTM mock server container that simulates a laboratory analyzer
 # for testing the OpenELIS analyzer field mapping feature.
@@ -14,15 +14,15 @@ services:
   # Simulates analyzer for connection testing and field queries
   astm-simulator:
     build:
-      context: ./tools/astm-mock-server
+      context: ./tools/analyzer-mock-server
       dockerfile: Dockerfile
     container_name: openelis-astm-simulator
     ports:
       - "5000:5000"  # ASTM protocol port
     volumes:
       # Mount files for faster iteration without rebuilding
-      - ./tools/astm-mock-server/server.py:/app/server.py:ro
-      - ./tools/astm-mock-server/fields.json:/app/fields.json:ro
+      - ./tools/analyzer-mock-server/server.py:/app/server.py:ro
+      - ./tools/analyzer-mock-server/fields.json:/app/fields.json:ro
     environment:
       - ASTM_PORT=5000
       - ANALYZER_TYPE=HEMATOLOGY
@@ -46,7 +46,7 @@ services:
   # For testing multiple analyzer scenarios
   astm-simulator-chemistry:
     build:
-      context: ./tools/astm-mock-server
+      context: ./tools/analyzer-mock-server
       dockerfile: Dockerfile
     container_name: openelis-astm-chemistry
     ports:
@@ -67,7 +67,7 @@ services:
   # Third mock analyzer - Immunology type
   astm-simulator-immunology:
     build:
-      context: ./tools/astm-mock-server
+      context: ./tools/analyzer-mock-server
       dockerfile: Dockerfile
     container_name: openelis-astm-immunology
     ports:
@@ -89,7 +89,7 @@ services:
 # 
 # IMPORTANT: This file MUST be used with dev.docker-compose.yml to ensure both
 # containers are on the same network:
-#   docker compose -f dev.docker-compose.yml -f docker-compose.astm-test.yml up -d
+#   docker compose -f dev.docker-compose.yml -f docker-compose.analyzer-test.yml up -d
 #
 # Network Details:
 #   - Network name: openelis-global-2_default (defined in dev.docker-compose.yml)
