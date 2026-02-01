@@ -69,5 +69,33 @@ if [ "$FORMATTED" = true ]; then
     done
 fi
 
+# Lint Python files (Ruff check) — same checks as Catalyst CI
+if [ -n "$PYTHON_FILES" ]; then
+    echo "  → Linting staged Python file(s) (ruff check)..."
+    for project in catalyst-agents catalyst-gateway catalyst-mcp; do
+        PROJECT_FILES=$(echo "$PYTHON_FILES" | grep "projects/catalyst/$project/" || true)
+        if [ -n "$PROJECT_FILES" ]; then
+            REL_PATHS=()
+            while IFS= read -r file; do
+                # Strip the project prefix to get the path relative to projects/catalyst/$project
+                rel_path=${file#"projects/catalyst/$project/"}
+                REL_PATHS+=("$rel_path")
+            done <<< "$PROJECT_FILES"
+            if (cd "projects/catalyst/$project" && uv run ruff check "${REL_PATHS[@]}" --fix); then
+                : # lint passed
+            else
+                echo "❌ Ruff check failed in projects/catalyst/$project. Fix lint errors before committing."
+                exit 1
+            fi
+            # Ruff may have modified files; re-stage them so the commit matches the linted content
+            echo "$PROJECT_FILES" | while IFS= read -r file; do
+                if [ -f "$file" ]; then
+                    git add "$file"
+                fi
+            done
+        fi
+    done
+fi
+
 echo "✅ Formatting complete!"
 exit 0

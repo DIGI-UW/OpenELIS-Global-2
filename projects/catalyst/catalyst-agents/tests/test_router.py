@@ -23,10 +23,11 @@ class _FakeClient:
 @pytest.mark.asyncio
 async def test_router_delegates_to_catalyst_agent(monkeypatch):
     executor = RouterAgentExecutor()
+    executor.mode = "single"  # Use single-agent mode for this test
 
-    async def _fake_create_client():
+    async def _fake_create_client(agent_url: str):
         return _FakeClient()
 
     monkeypatch.setattr(executor, "_create_client", _fake_create_client)
-    parts = await executor.delegate_query("count samples")
+    parts = await executor.delegate_query_single_agent("count samples")
     assert parts[0].root.text == "SELECT 1"
