@@ -62,15 +62,10 @@ public class SampleProjectServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getSampleProjectBySampleId_shouldThrowForNullInput() {
-
-        try {
-            sampleProjectService.getSampleProjectBySampleId(null);
-            fail("Expected exception not thrown");
-        } catch (Exception e) {
-
-            assertTrue(e instanceof PersistenceException || e instanceof IllegalArgumentException);
-        }
+    public void getSampleProjectBySampleId_shouldReturnNullForNullInput() {
+        // After fixing bytea comparison error, null input is handled gracefully
+        SampleProject sampleProject = sampleProjectService.getSampleProjectBySampleId(null);
+        assertNull(sampleProject);
     }
 
     @Test

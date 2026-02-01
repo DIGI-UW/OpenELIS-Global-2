@@ -675,7 +675,13 @@ public abstract class BaseDAOImpl<T extends BaseObject<PK>, PK extends Serializa
             Predicate predicate;
             switch (comparisonOperation.getComparison()) {
             case EQ:
-                predicate = criteriaBuilder.equal(pathToProperty, propertyValue);
+                // Use ISNULL predicate for null values to avoid type inference issues
+                // and avoid type inference issues across different database providers
+                if (propertyValue == null) {
+                    predicate = criteriaBuilder.isNull(pathToProperty);
+                } else {
+                    predicate = criteriaBuilder.equal(pathToProperty, propertyValue);
+                }
                 break;
             case LIKE:
                 predicate = criteriaBuilder.like(criteriaBuilder.lower(pathToProperty),
