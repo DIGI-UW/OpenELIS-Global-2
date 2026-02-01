@@ -132,7 +132,6 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
         <Stack gap={5}>
           <TextInput
             id="storage-location-name"
-            autoFocus
             labelText={
               <>
                 {intl.formatMessage({ id: "storage.location.name" })}
