@@ -555,7 +555,7 @@ Architecture section for distinction.
       `tools/astm-mock-server/templates/mindray_ba88a.json`
 - [ ] T112 [M4] Create GeneXpert template in
       `tools/astm-mock-server/templates/genexpert.json`
-- [ ] T113 [M4] Create Stago STart 4 template in
+- [x] T113 [M4] Create Stago STart 4 template in
       `tools/astm-mock-server/templates/stago_start4.json`
 
 ### Testing & Documentation for M4
@@ -866,32 +866,35 @@ M2 (RS232) **Workstream**: B, C
 
 ### Setup for M11
 
-- [ ] T185 [M11] Create branch
+- [x] T185 [M11] Create branch
       `feat/011-madagascar-analyzer-integration-m11-stago` from
       `demo/madagascar`
 
 ### Tests for M11 (MANDATORY)
 
-- [ ] T186 [P] [M11] Unit test for StagoSTart4AnalyzerLineInserter in
+- [x] T186 [P] [M11] Unit test for StagoSTart4AnalyzerLineInserter in
       `plugins/analyzers/StagoSTart4/src/test/java/uw/edu/itech/StagoSTart4/StagoSTart4AnalyzerLineInserterTest.java`
-- [ ] T187 [P] [M11] Create test fixtures for Stago in
+- [x] T187 [P] [M11] Create test fixtures for Stago in
       `src/test/resources/testdata/stago/`
 
 ### Implementation for M11
 
-- [ ] T188 [M11] Create StagoSTart4Analyzer external plugin class in
+- [x] T188 [M11] Create StagoSTart4Analyzer external plugin class in
       `plugins/analyzers/StagoSTart4/src/main/java/uw/edu/itech/StagoSTart4/StagoSTart4Analyzer.java`
-- [ ] T189 [M11] Create StagoSTart4AnalyzerLineInserter in
+- [x] T189 [M11] Create StagoSTart4AnalyzerLineInserter in
       `plugins/analyzers/StagoSTart4/src/main/java/uw/edu/itech/StagoSTart4/StagoSTart4AnalyzerLineInserter.java`
-- [ ] T190 [M11] Support both ASTM (RS232) and HL7 (Network) modes
-- [ ] T191 [M11] Integrate with MappingAware wrapper pattern
-- [ ] T192 [M11] Document Stago plugin with dual-protocol support
+- [x] T190 [M11] Support both ASTM (RS232) and HL7 (Network) modes
+- [x] T191 [M11] Integrate with MappingAware wrapper pattern
+- [x] T192 [M11] Document Stago plugin with dual-protocol support
 
 ### Finalization for M11
 
-- [ ] T193 [M11] Verify unit tests pass
-- [ ] T194 [M11] Create PR `feat/011-madagascar-analyzer-integration-m11-stago`
+- [x] T193 [M11] Verify unit tests pass
+- [x] T194 [M11] Create PR `feat/011-madagascar-analyzer-integration-m11-stago`
       → `demo/madagascar`
+- [x] T194a [M11] Create parallel plugin submodule PR
+      `feat/011-madagascar-analyzer-integration-m11-stago` → `develop` in
+      `openelisglobal-plugins` repository
 
 **Checkpoint**: Stago STart 4 works via RS232 or Network
 
