@@ -82,3 +82,6 @@ __pycache__/
 .coverage
 htmlcov/
 *.bak
+
+cypress-screenshots/
+cypress-videos/
