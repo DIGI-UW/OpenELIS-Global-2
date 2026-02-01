@@ -127,15 +127,16 @@ public class AnalyzerImportController implements IActionConstants {
     public void doPostHl7(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
+        response.setContentType("text/plain;charset=UTF-8");
         HL7AnalyzerReader reader = (HL7AnalyzerReader) AnalyzerReaderFactory.getReaderFor("hl7");
         if (reader == null) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "HL7 reader not available");
             return;
         }
         boolean read = reader.readStream(request.getInputStream());
         if (!read) {
-            response.getWriter().print(reader.getError() != null ? reader.getError() : "HL7 read failed");
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST,
+                    reader.getError() != null ? reader.getError() : "HL7 read failed");
             return;
         }
         String userId = getSysUserId(request);
@@ -147,8 +148,8 @@ public class AnalyzerImportController implements IActionConstants {
             response.setStatus(HttpServletResponse.SC_OK);
             return;
         }
-        response.getWriter().print(reader.getError() != null ? reader.getError() : "HL7 insert failed");
-        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                reader.getError() != null ? reader.getError() : "HL7 insert failed");
     }
 
     @PostMapping("/analyzer/runAction")
