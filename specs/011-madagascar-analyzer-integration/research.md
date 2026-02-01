@@ -261,9 +261,9 @@ QuantStudio3 | File native | Adaptation needed | ⚠️ Needs M8 |
 
 ## 6. Multi-Protocol Simulator Design
 
-### Decision: Expand astm-mock-server to Multi-Protocol Analyzer Simulator
+### Decision: Expand analyzer-mock-server to Multi-Protocol Analyzer Simulator
 
-**Rationale**: The existing astm-mock-server (Python) provides ASTM simulation.
+**Rationale**: The existing analyzer-mock-server (Python) provides ASTM simulation.
 Expanding it to support HL7, RS232, and file-based protocols enables
 comprehensive testing without physical analyzers.
 
@@ -509,12 +509,12 @@ CREATE TABLE instrument_location_history (
 ### Purpose
 
 The template schema defines a standardized format for analyzer message
-configuration in the multi-protocol simulator (astm-mock-server). Each template
+configuration in the multi-protocol simulator (analyzer-mock-server). Each template
 describes how to generate realistic messages for a specific analyzer type.
 
 ### Template Schema Definition
 
-**Location**: `tools/astm-mock-server/templates/schema.json`
+**Location**: `tools/analyzer-mock-server/templates/schema.json`
 
 ```json
 {
@@ -601,7 +601,7 @@ describes how to generate realistic messages for a specific analyzer type.
 
 ### Example Template: Mindray BC-5380
 
-**Location**: `tools/astm-mock-server/templates/mindray_bc5380.json`
+**Location**: `tools/analyzer-mock-server/templates/mindray_bc5380.json`
 
 ```json
 {
@@ -661,7 +661,7 @@ describes how to generate realistic messages for a specific analyzer type.
 
 ### Example Template: Horiba Pentra 60 (RS232)
 
-**Location**: `tools/astm-mock-server/templates/horiba_pentra60.json`
+**Location**: `tools/analyzer-mock-server/templates/horiba_pentra60.json`
 
 ```json
 {
@@ -712,7 +712,7 @@ describes how to generate realistic messages for a specific analyzer type.
 
 ### Example Template: QuantStudio 7 Flex (File-based)
 
-**Location**: `tools/astm-mock-server/templates/quantstudio7.json`
+**Location**: `tools/analyzer-mock-server/templates/quantstudio7.json`
 
 ```json
 {
@@ -1006,7 +1006,7 @@ public class MyAnalyzer implements AnalyzerImporterPlugin {
 | File Watching      | WatchService + Commons CSV       | Native OS support, reliable parsing      |
 | Order Export       | Manual trigger, async processing | Per clarification, deadline scope        |
 | Plugin Integration | Wrapper pattern                  | Backward compatible, non-invasive        |
-| Simulator          | Expand astm-mock-server (Python) | Multi-protocol support, CI/CD ready      |
+| Simulator          | Expand analyzer-mock-server (Python) | Multi-protocol support, CI/CD ready      |
 | Location Hierarchy | Reuse Organization/Location      | Per clarification, simpler integration   |
 | Template Schema    | JSON-based analyzer templates    | Standardized config for all 12 analyzers |
 
@@ -1017,9 +1017,9 @@ public class MyAnalyzer implements AnalyzerImporterPlugin {
 | Tool                 | Purpose                                                           | Language |
 | -------------------- | ----------------------------------------------------------------- | -------- |
 | **astm-http-bridge** | Production ASTM adapter (between physical analyzers and OpenELIS) | Java     |
-| **astm-mock-server** | Testing simulator (simulates analyzers for development/CI)        | Python   |
+| **analyzer-mock-server** | Testing simulator (simulates analyzers for development/CI)        | Python   |
 
-Feature 011 expands **astm-mock-server** to support multiple protocols (HL7,
+Feature 011 expands **analyzer-mock-server** to support multiple protocols (HL7,
 RS232, File) for comprehensive testing. The production **astm-http-bridge**
 remains unchanged.
 

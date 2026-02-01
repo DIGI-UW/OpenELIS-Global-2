@@ -63,7 +63,7 @@ According to `specs/011-madagascar-analyzer-integration/spec.md` (line 481):
 | Stago STart 4 | ASTM/HL7 | `stago_start4.json` | ✅ Complete |
 
 **Task Reference**: T113 [M4] Create Stago STart 4 template in
-`tools/astm-mock-server/templates/stago_start4.json` - **✅ Completed**
+`tools/analyzer-mock-server/templates/stago_start4.json` - **✅ Completed**
 
 ### Required Template Structure
 
@@ -374,7 +374,7 @@ PluginAnalyzerService.getInstance().registerAnalyzer(this);
 
 1. ✅ **Create Simulator Template** (Priority: Medium) - **COMPLETE**
 
-   - Created `tools/astm-mock-server/templates/stago_start4.json`
+   - Created `tools/analyzer-mock-server/templates/stago_start4.json`
    - Used seed values from existing test fixtures
    - Template supports ASTM format (HL7 support via protocol handlers)
 

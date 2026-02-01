@@ -26,14 +26,14 @@ services:
   # ============================================================================
   astm-simulator:
     build:
-      context: ./tools/astm-mock-server
+      context: ./tools/analyzer-mock-server
       dockerfile: Dockerfile
     container_name: openelis-astm-simulator
     ports:
       - "5000:5000"
     volumes:
-      - ./tools/astm-mock-server/server.py:/app/server.py:ro
-      - ./tools/astm-mock-server/fields.json:/app/fields.json:ro
+      - ./tools/analyzer-mock-server/server.py:/app/server.py:ro
+      - ./tools/analyzer-mock-server/fields.json:/app/fields.json:ro
     environment:
       - ASTM_PORT=5000
       - ANALYZER_TYPE=HEMATOLOGY
