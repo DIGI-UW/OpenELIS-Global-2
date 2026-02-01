@@ -164,7 +164,7 @@ parallel with M1-M4) **Workstream**: A (ASTM)
 
 **What Already Exists** (from Feature 004):
 
-- Mock ASTM Server: `tools/astm-mock-server/` (Python 3.11, 1,221 lines)
+- Mock ASTM Server: `tools/analyzer-mock-server/` (Python 3.11, 1,221 lines)
 - Docker Setup: `docker-compose.astm-test.yml` (3 analyzer types configured)
 - Test Fixtures: `src/test/resources/astm-samples/` (7 files, 387 lines)
 - ASTMAnalyzerReader: Implemented and working
@@ -186,7 +186,7 @@ parallel with M1-M4) **Workstream**: A (ASTM)
 - [ ] T001 [M0] Create branch
       `feat/011-madagascar-analyzer-integration-m0-astm-stabilize` from
       `demo/madagascar`
-- [ ] T002 [M0] Verify `tools/astm-mock-server/` runs via docker-compose
+- [ ] T002 [M0] Verify `tools/analyzer-mock-server/` runs via docker-compose
 
 ### Tests for M0 (MANDATORY - Write FIRST)
 
@@ -473,15 +473,15 @@ works
 
 **Branch**:
 `feat/011-madagascar-analyzer-integration-m4-simulator-multiprotocol` **Goal**:
-Expand astm-mock-server to support HL7, RS232, and file-based protocols **User
+Expand analyzer-mock-server to support HL7, RS232, and file-based protocols **User
 Stories**: US-9 (Analyzer Simulator for Testing) **Depends On**: None (parallel
 with M0-M3) **Workstream**: E (Simulator)
 
-**Scope**: Extend astm-mock-server to cover 80%+ of 12 analyzers BEFORE
+**Scope**: Extend analyzer-mock-server to cover 80%+ of 12 analyzers BEFORE
 milestone implementation, enabling developers to test M1-M3 adapters and M5-M13
 plugins without physical hardware.
 
-**IMPORTANT**: This expands the **Python astm-mock-server** (testing simulator),
+**IMPORTANT**: This expands the **Python analyzer-mock-server** (testing simulator),
 NOT the Java astm-http-bridge (production adapter). See plan.md Tool
 Architecture section for distinction.
 
@@ -500,72 +500,72 @@ Architecture section for distinction.
 - [ ] T090 [M4] Create branch
       `feat/011-madagascar-analyzer-integration-m4-simulator-multiprotocol` from
       `demo/madagascar`
-- [ ] T091 [M4] Create `tools/astm-mock-server/protocols/` directory structure
-- [ ] T092 [M4] Create `tools/astm-mock-server/templates/` directory structure
+- [ ] T091 [M4] Create `tools/analyzer-mock-server/protocols/` directory structure
+- [ ] T092 [M4] Create `tools/analyzer-mock-server/templates/` directory structure
 - [ ] T093 [M4] Add pyserial dependency to
-      `tools/astm-mock-server/requirements.txt`
+      `tools/analyzer-mock-server/requirements.txt`
 
 ### Core Architecture for M4
 
 - [ ] T094 [M4] Create protocol abstraction layer base class in
-      `tools/astm-mock-server/protocols/__init__.py` and
-      `tools/astm-mock-server/protocols/base_handler.py`
+      `tools/analyzer-mock-server/protocols/__init__.py` and
+      `tools/analyzer-mock-server/protocols/base_handler.py`
 - [ ] T095 [M4] Refactor existing ASTM code into ASTMHandler in
-      `tools/astm-mock-server/protocols/astm_handler.py`
+      `tools/analyzer-mock-server/protocols/astm_handler.py`
 - [ ] T096 [M4] Create template schema in
-      `tools/astm-mock-server/templates/schema.json`
+      `tools/analyzer-mock-server/templates/schema.json`
 
 ### HL7 Protocol Implementation (Priority 1 - enables M5-M7, M11-M12)
 
 - [ ] T097 [M4] Implement HL7Handler with ORU^R01 generation in
-      `tools/astm-mock-server/protocols/hl7_handler.py`
+      `tools/analyzer-mock-server/protocols/hl7_handler.py`
 - [ ] T098 [M4] Create Mindray BC-5380 template in
-      `tools/astm-mock-server/templates/mindray_bc5380.json`
+      `tools/analyzer-mock-server/templates/mindray_bc5380.json`
 - [ ] T099 [M4] Create Sysmex XN template in
-      `tools/astm-mock-server/templates/sysmex_xn.json`
+      `tools/analyzer-mock-server/templates/sysmex_xn.json`
 - [ ] T100 [M4] Create Abbott Architect HL7 template in
-      `tools/astm-mock-server/templates/abbott_architect_hl7.json`
+      `tools/analyzer-mock-server/templates/abbott_architect_hl7.json`
 - [ ] T101 [M4] Add HL7 HTTP endpoint `/simulate/hl7/{analyzer}` for CI/CD
 
 ### RS232 Protocol Implementation (Priority 2 - enables M5, M9-M11)
 
 - [ ] T102 [M4] Implement SerialHandler with virtual serial ports (socat) in
-      `tools/astm-mock-server/protocols/serial_handler.py`
+      `tools/analyzer-mock-server/protocols/serial_handler.py`
 - [ ] T103 [M4] Create Horiba Pentra 60 template in
-      `tools/astm-mock-server/templates/horiba_pentra60.json`
+      `tools/analyzer-mock-server/templates/horiba_pentra60.json`
 - [ ] T104 [M4] Create Horiba Micros 60 template in
-      `tools/astm-mock-server/templates/horiba_micros60.json`
+      `tools/analyzer-mock-server/templates/horiba_micros60.json`
 - [ ] T105 [M4] Add serial simulation mode (`--serial-port` flag)
 
 ### File Protocol Implementation (Priority 3 - enables M8, M13)
 
 - [ ] T106 [M4] Implement FileHandler with CSV/TXT generation in
-      `tools/astm-mock-server/protocols/file_handler.py`
+      `tools/analyzer-mock-server/protocols/file_handler.py`
 - [ ] T107 [M4] Create QuantStudio 7 Flex template in
-      `tools/astm-mock-server/templates/quantstudio7.json`
+      `tools/analyzer-mock-server/templates/quantstudio7.json`
 - [ ] T108 [M4] Create Hain FluoroCycler XT template in
-      `tools/astm-mock-server/templates/hain_fluorocycler.json`
+      `tools/analyzer-mock-server/templates/hain_fluorocycler.json`
 - [ ] T109 [M4] Add file generation mode (`--generate-files` flag)
 
 ### Additional Analyzer Templates
 
 - [ ] T110 [M4] Create Mindray BS-360E template in
-      `tools/astm-mock-server/templates/mindray_bs360e.json`
+      `tools/analyzer-mock-server/templates/mindray_bs360e.json`
 - [ ] T111 [M4] Create Mindray BA-88A template in
-      `tools/astm-mock-server/templates/mindray_ba88a.json`
+      `tools/analyzer-mock-server/templates/mindray_ba88a.json`
 - [ ] T112 [M4] Create GeneXpert template in
-      `tools/astm-mock-server/templates/genexpert.json`
+      `tools/analyzer-mock-server/templates/genexpert.json`
 - [x] T113 [M4] Create Stago STart 4 template in
-      `tools/astm-mock-server/templates/stago_start4.json`
+      `tools/analyzer-mock-server/templates/stago_start4.json`
 
 ### Testing & Documentation for M4
 
 - [ ] T114 [P] [M4] Unit tests for all protocol handlers in
-      `tools/astm-mock-server/test_protocols.py`
+      `tools/analyzer-mock-server/test_protocols.py`
 - [ ] T115 [M4] Integration test: HL7 Simulator → OpenELIS reception
 - [ ] T116 [M4] Integration test: Serial Simulator → OpenELIS reception
 - [ ] T117 [M4] Integration test: File Simulator → OpenELIS import
-- [ ] T118 [M4] Update `tools/astm-mock-server/README.md` with multi-protocol
+- [ ] T118 [M4] Update `tools/analyzer-mock-server/README.md` with multi-protocol
       usage
 
 ### Finalization for M4
@@ -1226,11 +1226,11 @@ US-5 (Comprehensive Instrument Metadata Management) **Depends On**: M15
 ### Advanced Features for M17
 
 - [ ] T284 [M17] Add QC result generation templates in
-      `tools/astm-mock-server/templates/qc/`
+      `tools/analyzer-mock-server/templates/qc/`
 - [ ] T285 [M17] Add error condition templates (malformed, timeout, duplicate)
-      in `tools/astm-mock-server/templates/errors/`
+      in `tools/analyzer-mock-server/templates/errors/`
 - [ ] T286 [M17] Implement concurrent multi-analyzer support in
-      `tools/astm-mock-server/server.py`
+      `tools/analyzer-mock-server/server.py`
 - [ ] T287 [M17] Implement test scenario orchestration (`/scenarios/{name}`
       endpoint)
 - [ ] T288 [M17] Add stress testing mode (`--stress-test --count N`)
@@ -1240,7 +1240,7 @@ US-5 (Comprehensive Instrument Metadata Management) **Depends On**: M15
 - [ ] T289 [M17] Update Docker configuration for CI/CD integration
 - [ ] T290 [M17] Create GitHub Actions workflow for simulator-based tests
 - [ ] T291 [M17] Document CI/CD integration in
-      `tools/astm-mock-server/docs/CI_CD_INTEGRATION.md`
+      `tools/analyzer-mock-server/docs/CI_CD_INTEGRATION.md`
 
 ### Testing for M17
 

@@ -27,7 +27,7 @@ associated functional requirements from `spec.md`.
 1. **Start the mock server:**
 
    ```bash
-   docker compose -f dev.docker-compose.yml -f docker-compose.astm-test.yml up -d astm-simulator
+   docker compose -f dev.docker-compose.yml -f docker-compose.analyzer-test.yml up -d astm-simulator
    ```
 
 2. **Verify it's running:**
@@ -40,7 +40,7 @@ associated functional requirements from `spec.md`.
 3. **Test the connection:**
 
    ```bash
-   cd tools/astm-mock-server
+   cd tools/analyzer-mock-server
    python3 test_communication.py
    # Should show: ✅ All tests passed!
    ```
@@ -140,7 +140,7 @@ timeout message | ☐ | | 4 | Verify error logged | Error appears in log | ☐ |
 | 5    | Check field properties display   | Name, type, unit shown             | ☐    |
 | 6    | Verify field type indicators     | NUMERIC, QUALITATIVE, TEXT visible | ☐    |
 
-**Expected Fields** (from mock server `tools/astm-mock-server/fields.json`):
+**Expected Fields** (from mock server `tools/analyzer-mock-server/fields.json`):
 
 - [ ] WBC (NUMERIC, 10^3/μL) - White Blood Cell Count
 - [ ] RBC (NUMERIC, 10^6/μL) - Red Blood Cell Count
@@ -529,7 +529,7 @@ Located in: `src/test/resources/astm-samples/`
 **Test Communication Script:**
 
 ```bash
-cd tools/astm-mock-server
+cd tools/analyzer-mock-server
 python3 test_communication.py
 ```
 
@@ -540,6 +540,6 @@ python3 test_communication.py
 
 **Documentation:**
 
-- `tools/astm-mock-server/COMMUNICATION_PATHWAY.md` - Protocol details
-- `tools/astm-mock-server/ACCESS.md` - Access guide for OpenELIS integration
-- `tools/astm-mock-server/README.md` - Server setup and usage
+- `tools/analyzer-mock-server/COMMUNICATION_PATHWAY.md` - Protocol details
+- `tools/analyzer-mock-server/ACCESS.md` - Access guide for OpenELIS integration
+- `tools/analyzer-mock-server/README.md` - Server setup and usage

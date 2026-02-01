@@ -5,18 +5,18 @@
 **Analyzed Components**:
 
 - `tools/astm-http-bridge` (v2.3.5) - DIGI-UW/astm-http-bridge submodule
-- `tools/astm-mock-server` - Python mock analyzer server
+- `tools/analyzer-mock-server` - Python mock analyzer server
 
 ---
 
 ## Executive Summary
 
 After thorough analysis of both the **astm-http-bridge** submodule and the
-**astm-mock-server**, this report provides a detailed assessment of their
+**analyzer-mock-server**, this report provides a detailed assessment of their
 bi-directional communication capabilities and specification coverage.
 
 **Conclusion**: The `astm-http-bridge` **CAN support bi-directional
-communication** with the `astm-mock-server` for all workflows required by the
+communication** with the `analyzer-mock-server` for all workflows required by the
 004-astm-analyzer-mapping feature.
 
 ---
@@ -82,7 +82,7 @@ public enum ASTMVersion {
 
 ### 2.1 Protocol Compliance
 
-The `astm-mock-server` implements **full CLSI LIS1-A compliance**:
+The `analyzer-mock-server` implements **full CLSI LIS1-A compliance**:
 
 | Feature                             | Status | Implementation          |
 | ----------------------------------- | ------ | ----------------------- |
@@ -121,7 +121,7 @@ The `astm-mock-server` implements **full CLSI LIS1-A compliance**:
 
 ### 3.1 Compatibility Matrix
 
-| Workflow                      | astm-mock-server            | astm-http-bridge                   | Compatible?    |
+| Workflow                      | analyzer-mock-server            | astm-http-bridge                   | Compatible?    |
 | ----------------------------- | --------------------------- | ---------------------------------- | -------------- |
 | Analyzer → OpenELIS (results) | ✅ Sends frames             | ✅ Receives, forwards to HTTP      | ✅ **YES**     |
 | OpenELIS → Analyzer (query)   | ✅ Receives query, responds | ✅ Forwards HTTP → ASTM            | ✅ **YES**     |
@@ -292,7 +292,7 @@ To validate the communication pathway:
 
 ```bash
 # 1. Start mock server
-cd tools/astm-mock-server && python server.py --port 5000 --verbose
+cd tools/analyzer-mock-server && python server.py --port 5000 --verbose
 
 # 2. Configure bridge to forward to mock server (for query tests)
 # 3. Send query via OpenELIS HTTP → Bridge → Mock Server
@@ -321,7 +321,7 @@ services:
 ## 7. Conclusion
 
 **The `astm-http-bridge` CAN support bi-directional communication with the
-`astm-mock-server`** for all workflows required by the 004-astm-analyzer-mapping
+`analyzer-mock-server`** for all workflows required by the 004-astm-analyzer-mapping
 feature:
 
 | Workflow                                                     | Support Status  |
@@ -340,8 +340,8 @@ production robustness.
 ## References
 
 - [ASTM-HTTP-Bridge Repository](https://github.com/DIGI-UW/astm-http-bridge)
-- [Mock Server README](../../tools/astm-mock-server/README.md)
-- [Communication Pathway Documentation](../../tools/astm-mock-server/COMMUNICATION_PATHWAY.md)
+- [Mock Server README](../../tools/analyzer-mock-server/README.md)
+- [Communication Pathway Documentation](../../tools/analyzer-mock-server/COMMUNICATION_PATHWAY.md)
 - [Feature Specification](./spec.md)
 - [CLSI LIS1-A Standard](../../.dev-docs/OGC-60/CLSI-LIS1-A.pdf)
 - [ASTM LIS2-A2 Standard](../../.dev-docs/OGC-60/LIS01A2E.pdf)

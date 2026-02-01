@@ -73,7 +73,7 @@ simulator locally with HL7 push:
 
 ```bash
 # From repo root, ensure OpenELIS is up, then:
-cd tools/astm-mock-server
+cd tools/analyzer-mock-server
 pip install -r requirements.txt   # optional: for template validation
 python server.py --hl7 --push https://localhost:8443 --hl7-template abbott_architect_hl7
 
@@ -88,7 +88,7 @@ curl -X POST http://localhost:8080/simulate/hl7/abbott_architect_hl7 \
   -d '{"count": 1, "destination": "https://localhost:8443"}'
 ```
 
-See `tools/astm-mock-server/README.md` for full HL7 options.
+See `tools/analyzer-mock-server/README.md` for full HL7 options.
 
 ---
 

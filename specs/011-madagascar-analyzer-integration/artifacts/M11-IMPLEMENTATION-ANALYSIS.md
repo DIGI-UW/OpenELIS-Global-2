@@ -351,7 +351,7 @@ mvn clean package          # ✅ SUCCESS (JAR: 9.6KB)
      https://github.com/DIGI-UW/openelisglobal-plugins/pull/36
 
 3. ✅ **Create Simulator Template** (T113) - **COMPLETE**
-   - Template: `tools/astm-mock-server/templates/stago_start4.json`
+   - Template: `tools/analyzer-mock-server/templates/stago_start4.json`
    - Status: ✅ Created and validated
 
 ### Completed Enhancements

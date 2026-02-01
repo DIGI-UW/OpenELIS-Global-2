@@ -26,7 +26,7 @@ analyzers with bidirectional communication. The implementation leverages:
 - File-based result import (directory watcher, CSV/TXT parsing)
 - Order export workflow (manual trigger, status tracking)
 - Enhanced instrument metadata form
-- Multi-protocol analyzer simulator (expanding astm-mock-server)
+- Multi-protocol analyzer simulator (expanding analyzer-mock-server)
 
 ## Clarification Session Updates (2026-01-27)
 
@@ -291,7 +291,7 @@ work can proceed without waiting for M0.
 | Tool                 | Location                  | Language              | Purpose                         | When Used              | Who Uses It                          |
 | -------------------- | ------------------------- | --------------------- | ------------------------------- | ---------------------- | ------------------------------------ |
 | **astm-http-bridge** | `tools/astm-http-bridge/` | Java 21 + Spring Boot | **PRODUCTION** protocol adapter | Deployed with OpenELIS | Physical analyzers in labs           |
-| **astm-mock-server** | `tools/astm-mock-server/` | Python 3              | **TESTING** simulator           | Development/CI         | Developers without physical hardware |
+| **analyzer-mock-server** | `tools/analyzer-mock-server/` | Python 3              | **TESTING** simulator           | Development/CI         | Developers without physical hardware |
 
 ### astm-http-bridge (Production Adapter) - EXTENDED FOR RS232
 
@@ -319,10 +319,10 @@ Physical Analyzer ←→ [astm-http-bridge] ←→ OpenELIS
 architecture consistent, avoids Docker serial passthrough complexity, and
 requires only USB adapters at labs (no additional hardware cost).
 
-### astm-mock-server (Testing Simulator)
+### analyzer-mock-server (Testing Simulator)
 
 ```
-[astm-mock-server] ──simulates──→ [OpenELIS Analyzer Import]
+[analyzer-mock-server] ──simulates──→ [OpenELIS Analyzer Import]
      (simulator)                      (receives test data)
 ```
 
@@ -411,7 +411,7 @@ tools/astm-http-bridge/
 │   └── ...
 
 # Multi-Protocol Analyzer Simulator (Python)
-tools/astm-mock-server/
+tools/analyzer-mock-server/
 ├── server.py                                 # Main server (existing, refactored)
 ├── protocols/                                # NEW: Protocol abstraction layer
 │   ├── __init__.py
@@ -515,7 +515,7 @@ building new infrastructure.
 
 **What Already Exists** (from Feature 004):
 
-- Mock ASTM Server: `tools/astm-mock-server/` (Python, 1,221 lines)
+- Mock ASTM Server: `tools/analyzer-mock-server/` (Python, 1,221 lines)
 - Docker Setup: `docker-compose.astm-test.yml` (3 analyzer types)
 - Test Fixtures: `src/test/resources/astm-samples/` (7 files)
 - ASTMAnalyzerReader: Working with plugin-based identification
@@ -618,7 +618,7 @@ building new infrastructure.
 
 ### M4: Multi-Protocol Simulator Base (3 days)
 
-**Scope**: Expand astm-mock-server for HL7, RS232, and file protocols
+**Scope**: Expand analyzer-mock-server for HL7, RS232, and file protocols
 
 **Workstream**: E (Simulator)
 
