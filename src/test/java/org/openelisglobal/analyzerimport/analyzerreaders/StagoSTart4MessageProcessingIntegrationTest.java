@@ -15,6 +15,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.services.PluginAnalyzerService;
+import org.openelisglobal.plugin.AnalyzerImporterPlugin;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**

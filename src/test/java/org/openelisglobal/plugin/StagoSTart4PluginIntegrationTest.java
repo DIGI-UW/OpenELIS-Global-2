@@ -97,7 +97,7 @@ public class StagoSTart4PluginIntegrationTest extends BaseWebContextSensitiveTes
         }
 
         assertNotNull("Analyzer record should exist", analyzer);
-        assertTrue("Analyzer should be active", analyzer.getActive());
+        assertTrue("Analyzer should be active", analyzer.isActive());
         assertNotNull("Analyzer should have description", analyzer.getDescription());
         assertTrue("Analyzer description should mention Stago", analyzer.getDescription().contains("Stago"));
     }
@@ -123,6 +123,6 @@ public class StagoSTart4PluginIntegrationTest extends BaseWebContextSensitiveTes
         // Note: Full verification would require querying analyzer_test_map table
         // This is a basic smoke test that analyzer exists and is configured
         assertNotNull("Analyzer should exist", analyzer);
-        assertTrue("Analyzer should be active", analyzer.getActive());
+        assertTrue("Analyzer should be active", analyzer.isActive());
     }
 }
