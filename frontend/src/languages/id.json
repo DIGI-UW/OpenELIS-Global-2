@@ -669,7 +669,7 @@
   "login.msg.password.missing": "Kata kunci diperlukan",
   "login.msg.username": "Nama pengguna",
   "login.msg.username.missing": "Nama pengguna diperlukan",
-  "login.notice.message": "Pemberitahuan: Akses ke layanan ini hanya untuk personel yang berwenang. Jika Anda tidak memiliki wewenang tertulis dari administrator, Anda harus keluar sekarang. Organisasi ini melarang akses, pengungkapan, penggandaan, modifikasi, pengalihan, penghancuran, penghilangan, penyalahgunaan, atau pencurian informasi tanpa izin.",
+  "login.notice.message": "Pemberitahuan: Akses ke layanan ini hanya untuk personel yang berwenang. Jika Anda tidak memiliki wewenang dari administrator, Anda harus keluar sekarang. Organisasi ini melarang akses tanpa wewenang, pengungkapan, penggandaan, modifikasi, pengalihan, pemusnahan, penghilangan, penyalahgunaan, atau pencurian informasi tanpa izin.",
   "login.password.expired.date": "Tanggal kadaluarsa kata kunci",
   "login.password.expired.date.placeholder": "(dd/mm/yyyy)",
   "login.subtitle": "Login",
