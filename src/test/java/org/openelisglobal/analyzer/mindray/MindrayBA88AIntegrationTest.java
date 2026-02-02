@@ -47,9 +47,10 @@ public class MindrayBA88AIntegrationTest extends BaseWebContextSensitiveTest {
     private static final String FIXTURE_PATH = "testdata/astm/mindray-ba88a-result.txt";
 
     // RS232 configuration constants for BA-88A
+    // Note: stop_bits column is VARCHAR with enum values: ONE, ONE_POINT_FIVE, TWO
     private static final int BAUD_RATE = 9600;
     private static final int DATA_BITS = 8;
-    private static final int STOP_BITS = 1;
+    private static final String STOP_BITS = "ONE";
     private static final String PARITY = "NONE";
     private static final String FLOW_CONTROL = "NONE";
 
@@ -97,11 +98,12 @@ public class MindrayBA88AIntegrationTest extends BaseWebContextSensitiveTest {
 
         // Create RS232 serial port configuration via JDBC
         // This simulates what the astm-http-bridge configuration would store
+        // Note: serial_port_configuration.analyzer_id references analyzer.id (numeric)
         jdbcTemplate.update("INSERT INTO clinlims.serial_port_configuration "
-                + "(id, analyzer_configuration_id, port_name, baud_rate, data_bits, stop_bits, parity, flow_control) "
-                + "VALUES (nextval('clinlims.serial_port_configuration_seq'), ?, ?, ?, ?, ?, ?, ?)",
-                Integer.parseInt(analyzerConfigId), "/dev/ttyUSB0", BAUD_RATE, DATA_BITS, STOP_BITS, PARITY,
-                FLOW_CONTROL);
+                + "(id, analyzer_id, port_name, baud_rate, data_bits, stop_bits, parity, flow_control, active, fhir_uuid) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", java.util.UUID.randomUUID().toString(),
+                Integer.parseInt(ba88aAnalyzer.getId()), "/dev/ttyUSB0", BAUD_RATE, DATA_BITS, STOP_BITS, PARITY,
+                FLOW_CONTROL, true, java.util.UUID.randomUUID());
     }
 
     /**
@@ -125,9 +127,9 @@ public class MindrayBA88AIntegrationTest extends BaseWebContextSensitiveTest {
             jdbcTemplate.update(
                     "DELETE FROM clinlims.analyzer_results WHERE analyzer_id IN (SELECT id FROM clinlims.analyzer WHERE name = ?)",
                     ANALYZER_NAME);
-            jdbcTemplate.update("DELETE FROM clinlims.serial_port_configuration WHERE analyzer_configuration_id IN "
-                    + "(SELECT id FROM clinlims.analyzer_configuration WHERE analyzer_id IN "
-                    + "(SELECT id FROM clinlims.analyzer WHERE name = ?))", ANALYZER_NAME);
+            jdbcTemplate.update(
+                    "DELETE FROM clinlims.serial_port_configuration WHERE analyzer_id IN (SELECT id FROM clinlims.analyzer WHERE name = ?)",
+                    ANALYZER_NAME);
             jdbcTemplate.update(
                     "DELETE FROM clinlims.analyzer_configuration WHERE analyzer_id IN (SELECT id FROM clinlims.analyzer WHERE name = ?)",
                     ANALYZER_NAME);
@@ -179,10 +181,10 @@ public class MindrayBA88AIntegrationTest extends BaseWebContextSensitiveTest {
     @Test
     public void rs232Configuration_isStoredCorrectly() {
         // Query the serial port configuration
+        // serial_port_configuration.analyzer_id directly references analyzer.id
         Integer count = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM clinlims.serial_port_configuration spc "
-                        + "JOIN clinlims.analyzer_configuration ac ON spc.analyzer_configuration_id = ac.id "
-                        + "JOIN clinlims.analyzer a ON ac.analyzer_id = a.id "
+                        + "JOIN clinlims.analyzer a ON spc.analyzer_id = a.id "
                         + "WHERE a.name = ? AND spc.baud_rate = ? AND spc.data_bits = ? "
                         + "AND spc.stop_bits = ? AND spc.parity = ? AND spc.flow_control = ?",
                 Integer.class, ANALYZER_NAME, BAUD_RATE, DATA_BITS, STOP_BITS, PARITY, FLOW_CONTROL);
