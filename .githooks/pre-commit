@@ -17,10 +17,14 @@ fi
 # Track if we formatted anything
 FORMATTED=false
 
-# Format Java files (Maven Spotless on specific files)
+# Format Java and Markdown files (Maven Spotless)
+# Spotless is configured in pom.xml to format both .java and .md files
 JAVA_FILES=$(echo "$STAGED_FILES" | grep '\.java$' || true)
-if [ -n "$JAVA_FILES" ]; then
-    echo "  → Formatting $(echo "$JAVA_FILES" | wc -l) Java file(s) (spotless)..."
+MD_FILES=$(echo "$STAGED_FILES" | grep '\.md$' || true)
+if [ -n "$JAVA_FILES" ] || [ -n "$MD_FILES" ]; then
+    JAVA_COUNT=$(echo "$JAVA_FILES" | grep -c '.' || echo 0)
+    MD_COUNT=$(echo "$MD_FILES" | grep -c '.' || echo 0)
+    echo "  → Formatting ${JAVA_COUNT} Java + ${MD_COUNT} Markdown file(s) (spotless)..."
     # Spotless applies to entire project, but we only re-stage modified files
     mvn spotless:apply -q 2>/dev/null || true
     FORMATTED=true
