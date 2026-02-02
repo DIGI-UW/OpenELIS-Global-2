@@ -42,10 +42,9 @@ export const useBioanalyticalPermissions = () => {
     hasRole,
     hasAnyRole,
     hasLabUnitRole,
-    isGlobalAdmin,
   } = usePermissions();
 
-  const BIOANALYTICAL_LAB_UNIT = "Bioanalytical";
+  const BIOANALYTICAL_LAB_UNIT = "Bioanalytical Laboratory";
 
   /**
    * Custom hasLabUnitRole that ALLOWS Global Admin bypass while maintaining strict checking for others
@@ -57,12 +56,6 @@ export const useBioanalyticalPermissions = () => {
    */
   const hasBioanalyticalLabUnitRoleStrict = useCallback(
     (labUnit, role) => {
-      // GLOBAL ADMINS have full access to everything
-      if (isGlobalAdmin()) {
-        return true;
-      }
-
-      // For non-admin users: strict checking based on actual role assignments
       if (!userSessionDetails?.userLabRolesMap) {
         return false;
       }
@@ -78,7 +71,7 @@ export const useBioanalyticalPermissions = () => {
       const labUnitRoles = userSessionDetails.userLabRolesMap[labUnit] || [];
       return labUnitRoles.includes(role);
     },
-    [userSessionDetails?.userLabRolesMap, isGlobalAdmin],
+    [userSessionDetails?.userLabRolesMap],
   );
 
   const BIOANALYTICAL_ROLES = useMemo(
@@ -100,6 +93,8 @@ export const useBioanalyticalPermissions = () => {
       SAMPLE_RECEPTION: "Sample Reception & Registration",
       TEST_ASSIGNMENT: "Test Assignment",
       ANALYTICAL_EXECUTION: "Analytical Execution",
+      RESULT_ENTRY: "Result Entry",
+      VALIDATION: "Validation",
       REPORTING: "Reporting",
       STORAGE_ARCHIVING: "Storage & Archiving",
     }),
@@ -166,8 +161,7 @@ export const useBioanalyticalPermissions = () => {
           [BIOANALYTICAL_ROLES.QA_OFFICER]: "VIEW",
           // Data Manager excluded per matrix (No)
         },
-        // Result Entry mapping (combined with analytical execution in this implementation)
-        "Result Entry": {
+        [BIOANALYTICAL_PAGES.RESULT_ENTRY]: {
           // Matrix: Sample Receivers (No), Chemical Analysts (Full), Pharmacists (Full), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (View)
           // Sample Receiver excluded per matrix (No)
           [BIOANALYTICAL_ROLES.CHEMICAL_ANALYST]: "FULL",
@@ -178,8 +172,7 @@ export const useBioanalyticalPermissions = () => {
           [BIOANALYTICAL_ROLES.QA_OFFICER]: "VIEW",
           [BIOANALYTICAL_ROLES.DATA_MANAGER]: "VIEW",
         },
-        // Validation mapping
-        "Validation": {
+        [BIOANALYTICAL_PAGES.VALIDATION]: {
           // Matrix: Sample Receivers (No), Chemical Analysts (Validate), Pharmacists (Validate), Researchers (Review), Lab Supervisors (Final Approval), Study Directors (Final Approval), QA Officers (Final Approval), Data Managers (No)
           // Sample Receiver excluded per matrix (No)
           [BIOANALYTICAL_ROLES.CHEMICAL_ANALYST]: "VALIDATE",

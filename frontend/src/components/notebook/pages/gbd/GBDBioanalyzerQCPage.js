@@ -69,7 +69,6 @@ export const GBDBioanalyzerQCPage = ({
     useContext(NotificationContext);
   const { getPagePermissionLevel, canSaveData, canAccessBioanalyzerQC } =
     useGBDPermissions();
-  const { hasAnyRole } = usePermissions();
 
   // Bioanalyzer QC allowed roles - per GBD permission mapping
   const allowedRoles = [
@@ -78,10 +77,10 @@ export const GBDBioanalyzerQCPage = ({
     "GBD Principal Investigator",
   ];
 
-  // Layer 1: Page access check - use both GBD-specific and role-based checking
-  const canAccessPage = canAccessBioanalyzerQC() || hasAnyRole(allowedRoles);
+  // Page access check - GBD-specific permission function only
+  const canAccessPage = canAccessBioanalyzerQC();
 
-  // Layer 2: Action permission check - what can user do on this page
+  // Action permission check - what can user do on this page
   const pagePermissionLevel = getPagePermissionLevel("Bioanalyzer QC");
   const canPerformBioanalyzerQC = canSaveData(pagePermissionLevel);
 

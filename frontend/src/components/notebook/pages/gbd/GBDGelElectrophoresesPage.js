@@ -24,7 +24,6 @@ import {
 } from "@carbon/react";
 import { Renew, CheckmarkFilled, Chemistry, Image } from "@carbon/react/icons";
 import useGBDPermissions from "../../../../hooks/useGBDPermissions";
-import { usePermissions } from "../../../../hooks/usePermissions";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -72,7 +71,6 @@ export const GBDGelElectrophoresesPage = ({
     useContext(NotificationContext);
   const { getPagePermissionLevel, canSaveData, canAccessGelElectrophoresis } =
     useGBDPermissions();
-  const { hasAnyRole } = usePermissions();
 
   const allowedRoles = [
     "GBD Lab Technician",
@@ -80,8 +78,7 @@ export const GBDGelElectrophoresesPage = ({
     "GBD Principal Investigator",
   ];
 
-  const canAccessPage =
-    canAccessGelElectrophoresis() || hasAnyRole(allowedRoles);
+  const canAccessPage = canAccessGelElectrophoresis();
 
   const pagePermissionLevel = getPagePermissionLevel("Gel Electrophoresis");
   const canPerformGelAnalysis = canSaveData(pagePermissionLevel);

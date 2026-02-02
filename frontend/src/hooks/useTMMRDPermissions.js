@@ -19,13 +19,11 @@ import { usePermissions } from "./usePermissions";
  * - NO: No access (excluded from page/function)
  */
 export const useTMMRDPermissions = () => {
-  const { userSessionDetails, hasRole, hasAnyRole, hasLabUnitRole, isGlobalAdmin } =
+  const { userSessionDetails, hasRole, hasAnyRole, hasLabUnitRole } =
     usePermissions();
 
-  // Traditional Medicine lab unit name
-  const TMMRD_LAB_UNIT = "TraditionalMedicine";
+  const TMMRD_LAB_UNIT = "Traditional & Modern Medicine Research Lab";
 
-  // Traditional Medicine Roles
   const TMMRD_ROLES = {
     LAB_TECHNICIAN: "TMMRD Lab Technician",
     RESEARCHER: "TMMRD Researcher",
@@ -34,19 +32,22 @@ export const useTMMRDPermissions = () => {
     PRINCIPAL_INVESTIGATOR: "TMMRD Principal Investigator",
   };
 
-  // Traditional Medicine Pages
   const TMMRD_PAGES = {
     REGISTRATION: "Registration",
     AUTHENTICATION: "Authentication",
+    AUTHENTICATION_STORAGE: "Herbarium", // Storage & Herbarium Placement
+    PREPARATION: "Processing", // Sample Preparation for Analysis
     PROCESSING: "Processing",
     EXTRACTION: "Extraction",
+    ANALYTICAL: "Analysis", // Analytical Pathway
     ANALYSIS: "Analysis",
     PRODUCT_DEVELOPMENT: "Product Development",
     APPROVAL: "Approval",
+    FORMULATION: "Product Development", // Formulation of Medical Product
+    ARCHIVAL: "Approval", // Storage, Reporting & Archival
     HERBARIUM: "Herbarium",
   };
 
-  // Permission hierarchy (lowest to highest)
   const permissionHierarchy = [
     "VIEW", // Read-only
     "YES", // Can perform work and update data
@@ -59,22 +60,15 @@ export const useTMMRDPermissions = () => {
    * Get the user's permission level for a specific page based on the permission matrix
    */
   const getPagePermissionLevel = (pageName) => {
-    // Global admins get full access
-    if (isGlobalAdmin()) {
-      return "FULL";
-    }
-
     if (!userSessionDetails?.userLabRolesMap) {
       return null;
     }
 
     const userTMMRDRoles = Object.values(TMMRD_ROLES).filter((role) => {
-      // Check "AllLabUnits" for global lab access
       const allLabUnitsRoles = userSessionDetails.userLabRolesMap["AllLabUnits"] || [];
       if (allLabUnitsRoles.includes(role)) {
         return true;
       }
-      // Check specific lab unit
       const labUnitRoles = userSessionDetails.userLabRolesMap[TMMRD_LAB_UNIT] || [];
       return labUnitRoles.includes(role);
     });
@@ -83,7 +77,6 @@ export const useTMMRDPermissions = () => {
       return null;
     }
 
-    // Permission map based on the permission matrix from Section 11
     const permissionMap = {
       [TMMRD_PAGES.REGISTRATION]: {
         // Matrix: Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (View), Lab Manager (Full), Principal Investigator (View)
@@ -151,17 +144,14 @@ export const useTMMRDPermissions = () => {
 
     const pagePermissions = permissionMap[pageName] || {};
 
-    // Get all permission levels for this page from all user roles
     const userPermissionLevels = userTMMRDRoles
       .map((role) => pagePermissions[role])
       .filter((level) => level !== undefined);
 
-    // If no permissions found, return null
     if (userPermissionLevels.length === 0) {
       return null;
     }
 
-    // Return the highest permission level among all user roles
     const highestLevel = userPermissionLevels.reduce((highest, current) => {
       const currentIndex = permissionHierarchy.indexOf(current);
       const highestIndex = permissionHierarchy.indexOf(highest);
@@ -390,7 +380,6 @@ export const useTMMRDPermissions = () => {
     return hasAnyTMMRDRole(allowedRoles);
   };
 
-  // Legacy stage access functions (kept for backward compatibility)
   const canAccessStage1 = canAccessRegistration;
   const canAccessStage2 = canAccessAuthentication;
   const canAccessStage3to4 = () => canAccessProcessing() || canAccessExtraction();
@@ -399,7 +388,6 @@ export const useTMMRDPermissions = () => {
   const canAccessStage8 = canAccessHerbarium;
 
   return {
-    // Core permission checks
     getPagePermissionLevel,
     canSaveData,
     canRegisterData,
@@ -411,15 +399,12 @@ export const useTMMRDPermissions = () => {
     canModify,
     canPerformWork,
 
-    // Role checks (provided by usePermissions hook)
     hasAnyRole,
     hasRole,
 
-    // Permission hierarchy
     getPermissionRank,
     hasAtLeastPermission,
 
-    // TMMRD-specific role checks
     isTMMRDLabTechnician,
     isTMMRDResearcher,
     isTMMRDPharmacognosist,
@@ -427,7 +412,6 @@ export const useTMMRDPermissions = () => {
     isTMMRDPrincipalInvestigator,
     hasAnyTMMRDRole,
 
-    // Page-specific access checks (TMMRD workflow pages)
     canAccessRegistration,
     canAccessAuthentication,
     canAccessProcessing,
@@ -437,7 +421,6 @@ export const useTMMRDPermissions = () => {
     canAccessApproval,
     canAccessHerbarium,
 
-    // Legacy stage access checks (for backward compatibility)
     canAccessStage1,
     canAccessStage2,
     canAccessStage3to4,
@@ -445,7 +428,6 @@ export const useTMMRDPermissions = () => {
     canAccessStage7,
     canAccessStage8,
 
-    // Constants
     TMMRD_ROLES,
     TMMRD_PAGES,
     TMMRD_LAB_UNIT,

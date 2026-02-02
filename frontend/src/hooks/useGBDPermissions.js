@@ -35,7 +35,10 @@ export const useGBDPermissions = () => {
     isGlobalAdmin,
   } = usePermissions();
 
-  const GBD_LAB_UNIT = "GBD";
+  // Use user's actual login lab unit instead of hardcoded "GBD"
+  // This ensures role checks work with the actual lab unit name in the system
+  const GBD_LAB_UNIT =
+    userSessionDetails?.loginLabUnit || "Genomics & Bioinformatics Laboratory";
 
   /**
    * Custom hasLabUnitRole that DOES NOT bypass checks for Global Admins
@@ -84,6 +87,9 @@ export const useGBDPermissions = () => {
       EXTRACTION: "Extraction", // Maps to matrix column 2
       QC: "QC", // Maps to matrix column 3
       PCR: "PCR", // Maps to matrix column 4
+      GEL_ELECTROPHORESIS: "Gel Electrophoresis", // Maps to gel electrophoresis analysis
+      SAMPLE_STORAGE: "Sample Storage", // Maps to sample storage and environmental monitoring
+      BIOANALYZER_QC: "Bioanalyzer QC", // Maps to bioanalyzer quality control
       LIBRARY_PREP: "Library Prep", // Maps to matrix column 5
       SEQUENCING: "Sequencing", // Maps to matrix column 6
       BIOINFORMATICS: "Bioinformatics", // Maps to matrix column 7
@@ -155,6 +161,30 @@ export const useGBDPermissions = () => {
           [GBD_ROLES.MANAGER]: "FULL",
           [GBD_ROLES.PRINCIPAL_INVESTIGATOR]: "VIEW",
           // Data Managers excluded per matrix (No)
+        },
+        [GBD_PAGES.GEL_ELECTROPHORESIS]: {
+          // Matrix: Lab Technicians (Yes), Bioinformaticians (No), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
+          [GBD_ROLES.LAB_TECHNICIAN]: "YES",
+          // Bioinformaticians excluded
+          [GBD_ROLES.MANAGER]: "FULL",
+          [GBD_ROLES.PRINCIPAL_INVESTIGATOR]: "VIEW",
+          // Data Managers excluded
+        },
+        [GBD_PAGES.SAMPLE_STORAGE]: {
+          // Matrix: Lab Technicians (Yes), Bioinformaticians (No), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
+          [GBD_ROLES.LAB_TECHNICIAN]: "YES",
+          // Bioinformaticians excluded
+          [GBD_ROLES.MANAGER]: "FULL",
+          [GBD_ROLES.PRINCIPAL_INVESTIGATOR]: "VIEW",
+          // Data Managers excluded
+        },
+        [GBD_PAGES.BIOANALYZER_QC]: {
+          // Matrix: Lab Technicians (Yes), Bioinformaticians (No), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
+          [GBD_ROLES.LAB_TECHNICIAN]: "YES",
+          // Bioinformaticians excluded
+          [GBD_ROLES.MANAGER]: "FULL",
+          [GBD_ROLES.PRINCIPAL_INVESTIGATOR]: "VIEW",
+          // Data Managers excluded
         },
         [GBD_PAGES.LIBRARY_PREP]: {
           // Matrix: Lab Technicians (Yes), Bioinformaticians (No), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
@@ -436,6 +466,39 @@ export const useGBDPermissions = () => {
     return hasAnyGBDRole(allowedRoles);
   }, [hasAnyGBDRole, GBD_ROLES]);
 
+  const canAccessGelElectrophoresis = useCallback(() => {
+    // Matrix: Lab Technicians (Yes), Bioinformaticians (No), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
+    const allowedRoles = [
+      GBD_ROLES.LAB_TECHNICIAN,
+      // Bioinformaticians excluded
+      GBD_ROLES.MANAGER,
+      GBD_ROLES.PRINCIPAL_INVESTIGATOR,
+    ];
+    return hasAnyGBDRole(allowedRoles);
+  }, [hasAnyGBDRole, GBD_ROLES]);
+
+  const canAccessSampleStorage = useCallback(() => {
+    // Matrix: Lab Technicians (Yes), Bioinformaticians (No), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
+    const allowedRoles = [
+      GBD_ROLES.LAB_TECHNICIAN,
+      // Bioinformaticians excluded
+      GBD_ROLES.MANAGER,
+      GBD_ROLES.PRINCIPAL_INVESTIGATOR,
+    ];
+    return hasAnyGBDRole(allowedRoles);
+  }, [hasAnyGBDRole, GBD_ROLES]);
+
+  const canAccessBioanalyzerQC = useCallback(() => {
+    // Matrix: Lab Technicians (Yes), Bioinformaticians (No), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
+    const allowedRoles = [
+      GBD_ROLES.LAB_TECHNICIAN,
+      // Bioinformaticians excluded
+      GBD_ROLES.MANAGER,
+      GBD_ROLES.PRINCIPAL_INVESTIGATOR,
+    ];
+    return hasAnyGBDRole(allowedRoles);
+  }, [hasAnyGBDRole, GBD_ROLES]);
+
   const canAccessLibraryPrep = useCallback(() => {
     // Matrix: Lab Technicians (Yes), Bioinformaticians (No), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
     const allowedRoles = [
@@ -525,6 +588,9 @@ export const useGBDPermissions = () => {
     canAccessExtraction,
     canAccessQC,
     canAccessPCR,
+    canAccessGelElectrophoresis,
+    canAccessSampleStorage,
+    canAccessBioanalyzerQC,
     canAccessLibraryPrep,
     canAccessSequencing,
     canAccessBioinformatics,

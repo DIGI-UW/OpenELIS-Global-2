@@ -96,6 +96,8 @@ export const useBioequivalencePermissions = () => {
       SAMPLE_RECEPTION: "Sample Reception",
       TEST_ASSIGNMENT: "Test Assignment",
       ANALYTICAL_EXECUTION: "Analytical Execution",
+      RESULT_ENTRY: "Result Entry",
+      VALIDATION: "Validation",
       REPORTING: "Reporting & Release",
       STORAGE_ARCHIVING: "Post-Test Storage & Archiving",
     }),
@@ -162,8 +164,7 @@ export const useBioequivalencePermissions = () => {
           [BIOEQUIVALENCE_ROLES.QA_OFFICER]: "VIEW",
           // Data Manager excluded per matrix (No)
         },
-        // Result Entry mapping (combined with analytical execution in this implementation)
-        "Result Entry": {
+        [BIOEQUIVALENCE_PAGES.RESULT_ENTRY]: {
           // Matrix: Sample Receivers (No), Chemical Analysts (Full), Pharmacists (Full), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (View)
           // Sample Receiver excluded per matrix (No)
           [BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST]: "FULL",
@@ -174,8 +175,7 @@ export const useBioequivalencePermissions = () => {
           [BIOEQUIVALENCE_ROLES.QA_OFFICER]: "VIEW",
           [BIOEQUIVALENCE_ROLES.DATA_MANAGER]: "VIEW",
         },
-        // Validation mapping
-        "Validation": {
+        [BIOEQUIVALENCE_PAGES.VALIDATION]: {
           // Matrix: Sample Receivers (No), Chemical Analysts (Validate), Pharmacists (Validate), Researchers (Review), Lab Supervisors (Final Approval), Study Directors (Final Approval), QA Officers (Final Approval), Data Managers (No)
           // Sample Receiver excluded per matrix (No)
           [BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST]: "VALIDATE",

@@ -68,7 +68,7 @@ function TraditionalMedicineArchivalPage({
   const { hasAnyRole } = usePermissions();
 
   // TMMRD permissions per SRS Section 11
-  const { getPagePermissionLevel, canSaveData, canAccessStage8 } =
+  const { getPagePermissionLevel, canSaveData, canAccessStage8, TMMRD_PAGES } =
     useTMMRDPermissions();
 
   // All hooks and state must be declared before any conditional returns (React Hooks Rule)
@@ -91,7 +91,7 @@ function TraditionalMedicineArchivalPage({
   const canAccessPage = canAccessStage8();
 
   // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel("Reporting & Archival");
+  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.ARCHIVAL);
   const canEditData = canSaveData(pagePermissionLevel);
 
   const archiveTypeOptions = [
