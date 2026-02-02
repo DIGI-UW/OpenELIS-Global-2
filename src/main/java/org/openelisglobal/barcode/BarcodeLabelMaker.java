@@ -323,7 +323,7 @@ public class BarcodeLabelMaker {
             for (SampleItem sampleItem : sampleItemList) {
                 SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
                         labNo);
-                specLabel.setNumLabels(Integer.parseInt(quantity));
+                specLabel.setNumLabels(BarcodeConfigUtil.parseIntSafe(quantity, 1));
                 specLabel.linkBarcodeLabelInfo();
                 // get sysUserId from login module
                 specLabel.setSysUserId(sysUserId);

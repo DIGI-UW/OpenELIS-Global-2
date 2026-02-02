@@ -111,4 +111,39 @@ public class BarcodeInfoServiceImplTest {
         assertEquals(Integer.valueOf(4), existingItemInfo.getPrintSpecimenNum());
         verify(sampleItemBarcodeInfoService).insert(any(SampleItemBarcodeInfo.class));
     }
+
+    @Test
+    public void saveBarcodeInfoForSampleAndSampleItemsPathology_setsAllPerItemFields() {
+        // Arrange: one existing sample record, first item updates, second inserts
+        SampleBarcodeInfo existingSampleInfo = new SampleBarcodeInfo();
+        existingSampleInfo.setId(1);
+        existingSampleInfo.setSample(sample);
+        when(sampleBarcodeInfoService.getAllMatching(eq("sample"), eq(sample)))
+                .thenReturn(Collections.singletonList(existingSampleInfo));
+
+        SampleItemBarcodeInfo existingItemInfo = new SampleItemBarcodeInfo();
+        existingItemInfo.setId(10);
+        existingItemInfo.setSampleItem(sampleItems.get(0));
+        when(sampleItemBarcodeInfoService.getAllMatching(eq("sampleItem"), eq(sampleItems.get(0))))
+                .thenReturn(Collections.singletonList(existingItemInfo));
+        when(sampleItemBarcodeInfoService.getAllMatching(eq("sampleItem"), eq(sampleItems.get(1))))
+                .thenReturn(Collections.emptyList());
+
+        // Act
+        barcodeInfoService.saveBarcodeInfoForSampleAndSampleItemsPathology(sample, 2, 3, 4, 5, 6);
+
+        // Assert: sample updated
+        verify(sampleBarcodeInfoService).update(existingSampleInfo);
+        assertEquals(Integer.valueOf(2), existingSampleInfo.getPrintOrderNum());
+
+        // Assert: first item updated with all fields
+        verify(sampleItemBarcodeInfoService).update(existingItemInfo);
+        assertEquals(Integer.valueOf(3), existingItemInfo.getPrintSpecimenNum());
+        assertEquals(Integer.valueOf(4), existingItemInfo.getPrintBlockNum());
+        assertEquals(Integer.valueOf(5), existingItemInfo.getPrintSlideNum());
+        assertEquals(Integer.valueOf(6), existingItemInfo.getPrintFreezerNum());
+
+        // Assert: second item inserted
+        verify(sampleItemBarcodeInfoService).insert(any(SampleItemBarcodeInfo.class));
+    }
 }

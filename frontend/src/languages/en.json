@@ -167,6 +167,7 @@
   "barcode.label.info.patientSexFull": "Patient Sex",
   "barcode.label.info.tests": "Tests",
   "barcode.label.info.siteId": "Site ID",
+  "barcode.label.info.storageLocation": "Storage Location",
   "barcode.label.info.slideId": "Slide ID",
   "barcode.label.info.stainType": "Stain Type",
   "barcode.label.info.blockId": "Block ID",

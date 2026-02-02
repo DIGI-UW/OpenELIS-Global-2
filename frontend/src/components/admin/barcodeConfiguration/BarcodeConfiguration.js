@@ -949,7 +949,7 @@ function BarcodeConfiguration() {
                                     setSaveButton(false);
                                   }}
                                   labelText={intl.formatMessage({
-                                    id: "barcode.label.info.patientName",
+                                    id: "barcode.label.info.storageLocation",
                                   })}
                                 />
                                 <Checkbox
