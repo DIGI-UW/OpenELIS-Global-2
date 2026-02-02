@@ -14,8 +14,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.hibernate.Hibernate;
+import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.notebook.form.VirologyManifestImportForm;
 import org.openelisglobal.notebook.service.VirologyManifestImportService.ParseError;
@@ -26,6 +31,7 @@ import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
+import org.openelisglobal.sample.dao.SampleDAO;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -53,6 +59,12 @@ public class VirologyManifestImportServiceImpl implements VirologyManifestImport
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    // Lock object for synchronizing accession number generation
+    private static final Object ACCESSION_NUMBER_LOCK = new Object();
+
+    // Accession number generator for generating unique accession numbers
+    private IAccessionNumberGenerator accessionNumberGenerator;
 
     /**
      * Valid sample types for the Virology & Vaccine Unit laboratory. Based on PDF
@@ -105,6 +117,9 @@ public class VirologyManifestImportServiceImpl implements VirologyManifestImport
     private SampleService sampleService;
 
     @Autowired
+    private SampleDAO sampleDAO;
+
+    @Autowired
     private SampleItemService sampleItemService;
 
     @Autowired
@@ -121,6 +136,9 @@ public class VirologyManifestImportServiceImpl implements VirologyManifestImport
 
     @Autowired
     private IStatusService statusService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
     public ParsedManifest parseManifestCsv(InputStream csvInput, VirologyManifestImportForm columnMapping) {
@@ -407,12 +425,47 @@ public class VirologyManifestImportServiceImpl implements VirologyManifestImport
                 }
             }
 
-            // Create parent sample
+            // Create parent sample with synchronized accession number generation
             Sample parentSample = new Sample();
             parentSample.setSysUserId(sysUserId);
             parentSample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
             parentSample.setReceivedTimestamp(new Timestamp(System.currentTimeMillis()));
-            String sampleIdDb = sampleService.generateAccessionNumberAndInsert(parentSample);
+
+            // Synchronize accession number generation to prevent duplicates
+            String sampleIdDb;
+            synchronized (ACCESSION_NUMBER_LOCK) {
+                String generatedAccessionNumber = null;
+                int maxAttempts = 100;
+                int attempts = 0;
+
+                while (generatedAccessionNumber == null && attempts < maxAttempts) {
+                    String candidateNumber = getNextAccessionNumberInternal();
+
+                    // Check if this accession number already exists in the database
+                    Sample existingSample = sampleService.getSampleByAccessionNumber(candidateNumber);
+                    if (existingSample == null) {
+                        generatedAccessionNumber = candidateNumber;
+                    } else {
+                        attempts++;
+                        LogEvent.logWarn(this.getClass().getSimpleName(), "createSamplesForEntry",
+                                "Accession number " + candidateNumber + " already exists. Retrying (attempt "
+                                        + attempts + ")");
+                    }
+                }
+
+                if (generatedAccessionNumber == null) {
+                    errors.add(new ParseError(row.rowNumber(), "sample",
+                            "Failed to generate unique accession number after " + maxAttempts + " attempts"));
+                    continue;
+                }
+
+                parentSample.setAccessionNumber(generatedAccessionNumber);
+                sampleService.insertDataWithAccessionNumber(parentSample);
+                sampleIdDb = parentSample.getId();
+
+                // Flush to ensure the database sees this sample before the next iteration
+                entityManager.flush();
+            }
             parentSample.setId(sampleIdDb);
 
             // Create sample item
@@ -683,5 +736,20 @@ public class VirologyManifestImportServiceImpl implements VirologyManifestImport
         }
 
         return result.toString();
+    }
+
+    /**
+     * Get the next accession number using the accession number generator. This
+     * method should be called from within a synchronized block.
+     */
+    private String getNextAccessionNumberInternal() {
+        if (accessionNumberGenerator == null) {
+            accessionNumberGenerator = AccessionNumberUtil.getMainAccessionNumberGenerator();
+        }
+        if (accessionNumberGenerator != null) {
+            return accessionNumberGenerator.getNextAccessionNumber(null, true);
+        }
+        // Fallback to old method if generator not available
+        return sampleDAO.getNextAccessionNumber();
     }
 }
