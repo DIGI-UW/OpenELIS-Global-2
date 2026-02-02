@@ -8,7 +8,7 @@ import org.openelisglobal.sitebranding.valueholder.SiteBranding;
  * 
  * Task Reference: T012
  */
-public interface SiteBrandingDAO extends BaseDAO<SiteBranding, String> {
+public interface SiteBrandingDAO extends BaseDAO<SiteBranding, Integer> {
 
     /**
      * Get the single branding configuration record Since only one SiteBranding

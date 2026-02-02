@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Component
 @Transactional
-public class SiteBrandingDAOImpl extends BaseDAOImpl<SiteBranding, String> implements SiteBrandingDAO {
+public class SiteBrandingDAOImpl extends BaseDAOImpl<SiteBranding, Integer> implements SiteBrandingDAO {
 
     public SiteBrandingDAOImpl() {
         super(SiteBranding.class);

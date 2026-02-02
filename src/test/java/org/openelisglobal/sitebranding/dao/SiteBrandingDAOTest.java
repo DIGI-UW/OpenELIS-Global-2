@@ -72,19 +72,18 @@ public class SiteBrandingDAOTest extends BaseWebContextSensitiveTest {
      */
     @Test
     public void testGetBranding_WhenExists_ReturnsBranding() {
-        // Arrange: Insert test branding
-        String testId = "TEST-001";
+        // Arrange: Insert test branding using the sequence
         jdbcTemplate.update(
                 "INSERT INTO site_branding (id, primary_color, secondary_color, header_color, color_mode, use_header_logo_for_login, sys_user_id, last_updated) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
-                testId, "#1d4ed8", "#64748b", "#0891b2", "light", false, 1);
+                        + "VALUES (nextval('site_branding_seq'), ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                "#1d4ed8", "#64748b", "#0891b2", "light", false, 1);
 
         // Act: Get branding
         SiteBranding result = siteBrandingDAO.getBranding();
 
         // Assert: Returns branding
         assertNotNull("Result should not be null", result);
-        assertEquals("ID should match", testId, result.getId());
+        assertNotNull("ID should not be null", result.getId());
         assertEquals("Primary color should match", "#1d4ed8", result.getPrimaryColor());
     }
 
@@ -103,12 +102,12 @@ public class SiteBrandingDAOTest extends BaseWebContextSensitiveTest {
         branding.setSysUserId("1");
 
         // Act: Insert branding
-        String id = siteBrandingDAO.insert(branding);
+        Integer id = siteBrandingDAO.insert(branding);
 
         // Assert: Branding persisted
         assertNotNull("ID should be generated", id);
-        SiteBranding retrieved = siteBrandingDAO.get(id).orElse(null);
-        assertNotNull("Retrieved branding should not be null", retrieved);
+        SiteBranding retrieved = siteBrandingDAO.get(id)
+                .orElseThrow(() -> new AssertionError("Retrieved branding should not be null"));
         assertEquals("Primary color should match", "#ff0000", retrieved.getPrimaryColor());
     }
 
@@ -117,15 +116,14 @@ public class SiteBrandingDAOTest extends BaseWebContextSensitiveTest {
      */
     @Test
     public void testUpdate_WithExistingBranding_UpdatesDatabase() {
-        // Arrange: Insert test branding
-        String testId = "TEST-002";
-        jdbcTemplate.update(
+        // Arrange: Insert test branding and get the generated ID
+        Integer testId = jdbcTemplate.queryForObject(
                 "INSERT INTO site_branding (id, primary_color, secondary_color, header_color, color_mode, use_header_logo_for_login, sys_user_id, last_updated) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
-                testId, "#1d4ed8", "#64748b", "#0891b2", "light", false, 1);
+                        + "VALUES (nextval('site_branding_seq'), ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) RETURNING id",
+                Integer.class, "#1d4ed8", "#64748b", "#0891b2", "light", false, 1);
 
-        SiteBranding branding = siteBrandingDAO.get(testId).orElse(null);
-        assertNotNull("Branding should exist", branding);
+        SiteBranding branding = siteBrandingDAO.get(testId)
+                .orElseThrow(() -> new AssertionError("Branding should exist"));
 
         // Modify branding
         branding.setPrimaryColor("#ff0000");
@@ -139,8 +137,8 @@ public class SiteBrandingDAOTest extends BaseWebContextSensitiveTest {
         assertEquals("Primary color should be updated", "#ff0000", result.getPrimaryColor());
 
         // Verify in database
-        SiteBranding retrieved = siteBrandingDAO.get(testId).orElse(null);
-        assertNotNull("Retrieved branding should not be null", retrieved);
+        SiteBranding retrieved = siteBrandingDAO.get(testId)
+                .orElseThrow(() -> new AssertionError("Retrieved branding should not be null"));
         assertEquals("Primary color should be updated in database", "#ff0000", retrieved.getPrimaryColor());
     }
 }

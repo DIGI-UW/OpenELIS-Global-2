@@ -3,28 +3,29 @@ package org.openelisglobal.sitebranding.valueholder;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.GenericGenerator;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
  * SiteBranding entity - Represents the organization's branding configuration
  * Single record per OpenELIS deployment
- * 
+ *
  * Task Reference: T011
  */
 @Entity
 @Table(name = "site_branding")
-public class SiteBranding extends BaseObject<String> {
+public class SiteBranding extends BaseObject<Integer> {
 
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue(generator = "uuid-generator")
-    @GenericGenerator(name = "uuid-generator", strategy = "uuid2")
-    @Column(name = "id", length = 36)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "site_branding_generator")
+    @SequenceGenerator(name = "site_branding_generator", sequenceName = "site_branding_seq", allocationSize = 1)
+    @Column(name = "id")
+    private Integer id;
 
     @Column(name = "header_logo_path", length = 500)
     private String headerLogoPath;
@@ -61,12 +62,12 @@ public class SiteBranding extends BaseObject<String> {
     private String sysUserId;
 
     @Override
-    public String getId() {
+    public Integer getId() {
         return id;
     }
 
     @Override
-    public void setId(String id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 

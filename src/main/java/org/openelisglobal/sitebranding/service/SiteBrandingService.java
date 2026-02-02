@@ -9,7 +9,7 @@ import org.openelisglobal.sitebranding.valueholder.SiteBranding;
  * 
  * Task Reference: T014
  */
-public interface SiteBrandingService extends BaseObjectService<SiteBranding, String> {
+public interface SiteBrandingService extends BaseObjectService<SiteBranding, Integer> {
 
     /**
      * Get the current branding configuration Creates a default record if none

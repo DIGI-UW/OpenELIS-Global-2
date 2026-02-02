@@ -51,7 +51,7 @@ public class SiteBrandingServiceTest {
     public void setUp() {
         // Setup test data
         testBranding = new SiteBranding();
-        testBranding.setId("TEST-001");
+        testBranding.setId(1);
         testBranding.setPrimaryColor("#1d4ed8");
         testBranding.setSecondaryColor("#64748b");
         testBranding.setHeaderColor("#112233");
@@ -69,8 +69,8 @@ public class SiteBrandingServiceTest {
         when(siteBrandingDAO.getBranding()).thenReturn(null);
         when(siteBrandingDAO.insert(any(SiteBranding.class))).thenAnswer(invocation -> {
             SiteBranding branding = invocation.getArgument(0);
-            branding.setId("DEFAULT-001");
-            return "DEFAULT-001";
+            branding.setId(2);
+            return 2;
         });
 
         // Act: Get branding (should create default)
@@ -99,7 +99,7 @@ public class SiteBrandingServiceTest {
 
         // Assert: Returns existing branding
         assertNotNull("Result should not be null", result);
-        assertEquals("ID should match", "TEST-001", result.getId());
+        assertEquals("ID should match", Integer.valueOf(1), result.getId());
         verify(siteBrandingDAO, never()).insert(any(SiteBranding.class));
     }
 
@@ -142,8 +142,8 @@ public class SiteBrandingServiceTest {
         newBranding.setPrimaryColor("#ff0000");
         when(siteBrandingDAO.insert(any(SiteBranding.class))).thenAnswer(invocation -> {
             SiteBranding branding = invocation.getArgument(0);
-            branding.setId("NEW-001");
-            return "NEW-001";
+            branding.setId(3);
+            return 3;
         });
 
         // Act: Save branding
@@ -151,7 +151,7 @@ public class SiteBrandingServiceTest {
 
         // Assert: Branding inserted
         assertNotNull("Result should not be null", result);
-        assertEquals("ID should be set", "NEW-001", result.getId());
+        assertEquals("ID should be set", Integer.valueOf(3), result.getId());
         verify(siteBrandingDAO, times(1)).insert(any(SiteBranding.class));
         verify(siteBrandingDAO, never()).update(any(SiteBranding.class));
     }

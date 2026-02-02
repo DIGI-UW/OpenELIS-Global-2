@@ -13,8 +13,9 @@
             </not>
         </preConditions>
         <comment>Creating site_branding table for white labeling / site branding feature</comment>
+        <createSequence sequenceName="site_branding_seq" startValue="1" incrementBy="1"/>
         <createTable tableName="site_branding">
-            <column name="id" type="VARCHAR(36)">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="site_branding_seq">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="header_logo_path" type="VARCHAR(500)"/>
@@ -48,6 +49,7 @@
 
         <rollback>
             <dropTable tableName="site_branding"/>
+            <dropSequence sequenceName="site_branding_seq"/>
         </rollback>
     </changeSet>
 </databaseChangeLog>

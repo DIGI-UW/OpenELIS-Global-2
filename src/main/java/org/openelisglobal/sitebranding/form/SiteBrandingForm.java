@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Size;
  */
 public class SiteBrandingForm {
 
-    private String id;
+    private Integer id;
 
     private String headerLogoUrl;
 
@@ -37,11 +37,11 @@ public class SiteBrandingForm {
 
     // Getters and Setters
 
-    public String getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 

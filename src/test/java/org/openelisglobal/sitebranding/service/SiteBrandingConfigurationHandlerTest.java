@@ -35,7 +35,7 @@ public class SiteBrandingConfigurationHandlerTest {
     @Before
     public void setUp() {
         testBranding = new SiteBranding();
-        testBranding.setId("TEST-001");
+        testBranding.setId(1);
         testBranding.setPrimaryColor("#1d4ed8");
         testBranding.setSecondaryColor("#64748b");
         testBranding.setHeaderColor("#112233");

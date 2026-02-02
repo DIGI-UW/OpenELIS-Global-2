@@ -34,7 +34,7 @@ import org.w3c.dom.Document;
  */
 @Service
 @Transactional
-public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding, String>
+public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding, Integer>
         implements SiteBrandingService {
 
     private static final Logger logger = LoggerFactory.getLogger(SiteBrandingServiceImpl.class);
@@ -59,7 +59,6 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
     @Override
     @Transactional(readOnly = true)
     public SiteBranding getBranding() {
-        logger.debug("getBranding() called");
         try {
             SiteBranding branding = siteBrandingDAO.getBranding();
             if (branding == null) {
@@ -67,11 +66,6 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
                 // Create default branding if none exists
                 branding = createDefaultBranding();
                 logger.info("Default branding created: id={}", branding.getId());
-            } else {
-                logger.debug(
-                        "Retrieved branding from database: id={}, headerColor={}, primaryColor={}, secondaryColor={}, colorMode={}, useHeaderLogoForLogin={}",
-                        branding.getId(), branding.getHeaderColor(), branding.getPrimaryColor(),
-                        branding.getSecondaryColor(), branding.getColorMode(), branding.getUseHeaderLogoForLogin());
             }
             return branding;
         } catch (Exception e) {
@@ -103,7 +97,7 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
             if (branding.getId() == null) {
                 // Insert new record
                 logger.debug("Inserting new branding record");
-                String id = siteBrandingDAO.insert(branding);
+                Integer id = siteBrandingDAO.insert(branding);
                 branding.setId(id);
                 logger.info("Branding configuration created: id={}, user={}", id, branding.getSysUserId());
                 // Task Reference: T093 - Log branding creation
@@ -236,7 +230,7 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
         branding.setSysUserId("system");
 
         // Insert default record
-        String id = siteBrandingDAO.insert(branding);
+        Integer id = siteBrandingDAO.insert(branding);
         branding.setId(id);
         return branding;
     }
