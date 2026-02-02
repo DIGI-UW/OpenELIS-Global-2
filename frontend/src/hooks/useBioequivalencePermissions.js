@@ -45,7 +45,7 @@ export const useBioequivalencePermissions = () => {
     isGlobalAdmin,
   } = usePermissions();
 
-  const BIOEQUIVALENCE_LAB_UNIT = "Bioequivalence";
+  const BIOEQUIVALENCE_LAB_UNIT = "Bioequivalence Laboratory";
 
   /**
    * Custom hasLabUnitRole that DOES NOT bypass checks for Global Admins
