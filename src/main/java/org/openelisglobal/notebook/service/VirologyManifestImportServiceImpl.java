@@ -32,7 +32,9 @@ import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.sample.dao.SampleDAO;
+import org.openelisglobal.sample.exception.DuplicateAccessionNumberException;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.util.AccessionNumberHandler;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -59,12 +61,6 @@ public class VirologyManifestImportServiceImpl implements VirologyManifestImport
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
-    // Lock object for synchronizing accession number generation
-    private static final Object ACCESSION_NUMBER_LOCK = new Object();
-
-    // Accession number generator for generating unique accession numbers
-    private IAccessionNumberGenerator accessionNumberGenerator;
 
     /**
      * Valid sample types for the Virology & Vaccine Unit laboratory. Based on PDF
@@ -425,48 +421,25 @@ public class VirologyManifestImportServiceImpl implements VirologyManifestImport
                 }
             }
 
-            // Create parent sample with synchronized accession number generation
+            // Create parent sample with safe accession number generation and insertion
             Sample parentSample = new Sample();
             parentSample.setSysUserId(sysUserId);
             parentSample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
             parentSample.setReceivedTimestamp(new Timestamp(System.currentTimeMillis()));
 
-            // Synchronize accession number generation to prevent duplicates
+            // Use generic handler to safely generate and insert with unique accession number
             String sampleIdDb;
-            synchronized (ACCESSION_NUMBER_LOCK) {
-                String generatedAccessionNumber = null;
-                int maxAttempts = 100;
-                int attempts = 0;
-
-                while (generatedAccessionNumber == null && attempts < maxAttempts) {
-                    String candidateNumber = getNextAccessionNumberInternal();
-
-                    // Check if this accession number already exists in the database
-                    Sample existingSample = sampleService.getSampleByAccessionNumber(candidateNumber);
-                    if (existingSample == null) {
-                        generatedAccessionNumber = candidateNumber;
-                    } else {
-                        attempts++;
-                        LogEvent.logWarn(this.getClass().getSimpleName(), "createSamplesForEntry",
-                                "Accession number " + candidateNumber + " already exists. Retrying (attempt "
-                                        + attempts + ")");
-                    }
-                }
-
-                if (generatedAccessionNumber == null) {
-                    errors.add(new ParseError(row.rowNumber(), "sample",
-                            "Failed to generate unique accession number after " + maxAttempts + " attempts"));
-                    continue;
-                }
-
-                parentSample.setAccessionNumber(generatedAccessionNumber);
-                sampleService.insertDataWithAccessionNumber(parentSample);
-                sampleIdDb = parentSample.getId();
-
-                // Flush to ensure the database sees this sample before the next iteration
-                entityManager.flush();
+            try {
+                AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO,
+                        entityManager, this.getClass());
+                sampleIdDb = handler.generateAndInsertWithUniqueAccessionNumber(parentSample);
+                parentSample.setId(sampleIdDb);
+            } catch (DuplicateAccessionNumberException e) {
+                errors.add(new ParseError(row.rowNumber(), "sample",
+                        "Failed to generate unique accession number: " + e.getMessage()));
+                LogEvent.logError("Duplicate accession number error for row " + row.rowNumber(), e);
+                continue;
             }
-            parentSample.setId(sampleIdDb);
 
             // Create sample item
             SampleItem item = new SampleItem();
@@ -738,18 +711,4 @@ public class VirologyManifestImportServiceImpl implements VirologyManifestImport
         return result.toString();
     }
 
-    /**
-     * Get the next accession number using the accession number generator. This
-     * method should be called from within a synchronized block.
-     */
-    private String getNextAccessionNumberInternal() {
-        if (accessionNumberGenerator == null) {
-            accessionNumberGenerator = AccessionNumberUtil.getMainAccessionNumberGenerator();
-        }
-        if (accessionNumberGenerator != null) {
-            return accessionNumberGenerator.getNextAccessionNumber(null, true);
-        }
-        // Fallback to old method if generator not available
-        return sampleDAO.getNextAccessionNumber();
-    }
 }

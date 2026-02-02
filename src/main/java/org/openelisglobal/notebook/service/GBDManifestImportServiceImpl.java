@@ -15,7 +15,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.hibernate.Hibernate;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.notebook.dao.NotebookPageSampleDAO;
@@ -35,6 +38,9 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.openelisglobal.sample.dao.SampleDAO;
+import org.openelisglobal.sample.exception.DuplicateAccessionNumberException;
+import org.openelisglobal.sample.util.AccessionNumberHandler;
 
 /**
  * Genomic Bioanalytical Database (GBD) manifest import implementation.
@@ -98,6 +104,9 @@ public class GBDManifestImportServiceImpl implements GBDManifestImportService {
     private SampleService sampleService;
 
     @Autowired
+    private SampleDAO sampleDAO;
+
+    @Autowired
     private SampleItemService sampleItemService;
 
     @Autowired
@@ -105,6 +114,9 @@ public class GBDManifestImportServiceImpl implements GBDManifestImportService {
 
     @Autowired
     private IStatusService statusService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
     public ParsedManifest parseManifestCsv(InputStream csvInput, GBDManifestImportForm columnMapping) {
@@ -335,8 +347,18 @@ public class GBDManifestImportServiceImpl implements GBDManifestImportService {
                 parentSample.setSysUserId(sysUserId);
                 parentSample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
                 parentSample.setReceivedTimestamp(new java.sql.Timestamp(System.currentTimeMillis()));
-                String sampleIdDb = sampleService.generateAccessionNumberAndInsert(parentSample);
+                String sampleIdDb;
+            try {
+                AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO,
+                        entityManager, this.getClass());
+                sampleIdDb = handler.generateAndInsertWithUniqueAccessionNumber(parentSample);
                 parentSample.setId(sampleIdDb);
+            } catch (DuplicateAccessionNumberException e) {
+                errors.add(new ParseError(row.rowNumber(), "sample",
+                        "Failed to generate unique accession number: " + e.getMessage()));
+                LogEvent.logError("Duplicate accession number error for row " + row.rowNumber(), e);
+                continue;
+            }
 
                 SampleItem item = new SampleItem();
                 item.setSample(parentSample);

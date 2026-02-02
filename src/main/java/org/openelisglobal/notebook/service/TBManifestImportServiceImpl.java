@@ -25,6 +25,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.sample.dao.SampleDAO;
+import org.openelisglobal.sample.exception.DuplicateAccessionNumberException;
+import org.openelisglobal.sample.util.AccessionNumberHandler;
 
 /**
  * Implementation of TBManifestImportService for spec-compliant TB manifest
