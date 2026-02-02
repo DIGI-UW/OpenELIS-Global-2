@@ -649,42 +649,38 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
                 setPropertyHolder(propertyName, new PropertyHolder(siteInformation.getValue()));
             } else {
                 switch (siteInformation.getValueType()) {
-                    case "logoUpload":
-                    case "complex":
-                        LogEvent.logInfo(this.getClass().getSimpleName(), "loadFromDatabase",
-                                "can't load complex value type from database into property '"
-                                        + siteInformation.getName()
-                                        + "'");
-                        break;
-                    case "text":
-                        if ("localization".equals(siteInformation.getTag())) {
-                            Localization localization = SpringContext.getBean(LocalizationService.class)
-                                    .get(siteInformation.getValue());
-                            PropertyHolder propertyHolder = allProperties.getOrDefault(
-                                    namePortions[namePortions.length - 1],
-                                    new PropertyHolder(localization.getId(), true));
-                            if (LOCALIZATION_PREFIX.equals(namePortions[0])) {
-                                propertyHolder.setLocalizationValue(Locale.forLanguageTag(namePortions[1]),
-                                        localization.getLocalizedValue(Locale.forLanguageTag(namePortions[1])));
-                            } else {
-                                for (Entry<Locale, String> localizationEntry : localization.getLocaleValues()
-                                        .entrySet()) {
-                                    propertyHolder.setLocalizationValue(localizationEntry.getKey(),
-                                            localizationEntry.getValue());
-                                }
-                            }
-                            setPropertyHolder(Property.valueOf(namePortions[namePortions.length - 1]), propertyHolder);
+                case "logoUpload":
+                case "complex":
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "loadFromDatabase",
+                            "can't load complex value type from database into property '" + siteInformation.getName()
+                                    + "'");
+                    break;
+                case "text":
+                    if ("localization".equals(siteInformation.getTag())) {
+                        Localization localization = SpringContext.getBean(LocalizationService.class)
+                                .get(siteInformation.getValue());
+                        PropertyHolder propertyHolder = allProperties.getOrDefault(
+                                namePortions[namePortions.length - 1], new PropertyHolder(localization.getId(), true));
+                        if (LOCALIZATION_PREFIX.equals(namePortions[0])) {
+                            propertyHolder.setLocalizationValue(Locale.forLanguageTag(namePortions[1]),
+                                    localization.getLocalizedValue(Locale.forLanguageTag(namePortions[1])));
                         } else {
-                            setPropertyHolder(Property.valueOf(propertyName),
-                                    new PropertyHolder(siteInformation.getValue()));
+                            for (Entry<Locale, String> localizationEntry : localization.getLocaleValues().entrySet()) {
+                                propertyHolder.setLocalizationValue(localizationEntry.getKey(),
+                                        localizationEntry.getValue());
+                            }
                         }
-                        break;
-                    case "freeText":
-                    case "dictionary":
-                    case "boolean":
-                    default:
+                        setPropertyHolder(Property.valueOf(namePortions[namePortions.length - 1]), propertyHolder);
+                    } else {
                         setPropertyHolder(Property.valueOf(propertyName),
                                 new PropertyHolder(siteInformation.getValue()));
+                    }
+                    break;
+                case "freeText":
+                case "dictionary":
+                case "boolean":
+                default:
+                    setPropertyHolder(Property.valueOf(propertyName), new PropertyHolder(siteInformation.getValue()));
                 }
             }
 

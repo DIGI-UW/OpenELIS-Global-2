@@ -1,8 +1,5 @@
 package org.openelisglobal.barcode.valueholder;
 
-import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.sampleitem.valueholder.SampleItem;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -14,6 +11,8 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.validation.Valid;
+import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
 /**
  * Class for persisting bar code label information in the database

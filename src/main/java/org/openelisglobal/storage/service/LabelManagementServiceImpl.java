@@ -147,32 +147,32 @@ public class LabelManagementServiceImpl implements LabelManagementService {
 
         try {
             switch (locationType.toLowerCase()) {
-                case "device":
-                    StorageDevice device = (StorageDevice) storageLocationService.get(Integer.parseInt(locationId),
-                            StorageDevice.class);
-                    if (device == null) {
-                        return false;
-                    }
-                    // Code field is always ≤10 chars and required
-                    return device.getCode() != null && !device.getCode().trim().isEmpty();
-                case "shelf":
-                    StorageShelf shelf = (StorageShelf) storageLocationService.get(Integer.parseInt(locationId),
-                            StorageShelf.class);
-                    if (shelf == null) {
-                        return false;
-                    }
-                    // Code field is always ≤10 chars and required
-                    return shelf.getCode() != null && !shelf.getCode().trim().isEmpty();
-                case "rack":
-                    StorageRack rack = (StorageRack) storageLocationService.get(Integer.parseInt(locationId),
-                            StorageRack.class);
-                    if (rack == null) {
-                        return false;
-                    }
-                    // code field is always ≤10 chars and required
-                    return rack.getCode() != null && !rack.getCode().trim().isEmpty();
-                default:
+            case "device":
+                StorageDevice device = (StorageDevice) storageLocationService.get(Integer.parseInt(locationId),
+                        StorageDevice.class);
+                if (device == null) {
                     return false;
+                }
+                // Code field is always ≤10 chars and required
+                return device.getCode() != null && !device.getCode().trim().isEmpty();
+            case "shelf":
+                StorageShelf shelf = (StorageShelf) storageLocationService.get(Integer.parseInt(locationId),
+                        StorageShelf.class);
+                if (shelf == null) {
+                    return false;
+                }
+                // Code field is always ≤10 chars and required
+                return shelf.getCode() != null && !shelf.getCode().trim().isEmpty();
+            case "rack":
+                StorageRack rack = (StorageRack) storageLocationService.get(Integer.parseInt(locationId),
+                        StorageRack.class);
+                if (rack == null) {
+                    return false;
+                }
+                // code field is always ≤10 chars and required
+                return rack.getCode() != null && !rack.getCode().trim().isEmpty();
+            default:
+                return false;
             }
         } catch (Exception e) {
             LogEvent.logError("LabelManagementServiceImpl", "validateCodeExists",

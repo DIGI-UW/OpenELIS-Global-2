@@ -1,11 +1,10 @@
 package org.openelisglobal.barcode.form;
 
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import org.hibernate.validator.constraints.Range;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.validator.ValidationHelper;
-
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 
 public class BarcodeConfigurationForm extends BaseForm {
 

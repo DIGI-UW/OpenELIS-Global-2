@@ -24,8 +24,9 @@
             <column name="domain_id"
                 valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'labels')" />
             <where>
-                name = 'numMaxOrderLabels' 
+                name = 'numMaxOrderLabels'
                 OR name = 'numMaxSpecimenLabels'
+                OR name = 'numDefaultSpecimenLabels'
                 OR name = 'numMaxAliquotLabels'
                 OR name = 'numDefaultOrderLabels'
                 OR name = 'numDefaultAliquotLabels'
@@ -36,6 +37,7 @@
                 OR name = 'collectionDateCheck'
                 OR name = 'patientSexCheck'
                 OR name = 'collectedByCheck'
+                OR name = 'testsCheck'
                 OR name = 'heightBlockLabels'
                 OR name = 'widthBlockLabels'
                 OR name = 'heightSlideLabels'
@@ -52,25 +54,25 @@
         <update tableName="site_information" schemaName="clinlims">
             <column name="name" value="specimenLabelCollectionDate" />
             <where>
-                name = 'collectionDateCheck' 
+                name = 'collectionDateCheck'
             </where>
         </update>
         <update tableName="site_information" schemaName="clinlims">
             <column name="name" value="specimenLabelPatientSex" />
             <where>
-                name = 'patientSexCheck' 
+                name = 'patientSexCheck'
             </where>
         </update>
         <update tableName="site_information" schemaName="clinlims">
             <column name="name" value="specimenLabelCollectedBy" />
             <where>
-                name = 'collectedByCheck' 
+                name = 'collectedByCheck'
             </where>
         </update>
         <update tableName="site_information" schemaName="clinlims">
             <column name="name" value="specimenLabelTests" />
             <where>
-                name = 'testsCheck' 
+                name = 'testsCheck'
             </where>
         </update>
     </changeSet>

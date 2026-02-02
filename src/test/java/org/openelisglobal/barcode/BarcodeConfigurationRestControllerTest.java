@@ -86,10 +86,10 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
         form.setWidthBlockLabels(4.0f);
         form.setHeightSlideLabels(7.0f);
         form.setWidthSlideLabels(3.5f);
-        form.setCollectionDateCheck(true);
-        form.setCollectedByCheck(false);
-        form.setTestsCheck(true);
-        form.setPatientSexCheck(false);
+        form.setSpecimenCollectionDateCheck(true);
+        form.setSpecimenCollectedByCheck(false);
+        form.setSpecimenTestsCheck(true);
+        form.setSpecimenPatientSexCheck(false);
         form.setPrePrintDontUseAltAccession(true);
         form.setPrePrintAltAccessionPrefix("ABCD");
 

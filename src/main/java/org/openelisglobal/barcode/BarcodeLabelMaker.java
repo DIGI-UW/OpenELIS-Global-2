@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import javax.imageio.ImageIO;
 import org.openelisglobal.barcode.labeltype.BlankLabel;
@@ -36,6 +35,7 @@ import org.openelisglobal.barcode.labeltype.OrderLabel;
 import org.openelisglobal.barcode.labeltype.SlideLabel;
 import org.openelisglobal.barcode.labeltype.SpecimenLabel;
 import org.openelisglobal.barcode.service.BarcodeLabelInfoService;
+import org.openelisglobal.barcode.util.BarcodeConfigUtil;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.AltYearAccessionValidator;
@@ -143,7 +143,10 @@ public class BarcodeLabelMaker {
                             String statusId = statusService.getStatusID(SampleStatus.Entered);
 
                             if (statusId != null && !statusId.equals("-1") && !statusId.trim().isEmpty()) {
-                                ENTERED_STATUS_SAMPLE_LIST.add(Integer.parseInt(statusId));
+                                int parsed = BarcodeConfigUtil.parseIntSafe(statusId, -1);
+                                if (parsed >= 0) {
+                                    ENTERED_STATUS_SAMPLE_LIST.add(parsed);
+                                }
                             } else {
                                 LogEvent.logError("BarcodeLabelMaker", "getEnteredStatusSampleList",
                                         "SampleStatus.Entered not found in database. Status ID: " + statusId);
@@ -254,9 +257,8 @@ public class BarcodeLabelMaker {
             // add 2 order label per default
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             OrderLabel orderLabel = new OrderLabel(sampleService.getPatient(sample), sample, labNo);
-            orderLabel.setNumLabels(Integer
-                    .parseInt(ConfigurationProperties.getInstance()
-                            .getPropertyValue(Property.DEFAULT_ORDER_LABEL_PRINTED)));
+            orderLabel.setNumLabels(BarcodeConfigUtil.parseIntSafe(
+                    ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_ORDER_LABEL_PRINTED), 1));
             orderLabel.linkBarcodeLabelInfo();
             // get sysUserId from login module
             orderLabel.setSysUserId(sysUserId);
@@ -270,9 +272,9 @@ public class BarcodeLabelMaker {
             for (SampleItem sampleItem : sampleItemList) {
                 SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
                         labNo);
-                specLabel.setNumLabels(Integer.parseInt(
-                        ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.DEFAULT_SPECIMEN_LABEL_PRINTED)));
+                specLabel.setNumLabels(BarcodeConfigUtil.parseIntSafe(
+                        ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_SPECIMEN_LABEL_PRINTED),
+                        1));
                 specLabel.linkBarcodeLabelInfo();
                 // get sysUserId from login module
                 specLabel.setSysUserId(sysUserId);
@@ -284,7 +286,7 @@ public class BarcodeLabelMaker {
         } else if ("order".equals(type)) {
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             OrderLabel orderLabel = new OrderLabel(sampleService.getPatient(sample), sample, labNo);
-            orderLabel.setNumLabels(Integer.parseInt(quantity));
+            orderLabel.setNumLabels(BarcodeConfigUtil.parseIntSafe(quantity, 1));
             orderLabel.linkBarcodeLabelInfo();
             // get sysUserId from login module
             orderLabel.setSysUserId(sysUserId);
@@ -304,7 +306,7 @@ public class BarcodeLabelMaker {
                 if (sampleItem.getSortOrder().equals(specimenNumber)) {
                     SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
                             labNo);
-                    specLabel.setNumLabels(Integer.parseInt(quantity));
+                    specLabel.setNumLabels(BarcodeConfigUtil.parseIntSafe(quantity, 1));
                     specLabel.linkBarcodeLabelInfo();
                     // get sysUserId from login module
                     specLabel.setSysUserId(sysUserId);
@@ -337,7 +339,7 @@ public class BarcodeLabelMaker {
                 for (PathologyBlock block : pathologySample.getBlocks()) {
                     BlockLabel label = new BlockLabel(sampleService.getPatient(sample), sample, pathologySample, block,
                             labNo);
-                    label.setNumLabels(Integer.parseInt(quantity));
+                    label.setNumLabels(BarcodeConfigUtil.parseIntSafe(quantity, 1));
                     label.linkBarcodeLabelInfo();
                     // get sysUserId from login module
                     label.setSysUserId(sysUserId);
@@ -354,7 +356,7 @@ public class BarcodeLabelMaker {
                 for (PathologySlide slide : pathologySample.getSlides()) {
                     SlideLabel label = new SlideLabel(sampleService.getPatient(sample), sample, pathologySample, slide,
                             labNo);
-                    label.setNumLabels(Integer.parseInt(quantity));
+                    label.setNumLabels(BarcodeConfigUtil.parseIntSafe(quantity, 1));
                     label.linkBarcodeLabelInfo();
                     // get sysUserId from login module
                     label.setSysUserId(sysUserId);
@@ -363,24 +365,22 @@ public class BarcodeLabelMaker {
                     }
                 }
             }
-            // all freezer for an order case
+            // all freezer for an order case (one label per sample item, barcode =
+            // labNo.sortOrder)
         } else if ("freezerOrder".equals(type)) {
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
                     getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
-                // get only the sample item matching the specimen number
-                FreezerLabel label = new FreezerLabel(labNo);
-                label.setNumLabels(Integer.parseInt(quantity));
+                String itemCode = labNo + "." + sampleItem.getSortOrder();
+                FreezerLabel label = new FreezerLabel(itemCode);
+                label.setNumLabels(BarcodeConfigUtil.parseIntSafe(quantity, 1));
                 label.linkBarcodeLabelInfo();
-                // get sysUserId from login module
                 label.setSysUserId(sysUserId);
                 if (label.checkIfPrintable() || "true".equals(override)) {
                     labels.add(label);
                 }
             }
-            FreezerLabel label = new FreezerLabel(labNo);
-            labels.add(label);
             // blank case
         } else if ("blank".equals(type)) {
             BlankLabel blankLabel = new BlankLabel(labNo);

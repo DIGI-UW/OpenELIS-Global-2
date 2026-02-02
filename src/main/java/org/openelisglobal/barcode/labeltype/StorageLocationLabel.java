@@ -2,7 +2,7 @@ package org.openelisglobal.barcode.labeltype;
 
 import java.util.ArrayList;
 import org.openelisglobal.barcode.LabelField;
-import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.barcode.util.BarcodeConfigUtil;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -25,30 +25,14 @@ public class StorageLocationLabel extends Label {
      *                         same as locationCode)
      */
     public StorageLocationLabel(String locationName, String locationCode, String hierarchicalPath, String barcodeCode) {
-        // Set dimensions from configuration properties
-        try {
-            String widthStr = ConfigurationProperties.getInstance()
-                    .getPropertyValue(Property.STORAGE_LOCATION_LABEL_BARCODE_WIDTH);
-            String heightStr = ConfigurationProperties.getInstance()
-                    .getPropertyValue(Property.STORAGE_LOCATION_LABEL_BARCODE_HEIGHT);
-
-            if (widthStr != null && !widthStr.isEmpty()) {
-                width = Float.parseFloat(widthStr);
-            } else {
-                width = 3.0f; // Default width
-            }
-
-            if (heightStr != null && !heightStr.isEmpty()) {
-                height = Float.parseFloat(heightStr);
-            } else {
-                height = 1.0f; // Default height
-            }
-        } catch (Exception e) {
-            LogEvent.logError("StorageLocationLabel", "StorageLocationLabel constructor", e.toString());
-            // Use defaults if configuration fails
-            width = 3.0f;
-            height = 1.0f;
-        }
+        // Set dimensions from configuration properties (safe parsing for
+        // admin-configured DB values)
+        String widthStr = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.STORAGE_LOCATION_LABEL_BARCODE_WIDTH);
+        String heightStr = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.STORAGE_LOCATION_LABEL_BARCODE_HEIGHT);
+        width = BarcodeConfigUtil.parseFloatSafe(widthStr, 3.0f);
+        height = BarcodeConfigUtil.parseFloatSafe(heightStr, 1.0f);
 
         // Initialize fields
         aboveFields = new ArrayList<>();

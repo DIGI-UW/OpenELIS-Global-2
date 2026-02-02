@@ -3,7 +3,7 @@ package org.openelisglobal.barcode.labeltype;
 import java.util.ArrayList;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.barcode.LabelField;
-import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.barcode.util.BarcodeConfigUtil;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.services.SampleOrderService;
@@ -26,18 +26,11 @@ import org.openelisglobal.spring.util.SpringContext;
 public class OrderLabel extends Label {
 
     public OrderLabel(String labNo, String facility) {
-        // set dimensions
-        try {
-            width = Float
-                    .parseFloat(
-                            ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_WIDTH));
-            height = Float
-                    .parseFloat(ConfigurationProperties.getInstance()
-                            .getPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT));
-            // TODO determine which specific exceptions to catch
-        } catch (Exception e) {
-            LogEvent.logError("OrderLabel", "OrderLabel OrderLabel()", e.toString());
-        }
+        // set dimensions (safe parsing for admin-configured DB values)
+        width = BarcodeConfigUtil.parseFloatSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_WIDTH), 2.0f);
+        height = BarcodeConfigUtil.parseFloatSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT), 2.0f);
         // adding fields above bar code
         aboveFields = new ArrayList<>();
         LabelField labelField = new LabelField(MessageUtil.getMessage("barcode.label.info.patientName"), "", 12);
@@ -74,17 +67,11 @@ public class OrderLabel extends Label {
      * @param from       Source/origin of the sample
      */
     public OrderLabel(String labNo, String sampleType, String quantity, String from) {
-        // set dimensions
-        try {
-            width = Float
-                    .parseFloat(
-                            ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_WIDTH));
-            height = Float
-                    .parseFloat(ConfigurationProperties.getInstance()
-                            .getPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT));
-        } catch (Exception e) {
-            LogEvent.logError("OrderLabel", "OrderLabel OrderLabel(labNo, sampleType, quantity, from)", e.toString());
-        }
+        // set dimensions (safe parsing for admin-configured DB values)
+        width = BarcodeConfigUtil.parseFloatSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_WIDTH), 2.0f);
+        height = BarcodeConfigUtil.parseFloatSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT), 2.0f);
 
         // adding fields above bar code
         aboveFields = new ArrayList<>();
@@ -128,12 +115,11 @@ public class OrderLabel extends Label {
      * @param labNo   Code to include in bar code
      */
     public OrderLabel(Patient patient, Sample sample, String labNo) {
-        // set dimensions
-        width = Float
-                .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_WIDTH));
-        height = Float
-                .parseFloat(
-                        ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT));
+        // set dimensions (safe parsing for admin-configured DB values)
+        width = BarcodeConfigUtil.parseFloatSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_WIDTH), 2.0f);
+        height = BarcodeConfigUtil.parseFloatSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT), 2.0f);
 
         // get referring facility from sample
         SampleOrderService sampleOrderService = new SampleOrderService(sample);
@@ -154,14 +140,14 @@ public class OrderLabel extends Label {
             dob = StringUtil.replaceNullWithEmptyString(patient.getBirthDateForDisplay());
         }
 
-        boolean useDob = "true".equals(ConfigurationProperties.getInstance()
-                .getPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_DOB));
-        boolean usePatientId = "true".equals(ConfigurationProperties.getInstance()
-                .getPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_ID));
-        boolean usePatientName = "true".equals(ConfigurationProperties.getInstance()
-                .getPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_NAME));
-        boolean useSiteId = "true".equals(ConfigurationProperties.getInstance()
-                .getPropertyValue(Property.ORDER_LABEL_FIELD_SITE_ID));
+        boolean useDob = "true"
+                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_DOB));
+        boolean usePatientId = "true"
+                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_ID));
+        boolean usePatientName = "true".equals(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_NAME));
+        boolean useSiteId = "true"
+                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_FIELD_SITE_ID));
         // adding fields above bar code
         aboveFields = new ArrayList<>();
         if (usePatientName)
@@ -268,12 +254,8 @@ public class OrderLabel extends Label {
     @Override
     public int getMaxNumLabels() {
         int max = 0;
-        try {
-            max = Integer
-                    .parseInt(ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_ORDER_LABEL_PRINTED));
-        } catch (RuntimeException e) {
-            LogEvent.logError(e);
-        }
+        max = BarcodeConfigUtil.parseIntSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_ORDER_LABEL_PRINTED), 10);
         return max;
     }
 }
