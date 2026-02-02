@@ -297,14 +297,14 @@ tests and use DBUnit Flat XML datasets for DB-backed tests via
 1. **Testing REST controller HTTP layer only?** → Use
    `BaseWebContextSensitiveTest` ✅
 
-   - Fast execution (no full application context)
+   - Full Spring context loaded
    - Mock services with `@MockBean`
    - Focus on request/response mapping, status codes, JSON serialization
 
 2. **Testing DAO/repository persistence layer only?** → Use
    `BaseWebContextSensitiveTest` ✅
 
-   - Fast execution (no full application context)
+   - Full Spring context loaded
    - Use `TestEntityManager` for test data
    - Focus on HQL queries, CRUD operations, relationships
 

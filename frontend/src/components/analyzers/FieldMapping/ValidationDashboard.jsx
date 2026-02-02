@@ -45,8 +45,6 @@ const ValidationDashboard = ({ analyzerId, status }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [validating, setValidating] = useState(false);
-  const [testHistory, setTestHistory] = useState([]);
-  const [testHistoryModalOpen, setTestHistoryModalOpen] = useState(false);
 
   // Load validation metrics when component mounts (only if in VALIDATION status)
   useEffect(() => {
@@ -102,9 +100,9 @@ const ValidationDashboard = ({ analyzerId, status }) => {
   };
 
   const handleViewTestHistory = () => {
-    setTestHistoryModalOpen(true);
-    // Load test history
+    // TODO: Implement test history modal
     // This would load historical test execution results
+    console.log("Test history feature not yet implemented");
   };
 
   if (loading) {
@@ -186,7 +184,7 @@ const ValidationDashboard = ({ analyzerId, status }) => {
                 </div>
                 <div className="metric-value">{accuracyPercent}%</div>
                 <ProgressBar
-                  value={metrics.accuracy}
+                  value={accuracyPercent}
                   label={intl.formatMessage({
                     id: "validation.accuracy.label",
                   })}
@@ -280,7 +278,7 @@ const ValidationDashboard = ({ analyzerId, status }) => {
                         <TableCell>{row.testUnit}</TableCell>
                         <TableCell>
                           <ProgressBar
-                            value={row.coverage / 100}
+                            value={row.coverage}
                             label={`${row.coverage}%`}
                           />
                         </TableCell>
