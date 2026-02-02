@@ -36,7 +36,6 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.service.AnalyzerConfigurationService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -73,7 +72,6 @@ public class MindrayBA88AIntegrationTest extends BaseWebContextSensitiveTest {
         jdbcTemplate = new JdbcTemplate(dataSource);
         cleanTestData();
         createBA88AAnalyzerAndConfig();
-        setupTestMappings();
     }
 
     @After
@@ -104,22 +102,6 @@ public class MindrayBA88AIntegrationTest extends BaseWebContextSensitiveTest {
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", java.util.UUID.randomUUID().toString(),
                 Integer.parseInt(ba88aAnalyzer.getId()), "/dev/ttyUSB0", BAUD_RATE, DATA_BITS, STOP_BITS, PARITY,
                 FLOW_CONTROL, true, java.util.UUID.randomUUID());
-    }
-
-    /**
-     * Set up test mappings for BA-88A chemistry tests. Maps analyzer test codes to
-     * LOINC codes used in the test fixture.
-     */
-    private void setupTestMappings() {
-        // Insert test mappings for chemistry panel tests in the fixture
-        // These mappings connect analyzer test codes to OpenELIS test IDs
-        String[] testCodes = { "ALT", "AST", "ALP", "T-Bil", "D-Bil", "TC", "TG", "HDL-C", "CREA", "TP" };
-
-        for (String testCode : testCodes) {
-            // Register empty mapping in cache for test purposes
-            // In production, mappings come from analyzer_test_name table
-            AnalyzerTestNameCache.getInstance().getEmptyMappedTestName(ANALYZER_NAME, testCode);
-        }
     }
 
     private void cleanTestData() {
