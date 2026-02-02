@@ -135,7 +135,7 @@ install_commands() {
         #     sh: .specify/scripts/bash/check-prerequisites.sh --args
         # Extract the sh: line value and substitute into {SCRIPT}
         local script_path=""
-        if [[ "$core_content" =~ scripts:[[:space:]]*$'\n'[[:space:]]*sh:[[:space:]]*([^$'\n']+) ]]; then
+        if [[ "$core_content" =~ scripts:[[:space:]]*[[:cntrl:]][[:space:]]*sh:[[:space:]]*([^[:cntrl:]]+) ]]; then
             script_path="${BASH_REMATCH[1]}"
             # Trim leading/trailing whitespace
             script_path="${script_path#"${script_path%%[![:space:]]*}"}"

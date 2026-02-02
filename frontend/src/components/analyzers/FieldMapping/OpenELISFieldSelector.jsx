@@ -103,14 +103,20 @@ const OpenELISFieldSelector = ({
       <div className="openelis-field-selector-header">
         <ComboBox
           id="openelis-field-selector"
-          titleText="Select OpenELIS Field"
-          placeholder="Search and select field..."
+          titleText={intl.formatMessage({
+            id: "analyzer.fieldSelector.title",
+            defaultMessage: "Select OpenELIS Field",
+          })}
+          placeholder={intl.formatMessage({
+            id: "analyzer.fieldSelector.placeholder",
+            defaultMessage: "Search and select field...",
+          })}
           items={items}
           selectedItem={
             items.find((item) => item.id === selectedFieldId) || null
           }
           onInputChange={(inputValue) => setSearchTerm(inputValue)}
-          onChange={handleSelection}
+          onChange={({ selectedItem }) => handleSelection(selectedItem)}
           itemToString={(item) => (item ? item.text : "")}
         />
         <Button

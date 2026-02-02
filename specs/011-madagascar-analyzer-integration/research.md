@@ -263,8 +263,8 @@ QuantStudio3 | File native | Adaptation needed | ⚠️ Needs M8 |
 
 ### Decision: Expand analyzer-mock-server to Multi-Protocol Analyzer Simulator
 
-**Rationale**: The existing analyzer-mock-server (Python) provides ASTM simulation.
-Expanding it to support HL7, RS232, and file-based protocols enables
+**Rationale**: The existing analyzer-mock-server (Python) provides ASTM
+simulation. Expanding it to support HL7, RS232, and file-based protocols enables
 comprehensive testing without physical analyzers.
 
 **Architecture**:
@@ -509,8 +509,9 @@ CREATE TABLE instrument_location_history (
 ### Purpose
 
 The template schema defines a standardized format for analyzer message
-configuration in the multi-protocol simulator (analyzer-mock-server). Each template
-describes how to generate realistic messages for a specific analyzer type.
+configuration in the multi-protocol simulator (analyzer-mock-server). Each
+template describes how to generate realistic messages for a specific analyzer
+type.
 
 ### Template Schema Definition
 
@@ -999,24 +1000,24 @@ public class MyAnalyzer implements AnalyzerImporterPlugin {
 
 ## Summary of Key Decisions
 
-| Area               | Decision                         | Rationale                                |
-| ------------------ | -------------------------------- | ---------------------------------------- |
-| HL7 Library        | HAPI HL7 v2                      | Industry standard, already in codebase   |
-| Serial Library     | jSerialComm 2.x                  | Pure Java, Docker-friendly               |
-| File Watching      | WatchService + Commons CSV       | Native OS support, reliable parsing      |
-| Order Export       | Manual trigger, async processing | Per clarification, deadline scope        |
-| Plugin Integration | Wrapper pattern                  | Backward compatible, non-invasive        |
+| Area               | Decision                             | Rationale                                |
+| ------------------ | ------------------------------------ | ---------------------------------------- |
+| HL7 Library        | HAPI HL7 v2                          | Industry standard, already in codebase   |
+| Serial Library     | jSerialComm 2.x                      | Pure Java, Docker-friendly               |
+| File Watching      | WatchService + Commons CSV           | Native OS support, reliable parsing      |
+| Order Export       | Manual trigger, async processing     | Per clarification, deadline scope        |
+| Plugin Integration | Wrapper pattern                      | Backward compatible, non-invasive        |
 | Simulator          | Expand analyzer-mock-server (Python) | Multi-protocol support, CI/CD ready      |
-| Location Hierarchy | Reuse Organization/Location      | Per clarification, simpler integration   |
-| Template Schema    | JSON-based analyzer templates    | Standardized config for all 12 analyzers |
+| Location Hierarchy | Reuse Organization/Location          | Per clarification, simpler integration   |
+| Template Schema    | JSON-based analyzer templates        | Standardized config for all 12 analyzers |
 
 ### Tool Architecture Clarification
 
 **CRITICAL**: Two separate tools exist with different purposes:
 
-| Tool                 | Purpose                                                           | Language |
-| -------------------- | ----------------------------------------------------------------- | -------- |
-| **astm-http-bridge** | Production ASTM adapter (between physical analyzers and OpenELIS) | Java     |
+| Tool                     | Purpose                                                           | Language |
+| ------------------------ | ----------------------------------------------------------------- | -------- |
+| **astm-http-bridge**     | Production ASTM adapter (between physical analyzers and OpenELIS) | Java     |
 | **analyzer-mock-server** | Testing simulator (simulates analyzers for development/CI)        | Python   |
 
 Feature 011 expands **analyzer-mock-server** to support multiple protocols (HL7,
