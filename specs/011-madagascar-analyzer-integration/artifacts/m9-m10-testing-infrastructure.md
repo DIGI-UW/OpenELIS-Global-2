@@ -11,11 +11,12 @@ implementation **Created**: 2026-01-29 **Plan Reference**:
 
 ### Schema & Core Files
 
-- [x] `tools/analyzer-mock-server/templates/schema.json` created with JSON Schema
+- [x] `tools/analyzer-mock-server/templates/schema.json` created with JSON
+      Schema validation
+- [x] `tools/analyzer-mock-server/template_loader.py` created with schema
       validation
-- [x] `tools/analyzer-mock-server/template_loader.py` created with schema validation
-- [x] `tools/analyzer-mock-server/template_generator.py` created with deterministic
-      mode
+- [x] `tools/analyzer-mock-server/template_generator.py` created with
+      deterministic mode
 - [x] Schema validates required fields: analyzer, protocol, identification,
       fields
 

@@ -288,9 +288,9 @@ work can proceed without waiting for M0.
 
 **IMPORTANT**: This feature involves TWO separate tools with different purposes:
 
-| Tool                 | Location                  | Language              | Purpose                         | When Used              | Who Uses It                          |
-| -------------------- | ------------------------- | --------------------- | ------------------------------- | ---------------------- | ------------------------------------ |
-| **astm-http-bridge** | `tools/astm-http-bridge/` | Java 21 + Spring Boot | **PRODUCTION** protocol adapter | Deployed with OpenELIS | Physical analyzers in labs           |
+| Tool                     | Location                      | Language              | Purpose                         | When Used              | Who Uses It                          |
+| ------------------------ | ----------------------------- | --------------------- | ------------------------------- | ---------------------- | ------------------------------------ |
+| **astm-http-bridge**     | `tools/astm-http-bridge/`     | Java 21 + Spring Boot | **PRODUCTION** protocol adapter | Deployed with OpenELIS | Physical analyzers in labs           |
 | **analyzer-mock-server** | `tools/analyzer-mock-server/` | Python 3              | **TESTING** simulator           | Development/CI         | Developers without physical hardware |
 
 ### astm-http-bridge (Production Adapter) - EXTENDED FOR RS232

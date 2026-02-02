@@ -473,16 +473,16 @@ works
 
 **Branch**:
 `feat/011-madagascar-analyzer-integration-m4-simulator-multiprotocol` **Goal**:
-Expand analyzer-mock-server to support HL7, RS232, and file-based protocols **User
-Stories**: US-9 (Analyzer Simulator for Testing) **Depends On**: None (parallel
-with M0-M3) **Workstream**: E (Simulator)
+Expand analyzer-mock-server to support HL7, RS232, and file-based protocols
+**User Stories**: US-9 (Analyzer Simulator for Testing) **Depends On**: None
+(parallel with M0-M3) **Workstream**: E (Simulator)
 
 **Scope**: Extend analyzer-mock-server to cover 80%+ of 12 analyzers BEFORE
 milestone implementation, enabling developers to test M1-M3 adapters and M5-M13
 plugins without physical hardware.
 
-**IMPORTANT**: This expands the **Python analyzer-mock-server** (testing simulator),
-NOT the Java astm-http-bridge (production adapter). See plan.md Tool
+**IMPORTANT**: This expands the **Python analyzer-mock-server** (testing
+simulator), NOT the Java astm-http-bridge (production adapter). See plan.md Tool
 Architecture section for distinction.
 
 **Acceptance Criteria**:
@@ -500,8 +500,10 @@ Architecture section for distinction.
 - [ ] T090 [M4] Create branch
       `feat/011-madagascar-analyzer-integration-m4-simulator-multiprotocol` from
       `demo/madagascar`
-- [ ] T091 [M4] Create `tools/analyzer-mock-server/protocols/` directory structure
-- [ ] T092 [M4] Create `tools/analyzer-mock-server/templates/` directory structure
+- [ ] T091 [M4] Create `tools/analyzer-mock-server/protocols/` directory
+      structure
+- [ ] T092 [M4] Create `tools/analyzer-mock-server/templates/` directory
+      structure
 - [ ] T093 [M4] Add pyserial dependency to
       `tools/analyzer-mock-server/requirements.txt`
 
@@ -565,8 +567,8 @@ Architecture section for distinction.
 - [ ] T115 [M4] Integration test: HL7 Simulator → OpenELIS reception
 - [ ] T116 [M4] Integration test: Serial Simulator → OpenELIS reception
 - [ ] T117 [M4] Integration test: File Simulator → OpenELIS import
-- [ ] T118 [M4] Update `tools/analyzer-mock-server/README.md` with multi-protocol
-      usage
+- [ ] T118 [M4] Update `tools/analyzer-mock-server/README.md` with
+      multi-protocol usage
 
 ### Finalization for M4
 
