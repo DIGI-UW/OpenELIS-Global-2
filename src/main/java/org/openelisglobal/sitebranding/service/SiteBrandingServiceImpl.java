@@ -95,66 +95,74 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
             logger.debug("Logo path validation passed");
 
             if (branding.getId() == null) {
-                // Insert new record
-                logger.debug("Inserting new branding record");
-                Integer id = siteBrandingDAO.insert(branding);
-                branding.setId(id);
-                logger.info("Branding configuration created: id={}, user={}", id, branding.getSysUserId());
-                // Task Reference: T093 - Log branding creation
-                LogEvent.logInfo("SiteBrandingService", "saveBranding",
-                        "Branding configuration created by user: " + branding.getSysUserId());
-                return branding;
-            } else {
-                // Get a fresh managed entity from the database to avoid OptimisticLockException
-                // The entity passed in may be detached with a stale version field
-                SiteBranding existingBranding = siteBrandingDAO.get(branding.getId())
-                        .orElseThrow(() -> new LIMSRuntimeException("Branding not found with id: " + branding.getId()));
-
-                logger.debug("Retrieved managed branding entity for update: id={}", existingBranding.getId());
-
-                // Task Reference: T093 - Log color changes for audit trail
-                logger.debug("Comparing existing vs new branding for changes");
-                logColorChanges(existingBranding, branding);
-
-                // Copy changes from detached entity to managed entity
-                if (branding.getPrimaryColor() != null) {
-                    existingBranding.setPrimaryColor(branding.getPrimaryColor());
+                // Check if a branding record already exists to prevent duplicates
+                SiteBranding existing = siteBrandingDAO.getBranding();
+                if (existing != null) {
+                    // Use existing record's ID - fall through to update logic
+                    logger.debug("Branding record already exists with id={}, will update instead of insert",
+                            existing.getId());
+                    branding.setId(existing.getId());
+                } else {
+                    // Insert new record (first branding for this installation)
+                    logger.debug("Inserting new branding record");
+                    Integer id = siteBrandingDAO.insert(branding);
+                    branding.setId(id);
+                    logger.info("Branding configuration created: id={}, user={}", id, branding.getSysUserId());
+                    LogEvent.logInfo("SiteBrandingService", "saveBranding",
+                            "Branding configuration created by user: " + branding.getSysUserId());
+                    return branding;
                 }
-                if (branding.getSecondaryColor() != null) {
-                    existingBranding.setSecondaryColor(branding.getSecondaryColor());
-                }
-                if (branding.getHeaderColor() != null) {
-                    existingBranding.setHeaderColor(branding.getHeaderColor());
-                }
-                if (branding.getColorMode() != null) {
-                    existingBranding.setColorMode(branding.getColorMode());
-                }
-                if (branding.getUseHeaderLogoForLogin() != null) {
-                    existingBranding.setUseHeaderLogoForLogin(branding.getUseHeaderLogoForLogin());
-                }
-                if (branding.getHeaderLogoPath() != null) {
-                    existingBranding.setHeaderLogoPath(branding.getHeaderLogoPath());
-                }
-                if (branding.getLoginLogoPath() != null) {
-                    existingBranding.setLoginLogoPath(branding.getLoginLogoPath());
-                }
-                if (branding.getFaviconPath() != null) {
-                    existingBranding.setFaviconPath(branding.getFaviconPath());
-                }
-                if (branding.getSysUserId() != null) {
-                    existingBranding.setSysUserId(branding.getSysUserId());
-                }
-
-                // Set lastupdated fields on the managed entity
-                existingBranding.setLastupdatedFields();
-
-                logger.debug("Updating existing branding record: id={}", existingBranding.getId());
-                SiteBranding updated = siteBrandingDAO.update(existingBranding);
-                logger.info("Branding configuration updated: id={}, user={}", updated.getId(), updated.getSysUserId());
-                LogEvent.logInfo("SiteBrandingService", "saveBranding",
-                        "Branding configuration updated by user: " + existingBranding.getSysUserId());
-                return updated;
             }
+
+            // Get a fresh managed entity from the database to avoid OptimisticLockException
+            // The entity passed in may be detached with a stale version field
+            SiteBranding existingBranding = siteBrandingDAO.get(branding.getId())
+                    .orElseThrow(() -> new LIMSRuntimeException("Branding not found with id: " + branding.getId()));
+
+            logger.debug("Retrieved managed branding entity for update: id={}", existingBranding.getId());
+
+            // Task Reference: T093 - Log color changes for audit trail
+            logger.debug("Comparing existing vs new branding for changes");
+            logColorChanges(existingBranding, branding);
+
+            // Copy changes from detached entity to managed entity
+            if (branding.getPrimaryColor() != null) {
+                existingBranding.setPrimaryColor(branding.getPrimaryColor());
+            }
+            if (branding.getSecondaryColor() != null) {
+                existingBranding.setSecondaryColor(branding.getSecondaryColor());
+            }
+            if (branding.getHeaderColor() != null) {
+                existingBranding.setHeaderColor(branding.getHeaderColor());
+            }
+            if (branding.getColorMode() != null) {
+                existingBranding.setColorMode(branding.getColorMode());
+            }
+            if (branding.getUseHeaderLogoForLogin() != null) {
+                existingBranding.setUseHeaderLogoForLogin(branding.getUseHeaderLogoForLogin());
+            }
+            if (branding.getHeaderLogoPath() != null) {
+                existingBranding.setHeaderLogoPath(branding.getHeaderLogoPath());
+            }
+            if (branding.getLoginLogoPath() != null) {
+                existingBranding.setLoginLogoPath(branding.getLoginLogoPath());
+            }
+            if (branding.getFaviconPath() != null) {
+                existingBranding.setFaviconPath(branding.getFaviconPath());
+            }
+            if (branding.getSysUserId() != null) {
+                existingBranding.setSysUserId(branding.getSysUserId());
+            }
+
+            // Set lastupdated fields on the managed entity
+            existingBranding.setLastupdatedFields();
+
+            logger.debug("Updating existing branding record: id={}", existingBranding.getId());
+            SiteBranding updated = siteBrandingDAO.update(existingBranding);
+            logger.info("Branding configuration updated: id={}, user={}", updated.getId(), updated.getSysUserId());
+            LogEvent.logInfo("SiteBrandingService", "saveBranding",
+                    "Branding configuration updated by user: " + existingBranding.getSysUserId());
+            return updated;
         } catch (LIMSRuntimeException e) {
             logger.error("LIMSRuntimeException in saveBranding: {}", e.getMessage(), e);
             throw e;

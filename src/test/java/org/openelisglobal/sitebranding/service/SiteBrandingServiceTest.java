@@ -133,13 +133,15 @@ public class SiteBrandingServiceTest {
     }
 
     /**
-     * Test: saveBranding - insert new branding Task Reference: T006
+     * Test: saveBranding - insert new branding when none exists Task Reference:
+     * T006
      */
     @Test
-    public void testSaveBranding_WithNewBranding_Inserts() {
-        // Arrange: New branding (no ID)
+    public void testSaveBranding_WithNewBranding_WhenNoneExists_Inserts() {
+        // Arrange: New branding (no ID) and no existing branding in database
         SiteBranding newBranding = new SiteBranding();
         newBranding.setPrimaryColor("#ff0000");
+        when(siteBrandingDAO.getBranding()).thenReturn(null);
         when(siteBrandingDAO.insert(any(SiteBranding.class))).thenAnswer(invocation -> {
             SiteBranding branding = invocation.getArgument(0);
             branding.setId(3);
@@ -154,6 +156,33 @@ public class SiteBrandingServiceTest {
         assertEquals("ID should be set", Integer.valueOf(3), result.getId());
         verify(siteBrandingDAO, times(1)).insert(any(SiteBranding.class));
         verify(siteBrandingDAO, never()).update(any(SiteBranding.class));
+    }
+
+    /**
+     * Test: saveBranding - prevents duplicate records by updating existing when
+     * saving with null ID
+     */
+    @Test
+    public void testSaveBranding_WithNewBranding_WhenOneExists_UpdatesExisting() {
+        // Arrange: New branding (no ID) but existing branding already in database
+        SiteBranding newBranding = new SiteBranding();
+        newBranding.setPrimaryColor("#ff0000");
+        newBranding.setSecondaryColor("#00ff00");
+        newBranding.setHeaderColor("#0000ff");
+        newBranding.setColorMode("dark");
+
+        // Existing branding in database
+        when(siteBrandingDAO.getBranding()).thenReturn(testBranding);
+        when(siteBrandingDAO.get(testBranding.getId())).thenReturn(java.util.Optional.of(testBranding));
+        when(siteBrandingDAO.update(any(SiteBranding.class))).thenReturn(testBranding);
+
+        // Act: Save new branding (should update existing instead of inserting)
+        SiteBranding result = siteBrandingService.saveBranding(newBranding);
+
+        // Assert: Existing branding was updated, not a new one inserted
+        assertNotNull("Result should not be null", result);
+        verify(siteBrandingDAO, never()).insert(any(SiteBranding.class));
+        verify(siteBrandingDAO, times(1)).update(any(SiteBranding.class));
     }
 
     /**
