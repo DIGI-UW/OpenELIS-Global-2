@@ -11,11 +11,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.notebook.form.ManifestImportForm;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
+import org.openelisglobal.sample.dao.SampleDAO;
+import org.openelisglobal.sample.exception.DuplicateAccessionNumberException;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.util.AccessionNumberHandler;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -38,6 +44,9 @@ public class ManifestImportServiceImpl implements ManifestImportService {
     private SampleService sampleService;
 
     @Autowired
+    private SampleDAO sampleDAO;
+
+    @Autowired
     private SampleItemService sampleItemService;
 
     @Autowired
@@ -48,6 +57,9 @@ public class ManifestImportServiceImpl implements ManifestImportService {
 
     @Autowired
     private IStatusService statusService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
     public ParsedManifest parseManifestCsv(InputStream csvInput, ManifestImportForm columnMapping) {
@@ -183,8 +195,19 @@ public class ManifestImportServiceImpl implements ManifestImportService {
             parentSample.setSysUserId(sysUserId);
             parentSample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
             parentSample.setReceivedTimestamp(new java.sql.Timestamp(System.currentTimeMillis()));
-            String sampleId = sampleService.generateAccessionNumberAndInsert(parentSample);
-            parentSample.setId(sampleId);
+
+            String sampleId;
+            try {
+                AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO,
+                        entityManager, this.getClass());
+                sampleId = handler.generateAndInsertWithUniqueAccessionNumber(parentSample);
+                parentSample.setId(sampleId);
+            } catch (DuplicateAccessionNumberException e) {
+                errors.add(new ParseError(row.rowNumber(), "sample",
+                        "Failed to generate unique accession number: " + e.getMessage()));
+                LogEvent.logError("Duplicate accession number error for row " + row.rowNumber(), e);
+                continue;
+            }
 
             // Create individual SampleItem records
             // Get status ID for SampleEntered - use hardcoded fallback if not found

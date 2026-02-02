@@ -14,7 +14,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.hibernate.Hibernate;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.notebook.form.BioanalyticalManifestImportForm;
@@ -26,7 +29,10 @@ import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
+import org.openelisglobal.sample.dao.SampleDAO;
+import org.openelisglobal.sample.exception.DuplicateAccessionNumberException;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.util.AccessionNumberHandler;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -36,6 +42,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Bioanalytical & Bioequivalence Laboratory manifest import implementation.
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.sample.dao.SampleDAO;
+import org.openelisglobal.sample.exception.DuplicateAccessionNumberException;
+import org.openelisglobal.sample.util.AccessionNumberHandler;
  *
  * Parses bioanalytical-specific CSV, creates samples + sample items, links to
  * notebook entry, and stores reception metadata on page 1 NotebookPageSample
@@ -128,6 +140,9 @@ public class BioanalyticalManifestImportServiceImpl implements BioanalyticalMani
     private SampleService sampleService;
 
     @Autowired
+    private SampleDAO sampleDAO;
+
+    @Autowired
     private SampleItemService sampleItemService;
 
     @Autowired
@@ -135,6 +150,9 @@ public class BioanalyticalManifestImportServiceImpl implements BioanalyticalMani
 
     @Autowired
     private IStatusService statusService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
     public ParsedManifest parseManifestCsv(InputStream csvInput, BioanalyticalManifestImportForm columnMapping) {
@@ -311,8 +329,18 @@ public class BioanalyticalManifestImportServiceImpl implements BioanalyticalMani
                 parentSample.setSysUserId(sysUserId);
                 parentSample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
                 parentSample.setReceivedTimestamp(new java.sql.Timestamp(System.currentTimeMillis()));
-                String sampleIdDb = sampleService.generateAccessionNumberAndInsert(parentSample);
+                String sampleIdDb;
+            try {
+                AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO,
+                        entityManager, this.getClass());
+                sampleIdDb = handler.generateAndInsertWithUniqueAccessionNumber(parentSample);
                 parentSample.setId(sampleIdDb);
+            } catch (DuplicateAccessionNumberException e) {
+                errors.add(new ParseError(row.rowNumber(), "sample",
+                        "Failed to generate unique accession number: " + e.getMessage()));
+                LogEvent.logError("Duplicate accession number error for row " + row.rowNumber(), e);
+                continue;
+            }
 
                 SampleItem item = new SampleItem();
                 item.setSample(parentSample);

@@ -24,6 +24,12 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.sample.dao.SampleDAO;
+import org.openelisglobal.sample.exception.DuplicateAccessionNumberException;
+import org.openelisglobal.sample.util.AccessionNumberHandler;
 
 /**
  * Implementation of PathologyManifestImportService for Pathology-specific CSV
@@ -65,6 +71,9 @@ public class PathologyManifestImportServiceImpl implements PathologyManifestImpo
     private SampleService sampleService;
 
     @Autowired
+    private SampleDAO sampleDAO;
+
+    @Autowired
     private SampleItemService sampleItemService;
 
     @Autowired
@@ -75,6 +84,9 @@ public class PathologyManifestImportServiceImpl implements PathologyManifestImpo
 
     @Autowired
     private IStatusService statusService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
     public ParsedManifest parseManifestCsv(InputStream csvInput, PathologyManifestImportForm columnMapping,
@@ -315,8 +327,18 @@ public class PathologyManifestImportServiceImpl implements PathologyManifestImpo
                 parentSample.setReceivedTimestamp(new java.sql.Timestamp(System.currentTimeMillis()));
             }
 
-            String sampleIdDb = sampleService.generateAccessionNumberAndInsert(parentSample);
-            parentSample.setId(sampleIdDb);
+            String sampleIdDb;
+            try {
+                AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO,
+                        entityManager, this.getClass());
+                sampleIdDb = handler.generateAndInsertWithUniqueAccessionNumber(parentSample);
+                parentSample.setId(sampleIdDb);
+            } catch (DuplicateAccessionNumberException e) {
+                errors.add(new ParseError(row.rowNumber(), "sample",
+                        "Failed to generate unique accession number: " + e.getMessage()));
+                LogEvent.logError("Duplicate accession number error for row " + row.rowNumber(), e);
+                continue;
+            }
 
             // Get status ID for SampleEntered
             String sampleEnteredStatusId = statusService.getStatusID(SampleStatus.Entered);

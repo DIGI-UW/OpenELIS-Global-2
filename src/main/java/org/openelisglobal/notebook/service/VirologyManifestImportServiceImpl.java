@@ -14,8 +14,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.hibernate.Hibernate;
+import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.notebook.form.VirologyManifestImportForm;
 import org.openelisglobal.notebook.service.VirologyManifestImportService.ParseError;
@@ -26,7 +31,10 @@ import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
+import org.openelisglobal.sample.dao.SampleDAO;
+import org.openelisglobal.sample.exception.DuplicateAccessionNumberException;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.util.AccessionNumberHandler;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -105,6 +113,9 @@ public class VirologyManifestImportServiceImpl implements VirologyManifestImport
     private SampleService sampleService;
 
     @Autowired
+    private SampleDAO sampleDAO;
+
+    @Autowired
     private SampleItemService sampleItemService;
 
     @Autowired
@@ -121,6 +132,9 @@ public class VirologyManifestImportServiceImpl implements VirologyManifestImport
 
     @Autowired
     private IStatusService statusService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
     public ParsedManifest parseManifestCsv(InputStream csvInput, VirologyManifestImportForm columnMapping) {
@@ -407,13 +421,25 @@ public class VirologyManifestImportServiceImpl implements VirologyManifestImport
                 }
             }
 
-            // Create parent sample
+            // Create parent sample with safe accession number generation and insertion
             Sample parentSample = new Sample();
             parentSample.setSysUserId(sysUserId);
             parentSample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
             parentSample.setReceivedTimestamp(new Timestamp(System.currentTimeMillis()));
-            String sampleIdDb = sampleService.generateAccessionNumberAndInsert(parentSample);
-            parentSample.setId(sampleIdDb);
+
+            // Use generic handler to safely generate and insert with unique accession number
+            String sampleIdDb;
+            try {
+                AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO,
+                        entityManager, this.getClass());
+                sampleIdDb = handler.generateAndInsertWithUniqueAccessionNumber(parentSample);
+                parentSample.setId(sampleIdDb);
+            } catch (DuplicateAccessionNumberException e) {
+                errors.add(new ParseError(row.rowNumber(), "sample",
+                        "Failed to generate unique accession number: " + e.getMessage()));
+                LogEvent.logError("Duplicate accession number error for row " + row.rowNumber(), e);
+                continue;
+            }
 
             // Create sample item
             SampleItem item = new SampleItem();
@@ -684,4 +710,5 @@ public class VirologyManifestImportServiceImpl implements VirologyManifestImport
 
         return result.toString();
     }
+
 }
