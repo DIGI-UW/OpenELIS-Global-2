@@ -1041,9 +1041,9 @@ Stories**: US-1, US-6 **Depends On**: M5 (Mindray HL7) **Workstream**: B (HL7)
 ### Finalization for M14
 
 - [x] T223 [M14] Verify integration tests pass
-- [ ] T224 [M14] Create PR
+- [x] T224 [M14] Create PR
       `feat/011-madagascar-analyzer-integration-m14-p2-validation` →
-      `demo/madagascar`
+      `demo/madagascar` (PR #2674)
 
 **Checkpoint**: All 12 analyzers receive results
 
