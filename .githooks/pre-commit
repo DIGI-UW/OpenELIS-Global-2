@@ -17,14 +17,24 @@ fi
 # Track if we formatted anything
 FORMATTED=false
 
-# Format Java and Markdown files (Maven Spotless)
-# Spotless is configured in pom.xml to format both .java and .md files
+# Format files with Maven Spotless
+# Spotless is configured in pom.xml to format: .java, .md, .sh, .xml, .gitignore, pom.xml
 JAVA_FILES=$(echo "$STAGED_FILES" | grep '\.java$' || true)
 MD_FILES=$(echo "$STAGED_FILES" | grep '\.md$' || true)
-if [ -n "$JAVA_FILES" ] || [ -n "$MD_FILES" ]; then
+SH_FILES=$(echo "$STAGED_FILES" | grep '\.sh$' || true)
+XML_FILES=$(echo "$STAGED_FILES" | grep '\.xml$' || true)
+GITIGNORE_FILES=$(echo "$STAGED_FILES" | grep '^\.gitignore$' || true)
+POM_FILES=$(echo "$STAGED_FILES" | grep '^pom\.xml$' || true)
+
+if [ -n "$JAVA_FILES" ] || [ -n "$MD_FILES" ] || [ -n "$SH_FILES" ] || [ -n "$XML_FILES" ] || [ -n "$GITIGNORE_FILES" ] || [ -n "$POM_FILES" ]; then
     JAVA_COUNT=$(echo "$JAVA_FILES" | grep -c '.' || echo 0)
     MD_COUNT=$(echo "$MD_FILES" | grep -c '.' || echo 0)
-    echo "  → Formatting ${JAVA_COUNT} Java + ${MD_COUNT} Markdown file(s) (spotless)..."
+    SH_COUNT=$(echo "$SH_FILES" | grep -c '.' || echo 0)
+    XML_COUNT=$(echo "$XML_FILES" | grep -c '.' || echo 0)
+    GITIGNORE_COUNT=$(echo "$GITIGNORE_FILES" | grep -c '.' || echo 0)
+    POM_COUNT=$(echo "$POM_FILES" | grep -c '.' || echo 0)
+    
+    echo "  → Formatting Java($JAVA_COUNT) + Markdown($MD_COUNT) + Shell($SH_COUNT) + XML($XML_COUNT) + Gitignore($GITIGNORE_COUNT) + POM($POM_COUNT) file(s) (spotless)..."
     # Spotless applies to entire project, but we only re-stage modified files
     mvn spotless:apply -q 2>/dev/null || true
     FORMATTED=true
