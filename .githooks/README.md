@@ -20,8 +20,8 @@ repo-only).
 
 The hook runs on **staged files only**:
 
-- **Format**: Java (spotless), frontend (prettier), Python (ruff format).
-  Formatted files are re-staged.
+- **Format**: Java, Markdown, Shell, XML, .gitignore, pom.xml (spotless),
+  frontend (prettier), Python (ruff format). Formatted files are re-staged.
 - **Lint**: For staged Catalyst Python files, runs `ruff check` (same as
   Catalyst CI). Commit is blocked if lint fails.
 
