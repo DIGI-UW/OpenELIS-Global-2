@@ -705,31 +705,31 @@ Stories**: US-6 **Depends On**: M0, M1, M3 **Workstream**: A, B, D
 
 ### Setup for M7
 
-- [ ] T143 [M7] Create branch
+- [x] T143 [M7] Create branch
       `feat/011-madagascar-analyzer-integration-m7-genexpert-multi` from
       `demo/madagascar`
-- [ ] T143a [M7] Check if GeneXpert plugins exist in `plugins/analyzers/`
+- [x] T143a [M7] Check if GeneXpert plugins exist in `plugins/analyzers/`
       submodule; if not, create plugins for ASTM, HL7, and File variants
-- [ ] T143b [M7] Build and verify all 3 GeneXpert plugin variants load
+- [x] T143b [M7] Build and verify all 3 GeneXpert plugin variants load
 
 ### Tests for M7 (MANDATORY)
 
-- [ ] T144 [P] [M7] Integration test for GeneXpert HL7 in
+- [x] T144 [P] [M7] Integration test for GeneXpert HL7 in
       `src/test/java/org/openelisglobal/analyzer/genexpert/GeneXpertHL7IntegrationTest.java`
-- [ ] T145 [P] [M7] Integration test for GeneXpert File in
+- [x] T145 [P] [M7] Integration test for GeneXpert File in
       `src/test/java/org/openelisglobal/analyzer/genexpert/GeneXpertFileIntegrationTest.java`
-- [ ] T146 [P] [M7] Create HL7 test fixture in
+- [x] T146 [P] [M7] Create HL7 test fixture in
       `src/test/resources/testdata/hl7/genexpert-result.hl7`
-- [ ] T147 [P] [M7] Create file test fixture in
+- [x] T147 [P] [M7] Create file test fixture in
       `src/test/resources/testdata/files/genexpert-results.csv`
 
 ### Implementation for M7
 
-- [ ] T148 [M7] Verify GeneXpert ASTM plugin works (confirmed in M0)
-- [ ] T149 [M7] Verify GeneXpertHL7 plugin with HL7AnalyzerReader
-- [ ] T150 [M7] Verify GeneXpertFile plugin with FileAnalyzerReader
-- [ ] T151 [M7] Test all 3 variants can coexist (different configurations)
-- [ ] T152 [M7] Document GeneXpert multi-protocol support
+- [x] T148 [M7] Verify GeneXpert ASTM plugin works (confirmed in M0)
+- [x] T149 [M7] Verify GeneXpertHL7 plugin with HL7AnalyzerReader
+- [x] T150 [M7] Verify GeneXpertFile plugin with FileAnalyzerReader
+- [x] T151 [M7] Test all 3 variants can coexist (different configurations)
+- [x] T152 [M7] Document GeneXpert multi-protocol support
 
 ### Finalization for M7
 
