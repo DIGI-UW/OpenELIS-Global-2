@@ -47,6 +47,7 @@ public class SysmexXNIntegrationTest extends BaseWebContextSensitiveTest {
     private Analyzer sysmexAnalyzer;
 
     @Before
+    @Override
     public void setUp() throws Exception {
         super.setUp();
         jdbcTemplate = new JdbcTemplate(dataSource);
@@ -104,16 +105,43 @@ public class SysmexXNIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void sysmexXnHl7Message_parsesCorrectPatientAndResults() throws Exception {
+    public void sysmexXnHl7Message_parsesCorrectValues() throws Exception {
+        // Given: HL7 fixture with specific CBC values
         String raw = loadFixture(FIXTURE_PATH);
         InputStream in = new ByteArrayInputStream(raw.getBytes(StandardCharsets.UTF_8));
 
+        // When: parse and insert
         boolean readOk = reader.readStream(in);
-        assertTrue("readStream should succeed for Sysmex XN HL7", readOk);
+        assertTrue("readStream should succeed", readOk);
+        boolean insertOk = reader.insertAnalyzerData("1");
+        assertTrue("insertAnalyzerData should succeed", insertOk);
 
-        // Verify message content is parsed (WBC, RBC, PLT from fixture)
-        assertTrue("Should have valid fixture content", raw.contains("WBC") && raw.contains("RBC"));
+        // Then: verify specific values from fixture are stored correctly
+        // Fixture has: WBC=9.2, RBC=5.1, HGB=15.5, PLT=275 (13 total OBX segments)
+        Integer totalResults = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.analyzer_results WHERE analyzer_id = ?", Integer.class,
+                Integer.parseInt(sysmexAnalyzer.getId()));
+        assertTrue("Expected 13 results (one per OBX segment)", totalResults != null && totalResults == 13);
+
+        // Verify WBC value (first OBX segment)
+        String wbcValue = jdbcTemplate.queryForObject(
+                "SELECT result FROM clinlims.analyzer_results WHERE analyzer_id = ? AND test_name LIKE '%WBC%' LIMIT 1",
+                String.class, Integer.parseInt(sysmexAnalyzer.getId()));
+        assertNotNull("WBC result should be stored", wbcValue);
+        assertTrue("WBC value should be 9.2", wbcValue.contains("9.2"));
+
+        // Verify PLT value (8th OBX segment)
+        String pltValue = jdbcTemplate.queryForObject(
+                "SELECT result FROM clinlims.analyzer_results WHERE analyzer_id = ? AND test_name LIKE '%PLT%' LIMIT 1",
+                String.class, Integer.parseInt(sysmexAnalyzer.getId()));
+        assertNotNull("PLT result should be stored", pltValue);
+        assertTrue("PLT value should be 275", pltValue.contains("275"));
     }
+
+    // TODO: When adding more Sysmex analyzer tests (e.g., XT-2000i), extract common
+    // setup/cleanup/verification logic into AbstractSysmexIntegrationTest similar
+    // to
+    // AbstractMindrayIntegrationTest pattern. See PR #2674 review.
 
     private static String loadFixture(String path) throws Exception {
         try (InputStream in = new ClassPathResource(path).getInputStream()) {

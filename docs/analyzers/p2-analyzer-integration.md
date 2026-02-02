@@ -32,8 +32,9 @@ The Mindray BC2000 uses the same HL7 v2.5.1 protocol as the BC-5380:
 
 ### Test Codes Supported
 
-The Mindray plugin supports chemistry analyzers. For BC2000 hematology results,
-the HL7AnalyzerReader with field mappings handles test code translation.
+The Mindray plugin supports both hematology analyzers (BC-5380, BC2000) and
+chemistry analyzers (BS-360E). For BC2000 hematology results, the
+HL7AnalyzerReader with field mappings handles test code translation.
 
 Common test codes:
 
@@ -49,7 +50,7 @@ Common test codes:
 
 The Sysmex XN-L series uses HL7 v2.5.1:
 
-- **Message Type**: ORU^R01 (results with ASTM-style extensions)
+- **Message Type**: ORU^R01 (results)
 - **Transport**: TCP/IP on port 2575 (default)
 - **Character Set**: ASCII/UTF-8
 
@@ -57,7 +58,7 @@ The Sysmex XN-L series uses HL7 v2.5.1:
 
 1. Create an Analyzer record with name "SYSMEX" (or matching MSH-3)
 2. Configure AnalyzerConfiguration with IP address and port
-3. The SysmexXN-L plugin handles ASTM-style record parsing
+3. The SysmexXN-L plugin handles HL7 message parsing and test code mapping
 
 ### Test Codes Supported
 
