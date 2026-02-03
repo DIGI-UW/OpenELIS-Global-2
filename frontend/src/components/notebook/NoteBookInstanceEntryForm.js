@@ -1831,7 +1831,8 @@ const NoteBookInstanceEntryForm = () => {
                               <Grid fullWidth={true} className="gridBoundary">
                                 <Column lg={16} md={8} sm={4}>
                                   <h5>
-                                    {sample.sampleType} - {sample.externalId}{" "}
+                                    {sample.sampleType} -{" "}
+                                    {sample.externalId}{" "}
                                   </h5>
                                 </Column>
                                 <Column lg={2} md={8} sm={4}>
@@ -2208,7 +2209,8 @@ const NoteBookInstanceEntryForm = () => {
                               <Column lg={14} md={8} sm={4}>
                                 <div>
                                   <span style={{ marginRight: "0.5rem" }}>
-                                    {intl.formatMessage({ id: "sample.type" })}:{" "}
+                                    {intl.formatMessage({ id: "sample.type" })}
+                                    :{" "}
                                   </span>
                                   {(() => {
                                     const sampleType = sampleTypes.find(
