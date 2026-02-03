@@ -30,6 +30,11 @@
   <include relativeToChangelogFile="true" file="020-storage-box-use-code-not-short-code.xml"/>
   <include relativeToChangelogFile="true" file="021-add-patient-merge-menu-item.xml"/>
   <include relativeToChangelogFile="true" file="022-add-patient-merge-menu-localization.xml"/>
+
+
+  <!-- Generic Reporting Framework (reporting-framework) -->
+  <include relativeToChangelogFile="true" file="028-create-report-definition-table.xml"/>
+
   <!-- Add device connectivity fields for network-connected storage equipment -->
   <include relativeToChangelogFile="true" file="023-storage-device-connectivity.xml"/>
   <!-- Freezer monitoring - formerly 011 (renumbered to avoid duplicate sequence) -->
@@ -40,4 +45,5 @@
   <!-- Patient Merge (008-patient-merge) - formerly 019/020 (renumbered to avoid duplicate sequence) -->
   <include relativeToChangelogFile="true" file="026-patient-merge-create-audit-table.xml"/>
   <include relativeToChangelogFile="true" file="027-patient-merge-alter-patient-table.xml"/>
+
 </databaseChangeLog>
