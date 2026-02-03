@@ -21,7 +21,7 @@ services:
       - CATALYST_AGENT_URL=http://catalyst-agent:9101
     command:
       [
-        "poetry",
+        "uv",
         "run",
         "uvicorn",
         "src.agents.router_server:app",
@@ -43,7 +43,7 @@ services:
       - MCP_URL=http://catalyst-mcp:9102
     command:
       [
-        "poetry",
+        "uv",
         "run",
         "uvicorn",
         "src.agents.catalyst_server:app",

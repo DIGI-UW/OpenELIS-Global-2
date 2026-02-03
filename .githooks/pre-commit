@@ -17,10 +17,16 @@ fi
 # Track if we formatted anything
 FORMATTED=false
 
-# Format Java files (Maven Spotless on specific files)
+# Format files with Maven Spotless (matches pom.xml spotless config)
+# Spotless formats: Java, Markdown, Shell, XML, .gitignore, pom.xml
 JAVA_FILES=$(echo "$STAGED_FILES" | grep '\.java$' || true)
-if [ -n "$JAVA_FILES" ]; then
-    echo "  → Formatting $(echo "$JAVA_FILES" | wc -l) Java file(s) (spotless)..."
+MD_FILES=$(echo "$STAGED_FILES" | grep '\.md$' || true)
+SH_FILES=$(echo "$STAGED_FILES" | grep '\.sh$' || true)
+XML_FILES=$(echo "$STAGED_FILES" | grep '\.xml$' || true)
+GITIGNORE_FILES=$(echo "$STAGED_FILES" | grep '^\.gitignore$' || true)
+POM_FILES=$(echo "$STAGED_FILES" | grep 'pom\.xml$' || true)
+if [ -n "$JAVA_FILES" ] || [ -n "$MD_FILES" ] || [ -n "$SH_FILES" ] || [ -n "$XML_FILES" ] || [ -n "$GITIGNORE_FILES" ] || [ -n "$POM_FILES" ]; then
+    echo "  → Formatting Spotless-managed files (java/md/sh/xml/gitignore/pom)..."
     # Spotless applies to entire project, but we only re-stage modified files
     mvn spotless:apply -q 2>/dev/null || true
     FORMATTED=true
@@ -65,6 +71,34 @@ if [ "$FORMATTED" = true ]; then
     echo "$STAGED_FILES" | while IFS= read -r file; do
         if [ -f "$file" ]; then
             git add "$file"
+        fi
+    done
+fi
+
+# Lint Python files (Ruff check) — same checks as Catalyst CI
+if [ -n "$PYTHON_FILES" ]; then
+    echo "  → Linting staged Python file(s) (ruff check)..."
+    for project in catalyst-agents catalyst-gateway catalyst-mcp; do
+        PROJECT_FILES=$(echo "$PYTHON_FILES" | grep "projects/catalyst/$project/" || true)
+        if [ -n "$PROJECT_FILES" ]; then
+            REL_PATHS=()
+            while IFS= read -r file; do
+                # Strip the project prefix to get the path relative to projects/catalyst/$project
+                rel_path=${file#"projects/catalyst/$project/"}
+                REL_PATHS+=("$rel_path")
+            done <<< "$PROJECT_FILES"
+            if (cd "projects/catalyst/$project" && uv run ruff check "${REL_PATHS[@]}" --fix); then
+                : # lint passed
+            else
+                echo "❌ Ruff check failed in projects/catalyst/$project. Fix lint errors before committing."
+                exit 1
+            fi
+            # Ruff may have modified files; re-stage them so the commit matches the linted content
+            echo "$PROJECT_FILES" | while IFS= read -r file; do
+                if [ -f "$file" ]; then
+                    git add "$file"
+                fi
+            done
         fi
     done
 fi
