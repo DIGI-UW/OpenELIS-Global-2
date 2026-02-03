@@ -1,0 +1,26 @@
+# Catalyst Agent Runtime Configuration
+# 
+# LLM Provider Selection (FR-007)
+# Supports: gemini (cloud), lmstudio (local)
+#
+# Configuration is loaded from environment variables (see config.py).
+# This YAML file documents the configuration structure and can be used
+# as a reference or for future YAML-based configuration loading.
+
+llm:
+  # Provider selection: "gemini" or "lmstudio"
+  provider: ${CATALYST_LLM_PROVIDER:-lmstudio}  # Default: lmstudio
+
+  # Cloud provider: Google Gemini
+  gemini:
+    api_key: ${GOOGLE_API_KEY}  # Required for Gemini
+    model: ${GEMINI_MODEL:-gemini-pro}  # Default: gemini-pro
+
+  # Local provider: LM Studio (OpenAI-compatible API)
+  lmstudio:
+    base_url: ${LMSTUDIO_BASE_URL:-http://host.docker.internal:1234/v1}
+    model: ${LMSTUDIO_MODEL:-local-model}  # Use most recent available OpenAI-compatible model
+
+# MCP Server Configuration (for SchemaAgent)
+mcp:
+  server_url: ${MCP_SERVER_URL:-http://catalyst-mcp:8000/mcp}
