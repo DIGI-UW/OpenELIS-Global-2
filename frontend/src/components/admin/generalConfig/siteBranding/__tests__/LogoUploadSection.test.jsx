@@ -63,7 +63,10 @@ describe("LogoUploadSection", () => {
   test("renders file uploader for logo upload", () => {
     renderWithIntl(<LogoUploadSection type="header" currentLogoUrl={null} />);
 
-    expect(screen.getByText(/header logo/i)).toBeInTheDocument();
+    // Use getByRole to specifically target the heading element
+    expect(
+      screen.getByRole("heading", { name: /header logo/i }),
+    ).toBeInTheDocument();
   });
 
   /**
@@ -80,7 +83,10 @@ describe("LogoUploadSection", () => {
 
     const img = screen.getByAltText(/header logo/i);
     expect(img).toBeInTheDocument();
-    expect(img).toHaveAttribute("src", "/rest/site-branding/logo/header");
+    // Component adds server base URL prefix and cache-busting parameter
+    expect(img.getAttribute("src")).toContain(
+      "/rest/site-branding/logo/header",
+    );
   });
 
   /**
@@ -92,7 +98,8 @@ describe("LogoUploadSection", () => {
 
     // Create a mock file with invalid format
     const file = new File(["test"], "test.txt", { type: "text/plain" });
-    const input = screen.getByLabelText(/upload logo/i);
+    // Carbon FileUploader creates a hidden input[type="file"]
+    const input = document.querySelector('input[type="file"]');
 
     fireEvent.change(input, { target: { files: [file] } });
 
@@ -113,7 +120,8 @@ describe("LogoUploadSection", () => {
     const largeFile = new File(["x".repeat(3 * 1024 * 1024)], "large.png", {
       type: "image/png",
     });
-    const input = screen.getByLabelText(/upload logo/i);
+    // Carbon FileUploader creates a hidden input[type="file"]
+    const input = document.querySelector('input[type="file"]');
 
     fireEvent.change(input, { target: { files: [largeFile] } });
 
@@ -127,6 +135,7 @@ describe("LogoUploadSection", () => {
    */
   test("uploads valid file and calls onLogoUploaded callback", async () => {
     const onLogoUploaded = jest.fn();
+    const ref = React.createRef();
 
     postToOpenElisServerFormData.mockImplementation(
       (url, formData, callback) => {
@@ -136,6 +145,7 @@ describe("LogoUploadSection", () => {
 
     renderWithIntl(
       <LogoUploadSection
+        ref={ref}
         type="header"
         currentLogoUrl={null}
         onLogoUploaded={onLogoUploaded}
@@ -144,13 +154,13 @@ describe("LogoUploadSection", () => {
 
     // Create a valid file
     const file = new File(["test"], "logo.png", { type: "image/png" });
-    const input = screen.getByLabelText(/upload logo/i);
+    // Carbon FileUploader creates a hidden input[type="file"]
+    const input = document.querySelector('input[type="file"]');
 
     fireEvent.change(input, { target: { files: [file] } });
 
-    // Click upload button
-    const uploadButton = screen.getByTestId("upload-logo-submit");
-    await userEvent.click(uploadButton);
+    // Trigger upload via ref (as parent component would do)
+    await ref.current.uploadFile();
 
     // Should call callback
     await wait(() => {
@@ -192,7 +202,8 @@ describe("LogoUploadSection", () => {
     );
 
     // File uploader should not be visible when using header logo
-    const uploader = screen.queryByLabelText(/upload logo/i);
+    // Carbon FileUploader creates a hidden input[type="file"]
+    const uploader = document.querySelector('input[type="file"]');
     expect(uploader).not.toBeInTheDocument();
   });
 
@@ -222,23 +233,31 @@ describe("LogoUploadSection", () => {
    * Test: Upload failure handling
    */
   test("shows error when upload fails", async () => {
+    const ref = React.createRef();
+
     postToOpenElisServerFormData.mockImplementation(
       (url, formData, callback) => {
         callback(500); // Server error
       },
     );
 
-    renderWithIntl(<LogoUploadSection type="header" currentLogoUrl={null} />);
+    renderWithIntl(
+      <LogoUploadSection ref={ref} type="header" currentLogoUrl={null} />,
+    );
 
     // Create a valid file
     const file = new File(["test"], "logo.png", { type: "image/png" });
-    const input = screen.getByLabelText(/upload logo/i);
+    // Carbon FileUploader creates a hidden input[type="file"]
+    const input = document.querySelector('input[type="file"]');
 
     fireEvent.change(input, { target: { files: [file] } });
 
-    // Click upload button
-    const uploadButton = screen.getByTestId("upload-logo-submit");
-    await userEvent.click(uploadButton);
+    // Trigger upload via ref (as parent component would do)
+    try {
+      await ref.current.uploadFile();
+    } catch (e) {
+      // Expected to throw on failure
+    }
 
     // Should show error message
     expect(await screen.findByText(/error saving/i)).toBeInTheDocument();
@@ -359,6 +378,9 @@ describe("LogoUploadSection", () => {
   test("renders favicon upload section", () => {
     renderWithIntl(<LogoUploadSection type="favicon" currentLogoUrl={null} />);
 
-    expect(screen.getByText(/favicon/i)).toBeInTheDocument();
+    // Use getByRole to specifically target the heading element
+    expect(
+      screen.getByRole("heading", { name: /favicon/i }),
+    ).toBeInTheDocument();
   });
 });
