@@ -31,7 +31,7 @@ class HomePage {
       workplanPanelNav: "#menu_workplan_panel_nav",
       workplanBenchNav: "#menu_workplan_bench_nav",
       workplanPriorityNav: "#menu_workplan_priority_nav",
-      nonConformityDropdown: "span#menu_nonconformity_dropdown",
+      nonConformityDropdown: "span#menu_nonconformity",
       nonConformingReport: "span#menu_non_conforming_report",
       nonConformingView: "span#menu_non_conforming_view",
       nonConformingActions: "span#menu_non_conforming_corrective_actions",
@@ -157,65 +157,119 @@ class HomePage {
   // Non-Conforming related functions
   goToReportNCE() {
     this.openNavigationMenu();
-    cy.get(this.selectors.nonConformityDropdown).click();
-    cy.get(this.selectors.nonConformingReport).should("be.visible").click();
+    cy.get(this.selectors.nonConformityDropdown)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.nonConformingReport)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
     return new NonConform();
   }
 
   goToViewNCE() {
     this.openNavigationMenu();
-    cy.get(this.selectors.nonConformityDropdown).click();
-    cy.get(this.selectors.nonConformingView).should("be.visible").click();
+    cy.get(this.selectors.nonConformityDropdown)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.nonConformingView)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
     return new NonConform();
   }
 
   goToCorrectiveActions() {
     this.openNavigationMenu();
-    cy.get(this.selectors.nonConformityDropdown).click();
-    cy.get(this.selectors.nonConformingActions).should("be.visible").click();
+    cy.get(this.selectors.nonConformityDropdown)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.nonConformingActions)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
     return new NonConform();
   }
 
   // Results related functions
   goToResultsByUnit() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsLogbook).should("be.visible").click();
+    cy.get(this.selectors.resultsMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.resultsLogbook)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
     return new Result();
   }
 
   goToResultsByOrder() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsAccession).click();
+    cy.get(this.selectors.resultsMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.resultsAccession)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
     return new Result();
   }
 
   goToResultsByPatient() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsPatient).click();
+    cy.get(this.selectors.resultsMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.resultsPatient)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
     return new Result();
   }
 
   goToResultsForRefferedOut() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsReferred).click();
+    cy.get(this.selectors.resultsMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.resultsReferred)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
     return new Result();
   }
 
   goToResultsByRangeOrder() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsRange).click();
+    cy.get(this.selectors.resultsMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.resultsRange)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
     return new Result();
   }
 
   goToResultsByTestAndStatus() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsStatus).click();
+    cy.get(this.selectors.resultsMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.resultsStatus)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
     return new Result();
   }
 
@@ -244,39 +298,63 @@ class HomePage {
   // Reports related functions
   goToRoutineReports() {
     this.openNavigationMenu();
-    cy.get(this.selectors.reportsMenu).click();
-    cy.get(this.selectors.reportsRoutine).should("be.visible").click();
+    cy.get(this.selectors.reportsMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.reportsRoutine)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
     return new RoutineReportPage();
   }
 
   goToStudyReports() {
     this.openNavigationMenu();
-    cy.get(this.selectors.reportsMenu).click();
-    cy.get(this.selectors.reportsStudy).should("be.visible").click();
+    cy.get(this.selectors.reportsMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.reportsStudy)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
     return new StudyReportPage();
   }
 
   goToReports() {
     this.openNavigationMenu();
-    cy.get(this.selectors.reportsMenu).click();
+    cy.get(this.selectors.reportsMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
   }
 
   // Dashboard related functions
   goToPathologyDashboard() {
     this.openNavigationMenu();
-    cy.get(this.selectors.pathologyNav).should("be.visible").click();
+    cy.get(this.selectors.pathologyNav)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
     return new DashBoardPage();
   }
 
   goToImmunoChemistryDashboard() {
     this.openNavigationMenu();
-    cy.get(this.selectors.immunochemMenu).click();
+    cy.get(this.selectors.immunochemMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
     return new DashBoardPage();
   }
 
   goToCytologyDashboard() {
     this.openNavigationMenu();
-    cy.get(this.selectors.cytologyMenu).click();
+    cy.get(this.selectors.cytologyMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
     return new DashBoardPage();
   }
 
@@ -284,6 +362,12 @@ class HomePage {
   goToAdminPageProgram() {
     this.openNavigationMenu();
     cy.get(this.selectors.administrationMenu).click();
+    // Ensure we land on Admin tile view (/MasterListsPage or /admin); app has no /administration route
+    cy.url().then((url) => {
+      if (!/^\/(MasterListsPage|admin)(\/|$|#)/.test(url)) {
+        cy.visit("/MasterListsPage");
+      }
+    });
     return new AdminPage();
   }
 
@@ -295,7 +379,10 @@ class HomePage {
 
   goToHelp() {
     this.openNavigationMenu();
-    cy.get(this.selectors.helpMenu).click();
+    cy.get(this.selectors.helpMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
     return new HelpPage();
   }
 

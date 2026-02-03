@@ -14,5 +14,6 @@ coverage/
 reports/
 **/*.min.js
 *.log
-
+# Stray Playwright test output at frontend root only (playwright/tests/*.ts are formatted)
+/sidenav.spec.ts
 

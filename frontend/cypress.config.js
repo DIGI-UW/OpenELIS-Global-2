@@ -12,6 +12,8 @@ module.exports = defineConfig({
   video: false, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
   watchForFileChanges: false,
   screenshotOnRunFailure: true, // Take screenshots on failure (required per Constitution V.5)
+  // Stop on first spec failure when E2E_FAIL_FAST is set (e.g. in CI)
+  bail: process.env.E2E_FAIL_FAST === "true" ? 1 : false,
   env: {
     // Control whether test fixtures are cleaned up after tests
     // Set CYPRESS_CLEANUP_FIXTURES=false to keep fixtures for manual testing/debugging

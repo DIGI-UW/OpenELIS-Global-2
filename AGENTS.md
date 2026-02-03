@@ -175,7 +175,8 @@ mvn clean install -DskipTests
 
 **Testing:**
 
-- **Cypress 12.17.3** (E2E tests)
+- **Cypress 12.17.3** (E2E tests - existing)
+- **Playwright 1.57.0** (E2E tests - recommended for new tests)
 - **Jest + React Testing Library** (unit tests)
 
 **Code Quality:**
@@ -631,10 +632,12 @@ npm run format
 npm test
 
 # Run E2E tests (individual file during development)
-npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"
+npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"  # Cypress (existing)
+npm run pw:test {feature}.spec.ts                       # Playwright (new tests)
 
 # Run full E2E suite (CI/CD only, not during development)
-npm run cy:run
+npm run cy:run      # Cypress
+npm run pw:test     # Playwright
 ```
 
 **Docker:**
@@ -701,7 +704,8 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # 3. Run relevant tests
 mvn test  # Unit + integration tests
-npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"  # Individual E2E test
+npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"  # Cypress E2E (existing tests)
+npm run pw:test {feature}.spec.ts  # Playwright E2E (new tests)
 
 # 4. Verify constitution compliance
 # Check .specify/memory/constitution.md for relevant principles
@@ -950,7 +954,7 @@ for comprehensive guide.
 
 ```
         ┌─────────────┐
-        │   E2E (5%)   │  Cypress - User workflows
+        │   E2E (5%)   │  Cypress/Playwright - User workflows
         │   Slow       │
         └──────┬───────┘
        ┌───────▼────────┐
@@ -1385,26 +1389,39 @@ public class SampleServiceIntegrationTest extends BaseWebContextSensitiveTest {
 }
 ```
 
-### E2E Tests (Cypress)
+### E2E Tests (Cypress & Playwright)
 
-**Location:** `frontend/cypress/e2e/{feature}.cy.js`
+**Framework Selection**: Per Constitution V.5 (amended 2026-01-27), E2E tests
+may use either **Cypress** (existing tests) or **Playwright** (recommended for
+new tests). See Testing Roadmap for selection guidance.
+
+**Locations:**
+
+- Cypress: `frontend/cypress/e2e/{feature}.cy.js`
+- Playwright: `frontend/playwright/tests/{feature}.spec.ts`
+
+**Example Implementation**: Feature 009-carbon-sidenav uses Playwright for E2E
+tests (see `specs/009-carbon-sidenav/` for reference implementation).
 
 **For Comprehensive Guidance**: See
-[Testing Roadmap - Cypress E2E Testing](.specify/guides/testing-roadmap.md#cypress-e2e-testing)
-for detailed patterns, code examples, and best practices.
+[Testing Roadmap - E2E Testing](.specify/guides/testing-roadmap.md#cypress-e2e-testing)
+for detailed patterns for both Cypress and Playwright.
 
-**For Quick Reference**: See
-[Cypress Best Practices Guide](.specify/guides/cypress-best-practices.md) for
-common patterns and cheat sheets.
+**For Quick Reference**: See framework-specific guides:
+
+- [Cypress Best Practices](.specify/guides/cypress-best-practices.md)
+- [Playwright Best Practices](.specify/guides/playwright-best-practices.md)
 
 **For Functional Requirements**: See
-[Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
-for E2E testing requirements.
+[Constitution Section V.5](.specify/memory/constitution.md) for E2E testing
+requirements (applies to both frameworks).
 
 **Execution Strategy (Constitution V.5):**
 
-- **Development:** Run INDIVIDUAL test files (max 5-10 test cases)
+- **Development:** Run INDIVIDUAL test files (small batches)
 - **CI/CD:** Run full suite
+
+**Cypress Commands:**
 
 ```bash
 # Development (CORRECT - run individual test)
@@ -1412,6 +1429,19 @@ npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
 
 # CI/CD only (NOT during development)
 npm run cy:run
+```
+
+**Playwright Commands (recommended for new tests):**
+
+```bash
+# Development (run individual test)
+npm run pw:test sidenav.spec.ts
+
+# Full suite (CI/CD only)
+npm run pw:test
+
+# Interactive UI debugger
+npm run pw:test:ui
 ```
 
 **Configuration (`cypress.config.js`):**

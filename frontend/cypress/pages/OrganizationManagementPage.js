@@ -8,9 +8,11 @@ class OrganizationManagementPage {
       isActive: "#is-active",
       parentOrgName: "#parentOrgName",
       orgSearchBar: "#org-name-search-bar",
+      orgSearchBarInput:
+        "#org-name-search-bar input, input#org-name-search-bar",
       referringClinic: '[id="5:select"]',
       referralLab: '[id="6:select"]',
-      orgTableRow: ".cds--data-table > tbody:nth-child(2)",
+      orgTableRow: ".cds--data-table tbody",
     };
   }
 
@@ -65,51 +67,34 @@ class OrganizationManagementPage {
   }
 
   searchOrganzation() {
-    // Break up the chain to avoid detached DOM issues
-    // First, ensure the element is visible and scroll into view
-    cy.get(`input${this.selectors.orgSearchBar}`)
-      .should("be.visible")
-      .scrollIntoView();
-
-    // Re-query after scroll (page may have updated)
-    cy.get(`input${this.selectors.orgSearchBar}`)
-      .focus()
-      .clear({ force: true });
-
-    // Re-query again before typing
-    cy.get(`input${this.selectors.orgSearchBar}`).type("CAMES MAN", {
-      force: true,
-    });
-    cy.wait(200);
+    // Carbon Search may put id on wrapper; target the input reliably
+    const searchInput = this.selectors.orgSearchBarInput;
+    cy.get(searchInput).should("be.visible").scrollIntoView();
+    cy.get(searchInput).focus().clear({ force: true });
+    cy.get(searchInput).type("CAMES MAN", { force: true });
+    // Rely on confirmOrganization's retry; minimal delay for debounce/API
+    cy.wait(500);
   }
 
   searchInstitute() {
-    // Break up the chain to avoid detached DOM issues
-    // First, ensure the element is visible and scroll into view
-    cy.get(`input${this.selectors.orgSearchBar}`)
-      .should("be.visible")
-      .scrollIntoView();
-
-    // Re-query after scroll (page may have updated)
-    cy.get(`input${this.selectors.orgSearchBar}`)
-      .focus()
-      .clear({ force: true });
-
-    // Re-query again before typing
-    cy.get(`input${this.selectors.orgSearchBar}`).type("CEDRES", {
-      force: true,
-    });
-    cy.wait(200);
+    const searchInput = this.selectors.orgSearchBarInput;
+    cy.get(searchInput).should("be.visible").scrollIntoView();
+    cy.get(searchInput).focus().clear({ force: true });
+    cy.get(searchInput).type("CEDRES", { force: true });
+    cy.wait(500);
   }
 
   confirmOrganization() {
-    cy.get(this.selectors.orgTableRow)
+    // Wait for search API + re-render (retry up to 10s)
+    cy.get(this.selectors.orgTableRow, { timeout: 10000 })
       .contains("CAMES MAN")
       .should("be.visible");
   }
 
   confirmInstitute() {
-    cy.get(this.selectors.orgTableRow).contains("CEDRES").should("be.visible");
+    cy.get(this.selectors.orgTableRow, { timeout: 10000 })
+      .contains("CEDRES")
+      .should("be.visible");
   }
 }
 
