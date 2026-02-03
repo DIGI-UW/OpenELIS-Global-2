@@ -320,7 +320,7 @@ export const TestStepForm = ({
         const matchedDictFlat = initialData.dictionary
           .map((val) => {
             const isString = typeof val === "string";
-            const valueRaw = isString ? val : (val?.value ?? "");
+            const valueRaw = isString ? val : val?.value ?? "";
 
             const firstToken = valueRaw.trim().split(" ")[0];
             const qualified = valueRaw.toLowerCase().includes("qualifiable")
