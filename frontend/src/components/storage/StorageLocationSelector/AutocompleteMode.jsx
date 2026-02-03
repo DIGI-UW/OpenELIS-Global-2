@@ -1,28 +1,24 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ComboBox } from "@carbon/react";
-import { FormattedMessage, useIntl } from "react-intl";
+import { useIntl } from "react-intl";
+import { getFromOpenElisServer } from "../../utils/Utils";
 
-/**
- * Autocomplete/type-ahead mode for storage location selection
- * Uses Carbon ComboBox for searchable selection
- */
 const AutocompleteMode = ({ onLocationChange }) => {
   const intl = useIntl();
   const [searchResults, setSearchResults] = useState([]);
   const debounceTimer = useRef(null);
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     return () => {
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
     };
   }, []);
 
   const handleSearch = (inputValue) => {
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-    }
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    if (abortControllerRef.current) abortControllerRef.current.abort();
 
     if (!inputValue) {
       setSearchResults([]);
@@ -30,20 +26,30 @@ const AutocompleteMode = ({ onLocationChange }) => {
     }
 
     debounceTimer.current = setTimeout(() => {
-      fetch(`/rest/storage/devices/search?q=${encodeURIComponent(inputValue)}`)
-        .then((response) => response.json())
-        .then((data) => {
-          const formattedResults = data.map((item) => ({
-            ...item,
-            hierarchicalPath: item.hierarchicalPath || item.name,
-          }));
+      abortControllerRef.current = new AbortController();
+      const signal = abortControllerRef.current.signal;
 
-          setSearchResults(formattedResults);
-        })
-
-        .catch((error) => {
-          setSearchResults([]);
-        });
+      getFromOpenElisServer(
+        `/rest/storage/devices/search?q=${encodeURIComponent(inputValue)}`,
+        (data) => {
+          if (!signal.aborted) {
+            const formattedResults = (data || []).map((item) => ({
+              ...item,
+              displayPath: item.parentRoomName
+                ? `${item.parentRoomName} > ${item.name}`
+                : item.name,
+            }));
+            setSearchResults(formattedResults);
+          }
+        },
+        signal,
+        (error) => {
+          if (error.name !== "AbortError") {
+            console.error("Error searching storage devices:", error);
+            setSearchResults([]);
+          }
+        },
+      );
     }, 500);
   };
 
@@ -52,9 +58,11 @@ const AutocompleteMode = ({ onLocationChange }) => {
       <ComboBox
         id="location-search"
         titleText={intl.formatMessage({ id: "storage.location.label" })}
-        placeholder="Search for location..."
+        placeholder={intl.formatMessage({
+          id: "storage.location.search.placeholder",
+        })}
         items={searchResults}
-        itemToString={(item) => (item ? item.hierarchicalPath : "")}
+        itemToString={(item) => (item ? item.displayPath : "")}
         onChange={({ selectedItem }) =>
           onLocationChange && onLocationChange(selectedItem)
         }
