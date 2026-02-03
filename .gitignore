@@ -52,8 +52,9 @@ volume/odoo/*
 .cursor/commands/
 .claude/commands/
 
-# Keep .cursor/ config but not commands
-.cursor/
+# Ignore .cursor/ except for worktrees.json (Cursor worktree setup config)
+.cursor/*
+!.cursor/worktrees.json
 **/*checksum*.properties
 **/*checksums*.properties
 
