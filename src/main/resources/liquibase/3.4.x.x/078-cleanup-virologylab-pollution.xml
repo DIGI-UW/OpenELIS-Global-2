@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- CLEANUP: Remove polluted pages from VirologyLab notebooks -->
+    <!-- These pages were incorrectly added from old Virology      -->
+    <!-- workflow due to wildcard queries (LIKE '%Virology%')      -->
+    <!-- ======================================================== -->
+
+    <changeSet id="cleanup-virologylab-pollution-remove-unwanted-pages" author="openelis-virologylab">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Remove non-GBD pages from VirologyLab notebooks that were added by old Virology changesets</comment>
+
+        <!-- Delete any pages that are NOT part of the 10 GBD pages (page_order 1-10) -->
+        <!-- This removes pages like: Feeding, Virus Isolation, Packaging, Trials, etc. -->
+        <sql>
+            DELETE FROM clinlims.notebook_page
+            WHERE notebook_id IN (
+                SELECT id FROM clinlims.notebook
+                WHERE title = 'VirologyLab Laboratory'
+                OR (title LIKE '%VirologyLab%' AND is_template = false)
+            )
+            AND page_order > 10;
+        </sql>
+
+        <!-- Also remove pages with titles that don't belong in GBD workflow -->
+        <sql>
+            DELETE FROM clinlims.notebook_page
+            WHERE notebook_id IN (
+                SELECT id FROM clinlims.notebook
+                WHERE title = 'VirologyLab Laboratory'
+                OR (title LIKE '%VirologyLab%' AND is_template = false)
+            )
+            AND title IN (
+                'Feeding',
+                'Virus Isolation',
+                'Packaging',
+                'Titer Measurement',
+                'Genome Sequencing',
+                'Seed Virus Production',
+                'Preclinical &amp; Clinical Trials',
+                'Final Product Packaging',
+                'Media Preparation',
+                'Cell Culture',
+                'Quality Control',
+                'Virus Culture',
+                'Dark Room Imaging',
+                'Formulation'
+            );
+        </sql>
+
+        <rollback>
+            <!-- This changeset is a data cleanup - rollback is not safe/recommended -->
+            <!-- Manual database restoration from backup may be necessary -->
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
