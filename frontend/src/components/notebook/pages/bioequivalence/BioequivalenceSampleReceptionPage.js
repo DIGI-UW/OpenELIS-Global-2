@@ -47,21 +47,26 @@ function BioequivalenceSampleReceptionPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { hasAnyRole } = usePermissions();
-  const { getPagePermissionLevel, canRegisterData, canSaveData } =
-    useBioequivalencePermissions();
+  const {
+    getPagePermissionLevel,
+    canRegisterData,
+    canSaveData,
+    canAccessSampleReception,
+    BIOEQUIVALENCE_ROLES
+  } = useBioequivalencePermissions();
 
   // PAGE 1 allowed roles per test.pdf Section 11
   const allowedRoles = [
-    "Sample Receiver",
-    "Chemical Analyst",
-    "Pharmacist",
-    "Lab Supervisor",
-    "Study Director",
-    "QA Officer",
-    "Researcher",
+    BIOEQUIVALENCE_ROLES.SAMPLE_RECEIVER,
+    BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST,
+    BIOEQUIVALENCE_ROLES.PHARMACIST,
+    BIOEQUIVALENCE_ROLES.LAB_SUPERVISOR,
+    BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR,
+    BIOEQUIVALENCE_ROLES.QA_OFFICER,
+    BIOEQUIVALENCE_ROLES.RESEARCHER,
   ];
 
-  const canAccessPage = hasAnyRole(allowedRoles);
+  const canAccessPage = canAccessSampleReception();
 
   // Get user's action-level permission for this page
   const pagePermissionLevel = getPagePermissionLevel("Sample Reception");

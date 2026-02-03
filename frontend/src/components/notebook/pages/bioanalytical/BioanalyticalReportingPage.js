@@ -57,24 +57,27 @@ function BioanalyticalReportingPage({
   const intl = useIntl();
   const { hasAnyRole } = usePermissions();
   const {
+    BIOANALYTICAL_ROLES,
     getPagePermissionLevel,
     canAnalytics,
     canApproveData,
     hasFullControl,
+    canAccessReporting,
   } = useBioanalyticalPermissions();
 
-  // PAGE 4 allowed roles per test.pdf Section 11
+  // PAGE 4 allowed roles per test.pdf Section 11 permission matrix
+  // Matrix: Sample Receivers (No), Chemical Analysts (Limited), Pharmacists (Full), Researchers (Project-specific), Lab Supervisors (Full), Study Directors (Full), QA Officers (Full), Data Managers (Full Analytics)
   const allowedRoles = [
-    "Chemical Analyst",
-    "Pharmacist",
-    "Lab Supervisor",
-    "Study Director",
-    "QA Officer",
-    "Researcher",
-    "Data Manager",
+    BIOANALYTICAL_ROLES.CHEMICAL_ANALYST,
+    BIOANALYTICAL_ROLES.PHARMACIST,
+    BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
+    BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
+    BIOANALYTICAL_ROLES.QA_OFFICER,
+    BIOANALYTICAL_ROLES.RESEARCHER,
+    BIOANALYTICAL_ROLES.DATA_MANAGER,
   ];
 
-  const canAccessPage = hasAnyRole(allowedRoles);
+  const canAccessPage = canAccessReporting();
 
   // Get user's action-level permission for this page
   const pagePermissionLevel = getPagePermissionLevel("Reporting");

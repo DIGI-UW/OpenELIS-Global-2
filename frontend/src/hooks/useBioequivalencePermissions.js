@@ -37,19 +37,56 @@ import { usePermissions } from "./usePermissions";
  * }
  */
 export const useBioequivalencePermissions = () => {
-  const { userSessionDetails, hasLabUnitRole, hasRoleForCurrentLabUnit } =
-    usePermissions();
+  const {
+    userSessionDetails,
+    hasRole,
+    hasAnyRole,
+    hasLabUnitRole,
+    isGlobalAdmin,
+  } = usePermissions();
+
+  const BIOEQUIVALENCE_LAB_UNIT = "Bioequivalence Laboratory";
+
+  /**
+   * Custom hasLabUnitRole that DOES NOT bypass checks for Global Admins
+   * This ensures bioequivalence permissions respect actual role assignments
+   * @param {string} labUnit - Lab unit name or ID
+   * @param {string} role - Role name to check
+   * @returns {boolean}
+   */
+  const hasBioequivalenceLabUnitRoleStrict = useCallback(
+    (labUnit, role) => {
+      // FOR BIOEQUIVALENCE PERMISSIONS: DO NOT bypass global admin checks
+      // This ensures bioequivalence permissions work based on actual role assignments
+
+      if (!userSessionDetails?.userLabRolesMap) {
+        return false;
+      }
+
+      // Check "AllLabUnits" for global lab access
+      const allLabUnitsRoles =
+        userSessionDetails.userLabRolesMap["AllLabUnits"] || [];
+      if (allLabUnitsRoles.includes(role)) {
+        return true;
+      }
+
+      // Check specific lab unit
+      const labUnitRoles = userSessionDetails.userLabRolesMap[labUnit] || [];
+      return labUnitRoles.includes(role);
+    },
+    [userSessionDetails?.userLabRolesMap],
+  );
 
   const BIOEQUIVALENCE_ROLES = useMemo(
     () => ({
-      SAMPLE_RECEIVER: "Sample Receiver",
-      CHEMICAL_ANALYST: "Chemical Analyst",
-      PHARMACIST: "Pharmacist",
-      RESEARCHER: "Researcher",
-      LAB_SUPERVISOR: "Lab Supervisor",
-      STUDY_DIRECTOR: "Study Director",
-      QA_OFFICER: "QA Officer",
-      DATA_MANAGER: "Data Manager",
+      SAMPLE_RECEIVER: "Bioequivalence Sample Receiver",
+      CHEMICAL_ANALYST: "Bioequivalence Chemical Analyst",
+      PHARMACIST: "Bioequivalence Pharmacist",
+      RESEARCHER: "Bioequivalence Researcher",
+      LAB_SUPERVISOR: "Bioequivalence Lab Supervisor",
+      STUDY_DIRECTOR: "Bioequivalence Study Director",
+      QA_OFFICER: "Bioequivalence QA Officer",
+      DATA_MANAGER: "Bioequivalence Data Manager",
     }),
     [],
   );
@@ -59,6 +96,8 @@ export const useBioequivalencePermissions = () => {
       SAMPLE_RECEPTION: "Sample Reception",
       TEST_ASSIGNMENT: "Test Assignment",
       ANALYTICAL_EXECUTION: "Analytical Execution",
+      RESULT_ENTRY: "Result Entry",
+      VALIDATION: "Validation",
       REPORTING: "Reporting & Release",
       STORAGE_ARCHIVING: "Post-Test Storage & Archiving",
     }),
@@ -81,20 +120,19 @@ export const useBioequivalencePermissions = () => {
         return userSessionDetails.bioequivalencePermissions[pageName];
       }
 
-      // Fallback: Check all bioequivalence roles the user has and return the highest permission level
-      // This mapping should match the Liquibase migration for bioequivalence permission levels
-      const userBioequivalenceRoles = Object.values(
-        BIOEQUIVALENCE_ROLES,
-      ).filter((role) => hasRoleForCurrentLabUnit([role]));
+      const userBioequivalenceRoles = Object.values(BIOEQUIVALENCE_ROLES).filter(
+        (role) => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, role),
+      );
 
       if (userBioequivalenceRoles.length === 0) {
         return null;
       }
 
-      // Fallback permission map based on role-page combinations from database
+      // Permission map based on test.pdf Section 11 permission matrix
       // This serves as a fallback if backend doesn't provide bioequivalencePermissions
       const permissionMap = {
         [BIOEQUIVALENCE_PAGES.SAMPLE_RECEPTION]: {
+          // Matrix: Sample Receivers (Yes), Chemical Analysts (Update), Pharmacists (Update), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (No)
           [BIOEQUIVALENCE_ROLES.SAMPLE_RECEIVER]: "REGISTER",
           [BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST]: "UPDATE",
           [BIOEQUIVALENCE_ROLES.PHARMACIST]: "UPDATE",
@@ -102,20 +140,33 @@ export const useBioequivalencePermissions = () => {
           [BIOEQUIVALENCE_ROLES.LAB_SUPERVISOR]: "FULL",
           [BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR]: "VIEW",
           [BIOEQUIVALENCE_ROLES.QA_OFFICER]: "VIEW",
-          [BIOEQUIVALENCE_ROLES.DATA_MANAGER]: "VIEW",
+          // Data Manager excluded per matrix (No)
         },
         [BIOEQUIVALENCE_PAGES.TEST_ASSIGNMENT]: {
-          [BIOEQUIVALENCE_ROLES.SAMPLE_RECEIVER]: "UPDATE",
-          [BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST]: "UPDATE",
+          // Matrix: Sample Receivers (No), Chemical Analysts (View), Pharmacists (Full), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (No)
+          // Sample Receiver excluded per matrix (No)
+          [BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST]: "VIEW",
           [BIOEQUIVALENCE_ROLES.PHARMACIST]: "FULL",
-          [BIOEQUIVALENCE_ROLES.RESEARCHER]: "UPDATE",
+          [BIOEQUIVALENCE_ROLES.RESEARCHER]: "VIEW",
           [BIOEQUIVALENCE_ROLES.LAB_SUPERVISOR]: "FULL",
-          [BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR]: "UPDATE",
+          [BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR]: "VIEW",
           [BIOEQUIVALENCE_ROLES.QA_OFFICER]: "VIEW",
-          [BIOEQUIVALENCE_ROLES.DATA_MANAGER]: "UPDATE",
+          // Data Manager excluded per matrix (No)
         },
         [BIOEQUIVALENCE_PAGES.ANALYTICAL_EXECUTION]: {
-          [BIOEQUIVALENCE_ROLES.SAMPLE_RECEIVER]: "VIEW",
+          // Matrix: Sample Receivers (No), Chemical Analysts (Full), Pharmacists (Full), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (No)
+          // Sample Receiver excluded per matrix (No)
+          [BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST]: "FULL",
+          [BIOEQUIVALENCE_ROLES.PHARMACIST]: "FULL",
+          [BIOEQUIVALENCE_ROLES.RESEARCHER]: "VIEW",
+          [BIOEQUIVALENCE_ROLES.LAB_SUPERVISOR]: "FULL",
+          [BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR]: "VIEW",
+          [BIOEQUIVALENCE_ROLES.QA_OFFICER]: "VIEW",
+          // Data Manager excluded per matrix (No)
+        },
+        [BIOEQUIVALENCE_PAGES.RESULT_ENTRY]: {
+          // Matrix: Sample Receivers (No), Chemical Analysts (Full), Pharmacists (Full), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (View)
+          // Sample Receiver excluded per matrix (No)
           [BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST]: "FULL",
           [BIOEQUIVALENCE_ROLES.PHARMACIST]: "FULL",
           [BIOEQUIVALENCE_ROLES.RESEARCHER]: "VIEW",
@@ -124,8 +175,20 @@ export const useBioequivalencePermissions = () => {
           [BIOEQUIVALENCE_ROLES.QA_OFFICER]: "VIEW",
           [BIOEQUIVALENCE_ROLES.DATA_MANAGER]: "VIEW",
         },
+        [BIOEQUIVALENCE_PAGES.VALIDATION]: {
+          // Matrix: Sample Receivers (No), Chemical Analysts (Validate), Pharmacists (Validate), Researchers (Review), Lab Supervisors (Final Approval), Study Directors (Final Approval), QA Officers (Final Approval), Data Managers (No)
+          // Sample Receiver excluded per matrix (No)
+          [BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST]: "VALIDATE",
+          [BIOEQUIVALENCE_ROLES.PHARMACIST]: "VALIDATE",
+          [BIOEQUIVALENCE_ROLES.RESEARCHER]: "REVIEW",
+          [BIOEQUIVALENCE_ROLES.LAB_SUPERVISOR]: "APPROVE",
+          [BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR]: "APPROVE",
+          [BIOEQUIVALENCE_ROLES.QA_OFFICER]: "APPROVE",
+          // Data Manager excluded per matrix (No)
+        },
         [BIOEQUIVALENCE_PAGES.REPORTING]: {
-          [BIOEQUIVALENCE_ROLES.SAMPLE_RECEIVER]: "VIEW",
+          // Matrix: Sample Receivers (No), Chemical Analysts (Limited), Pharmacists (Full), Researchers (Project-specific), Lab Supervisors (Full), Study Directors (Full), QA Officers (Full), Data Managers (Full Analytics)
+          // Sample Receiver excluded per matrix (No)
           [BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST]: "LIMITED",
           [BIOEQUIVALENCE_ROLES.PHARMACIST]: "FULL",
           [BIOEQUIVALENCE_ROLES.RESEARCHER]: "PROJECT_SPECIFIC",
@@ -135,14 +198,11 @@ export const useBioequivalencePermissions = () => {
           [BIOEQUIVALENCE_ROLES.DATA_MANAGER]: "FULL_ANALYTICS",
         },
         [BIOEQUIVALENCE_PAGES.STORAGE_ARCHIVING]: {
-          [BIOEQUIVALENCE_ROLES.SAMPLE_RECEIVER]: "RESTRICTED",
-          [BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST]: "UPDATE",
-          [BIOEQUIVALENCE_ROLES.PHARMACIST]: "UPDATE",
-          [BIOEQUIVALENCE_ROLES.RESEARCHER]: "VIEW",
+          // Matrix: Sample Receivers (No), Chemical Analysts (No), Pharmacists (No), Researchers (No), Lab Supervisors (Approve), Study Directors (Approve), QA Officers (No), Data Managers (No)
+          // Most roles excluded per matrix (No)
           [BIOEQUIVALENCE_ROLES.LAB_SUPERVISOR]: "APPROVE",
           [BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR]: "APPROVE",
-          [BIOEQUIVALENCE_ROLES.QA_OFFICER]: "RESTRICTED",
-          [BIOEQUIVALENCE_ROLES.DATA_MANAGER]: "VIEW",
+          // All other roles excluded per matrix
         },
       };
 
@@ -153,9 +213,11 @@ export const useBioequivalencePermissions = () => {
         "RESTRICTED",
         "VIEW",
         "LIMITED",
+        "REVIEW",
         "PROJECT_SPECIFIC",
         "REGISTER",
         "UPDATE",
+        "VALIDATE",
         "APPROVE",
         "FULL_ANALYTICS",
         "FULL",
@@ -183,7 +245,7 @@ export const useBioequivalencePermissions = () => {
     [
       BIOEQUIVALENCE_PAGES,
       BIOEQUIVALENCE_ROLES,
-      hasRoleForCurrentLabUnit,
+      hasBioequivalenceLabUnitRoleStrict,
       userSessionDetails,
     ],
   );
@@ -216,12 +278,12 @@ export const useBioequivalencePermissions = () => {
 
   /**
    * Check if a permission level allows approving operations
-   * Allows: APPROVE, FULL
+   * Allows: APPROVE, FULL, FULL_ANALYTICS
    * @param {string|null} permissionLevel
    * @returns {boolean}
    */
   const canApproveData = useCallback((permissionLevel) => {
-    return permissionLevel && ["APPROVE", "FULL"].includes(permissionLevel);
+    return permissionLevel && ["APPROVE", "FULL", "FULL_ANALYTICS"].includes(permissionLevel);
   }, []);
 
   /**
@@ -246,25 +308,49 @@ export const useBioequivalencePermissions = () => {
 
   /**
    * Check if a permission level allows analytics/reporting operations
-   * Allows: FULL_ANALYTICS, FULL
+   * Allows: FULL_ANALYTICS, FULL, PROJECT_SPECIFIC
    * @param {string|null} permissionLevel
    * @returns {boolean}
    */
   const canAnalytics = useCallback((permissionLevel) => {
     return (
-      permissionLevel && ["FULL_ANALYTICS", "FULL"].includes(permissionLevel)
+      permissionLevel && ["FULL_ANALYTICS", "FULL", "PROJECT_SPECIFIC"].includes(permissionLevel)
     );
   }, []);
 
   /**
    * Check if a permission level allows limited modifications
-   * Allows: LIMITED, UPDATE, FULL
+   * Allows: LIMITED, UPDATE, FULL, PROJECT_SPECIFIC, APPROVE
    * @param {string|null} permissionLevel
    * @returns {boolean}
    */
   const canModify = useCallback((permissionLevel) => {
     return (
-      permissionLevel && ["LIMITED", "UPDATE", "FULL"].includes(permissionLevel)
+      permissionLevel && ["LIMITED", "UPDATE", "FULL", "PROJECT_SPECIFIC", "APPROVE"].includes(permissionLevel)
+    );
+  }, []);
+
+  /**
+   * Check if a permission level allows validation operations
+   * Allows: VALIDATE, APPROVE, FULL
+   * @param {string|null} permissionLevel
+   * @returns {boolean}
+   */
+  const canValidate = useCallback((permissionLevel) => {
+    return (
+      permissionLevel && ["VALIDATE", "APPROVE", "FULL"].includes(permissionLevel)
+    );
+  }, []);
+
+  /**
+   * Check if a permission level allows review operations
+   * Allows: REVIEW, VALIDATE, APPROVE, FULL
+   * @param {string|null} permissionLevel
+   * @returns {boolean}
+   */
+  const canReview = useCallback((permissionLevel) => {
+    return (
+      permissionLevel && ["REVIEW", "VALIDATE", "APPROVE", "FULL"].includes(permissionLevel)
     );
   }, []);
 
@@ -275,9 +361,9 @@ export const useBioequivalencePermissions = () => {
    */
   const hasBioequivalenceRole = useCallback(
     (role) => {
-      return hasRoleForCurrentLabUnit([role]);
+      return hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, role);
     },
-    [hasRoleForCurrentLabUnit],
+    [hasBioequivalenceLabUnitRoleStrict],
   );
 
   /**
@@ -302,10 +388,140 @@ export const useBioequivalencePermissions = () => {
   const getBioequivalenceRole = useCallback(() => {
     return (
       Object.values(BIOEQUIVALENCE_ROLES).find((role) =>
-        hasRoleForCurrentLabUnit([role]),
+        hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, role),
       ) || null
     );
-  }, [BIOEQUIVALENCE_ROLES, hasRoleForCurrentLabUnit]);
+  }, [BIOEQUIVALENCE_ROLES, hasBioequivalenceLabUnitRoleStrict]);
+
+  /**
+   * Bioequivalence-specific role checks based on bioequivalence lab unit roles
+   * These use strict checking that does NOT bypass for Global Admins
+   */
+  const isBioequivalenceSampleReceiver = useCallback(
+    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.SAMPLE_RECEIVER),
+    [hasBioequivalenceLabUnitRoleStrict],
+  );
+
+  const isBioequivalenceChemicalAnalyst = useCallback(
+    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST),
+    [hasBioequivalenceLabUnitRoleStrict],
+  );
+
+  const isBioequivalencePharmacist = useCallback(
+    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.PHARMACIST),
+    [hasBioequivalenceLabUnitRoleStrict],
+  );
+
+  const isBioequivalenceResearcher = useCallback(
+    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.RESEARCHER),
+    [hasBioequivalenceLabUnitRoleStrict],
+  );
+
+  const isBioequivalenceLabSupervisor = useCallback(
+    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.LAB_SUPERVISOR),
+    [hasBioequivalenceLabUnitRoleStrict],
+  );
+
+  const isBioequivalenceStudyDirector = useCallback(
+    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR),
+    [hasBioequivalenceLabUnitRoleStrict],
+  );
+
+  const isBioequivalenceQAOfficer = useCallback(
+    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.QA_OFFICER),
+    [hasBioequivalenceLabUnitRoleStrict],
+  );
+
+  const isBioequivalenceDataManager = useCallback(
+    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.DATA_MANAGER),
+    [hasBioequivalenceLabUnitRoleStrict],
+  );
+
+  /**
+   * Helper function to check if user has any of the specified bioequivalence lab unit roles
+   * Uses strict checking that does NOT bypass for Global Admins
+   */
+  const hasAnyBioequivalenceLabUnitRole = useCallback(
+    (roles) => {
+      return roles.some((role) => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, role));
+    },
+    [hasBioequivalenceLabUnitRoleStrict],
+  );
+
+  /**
+   * Page-specific access checks per bioequivalence workflow stages
+   * Based on test.pdf Section 11 permission matrix
+   */
+  const canAccessSampleReception = useCallback(() => {
+    // Matrix: Sample Receivers (Yes), Chemical Analysts (Update), Pharmacists (Update), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (No)
+    const allowedRoles = [
+      BIOEQUIVALENCE_ROLES.SAMPLE_RECEIVER,
+      BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST,
+      BIOEQUIVALENCE_ROLES.PHARMACIST,
+      BIOEQUIVALENCE_ROLES.RESEARCHER,
+      BIOEQUIVALENCE_ROLES.LAB_SUPERVISOR,
+      BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR,
+      BIOEQUIVALENCE_ROLES.QA_OFFICER,
+      // Data Manager excluded per matrix (No)
+    ];
+    return hasAnyBioequivalenceRole(allowedRoles);
+  }, [hasAnyBioequivalenceRole, BIOEQUIVALENCE_ROLES]);
+
+  const canAccessTestAssignment = useCallback(() => {
+    // Matrix: Sample Receivers (No), Chemical Analysts (View), Pharmacists (Full), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (No)
+    const allowedRoles = [
+      // Sample Receiver excluded per matrix (No)
+      BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST,
+      BIOEQUIVALENCE_ROLES.PHARMACIST,
+      BIOEQUIVALENCE_ROLES.RESEARCHER,
+      BIOEQUIVALENCE_ROLES.LAB_SUPERVISOR,
+      BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR,
+      BIOEQUIVALENCE_ROLES.QA_OFFICER,
+      // Data Manager excluded per matrix (No)
+    ];
+    return hasAnyBioequivalenceRole(allowedRoles);
+  }, [hasAnyBioequivalenceRole, BIOEQUIVALENCE_ROLES]);
+
+  const canAccessAnalyticalExecution = useCallback(() => {
+    // Matrix: Sample Receivers (No), Chemical Analysts (Full), Pharmacists (Full), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (No)
+    const allowedRoles = [
+      // Sample Receiver excluded per matrix (No)
+      BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST,
+      BIOEQUIVALENCE_ROLES.PHARMACIST,
+      BIOEQUIVALENCE_ROLES.RESEARCHER,
+      BIOEQUIVALENCE_ROLES.LAB_SUPERVISOR,
+      BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR,
+      BIOEQUIVALENCE_ROLES.QA_OFFICER,
+      // Data Manager excluded per matrix (No)
+    ];
+    return hasAnyBioequivalenceRole(allowedRoles);
+  }, [hasAnyBioequivalenceRole, BIOEQUIVALENCE_ROLES]);
+
+  const canAccessReporting = useCallback(() => {
+    // Matrix: Sample Receivers (No), Chemical Analysts (Limited), Pharmacists (Full), Researchers (Project-specific), Lab Supervisors (Full), Study Directors (Full), QA Officers (Full), Data Managers (Full Analytics)
+    const allowedRoles = [
+      // Sample Receiver excluded per matrix (No)
+      BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST,
+      BIOEQUIVALENCE_ROLES.PHARMACIST,
+      BIOEQUIVALENCE_ROLES.RESEARCHER,
+      BIOEQUIVALENCE_ROLES.LAB_SUPERVISOR,
+      BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR,
+      BIOEQUIVALENCE_ROLES.QA_OFFICER,
+      BIOEQUIVALENCE_ROLES.DATA_MANAGER,
+    ];
+    return hasAnyBioequivalenceRole(allowedRoles);
+  }, [hasAnyBioequivalenceRole, BIOEQUIVALENCE_ROLES]);
+
+  const canAccessStorageArchiving = useCallback(() => {
+    // Matrix: Sample Receivers (No), Chemical Analysts (No), Pharmacists (No), Researchers (No), Lab Supervisors (Approve), Study Directors (Approve), QA Officers (No), Data Managers (No)
+    const allowedRoles = [
+      // Only Lab Supervisors and Study Directors have access
+      BIOEQUIVALENCE_ROLES.LAB_SUPERVISOR,
+      BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR,
+      // All other roles excluded per matrix (No)
+    ];
+    return hasAnyBioequivalenceRole(allowedRoles);
+  }, [hasAnyBioequivalenceRole, BIOEQUIVALENCE_ROLES]);
 
   return {
     BIOEQUIVALENCE_ROLES,
@@ -319,9 +535,29 @@ export const useBioequivalencePermissions = () => {
     isReadOnly,
     canAnalytics,
     canModify,
+    canValidate,
+    canReview,
     hasBioequivalenceRole,
     hasAnyBioequivalenceRole,
     getBioequivalenceRole,
+
+    // Bioequivalence-specific role checks
+    isBioequivalenceSampleReceiver,
+    isBioequivalenceChemicalAnalyst,
+    isBioequivalencePharmacist,
+    isBioequivalenceResearcher,
+    isBioequivalenceLabSupervisor,
+    isBioequivalenceStudyDirector,
+    isBioequivalenceQAOfficer,
+    isBioequivalenceDataManager,
+    hasAnyBioequivalenceLabUnitRole,
+
+    // Page-specific access checks
+    canAccessSampleReception,
+    canAccessTestAssignment,
+    canAccessAnalyticalExecution,
+    canAccessReporting,
+    canAccessStorageArchiving,
   };
 };
 

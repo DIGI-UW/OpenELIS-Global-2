@@ -36,7 +36,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Sample Receiver'
+                AND role = 'Bioanalytical Sample Receiver'
             </sqlCheck>
         </preConditions>
         <comment>Sample Receiver can register/import samples on PAGE 1</comment>
@@ -44,7 +44,7 @@
             <column name="permission_level" value="REGISTER"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Sample Receiver'
+                AND role = 'Bioanalytical Sample Receiver'
             </where>
         </update>
     </changeSet>
@@ -55,7 +55,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Chemical Analyst'
+                AND role = 'Bioanalytical Chemical Analyst'
             </sqlCheck>
         </preConditions>
         <comment>Chemical Analyst can update sample fields on PAGE 1</comment>
@@ -63,7 +63,7 @@
             <column name="permission_level" value="UPDATE"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Chemical Analyst'
+                AND role = 'Bioanalytical Chemical Analyst'
             </where>
         </update>
     </changeSet>
@@ -74,7 +74,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Pharmacist'
+                AND role = 'Bioanalytical Pharmacist'
             </sqlCheck>
         </preConditions>
         <comment>Pharmacist can update sample fields on PAGE 1</comment>
@@ -82,7 +82,7 @@
             <column name="permission_level" value="UPDATE"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Pharmacist'
+                AND role = 'Bioanalytical Pharmacist'
             </where>
         </update>
     </changeSet>
@@ -93,7 +93,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Lab Supervisor'
+                AND role = 'Bioanalytical Lab Supervisor'
             </sqlCheck>
         </preConditions>
         <comment>Lab Supervisor has full control on PAGE 1</comment>
@@ -101,7 +101,7 @@
             <column name="permission_level" value="FULL"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Lab Supervisor'
+                AND role = 'Bioanalytical Lab Supervisor'
             </where>
         </update>
     </changeSet>
@@ -112,7 +112,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Study Director'
+                AND role = 'Bioanalytical Study Director'
             </sqlCheck>
         </preConditions>
         <comment>Study Director has read-only access on PAGE 1</comment>
@@ -120,7 +120,7 @@
             <column name="permission_level" value="VIEW"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Study Director'
+                AND role = 'Bioanalytical Study Director'
             </where>
         </update>
     </changeSet>
@@ -131,7 +131,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'QA Officer'
+                AND role = 'Bioanalytical QA Officer'
             </sqlCheck>
         </preConditions>
         <comment>QA Officer has read-only access on PAGE 1</comment>
@@ -139,7 +139,7 @@
             <column name="permission_level" value="VIEW"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'QA Officer'
+                AND role = 'Bioanalytical QA Officer'
             </where>
         </update>
     </changeSet>
@@ -150,7 +150,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Researcher'
+                AND role = 'Bioanalytical Researcher'
             </sqlCheck>
         </preConditions>
         <comment>Researcher has read-only access on PAGE 1</comment>
@@ -158,7 +158,7 @@
             <column name="permission_level" value="VIEW"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Researcher'
+                AND role = 'Bioanalytical Researcher'
             </where>
         </update>
     </changeSet>
@@ -173,7 +173,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Chemical Analyst'
+                AND role = 'Bioanalytical Chemical Analyst'
             </sqlCheck>
         </preConditions>
         <comment>Chemical Analyst has read-only access on PAGE 2</comment>
@@ -181,7 +181,7 @@
             <column name="permission_level" value="VIEW"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Chemical Analyst'
+                AND role = 'Bioanalytical Chemical Analyst'
             </where>
         </update>
     </changeSet>
@@ -192,7 +192,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Pharmacist'
+                AND role = 'Bioanalytical Pharmacist'
             </sqlCheck>
         </preConditions>
         <comment>Pharmacist has full control on PAGE 2</comment>
@@ -200,7 +200,7 @@
             <column name="permission_level" value="FULL"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Pharmacist'
+                AND role = 'Bioanalytical Pharmacist'
             </where>
         </update>
     </changeSet>
@@ -211,7 +211,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Lab Supervisor'
+                AND role = 'Bioanalytical Lab Supervisor'
             </sqlCheck>
         </preConditions>
         <comment>Lab Supervisor has full control on PAGE 2</comment>
@@ -219,7 +219,7 @@
             <column name="permission_level" value="FULL"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Lab Supervisor'
+                AND role = 'Bioanalytical Lab Supervisor'
             </where>
         </update>
     </changeSet>
@@ -230,7 +230,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Study Director'
+                AND role = 'Bioanalytical Study Director'
             </sqlCheck>
         </preConditions>
         <comment>Study Director has read-only access on PAGE 2</comment>
@@ -238,7 +238,7 @@
             <column name="permission_level" value="VIEW"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Study Director'
+                AND role = 'Bioanalytical Study Director'
             </where>
         </update>
     </changeSet>
@@ -249,7 +249,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'QA Officer'
+                AND role = 'Bioanalytical QA Officer'
             </sqlCheck>
         </preConditions>
         <comment>QA Officer has read-only access on PAGE 2</comment>
@@ -257,7 +257,7 @@
             <column name="permission_level" value="VIEW"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'QA Officer'
+                AND role = 'Bioanalytical QA Officer'
             </where>
         </update>
     </changeSet>
@@ -268,7 +268,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Researcher'
+                AND role = 'Bioanalytical Researcher'
             </sqlCheck>
         </preConditions>
         <comment>Researcher has read-only access on PAGE 2</comment>
@@ -276,7 +276,7 @@
             <column name="permission_level" value="VIEW"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Researcher'
+                AND role = 'Bioanalytical Researcher'
             </where>
         </update>
     </changeSet>
@@ -291,7 +291,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Chemical Analyst'
+                AND role = 'Bioanalytical Chemical Analyst'
             </sqlCheck>
         </preConditions>
         <comment>Chemical Analyst has full control on PAGE 3</comment>
@@ -299,7 +299,7 @@
             <column name="permission_level" value="FULL"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Chemical Analyst'
+                AND role = 'Bioanalytical Chemical Analyst'
             </where>
         </update>
     </changeSet>
@@ -310,7 +310,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Pharmacist'
+                AND role = 'Bioanalytical Pharmacist'
             </sqlCheck>
         </preConditions>
         <comment>Pharmacist has full control on PAGE 3</comment>
@@ -318,7 +318,7 @@
             <column name="permission_level" value="FULL"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Pharmacist'
+                AND role = 'Bioanalytical Pharmacist'
             </where>
         </update>
     </changeSet>
@@ -329,7 +329,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Lab Supervisor'
+                AND role = 'Bioanalytical Lab Supervisor'
             </sqlCheck>
         </preConditions>
         <comment>Lab Supervisor has full control on PAGE 3</comment>
@@ -337,7 +337,7 @@
             <column name="permission_level" value="FULL"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Lab Supervisor'
+                AND role = 'Bioanalytical Lab Supervisor'
             </where>
         </update>
     </changeSet>
@@ -348,7 +348,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Study Director'
+                AND role = 'Bioanalytical Study Director'
             </sqlCheck>
         </preConditions>
         <comment>Study Director has read-only access on PAGE 3</comment>
@@ -356,7 +356,7 @@
             <column name="permission_level" value="VIEW"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Study Director'
+                AND role = 'Bioanalytical Study Director'
             </where>
         </update>
     </changeSet>
@@ -367,7 +367,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'QA Officer'
+                AND role = 'Bioanalytical QA Officer'
             </sqlCheck>
         </preConditions>
         <comment>QA Officer has read-only access on PAGE 3</comment>
@@ -375,7 +375,7 @@
             <column name="permission_level" value="VIEW"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'QA Officer'
+                AND role = 'Bioanalytical QA Officer'
             </where>
         </update>
     </changeSet>
@@ -386,7 +386,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Researcher'
+                AND role = 'Bioanalytical Researcher'
             </sqlCheck>
         </preConditions>
         <comment>Researcher has read-only access on PAGE 3</comment>
@@ -394,7 +394,7 @@
             <column name="permission_level" value="VIEW"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Researcher'
+                AND role = 'Bioanalytical Researcher'
             </where>
         </update>
     </changeSet>
@@ -409,7 +409,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Chemical Analyst'
+                AND role = 'Bioanalytical Chemical Analyst'
             </sqlCheck>
         </preConditions>
         <comment>Chemical Analyst has limited access on PAGE 4 (view reports, no release)</comment>
@@ -417,7 +417,7 @@
             <column name="permission_level" value="LIMITED"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Chemical Analyst'
+                AND role = 'Bioanalytical Chemical Analyst'
             </where>
         </update>
     </changeSet>
@@ -428,7 +428,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Pharmacist'
+                AND role = 'Bioanalytical Pharmacist'
             </sqlCheck>
         </preConditions>
         <comment>Pharmacist has full control on PAGE 4</comment>
@@ -436,7 +436,7 @@
             <column name="permission_level" value="FULL"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Pharmacist'
+                AND role = 'Bioanalytical Pharmacist'
             </where>
         </update>
     </changeSet>
@@ -447,7 +447,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Lab Supervisor'
+                AND role = 'Bioanalytical Lab Supervisor'
             </sqlCheck>
         </preConditions>
         <comment>Lab Supervisor has full control on PAGE 4</comment>
@@ -455,7 +455,7 @@
             <column name="permission_level" value="FULL"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Lab Supervisor'
+                AND role = 'Bioanalytical Lab Supervisor'
             </where>
         </update>
     </changeSet>
@@ -466,7 +466,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Study Director'
+                AND role = 'Bioanalytical Study Director'
             </sqlCheck>
         </preConditions>
         <comment>Study Director has full control on PAGE 4</comment>
@@ -474,7 +474,7 @@
             <column name="permission_level" value="FULL"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Study Director'
+                AND role = 'Bioanalytical Study Director'
             </where>
         </update>
     </changeSet>
@@ -485,7 +485,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'QA Officer'
+                AND role = 'Bioanalytical QA Officer'
             </sqlCheck>
         </preConditions>
         <comment>QA Officer has full control on PAGE 4</comment>
@@ -493,7 +493,7 @@
             <column name="permission_level" value="FULL"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'QA Officer'
+                AND role = 'Bioanalytical QA Officer'
             </where>
         </update>
     </changeSet>
@@ -504,7 +504,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Researcher'
+                AND role = 'Bioanalytical Researcher'
             </sqlCheck>
         </preConditions>
         <comment>Researcher has project-specific access on PAGE 4</comment>
@@ -512,7 +512,7 @@
             <column name="permission_level" value="PROJECT_SPECIFIC"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Researcher'
+                AND role = 'Bioanalytical Researcher'
             </where>
         </update>
     </changeSet>
@@ -523,7 +523,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Data Manager'
+                AND role = 'Bioanalytical Data Manager'
             </sqlCheck>
         </preConditions>
         <comment>Data Manager has full analytics access on PAGE 4</comment>
@@ -531,7 +531,7 @@
             <column name="permission_level" value="FULL_ANALYTICS"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Data Manager'
+                AND role = 'Bioanalytical Data Manager'
             </where>
         </update>
     </changeSet>
@@ -546,7 +546,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Sample Receiver'
+                AND role = 'Bioanalytical Sample Receiver'
             </sqlCheck>
         </preConditions>
         <comment>Sample Receiver has restricted access on PAGE 5</comment>
@@ -554,7 +554,7 @@
             <column name="permission_level" value="RESTRICTED"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Sample Receiver'
+                AND role = 'Bioanalytical Sample Receiver'
             </where>
         </update>
     </changeSet>
@@ -565,7 +565,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Lab Supervisor'
+                AND role = 'Bioanalytical Lab Supervisor'
             </sqlCheck>
         </preConditions>
         <comment>Lab Supervisor can approve archiving on PAGE 5</comment>
@@ -573,7 +573,7 @@
             <column name="permission_level" value="APPROVE"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Lab Supervisor'
+                AND role = 'Bioanalytical Lab Supervisor'
             </where>
         </update>
     </changeSet>
@@ -584,7 +584,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Study Director'
+                AND role = 'Bioanalytical Study Director'
             </sqlCheck>
         </preConditions>
         <comment>Study Director can approve archiving on PAGE 5</comment>
@@ -592,7 +592,7 @@
             <column name="permission_level" value="APPROVE"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'Study Director'
+                AND role = 'Bioanalytical Study Director'
             </where>
         </update>
     </changeSet>
@@ -603,7 +603,7 @@
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
                 WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'QA Officer'
+                AND role = 'Bioanalytical QA Officer'
             </sqlCheck>
         </preConditions>
         <comment>QA Officer has restricted access on PAGE 5</comment>
@@ -611,7 +611,7 @@
             <column name="permission_level" value="RESTRICTED"/>
             <where>
                 notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
-                AND role = 'QA Officer'
+                AND role = 'Bioanalytical QA Officer'
             </where>
         </update>
     </changeSet>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- TEST SECTION COLUMN LENGTH INCREASES -->
+    <!-- Increases character limits for test_section columns -->
+    <!-- Required for specialized research lab names and descriptions -->
+    <!-- ======================================================== -->
+
+    <changeSet id="increase-test-section-name-length" author="openelis-research-labs">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="test_section" schemaName="clinlims"/>
+            <columnExists tableName="test_section" columnName="name" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Increase test_section.name column length from 20 to 60 characters to accommodate research lab names</comment>
+        <modifyDataType tableName="test_section" columnName="name" newDataType="CHARACTER VARYING(60)" schemaName="clinlims"/>
+    </changeSet>
+
+    <changeSet id="increase-test-section-description-length" author="openelis-research-labs">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="test_section" schemaName="clinlims"/>
+            <columnExists tableName="test_section" columnName="description" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Increase test_section.description column length to 255 characters to accommodate research lab descriptions</comment>
+        <modifyDataType tableName="test_section" columnName="description" newDataType="CHARACTER VARYING(255)" schemaName="clinlims"/>
+    </changeSet>
+
+</databaseChangeLog>

@@ -65,22 +65,29 @@ function TraditionalMedicineTestingPage({
   const { hasAnyRole } = usePermissions();
 
   // TMMRD permissions per SRS Section 11
-  const { getPagePermissionLevel, canSaveData, canAccessStage5to6 } =
-    useTMMRDPermissions();
+  const {
+    getPagePermissionLevel,
+    canSaveData,
+    canPerformWork,
+    hasFullControl,
+    isReadOnly,
+    canAccessProductDevelopment,
+    TMMRD_ROLES,
+    TMMRD_PAGES,
+  } = useTMMRDPermissions();
 
-  // STAGE 5-6 allowed roles per TMMRD SRS Section 11 - Researchers lead analytics
-  const allowedRoles = [
-    "TMMRD Researcher",
-    "TMMRD Pharmacognosist",
-    "TMMRD Lab Manager",
-    "TMMRD Principal Investigator",
-  ];
-
-  const canAccessPage = canAccessStage5to6();
+  // Page access check
+  const canAccessPage = canAccessProductDevelopment();
 
   // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel("Testing & Analytics");
-  const canEditData = canSaveData(pagePermissionLevel);
+  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.PRODUCT_DEVELOPMENT);
+
+  // Function-level permissions per permission matrix
+  const canAssignTests = canPerformWork(pagePermissionLevel); // Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (Yes), Lab Manager (Full), Principal Investigator (View)
+  const canRecordResults = canPerformWork(pagePermissionLevel); // Same as test assignment
+  const canMarkComplete = canPerformWork(pagePermissionLevel); // Same permissions for completion
+  const canModifyData = canSaveData(pagePermissionLevel);
+  const isViewOnly = isReadOnly(pagePermissionLevel);
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
@@ -956,9 +963,15 @@ function TraditionalMedicineTestingPage({
   if (!canAccessPage) {
     return (
       <AccessDeniedMessage
-        page="Testing & Analytics"
-        reason="This page requires specific Traditional Medicine testing roles to access."
-        requiredRoles={allowedRoles}
+        page="Product Development & Testing"
+        reason="This page requires specific Traditional Medicine product development roles to access."
+        requiredRoles={[
+          TMMRD_ROLES.LAB_TECHNICIAN,
+          TMMRD_ROLES.RESEARCHER,
+          TMMRD_ROLES.PHARMACOGNOSIST,
+          TMMRD_ROLES.LAB_MANAGER,
+          TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
+        ]}
       />
     );
   }
@@ -1057,7 +1070,25 @@ function TraditionalMedicineTestingPage({
           size="sm"
           renderIcon={Edit}
           onClick={openTestAssignmentModal}
-          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          disabled={
+            selectedSampleIds.length === 0 ||
+            !hasRealPageId ||
+            !canAssignTests ||
+            isViewOnly
+          }
+          title={
+            !canAssignTests
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.testing.insufficientPermissions.assign",
+                  defaultMessage: "Insufficient permissions to assign tests. Only Lab Technicians, Researchers, Pharmacognosists, and Lab Manager (with appropriate permissions) can assign tests.",
+                })
+              : isViewOnly
+                ? intl.formatMessage({
+                    id: "notebook.tradmed.testing.viewOnlyAccess",
+                    defaultMessage: "You have view-only access to this page.",
+                  })
+                : undefined
+          }
         >
           <FormattedMessage
             id="notebook.page.tradmed.testing.assignTests"
@@ -1085,7 +1116,24 @@ function TraditionalMedicineTestingPage({
           renderIcon={CheckmarkFilled}
           onClick={handleMarkComplete}
           disabled={
-            selectedSampleIds.length === 0 || isCompleting || !hasRealPageId
+            selectedSampleIds.length === 0 ||
+            isCompleting ||
+            !hasRealPageId ||
+            !canMarkComplete ||
+            isViewOnly
+          }
+          title={
+            !canMarkComplete
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.testing.insufficientPermissions.complete",
+                  defaultMessage: "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
+                })
+              : isViewOnly
+                ? intl.formatMessage({
+                    id: "notebook.tradmed.testing.viewOnlyAccess",
+                    defaultMessage: "You have view-only access to this page.",
+                  })
+                : undefined
           }
         >
           <FormattedMessage
@@ -1325,7 +1373,9 @@ function TraditionalMedicineTestingPage({
           id: "label.cancel",
           defaultMessage: "Cancel",
         })}
-        primaryButtonDisabled={isApplying || !testResultsData.result}
+        primaryButtonDisabled={
+          isApplying || !testResultsData.result || !canRecordResults || isViewOnly
+        }
         size="lg"
       >
         {isApplying && <Loading withOverlay={false} small />}
@@ -1556,6 +1606,8 @@ function TraditionalMedicineTestingPage({
         primaryButtonDisabled={
           isApplying ||
           !assignmentData.specificTest ||
+          !canAssignTests ||
+          isViewOnly ||
           (assignmentData.category &&
             getTMMRDMethodologies(assignmentData.category).length > 0 &&
             !assignmentData.methodology)

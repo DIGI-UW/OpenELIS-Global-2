@@ -80,12 +80,17 @@ function TraditionalMedicineAuthenticationStoragePage({
   const componentMounted = useRef(false);
   const { hasAnyRole } = usePermissions();
 
-  // TMMRD permissions per SRS Section 11
+  // TMMRD permissions per matrix requirements
   const {
     getPagePermissionLevel,
     canSaveData,
     canApproveData,
     canAccessStage2,
+    canPerformWork,
+    canRegisterData,
+    isReadOnly,
+    TMMRD_ROLES,
+    TMMRD_PAGES,
   } = useTMMRDPermissions();
 
   // All state must be declared before any conditional returns (React Hooks Rule)
@@ -122,21 +127,23 @@ function TraditionalMedicineAuthenticationStoragePage({
   const [boxLayout, setBoxLayout] = useState({});
   const [wellAssignments, setWellAssignments] = useState({});
 
-  // STAGE 2 allowed roles per TMMRD SRS Section 11 - Pharmacognosists lead authentication
+  // STAGE 2 allowed roles per TMMRD matrix
   const allowedRoles = [
-    "TMMRD Pharmacognosist",
-    "TMMRD Lab Manager",
-    "TMMRD Principal Investigator",
+    TMMRD_ROLES.PHARMACOGNOSIST,
+    TMMRD_ROLES.LAB_MANAGER,
+    TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
   ];
 
   const canAccessPage = canAccessStage2();
 
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(
-    "Authentication & Storage",
-  );
-  const canEditData = canSaveData(pagePermissionLevel);
-  const canApproveAuth = canApproveData(pagePermissionLevel);
+  // Get user's permission level for this specific page
+  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.AUTHENTICATION_STORAGE);
+
+  // Function-level permissions based on matrix
+  const canAssignStorage = canPerformWork(pagePermissionLevel);
+  const canModifyData = canSaveData(pagePermissionLevel);
+  const canMarkComplete = canPerformWork(pagePermissionLevel);
+  const isViewOnly = isReadOnly(pagePermissionLevel);
 
   // TMMRD-specific storage conditions using backend-compatible enum values
   const storageConditionOptions = [
@@ -1277,15 +1284,39 @@ function TraditionalMedicineAuthenticationStoragePage({
   if (!canAccessPage) {
     return (
       <AccessDeniedMessage
-        page="Authentication & Storage"
-        reason="This page requires specific Traditional Medicine authentication roles to access."
+        page="Traditional Medicine Authentication & Storage"
+        reason={intl.formatMessage({
+          id: "notebook.tradmed.storage.accessDenied",
+          defaultMessage:
+            "Access to the Traditional Medicine Authentication & Storage page requires specialized permissions. This page is restricted to roles responsible for botanical authentication verification and storage management.",
+        })}
         requiredRoles={allowedRoles}
+        additionalInfo={intl.formatMessage({
+          id: "notebook.tradmed.storage.accessRequirements",
+          defaultMessage:
+            "Required permissions: Authentication verification, Storage assignment, and Herbarium cataloging capabilities.",
+        })}
       />
     );
   }
 
   return (
     <div className="tradmed-storage-page">
+      {/* View-only banner */}
+      {isViewOnly && (
+        <div className="view-only-banner">
+          <div className="view-only-content">
+            <WarningAltFilled size={16} />
+            <span>
+              <FormattedMessage
+                id="notebook.tradmed.storage.viewOnlyMode"
+                defaultMessage="View-only mode: Your role permissions allow viewing but not modifying authentication and storage data."
+              />
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="page-section-header">
         <h4>
@@ -1339,7 +1370,26 @@ function TraditionalMedicineAuthenticationStoragePage({
           size="sm"
           renderIcon={CloudUpload}
           onClick={openStorageModal}
-          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          disabled={
+            selectedSampleIds.length === 0 ||
+            !hasRealPageId ||
+            !canAssignStorage ||
+            isViewOnly
+          }
+          title={
+            !canAssignStorage || isViewOnly
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.tooltip.assignStoragePermission",
+                  defaultMessage:
+                    "Requires TMMRD Pharmacognosist, Lab Manager, or Principal Investigator role to assign storage",
+                })
+              : selectedSampleIds.length === 0
+                ? intl.formatMessage({
+                    id: "notebook.tradmed.tooltip.selectSamples",
+                    defaultMessage: "Select samples to assign storage",
+                  })
+                : ""
+          }
         >
           <FormattedMessage
             id="notebook.page.tradmed.storage.assignStorage"
@@ -1354,7 +1404,21 @@ function TraditionalMedicineAuthenticationStoragePage({
             size="sm"
             renderIcon={CheckmarkFilled}
             onClick={handleMarkComplete}
-            disabled={isCompleting || !pageData?.id}
+            disabled={
+              isCompleting ||
+              !pageData?.id ||
+              !canMarkComplete ||
+              isViewOnly
+            }
+            title={
+              !canMarkComplete || isViewOnly
+                ? intl.formatMessage({
+                    id: "notebook.tradmed.tooltip.markCompletePermission",
+                    defaultMessage:
+                      "Requires TMMRD Pharmacognosist, Lab Manager, or Principal Investigator role to mark samples complete",
+                  })
+                : ""
+            }
           >
             <FormattedMessage
               id="notebook.tradmed.storage.markComplete"
@@ -1413,7 +1477,7 @@ function TraditionalMedicineAuthenticationStoragePage({
               samples={authenticatedInProgressSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={true}
+              showSelection={!isViewOnly}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

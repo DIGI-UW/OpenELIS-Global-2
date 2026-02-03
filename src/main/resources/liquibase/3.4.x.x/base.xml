@@ -159,4 +159,46 @@
     <!-- TB Media Preparation: Add notebook_entry_id for entry-scoped filtering -->
     <include file="liquibase/3.4.x.x/071-tb-media-preparation-notebook-entry.xml"/>
 
+    <!-- Increase test_section.name column length to accommodate research lab names -->
+    <include file="liquibase/3.4.x.x/071-5-increase-test-section-name-length.xml"/>
+
+    <!-- Bioanalytical Lab Unit Configuration -->
+    <!-- Creates Bioanalytical lab unit and assigns bioanalytical roles following GBD pattern -->
+    <include file="liquibase/3.4.x.x/072-create-bioanalytical-lab-unit.xml"/>
+
+    <!-- Add bioanalytical roles to AllLabUnits so admin users get automatic access -->
+    <include file="liquibase/3.4.x.x/073-add-bioanalytical-roles-to-alllabunits.xml"/>
+
+    <include file="liquibase/3.4.x.x/073-increase-system-role-name-length.xml"/>
+
+    <!-- Bioequivalence Lab Unit Configuration -->
+    <!-- Creates bioequivalence system roles with prefixes -->
+    <include file="liquibase/3.4.x.x/074-bioequivalence-system-roles.xml"/>
+
+    <!-- Creates Bioequivalence lab unit and assigns bioequivalence roles following GBD pattern -->
+    <include file="liquibase/3.4.x.x/075-create-bioequivalence-lab-unit.xml"/>
+
+    <!-- Add bioequivalence roles to AllLabUnits so admin users get automatic access -->
+    <include file="liquibase/3.4.x.x/076-add-bioequivalence-roles-to-alllabunits.xml"/>
+
+    <!-- Bioanalytical Permission Matrix Fix -->
+    <!-- Corrects page role assignments to match test.pdf Section 11 permission matrix exactly -->
+    <include file="liquibase/3.4.x.x/047-bioanalytical-page-roles-corrected.xml"/>
+
+    <!-- Bioequivalence Permission Matrix Fix -->
+    <!-- Corrects page role assignments to match test.pdf Section 11 permission matrix exactly -->
+    <include file="liquibase/3.4.x.x/052-bioequivalence-page-roles-corrected.xml"/>
+
+    <!-- Traditional Medicine Permission Matrix Fix -->
+    <!-- Corrects page role assignments to match permission matrix from Section 11 exactly -->
+    <include file="liquibase/3.4.x.x/021-tradmed-page-roles-corrected.xml"/>
+
+    <!-- GBD Permission Matrix Fix -->
+    <!-- Corrects page role assignments to match permission matrix from Section 11 exactly -->
+    <include file="liquibase/3.4.x.x/055-gbd-page-roles-corrected.xml"/>
+
+    <!-- Storage Code Length Increases -->
+    <!-- Increases storage entity code columns from 10 to 50 characters for hierarchical naming -->
+    <include file="liquibase/3.4.x.x/079-increase-storage-code-lengths.xml"/>
+
 </databaseChangeLog>

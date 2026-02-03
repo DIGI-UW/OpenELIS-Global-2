@@ -33,7 +33,6 @@ import {
   Automatic,
 } from "@carbon/react/icons";
 import useGBDPermissions from "../../../../hooks/useGBDPermissions";
-import { usePermissions } from "../../../../hooks/usePermissions";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -83,9 +82,8 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { getPagePermissionLevel, canSaveData, canAccessSampleStorage } =
+  const { getPagePermissionLevel, canSaveData, canAccessSampleStorage, GBD_PAGES } =
     useGBDPermissions();
-  const { hasAnyRole } = usePermissions();
 
   const allowedRoles = [
     "GBD Lab Technician",
@@ -94,11 +92,9 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
     "GBD Data Manager",
   ];
 
-  const canAccessPage = canAccessSampleStorage() || hasAnyRole(allowedRoles);
+  const canAccessPage = canAccessSampleStorage();
 
-  const pagePermissionLevel = getPagePermissionLevel(
-    "Storage & Environmental Monitoring",
-  );
+  const pagePermissionLevel = getPagePermissionLevel(GBD_PAGES.SAMPLE_STORAGE);
   const canPerformStorage = canSaveData(pagePermissionLevel);
 
   const componentMounted = useRef(false);

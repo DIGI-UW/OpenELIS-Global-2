@@ -30,43 +30,43 @@
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 1)"/>
-            <column name="role" value="Sample Receiver"/>
+            <column name="role" value="Bioequivalence Sample Receiver"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 1)"/>
-            <column name="role" value="Chemical Analyst"/>
+            <column name="role" value="Bioequivalence Chemical Analyst"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 1)"/>
-            <column name="role" value="Pharmacist"/>
+            <column name="role" value="Bioequivalence Pharmacist"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 1)"/>
-            <column name="role" value="Lab Supervisor"/>
+            <column name="role" value="Bioequivalence Lab Supervisor"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 1)"/>
-            <column name="role" value="Study Director"/>
+            <column name="role" value="Bioequivalence Study Director"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 1)"/>
-            <column name="role" value="QA Officer"/>
+            <column name="role" value="Bioequivalence QA Officer"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 1)"/>
-            <column name="role" value="Researcher"/>
+            <column name="role" value="Bioequivalence Researcher"/>
         </insert>
 
         <rollback>
@@ -96,37 +96,37 @@
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 2)"/>
-            <column name="role" value="Chemical Analyst"/>
+            <column name="role" value="Bioequivalence Chemical Analyst"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 2)"/>
-            <column name="role" value="Pharmacist"/>
+            <column name="role" value="Bioequivalence Pharmacist"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 2)"/>
-            <column name="role" value="Lab Supervisor"/>
+            <column name="role" value="Bioequivalence Lab Supervisor"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 2)"/>
-            <column name="role" value="Study Director"/>
+            <column name="role" value="Bioequivalence Study Director"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 2)"/>
-            <column name="role" value="QA Officer"/>
+            <column name="role" value="Bioequivalence QA Officer"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 2)"/>
-            <column name="role" value="Researcher"/>
+            <column name="role" value="Bioequivalence Researcher"/>
         </insert>
 
         <rollback>
@@ -156,37 +156,37 @@
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 3)"/>
-            <column name="role" value="Chemical Analyst"/>
+            <column name="role" value="Bioequivalence Chemical Analyst"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 3)"/>
-            <column name="role" value="Pharmacist"/>
+            <column name="role" value="Bioequivalence Pharmacist"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 3)"/>
-            <column name="role" value="Lab Supervisor"/>
+            <column name="role" value="Bioequivalence Lab Supervisor"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 3)"/>
-            <column name="role" value="Study Director"/>
+            <column name="role" value="Bioequivalence Study Director"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 3)"/>
-            <column name="role" value="QA Officer"/>
+            <column name="role" value="Bioequivalence QA Officer"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 3)"/>
-            <column name="role" value="Researcher"/>
+            <column name="role" value="Bioequivalence Researcher"/>
         </insert>
 
         <rollback>
@@ -216,25 +216,25 @@
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 4)"/>
-            <column name="role" value="Pharmacist"/>
+            <column name="role" value="Bioequivalence Pharmacist"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 4)"/>
-            <column name="role" value="Lab Supervisor"/>
+            <column name="role" value="Bioequivalence Lab Supervisor"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 4)"/>
-            <column name="role" value="Study Director"/>
+            <column name="role" value="Bioequivalence Study Director"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 4)"/>
-            <column name="role" value="QA Officer"/>
+            <column name="role" value="Bioequivalence QA Officer"/>
         </insert>
 
         <rollback>
@@ -264,19 +264,19 @@
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 5)"/>
-            <column name="role" value="Lab Supervisor"/>
+            <column name="role" value="Bioequivalence Lab Supervisor"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 5)"/>
-            <column name="role" value="Study Director"/>
+            <column name="role" value="Bioequivalence Study Director"/>
         </insert>
 
         <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
             <column name="notebook_page_id"
                     valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 5)"/>
-            <column name="role" value="QA Officer"/>
+            <column name="role" value="Bioequivalence QA Officer"/>
         </insert>
 
         <rollback>

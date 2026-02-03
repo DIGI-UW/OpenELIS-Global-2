@@ -66,24 +66,23 @@ export const GBDSequencingPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { getPagePermissionLevel, canSaveData, canAccessSequencing } =
-    useGBDPermissions();
-  const { hasAnyRole } = usePermissions();
+  const {
+    getPagePermissionLevel,
+    canSaveData,
+    canPerformWork,
+    isReadOnly,
+    canAccessSequencing,
+    GBD_ROLES,
+    GBD_PAGES,
+  } = useGBDPermissions();
 
-  // Sequencing allowed roles - per GBD permission mapping
-  const allowedRoles = [
-    "GBD Lab Technician",
-    "GBD Bioinformatician",
-    "GBD Manager",
-    "GBD Principal Investigator",
-  ];
-
-  // Layer 1: Page access check - use both GBD-specific and role-based checking
-  const canAccessPage = canAccessSequencing() || hasAnyRole(allowedRoles);
-
-  // Layer 2: Action permission check - what can user do on this page
-  const pagePermissionLevel = getPagePermissionLevel("Sequencing");
-  const canPerformSequencing = canSaveData(pagePermissionLevel);
+  // Page access check and permissions per matrix
+  // Matrix: Lab Technicians (Yes), Bioinformaticians (View), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
+  const canAccessPage = canAccessSequencing();
+  const pagePermissionLevel = getPagePermissionLevel(GBD_PAGES.SEQUENCING);
+  const canPerformSequencing = canPerformWork(pagePermissionLevel); // Lab Technicians (Yes), Lab Manager (Full)
+  const canModifyData = canSaveData(pagePermissionLevel);
+  const isViewOnly = isReadOnly(pagePermissionLevel); // Bioinformaticians (View), Principal Investigator (View)
 
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
@@ -615,7 +614,12 @@ export const GBDSequencingPage = ({
       <AccessDeniedMessage
         page="Sequencing"
         reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={allowedRoles}
+        requiredRoles={[
+          GBD_ROLES.LAB_TECHNICIAN,
+          GBD_ROLES.BIOINFORMATICIAN,
+          GBD_ROLES.MANAGER,
+          GBD_ROLES.PRINCIPAL_INVESTIGATOR,
+        ]}
       />
     );
   }

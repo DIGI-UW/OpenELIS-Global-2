@@ -47,21 +47,26 @@ function BioanalyticalSampleReceptionPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { hasAnyRole } = usePermissions();
-  const { getPagePermissionLevel, canRegisterData, canSaveData } =
-    useBioanalyticalPermissions();
+  const {
+    getPagePermissionLevel,
+    canRegisterData,
+    canSaveData,
+    canAccessSampleReception,
+    BIOANALYTICAL_ROLES
+  } = useBioanalyticalPermissions();
 
   // PAGE 1 allowed roles per test.pdf Section 11
   const allowedRoles = [
-    "Sample Receiver",
-    "Chemical Analyst",
-    "Pharmacist",
-    "Lab Supervisor",
-    "Study Director",
-    "QA Officer",
-    "Researcher",
+    BIOANALYTICAL_ROLES.SAMPLE_RECEIVER,
+    BIOANALYTICAL_ROLES.CHEMICAL_ANALYST,
+    BIOANALYTICAL_ROLES.PHARMACIST,
+    BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
+    BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
+    BIOANALYTICAL_ROLES.QA_OFFICER,
+    BIOANALYTICAL_ROLES.RESEARCHER,
   ];
 
-  const canAccessPage = hasAnyRole(allowedRoles);
+  const canAccessPage = canAccessSampleReception();
 
   // Get user's action-level permission for this page
   const pagePermissionLevel = getPagePermissionLevel(

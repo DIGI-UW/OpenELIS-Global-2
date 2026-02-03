@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- STORAGE CODE COLUMN LENGTH INCREASES -->
+    <!-- Increases character limits for storage entity code columns -->
+    <!-- Required for hierarchical storage naming schemes -->
+    <!-- ======================================================== -->
+
+    <changeSet id="increase-storage-room-code-length" author="openelis-storage-config">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="storage_room" schemaName="clinlims"/>
+            <columnExists tableName="storage_room" columnName="code" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Increase storage_room.code column length from 10 to 50 characters</comment>
+        <modifyDataType tableName="storage_room" columnName="code" newDataType="CHARACTER VARYING(50)" schemaName="clinlims"/>
+    </changeSet>
+
+    <changeSet id="increase-storage-device-code-length" author="openelis-storage-config">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="storage_device" schemaName="clinlims"/>
+            <columnExists tableName="storage_device" columnName="code" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Increase storage_device.code column length from 10 to 50 characters</comment>
+        <modifyDataType tableName="storage_device" columnName="code" newDataType="CHARACTER VARYING(50)" schemaName="clinlims"/>
+    </changeSet>
+
+    <changeSet id="increase-storage-shelf-code-length" author="openelis-storage-config">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="storage_shelf" schemaName="clinlims"/>
+            <columnExists tableName="storage_shelf" columnName="code" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Increase storage_shelf.code column length from 10 to 50 characters</comment>
+        <modifyDataType tableName="storage_shelf" columnName="code" newDataType="CHARACTER VARYING(50)" schemaName="clinlims"/>
+    </changeSet>
+
+    <changeSet id="increase-storage-rack-code-length" author="openelis-storage-config">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="storage_rack" schemaName="clinlims"/>
+            <columnExists tableName="storage_rack" columnName="code" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Increase storage_rack.code column length from 10 to 50 characters</comment>
+        <modifyDataType tableName="storage_rack" columnName="code" newDataType="CHARACTER VARYING(50)" schemaName="clinlims"/>
+    </changeSet>
+
+    <changeSet id="increase-storage-box-code-length" author="openelis-storage-config">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="storage_box" schemaName="clinlims"/>
+            <columnExists tableName="storage_box" columnName="code" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Increase storage_box.code column length from 10 to 50 characters</comment>
+        <modifyDataType tableName="storage_box" columnName="code" newDataType="CHARACTER VARYING(50)" schemaName="clinlims"/>
+    </changeSet>
+
+</databaseChangeLog>

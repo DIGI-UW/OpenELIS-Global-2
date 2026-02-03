@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="increase-system-role-name-length" author="openelis-rbac-enhancement">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <columnExists tableName="system_role" columnName="name" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Increase system_role.name column length from 30 to 60 characters to accommodate longer role names</comment>
+        <modifyDataType tableName="system_role" columnName="name" newDataType="CHARACTER(60)" schemaName="clinlims"/>
+    </changeSet>
+
+</databaseChangeLog>

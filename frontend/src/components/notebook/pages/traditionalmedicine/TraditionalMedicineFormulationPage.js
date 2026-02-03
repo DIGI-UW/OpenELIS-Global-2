@@ -24,6 +24,7 @@ import {
   Edit,
   Archive,
   Pending,
+  WarningAltFilled,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
@@ -62,9 +63,16 @@ function TraditionalMedicineFormulationPage({
   const componentMounted = useRef(false);
   const { hasAnyRole } = usePermissions();
 
-  // TMMRD permissions per SRS Section 11
-  const { getPagePermissionLevel, canSaveData, canAccessStage7 } =
-    useTMMRDPermissions();
+  // TMMRD permissions per matrix requirements
+  const {
+    getPagePermissionLevel,
+    canSaveData,
+    canAccessStage7,
+    canPerformWork,
+    isReadOnly,
+    TMMRD_ROLES,
+    TMMRD_PAGES,
+  } = useTMMRDPermissions();
 
   // All state must be declared before any early returns (React Hooks Rule)
   const [samples, setSamples] = useState([]);
@@ -108,20 +116,25 @@ function TraditionalMedicineFormulationPage({
 
   // All hooks and calculations must be defined before any conditional returns (React Hooks Rule)
 
-  // STAGE 7 allowed roles per TMMRD SRS Section 11 - Pharmacognosists lead formulation
+  // STAGE 7 allowed roles per TMMRD matrix
   const allowedRoles = [
-    "TMMRD Lab Technician",
-    "TMMRD Researcher",
-    "TMMRD Pharmacognosist",
-    "TMMRD Lab Manager",
-    "TMMRD Principal Investigator",
+    TMMRD_ROLES.LAB_TECHNICIAN,
+    TMMRD_ROLES.RESEARCHER,
+    TMMRD_ROLES.PHARMACOGNOSIST,
+    TMMRD_ROLES.LAB_MANAGER,
+    TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
   ];
 
   const canAccessPage = canAccessStage7();
 
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel("Formulation Development");
-  const canEditData = canSaveData(pagePermissionLevel);
+  // Get user's permission level for this specific page
+  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.FORMULATION);
+
+  // Function-level permissions based on matrix
+  const canRecordFormulation = canPerformWork(pagePermissionLevel);
+  const canModifyData = canSaveData(pagePermissionLevel);
+  const canMarkComplete = canPerformWork(pagePermissionLevel);
+  const isViewOnly = isReadOnly(pagePermissionLevel);
 
   const formulationOptions = [
     { id: "capsule", label: "Capsules" },
@@ -776,15 +789,39 @@ function TraditionalMedicineFormulationPage({
   if (!canAccessPage) {
     return (
       <AccessDeniedMessage
-        page="Formulation Development"
-        reason="This page requires specific Traditional Medicine formulation roles to access."
+        page="Traditional Medicine Formulation Development"
+        reason={intl.formatMessage({
+          id: "notebook.tradmed.formulation.accessDenied",
+          defaultMessage:
+            "Access to the Traditional Medicine Formulation Development page requires pharmaceutical formulation permissions. This page is restricted to roles responsible for product development, batch manufacturing, and quality control operations.",
+        })}
         requiredRoles={allowedRoles}
+        additionalInfo={intl.formatMessage({
+          id: "notebook.tradmed.formulation.accessRequirements",
+          defaultMessage:
+            "Required permissions: Product formulation, Batch manufacturing, Quality control testing, and Disposal management capabilities.",
+        })}
       />
     );
   }
 
   return (
     <div className="tradmed-formulation-page">
+      {/* View-only banner */}
+      {isViewOnly && (
+        <div className="view-only-banner">
+          <div className="view-only-content">
+            <WarningAltFilled size={16} />
+            <span>
+              <FormattedMessage
+                id="notebook.tradmed.formulation.viewOnlyMode"
+                defaultMessage="View-only mode: Your role permissions allow viewing but not modifying formulation development data."
+              />
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="page-section-header">
         <h4>
           <FormattedMessage
@@ -833,7 +870,26 @@ function TraditionalMedicineFormulationPage({
           size="sm"
           renderIcon={Edit}
           onClick={openModal}
-          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          disabled={
+            selectedSampleIds.length === 0 ||
+            !hasRealPageId ||
+            !canRecordFormulation ||
+            isViewOnly
+          }
+          title={
+            !canRecordFormulation || isViewOnly
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.tooltip.recordFormulationPermission",
+                  defaultMessage:
+                    "Requires TMMRD Lab Technician or higher role to record formulation details",
+                })
+              : selectedSampleIds.length === 0
+                ? intl.formatMessage({
+                    id: "notebook.tradmed.tooltip.selectSamples",
+                    defaultMessage: "Select samples to record formulation",
+                  })
+                : ""
+          }
         >
           <FormattedMessage
             id="notebook.page.tradmed.formulation.recordFormulation"
@@ -847,7 +903,21 @@ function TraditionalMedicineFormulationPage({
           size="sm"
           renderIcon={Edit}
           onClick={openProductQcModal}
-          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          disabled={
+            selectedSampleIds.length === 0 ||
+            !hasRealPageId ||
+            !canRecordFormulation ||
+            isViewOnly
+          }
+          title={
+            !canRecordFormulation || isViewOnly
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.tooltip.recordQCPermission",
+                  defaultMessage:
+                    "Requires TMMRD Lab Technician or higher role to record product QC",
+                })
+              : ""
+          }
         >
           <FormattedMessage
             id="notebook.tradmed.formulation.qc.button"
@@ -868,7 +938,21 @@ function TraditionalMedicineFormulationPage({
             kind="danger--tertiary"
             size="sm"
             onClick={openDisposalModal}
-            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              !hasRealPageId ||
+              !canRecordFormulation ||
+              isViewOnly
+            }
+            title={
+              !canRecordFormulation || isViewOnly
+                ? intl.formatMessage({
+                    id: "notebook.tradmed.tooltip.recordDisposalPermission",
+                    defaultMessage:
+                      "Requires TMMRD Lab Technician or higher role to record disposal information",
+                  })
+                : ""
+            }
           >
             <FormattedMessage
               id="notebook.page.tradmed.disposal.recordDisposal"
@@ -884,7 +968,20 @@ function TraditionalMedicineFormulationPage({
           renderIcon={CheckmarkFilled}
           onClick={handleMarkComplete}
           disabled={
-            selectedSampleIds.length === 0 || isCompleting || !hasRealPageId
+            selectedSampleIds.length === 0 ||
+            isCompleting ||
+            !hasRealPageId ||
+            !canMarkComplete ||
+            isViewOnly
+          }
+          title={
+            !canMarkComplete || isViewOnly
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.tooltip.markCompletePermission",
+                  defaultMessage:
+                    "Requires TMMRD Lab Technician or higher role to mark formulation complete",
+                })
+              : ""
           }
         >
           <FormattedMessage
@@ -936,7 +1033,7 @@ function TraditionalMedicineFormulationPage({
               samples={pendingSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={true}
+              showSelection={!isViewOnly}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

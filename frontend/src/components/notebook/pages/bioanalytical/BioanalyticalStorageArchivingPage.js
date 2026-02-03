@@ -41,18 +41,22 @@ import "./BioanalyticalPages.css";
 function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
   const intl = useIntl();
   const { hasAnyRole } = usePermissions();
-  const { getPagePermissionLevel, canApproveData, canModify } =
-    useBioanalyticalPermissions();
+  const {
+    BIOANALYTICAL_ROLES,
+    getPagePermissionLevel,
+    canApproveData,
+    canModify,
+    canAccessStorageArchiving
+  } = useBioanalyticalPermissions();
 
-  // PAGE 5 allowed roles per test.pdf Section 11
+  // PAGE 5 allowed roles per test.pdf Section 11 permission matrix
+  // Matrix: Sample Receivers (No), Chemical Analysts (No), Pharmacists (No), Researchers (No), Lab Supervisors (Approve), Study Directors (Approve), QA Officers (No), Data Managers (No)
   const allowedRoles = [
-    "Sample Receiver",
-    "Lab Supervisor",
-    "Study Director",
-    "QA Officer",
+    BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
+    BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
   ];
 
-  const canAccessPage = hasAnyRole(allowedRoles);
+  const canAccessPage = canAccessStorageArchiving();
 
   // Get user's action-level permission for this page
   const pagePermissionLevel = getPagePermissionLevel("Storage & Archiving");

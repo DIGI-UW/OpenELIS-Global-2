@@ -69,20 +69,22 @@ export const GBDPCRAmplificationPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { getPagePermissionLevel, canSaveData, canAccessPCRAmplification } =
-    useGBDPermissions();
-  const { hasAnyRole } = usePermissions();
+  const {
+    getPagePermissionLevel,
+    canSaveData,
+    canPerformWork,
+    isReadOnly,
+    canAccessPCR,
+    GBD_ROLES,
+    GBD_PAGES,
+  } = useGBDPermissions();
 
-  const allowedRoles = [
-    "GBD Lab Technician",
-    "GBD Manager",
-    "GBD Principal Investigator",
-  ];
-
-  const canAccessPage = canAccessPCRAmplification() || hasAnyRole(allowedRoles);
-
-  const pagePermissionLevel = getPagePermissionLevel("PCR Amplification");
-  const canPerformPCR = canSaveData(pagePermissionLevel);
+  // Page access check and permissions per matrix
+  const canAccessPage = canAccessPCR();
+  const pagePermissionLevel = getPagePermissionLevel(GBD_PAGES.PCR);
+  const canPerformPCR = canPerformWork(pagePermissionLevel);
+  const canModifyData = canSaveData(pagePermissionLevel);
+  const isViewOnly = isReadOnly(pagePermissionLevel);
 
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
@@ -487,7 +489,11 @@ export const GBDPCRAmplificationPage = ({
       <AccessDeniedMessage
         page="PCR Amplification"
         reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={allowedRoles}
+        requiredRoles={[
+          GBD_ROLES.LAB_TECHNICIAN,
+          GBD_ROLES.MANAGER,
+          GBD_ROLES.PRINCIPAL_INVESTIGATOR,
+        ]}
       />
     );
   }

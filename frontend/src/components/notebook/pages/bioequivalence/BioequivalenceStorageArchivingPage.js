@@ -46,10 +46,10 @@ function BioequivalenceStorageArchivingPage({ entryId, pageData }) {
 
   // PAGE 5 allowed roles per test.pdf Section 11
   const allowedRoles = [
-    "Sample Receiver",
-    "Lab Supervisor",
-    "Study Director",
-    "QA Officer",
+    "Bioequivalence Sample Receiver",
+    "Bioequivalence Lab Supervisor",
+    "Bioequivalence Study Director",
+    "Bioequivalence QA Officer",
   ];
 
   const canAccessPage = hasAnyRole(allowedRoles);
