@@ -96,7 +96,7 @@
   },
   "devDependencies": {
     "@testing-library/react-hooks": "^8.0.1",
-    "cypress": "^12.17.4",
+    "cypress": "^15.9.0",
     "cypress-xpath": "^2.0.1",
     "eslint": "^8.48.0",
     "eslint-config-prettier": "^9.0.0",
@@ -105,5 +105,16 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "prettier": "^3.4.2",
     "prettier-eslint": "15.0.1"
+  },
+  "overrides": {
+    "@svgr/babel-preset": "6.5.1",
+    "@svgr/core": "6.5.1",
+    "@svgr/hast-util-to-babel-ast": "6.5.1",
+    "@svgr/plugin-jsx": "6.5.1",
+    "@svgr/plugin-svgo": "6.5.1",
+    "@svgr/webpack": "6.5.1",
+    "body-parser": "1.20.4",
+    "qs": "6.14.1",
+    "resolve-url-loader": "5.0.0"
   }
 }
