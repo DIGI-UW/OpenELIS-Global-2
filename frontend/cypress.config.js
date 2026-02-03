@@ -9,7 +9,7 @@ module.exports = defineConfig({
   defaultCommandTimeout: 3000, // 3 seconds - use Cypress retry-ability instead of long timeouts
   viewportWidth: 1920, // Large desktop for full modal visibility (including warnings/checkboxes)
   viewportHeight: 1080,
-  video: false, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
+  video: true, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
   watchForFileChanges: false,
   screenshotOnRunFailure: true, // Take screenshots on failure (required per Constitution V.5)
   env: {
