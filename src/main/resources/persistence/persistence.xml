@@ -66,6 +66,8 @@
 
         <!-- Site Branding entity (001-site-branding) -->
         <class>org.openelisglobal.sitebranding.valueholder.SiteBranding</class>
+        <!-- Generic Reporting Framework entities (reporting-framework) -->
+        <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
 
         <properties>
             <property name="hibernate.cfg_xml_file"
