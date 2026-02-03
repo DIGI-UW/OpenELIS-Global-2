@@ -18,7 +18,7 @@ const CustomTimePicker = (props) => {
 
   const validateTime = (time) => {
     if (!time || time === "") {
-      return true; 
+      return true;
     }
     return TIME_REGEX.test(time);
   };

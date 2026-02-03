@@ -67,7 +67,7 @@ const InventoryReports = () => {
   ];
 
   // Export formats
-   const exportFormats = [
+  const exportFormats = [
     { id: "PDF", text: intl.formatMessage({ id: "reports.format.pdf" }) },
     { id: "EXCEL", text: intl.formatMessage({ id: "reports.format.excel" }) },
     { id: "CSV", text: intl.formatMessage({ id: "reports.format.csv" }) },
