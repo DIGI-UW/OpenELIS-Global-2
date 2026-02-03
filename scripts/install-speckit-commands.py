@@ -4,11 +4,14 @@ Install SpecKit slash commands to AI agent directories.
 
 Copies command definitions from:
   - .specify/core/commands/ (base SpecKit commands)
-  - .specify/oe/commands/   (OpenELIS extensions, appended)
+  - .specify/oe/commands/   (OpenELIS extensions/overrides)
 
 Into AI-agent directories:
   - .cursor/commands/
   - .claude/commands/
+
+OE overrides are injected at strategic locations (before specific sections)
+for tasks and implement commands, or appended for other commands.
 
 Usage:
   python scripts/install-speckit-commands.py [--yes] [cursor|claude|all]
@@ -31,35 +34,70 @@ from pathlib import Path
 if sys.version_info < (3, 7):
     sys.exit("Error: Python 3.7 or higher is required.")
 
+# Injection points for OE overrides (inject BEFORE these sections)
+# This ensures OE overrides appear before the rules they override
+INJECTION_POINTS = {
+    "speckit.tasks.md": "## Task Generation Rules",
+    "speckit.implement.md": "## User Input",
+}
+
+OE_HEADER = "\n\n## OpenELIS-Specific Requirements\n\n"
+
 
 def get_repo_root() -> Path:
     """Get repository root (parent of scripts/)."""
     return Path(__file__).resolve().parent.parent
 
 
+def merge_oe_content(core_content: str, oe_content: str, filename: str) -> str:
+    """Merge OE override content into core content.
+
+    For specific files (tasks, implement), injects OE content before a target section.
+    For other files, appends OE content at the end.
+    """
+    injection_point = INJECTION_POINTS.get(filename)
+
+    if injection_point and injection_point in core_content:
+        # Inject OE content BEFORE the target section
+        before, after = core_content.split(injection_point, 1)
+        return before + OE_HEADER + oe_content + "\n\n" + injection_point + after
+    else:
+        # Append OE content at end (default behavior)
+        return core_content + "\n\n---" + OE_HEADER + oe_content
+
+
 def install_to(name: str, target_dir: Path, core_dir: Path, oe_dir: Path) -> int:
     """Install commands to a target directory. Returns count of installed commands."""
     print(f"-> Installing to {name}...")
-    target_dir.mkdir(parents=True, exist_ok=True)
 
-    count = 0
-    for cmd_file in sorted(core_dir.glob("speckit.*.md")):
-        dest = target_dir / cmd_file.name
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
 
-        # Copy core command (explicit UTF-8 for Windows compatibility)
-        content = cmd_file.read_text(encoding="utf-8")
+        count = 0
+        for cmd_file in sorted(core_dir.glob("speckit.*.md")):
+            dest = target_dir / cmd_file.name
 
-        # Append OE overrides if they exist
-        oe_file = oe_dir / cmd_file.name
-        if oe_file.exists():
-            content += "\n\n---\n\n## OpenELIS-Specific Requirements\n\n"
-            content += oe_file.read_text(encoding="utf-8")
+            # Copy core command (explicit UTF-8 for Windows compatibility)
+            content = cmd_file.read_text(encoding="utf-8")
 
-        dest.write_text(content, encoding="utf-8")
-        count += 1
+            # Merge OE overrides if they exist
+            oe_file = oe_dir / cmd_file.name
+            if oe_file.exists():
+                oe_content = oe_file.read_text(encoding="utf-8")
+                content = merge_oe_content(content, oe_content, cmd_file.name)
 
-    print(f"   [OK] Installed {count} command(s) to {target_dir}")
-    return count
+            dest.write_text(content, encoding="utf-8")
+            count += 1
+
+        print(f"   [OK] Installed {count} command(s) to {target_dir}")
+        return count
+
+    except (OSError, IOError) as e:
+        print(f"Error installing to {name}: {e}", file=sys.stderr)
+        sys.exit(1)
+    except UnicodeDecodeError as e:
+        print(f"Error reading file (encoding issue): {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def main():
