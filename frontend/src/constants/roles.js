@@ -38,24 +38,11 @@ export const Roles = {
   // Bioanalytical Laboratory Roles
   BIOANALYTICAL_ANALYST: "Bioanalytical Analyst",
   BIOANALYTICAL_SUPERVISOR: "Bioanalytical Supervisor",
-  BIOANALYTICAL_SAMPLE_RECEIVER: "Bioanalytical Sample Receiver",
-  BIOANALYTICAL_CHEMICAL_ANALYST: "Bioanalytical Chemical Analyst",
-  BIOANALYTICAL_PHARMACIST: "Bioanalytical Pharmacist",
-  BIOANALYTICAL_RESEARCHER: "Bioanalytical Researcher",
-  BIOANALYTICAL_LAB_SUPERVISOR: "Bioanalytical Lab Supervisor",
-  BIOANALYTICAL_STUDY_DIRECTOR: "Bioanalytical Study Director",
-  BIOANALYTICAL_QA_OFFICER: "Bioanalytical QA Officer",
-  BIOANALYTICAL_DATA_MANAGER: "Bioanalytical Data Manager",
-
-  // Bioequivalence Laboratory Roles
-  BIOEQUIVALENCE_SAMPLE_RECEIVER: "Bioequivalence Sample Receiver",
-  BIOEQUIVALENCE_CHEMICAL_ANALYST: "Bioequivalence Chemical Analyst",
-  BIOEQUIVALENCE_PHARMACIST: "Bioequivalence Pharmacist",
-  BIOEQUIVALENCE_RESEARCHER: "Bioequivalence Researcher",
-  BIOEQUIVALENCE_LAB_SUPERVISOR: "Bioequivalence Lab Supervisor",
-  BIOEQUIVALENCE_STUDY_DIRECTOR: "Bioequivalence Study Director",
-  BIOEQUIVALENCE_QA_OFFICER: "Bioequivalence QA Officer",
-  BIOEQUIVALENCE_DATA_MANAGER: "Bioequivalence Data Manager",
+  SAMPLE_RECEIVER: "Sample Receiver",
+  CHEMICAL_ANALYST: "Chemical Analyst",
+  PHARMACIST: "Pharmacist",
+  STUDY_DIRECTOR: "Study Director",
+  QA_AUDITOR: "QA Auditor",
 };
 
 /**
