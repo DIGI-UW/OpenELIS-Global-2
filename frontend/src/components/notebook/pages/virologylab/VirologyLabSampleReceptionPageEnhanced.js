@@ -17,6 +17,7 @@ import {
   Pending,
 } from "@carbon/icons-react";
 import useVirologyLabPermissions from "../../../../hooks/useVirologyLabPermissions";
+import { usePermissions } from "../../../../hooks/usePermissions";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -30,7 +31,7 @@ import SampleGrid from "../../workflow/SampleGrid";
 /**
  * VirologyLabSampleReceptionPage - STAGE 1: Sample Reception & Registration
  *
- * Comprehensive sample creation page following Virology Lab pattern.
+ * Comprehensive sample creation page following Bioanalytical Lab pattern.
  *
  * STAGE 1 Process:
  * ● Receive samples (DNA, RNA, tissues, isolates)
@@ -64,7 +65,7 @@ export const VirologyLabSampleReceptionPageEnhanced = ({
     "VirologyLab Lab Technician",
     "VirologyLab Bioinformatician",
     "VirologyLab Manager",
-    "VirologyLab PI",
+    "VirologyLab Principal Investigator",
   ];
 
   const canAccessPage = canAccessSampleReception();
@@ -100,243 +101,479 @@ export const VirologyLabSampleReceptionPageEnhanced = ({
     return () => {
       componentMounted.current = false;
     };
-  }, [loadPageSamples]);
+  }, [pageData?.id, loadPageSamples]);
 
-  const handleManifestImportSuccess = useCallback((result) => {
-    if (result && result.createdSampleIds) {
-      addNotification({
-        kind: NotificationKinds.success,
-        title: intl.formatMessage({
-          id: "notebook.virologylab.sampleReception.manifestImportSuccess",
-          defaultMessage: "Manifest Import Successful",
-        }),
-        message: intl.formatMessage(
-          {
-            id: "notebook.virologylab.sampleReception.manifestImportSuccessMessage",
-            defaultMessage:
-              "Successfully created {count} samples from manifest",
-          },
-          { count: result.totalCreated || result.createdSampleIds.length },
-        ),
-      });
+  const pendingSamples = useMemo(
+    () =>
+      pageSamples.filter(
+        (s) => s.status === "PENDING" || s.status === "AWAITING",
+      ),
+    [pageSamples],
+  );
 
-      // Refresh samples and close modal
-      loadPageSamples();
-      setIsManifestModalOpen(false);
-      if (onSampleUpdate) {
-        onSampleUpdate();
-      }
+  const receivedSamples = useMemo(
+    () =>
+      pageSamples.filter(
+        (s) => s.status === "IN_PROGRESS" || s.status === "COMPLETED",
+      ),
+    [pageSamples],
+  );
+
+  const renderStatus = (sample) => {
+    const status = sample.status || "PENDING";
+
+    switch (status.toUpperCase()) {
+      case "COMPLETED":
+        return (
+          <Tag type="green" size="sm" renderIcon={CheckmarkFilled}>
+            <FormattedMessage
+              id="notebook.virologylab.status.completed"
+              defaultMessage="Completed"
+            />
+          </Tag>
+        );
+      case "IN_PROGRESS":
+        return (
+          <Tag type="blue" size="sm">
+            <FormattedMessage
+              id="notebook.virologylab.status.inProgress"
+              defaultMessage="In Progress"
+            />
+          </Tag>
+        );
+      default:
+        return (
+          <Tag type="gray" size="sm" renderIcon={Pending}>
+            <FormattedMessage
+              id="notebook.virologylab.status.pending"
+              defaultMessage="Pending"
+            />
+          </Tag>
+        );
     }
-  }, [intl, addNotification, loadPageSamples, onSampleUpdate]);
+  };
 
-  const handleMarkReceived = useCallback(() => {
-    if (!selectedSampleIds.length || !entryId) return;
-
-    const payload = {
-      sampleIds: selectedSampleIds,
-      status: "received",
-      pageId: pageData?.id,
-    };
-
-    postToOpenElisServer(
-      `/rest/notebook/entry/${entryId}/samples/mark-received`,
-      JSON.stringify(payload),
-      (response) => {
-        if (response && !response.error) {
+  const handleManifestImport = useCallback(
+    async (importResult) => {
+      try {
+        if (importResult && importResult.success) {
+          setNotificationVisible(true);
           addNotification({
             kind: NotificationKinds.success,
             title: intl.formatMessage({
-              id: "notebook.virologylab.sampleReception.markReceivedSuccess",
-              defaultMessage: "Samples Marked as Received",
+              id: "notebook.virologylab.manifest.imported",
+              defaultMessage: "Manifest Imported",
             }),
             message: intl.formatMessage(
               {
-                id: "notebook.virologylab.sampleReception.markReceivedSuccessMessage",
-                defaultMessage: "Successfully marked {count} samples as received",
+                id: "notebook.virologylab.manifest.importedMessage",
+                defaultMessage:
+                  "{count} samples have been created successfully",
               },
-              { count: selectedSampleIds.length },
+              { count: importResult.totalCreated || 0 },
             ),
           });
 
-          setSelectedSampleIds([]);
+          setIsManifestModalOpen(false);
+
           loadPageSamples();
-          if (onSampleStatusChange) {
-            onSampleStatusChange();
+
+          if (onSampleUpdate) {
+            onSampleUpdate();
           }
         }
-      },
-    );
+      } catch (error) {
+        console.error("Error handling manifest import result:", error);
+        setNotificationVisible(true);
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({
+            id: "notebook.virologylab.manifest.importError",
+            defaultMessage: "Import Error",
+          }),
+          message: error.message,
+        });
+      }
+    },
+    [
+      intl,
+      setNotificationVisible,
+      addNotification,
+      onSampleUpdate,
+      loadPageSamples,
+    ],
+  );
+
+  const handleMarkComplete = useCallback(async () => {
+    if (selectedSampleIds.length === 0) {
+      setNotificationVisible(true);
+      addNotification({
+        kind: NotificationKinds.warning,
+        title: intl.formatMessage({
+          id: "notebook.virologylab.noSamplesSelected.title",
+          defaultMessage: "No Samples Selected",
+        }),
+      });
+      return;
+    }
+
+    try {
+      await postToOpenElisServer(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+        JSON.stringify({
+          sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+          status: "COMPLETED",
+        }),
+      );
+
+      setSelectedSampleIds([]);
+      setNotificationVisible(true);
+      addNotification({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({
+          id: "notebook.virologylab.reception.samplesCompleted",
+          defaultMessage: "Samples Completed",
+        }),
+        message: intl.formatMessage(
+          {
+            id: "notebook.virologylab.reception.samplesCompletedMessage",
+            defaultMessage:
+              "{count} sample(s) marked as complete and moved to the next workflow step",
+          },
+          { count: selectedSampleIds.length },
+        ),
+      });
+
+      setTimeout(() => {
+        loadPageSamples();
+        if (onSampleStatusChange) {
+          onSampleStatusChange();
+        }
+      }, 500);
+    } catch (error) {
+      console.error("Error marking samples complete:", error);
+      setNotificationVisible(true);
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.virologylab.reception.error",
+          defaultMessage: "Error",
+        }),
+        message: error.message,
+      });
+    }
   }, [
     selectedSampleIds,
-    entryId,
-    pageData?.id,
+    pageData.id,
     intl,
+    setNotificationVisible,
     addNotification,
     loadPageSamples,
     onSampleStatusChange,
   ]);
 
-  const sampleStateCounts = useMemo(() => {
-    const counts = { pending: 0, received: 0, total: 0 };
-
-    (pageSamples || samples).forEach((sample) => {
-      counts.total++;
-      if (sample.status === "received") {
-        counts.received++;
-      } else {
-        counts.pending++;
-      }
-    });
-
-    return counts;
-  }, [pageSamples, samples]);
-
   if (!canAccessPage) {
     return (
       <AccessDeniedMessage
-        message={intl.formatMessage({
-          id: "notebook.virologylab.sampleReception.accessDenied",
-          defaultMessage:
-            "You do not have permission to access VirologyLab Sample Reception. Required roles: VirologyLab Lab Technician, VirologyLab Manager, or VirologyLab PI.",
-        })}
-        allowedRoles={allowedRoles}
+        page="Sample Reception & Registration"
+        reason="This page requires specific GBD laboratory roles to access."
+        requiredRoles={allowedRoles}
       />
     );
   }
 
+  const isReadOnly = !canCreateSamples;
+
   return (
-    <div className="notebook-page-content virologylab-sample-reception">
-      <Grid fullWidth>
-        <Column lg={16} md={8} sm={4}>
-          <div className="page-header-section">
-            <div className="page-title-row">
-              <h4>
-                <FormattedMessage
-                  id="notebook.virologylab.sampleReception.title"
-                  defaultMessage="VirologyLab Sample Reception & Registration"
-                />
-              </h4>
-              <div className="page-status-indicators">
-                <Tag type="blue" size="sm">
-                  <FormattedMessage
-                    id="notebook.virologylab.sampleReception.stage"
-                    defaultMessage="Stage 1"
-                  />
-                </Tag>
-                <Tag type="outline" size="sm">
-                  {sampleStateCounts.total}{" "}
-                  <FormattedMessage
-                    id="label.samples"
-                    defaultMessage="samples"
-                  />
-                </Tag>
-              </div>
-            </div>
-
-            <div className="progress-summary-tiles">
-              <Tile className="progress-tile pending-tile">
-                <div className="tile-content">
-                  <div className="tile-value">{sampleStateCounts.pending}</div>
-                  <div className="tile-label">
-                    <Pending size={16} />
-                    <FormattedMessage
-                      id="notebook.virologylab.sampleReception.pendingReception"
-                      defaultMessage="Pending Reception"
-                    />
-                  </div>
-                </div>
-              </Tile>
-
-              <Tile className="progress-tile received-tile">
-                <div className="tile-content">
-                  <div className="tile-value">{sampleStateCounts.received}</div>
-                  <div className="tile-label">
-                    <CheckmarkFilled size={16} />
-                    <FormattedMessage
-                      id="notebook.virologylab.sampleReception.received"
-                      defaultMessage="Received"
-                    />
-                  </div>
-                </div>
-              </Tile>
-            </div>
-          </div>
-        </Column>
-      </Grid>
-
-      <Grid fullWidth className="action-section">
-        <Column lg={16} md={8} sm={4}>
-          <div className="action-buttons">
-            <Button
-              kind="primary"
-              size="sm"
-              renderIcon={Upload}
-              onClick={() => setIsManifestModalOpen(true)}
-              disabled={!canCreateSamples || isLoading}
-            >
-              <FormattedMessage
-                id="notebook.virologylab.sampleReception.importManifest"
-                defaultMessage="Import Manifest"
-              />
-            </Button>
-
-            {selectedSampleIds.length > 0 && (
-              <Button
-                kind="secondary"
-                size="sm"
-                renderIcon={Checkmark}
-                onClick={handleMarkReceived}
-                disabled={!canCreateSamples || isLoading}
-              >
-                <FormattedMessage
-                  id="notebook.virologylab.sampleReception.markReceived"
-                  defaultMessage="Mark as Received ({count})"
-                  values={{ count: selectedSampleIds.length }}
-                />
-              </Button>
-            )}
-
-            <Button
-              kind="ghost"
-              size="sm"
-              renderIcon={Renew}
-              onClick={loadPageSamples}
-              disabled={isLoading}
-            >
-              <FormattedMessage
-                id="label.refresh"
-                defaultMessage="Refresh"
-              />
-            </Button>
-          </div>
-        </Column>
-      </Grid>
-
-      <Grid fullWidth className="samples-grid-section">
-        <Column lg={16} md={8} sm={4}>
-          <SampleGrid
-            samples={pageSamples || samples}
-            selectedIds={selectedSampleIds}
-            onSelectionChange={setSelectedSampleIds}
-            isLoading={isLoading}
-            showReceiveActions={canCreateSamples}
-            pageContext="virologylab-reception"
-            entryId={entryId}
-            onSampleUpdate={onSampleUpdate}
+    <div className="virologylab-sample-reception-page">
+      {/* Page Section Header */}
+      <div className="page-section-header">
+        <h4>
+          <FormattedMessage
+            id="notebook.virologylab.reception.title"
+            defaultMessage="Sample Reception & Registration"
           />
+        </h4>
+        <p className="page-description">
+          <FormattedMessage
+            id="notebook.virologylab.reception.description"
+            defaultMessage="Register incoming samples and assign to appropriate workflow"
+          />
+        </p>
+      </div>
+
+      {/* Progress Summary */}
+      <Grid fullWidth className="progress-section">
+        <Column lg={16} md={8} sm={4}>
+          <div className="progress-tiles">
+            <Tile className="progress-tile">
+              <span className="progress-label">
+                <FormattedMessage
+                  id="notebook.virologylab.reception.awaitingReception"
+                  defaultMessage="Awaiting Reception"
+                />
+              </span>
+              <span className="progress-value">{pendingSamples.length}</span>
+            </Tile>
+            <Tile className="progress-tile">
+              <span className="progress-label">
+                <FormattedMessage
+                  id="notebook.virologylab.reception.samplesReceived"
+                  defaultMessage="Samples Received"
+                />
+              </span>
+              <span className="progress-value">{receivedSamples.length}</span>
+            </Tile>
+          </div>
         </Column>
       </Grid>
 
-      {isManifestModalOpen && (
-        <VirologyLabManifestImportModal
-          open={isManifestModalOpen}
-          onClose={() => setIsManifestModalOpen(false)}
-          entryId={entryId}
-          onImportSuccess={handleManifestImportSuccess}
-        />
-      )}
+      {/* Action Buttons */}
+      <div className="page-actions-bar">
+        <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={Upload}
+          onClick={() => setIsManifestModalOpen(true)}
+          disabled={isReadOnly}
+        >
+          <FormattedMessage
+            id="notebook.virologylab.reception.importManifest"
+            defaultMessage="Import Manifest"
+          />
+        </Button>
+        <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={Checkmark}
+          onClick={handleMarkComplete}
+          disabled={isReadOnly || selectedSampleIds.length === 0}
+        >
+          <FormattedMessage
+            id="notebook.virologylab.reception.markComplete"
+            defaultMessage="Mark as Complete ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+        <Button
+          kind="ghost"
+          size="sm"
+          renderIcon={Renew}
+          onClick={loadPageSamples}
+        >
+          <FormattedMessage
+            id="notebook.virologylab.reception.refresh"
+            defaultMessage="Refresh"
+          />
+        </Button>
+      </div>
+
+      {/* Awaiting Reception Section */}
+      <div className="sample-table-section">
+        <div className="table-section-header">
+          <h5>
+            <FormattedMessage
+              id="notebook.virologylab.reception.awaitingReception"
+              defaultMessage="Awaiting Reception"
+            />
+            <Tag type="gray" size="sm" className="count-tag">
+              {pendingSamples.length}
+            </Tag>
+          </h5>
+          <p className="table-section-description">
+            <FormattedMessage
+              id="notebook.virologylab.reception.awaitingDescription"
+              defaultMessage="Samples awaiting reception verification. Select samples and mark as received to move them to the completed section."
+            />
+          </p>
+        </div>
+
+        {pendingSamples.length === 0 ? (
+          <div className="empty-table-state">
+            <FormattedMessage
+              id="notebook.virologylab.reception.noSamplesAwaiting"
+              defaultMessage="No samples awaiting reception"
+            />
+          </div>
+        ) : (
+          <>
+            <SampleGrid
+              gridId="virologylab-reception-pending"
+              samples={pendingSamples}
+              selectedIds={selectedSampleIds}
+              onSelectionChange={setSelectedSampleIds}
+              showSelection={true}
+              columns={[
+                {
+                  key: "externalId",
+                  header: intl.formatMessage({
+                    id: "notebook.virologylab.reception.sampleId",
+                    defaultMessage: "Sample ID",
+                  }),
+                },
+                {
+                  key: "sampleType",
+                  header: intl.formatMessage({
+                    id: "notebook.virologylab.reception.sampleType",
+                    defaultMessage: "Sample Type",
+                  }),
+                  render: (_v, sample) => sample.data?.sampleType || "-",
+                },
+                {
+                  key: "source",
+                  header: intl.formatMessage({
+                    id: "notebook.virologylab.reception.source",
+                    defaultMessage: "Source",
+                  }),
+                  render: (_v, sample) => sample.data?.source || "-",
+                },
+                {
+                  key: "collectionDate",
+                  header: intl.formatMessage({
+                    id: "notebook.virologylab.reception.collectionDate",
+                    defaultMessage: "Collection Date",
+                  }),
+                  render: (_v, sample) => sample.data?.collectionDate || "-",
+                },
+                {
+                  key: "volumeConcentration",
+                  header: intl.formatMessage({
+                    id: "notebook.virologylab.reception.volumeConcentration",
+                    defaultMessage: "Concentration",
+                  }),
+                  render: (_v, sample) =>
+                    sample.data?.volumeConcentration || "-",
+                },
+                {
+                  key: "operator",
+                  header: intl.formatMessage({
+                    id: "notebook.virologylab.reception.operator",
+                    defaultMessage: "Operator",
+                  }),
+                  render: (_v, sample) =>
+                    sample.data?.operator ||
+                    sample.data?.processingMetadata?.operator ||
+                    "-",
+                },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.virologylab.reception.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_v, sample) => renderStatus(sample),
+                },
+              ]}
+            />
+          </>
+        )}
+      </div>
+
+      {/* Received Samples Section */}
+      <div className="sample-table-section">
+        <div className="table-section-header">
+          <h5>
+            <FormattedMessage
+              id="notebook.virologylab.reception.samplesReceived"
+              defaultMessage="Samples Received"
+            />
+            <Tag type="green" size="sm" className="count-tag">
+              {receivedSamples.length}
+            </Tag>
+          </h5>
+          <p className="table-section-description">
+            <FormattedMessage
+              id="notebook.virologylab.reception.receivedDescription"
+              defaultMessage="Samples that have been received and are ready for the next workflow step."
+            />
+          </p>
+        </div>
+
+        {receivedSamples.length === 0 ? (
+          <div className="empty-table-state">
+            <FormattedMessage
+              id="notebook.virologylab.reception.noSamplesReceived"
+              defaultMessage="No received samples yet"
+            />
+          </div>
+        ) : (
+          <SampleGrid
+            gridId="virologylab-reception-received"
+            samples={receivedSamples}
+            selectedIds={[]}
+            onSelectionChange={() => {}}
+            showSelection={false}
+            columns={[
+              {
+                key: "externalId",
+                header: intl.formatMessage({
+                  id: "notebook.virologylab.reception.sampleId",
+                  defaultMessage: "Sample ID",
+                }),
+              },
+              {
+                key: "sampleType",
+                header: intl.formatMessage({
+                  id: "notebook.virologylab.reception.sampleType",
+                  defaultMessage: "Sample Type",
+                }),
+                render: (_v, sample) => sample.data?.sampleType || "-",
+              },
+              {
+                key: "source",
+                header: intl.formatMessage({
+                  id: "notebook.virologylab.reception.source",
+                  defaultMessage: "Source",
+                }),
+                render: (_v, sample) => sample.data?.source || "-",
+              },
+              {
+                key: "collectionDate",
+                header: intl.formatMessage({
+                  id: "notebook.virologylab.reception.collectionDate",
+                  defaultMessage: "Collection Date",
+                }),
+                render: (_v, sample) => sample.data?.collectionDate || "-",
+              },
+              {
+                key: "volumeConcentration",
+                header: intl.formatMessage({
+                  id: "notebook.virologylab.reception.volumeConcentration",
+                  defaultMessage: "Concentration",
+                }),
+                render: (_v, sample) => sample.data?.volumeConcentration || "-",
+              },
+              {
+                key: "operator",
+                header: intl.formatMessage({
+                  id: "notebook.virologylab.reception.operator",
+                  defaultMessage: "Operator",
+                }),
+                render: (_v, sample) =>
+                  sample.data?.operator ||
+                  sample.data?.processingMetadata?.operator ||
+                  "-",
+              },
+              {
+                key: "status",
+                header: intl.formatMessage({
+                  id: "notebook.virologylab.reception.status",
+                  defaultMessage: "Status",
+                }),
+                render: (_v, sample) => renderStatus(sample),
+              },
+            ]}
+          />
+        )}
+      </div>
+
+      {/* Manifest Import Modal */}
+      <VirologyLabManifestImportModal
+        open={isManifestModalOpen}
+        onClose={() => setIsManifestModalOpen(false)}
+        entryId={entryId}
+        onImportSuccess={handleManifestImport}
+      />
     </div>
   );
 };
-
-export default VirologyLabSampleReceptionPageEnhanced;
