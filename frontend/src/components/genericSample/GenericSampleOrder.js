@@ -267,6 +267,11 @@ export default function GenericSampleOrder({
   const onSubmit = (e) => {
     e.preventDefault();
 
+    const quantity = parseFloat(defaultForm.quantity);
+    if ((defaultForm.quantity && quantity <= 0) || isDateInvalid) {
+      return;
+    }
+
     if (
       labNoRequired &&
       (!defaultForm.labNo || defaultForm.labNo.trim() === "")
@@ -345,6 +350,23 @@ export default function GenericSampleOrder({
 
   // Success screen
   if (successData && showSuccessScreen) {
+    console.log(
+      "KEY LITERAL:",
+      JSON.stringify("genericSample.order.success.message"),
+    );
+    console.log(
+      "KEY FROM MESSAGES:",
+      JSON.stringify(
+        Object.keys(intl.messages).find((k) =>
+          k.includes("genericSample.order.success"),
+        ),
+      ),
+    );
+    console.log(
+      "RESOLVED VALUE:",
+      intl.messages["genericSample.order.success.message"],
+    );
+
     return (
       <>
         {showBreadcrumbs && <PageBreadCrumb breadcrumbs={breadcrumbs} />}
@@ -666,7 +688,10 @@ export default function GenericSampleOrder({
                       defaultForm.quantity &&
                       parseFloat(defaultForm.quantity) <= 0
                     }
-                    invalidText="Quantity must be greater than 0"
+                    invalidText={intl.formatMessage({
+                      id: "genericSample.order.error.invalidQuantity",
+                      defaultMessage: "Quantity must be greater than 0",
+                    })}
                   />
                 </Column>
               )}

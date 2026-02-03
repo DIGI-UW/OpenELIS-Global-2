@@ -533,3 +533,12 @@ button {
     width: 14rem;
   }
 }
+
+.cds--text-input__invalid-icon,
+.cds--date-picker__input--invalid ~ svg {
+  display: none;
+}
+
+.cds--text-input.cds--text-input--invalid {
+  padding-right: 1rem;
+}
