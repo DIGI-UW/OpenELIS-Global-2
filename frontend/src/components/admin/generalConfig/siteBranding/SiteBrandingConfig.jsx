@@ -292,7 +292,11 @@ function SiteBrandingConfig() {
         const errorText = errorMessage
           ? `${intl.formatMessage({ id: "site.branding.save.error" })}: ${errorMessage}`
           : intl.formatMessage({ id: "site.branding.save.error" });
-        addNotification(errorText, NotificationKinds.error);
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: errorText,
+          kind: NotificationKinds.error,
+        });
         setNotificationVisible(true);
         return;
       }
@@ -341,10 +345,11 @@ function SiteBrandingConfig() {
       // Dispatch event to notify Header and other components to reload branding
       window.dispatchEvent(new CustomEvent("branding-updated"));
 
-      addNotification(
-        intl.formatMessage({ id: "site.branding.save.success" }),
-        NotificationKinds.success,
-      );
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "site.branding.save.success" }),
+        kind: NotificationKinds.success,
+      });
       setNotificationVisible(true);
     });
   };
@@ -410,16 +415,18 @@ function SiteBrandingConfig() {
         // Reset favicon
         resetFavicon();
 
-        addNotification(
-          intl.formatMessage({ id: "site.branding.reset.success" }),
-          NotificationKinds.success,
-        );
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({ id: "site.branding.reset.success" }),
+          kind: NotificationKinds.success,
+        });
         setNotificationVisible(true);
       } else {
-        addNotification(
-          intl.formatMessage({ id: "site.branding.reset.error" }),
-          NotificationKinds.error,
-        );
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({ id: "site.branding.reset.error" }),
+          kind: NotificationKinds.error,
+        });
         setNotificationVisible(true);
       }
     });
