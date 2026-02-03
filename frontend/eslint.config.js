@@ -6,6 +6,15 @@ const typescriptEslint = require("@typescript-eslint/eslint-plugin");
 const typescriptParser = require("@typescript-eslint/parser");
 const globals = require("globals");
 
+const cypressGlobals = {
+  cy: "readonly",
+  Cypress: "readonly",
+  expect: "readonly",
+  assert: "readonly",
+  chai: "readonly",
+  ...globals.mocha,
+};
+
 module.exports = [
   // Global ignores (replaces .eslintignore)
   {
@@ -18,6 +27,22 @@ module.exports = [
       "public/",
       "scripts/",
     ],
+  },
+
+  // Cypress test files (globals for describe, it, cy, etc.)
+  {
+    files: ["cypress/**/*.js", "cypress/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 12,
+      sourceType: "module",
+      globals: {
+        ...globals.node,
+        ...cypressGlobals,
+      },
+    },
+    rules: {
+      "no-unused-vars": "warn",
+    },
   },
 
   // Base configuration for all JavaScript/JSX files
