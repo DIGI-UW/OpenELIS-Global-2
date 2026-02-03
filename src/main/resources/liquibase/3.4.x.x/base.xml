@@ -134,6 +134,15 @@
     <!-- TB Media Preparation: Add notebook_entry_id for entry-scoped filtering -->
     <include file="liquibase/3.4.x.x/071-tb-media-preparation-notebook-entry.xml"/>
 
+    <!-- VirologyLab Laboratory Workflow Feature -->
+    <!-- Creates VirologyLab notebook template, roles, permissions, and lab unit -->
+    <include file="liquibase/3.4.x.x/072-virologylab-system-roles.xml"/>
+    <include file="liquibase/3.4.x.x/073-virologylab-page-roles.xml"/>
+    <include file="liquibase/3.4.x.x/074-virologylab-permission-levels.xml"/>
+    <include file="liquibase/3.4.x.x/075-create-virologylab-lab-unit.xml"/>
+    <include file="liquibase/3.4.x.x/076-virologylab-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/077-add-virologylab-roles-to-alllabunits.xml"/>
+
     <!-- Increase test_section.name column length to accommodate research lab names -->
     <include file="liquibase/3.4.x.x/071-5-increase-test-section-name-length.xml"/>
 
