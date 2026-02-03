@@ -148,4 +148,13 @@
     <!-- TB Media Preparation: Add notebook_entry_id for entry-scoped filtering -->
     <include file="liquibase/3.4.x.x/071-tb-media-preparation-notebook-entry.xml"/>
 
+    <!-- VL Laboratory Workflow Feature -->
+    <!-- Includes: VL notebook template, system roles, page roles, permissions, lab unit creation -->
+    <include file="liquibase/3.4.x.x/059-vl-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/060-vl-system-roles.xml"/>
+    <include file="liquibase/3.4.x.x/061-vl-page-roles.xml"/>
+    <include file="liquibase/3.4.x.x/062-vl-permission-levels.xml"/>
+    <include file="liquibase/3.4.x.x/063-create-vl-lab-unit.xml"/>
+    <include file="liquibase/3.4.x.x/064-add-vl-roles-to-alllabunits.xml"/>
+
 </databaseChangeLog>

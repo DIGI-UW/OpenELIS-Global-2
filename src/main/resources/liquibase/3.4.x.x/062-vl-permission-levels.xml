@@ -1,0 +1,578 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- VIROLOGY LABORATORY WORKFLOW PERMISSION LEVELS -->
+    <!-- Adds action-level permissions per VL_IMPLEMENTATION_GUIDE.md Section 5.1 -->
+    <!-- Permission matrix from PDF: Reception, Isolation, Extraction, Amplification, Detection, Characterization, SeqPrep, Sequencing, Bioinformatics, Storage -->
+    <!-- ======================================================== -->
+
+    <!-- CHANGESET 1: Add permission_level column if it doesn't exist (should already exist from other lab implementations) -->
+    <changeSet id="add-vl-permission-level-column" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_page_allowed_roles" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="notebook_page_allowed_roles" columnName="permission_level" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add permission_level column for action-level access control (if not already present)</comment>
+        <addColumn tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" type="VARCHAR(50)" defaultValue="VIEW">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: Sample Reception & Registration -->
+    <!-- Lab Tech=FULL, Virologist=VIEW, Manager=FULL, PI=VIEW -->
+    <!-- ======================================================== -->
+
+    <changeSet id="vl-page1-technician-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page1-virologist-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Virologist'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Virologist'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page1-manager-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page1-pi-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: Viral Isolation & Culture -->
+    <!-- Lab Tech=FULL, Manager=FULL, PI=VIEW (no Virologist, no Data Manager) -->
+    <!-- ======================================================== -->
+
+    <changeSet id="vl-page2-technician-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page2-manager-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page2-pi-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: Nucleic Acid Extraction (same as PAGE 2) -->
+    <!-- Lab Tech=FULL, Manager=FULL, PI=VIEW -->
+    <!-- ======================================================== -->
+
+    <changeSet id="vl-page3-technician-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page3-manager-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page3-pi-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- PAGE 4: Viral Amplification (same as PAGE 2 & 3) -->
+    <changeSet id="vl-page4-technician-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page4-manager-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page4-pi-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- PAGE 5: Viral Detection & Quantification (same as PAGE 1: Lab Tech, Virologist, Manager, PI) -->
+    <changeSet id="vl-page5-technician-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page5-virologist-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Virologist'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Virologist'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page5-manager-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page5-pi-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- PAGE 6: Viral Characterization (same as PAGE 5: Lab Tech, Virologist, Manager, PI) -->
+    <changeSet id="vl-page6-technician-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page6-virologist-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Virologist'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Virologist'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page6-manager-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page6-pi-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- PAGE 7: Sequencing Preparation (same as PAGE 5 & 6: Lab Tech, Virologist, Manager, PI) -->
+    <changeSet id="vl-page7-technician-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page7-virologist-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Virologist'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Virologist'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page7-manager-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page7-pi-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- PAGE 8: Viral Sequencing (same as PAGE 5, 6, 7: Lab Tech, Virologist, Manager, PI) -->
+    <changeSet id="vl-page8-technician-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page8-virologist-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Virologist'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Virologist'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page8-manager-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page8-pi-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 9: Bioinformatics Analysis & Viral Identification -->
+    <!-- Virologist=FULL, Manager=VIEW, PI=VIEW, Data Manager=VIEW (NO Lab Technician) -->
+    <!-- ======================================================== -->
+
+    <changeSet id="vl-page9-virologist-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Virologist'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Virologist'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page9-manager-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page9-pi-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page9-dm-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Data Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 9 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Data Manager'</where>
+        </update>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 10: Sample Storage & Biosafety -->
+    <!-- Lab Tech=FULL, Manager=FULL, PI=VIEW, Data Manager=VIEW (NO Virologist) -->
+    <!-- ======================================================== -->
+
+    <changeSet id="vl-page10-technician-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 10 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 10 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Lab Technician'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page10-manager-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 10 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 10 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Manager'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page10-pi-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 10 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 10 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Principal Investigator'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="vl-page10-dm-permission" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 10 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true))
+                AND role = 'VL Data Manager'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 10 AND notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)) AND role = 'VL Data Manager'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

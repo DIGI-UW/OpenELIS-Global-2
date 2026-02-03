@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================================= -->
+    <!-- CREATE VL LAB UNIT                                                     -->
+    <!-- Creates VL lab unit and assigns VL roles following established pattern -->
+    <!-- ======================================================================= -->
+
+    <changeSet id="create-vl-lab-unit-entry" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="lab_unit_role_map" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.lab_unit_role_map WHERE lab_unit = 'VL'
+            </sqlCheck>
+            <sqlCheck expectedResult="5">
+                SELECT COUNT(*) FROM clinlims.system_role
+                WHERE name IN ('VL Lab Technician', 'VL Virologist', 'VL Manager', 'VL Principal Investigator', 'VL Data Manager')
+            </sqlCheck>
+        </preConditions>
+        <comment>Create VL lab unit entry in lab_unit_role_map</comment>
+        <insert tableName="lab_unit_role_map" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueSequenceNext="lab_unit_role_map_lab_unit_role_map_id_seq"/>
+            <column name="lab_unit" value="VL"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="assign-vl-roles-to-vl-lab-unit" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="lab_roles" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.lab_unit_role_map WHERE lab_unit = 'VL'
+            </sqlCheck>
+            <sqlCheck expectedResult="5">
+                SELECT COUNT(*) FROM clinlims.system_role
+                WHERE name IN ('VL Lab Technician', 'VL Virologist', 'VL Manager', 'VL Principal Investigator', 'VL Data Manager')
+            </sqlCheck>
+            <!-- Only run if VL roles are not already assigned -->
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.lab_roles lr
+                JOIN clinlims.system_role sr ON lr.role::int = sr.id
+                WHERE lr.lab_unit_role_map_id = (SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'VL')
+                AND sr.name IN ('VL Lab Technician', 'VL Virologist', 'VL Manager', 'VL Principal Investigator', 'VL Data Manager')
+            </sqlCheck>
+        </preConditions>
+        <comment>Assign all VL roles to VL lab unit</comment>
+
+        <!-- VL Lab Technician -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'VL')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'VL Lab Technician')"/>
+        </insert>
+
+        <!-- VL Virologist -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'VL')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'VL Virologist')"/>
+        </insert>
+
+        <!-- VL Manager -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'VL')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'VL Manager')"/>
+        </insert>
+
+        <!-- VL Principal Investigator -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'VL')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'VL Principal Investigator')"/>
+        </insert>
+
+        <!-- VL Data Manager -->
+        <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT lab_unit_role_map_id FROM clinlims.lab_unit_role_map WHERE lab_unit = 'VL')"/>
+            <column name="role" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'VL Data Manager')"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
