@@ -1015,35 +1015,35 @@ Stories**: US-1, US-6 **Depends On**: M5 (Mindray HL7) **Workstream**: B (HL7)
 
 ### Setup for M14
 
-- [ ] T215 [M14] Create branch
+- [x] T215 [M14] Create branch
       `feat/011-madagascar-analyzer-integration-m14-p2-validation` from
       `demo/madagascar`
-- [ ] T215a [M14] Check if SysmexXN-L plugin exists; if not, adapt existing
+- [x] T215a [M14] Check if SysmexXN-L plugin exists; if not, adapt existing
       Sysmex plugins (SysmeXT, Sysmex2000i, SysmexXT4000i) for XN-L series
-- [ ] T215b [M14] Build and verify SysmexXN-L plugin loads
+- [x] T215b [M14] Build and verify SysmexXN-L plugin loads
 
 ### Tests for M14 (MANDATORY)
 
-- [ ] T216 [P] [M14] Integration test for Mindray BC2000 in
+- [x] T216 [P] [M14] Integration test for Mindray BC2000 in
       `src/test/java/org/openelisglobal/analyzer/mindray/MindrayBC2000IntegrationTest.java`
-- [ ] T217 [P] [M14] Integration test for Sysmex XN in
+- [x] T217 [P] [M14] Integration test for Sysmex XN in
       `src/test/java/org/openelisglobal/analyzer/sysmex/SysmexXNIntegrationTest.java`
-- [ ] T218 [P] [M14] Create HL7 test fixtures in
+- [x] T218 [P] [M14] Create HL7 test fixtures in
       `src/test/resources/testdata/hl7/sysmex-xn-result.hl7`
 
 ### Implementation for M14
 
-- [ ] T219 [M14] Verify Mindray plugin handles BC2000 (shares BC-5380 config)
-- [ ] T220 [M14] Verify SysmexXN-L plugin compatibility with HL7AnalyzerReader
-- [ ] T221 [M14] Test override mappings take precedence over plugin defaults
-- [ ] T222 [M14] Document P2 analyzer integration
+- [x] T219 [M14] Verify Mindray plugin handles BC2000 (shares BC-5380 config)
+- [x] T220 [M14] Verify SysmexXN-L plugin compatibility with HL7AnalyzerReader
+- [x] T221 [M14] Test override mappings take precedence over plugin defaults
+- [x] T222 [M14] Document P2 analyzer integration
 
 ### Finalization for M14
 
-- [ ] T223 [M14] Verify integration tests pass
-- [ ] T224 [M14] Create PR
+- [x] T223 [M14] Verify integration tests pass
+- [x] T224 [M14] Create PR
       `feat/011-madagascar-analyzer-integration-m14-p2-validation` →
-      `demo/madagascar`
+      `demo/madagascar` (PR #2674)
 
 **Checkpoint**: All 12 analyzers receive results
 
