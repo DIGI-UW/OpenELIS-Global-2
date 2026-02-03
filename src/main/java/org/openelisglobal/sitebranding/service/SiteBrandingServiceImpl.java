@@ -500,6 +500,7 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
                     Path filePath = Paths.get(logoPath);
                     if (Files.exists(filePath)) {
                         Files.delete(filePath);
+                        logger.info("Deleted logo file: {}", logoPath);
                     }
                 } catch (IOException e) {
                     LogEvent.logError("Error deleting logo file during reset: " + logoPath, e);
@@ -508,18 +509,26 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
             }
         }
 
-        // Reset all fields to defaults
-        branding.setHeaderLogoPath(null);
-        branding.setLoginLogoPath(null);
-        branding.setFaviconPath(null);
-        branding.setUseHeaderLogoForLogin(false);
-        branding.setHeaderColor("#295785");
-        branding.setPrimaryColor("#0f62fe");
-        branding.setSecondaryColor("#393939");
-        branding.setColorMode("light");
+        // Get fresh managed entity to update directly (bypassing saveBranding's
+        // null-check logic)
+        SiteBranding managedBranding = siteBrandingDAO.get(branding.getId())
+                .orElseThrow(() -> new LIMSRuntimeException("Branding not found with id: " + branding.getId()));
 
-        // Save branding
-        saveBranding(branding);
+        // Reset all fields to defaults - including explicitly setting logo paths to
+        // null
+        managedBranding.setHeaderLogoPath(null);
+        managedBranding.setLoginLogoPath(null);
+        managedBranding.setFaviconPath(null);
+        managedBranding.setUseHeaderLogoForLogin(false);
+        managedBranding.setHeaderColor("#295785");
+        managedBranding.setPrimaryColor("#0f62fe");
+        managedBranding.setSecondaryColor("#393939");
+        managedBranding.setColorMode("light");
+        managedBranding.setSysUserId(branding.getSysUserId());
+        managedBranding.setLastupdatedFields();
+
+        // Update directly
+        siteBrandingDAO.update(managedBranding);
 
         // Task Reference: T093 - Log reset action for audit trail
         LogEvent.logInfo("SiteBrandingService", "resetToDefaults",

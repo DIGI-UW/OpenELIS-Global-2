@@ -6,7 +6,12 @@
  * Task Reference: T032
  */
 
-import React, { useState } from "react";
+import React, {
+  useState,
+  useEffect,
+  useImperativeHandle,
+  forwardRef,
+} from "react";
 import {
   Grid,
   Column,
@@ -21,22 +26,83 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { postToOpenElisServerFormData } from "../../../utils/Utils";
 import { TrashCan } from "@carbon/icons-react";
 import { removeLogo } from "../../../utils/BrandingUtils";
+import config from "../../../../config.json";
 import { Modal } from "@carbon/react";
 
-function LogoUploadSection({
-  type,
-  currentLogoUrl,
-  onLogoUploaded,
-  onLogoRemoved,
-  useHeaderLogoForLogin = false,
-  onUseHeaderLogoChange,
-}) {
+const LogoUploadSection = forwardRef(function LogoUploadSection(
+  {
+    type,
+    currentLogoUrl,
+    onLogoUploaded,
+    onLogoRemoved,
+    onFileSelected,
+    useHeaderLogoForLogin = false,
+    onUseHeaderLogoChange,
+  },
+  ref,
+) {
   const intl = useIntl();
   const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState(currentLogoUrl);
+  // Add serverBaseUrl prefix for REST endpoints (like Header.js does)
+  const getDisplayUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith("data:")) return url; // base64 preview
+    if (url.startsWith(config.serverBaseUrl)) return url; // already prefixed
+    return `${config.serverBaseUrl}${url}?v=${Date.now()}`; // add prefix and cache-busting
+  };
+  const [preview, setPreview] = useState(getDisplayUrl(currentLogoUrl));
   const [error, setError] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+
+  // Update preview when currentLogoUrl prop changes
+  useEffect(() => {
+    const newPreviewUrl = getDisplayUrl(currentLogoUrl);
+    console.debug(`LogoUploadSection [${type}] - currentLogoUrl changed:`, {
+      currentLogoUrl,
+      newPreviewUrl,
+    });
+    setPreview(newPreviewUrl);
+  }, [currentLogoUrl, type]);
+
+  // Expose upload function to parent via ref
+  useImperativeHandle(ref, () => ({
+    uploadFile: () => {
+      return new Promise((resolve, reject) => {
+        if (!file) {
+          resolve({ success: true, noFile: true });
+          return;
+        }
+
+        setIsUploading(true);
+        setError(null);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        postToOpenElisServerFormData(
+          `/rest/site-branding/logo/${type}`,
+          formData,
+          (status) => {
+            setIsUploading(false);
+            if (status === 200 || status === 201) {
+              const logoUrl = `/rest/site-branding/logo/${type}`;
+              setPreview(getDisplayUrl(logoUrl));
+              setFile(null);
+              if (onLogoUploaded) {
+                onLogoUploaded(logoUrl);
+              }
+              resolve({ success: true });
+            } else {
+              setError(intl.formatMessage({ id: "site.branding.save.error" }));
+              reject(new Error("Upload failed"));
+            }
+          },
+        );
+      });
+    },
+    hasPendingFile: () => !!file,
+  }));
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files?.[0];
@@ -64,40 +130,17 @@ function LogoUploadSection({
     setError(null);
     setFile(selectedFile);
 
+    // Notify parent that a file was selected
+    if (onFileSelected) {
+      onFileSelected(selectedFile, type);
+    }
+
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreview(reader.result);
     };
     reader.readAsDataURL(selectedFile);
-  };
-
-  const handleUpload = () => {
-    if (!file) return;
-
-    setIsUploading(true);
-    setError(null);
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    postToOpenElisServerFormData(
-      `/rest/site-branding/logo/${type}`,
-      formData,
-      (status) => {
-        setIsUploading(false);
-        if (status === 200 || status === 201) {
-          // Get logo URL from response or construct it
-          const logoUrl = `/rest/site-branding/logo/${type}`;
-          setPreview(logoUrl);
-          if (onLogoUploaded) {
-            onLogoUploaded(logoUrl);
-          }
-        } else {
-          setError(intl.formatMessage({ id: "site.branding.save.error" }));
-        }
-      },
-    );
   };
 
   const handleRemove = () => {
@@ -168,6 +211,32 @@ function LogoUploadSection({
     }
   };
 
+  const getUploadButtonKey = () => {
+    switch (type) {
+      case "header":
+        return "site.branding.upload.header.logo";
+      case "login":
+        return "site.branding.upload.login.logo";
+      case "favicon":
+        return "site.branding.upload.favicon";
+      default:
+        return "site.branding.upload.logo";
+    }
+  };
+
+  const getRemoveButtonKey = () => {
+    switch (type) {
+      case "header":
+        return "site.branding.remove.header.logo";
+      case "login":
+        return "site.branding.remove.login.logo";
+      case "favicon":
+        return "site.branding.remove.favicon";
+      default:
+        return "site.branding.remove.logo";
+    }
+  };
+
   return (
     <Section>
       <Grid fullWidth={true}>
@@ -227,7 +296,7 @@ function LogoUploadSection({
                 onClick={handleRemove}
                 style={{ marginLeft: "1rem" }}
               >
-                <FormattedMessage id="site.branding.remove.logo" />
+                <FormattedMessage id={getRemoveButtonKey()} />
               </Button>
             </div>
           )}
@@ -236,10 +305,10 @@ function LogoUploadSection({
           {!(type === "login" && useHeaderLogoForLogin) && (
             <FileUploader
               buttonLabel={intl.formatMessage({
-                id: "site.branding.upload.logo",
+                id: getUploadButtonKey(),
               })}
               iconDescription={intl.formatMessage({
-                id: "site.branding.upload.logo",
+                id: getUploadButtonKey(),
               })}
               filenameStatus={file ? "complete" : undefined}
               accept={["image/png", "image/svg+xml", "image/jpeg", "image/jpg"]}
@@ -255,15 +324,20 @@ function LogoUploadSection({
             </p>
           )}
 
-          {file && !preview?.startsWith("/rest/site-branding/logo/") && (
-            <Button
-              data-testid="upload-logo-submit"
-              onClick={handleUpload}
-              disabled={isUploading}
-              style={{ marginTop: "1rem" }}
+          {/* Show pending upload indicator */}
+          {file && preview?.startsWith("data:") && (
+            <p
+              style={{
+                marginTop: "0.5rem",
+                fontStyle: "italic",
+                color: "#0f62fe",
+              }}
             >
-              <FormattedMessage id="site.branding.upload.logo" />
-            </Button>
+              <FormattedMessage
+                id="site.branding.file.pending"
+                defaultMessage="File selected - click Save Changes to upload"
+              />
+            </p>
           )}
 
           {/* Confirmation Modal for Logo Removal */}
@@ -292,6 +366,6 @@ function LogoUploadSection({
       </Grid>
     </Section>
   );
-}
+});
 
 export default LogoUploadSection;

@@ -283,12 +283,6 @@ function Admin() {
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="siteBrandingMenu"
-              href="#SiteBrandingMenu"
-            >
-              <FormattedMessage id="sidenav.label.admin.formEntry.siteBranding" />
-            </SideNavMenuItem>
-            <SideNavMenuItem
-              data-cy="siteBrandingMenu"
               onClick={handleNavigation(`${path}/SiteBrandingMenu`)}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.siteBranding" />

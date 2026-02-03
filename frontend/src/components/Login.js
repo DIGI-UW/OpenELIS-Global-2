@@ -97,7 +97,7 @@ function Login(props) {
     // Task Reference: T041 - Use custom login logo if available, otherwise default
     // Add cache-busting parameter to prevent stale logo display after upload
     const logoSrc = loginLogoUrl
-      ? `../api${loginLogoUrl}?v=${logoVersion}`
+      ? `${config.serverBaseUrl}${loginLogoUrl}?v=${logoVersion}`
       : `images/openelis_logo_full.png`;
 
     return (

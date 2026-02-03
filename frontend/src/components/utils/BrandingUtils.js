@@ -8,6 +8,7 @@ import {
   putToOpenElisServerFullResponse,
   deleteFromOpenElisServerFullResponse,
 } from "./Utils";
+import config from "../../config.json";
 
 // =============================================================================
 // API Functions
@@ -18,7 +19,7 @@ import {
  * @param {Function} callback - Callback function to handle response
  */
 export const getBranding = (callback) => {
-  getFromOpenElisServer("/rest/site-branding/", callback);
+  getFromOpenElisServer("/rest/site-branding", callback);
 };
 
 /**
@@ -142,7 +143,7 @@ export const applyFavicon = (faviconUrl) => {
   const link = document.createElement("link");
   link.rel = "icon";
   link.type = "image/x-icon";
-  link.href = `../api${faviconUrl}`;
+  link.href = `${config.serverBaseUrl}${faviconUrl}`;
   document.head.appendChild(link);
 };
 

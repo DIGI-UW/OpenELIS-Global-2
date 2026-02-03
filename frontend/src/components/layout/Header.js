@@ -45,6 +45,7 @@ import SlideOverNotifications from "../notifications/SlideOverNotifications";
 import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
 import SearchBar from "./search/searchBar";
 import { getBranding } from "../utils/BrandingUtils";
+import config from "../../config.json";
 
 function OEHeader(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
@@ -89,18 +90,25 @@ function OEHeader(props) {
   // Load branding configuration for header logo
   // Colors are handled by App.js
   const loadHeaderLogo = () => {
-    if (userSessionDetails.authenticated) {
-      getBranding((response) => {
-        if (response && response.headerLogoUrl) {
-          setHeaderLogoUrl(response.headerLogoUrl);
-          setLogoVersion((prev) => prev + 1);
-        }
-      });
-    }
+    getBranding((response) => {
+      if (response && response.headerLogoUrl) {
+        setHeaderLogoUrl(response.headerLogoUrl);
+        setLogoVersion((prev) => prev + 1);
+      }
+    });
   };
 
+  // Load header logo on initial mount (for login page)
   useEffect(() => {
     loadHeaderLogo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Reload header logo when authentication status changes
+  useEffect(() => {
+    if (userSessionDetails.authenticated) {
+      loadHeaderLogo();
+    }
   }, [userSessionDetails.authenticated]);
 
   // Listen for branding update events to refresh logo
@@ -206,7 +214,7 @@ function OEHeader(props) {
     // Use custom header logo if available, otherwise use default
     // Add cache-busting parameter to prevent stale logo display after upload
     const logoSrc = headerLogoUrl
-      ? `../api${headerLogoUrl}?v=${logoVersion}`
+      ? `${config.serverBaseUrl}${headerLogoUrl}?v=${logoVersion}`
       : `../images/openelis_logo.png`;
 
     return (

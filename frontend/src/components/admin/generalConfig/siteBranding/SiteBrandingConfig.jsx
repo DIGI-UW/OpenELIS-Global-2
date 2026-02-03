@@ -32,6 +32,7 @@ import { useHistory } from "react-router-dom";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import LogoUploadSection from "./LogoUploadSection";
 import ColorPickerSection from "./ColorPickerSection";
+import config from "../../../../config.json";
 
 function SiteBrandingConfig() {
   const intl = useIntl();
@@ -45,7 +46,13 @@ function SiteBrandingConfig() {
   const [savedBranding, setSavedBranding] = useState(null); // Track saved state
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [hasPendingFiles, setHasPendingFiles] = useState(false);
   const initialBrandingRef = useRef(null);
+
+  // Refs for LogoUploadSection components to trigger uploads
+  const headerLogoRef = useRef(null);
+  const loginLogoRef = useRef(null);
+  const faviconRef = useRef(null);
 
   const breadcrumbs = [
     { label: "home.label", link: "/" },
@@ -64,6 +71,12 @@ function SiteBrandingConfig() {
   const loadBranding = () => {
     setIsLoading(true);
     getBranding((response) => {
+      console.debug("loadBranding response:", response);
+      console.debug("Logo URLs in response:", {
+        headerLogoUrl: response?.headerLogoUrl,
+        loginLogoUrl: response?.loginLogoUrl,
+        faviconUrl: response?.faviconUrl,
+      });
       if (response) {
         setBranding(response);
         setSavedBranding(JSON.parse(JSON.stringify(response))); // Deep copy for comparison
@@ -229,7 +242,7 @@ function SiteBrandingConfig() {
     const link = document.createElement("link");
     link.rel = "icon";
     link.type = "image/x-icon";
-    link.href = `../api${faviconUrl}`;
+    link.href = `${config.serverBaseUrl}${faviconUrl}`;
     document.head.appendChild(link);
   };
 
@@ -245,7 +258,12 @@ function SiteBrandingConfig() {
     document.head.appendChild(link);
   };
 
-  const handleSave = () => {
+  // Handler for when a file is selected in LogoUploadSection
+  const handleFileSelected = (file, type) => {
+    setHasPendingFiles(true);
+  };
+
+  const handleSave = async () => {
     if (!branding || isSaving) return;
 
     // Task Reference: T097 - Disable form during save operation
@@ -265,60 +283,69 @@ function SiteBrandingConfig() {
       // These are managed via separate logo upload endpoints
     };
 
-    // Save branding configuration to server
-    updateBranding(dataToSend, (status, errorMessage, responseData) => {
-      setIsSaving(false);
-      if (status === 200 || status === 201) {
-        // Task Reference: T074 - Re-fetch branding config after save to ensure consistency
-        // Always apply colors from the data we sent (immediate feedback)
-        // Then reload from server to get complete state
-        console.debug(
-          "Save successful. Applying colors immediately from sent data:",
-          dataToSend,
-        );
-        applyBrandingColors(dataToSend);
-
-        // Use responseData if available and complete, otherwise reload from server
-        if (
-          responseData &&
-          responseData.headerColor &&
-          responseData.primaryColor &&
-          responseData.secondaryColor
-        ) {
-          console.debug("Response data is complete:", responseData);
-          setBranding(responseData);
-          setSavedBranding(JSON.parse(JSON.stringify(responseData)));
-          // Apply colors again from server response (in case server normalized values)
-          applyBrandingColors(responseData);
-          // Update favicon if custom favicon exists
-          if (responseData.faviconUrl) {
-            updateFavicon(responseData.faviconUrl);
-          }
-        } else {
-          console.debug(
-            "Response data missing or incomplete, reloading from server",
-          );
-          // Reload from server to get complete state including logo URLs
-          // loadBranding() will apply colors automatically
-          loadBranding();
-        }
-
-        // Dispatch event to notify Header and other components to reload branding
-        window.dispatchEvent(new CustomEvent("branding-updated"));
-
-        addNotification(
-          intl.formatMessage({ id: "site.branding.save.success" }),
-          NotificationKinds.success,
-        );
-        setNotificationVisible(true);
-      } else {
+    // Save branding configuration FIRST (including useHeaderLogoForLogin flag)
+    // This must happen before logo uploads so the backend has correct state
+    updateBranding(dataToSend, async (status, errorMessage, responseData) => {
+      if (status !== 200 && status !== 201) {
+        setIsSaving(false);
         console.error("Save failed:", { status, errorMessage, dataToSend });
         const errorText = errorMessage
           ? `${intl.formatMessage({ id: "site.branding.save.error" })}: ${errorMessage}`
           : intl.formatMessage({ id: "site.branding.save.error" });
         addNotification(errorText, NotificationKinds.error);
         setNotificationVisible(true);
+        return;
       }
+
+      // Now upload any pending logo files AFTER branding config is saved
+      // Upload sequentially to avoid race conditions with DB updates
+      try {
+        if (headerLogoRef.current?.hasPendingFile()) {
+          console.debug("Uploading header logo...");
+          await headerLogoRef.current.uploadFile();
+          console.debug("Header logo uploaded successfully");
+        }
+        if (loginLogoRef.current?.hasPendingFile()) {
+          console.debug("Uploading login logo...");
+          await loginLogoRef.current.uploadFile();
+          console.debug("Login logo uploaded successfully");
+        }
+        if (faviconRef.current?.hasPendingFile()) {
+          console.debug("Uploading favicon...");
+          await faviconRef.current.uploadFile();
+          console.debug("Favicon uploaded successfully");
+        }
+
+        // Reset pending files state
+        setHasPendingFiles(false);
+      } catch (error) {
+        console.error("Error uploading logos:", error);
+        // Don't return early - continue to loadBranding to show any successful uploads
+        // The individual upload errors are already shown in their respective components
+      }
+
+      // All saves complete - finalize
+      setIsSaving(false);
+
+      // Task Reference: T074 - Re-fetch branding config after save to ensure consistency
+      // Apply colors immediately from the data we sent
+      console.debug(
+        "Save successful. Applying colors immediately from sent data:",
+        dataToSend,
+      );
+      applyBrandingColors(dataToSend);
+
+      // Reload from server to get complete state including logo URLs
+      loadBranding();
+
+      // Dispatch event to notify Header and other components to reload branding
+      window.dispatchEvent(new CustomEvent("branding-updated"));
+
+      addNotification(
+        intl.formatMessage({ id: "site.branding.save.success" }),
+        NotificationKinds.success,
+      );
+      setNotificationVisible(true);
     });
   };
 
@@ -433,12 +460,13 @@ function SiteBrandingConfig() {
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <LogoUploadSection
+            ref={headerLogoRef}
             type="header"
             currentLogoUrl={branding?.headerLogoUrl}
+            onFileSelected={handleFileSelected}
             onLogoUploaded={(url) => {
-              // Logo uploads are saved immediately, so reload from server to sync state
-              loadBranding();
-              // Dispatch event to notify Header to reload branding
+              // Don't call loadBranding() here - handleSave calls it once after all uploads complete
+              // Just dispatch event to notify Header to reload branding
               window.dispatchEvent(new CustomEvent("branding-updated"));
             }}
             onLogoRemoved={() => {
@@ -454,13 +482,14 @@ function SiteBrandingConfig() {
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <LogoUploadSection
+            ref={loginLogoRef}
             type="login"
             currentLogoUrl={branding?.loginLogoUrl}
             useHeaderLogoForLogin={branding?.useHeaderLogoForLogin || false}
+            onFileSelected={handleFileSelected}
             onLogoUploaded={(url) => {
-              // Logo uploads are saved immediately, so reload from server to sync state
-              loadBranding();
-              // Dispatch event to notify Header to reload branding
+              // Don't call loadBranding() here - handleSave calls it once after all uploads complete
+              // Just dispatch event to notify Header to reload branding
               window.dispatchEvent(new CustomEvent("branding-updated"));
             }}
             onLogoRemoved={() => {
@@ -482,14 +511,15 @@ function SiteBrandingConfig() {
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <LogoUploadSection
+            ref={faviconRef}
             type="favicon"
             currentLogoUrl={branding?.faviconUrl}
+            onFileSelected={handleFileSelected}
             onLogoUploaded={(url) => {
-              // Logo uploads are saved immediately, so reload from server to sync state
               // Update favicon in document head
               updateFavicon(url);
-              loadBranding();
-              // Dispatch event to notify Header to reload branding
+              // Don't call loadBranding() here - handleSave calls it once after all uploads complete
+              // Just dispatch event to notify Header to reload branding
               window.dispatchEvent(new CustomEvent("branding-updated"));
             }}
             onLogoRemoved={() => {
@@ -578,7 +608,7 @@ function SiteBrandingConfig() {
           <Section>
             <Button
               onClick={handleSave}
-              disabled={!hasUnsavedChanges || isSaving}
+              disabled={(!hasUnsavedChanges && !hasPendingFiles) || isSaving}
               style={{ marginRight: "1rem" }}
             >
               {isSaving ? (
@@ -606,7 +636,7 @@ function SiteBrandingConfig() {
             >
               <FormattedMessage id="site.branding.reset.to.defaults" />
             </Button>
-            {hasUnsavedChanges && (
+            {(hasUnsavedChanges || hasPendingFiles) && (
               <p
                 style={{
                   marginTop: "1rem",
