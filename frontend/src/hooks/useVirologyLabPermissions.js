@@ -69,11 +69,11 @@ export const useVirologyLabPermissions = () => {
 
   const VIROLOGY_LAB_ROLES = useMemo(
     () => ({
-      LAB_TECHNICIAN: "VirologyLab Lab Technician",
-      BIOINFORMATICIAN: "VirologyLab Bioinformatician",
-      MANAGER: "VirologyLab Manager",
-      PRINCIPAL_INVESTIGATOR: "VirologyLab PI",
-      DATA_MANAGER: "VirologyLab Data Manager",
+      LAB_TECHNICIAN: "GBD Lab Technician",
+      BIOINFORMATICIAN: "GBD Bioinformatician",
+      MANAGER: "GBD Manager",
+      PRINCIPAL_INVESTIGATOR: "GBD Principal Investigator",
+      DATA_MANAGER: "GBD Data Manager",
     }),
     [],
   );
@@ -95,18 +95,18 @@ export const useVirologyLabPermissions = () => {
   );
 
   /**
-   * Get the user's permission level for a specific VirologyLab page
+   * Get the user's permission level for a specific GBD page
    *
-   * Fetches from userSessionDetails.virologyLabPermissions which should contain
+   * Fetches from userSessionDetails.gbdPermissions which should contain
    * permission levels for each page, sourced from the database notebook_page_allowed_roles table.
    *
-   * @param {string} pageName - Name of the VirologyLab page
+   * @param {string} pageName - Name of the GBD page
    * @returns {string|null} - Permission level (VIEW, UPDATE, FULL, etc.) or null if no access
    */
   const getPagePermissionLevel = useCallback(
     (pageName) => {
       if (userSessionDetails?.virologyLabPermissions?.[pageName]) {
-        return userSessionDetails.virologyLabPermissions[pageName];
+        return userSessionDetails.gbdPermissions[pageName];
       }
 
       const userVirologyLabRoles = Object.values(VIROLOGY_LAB_ROLES).filter(
@@ -269,7 +269,7 @@ export const useVirologyLabPermissions = () => {
   }, []);
 
   /**
-   * Check if user has a specific VirologyLab role
+   * Check if user has a specific GBD role
    * @param {string} role - One of the VIROLOGY_LAB_ROLES values
    * @returns {boolean}
    */
@@ -281,7 +281,7 @@ export const useVirologyLabPermissions = () => {
   );
 
   /**
-   * Check if user has any of the specified VirologyLab roles
+   * Check if user has any of the specified GBD roles
    * @param {string[]} roles - Array of VIROLOGY_LAB_ROLES values
    * @returns {boolean}
    */
@@ -296,7 +296,7 @@ export const useVirologyLabPermissions = () => {
   );
 
   /**
-   * Get the user's primary VirologyLab role (if any)
+   * Get the user's primary GBD role (if any)
    * @returns {string|null}
    */
   const getVirologyLabRole = useCallback(() => {
@@ -308,7 +308,7 @@ export const useVirologyLabPermissions = () => {
   }, [VIROLOGY_LAB_ROLES, hasVirologyLabLabUnitRoleStrict]);
 
   /**
-   * VirologyLab-specific role checks based on VirologyLab lab unit roles
+   * GBD-specific role checks based on GBD lab unit roles
    * These use strict checking that does NOT bypass for Global Admins
    */
   const isVirologyLabLabTechnician = useCallback(
@@ -357,7 +357,7 @@ export const useVirologyLabPermissions = () => {
   );
 
   /**
-   * Helper function to check if user has any of the specified VirologyLab lab unit roles
+   * Helper function to check if user has any of the specified GBD lab unit roles
    * Uses strict checking that does NOT bypass for Global Admins
    */
   const hasAnyVirologyLabLabUnitRole = useCallback(
@@ -370,7 +370,7 @@ export const useVirologyLabPermissions = () => {
   );
 
   /**
-   * Page-specific access checks per VirologyLab workflow stages
+   * Page-specific access checks per GBD workflow stages
    */
   const canAccessSampleReception = useCallback(() => {
     const allowedRoles = [
@@ -487,7 +487,7 @@ export const useVirologyLabPermissions = () => {
     hasAnyVirologyLabRole,
     getVirologyLabRole,
 
-    // VirologyLab-specific role checks
+    // GBD-specific role checks
     isVirologyLabLabTechnician,
     isVirologyLabBioinformatician,
     isVirologyLabManager,
