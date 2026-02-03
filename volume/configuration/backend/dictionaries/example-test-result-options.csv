@@ -1,0 +1,29 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode
+Test Results,Positive,POS,Y,1,LA6576-8
+Test Results,Negative,NEG,Y,2,LA6577-6
+Test Results,Inconclusive,INCON,Y,3,LA11884-6
+Test Results,Reactive,REACT,Y,4,LA15255-5
+Test Results,Non-Reactive,NREACT,Y,5,LA15256-3
+Test Results,Indeterminate,INDET,Y,6,LA11885-3
+Malaria Results,Plasmodium falciparum,PF,Y,1,
+Malaria Results,Plasmodium vivax,PV,Y,2,
+Malaria Results,Plasmodium malariae,PM,Y,3,
+Malaria Results,Plasmodium ovale,PO,Y,4,
+Malaria Results,Mixed infection,MIX,Y,5,
+Malaria Results,No parasites seen,NPS,Y,6,
+Urinalysis Results,Clear,CLR,Y,1,
+Urinalysis Results,Slightly Cloudy,SLCL,Y,2,
+Urinalysis Results,Cloudy,CLD,Y,3,
+Urinalysis Results,Turbid,TURB,Y,4,
+Urine Color,Yellow,YLW,Y,1,
+Urine Color,Dark Yellow,DYLW,Y,2,
+Urine Color,Amber,AMB,Y,3,
+Urine Color,Red,RED,Y,4,
+Urine Color,Brown,BRN,Y,5,
+Titer Results,1:10,T10,Y,1,
+Titer Results,1:20,T20,Y,2,
+Titer Results,1:40,T40,Y,3,
+Titer Results,1:80,T80,Y,4,
+Titer Results,1:160,T160,Y,5,
+Titer Results,1:320,T320,Y,6,
+Titer Results,1:640,T640,Y,7,

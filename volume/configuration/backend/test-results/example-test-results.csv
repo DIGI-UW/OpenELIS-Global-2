@@ -1,21 +1,69 @@
-testName,resultType,resultValue,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags
-HIV Rapid Test,D,Positive,1,N,Y,N,,
-HIV Rapid Test,D,Negative,2,N,Y,Y,,
-HIV Rapid Test,D,Inconclusive,3,N,Y,N,,
-Hepatitis B Surface Antigen,D,Positive,1,N,Y,N,,
-Hepatitis B Surface Antigen,D,Negative,2,N,Y,Y,,
-Hepatitis C Antibody,D,Positive,1,N,Y,N,,
-Hepatitis C Antibody,D,Negative,2,N,Y,Y,,
-Malaria Rapid Test,D,Positive,1,N,Y,N,,
-Malaria Rapid Test,D,Negative,2,N,Y,Y,,
-Hemoglobin,N,,1,Y,Y,N,1,
-Hematocrit,N,,1,Y,Y,N,1,
-Glucose,N,,1,Y,Y,N,0,
-Creatinine,N,,1,Y,Y,N,2,
-Blood Urea Nitrogen,N,,1,Y,Y,N,1,
-Total Cholesterol,N,,1,Y,Y,N,0,
-Triglycerides,N,,1,Y,Y,N,0,
-ALT,N,,1,Y,Y,N,0,
-AST,N,,1,Y,Y,N,0,
-White Blood Cell Count,N,,1,Y,Y,N,2,
-Platelet Count,N,,1,Y,Y,N,0,
+testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags
+# ============================================================================
+# DICTIONARY TYPE (D) - Coded results with predefined options
+# ============================================================================
+HIV Rapid Test,D,Positive,Test Results,1,N,Y,N,,
+HIV Rapid Test,D,Negative,Test Results,2,N,Y,Y,,
+HIV Rapid Test,D,Inconclusive,Test Results,3,N,Y,N,,
+Hepatitis B Surface Antigen,D,Reactive,Test Results,1,N,Y,N,,
+Hepatitis B Surface Antigen,D,Non-Reactive,Test Results,2,N,Y,Y,,
+Hepatitis B Surface Antigen,D,Indeterminate,Test Results,3,N,Y,N,,
+Hepatitis C Antibody,D,Reactive,Test Results,1,N,Y,N,,
+Hepatitis C Antibody,D,Non-Reactive,Test Results,2,N,Y,Y,,
+# ============================================================================
+# NUMERIC TYPE (N) - Quantitative results with significant digits
+# ============================================================================
+Hemoglobin,N,,,1,Y,Y,N,1,
+Hematocrit,N,,,1,Y,Y,N,1,
+Glucose,N,,,1,Y,Y,N,0,
+Creatinine,N,,,1,Y,Y,N,2,
+Blood Urea Nitrogen,N,,,1,Y,Y,N,1,
+Total Cholesterol,N,,,1,Y,Y,N,0,
+Triglycerides,N,,,1,Y,Y,N,0,
+ALT,N,,,1,Y,Y,N,0,
+AST,N,,,1,Y,Y,N,0,
+White Blood Cell Count,N,,,1,Y,Y,N,2,
+Platelet Count,N,,,1,Y,Y,N,0,
+Complete Blood Count,N,,,1,Y,Y,N,0,
+# ============================================================================
+# ALPHA TYPE (A) - Alphanumeric text results (free text entry)
+# ============================================================================
+Urinalysis,A,,,1,N,Y,N,,
+# ============================================================================
+# REMARK TYPE (R) - Free-form remarks/comments
+# ============================================================================
+Pathology Report,R,,,1,N,Y,N,,
+# ============================================================================
+# TITER TYPE (T) - Titer/dilution results
+# ============================================================================
+Malaria Rapid Test,T,1:10,Titer Results,1,N,Y,N,,
+Malaria Rapid Test,T,1:20,Titer Results,2,N,Y,N,,
+Malaria Rapid Test,T,1:40,Titer Results,3,N,Y,N,,
+Malaria Rapid Test,T,1:80,Titer Results,4,N,Y,N,,
+Malaria Rapid Test,T,1:160,Titer Results,5,N,Y,N,,
+Malaria Rapid Test,T,1:320,Titer Results,6,N,Y,N,,
+Malaria Rapid Test,T,1:640,Titer Results,7,N,Y,N,,
+HIV Rapid Test,T,1:160,Titer Results,5,N,Y,N,,
+HIV Rapid Test,T,1:320,Titer Results,6,N,Y,N,,
+HIV Rapid Test,T,1:640,Titer Results,7,N,Y,N,,
+# ============================================================================
+# MULTISELECT TYPE (M) - Multiple dictionary selections
+# ============================================================================
+Malaria Microscopy,M,Plasmodium falciparum,Malaria Results,1,N,Y,N,,
+Malaria Microscopy,M,Plasmodium vivax,Malaria Results,2,N,Y,N,,
+Malaria Microscopy,M,Plasmodium malariae,Malaria Results,3,N,Y,N,,
+Malaria Microscopy,M,Plasmodium ovale,Malaria Results,4,N,Y,N,,
+Malaria Microscopy,M,Mixed infection,Malaria Results,5,N,Y,N,,
+Malaria Microscopy,M,No parasites seen,Malaria Results,6,N,Y,Y,,
+# ============================================================================
+# CASCADING MULTISELECT TYPE (C) - Dependent multiselect
+# ============================================================================
+Urine Appearance,C,Clear,Urinalysis Results,1,N,Y,Y,,
+Urine Appearance,C,Slightly Cloudy,Urinalysis Results,2,N,Y,N,,
+Urine Appearance,C,Cloudy,Urinalysis Results,3,N,Y,N,,
+Urine Appearance,C,Turbid,Urinalysis Results,4,N,Y,N,,
+Urine Appearance,C,Yellow,Urine Color,1,N,Y,Y,,
+Urine Appearance,C,Dark Yellow,Urine Color,2,N,Y,N,,
+Urine Appearance,C,Amber,Urine Color,3,N,Y,N,,
+Urine Appearance,C,Red,Urine Color,4,N,Y,N,,
+Urine Appearance,C,Brown,Urine Color,5,N,Y,N,,

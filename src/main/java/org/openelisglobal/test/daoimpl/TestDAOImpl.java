@@ -219,8 +219,9 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     @Override
     @Transactional(readOnly = true)
     public List<Test> getTestsByName(String testName) throws LIMSRuntimeException {
-        String sql = "from Test t where (t.localizedTestName.english = :testName or t.localizedTestName.french ="
-                + " :testName)";
+        // Use case-insensitive comparison to avoid duplicate tests with different casing
+        String sql = "from Test t where (LOWER(t.localizedTestName.english) = LOWER(:testName) or"
+                + " LOWER(t.localizedTestName.french) = LOWER(:testName))";
         try {
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
             query.setParameter("testName", testName);
@@ -236,8 +237,9 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     @Override
     @Transactional(readOnly = true)
     public List<Test> getActiveTestsByName(String testName) throws LIMSRuntimeException {
-        String sql = "from Test t where (t.localizedTestName.english = :testName or t.localizedTestName.french ="
-                + " :testName) and t.isActive='Y'";
+        // Use case-insensitive comparison to avoid duplicate tests with different casing
+        String sql = "from Test t where (LOWER(t.localizedTestName.english) = LOWER(:testName) or"
+                + " LOWER(t.localizedTestName.french) = LOWER(:testName)) and t.isActive='Y'";
         try {
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
             query.setParameter("testName", testName);
@@ -270,11 +272,12 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     @Override
     @Transactional(readOnly = true)
     public Test getActiveTestByLocalizedName(String testName, Locale locale) throws LIMSRuntimeException {
+        // Use case-insensitive comparison to avoid duplicate tests with different casing
         String sql;
         if (Locale.ENGLISH.equals(locale)) {
-            sql = "from Test t where t.localizedTestName.english = :testName and t.isActive='Y'";
+            sql = "from Test t where LOWER(t.localizedTestName.english) = LOWER(:testName) and t.isActive='Y'";
         } else {
-            sql = "from Test t where t.localizedTestName.french = :testName and t.isActive='Y'";
+            sql = "from Test t where LOWER(t.localizedTestName.french) = LOWER(:testName) and t.isActive='Y'";
         }
         try {
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
@@ -299,11 +302,12 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     @Override
     @Transactional(readOnly = true)
     public Test getTestByLocalizedName(String testName, Locale locale) throws LIMSRuntimeException {
+        // Use case-insensitive comparison to avoid duplicate tests with different casing
         String sql;
         if (Locale.ENGLISH.equals(locale)) {
-            sql = "from Test t where t.localizedTestName.english = :testName";
+            sql = "from Test t where LOWER(t.localizedTestName.english) = LOWER(:testName)";
         } else {
-            sql = "from Test t where t.localizedTestName.french = :testName";
+            sql = "from Test t where LOWER(t.localizedTestName.french) = LOWER(:testName)";
         }
         try {
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
@@ -623,7 +627,8 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     @Override
     @Transactional(readOnly = true)
     public Test getTestByDescription(String description) {
-        String sql = "From Test t where t.description = :description";
+        // Use case-insensitive comparison to avoid duplicate tests with different casing
+        String sql = "From Test t where LOWER(t.description) = LOWER(:description)";
         try {
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
             query.setParameter("description", description);

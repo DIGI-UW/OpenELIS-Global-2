@@ -15,4 +15,7 @@ HIV Rapid Test,Serology,Whole Blood|Serum|Plasma,68961-2,Y,Y,20,,HIV Rapid Test,
 Hepatitis B Surface Antigen,Serology,Serum|Plasma,5195-3,Y,Y,21,,Hepatitis B Surface Antigen,Antigène de Surface Hépatite B
 Hepatitis C Antibody,Serology,Serum|Plasma,16128-1,Y,Y,22,,Hepatitis C Antibody,Anticorps Hépatite C
 Malaria Rapid Test,Parasitology,Whole Blood,51587-4,Y,Y,30,,Malaria Rapid Test,Test Rapide Paludisme
-Urinalysis 2,Urinalysis,Urine,24356-8,Y,Y,40,,Urinalysis,Analyse Urinaire
+Malaria Microscopy,Parasitology,Whole Blood,32700-7,Y,Y,31,,Malaria Microscopy,Microscopie Paludisme
+Urinalysis,Urinalysis,Urine,24356-8,Y,Y,40,,Urinalysis,Analyse Urinaire
+Urine Appearance,Urinalysis,Urine,5767-9,Y,Y,41,,Urine Appearance,Aspect Urinaire
+Pathology Report,Pathology,Tissue,,,Y,Y,50,,Pathology Report,Rapport Pathologie

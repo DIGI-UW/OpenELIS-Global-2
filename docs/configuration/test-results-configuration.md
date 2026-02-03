@@ -21,6 +21,9 @@ the following columns:
 ### Optional Columns
 
 - **resultValue**: The result value (required for Dictionary types)
+- **dictionaryCategory**: The dictionary category name for Dictionary types
+  (recommended to avoid ambiguity when multiple categories have entries with the
+  same name)
 - **sortOrder**: Numeric sort order for display (auto-assigned if not provided)
 - **isQuantifiable**: Whether result can be further quantified ("Y" or "N",
   defaults to "N")
@@ -50,14 +53,18 @@ the following columns:
 For tests with predefined result options like "Positive/Negative":
 
 ```csv
-testName,resultType,resultValue,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags
-HIV Rapid Test,D,Positive,1,N,Y,N,,
-HIV Rapid Test,D,Negative,2,N,Y,Y,,
-HIV Rapid Test,D,Inconclusive,3,N,Y,N,,
+testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags
+HIV Rapid Test,D,Positive,Test Results,1,N,Y,N,,
+HIV Rapid Test,D,Negative,Test Results,2,N,Y,Y,,
+HIV Rapid Test,D,Inconclusive,Test Results,3,N,Y,N,,
 ```
 
-**Important:** For Dictionary (D) result types, the `resultValue` must match an
-existing dictionary entry. Create the dictionary entries first using the
+**Important:** For Dictionary (D) result types:
+
+- The `resultValue` must match an existing dictionary entry
+- Use `dictionaryCategory` to specify which category to look in (recommended)
+- Without `dictionaryCategory`, the system finds the first matching entry
+- Create the dictionary entries first using the
 [dictionaries configuration](./dictionaries-configuration.md).
 
 ### Numeric Test Results (e.g., Hemoglobin)
@@ -109,7 +116,7 @@ White Blood Cell Count,N,,1,Y,Y,N,2,
    be updated
 
 4. Tests must exist before configuring their results (load order: tests=200,
-   test-results=220)
+   dictionaries=300, test-results=310)
 
 5. For Dictionary types, dictionary entries must exist before configuring test
    results

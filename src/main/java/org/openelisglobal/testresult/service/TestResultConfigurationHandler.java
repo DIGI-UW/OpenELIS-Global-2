@@ -23,33 +23,25 @@ import org.springframework.stereotype.Component;
  *
  * Expected CSV format:
  * testName,resultType,resultValue,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags
- * HIV Rapid Test,D,Positive,1,N,Y,N,,
- * HIV Rapid Test,D,Negative,2,N,Y,Y,,
- * HIV Rapid Test,D,Inconclusive,3,N,Y,N,,
- * Hemoglobin,N,,1,Y,Y,N,2,
+ * HIV Rapid Test,D,Positive,1,N,Y,N,, HIV Rapid Test,D,Negative,2,N,Y,Y,, HIV
+ * Rapid Test,D,Inconclusive,3,N,Y,N,, Hemoglobin,N,,1,Y,Y,N,2,
  * Glucose,N,,1,Y,Y,N,0,
  *
- * Result Types:
- * - D = Dictionary (coded value from dictionary entry)
- * - N = Numeric (numeric result with optional significant digits)
- * - A = Alpha (alphanumeric text)
- * - R = Remark (free-form text)
- * - T = Titer (titer ranges like 1:10, 1:20)
- * - M = Multiselect (multiple dictionary values)
- * - C = Cascading multiselect
+ * Result Types: - D = Dictionary (coded value from dictionary entry) - N =
+ * Numeric (numeric result with optional significant digits) - A = Alpha
+ * (alphanumeric text) - R = Remark (free-form text) - T = Titer (titer ranges
+ * like 1:10, 1:20) - M = Multiselect (multiple dictionary values) - C =
+ * Cascading multiselect
  *
- * Notes:
- * - First line is the header (required)
- * - testName and resultType are required fields
- * - resultValue is required for Dictionary (D) type, optional for others
- * - For Dictionary types, resultValue should match an existing dictionary entry
- * - sortOrder is optional (auto-assigned if not provided)
- * - isQuantifiable defaults to "N" if not specified
- * - isActive defaults to "Y" if not specified
- * - isNormal defaults to "N" if not specified
- * - significantDigits is optional, used for numeric types
- * - flags is optional (e.g., "H" for high, "L" for low)
- * - Existing test results with matching test and value will be updated
+ * Notes: - First line is the header (required) - testName and resultType are
+ * required fields - resultValue is required for Dictionary (D) type, optional
+ * for others - For Dictionary types, resultValue should match an existing
+ * dictionary entry - sortOrder is optional (auto-assigned if not provided) -
+ * isQuantifiable defaults to "N" if not specified - isActive defaults to "Y" if
+ * not specified - isNormal defaults to "N" if not specified - significantDigits
+ * is optional, used for numeric types - flags is optional (e.g., "H" for high,
+ * "L" for low) - Existing test results with matching test and value will be
+ * updated
  */
 @Component
 public class TestResultConfigurationHandler implements DomainConfigurationHandler {
@@ -75,7 +67,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
 
     @Override
     public int getLoadOrder() {
-        return 220; // After tests (200), before higher-level configs
+        return 310; // After tests (200) and dictionaries (300)
     }
 
     @Override
@@ -95,6 +87,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         int testNameIndex = findColumnIndex(headers, "testName");
         int resultTypeIndex = findColumnIndex(headers, "resultType");
         int resultValueIndex = findColumnIndex(headers, "resultValue");
+        int dictionaryCategoryIndex = findColumnIndex(headers, "dictionaryCategory");
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
         int isQuantifiableIndex = findColumnIndex(headers, "isQuantifiable");
         int isActiveIndex = findColumnIndex(headers, "isActive");
@@ -108,15 +101,16 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
 
         while ((line = reader.readLine()) != null) {
             lineNumber++;
-            if (line.trim().isEmpty()) {
+            // Skip empty lines and comments (lines starting with #)
+            if (line.trim().isEmpty() || line.trim().startsWith("#")) {
                 continue;
             }
 
             try {
                 String[] values = parseCsvLine(line);
                 TestResult testResult = processCsvLine(values, testNameIndex, resultTypeIndex, resultValueIndex,
-                        sortOrderIndex, isQuantifiableIndex, isActiveIndex, isNormalIndex, significantDigitsIndex,
-                        flagsIndex, lineNumber, fileName);
+                        dictionaryCategoryIndex, sortOrderIndex, isQuantifiableIndex, isActiveIndex, isNormalIndex,
+                        significantDigitsIndex, flagsIndex, lineNumber, fileName);
                 if (testResult != null) {
                     processedResults.add(testResult);
                 }
@@ -188,8 +182,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
     }
 
     private TestResult processCsvLine(String[] values, int testNameIndex, int resultTypeIndex, int resultValueIndex,
-            int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex, int isNormalIndex,
-            int significantDigitsIndex, int flagsIndex, int lineNumber, String fileName) {
+            int dictionaryCategoryIndex, int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex,
+            int isNormalIndex, int significantDigitsIndex, int flagsIndex, int lineNumber, String fileName) {
 
         String testName = getValueOrEmpty(values, testNameIndex);
         String resultType = getValueOrEmpty(values, resultTypeIndex);
@@ -209,9 +203,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         // Validate result type
         resultType = resultType.toUpperCase();
         if (!isValidResultType(resultType)) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
-                    "Invalid resultType '" + resultType + "' in line " + lineNumber + " of " + fileName
-                            + ". Valid types: D, N, A, R, T, M, C. Skipping.");
+            LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine", "Invalid resultType '" + resultType
+                    + "' in line " + lineNumber + " of " + fileName + ". Valid types: D, N, A, R, T, M, C. Skipping.");
             return null;
         }
 
@@ -224,8 +217,10 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         }
 
         String resultValue = getValueOrEmpty(values, resultValueIndex);
+        String dictionaryCategory = getValueOrEmpty(values, dictionaryCategoryIndex);
 
-        // For Dictionary types, resultValue is required and must be a valid dictionary entry
+        // For Dictionary types, resultValue is required and must be a valid dictionary
+        // entry
         if ("D".equals(resultType) || "M".equals(resultType) || "C".equals(resultType)) {
             if (resultValue.isEmpty()) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
@@ -234,11 +229,21 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 return null;
             }
 
-            // Verify dictionary entry exists
-            Dictionary dictionary = dictionaryService.getDictionaryByDictEntry(resultValue);
+            // Find dictionary entry, optionally by category
+            Dictionary dictionary = null;
+            if (!dictionaryCategory.isEmpty()) {
+                // Look up by entry name and category
+                dictionary = dictionaryService.getDictionaryEntrysByNameAndCategoryDescription(resultValue,
+                        dictionaryCategory);
+            }
+            if (dictionary == null) {
+                // Fall back to lookup by entry name only
+                dictionary = dictionaryService.getDictionaryByDictEntry(resultValue);
+            }
             if (dictionary == null) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine", "Dictionary entry '" + resultValue
-                        + "' not found in line " + lineNumber + " of " + fileName + ". Skipping.");
+                        + "'" + (dictionaryCategory.isEmpty() ? "" : " in category '" + dictionaryCategory + "'")
+                        + " not found in line " + lineNumber + " of " + fileName + ". Skipping.");
                 return null;
             }
 
@@ -302,13 +307,15 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         for (TestResult result : existingResults) {
             // Match by type and value
             if (resultType.equals(result.getTestResultType())) {
-                // For dictionary types, match by value (dictionary ID)
-                if ("D".equals(resultType) || "M".equals(resultType) || "C".equals(resultType)) {
+                // For dictionary types and titer, match by value
+                // D, M, C store dictionary IDs; T stores titer values like "1:10"
+                if ("D".equals(resultType) || "M".equals(resultType) || "C".equals(resultType)
+                        || "T".equals(resultType)) {
                     if (resultValue != null && resultValue.equals(result.getValue())) {
                         return result;
                     }
                 } else {
-                    // For non-dictionary types, there's typically one result per type
+                    // For N, A, R types, there's typically one result per type
                     return result;
                 }
             }
@@ -329,8 +336,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         // Update isQuantifiable
         String isQuantifiable = getValueOrEmpty(values, isQuantifiableIndex);
         if (!isQuantifiable.isEmpty()) {
-            testResult.setIsQuantifiable(
-                    "Y".equalsIgnoreCase(isQuantifiable) || "true".equalsIgnoreCase(isQuantifiable));
+            testResult
+                    .setIsQuantifiable("Y".equalsIgnoreCase(isQuantifiable) || "true".equalsIgnoreCase(isQuantifiable));
         }
 
         // Update isActive
@@ -384,8 +391,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         // Set isQuantifiable
         String isQuantifiable = getValueOrEmpty(values, isQuantifiableIndex);
         if (!isQuantifiable.isEmpty()) {
-            testResult.setIsQuantifiable(
-                    "Y".equalsIgnoreCase(isQuantifiable) || "true".equalsIgnoreCase(isQuantifiable));
+            testResult
+                    .setIsQuantifiable("Y".equalsIgnoreCase(isQuantifiable) || "true".equalsIgnoreCase(isQuantifiable));
         } else {
             testResult.setIsQuantifiable(false);
         }
