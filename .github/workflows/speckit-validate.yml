@@ -52,7 +52,8 @@ jobs:
             exit 1
           fi
           # Check that paths use .specify/ prefix (not bare templates/ or scripts/)
-          if grep -E '(^|[^.])templates/' .cursor/commands/ .claude/commands/ 2>/dev/null | grep -v '\.specify/templates/'; then
+          # Use grep -q to properly handle exit codes when grep -v filters all matches
+          if grep -E '(^|[^.])templates/' .cursor/commands/ .claude/commands/ 2>/dev/null | grep -v '\.specify/templates/' | grep -q .; then
             echo "ERROR: Found bare 'templates/' paths (should be '.specify/templates/')"
             exit 1
           fi
