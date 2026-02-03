@@ -14,14 +14,17 @@ specify a target.
 
 ## Invocation
 
-Run:
+The agent should parse user arguments and construct a safe command call. Only
+pass recognized flags - do NOT pass raw user input directly to the shell.
+
+Run from the repository root:
 
 ```bash
-.specify/scripts/bash/download-ci-logs-shim.sh $ARGUMENTS
+.specify/scripts/bash/download-ci-logs-shim.sh [parsed-flags]
 ```
 
-from the repository root. The shim will call `scripts/download-ci-logs.sh` with
-the appropriate options.
+Where `[parsed-flags]` are validated options from the table below. The shim will
+call `scripts/download-ci-logs.sh` with the appropriate options.
 
 ## Examples
 

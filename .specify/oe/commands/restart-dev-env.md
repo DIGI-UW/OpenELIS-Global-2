@@ -219,10 +219,12 @@ Produce a concise report including:
 docker compose -f dev.docker-compose.yml ps --format "table {{.Name}}\t{{.Status}}"
 ```
 
-| **Access Points:**                     | Instance            | URL                 | Credentials |
-| -------------------------------------- | ------------------- | ------------------- | ----------- | --------- |
-| React UI                               | https://localhost/  | admin / adminADMIN! |             | Legacy UI |
-| https://localhost/api/OpenELIS-Global/ | admin / adminADMIN! |
+**Access Points:**
+
+| Instance  | URL                                    | Credentials         |
+| --------- | -------------------------------------- | ------------------- |
+| React UI  | https://localhost/                     | admin / adminADMIN! |
+| Legacy UI | https://localhost/api/OpenELIS-Global/ | admin / adminADMIN! |
 
 **Next Steps:**
 

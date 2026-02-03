@@ -21,7 +21,7 @@ Examples:
   python scripts/install-speckit-commands.py cursor    # Install to Cursor only
   python scripts/install-speckit-commands.py -y all    # Install without prompting
 
-Cross-platform compatible (Windows, macOS, Linux). Requires Python 3.7+.
+Cross-platform compatible (Windows, macOS, Linux). Requires Python 3.9+.
 """
 
 from __future__ import annotations
@@ -31,8 +31,8 @@ import sys
 from pathlib import Path
 
 # Minimum Python version check
-if sys.version_info < (3, 7):
-    sys.exit("Error: Python 3.7 or higher is required.")
+if sys.version_info < (3, 9):
+    sys.exit("Error: Python 3.9 or higher is required.")
 
 # Injection points for OE overrides (inject BEFORE these sections)
 # This ensures OE overrides appear before the rules they override
