@@ -41,8 +41,16 @@ const VIROLOGY_LAB_WORKFLOW_PAGES = [
   { id: "virologylab-6", order: 6, title: "Library Preparation" },
   { id: "virologylab-7", order: 7, title: "Bioanalyzer QC" },
   { id: "virologylab-8", order: 8, title: "Sequencing" },
-  { id: "virologylab-9", order: 9, title: "Bioinformatics Analysis & Data Submission" },
-  { id: "virologylab-10", order: 10, title: "Storage & Environmental Monitoring" },
+  {
+    id: "virologylab-9",
+    order: 9,
+    title: "Bioinformatics Analysis & Data Submission",
+  },
+  {
+    id: "virologylab-10",
+    order: 10,
+    title: "Storage & Environmental Monitoring",
+  },
 ];
 
 /**
@@ -413,7 +421,10 @@ function VirologyLabWorkflowTab({ notebookId, entryId: propEntryId }) {
   if (loading) {
     return (
       <div style={{ padding: "2rem", textAlign: "center" }}>
-        <Loading withOverlay={false} description="Loading VirologyLab Workflow..." />
+        <Loading
+          withOverlay={false}
+          description="Loading VirologyLab Workflow..."
+        />
       </div>
     );
   }

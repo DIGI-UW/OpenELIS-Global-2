@@ -109,8 +109,8 @@ export const useVirologyLabPermissions = () => {
         return userSessionDetails.virologyLabPermissions[pageName];
       }
 
-      const userVirologyLabRoles = Object.values(VIROLOGY_LAB_ROLES).filter((role) =>
-        hasVirologyLabLabUnitRoleStrict(VIROLOGY_LAB_UNIT, role),
+      const userVirologyLabRoles = Object.values(VIROLOGY_LAB_ROLES).filter(
+        (role) => hasVirologyLabLabUnitRoleStrict(VIROLOGY_LAB_UNIT, role),
       );
 
       if (userVirologyLabRoles.length === 0) {
@@ -210,7 +210,12 @@ export const useVirologyLabPermissions = () => {
 
       return highestLevel || null;
     },
-    [VIROLOGY_LAB_PAGES, VIROLOGY_LAB_ROLES, hasLabUnitRole, userSessionDetails],
+    [
+      VIROLOGY_LAB_PAGES,
+      VIROLOGY_LAB_ROLES,
+      hasLabUnitRole,
+      userSessionDetails,
+    ],
   );
 
   /**
@@ -307,28 +312,47 @@ export const useVirologyLabPermissions = () => {
    * These use strict checking that does NOT bypass for Global Admins
    */
   const isVirologyLabLabTechnician = useCallback(
-    () => hasVirologyLabLabUnitRoleStrict(VIROLOGY_LAB_UNIT, VIROLOGY_LAB_ROLES.LAB_TECHNICIAN),
+    () =>
+      hasVirologyLabLabUnitRoleStrict(
+        VIROLOGY_LAB_UNIT,
+        VIROLOGY_LAB_ROLES.LAB_TECHNICIAN,
+      ),
     [hasVirologyLabLabUnitRoleStrict],
   );
 
   const isVirologyLabBioinformatician = useCallback(
-    () => hasVirologyLabLabUnitRoleStrict(VIROLOGY_LAB_UNIT, VIROLOGY_LAB_ROLES.BIOINFORMATICIAN),
+    () =>
+      hasVirologyLabLabUnitRoleStrict(
+        VIROLOGY_LAB_UNIT,
+        VIROLOGY_LAB_ROLES.BIOINFORMATICIAN,
+      ),
     [hasVirologyLabLabUnitRoleStrict],
   );
 
   const isVirologyLabManager = useCallback(
-    () => hasVirologyLabLabUnitRoleStrict(VIROLOGY_LAB_UNIT, VIROLOGY_LAB_ROLES.MANAGER),
+    () =>
+      hasVirologyLabLabUnitRoleStrict(
+        VIROLOGY_LAB_UNIT,
+        VIROLOGY_LAB_ROLES.MANAGER,
+      ),
     [hasVirologyLabLabUnitRoleStrict],
   );
 
   const isVirologyLabPrincipalInvestigator = useCallback(
     () =>
-      hasVirologyLabLabUnitRoleStrict(VIROLOGY_LAB_UNIT, VIROLOGY_LAB_ROLES.PRINCIPAL_INVESTIGATOR),
+      hasVirologyLabLabUnitRoleStrict(
+        VIROLOGY_LAB_UNIT,
+        VIROLOGY_LAB_ROLES.PRINCIPAL_INVESTIGATOR,
+      ),
     [hasVirologyLabLabUnitRoleStrict],
   );
 
   const isVirologyLabDataManager = useCallback(
-    () => hasVirologyLabLabUnitRoleStrict(VIROLOGY_LAB_UNIT, VIROLOGY_LAB_ROLES.DATA_MANAGER),
+    () =>
+      hasVirologyLabLabUnitRoleStrict(
+        VIROLOGY_LAB_UNIT,
+        VIROLOGY_LAB_ROLES.DATA_MANAGER,
+      ),
     [hasVirologyLabLabUnitRoleStrict],
   );
 
@@ -338,7 +362,9 @@ export const useVirologyLabPermissions = () => {
    */
   const hasAnyVirologyLabLabUnitRole = useCallback(
     (roles) => {
-      return roles.some((role) => hasVirologyLabLabUnitRoleStrict(VIROLOGY_LAB_UNIT, role));
+      return roles.some((role) =>
+        hasVirologyLabLabUnitRoleStrict(VIROLOGY_LAB_UNIT, role),
+      );
     },
     [hasVirologyLabLabUnitRoleStrict],
   );

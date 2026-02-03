@@ -64,9 +64,9 @@ const EXPECTED_DATA_POINTS = {
   sampleType: {
     key: "sampleType",
     label: "Sample Type",
-    description: "Type of virology sample (validated against VirologyLab types)",
-    example:
-      "DNA, RNA, tissue, swabs, viral isolates, PCR products, libraries",
+    description:
+      "Type of virology sample (validated against VirologyLab types)",
+    example: "DNA, RNA, tissue, swabs, viral isolates, PCR products, libraries",
   },
   optional: [
     {
@@ -168,7 +168,12 @@ const EXPECTED_DATA_POINTS = {
  * VirologyLabManifestImportModal - CSV import modal for VirologyLab workflow.
  * Supports mapping virology-specific reception and processing metadata columns.
  */
-function VirologyLabManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
+function VirologyLabManifestImportModal({
+  open,
+  onClose,
+  entryId,
+  onImportSuccess,
+}) {
   const intl = useIntl();
 
   const [file, setFile] = useState(null);
@@ -970,7 +975,10 @@ function VirologyLabManifestImportModal({ open, onClose, entryId, onImportSucces
                   "a260_230Column",
                   "notebook.virologylab.manifest.column.a260_230",
                 )}
-                {mappingField("rinColumn", "notebook.virologylab.manifest.column.rin")}
+                {mappingField(
+                  "rinColumn",
+                  "notebook.virologylab.manifest.column.rin",
+                )}
               </div>
             </div>
 
