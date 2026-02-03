@@ -1,27 +1,30 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback} from "react";
 import { TimePicker } from "@carbon/react";
+import { useIntl } from "react-intl";
 
 const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const CustomTimePicker = (props) => {
-  const getCurrentTime = () => {
+  const intl = useIntl();
+  const getCurrentTime = useCallback(() => {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, "0");
     const minutes = String(now.getMinutes()).padStart(2, "0");
     return `${hours}:${minutes}`;
-  };
+  },[]);
 
   const [currentTime, setCurrentTime] = useState(
-    props.value ? props.value : getCurrentTime(),
+    props.value ? props.value : props.autofillTime ?
+    getCurrentTime():"",
   );
   const [isInvalid, setIsInvalid] = useState(false);
 
-  const validateTime = (time) => {
+  const validateTime = useCallback((time) => {
     if (!time || time === "") {
       return true;
     }
     return TIME_REGEX.test(time);
-  };
+  },[]);
 
   function handleTimePicker(e) {
     let time = e.target.value;
@@ -71,7 +74,7 @@ const CustomTimePicker = (props) => {
       setCurrentTime(props.value || "");
       setIsInvalid(!validateTime(props.value) && props.value?.length === 5);
     }
-  }, [props.value]);
+  }, [props.value, validateTime]);
 
   useEffect(() => {
     if (currentTime) {
@@ -87,10 +90,10 @@ const CustomTimePicker = (props) => {
         onChange={(e) => handleTimePicker(e)}
         labelText={props.labelText == null ? "" : props.labelText}
         invalid={isInvalid}
-        invalidText="Invalid time format. Use HH:mm (00:00-23:59)"
+        invalidText={intl.formatMessage({ id: "timepicker.invalid.format" })}
         maxLength={5}
         pattern="[0-9]{2}:[0-9]{2}"
-        placeholder="hh:mm"
+        placeholder="HH:mm"
       />
     </>
   );

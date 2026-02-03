@@ -2358,6 +2358,7 @@
   "reports.format.pdf": "PDF",
   "reports.format.excel": "Excel (.xlsx)",
   "reports.format.csv": "CSV",
+  "timepicker.invalid.format": "Invalid time format. Use HH:mm (00:00-23:59)",
   "reports.dateRange": "Date Range",
   "reports.startDate": "Start Date",
   "reports.endDate": "End Date",
