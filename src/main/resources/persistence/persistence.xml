@@ -64,6 +64,9 @@
         <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
         <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>
 
+        <!-- Generic Reporting Framework entities (reporting-framework) -->
+        <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />
