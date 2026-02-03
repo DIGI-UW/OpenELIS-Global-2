@@ -74,6 +74,9 @@ def install_to(name: str, target_dir: Path, core_dir: Path, oe_dir: Path) -> int
         target_dir.mkdir(parents=True, exist_ok=True)
 
         count = 0
+        installed_names: set[str] = set()
+
+        # 1. Install core speckit commands (with OE overrides merged if present)
         for cmd_file in sorted(core_dir.glob("speckit.*.md")):
             dest = target_dir / cmd_file.name
 
@@ -87,7 +90,18 @@ def install_to(name: str, target_dir: Path, core_dir: Path, oe_dir: Path) -> int
                 content = merge_oe_content(content, oe_content, cmd_file.name)
 
             dest.write_text(content, encoding="utf-8")
+            installed_names.add(cmd_file.name)
             count += 1
+
+        # 2. Install OE-only commands (non-speckit commands that have no core equivalent)
+        if oe_dir.exists():
+            for oe_file in sorted(oe_dir.glob("*.md")):
+                if oe_file.name not in installed_names and not oe_file.name.startswith("speckit."):
+                    dest = target_dir / oe_file.name
+                    content = oe_file.read_text(encoding="utf-8")
+                    dest.write_text(content, encoding="utf-8")
+                    installed_names.add(oe_file.name)
+                    count += 1
 
         print(f"   [OK] Installed {count} command(s) to {target_dir}")
         return count
@@ -155,6 +169,14 @@ def main():
     print("Done! Available commands:")
     for cmd_file in sorted(cmd_files):
         print(f"  /{cmd_file.stem}")
+
+    # List OE-only commands
+    if oe_dir.exists():
+        oe_only = [f for f in oe_dir.glob("*.md") if not f.name.startswith("speckit.")]
+        if oe_only:
+            print("\nOE-only commands:")
+            for oe_file in sorted(oe_only):
+                print(f"  /{oe_file.stem}")
 
 
 if __name__ == "__main__":
