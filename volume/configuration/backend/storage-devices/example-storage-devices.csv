@@ -1,0 +1,15 @@
+name,code,type,temperatureSetting,capacityLimit,active,parentRoomCode
+Ultra-Low Freezer 1,ULF01,freezer,-80.0,1000,true,MAIN-LAB
+Ultra-Low Freezer 2,ULF02,freezer,-80.0,1000,true,MAIN-LAB
+Standard Freezer 1,FRZ01,freezer,-20.0,500,true,MAIN-LAB
+Refrigerator 1,REF01,refrigerator,4.0,300,true,MAIN-LAB
+Refrigerator 2,REF02,refrigerator,4.0,300,true,MAIN-LAB
+Processing Refrigerator,PREF01,refrigerator,4.0,200,true,PROC-ROOM
+Processing Cabinet,PCAB01,cabinet,,100,true,PROC-ROOM
+Archive Freezer 1,AFRZ01,freezer,-80.0,2000,true,ARCHIVE
+Archive Freezer 2,AFRZ02,freezer,-80.0,2000,true,ARCHIVE
+Archive Freezer 3,AFRZ03,freezer,-20.0,1500,true,ARCHIVE
+QC Refrigerator,QCREF01,refrigerator,4.0,200,true,QC-ROOM
+QC Freezer,QCFRZ01,freezer,-20.0,200,true,QC-ROOM
+Receiving Refrigerator,RREF01,refrigerator,4.0,150,true,RECV
+Temporary Storage Cabinet,RCAB01,cabinet,,100,true,RECV

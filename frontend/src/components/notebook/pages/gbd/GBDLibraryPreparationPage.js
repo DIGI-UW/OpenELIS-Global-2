@@ -23,7 +23,6 @@ import {
 } from "@carbon/react";
 import { Renew, CheckmarkFilled, Chemistry } from "@carbon/react/icons";
 import useGBDPermissions from "../../../../hooks/useGBDPermissions";
-import { usePermissions } from "../../../../hooks/usePermissions";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -65,9 +64,8 @@ export const GBDLibraryPreparationPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { getPagePermissionLevel, canSaveData, canAccessLibraryPreparation } =
+  const { getPagePermissionLevel, canSaveData, canAccessLibraryPreparation, GBD_PAGES } =
     useGBDPermissions();
-  const { hasAnyRole } = usePermissions();
 
   const allowedRoles = [
     "GBD Lab Technician",
@@ -75,10 +73,9 @@ export const GBDLibraryPreparationPage = ({
     "GBD Principal Investigator",
   ];
 
-  const canAccessPage =
-    canAccessLibraryPreparation() || hasAnyRole(allowedRoles);
+  const canAccessPage = canAccessLibraryPreparation();
 
-  const pagePermissionLevel = getPagePermissionLevel("Library Preparation");
+  const pagePermissionLevel = getPagePermissionLevel(GBD_PAGES.LIBRARY_PREP);
   const canPrepareLibraries = canSaveData(pagePermissionLevel);
 
   const componentMounted = useRef(false);

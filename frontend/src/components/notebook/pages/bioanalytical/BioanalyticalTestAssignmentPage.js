@@ -212,20 +212,25 @@ function BioanalyticalTestAssignmentPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { hasAnyRole } = usePermissions();
-  const { getPagePermissionLevel, canSaveData, hasFullControl } =
-    useBioanalyticalPermissions();
+  const {
+    getPagePermissionLevel,
+    canSaveData,
+    hasFullControl,
+    canAccessTestAssignment,
+    BIOANALYTICAL_ROLES
+  } = useBioanalyticalPermissions();
 
   // PAGE 2 allowed roles per test.pdf Section 11
   const allowedRoles = [
-    "Chemical Analyst",
-    "Pharmacist",
-    "Lab Supervisor",
-    "Study Director",
-    "QA Officer",
-    "Researcher",
+    BIOANALYTICAL_ROLES.CHEMICAL_ANALYST,
+    BIOANALYTICAL_ROLES.PHARMACIST,
+    BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
+    BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
+    BIOANALYTICAL_ROLES.QA_OFFICER,
+    BIOANALYTICAL_ROLES.RESEARCHER,
   ];
 
-  const canAccessPage = hasAnyRole(allowedRoles);
+  const canAccessPage = canAccessTestAssignment();
 
   // Get user's action-level permission for this page
   const pagePermissionLevel = getPagePermissionLevel("Test Assignment");
@@ -1104,7 +1109,19 @@ function BioanalyticalTestAssignmentPage({
                   }}
                 >
                   {selectedSamples.size > 0 && (
-                    <Button kind="primary" onClick={handleShowAssignmentForm}>
+                    <Button
+                      kind="primary"
+                      onClick={handleShowAssignmentForm}
+                      disabled={!canAssignTests}
+                      title={
+                        !canAssignTests
+                          ? intl.formatMessage({
+                              id: "notebook.bioanalytical.testassignment.insufficientPermissions",
+                              defaultMessage: "Insufficient permissions to configure test assignments. Only Pharmacists and Lab Supervisors can assign tests.",
+                            })
+                          : undefined
+                      }
+                    >
                       <FormattedMessage
                         id="notebook.bioanalytical.testassignment.configureTests"
                         defaultMessage="Configure Tests for {count} Sample(s)"
@@ -1118,7 +1135,15 @@ function BioanalyticalTestAssignmentPage({
                     <Button
                       kind="secondary"
                       onClick={handleMarkCompleteAndAdvance}
-                      disabled={isAdvancing}
+                      disabled={isAdvancing || !canAssignTests}
+                      title={
+                        !canAssignTests
+                          ? intl.formatMessage({
+                              id: "notebook.bioanalytical.testassignment.completeInsufficientPermissions",
+                              defaultMessage: "Insufficient permissions to complete test assignments. Only Pharmacists and Lab Supervisors can complete assignments.",
+                            })
+                          : undefined
+                      }
                     >
                       <FormattedMessage
                         id="notebook.bioanalytical.testassignment.completeAndAdvance"

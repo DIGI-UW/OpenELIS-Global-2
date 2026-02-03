@@ -63,20 +63,29 @@ export const GBDDNARNAExtractionPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { getPagePermissionLevel, canSaveData, canAccessDNARNAExtraction } =
-    useGBDPermissions();
-  const { hasAnyRole } = usePermissions();
+  const {
+    getPagePermissionLevel,
+    canSaveData,
+    canPerformWork,
+    hasFullControl,
+    isReadOnly,
+    canAccessExtraction,
+    GBD_ROLES,
+    GBD_PAGES,
+  } = useGBDPermissions();
 
-  const allowedRoles = [
-    "GBD Lab Technician",
-    "GBD Manager",
-    "GBD Principal Investigator",
-  ];
+  // Page access check
+  const canAccessPage = canAccessExtraction();
 
-  const canAccessPage = canAccessDNARNAExtraction() || hasAnyRole(allowedRoles);
+  // Get user's action-level permission for this page
+  const pagePermissionLevel = getPagePermissionLevel(GBD_PAGES.EXTRACTION);
 
-  const pagePermissionLevel = getPagePermissionLevel("DNA/RNA Extraction");
-  const canPerformExtraction = canSaveData(pagePermissionLevel);
+  // Function-level permissions per permission matrix
+  // Matrix: Lab Technicians (Yes), Bioinformaticians (No), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
+  const canPerformExtraction = canPerformWork(pagePermissionLevel); // Lab Technicians (Yes), Lab Manager (Full)
+  const canModifyData = canSaveData(pagePermissionLevel);
+  const canMarkComplete = canPerformWork(pagePermissionLevel);
+  const isViewOnly = isReadOnly(pagePermissionLevel); // Principal Investigator (View)
 
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
@@ -433,7 +442,11 @@ export const GBDDNARNAExtractionPage = ({
       <AccessDeniedMessage
         page="DNA/RNA Extraction"
         reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={allowedRoles}
+        requiredRoles={[
+          GBD_ROLES.LAB_TECHNICIAN,
+          GBD_ROLES.MANAGER,
+          GBD_ROLES.PRINCIPAL_INVESTIGATOR,
+        ]}
       />
     );
   }
@@ -527,7 +540,21 @@ export const GBDDNARNAExtractionPage = ({
           disabled={
             selectedSampleIds.length === 0 ||
             !hasRealPageId ||
+            !canPerformExtraction ||
+            isViewOnly
+          }
+          title={
             !canPerformExtraction
+              ? intl.formatMessage({
+                  id: "notebook.gbd.extraction.insufficientPermissions.record",
+                  defaultMessage: "Insufficient permissions to record extraction. Only Lab Technicians and Lab Manager (with appropriate permissions) can perform extractions.",
+                })
+              : isViewOnly
+                ? intl.formatMessage({
+                    id: "notebook.gbd.extraction.viewOnlyAccess",
+                    defaultMessage: "You have view-only access to this page.",
+                  })
+                : undefined
           }
         >
           <FormattedMessage
@@ -546,7 +573,21 @@ export const GBDDNARNAExtractionPage = ({
             eligibleForCompletionCount === 0 ||
             isCompleting ||
             !hasRealPageId ||
-            !canPerformExtraction
+            !canMarkComplete ||
+            isViewOnly
+          }
+          title={
+            !canMarkComplete
+              ? intl.formatMessage({
+                  id: "notebook.gbd.extraction.insufficientPermissions.complete",
+                  defaultMessage: "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
+                })
+              : isViewOnly
+                ? intl.formatMessage({
+                    id: "notebook.gbd.extraction.viewOnlyAccess",
+                    defaultMessage: "You have view-only access to this page.",
+                  })
+                : undefined
           }
         >
           <FormattedMessage
@@ -688,7 +729,9 @@ export const GBDDNARNAExtractionPage = ({
           id: "label.cancel",
           defaultMessage: "Cancel",
         })}
-        primaryButtonDisabled={isApplyingExtraction}
+        primaryButtonDisabled={
+          isApplyingExtraction || !canModifyData || isViewOnly
+        }
         size="lg"
       >
         {isApplyingExtraction && <Loading withOverlay={false} small />}

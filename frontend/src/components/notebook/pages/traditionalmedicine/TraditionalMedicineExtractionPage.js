@@ -25,6 +25,7 @@ import {
   Edit,
   Archive,
   Pending,
+  WarningAltFilled,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
@@ -66,26 +67,36 @@ function TraditionalMedicineExtractionPage({
   const componentMounted = useRef(false);
   const { hasAnyRole } = usePermissions();
 
-  // TMMRD permissions per SRS Section 11
-  const { getPagePermissionLevel, canSaveData, canAccessStage3to4 } =
-    useTMMRDPermissions();
+  // TMMRD permissions per matrix requirements
+  const {
+    getPagePermissionLevel,
+    canSaveData,
+    canAccessStage3to4,
+    canPerformWork,
+    isReadOnly,
+    TMMRD_ROLES,
+    TMMRD_PAGES,
+  } = useTMMRDPermissions();
 
-  // STAGE 4 allowed roles per TMMRD SRS Section 11 - Lab Technicians and Researchers
+  // STAGE 4 allowed roles per TMMRD matrix
   const allowedRoles = [
-    "TMMRD Lab Technician",
-    "TMMRD Researcher",
-    "TMMRD Pharmacognosist",
-    "TMMRD Lab Manager",
-    "TMMRD Principal Investigator",
+    TMMRD_ROLES.LAB_TECHNICIAN,
+    TMMRD_ROLES.RESEARCHER,
+    TMMRD_ROLES.PHARMACOGNOSIST,
+    TMMRD_ROLES.LAB_MANAGER,
+    TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
   ];
 
   const canAccessPage = canAccessStage3to4();
 
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(
-    "Extraction & Concentration",
-  );
-  const canEditData = canSaveData(pagePermissionLevel);
+  // Get user's permission level for this specific page
+  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.EXTRACTION);
+
+  // Function-level permissions based on matrix
+  const canRecordExtraction = canPerformWork(pagePermissionLevel);
+  const canModifyData = canSaveData(pagePermissionLevel);
+  const canMarkComplete = canPerformWork(pagePermissionLevel);
+  const isViewOnly = isReadOnly(pagePermissionLevel);
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
@@ -853,9 +864,18 @@ function TraditionalMedicineExtractionPage({
   if (!canAccessPage) {
     return (
       <AccessDeniedMessage
-        page="Extraction & Concentration"
-        reason="This page requires specific Traditional Medicine extraction roles to access."
+        page="Traditional Medicine Extraction & Concentration"
+        reason={intl.formatMessage({
+          id: "notebook.tradmed.extraction.accessDenied",
+          defaultMessage:
+            "Access to the Traditional Medicine Extraction & Concentration page requires technical laboratory permissions. This page is restricted to roles responsible for chemical extraction processes, filtration methods, and concentration techniques.",
+        })}
         requiredRoles={allowedRoles}
+        additionalInfo={intl.formatMessage({
+          id: "notebook.tradmed.extraction.accessRequirements",
+          defaultMessage:
+            "Required permissions: Chemical extraction operations, Filtration techniques, Concentration methods, and Analytical pathway selection.",
+        })}
       />
     );
   }
@@ -905,6 +925,21 @@ function TraditionalMedicineExtractionPage({
 
   return (
     <div className="tradmed-extraction-page">
+      {/* View-only banner */}
+      {isViewOnly && (
+        <div className="view-only-banner">
+          <div className="view-only-content">
+            <WarningAltFilled size={16} />
+            <span>
+              <FormattedMessage
+                id="notebook.tradmed.extraction.viewOnlyMode"
+                defaultMessage="View-only mode: Your role permissions allow viewing but not modifying extraction and concentration data."
+              />
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="page-section-header">
         <h4>
           <FormattedMessage
@@ -956,7 +991,23 @@ function TraditionalMedicineExtractionPage({
           disabled={
             selectedSampleIds.length === 0 ||
             !hasRealPageId ||
-            hasAnyCompletedExtraction()
+            hasAnyCompletedExtraction() ||
+            !canRecordExtraction ||
+            isViewOnly
+          }
+          title={
+            !canRecordExtraction || isViewOnly
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.tooltip.recordExtractionPermission",
+                  defaultMessage:
+                    "Requires TMMRD Lab Technician or higher role to record extraction processes",
+                })
+              : selectedSampleIds.length === 0
+                ? intl.formatMessage({
+                    id: "notebook.tradmed.tooltip.selectSamples",
+                    defaultMessage: "Select samples to record extraction",
+                  })
+                : ""
           }
         >
           <FormattedMessage
@@ -974,7 +1025,18 @@ function TraditionalMedicineExtractionPage({
           disabled={
             selectedSampleIds.length === 0 ||
             !hasRealPageId ||
-            hasAnyCompletedFiltration()
+            hasAnyCompletedFiltration() ||
+            !canRecordExtraction ||
+            isViewOnly
+          }
+          title={
+            !canRecordExtraction || isViewOnly
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.tooltip.recordFiltrationPermission",
+                  defaultMessage:
+                    "Requires TMMRD Lab Technician or higher role to record filtration processes",
+                })
+              : ""
           }
         >
           <FormattedMessage
@@ -992,7 +1054,18 @@ function TraditionalMedicineExtractionPage({
           disabled={
             selectedSampleIds.length === 0 ||
             !hasRealPageId ||
-            hasAnyCompletedConcentration()
+            hasAnyCompletedConcentration() ||
+            !canRecordExtraction ||
+            isViewOnly
+          }
+          title={
+            !canRecordExtraction || isViewOnly
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.tooltip.recordConcentrationPermission",
+                  defaultMessage:
+                    "Requires TMMRD Lab Technician or higher role to record concentration processes",
+                })
+              : ""
           }
         >
           <FormattedMessage
@@ -1010,7 +1083,18 @@ function TraditionalMedicineExtractionPage({
           disabled={
             !canOpenPathwaySelection() ||
             !hasRealPageId ||
-            hasAnySelectedPathway()
+            hasAnySelectedPathway() ||
+            !canRecordExtraction ||
+            isViewOnly
+          }
+          title={
+            !canRecordExtraction || isViewOnly
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.tooltip.selectPathwayPermission",
+                  defaultMessage:
+                    "Requires TMMRD Lab Technician or higher role to select analytical pathways",
+                })
+              : ""
           }
         >
           <FormattedMessage
@@ -1029,7 +1113,18 @@ function TraditionalMedicineExtractionPage({
             selectedSampleIds.length === 0 ||
             isCompleting ||
             !hasRealPageId ||
-            !hasAllSelectedSamplesPathway()
+            !hasAllSelectedSamplesPathway() ||
+            !canMarkComplete ||
+            isViewOnly
+          }
+          title={
+            !canMarkComplete || isViewOnly
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.tooltip.markCompletePermission",
+                  defaultMessage:
+                    "Requires TMMRD Lab Technician or higher role to mark extraction complete",
+                })
+              : ""
           }
         >
           <FormattedMessage
@@ -1081,7 +1176,7 @@ function TraditionalMedicineExtractionPage({
               samples={unpreparedSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={true}
+              showSelection={!isViewOnly}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

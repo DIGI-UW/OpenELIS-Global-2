@@ -1,0 +1,33 @@
+label,code,active,parentShelfCode
+Rack 1,ULF01-S1-R1,true,ULF01-S1
+Rack 2,ULF01-S1-R2,true,ULF01-S1
+Rack 3,ULF01-S1-R3,true,ULF01-S1
+Rack 1,ULF01-S2-R1,true,ULF01-S2
+Rack 2,ULF01-S2-R2,true,ULF01-S2
+Rack 3,ULF01-S2-R3,true,ULF01-S2
+Rack 1,ULF01-S3-R1,true,ULF01-S3
+Rack 2,ULF01-S3-R2,true,ULF01-S3
+Tray A,FRZ01-TOP-TA,true,FRZ01-TOP
+Tray B,FRZ01-TOP-TB,true,FRZ01-TOP
+Position 1,REF01-A-P1,true,REF01-A
+Position 2,REF01-A-P2,true,REF01-A
+Position 3,REF01-A-P3,true,REF01-A
+Position 1,REF01-B-P1,true,REF01-B
+Position 2,REF01-B-P2,true,REF01-B
+Active Tray 1,PREF01-ACT-AT1,true,PREF01-ACT
+Active Tray 2,PREF01-ACT-AT2,true,PREF01-ACT
+Pending Tray 1,PREF01-PEND-PT1,true,PREF01-PEND
+Pending Tray 2,PREF01-PEND-PT2,true,PREF01-PEND
+Archive Rack 1,AFRZ01-A1-AR1,true,AFRZ01-A1
+Archive Rack 2,AFRZ01-A1-AR2,true,AFRZ01-A1
+Archive Rack 3,AFRZ01-A1-AR3,true,AFRZ01-A1
+Archive Rack 4,AFRZ01-A1-AR4,true,AFRZ01-A1
+Archive Rack 1,AFRZ01-A2-AR1,true,AFRZ01-A2
+Archive Rack 2,AFRZ01-A2-AR2,true,AFRZ01-A2
+Archive Rack 3,AFRZ01-A2-AR3,true,AFRZ01-A2
+Control Rack A,QCREF01-CTRL-CRA,true,QCREF01-CTRL
+Control Rack B,QCREF01-CTRL-CRB,true,QCREF01-CTRL
+Incoming Rack 1,RREF01-IN-IR1,true,RREF01-IN
+Incoming Rack 2,RREF01-IN-IR2,true,RREF01-IN
+Incoming Rack 3,RREF01-IN-IR3,true,RREF01-IN
+# Force reprocessing - 2026-01-31

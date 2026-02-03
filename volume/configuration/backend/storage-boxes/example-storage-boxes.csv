@@ -1,0 +1,41 @@
+label,type,rows,columns,positionSchemaHint,code,active,parentRackCode
+Plate ULF1-S1-R1-001,96-well,8,12,letter-number,P001,true,ULF01-S1-R1
+Plate ULF1-S1-R1-002,96-well,8,12,letter-number,P002,true,ULF01-S1-R1
+Plate ULF1-S1-R1-003,96-well,8,12,letter-number,P003,true,ULF01-S1-R1
+Plate ULF1-S1-R2-001,96-well,8,12,letter-number,P004,true,ULF01-S1-R2
+Plate ULF1-S1-R2-002,96-well,8,12,letter-number,P005,true,ULF01-S1-R2
+HTP Plate ULF1-S1-R3-001,384-well,16,24,letter-number,HTP001,true,ULF01-S1-R3
+HTP Plate ULF1-S1-R3-002,384-well,16,24,letter-number,HTP002,true,ULF01-S1-R3
+Box ULF1-S2-R1-001,9x9,9,9,number-number,B001,true,ULF01-S2-R1
+Box ULF1-S2-R1-002,9x9,9,9,number-number,B002,true,ULF01-S2-R1
+Box ULF1-S2-R1-003,9x9,9,9,number-number,B003,true,ULF01-S2-R1
+Box ULF1-S2-R1-004,9x9,9,9,number-number,B004,true,ULF01-S2-R1
+Box ULF1-S2-R2-001,10x10,10,10,number-number,B005,true,ULF01-S2-R2
+Box ULF1-S2-R2-002,10x10,10,10,number-number,B006,true,ULF01-S2-R2
+Box ULF1-S2-R2-003,10x10,10,10,number-number,B007,true,ULF01-S2-R2
+SF Box A1,9x9,9,9,letter-number,SFA1,true,FRZ01-TOP-TA
+SF Box A2,9x9,9,9,letter-number,SFA2,true,FRZ01-TOP-TA
+Ref Box 1,5x5,5,5,number-number,RB1,true,REF01-A-P1
+Ref Box 2,5x5,5,5,number-number,RB2,true,REF01-A-P1
+Ref Box 3,5x5,5,5,number-number,RB3,true,REF01-A-P1
+Active Plate 1,96-well,8,12,letter-number,AP1,true,PREF01-ACT-AT1
+Active Plate 2,96-well,8,12,letter-number,AP2,true,PREF01-ACT-AT1
+Pending Box 1,9x9,9,9,number-number,PB1,true,PREF01-PEND-PT1
+Pending Box 2,9x9,9,9,number-number,PB2,true,PREF01-PEND-PT1
+Archive 2024-001,10x10,10,10,number-number,A2024-001,true,AFRZ01-A1-AR1
+Archive 2024-002,10x10,10,10,number-number,A2024-002,true,AFRZ01-A1-AR1
+Archive 2024-003,10x10,10,10,number-number,A2024-003,true,AFRZ01-A1-AR1
+Archive 2024-004,10x10,10,10,number-number,A2024-004,true,AFRZ01-A1-AR1
+Archive 2024-005,10x10,10,10,number-number,A2024-005,true,AFRZ01-A2-AR1
+Archive 2024-006,10x10,10,10,number-number,A2024-006,true,AFRZ01-A2-AR1
+Archive 2024-007,10x10,10,10,number-number,A2024-007,true,AFRZ01-A2-AR1
+Archive 2023-001,10x10,10,10,number-number,A2023-001,true,AFRZ01-A2-AR2
+Archive 2023-002,10x10,10,10,number-number,A2023-002,true,AFRZ01-A2-AR2
+QC Control Plate A,96-well,8,12,letter-number,QCA,true,QCREF01-CTRL-CRA
+QC Control Plate B,96-well,8,12,letter-number,QCB,true,QCREF01-CTRL-CRA
+Incoming Today 1,9x9,9,9,number-number,INC1,true,RREF01-IN-IR1
+Incoming Today 2,9x9,9,9,number-number,INC2,true,RREF01-IN-IR1
+Incoming Today 3,9x9,9,9,number-number,INC3,true,RREF01-IN-IR1
+Queue Box 1,9x9,9,9,number-number,Q1,true,RREF01-IN-IR2
+Queue Box 2,9x9,9,9,number-number,Q2,true,RREF01-IN-IR2
+# Force reprocessing - 2026-01-31

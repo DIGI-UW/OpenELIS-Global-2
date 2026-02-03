@@ -18,7 +18,13 @@ import {
   Loading,
   NumberInput,
 } from "@carbon/react";
-import { Renew, CheckmarkFilled, Edit, Pending } from "@carbon/react/icons";
+import {
+  Renew,
+  CheckmarkFilled,
+  Edit,
+  Pending,
+  WarningAltFilled,
+} from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
@@ -57,17 +63,34 @@ function TraditionalMedicineAnalyticalPage({
     useContext(NotificationContext);
   const componentMounted = useRef(false);
 
-  // TMMRD permissions
-  const { canAccessStage5to6 } = useTMMRDPermissions();
+  // TMMRD permissions per matrix requirements
+  const {
+    canAccessStage5to6,
+    getPagePermissionLevel,
+    canPerformWork,
+    canSaveData,
+    isReadOnly,
+    TMMRD_ROLES,
+    TMMRD_PAGES,
+  } = useTMMRDPermissions();
 
   const allowedRoles = [
-    "TMMRD Researcher",
-    "TMMRD Pharmacognosist",
-    "TMMRD Lab Manager",
-    "TMMRD Principal Investigator",
+    TMMRD_ROLES.RESEARCHER,
+    TMMRD_ROLES.PHARMACOGNOSIST,
+    TMMRD_ROLES.LAB_MANAGER,
+    TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
   ];
 
   const canAccessPage = canAccessStage5to6();
+
+  // Get user's permission level for this specific page
+  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.ANALYTICAL);
+
+  // Function-level permissions based on matrix
+  const canPerformAnalyticalWork = canPerformWork(pagePermissionLevel);
+  const canModifyData = canSaveData(pagePermissionLevel);
+  const canMarkCompleteWork = canPerformWork(pagePermissionLevel);
+  const isViewOnly = isReadOnly(pagePermissionLevel);
 
   // Core state
   const [samples, setSamples] = useState([]);
@@ -820,9 +843,18 @@ function TraditionalMedicineAnalyticalPage({
   if (!canAccessPage) {
     return (
       <AccessDeniedMessage
-        page="Analytical Pathways"
-        reason="This page requires specific Traditional Medicine analytical roles to access."
+        page="Traditional Medicine Analytical Pathways"
+        reason={intl.formatMessage({
+          id: "notebook.tradmed.analytical.accessDenied",
+          defaultMessage:
+            "Access to the Traditional Medicine Analytical Pathways page requires advanced research permissions. This page is restricted to roles responsible for fractionation, identification, purification, and characterization processes.",
+        })}
         requiredRoles={allowedRoles}
+        additionalInfo={intl.formatMessage({
+          id: "notebook.tradmed.analytical.accessRequirements",
+          defaultMessage:
+            "Required permissions: Analytical method development, Chromatographic separation, Spectroscopic analysis, and Structure determination capabilities.",
+        })}
       />
     );
   }
@@ -869,6 +901,21 @@ function TraditionalMedicineAnalyticalPage({
 
   return (
     <div className="tradmed-analytical-page">
+      {/* View-only banner */}
+      {isViewOnly && (
+        <div className="view-only-banner">
+          <div className="view-only-content">
+            <WarningAltFilled size={16} />
+            <span>
+              <FormattedMessage
+                id="notebook.tradmed.analytical.viewOnlyMode"
+                defaultMessage="View-only mode: Your role permissions allow viewing but not modifying analytical pathway data."
+              />
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="page-section-header">
         <h4>
           <FormattedMessage
@@ -915,7 +962,26 @@ function TraditionalMedicineAnalyticalPage({
           size="sm"
           renderIcon={Edit}
           onClick={openFractionationModal}
-          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          disabled={
+            selectedSampleIds.length === 0 ||
+            !hasRealPageId ||
+            !canPerformAnalyticalWork ||
+            isViewOnly
+          }
+          title={
+            !canPerformAnalyticalWork || isViewOnly
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.tooltip.fractionationPermission",
+                  defaultMessage:
+                    "Requires TMMRD Researcher or higher role to perform fractionation",
+                })
+              : selectedSampleIds.length === 0
+                ? intl.formatMessage({
+                    id: "notebook.tradmed.tooltip.selectSamples",
+                    defaultMessage: "Select samples for fractionation",
+                  })
+                : ""
+          }
         >
           <FormattedMessage
             id="notebook.page.tradmed.analytical.step1"
@@ -931,7 +997,23 @@ function TraditionalMedicineAnalyticalPage({
           disabled={
             selectedSampleIds.length === 0 ||
             !canOpenIdentificationModal() ||
-            !hasRealPageId
+            !hasRealPageId ||
+            !canPerformAnalyticalWork ||
+            isViewOnly
+          }
+          title={
+            !canPerformAnalyticalWork || isViewOnly
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.tooltip.identificationPermission",
+                  defaultMessage:
+                    "Requires TMMRD Researcher or higher role to perform identification",
+                })
+              : !canOpenIdentificationModal()
+                ? intl.formatMessage({
+                    id: "notebook.tradmed.tooltip.fractionationRequired",
+                    defaultMessage: "Fractionation must be completed first",
+                  })
+                : ""
           }
         >
           <FormattedMessage
@@ -948,7 +1030,24 @@ function TraditionalMedicineAnalyticalPage({
           disabled={
             selectedSampleIds.length === 0 ||
             !canOpenPurificationModal() ||
-            !hasRealPageId
+            !hasRealPageId ||
+            !canPerformAnalyticalWork ||
+            isViewOnly
+          }
+          title={
+            !canPerformAnalyticalWork || isViewOnly
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.tooltip.purificationPermission",
+                  defaultMessage:
+                    "Requires TMMRD Researcher or higher role to perform purification",
+                })
+              : !canOpenPurificationModal()
+                ? intl.formatMessage({
+                    id: "notebook.tradmed.tooltip.priorStepsRequired",
+                    defaultMessage:
+                      "Fractionation and Identification must be completed first",
+                  })
+                : ""
           }
         >
           <FormattedMessage
@@ -965,7 +1064,24 @@ function TraditionalMedicineAnalyticalPage({
           disabled={
             selectedSampleIds.length === 0 ||
             !canOpenCharacterizationModal() ||
-            !hasRealPageId
+            !hasRealPageId ||
+            !canPerformAnalyticalWork ||
+            isViewOnly
+          }
+          title={
+            !canPerformAnalyticalWork || isViewOnly
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.tooltip.characterizationPermission",
+                  defaultMessage:
+                    "Requires TMMRD Researcher or higher role to perform characterization",
+                })
+              : !canOpenCharacterizationModal()
+                ? intl.formatMessage({
+                    id: "notebook.tradmed.tooltip.allPriorStepsRequired",
+                    defaultMessage:
+                      "All prior analytical steps must be completed first",
+                  })
+                : ""
           }
         >
           <FormattedMessage
@@ -992,7 +1108,27 @@ function TraditionalMedicineAnalyticalPage({
           size="sm"
           renderIcon={CheckmarkFilled}
           onClick={handleMarkComplete}
-          disabled={!canMarkComplete() || isCompleting || !hasRealPageId}
+          disabled={
+            !canMarkComplete() ||
+            isCompleting ||
+            !hasRealPageId ||
+            !canMarkCompleteWork ||
+            isViewOnly
+          }
+          title={
+            !canMarkCompleteWork || isViewOnly
+              ? intl.formatMessage({
+                  id: "notebook.tradmed.tooltip.markCompletePermission",
+                  defaultMessage:
+                    "Requires TMMRD Researcher or higher role to mark analytical work complete",
+                })
+              : !canMarkComplete()
+                ? intl.formatMessage({
+                    id: "notebook.tradmed.tooltip.allStepsCompleteRequired",
+                    defaultMessage: "All 4 analytical steps must be completed",
+                  })
+                : ""
+          }
         >
           <FormattedMessage
             id="notebook.page.tradmed.analytical.markComplete"
@@ -1030,7 +1166,7 @@ function TraditionalMedicineAnalyticalPage({
               samples={pendingSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={true}
+              showSelection={!isViewOnly}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

@@ -37,19 +37,53 @@ import { usePermissions } from "./usePermissions";
  * }
  */
 export const useBioanalyticalPermissions = () => {
-  const { userSessionDetails, hasLabUnitRole, hasRoleForCurrentLabUnit } =
-    usePermissions();
+  const {
+    userSessionDetails,
+    hasRole,
+    hasAnyRole,
+    hasLabUnitRole,
+  } = usePermissions();
+
+  const BIOANALYTICAL_LAB_UNIT = "Bioanalytical Laboratory";
+
+  /**
+   * Custom hasLabUnitRole that ALLOWS Global Admin bypass while maintaining strict checking for others
+   * This ensures bioanalytical permissions respect actual role assignments for regular users
+   * but allows Global Admins full access to everything
+   * @param {string} labUnit - Lab unit name or ID
+   * @param {string} role - Role name to check
+   * @returns {boolean}
+   */
+  const hasBioanalyticalLabUnitRoleStrict = useCallback(
+    (labUnit, role) => {
+      if (!userSessionDetails?.userLabRolesMap) {
+        return false;
+      }
+
+      // Check "AllLabUnits" for global lab access
+      const allLabUnitsRoles =
+        userSessionDetails.userLabRolesMap["AllLabUnits"] || [];
+      if (allLabUnitsRoles.includes(role)) {
+        return true;
+      }
+
+      // Check specific lab unit
+      const labUnitRoles = userSessionDetails.userLabRolesMap[labUnit] || [];
+      return labUnitRoles.includes(role);
+    },
+    [userSessionDetails?.userLabRolesMap],
+  );
 
   const BIOANALYTICAL_ROLES = useMemo(
     () => ({
-      SAMPLE_RECEIVER: "Sample Receiver",
-      CHEMICAL_ANALYST: "Chemical Analyst",
-      PHARMACIST: "Pharmacist",
-      RESEARCHER: "Researcher",
-      LAB_SUPERVISOR: "Lab Supervisor",
-      STUDY_DIRECTOR: "Study Director",
-      QA_OFFICER: "QA Officer",
-      DATA_MANAGER: "Data Manager",
+      SAMPLE_RECEIVER: "Bioanalytical Sample Receiver",
+      CHEMICAL_ANALYST: "Bioanalytical Chemical Analyst",
+      PHARMACIST: "Bioanalytical Pharmacist",
+      RESEARCHER: "Bioanalytical Researcher",
+      LAB_SUPERVISOR: "Bioanalytical Lab Supervisor",
+      STUDY_DIRECTOR: "Bioanalytical Study Director",
+      QA_OFFICER: "Bioanalytical QA Officer",
+      DATA_MANAGER: "Bioanalytical Data Manager",
     }),
     [],
   );
@@ -59,6 +93,8 @@ export const useBioanalyticalPermissions = () => {
       SAMPLE_RECEPTION: "Sample Reception & Registration",
       TEST_ASSIGNMENT: "Test Assignment",
       ANALYTICAL_EXECUTION: "Analytical Execution",
+      RESULT_ENTRY: "Result Entry",
+      VALIDATION: "Validation",
       REPORTING: "Reporting",
       STORAGE_ARCHIVING: "Storage & Archiving",
     }),
@@ -76,25 +112,24 @@ export const useBioanalyticalPermissions = () => {
    */
   const getPagePermissionLevel = useCallback(
     (pageName) => {
-      // First try to get from userSessionDetails if available
       if (userSessionDetails?.bioanalyticalPermissions?.[pageName]) {
         return userSessionDetails.bioanalyticalPermissions[pageName];
       }
 
-      // Fallback: Check all bioanalytical roles the user has and return the highest permission level
-      // This mapping should match the Liquibase migration 049-bioanalytical-permission-levels.xml
       const userBioanalyticalRoles = Object.values(BIOANALYTICAL_ROLES).filter(
-        (role) => hasRoleForCurrentLabUnit([role]),
+        (role) =>
+          hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, role),
       );
 
       if (userBioanalyticalRoles.length === 0) {
         return null;
       }
 
-      // Fallback permission map based on role-page combinations from database
+      // Permission map based on test.pdf Section 11 permission matrix
       // This serves as a fallback if backend doesn't provide bioanalyticalPermissions
       const permissionMap = {
         [BIOANALYTICAL_PAGES.SAMPLE_RECEPTION]: {
+          // Matrix: Sample Receivers (Yes), Chemical Analysts (Update), Pharmacists (Update), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (No)
           [BIOANALYTICAL_ROLES.SAMPLE_RECEIVER]: "REGISTER",
           [BIOANALYTICAL_ROLES.CHEMICAL_ANALYST]: "UPDATE",
           [BIOANALYTICAL_ROLES.PHARMACIST]: "UPDATE",
@@ -102,20 +137,33 @@ export const useBioanalyticalPermissions = () => {
           [BIOANALYTICAL_ROLES.LAB_SUPERVISOR]: "FULL",
           [BIOANALYTICAL_ROLES.STUDY_DIRECTOR]: "VIEW",
           [BIOANALYTICAL_ROLES.QA_OFFICER]: "VIEW",
-          [BIOANALYTICAL_ROLES.DATA_MANAGER]: "VIEW",
+          // Data Manager excluded per matrix (No)
         },
         [BIOANALYTICAL_PAGES.TEST_ASSIGNMENT]: {
-          [BIOANALYTICAL_ROLES.SAMPLE_RECEIVER]: "UPDATE",
-          [BIOANALYTICAL_ROLES.CHEMICAL_ANALYST]: "UPDATE",
+          // Matrix: Sample Receivers (No), Chemical Analysts (View), Pharmacists (Full), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (No)
+          // Sample Receiver excluded per matrix (No)
+          [BIOANALYTICAL_ROLES.CHEMICAL_ANALYST]: "VIEW",
           [BIOANALYTICAL_ROLES.PHARMACIST]: "FULL",
-          [BIOANALYTICAL_ROLES.RESEARCHER]: "UPDATE",
+          [BIOANALYTICAL_ROLES.RESEARCHER]: "VIEW",
           [BIOANALYTICAL_ROLES.LAB_SUPERVISOR]: "FULL",
-          [BIOANALYTICAL_ROLES.STUDY_DIRECTOR]: "UPDATE",
+          [BIOANALYTICAL_ROLES.STUDY_DIRECTOR]: "VIEW",
           [BIOANALYTICAL_ROLES.QA_OFFICER]: "VIEW",
-          [BIOANALYTICAL_ROLES.DATA_MANAGER]: "UPDATE",
+          // Data Manager excluded per matrix (No)
         },
         [BIOANALYTICAL_PAGES.ANALYTICAL_EXECUTION]: {
-          [BIOANALYTICAL_ROLES.SAMPLE_RECEIVER]: "VIEW",
+          // Matrix: Sample Receivers (No), Chemical Analysts (Full), Pharmacists (Full), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (No)
+          // Sample Receiver excluded per matrix (No)
+          [BIOANALYTICAL_ROLES.CHEMICAL_ANALYST]: "FULL",
+          [BIOANALYTICAL_ROLES.PHARMACIST]: "FULL",
+          [BIOANALYTICAL_ROLES.RESEARCHER]: "VIEW",
+          [BIOANALYTICAL_ROLES.LAB_SUPERVISOR]: "FULL",
+          [BIOANALYTICAL_ROLES.STUDY_DIRECTOR]: "VIEW",
+          [BIOANALYTICAL_ROLES.QA_OFFICER]: "VIEW",
+          // Data Manager excluded per matrix (No)
+        },
+        [BIOANALYTICAL_PAGES.RESULT_ENTRY]: {
+          // Matrix: Sample Receivers (No), Chemical Analysts (Full), Pharmacists (Full), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (View)
+          // Sample Receiver excluded per matrix (No)
           [BIOANALYTICAL_ROLES.CHEMICAL_ANALYST]: "FULL",
           [BIOANALYTICAL_ROLES.PHARMACIST]: "FULL",
           [BIOANALYTICAL_ROLES.RESEARCHER]: "VIEW",
@@ -124,8 +172,20 @@ export const useBioanalyticalPermissions = () => {
           [BIOANALYTICAL_ROLES.QA_OFFICER]: "VIEW",
           [BIOANALYTICAL_ROLES.DATA_MANAGER]: "VIEW",
         },
+        [BIOANALYTICAL_PAGES.VALIDATION]: {
+          // Matrix: Sample Receivers (No), Chemical Analysts (Validate), Pharmacists (Validate), Researchers (Review), Lab Supervisors (Final Approval), Study Directors (Final Approval), QA Officers (Final Approval), Data Managers (No)
+          // Sample Receiver excluded per matrix (No)
+          [BIOANALYTICAL_ROLES.CHEMICAL_ANALYST]: "VALIDATE",
+          [BIOANALYTICAL_ROLES.PHARMACIST]: "VALIDATE",
+          [BIOANALYTICAL_ROLES.RESEARCHER]: "REVIEW",
+          [BIOANALYTICAL_ROLES.LAB_SUPERVISOR]: "APPROVE",
+          [BIOANALYTICAL_ROLES.STUDY_DIRECTOR]: "APPROVE",
+          [BIOANALYTICAL_ROLES.QA_OFFICER]: "APPROVE",
+          // Data Manager excluded per matrix (No)
+        },
         [BIOANALYTICAL_PAGES.REPORTING]: {
-          [BIOANALYTICAL_ROLES.SAMPLE_RECEIVER]: "VIEW",
+          // Matrix: Sample Receivers (No), Chemical Analysts (Limited), Pharmacists (Full), Researchers (Project-specific), Lab Supervisors (Full), Study Directors (Full), QA Officers (Full), Data Managers (Full Analytics)
+          // Sample Receiver excluded per matrix (No)
           [BIOANALYTICAL_ROLES.CHEMICAL_ANALYST]: "LIMITED",
           [BIOANALYTICAL_ROLES.PHARMACIST]: "FULL",
           [BIOANALYTICAL_ROLES.RESEARCHER]: "PROJECT_SPECIFIC",
@@ -135,14 +195,11 @@ export const useBioanalyticalPermissions = () => {
           [BIOANALYTICAL_ROLES.DATA_MANAGER]: "FULL_ANALYTICS",
         },
         [BIOANALYTICAL_PAGES.STORAGE_ARCHIVING]: {
-          [BIOANALYTICAL_ROLES.SAMPLE_RECEIVER]: "RESTRICTED",
-          [BIOANALYTICAL_ROLES.CHEMICAL_ANALYST]: "UPDATE",
-          [BIOANALYTICAL_ROLES.PHARMACIST]: "UPDATE",
-          [BIOANALYTICAL_ROLES.RESEARCHER]: "VIEW",
+          // Matrix: Sample Receivers (No), Chemical Analysts (No), Pharmacists (No), Researchers (No), Lab Supervisors (Approve), Study Directors (Approve), QA Officers (No), Data Managers (No)
+          // Most roles excluded per matrix (No)
           [BIOANALYTICAL_ROLES.LAB_SUPERVISOR]: "APPROVE",
           [BIOANALYTICAL_ROLES.STUDY_DIRECTOR]: "APPROVE",
-          [BIOANALYTICAL_ROLES.QA_OFFICER]: "RESTRICTED",
-          [BIOANALYTICAL_ROLES.DATA_MANAGER]: "VIEW",
+          // All other roles excluded per matrix
         },
       };
 
@@ -153,9 +210,11 @@ export const useBioanalyticalPermissions = () => {
         "RESTRICTED",
         "VIEW",
         "LIMITED",
+        "REVIEW",
         "PROJECT_SPECIFIC",
         "REGISTER",
         "UPDATE",
+        "VALIDATE",
         "APPROVE",
         "FULL_ANALYTICS",
         "FULL",
@@ -183,7 +242,7 @@ export const useBioanalyticalPermissions = () => {
     [
       BIOANALYTICAL_PAGES,
       BIOANALYTICAL_ROLES,
-      hasRoleForCurrentLabUnit,
+      hasBioanalyticalLabUnitRoleStrict,
       userSessionDetails,
     ],
   );
@@ -216,12 +275,12 @@ export const useBioanalyticalPermissions = () => {
 
   /**
    * Check if a permission level allows approving operations
-   * Allows: APPROVE, FULL
+   * Allows: APPROVE, FULL, FULL_ANALYTICS
    * @param {string|null} permissionLevel
    * @returns {boolean}
    */
   const canApproveData = useCallback((permissionLevel) => {
-    return permissionLevel && ["APPROVE", "FULL"].includes(permissionLevel);
+    return permissionLevel && ["APPROVE", "FULL", "FULL_ANALYTICS"].includes(permissionLevel);
   }, []);
 
   /**
@@ -246,25 +305,49 @@ export const useBioanalyticalPermissions = () => {
 
   /**
    * Check if a permission level allows analytics/reporting operations
-   * Allows: FULL_ANALYTICS, FULL
+   * Allows: FULL_ANALYTICS, FULL, PROJECT_SPECIFIC
    * @param {string|null} permissionLevel
    * @returns {boolean}
    */
   const canAnalytics = useCallback((permissionLevel) => {
     return (
-      permissionLevel && ["FULL_ANALYTICS", "FULL"].includes(permissionLevel)
+      permissionLevel && ["FULL_ANALYTICS", "FULL", "PROJECT_SPECIFIC"].includes(permissionLevel)
     );
   }, []);
 
   /**
    * Check if a permission level allows limited modifications
-   * Allows: LIMITED, UPDATE, FULL
+   * Allows: LIMITED, UPDATE, FULL, PROJECT_SPECIFIC, APPROVE
    * @param {string|null} permissionLevel
    * @returns {boolean}
    */
   const canModify = useCallback((permissionLevel) => {
     return (
-      permissionLevel && ["LIMITED", "UPDATE", "FULL"].includes(permissionLevel)
+      permissionLevel && ["LIMITED", "UPDATE", "FULL", "PROJECT_SPECIFIC", "APPROVE"].includes(permissionLevel)
+    );
+  }, []);
+
+  /**
+   * Check if a permission level allows validation operations
+   * Allows: VALIDATE, APPROVE, FULL
+   * @param {string|null} permissionLevel
+   * @returns {boolean}
+   */
+  const canValidate = useCallback((permissionLevel) => {
+    return (
+      permissionLevel && ["VALIDATE", "APPROVE", "FULL"].includes(permissionLevel)
+    );
+  }, []);
+
+  /**
+   * Check if a permission level allows review operations
+   * Allows: REVIEW, VALIDATE, APPROVE, FULL
+   * @param {string|null} permissionLevel
+   * @returns {boolean}
+   */
+  const canReview = useCallback((permissionLevel) => {
+    return (
+      permissionLevel && ["REVIEW", "VALIDATE", "APPROVE", "FULL"].includes(permissionLevel)
     );
   }, []);
 
@@ -275,9 +358,9 @@ export const useBioanalyticalPermissions = () => {
    */
   const hasBioanalyticalRole = useCallback(
     (role) => {
-      return hasRoleForCurrentLabUnit([role]);
+      return hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, role);
     },
-    [hasRoleForCurrentLabUnit],
+    [hasBioanalyticalLabUnitRoleStrict],
   );
 
   /**
@@ -302,10 +385,174 @@ export const useBioanalyticalPermissions = () => {
   const getBioanalyticalRole = useCallback(() => {
     return (
       Object.values(BIOANALYTICAL_ROLES).find((role) =>
-        hasRoleForCurrentLabUnit([role]),
+        hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, role),
       ) || null
     );
-  }, [BIOANALYTICAL_ROLES, hasRoleForCurrentLabUnit]);
+  }, [BIOANALYTICAL_ROLES, hasBioanalyticalLabUnitRoleStrict]);
+
+  /**
+   * Bioanalytical-specific role checks based on bioanalytical lab unit roles
+   * These use strict checking that does NOT bypass for Global Admins
+   */
+  const isBioanalyticalSampleReceiver = useCallback(
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.SAMPLE_RECEIVER,
+      ),
+    [hasBioanalyticalLabUnitRoleStrict],
+  );
+
+  const isBioanalyticalChemicalAnalyst = useCallback(
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.CHEMICAL_ANALYST,
+      ),
+    [hasBioanalyticalLabUnitRoleStrict],
+  );
+
+  const isBioanalyticalPharmacist = useCallback(
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.PHARMACIST,
+      ),
+    [hasBioanalyticalLabUnitRoleStrict],
+  );
+
+  const isBioanalyticalResearcher = useCallback(
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.RESEARCHER,
+      ),
+    [hasBioanalyticalLabUnitRoleStrict],
+  );
+
+  const isBioanalyticalLabSupervisor = useCallback(
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
+      ),
+    [hasBioanalyticalLabUnitRoleStrict],
+  );
+
+  const isBioanalyticalStudyDirector = useCallback(
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
+      ),
+    [hasBioanalyticalLabUnitRoleStrict],
+  );
+
+  const isBioanalyticalQAOfficer = useCallback(
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.QA_OFFICER,
+      ),
+    [hasBioanalyticalLabUnitRoleStrict],
+  );
+
+  const isBioanalyticalDataManager = useCallback(
+    () =>
+      hasBioanalyticalLabUnitRoleStrict(
+        BIOANALYTICAL_LAB_UNIT,
+        BIOANALYTICAL_ROLES.DATA_MANAGER,
+      ),
+    [hasBioanalyticalLabUnitRoleStrict],
+  );
+
+  /**
+   * Helper function to check if user has any of the specified bioanalytical lab unit roles
+   * Uses strict checking that does NOT bypass for Global Admins
+   */
+  const hasAnyBioanalyticalLabUnitRole = useCallback(
+    (roles) => {
+      return roles.some((role) =>
+        hasBioanalyticalLabUnitRoleStrict(BIOANALYTICAL_LAB_UNIT, role),
+      );
+    },
+    [hasBioanalyticalLabUnitRoleStrict],
+  );
+
+  /**
+   * Page-specific access checks per bioanalytical workflow stages
+   * Based on test.pdf Section 11 permission matrix
+   */
+  const canAccessSampleReception = useCallback(() => {
+    // Matrix: Sample Receivers (Yes), Chemical Analysts (Update), Pharmacists (Update), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (No)
+    const allowedRoles = [
+      BIOANALYTICAL_ROLES.SAMPLE_RECEIVER,
+      BIOANALYTICAL_ROLES.CHEMICAL_ANALYST,
+      BIOANALYTICAL_ROLES.PHARMACIST,
+      BIOANALYTICAL_ROLES.RESEARCHER,
+      BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
+      BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
+      BIOANALYTICAL_ROLES.QA_OFFICER,
+      // Data Manager excluded per matrix (No)
+    ];
+    return hasAnyBioanalyticalRole(allowedRoles);
+  }, [hasAnyBioanalyticalRole, BIOANALYTICAL_ROLES]);
+
+  const canAccessTestAssignment = useCallback(() => {
+    // Matrix: Sample Receivers (No), Chemical Analysts (View), Pharmacists (Full), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (No)
+    const allowedRoles = [
+      // Sample Receiver excluded per matrix (No)
+      BIOANALYTICAL_ROLES.CHEMICAL_ANALYST,
+      BIOANALYTICAL_ROLES.PHARMACIST,
+      BIOANALYTICAL_ROLES.RESEARCHER,
+      BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
+      BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
+      BIOANALYTICAL_ROLES.QA_OFFICER,
+      // Data Manager excluded per matrix (No)
+    ];
+    return hasAnyBioanalyticalRole(allowedRoles);
+  }, [hasAnyBioanalyticalRole, BIOANALYTICAL_ROLES]);
+
+  const canAccessAnalyticalExecution = useCallback(() => {
+    // Matrix: Sample Receivers (No), Chemical Analysts (Full), Pharmacists (Full), Researchers (View), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Data Managers (No)
+    const allowedRoles = [
+      // Sample Receiver excluded per matrix (No)
+      BIOANALYTICAL_ROLES.CHEMICAL_ANALYST,
+      BIOANALYTICAL_ROLES.PHARMACIST,
+      BIOANALYTICAL_ROLES.RESEARCHER,
+      BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
+      BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
+      BIOANALYTICAL_ROLES.QA_OFFICER,
+      // Data Manager excluded per matrix (No)
+    ];
+    return hasAnyBioanalyticalRole(allowedRoles);
+  }, [hasAnyBioanalyticalRole, BIOANALYTICAL_ROLES]);
+
+  const canAccessReporting = useCallback(() => {
+    // Matrix: Sample Receivers (No), Chemical Analysts (Limited), Pharmacists (Full), Researchers (Project-specific), Lab Supervisors (Full), Study Directors (Full), QA Officers (Full), Data Managers (Full Analytics)
+    const allowedRoles = [
+      // Sample Receiver excluded per matrix (No)
+      BIOANALYTICAL_ROLES.CHEMICAL_ANALYST,
+      BIOANALYTICAL_ROLES.PHARMACIST,
+      BIOANALYTICAL_ROLES.RESEARCHER,
+      BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
+      BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
+      BIOANALYTICAL_ROLES.QA_OFFICER,
+      BIOANALYTICAL_ROLES.DATA_MANAGER,
+    ];
+    return hasAnyBioanalyticalRole(allowedRoles);
+  }, [hasAnyBioanalyticalRole, BIOANALYTICAL_ROLES]);
+
+  const canAccessStorageArchiving = useCallback(() => {
+    // Matrix: Sample Receivers (No), Chemical Analysts (No), Pharmacists (No), Researchers (No), Lab Supervisors (Approve), Study Directors (Approve), QA Officers (No), Data Managers (No)
+    const allowedRoles = [
+      // Only Lab Supervisors and Study Directors have access
+      BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
+      BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
+      // All other roles excluded per matrix (No)
+    ];
+    return hasAnyBioanalyticalRole(allowedRoles);
+  }, [hasAnyBioanalyticalRole, BIOANALYTICAL_ROLES]);
 
   return {
     BIOANALYTICAL_ROLES,
@@ -319,9 +566,29 @@ export const useBioanalyticalPermissions = () => {
     isReadOnly,
     canAnalytics,
     canModify,
+    canValidate,
+    canReview,
     hasBioanalyticalRole,
     hasAnyBioanalyticalRole,
     getBioanalyticalRole,
+
+    // Bioanalytical-specific role checks
+    isBioanalyticalSampleReceiver,
+    isBioanalyticalChemicalAnalyst,
+    isBioanalyticalPharmacist,
+    isBioanalyticalResearcher,
+    isBioanalyticalLabSupervisor,
+    isBioanalyticalStudyDirector,
+    isBioanalyticalQAOfficer,
+    isBioanalyticalDataManager,
+    hasAnyBioanalyticalLabUnitRole,
+
+    // Page-specific access checks
+    canAccessSampleReception,
+    canAccessTestAssignment,
+    canAccessAnalyticalExecution,
+    canAccessReporting,
+    canAccessStorageArchiving,
   };
 };
 

@@ -1,0 +1,6 @@
+name,code,description,active
+Main Laboratory,MAIN-LAB,Primary laboratory storage facility with controlled temperature zones,true
+Sample Processing Room,PROC-ROOM,Room dedicated to sample processing and aliquoting,true
+Archive Storage,ARCHIVE,Long-term sample archival storage,true
+Quality Control Room,QC-ROOM,QC sample storage and testing area,true
+Receiving Area,RECV,Sample receiving and initial processing,true

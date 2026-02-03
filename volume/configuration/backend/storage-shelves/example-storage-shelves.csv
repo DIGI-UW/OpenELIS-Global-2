@@ -1,0 +1,32 @@
+label,code,capacityLimit,active,parentDeviceCode
+Shelf 1,ULF01-S1,50,true,ULF01
+Shelf 2,ULF01-S2,50,true,ULF01
+Shelf 3,ULF01-S3,50,true,ULF01
+Shelf 4,ULF01-S4,50,true,ULF01
+Shelf 5,ULF01-S5,50,true,ULF01
+Shelf 1,ULF02-S1,50,true,ULF02
+Shelf 2,ULF02-S2,50,true,ULF02
+Shelf 3,ULF02-S3,50,true,ULF02
+Shelf 4,ULF02-S4,50,true,ULF02
+Shelf 5,ULF02-S5,50,true,ULF02
+Top Shelf,FRZ01-TOP,30,true,FRZ01
+Middle Shelf,FRZ01-MID,30,true,FRZ01
+Bottom Shelf,FRZ01-BOT,30,true,FRZ01
+Shelf A,REF01-A,25,true,REF01
+Shelf B,REF01-B,25,true,REF01
+Shelf C,REF01-C,25,true,REF01
+Shelf A,REF02-A,25,true,REF02
+Shelf B,REF02-B,25,true,REF02
+Shelf C,REF02-C,25,true,REF02
+Active Samples,PREF01-ACT,20,true,PREF01
+Pending Samples,PREF01-PEND,20,true,PREF01
+Supplies Shelf,PCAB01-SUP,15,true,PCAB01
+Archive Shelf 1,AFRZ01-A1,100,true,AFRZ01
+Archive Shelf 2,AFRZ01-A2,100,true,AFRZ01
+Archive Shelf 3,AFRZ01-A3,100,true,AFRZ01
+Archive Shelf 4,AFRZ01-A4,100,true,AFRZ01
+QC Controls,QCREF01-CTRL,20,true,QCREF01
+QC Samples,QCREF01-SMPL,20,true,QCREF01
+Frozen Controls,QCFRZ01-FCTRL,20,true,QCFRZ01
+Incoming Samples,RREF01-IN,30,true,RREF01
+Processing Queue,RREF01-QUEUE,30,true,RREF01
