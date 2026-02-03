@@ -2,6 +2,9 @@
   "name": "openelis-global-react-app",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.1.0"
+  },
   "dependencies": {
     "@carbon/charts": "^1.27.2",
     "@carbon/charts-react": "^1.5.2",
@@ -97,7 +100,6 @@
   "devDependencies": {
     "@testing-library/react-hooks": "^8.0.1",
     "cypress": "^15.9.0",
-    "cypress-xpath": "^2.0.1",
     "eslint": "^8.48.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
