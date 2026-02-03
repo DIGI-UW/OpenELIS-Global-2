@@ -18,13 +18,9 @@ import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -88,53 +84,17 @@ public class BaseReportRestController extends BaseRestController {
      * @param offset   pagination offset
      * @return Report data in requested format
      */
-    @PostMapping("/execute/{reportId}")
-    public ResponseEntity<?> executeReport(@PathVariable String reportId,
-            @RequestParam(defaultValue = "json") String format, @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "1000") int limit) {
-        try {
-            Map<String, Object> response = new HashMap<>();
-            response.put("reportId", reportId);
-            response.put("format", format);
-            response.put("offset", offset);
-            response.put("limit", limit);
-            response.put("status", "pending");
-            response.put("message", "Report execution not yet implemented");
-            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(response);
-        } catch (Exception e) {
-            logger.error("Error executing report: " + reportId, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error executing report");
-        }
-    }
-
-    /**
-     * Get available report formats and export options.
-     *
-     * @return supported export formats and options
-     */
     @GetMapping("/formats")
     public ResponseEntity<?> getAvailableFormats() {
         Map<String, Object> response = new HashMap<>();
         response.put("formats", new String[] { "json", "csv", "pdf" });
-        response.put("description", new Object[] { new HashMap<String, Object>() {
-            {
-                put("format", "json");
-                put("contentType", "application/json");
-                put("useCase", "API consumption, web UI");
-            }
-        }, new HashMap<String, Object>() {
-            {
-                put("format", "csv");
-                put("contentType", "text/csv");
-                put("useCase", "Excel, data analysis");
-            }
-        }, new HashMap<String, Object>() {
-            {
-                put("format", "pdf");
-                put("contentType", "application/pdf");
-                put("useCase", "Printing, archival");
-            }
-        } });
+        response.put("description",
+                new Object[] {
+                        Map.of("format", "json", "contentType", "application/json", "useCase",
+                                "API consumption, web UI"),
+                        Map.of("format", "csv", "contentType", "text/csv", "useCase", "Excel, data analysis"),
+                        Map.of("format", "pdf", "contentType", "application/pdf", "useCase", "Printing, archival") });
+
         return ResponseEntity.ok(response);
     }
 
