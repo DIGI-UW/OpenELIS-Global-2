@@ -1,0 +1,392 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- VIROLOGY LABORATORY NOTEBOOK TEMPLATE -->
+    <!-- Creates a predefined notebook template with 10 workflow pages -->
+    <!-- hard-coded for the Virology Laboratory workflow -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-vl-notebook-template" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Virology Laboratory notebook template</comment>
+
+        <insert tableName="notebook" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_seq"/>
+            <column name="title" value="Virology Laboratory"/>
+            <column name="objective" value="Complete genomics and bioinformatics analysis workflow from sample reception to data submission"/>
+            <column name="protocol" value="Standard Virology Laboratory Protocol"/>
+            <column name="content" value="Virology Laboratory notebook template with 10 predefined workflow pages for sample reception, DNA/RNA extraction, quality assessment, PCR amplification, gel electrophoresis, library preparation, bioanalyzer QC, sequencing, and bioinformatics analysis."/>
+            <column name="status" value="ACTIVE"/>
+            <column name="is_template" valueBoolean="true"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <column name="date_created" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook" schemaName="clinlims">
+                <where>title = 'Virology Laboratory' AND is_template = true</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: SAMPLE RECEPTION & REGISTRATION -->
+    <!-- ======================================================== -->
+    <changeSet id="create-vl-page-1-sample-reception" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Reception &amp; Registration page for VL Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Reception &amp; Registration"/>
+            <column name="instructions" value="Register sample receipt: Assign or retain Sample ID, capture organism/tissue type, note sample source and collection date, record requested analysis type, document storage conditions at arrival, receipt date/time, and receiving personnel. Link to research project or study if applicable."/>
+            <column name="content" value="Sample Reception &amp; Registration - Batch verification and metadata capture of incoming biological samples"/>
+            <column name="page_order" value="1"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 1</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: DNA/RNA EXTRACTION -->
+    <!-- ======================================================== -->
+    <changeSet id="create-vl-page-2-dna-rna-extraction" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+        </preConditions>
+        <comment>Create DNA/RNA Extraction page for VL Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="DNA/RNA Extraction"/>
+            <column name="instructions" value="Document extraction protocol used. Record extraction date/time and technician ID. Select extraction kit/method from dropdown. Document sample quantity and condition. Record extraction yield (ng/µL) and purity (A260/A280 ratio). Document any deviations or observations. Store extracted material location and conditions."/>
+            <column name="content" value="DNA/RNA Extraction - Nucleic acid isolation and documentation"/>
+            <column name="page_order" value="2"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 2</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: QUALITY &amp; QUANTITY ASSESSMENT -->
+    <!-- ======================================================== -->
+    <changeSet id="create-vl-page-3-quality-quantity-assessment" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Quality &amp; Quantity Assessment page for VL Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Quality &amp; Quantity Assessment"/>
+            <column name="instructions" value="Record QC assessment date/time. Select QC instrument (NanoDrop, Qubit, BioAnalyzer). Document quantity (ng or µg) and purity metrics (A260/A280, A260/A230). Record fragment size if assessed (bp). Document QC status (Pass/Fail) with acceptance criteria. If failed, document reason and recommended action. Capture QC instrument ID and calibration status."/>
+            <column name="content" value="Quality &amp; Quantity Assessment - QC validation with auto-pass/fail determination"/>
+            <column name="page_order" value="3"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 3</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 4: PCR AMPLIFICATION -->
+    <!-- ======================================================== -->
+    <changeSet id="create-vl-page-4-pcr-amplification" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Create PCR Amplification page for VL Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="PCR Amplification"/>
+            <column name="instructions" value="Record PCR date/time and technician ID. Select PCR target gene/region and primer set. Select thermal cycler instrument ID. Document PCR master mix composition and volume. Record cycling conditions (annealing temp, cycles, extension time). Document primer final concentrations. Record PCR product yield and estimate. Document any complications or optimization notes. Store PCR product conditions."/>
+            <column name="content" value="PCR Amplification - Target region amplification and documentation"/>
+            <column name="page_order" value="4"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 4</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 5: GEL ELECTROPHORESIS -->
+    <!-- ======================================================== -->
+    <changeSet id="create-vl-page-5-gel-electrophoresis" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Gel Electrophoresis page for VL Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Gel Electrophoresis"/>
+            <column name="instructions" value="Record gel date/time and technician ID. Select gel type (agarose %, TAE buffer). Document sample loading (µL volume, dye used). Select electrophoresis apparatus ID and run conditions (voltage, duration). Record molecular weight marker used. Upload gel image file. Document band presence/absence and estimated size (bp). Document any anomalies or failed bands. Assess purity and integrity for next step."/>
+            <column name="content" value="Gel Electrophoresis - PCR product verification and sizing"/>
+            <column name="page_order" value="5"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 5</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 6: LIBRARY PREPARATION -->
+    <!-- ======================================================== -->
+    <changeSet id="create-vl-page-6-library-preparation" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 6
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Library Preparation page for VL Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Library Preparation"/>
+            <column name="instructions" value="Record library prep date/time and technician ID. Select library prep kit/protocol. Document DNA input amount (ng). Record barcodes/adapters used for each sample. Document shearing parameters (if applicable). Select library prep instrument ID. Record final library concentration and volume. Document size distribution (bp). Select target insert size. Document any deviations. Perform QC check if required."/>
+            <column name="content" value="Library Preparation - Sequencing library construction and QC"/>
+            <column name="page_order" value="6"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 6</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 7: BIOANALYZER QC -->
+    <!-- ======================================================== -->
+    <changeSet id="create-vl-page-7-bioanalyzer-qc" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 7
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Bioanalyzer QC page for VL Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Bioanalyzer QC"/>
+            <column name="instructions" value="Record Bioanalyzer run date/time and technician ID. Select Bioanalyzer chip type (DNA, RNA). Load samples in specified microfluidic lanes. Verify ladder run passes. Record library concentration (ng/µL). Document size distribution profile. Record DIN (DNA Integrity Number) if RNA. Document QC status (Pass/Fail) with acceptance criteria. If failed, document reason and next steps. Upload Bioanalyzer file output."/>
+            <column name="content" value="Bioanalyzer QC - Library quality and fragment size distribution analysis"/>
+            <column name="page_order" value="7"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 7</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 8: SEQUENCING -->
+    <!-- ======================================================== -->
+    <changeSet id="create-vl-page-8-sequencing" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 8
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sequencing page for VL Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sequencing"/>
+            <column name="instructions" value="Record sequencing date/time and technician ID. Select sequencing platform (Illumina, PacBio, Nanopore). Document run parameters (read type, flow cell, reagent kit). Record loading concentration (pM). Select data output location and storage backup. Document run start/completion times. Monitor cluster density and phasing metrics. Record raw data file paths and naming convention. Document any run errors or quality issues. Obtain preliminary quality metrics."/>
+            <column name="content" value="Sequencing - Raw sequencing data generation and initial QC"/>
+            <column name="page_order" value="8"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 8</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 9: BIOINFORMATICS ANALYSIS &amp; DATA SUBMISSION -->
+    <!-- ======================================================== -->
+    <changeSet id="create-vl-page-9-bioinformatics-analysis" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 9
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Bioinformatics Analysis &amp; Data Submission page for VL Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Bioinformatics Analysis &amp; Data Submission"/>
+            <column name="instructions" value="Record analysis start date/time and bioinformatician ID. Select analysis pipeline (genome assembly, variant calling, etc.). Document reference genome version and parameters. Record read mapping/alignment statistics. Document variant calls, copy numbers, or other analysis results. Perform secondary analysis review and validation. Select data submission repository (NCBI, ENA, etc.). Record submission accession numbers. Document data archival locations and retention periods. Generate analysis summary report."/>
+            <column name="content" value="Bioinformatics Analysis &amp; Data Submission - Data processing, analysis, and public repository submission"/>
+            <column name="page_order" value="9"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 9</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 10: STORAGE &amp; ENVIRONMENTAL MONITORING -->
+    <!-- ======================================================== -->
+    <changeSet id="create-vl-page-10-storage-environmental-monitoring" author="openelis-vl">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 10
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Storage &amp; Environmental Monitoring page for VL Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Storage &amp; Environmental Monitoring"/>
+            <column name="instructions" value="Manage physical sample storage and environmental conditions. Assign samples to hierarchical storage locations (Room → Freezer → Shelf → Rack → Box → Well). Select appropriate storage condition based on sample type (DNA: -20°C/-80°C, RNA: -80°C, PCR products: -20°C). Log daily temperature checks (AM/PM) with acceptable ranges. Track sample retrievals with date, staff, recipient signature, and retrieval purpose. Record sample disposals with method, date, and authorization. Monitor storage logbook audit trail for compliance and traceability."/>
+            <column name="content" value="Storage &amp; Environmental Monitoring - Physical storage management, temperature monitoring, and sample lifecycle tracking"/>
+            <column name="page_order" value="10"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 10</where>
+            </delete>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
