@@ -17,10 +17,16 @@ fi
 # Track if we formatted anything
 FORMATTED=false
 
-# Format Java files (Maven Spotless on specific files)
+# Format files with Maven Spotless (matches pom.xml spotless config)
+# Spotless formats: Java, Markdown, Shell, XML, .gitignore, pom.xml
 JAVA_FILES=$(echo "$STAGED_FILES" | grep '\.java$' || true)
-if [ -n "$JAVA_FILES" ]; then
-    echo "  → Formatting $(echo "$JAVA_FILES" | wc -l) Java file(s) (spotless)..."
+MD_FILES=$(echo "$STAGED_FILES" | grep '\.md$' || true)
+SH_FILES=$(echo "$STAGED_FILES" | grep '\.sh$' || true)
+XML_FILES=$(echo "$STAGED_FILES" | grep '\.xml$' || true)
+GITIGNORE_FILES=$(echo "$STAGED_FILES" | grep '^\.gitignore$' || true)
+POM_FILES=$(echo "$STAGED_FILES" | grep 'pom\.xml$' || true)
+if [ -n "$JAVA_FILES" ] || [ -n "$MD_FILES" ] || [ -n "$SH_FILES" ] || [ -n "$XML_FILES" ] || [ -n "$GITIGNORE_FILES" ] || [ -n "$POM_FILES" ]; then
+    echo "  → Formatting Spotless-managed files (java/md/sh/xml/gitignore/pom)..."
     # Spotless applies to entire project, but we only re-stage modified files
     mvn spotless:apply -q 2>/dev/null || true
     FORMATTED=true
