@@ -62,8 +62,8 @@ Rationale for Changes:
 Templates Requiring Updates:
   ⚠️ .specify/templates/plan-template.md - Add Milestone Plan section
   ⚠️ .specify/templates/tasks-template.md - Restructure to milestone-based phases
-  ⚠️ .specify/commands/speckit.tasks.md - Generate per-milestone task groups
-  ⚠️ .specify/commands/speckit.implement.md - Auto-create branches per milestone
+  ⚠️ .specify/core/commands/speckit.tasks.md - SOURCE: generates per-milestone task groups (via OE extension); compiled to .cursor/commands/ and .claude/commands/
+  ⚠️ .specify/core/commands/speckit.implement.md - SOURCE: enforces milestone scope (via OE extension); compiled to .cursor/commands/ and .claude/commands/
 
 Follow-up TODOs:
   - Update plan-template.md with Milestone Plan section
@@ -875,8 +875,12 @@ in production.
 
 **Rules**:
 
-- Schema migrations in `src/main/resources/liquibase/{module}/`
-- Changesets MUST have unique IDs: `{module}-{sequence}-{description}`
+- Schema migrations in `src/main/resources/liquibase/{version}/` (e.g.,
+  `3.3.x.x/`)
+- Changesets MUST have unique IDs: `{sequence}-{description}` (e.g.,
+  `023-storage-device-connectivity`)
+- All changesets MUST be placed inside versioned folders - NO module-specific
+  folders outside version directories
 - Use Liquibase XML format (NOT raw SQL unless necessary for performance)
 - Rollback scripts MUST be provided for structural changes
 - Test migrations on empty database AND production-like data volume
