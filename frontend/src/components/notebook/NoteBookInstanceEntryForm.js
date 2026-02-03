@@ -1,79 +1,63 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
-import PageBreadCrumb from "../common/PageBreadCrumb";
 import {
-  Button,
-  TextInput,
-  TextArea,
-  Select,
-  SelectItem,
-  MultiSelect,
-  FileUploader,
-  FilterableMultiSelect,
-  Grid,
-  Column,
-  InlineLoading,
-  Section,
-  Heading,
-  Tile,
-  Modal,
-  InlineNotification,
-  FileUploaderDropContainer,
-  FileUploaderItem,
-  Loading,
-  Tag,
   Accordion,
   AccordionItem,
+  Button,
+  Column,
   ContentSwitcher,
+  FileUploaderDropContainer,
+  FileUploaderItem,
+  FilterableMultiSelect,
+  Grid,
+  Heading,
+  InlineNotification,
+  Loading,
+  Modal,
+  Section,
+  Select,
+  SelectItem,
   Switch,
-  DataTable,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Pagination,
+  Tag,
+  TextArea,
+  TextInput,
+  Tile
 } from "@carbon/react";
 import {
-  Launch,
-  Subtract,
-  ArrowLeft,
-  ArrowRight,
-  Checkmark,
   Add,
+  Checkmark,
+  Launch
 } from "@carbon/react/icons";
-import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { useParams } from "react-router-dom";
+import { Permissions } from "../../constants/roles";
+import { usePermissions } from "../../hooks/usePermissions";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import PageBreadCrumb from "../common/PageBreadCrumb";
 import {
   NoteBookFormValues,
   NoteBookInitialData,
 } from "../formModel/innitialValues/NoteBookFormValues";
+import { NotificationContext } from "../layout/Layout";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
-  postToOpenElisServer,
-  hasRole,
-  toBase64,
+  toBase64
 } from "../utils/Utils";
-import { usePermissions } from "../../hooks/usePermissions";
-import { Permissions } from "../../constants/roles";
-import NotebookWorkflowTab from "./workflow/NotebookWorkflowTab";
-import MNTDWorkflowTab from "./workflow/MNTDWorkflowTab";
-import TBWorkflowTab from "./workflow/TBWorkflowTab";
-import PharmaceuticalWorkflowTab from "./workflow/PharmaceuticalWorkflowTab";
+import NotebookAuditLogViewer from "./NotebookAuditLogViewer";
 import BacteriologyWorkflowTab from "./workflow/BacteriologyWorkflowTab";
-import PathologyWorkflowTab from "./workflow/PathologyWorkflowTab";
 import BioanalyticalWorkflowTab from "./workflow/BioanalyticalWorkflowTab";
 import BioequivalenceWorkflowTab from "./workflow/BioequivalenceWorkflowTab";
-import MedLabWorkflowTab from "./workflow/MedLabWorkflowTab";
 import BiorepositoryWorkflowTab from "./workflow/BiorepositoryWorkflowTab";
-import TraditionalMedicineWorkflowTab from "./workflow/TraditionalMedicineWorkflowTab";
 import GBDWorkflowTab from "./workflow/GBDWorkflowTab";
-import NotebookAuditLogViewer from "./NotebookAuditLogViewer";
+import MedLabWorkflowTab from "./workflow/MedLabWorkflowTab";
+import MNTDWorkflowTab from "./workflow/MNTDWorkflowTab";
+import NotebookWorkflowTab from "./workflow/NotebookWorkflowTab";
+import PathologyWorkflowTab from "./workflow/PathologyWorkflowTab";
+import PharmaceuticalWorkflowTab from "./workflow/PharmaceuticalWorkflowTab";
+import TBWorkflowTab from "./workflow/TBWorkflowTab";
+import TraditionalMedicineWorkflowTab from "./workflow/TraditionalMedicineWorkflowTab";
+import VirologyLabWorkflowTab from "./workflow/VirologyLabWorkflowTab";
 
 const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
@@ -1191,6 +1175,14 @@ const NoteBookInstanceEntryForm = () => {
               )}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
+              (noteBookData?.title?.toLowerCase().includes("virologylab") ||
+                noteBookData?.title
+                  ?.toLowerCase()
+                  .includes("virology laboratory")) && (
+                <VirologyLabWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
               !noteBookData?.title?.toLowerCase().includes("tuberculosis") &&
               !noteBookData?.title
                 ?.toLowerCase()
@@ -1208,7 +1200,11 @@ const NoteBookInstanceEntryForm = () => {
               !noteBookData?.title?.toLowerCase().includes("biorepository") &&
               !noteBookData?.title
                 ?.toLowerCase()
-                .includes("genomics & bioinformatics laboratory") && (
+                .includes("genomics & bioinformatics laboratory") &&
+              !noteBookData?.title?.toLowerCase().includes("virologylab") &&
+              !noteBookData?.title
+                ?.toLowerCase()
+                .includes("virology laboratory") && (
                 <NotebookWorkflowTab notebookId={noteBookData.id} />
               )}
             {/* Use accordion view for templates or when no ID is available */}

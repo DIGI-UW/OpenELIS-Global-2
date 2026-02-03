@@ -35,7 +35,7 @@ export const useVirologyLabPermissions = () => {
     isGlobalAdmin,
   } = usePermissions();
 
-  const VIROLOGY_LAB_UNIT = "VirologyLab";
+  const VIROLOGYLAB_LAB_UNIT = "VirologyLab";
 
   /**
    * Custom hasLabUnitRole that DOES NOT bypass checks for Global Admins
@@ -106,11 +106,11 @@ export const useVirologyLabPermissions = () => {
   const getPagePermissionLevel = useCallback(
     (pageName) => {
       if (userSessionDetails?.virologyLabPermissions?.[pageName]) {
-        return userSessionDetails.gbdPermissions[pageName];
+        return userSessionDetails.virologyLabPermissions[pageName];
       }
 
       const userVirologyLabRoles = Object.values(VIROLOGY_LAB_ROLES).filter(
-        (role) => hasVirologyLabLabUnitRoleStrict(VIROLOGY_LAB_UNIT, role),
+        (role) => hasVirologyLabLabUnitRoleStrict(VIROLOGYLAB_LAB_UNIT, role),
       );
 
       if (userVirologyLabRoles.length === 0) {
@@ -275,7 +275,7 @@ export const useVirologyLabPermissions = () => {
    */
   const hasVirologyLabRole = useCallback(
     (role) => {
-      return hasVirologyLabLabUnitRoleStrict(VIROLOGY_LAB_UNIT, role);
+      return hasVirologyLabLabUnitRoleStrict(VIROLOGYLAB_LAB_UNIT, role);
     },
     [hasVirologyLabLabUnitRoleStrict],
   );
@@ -302,7 +302,7 @@ export const useVirologyLabPermissions = () => {
   const getVirologyLabRole = useCallback(() => {
     return (
       Object.values(VIROLOGY_LAB_ROLES).find((role) =>
-        hasVirologyLabLabUnitRoleStrict(VIROLOGY_LAB_UNIT, role),
+        hasVirologyLabLabUnitRoleStrict(VIROLOGYLAB_LAB_UNIT, role),
       ) || null
     );
   }, [VIROLOGY_LAB_ROLES, hasVirologyLabLabUnitRoleStrict]);
@@ -314,7 +314,7 @@ export const useVirologyLabPermissions = () => {
   const isVirologyLabLabTechnician = useCallback(
     () =>
       hasVirologyLabLabUnitRoleStrict(
-        VIROLOGY_LAB_UNIT,
+        VIROLOGYLAB_LAB_UNIT,
         VIROLOGY_LAB_ROLES.LAB_TECHNICIAN,
       ),
     [hasVirologyLabLabUnitRoleStrict],
@@ -323,7 +323,7 @@ export const useVirologyLabPermissions = () => {
   const isVirologyLabBioinformatician = useCallback(
     () =>
       hasVirologyLabLabUnitRoleStrict(
-        VIROLOGY_LAB_UNIT,
+        VIROLOGYLAB_LAB_UNIT,
         VIROLOGY_LAB_ROLES.BIOINFORMATICIAN,
       ),
     [hasVirologyLabLabUnitRoleStrict],
@@ -332,7 +332,7 @@ export const useVirologyLabPermissions = () => {
   const isVirologyLabManager = useCallback(
     () =>
       hasVirologyLabLabUnitRoleStrict(
-        VIROLOGY_LAB_UNIT,
+        VIROLOGYLAB_LAB_UNIT,
         VIROLOGY_LAB_ROLES.MANAGER,
       ),
     [hasVirologyLabLabUnitRoleStrict],
@@ -341,7 +341,7 @@ export const useVirologyLabPermissions = () => {
   const isVirologyLabPrincipalInvestigator = useCallback(
     () =>
       hasVirologyLabLabUnitRoleStrict(
-        VIROLOGY_LAB_UNIT,
+        VIROLOGYLAB_LAB_UNIT,
         VIROLOGY_LAB_ROLES.PRINCIPAL_INVESTIGATOR,
       ),
     [hasVirologyLabLabUnitRoleStrict],
@@ -350,7 +350,7 @@ export const useVirologyLabPermissions = () => {
   const isVirologyLabDataManager = useCallback(
     () =>
       hasVirologyLabLabUnitRoleStrict(
-        VIROLOGY_LAB_UNIT,
+        VIROLOGYLAB_LAB_UNIT,
         VIROLOGY_LAB_ROLES.DATA_MANAGER,
       ),
     [hasVirologyLabLabUnitRoleStrict],
@@ -363,7 +363,7 @@ export const useVirologyLabPermissions = () => {
   const hasAnyVirologyLabLabUnitRole = useCallback(
     (roles) => {
       return roles.some((role) =>
-        hasVirologyLabLabUnitRoleStrict(VIROLOGY_LAB_UNIT, role),
+        hasVirologyLabLabUnitRoleStrict(VIROLOGYLAB_LAB_UNIT, role),
       );
     },
     [hasVirologyLabLabUnitRoleStrict],
