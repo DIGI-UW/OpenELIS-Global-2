@@ -200,5 +200,7 @@
     <!-- Storage Code Length Increases -->
     <!-- Increases storage entity code columns from 10 to 50 characters for hierarchical naming -->
     <include file="liquibase/3.4.x.x/079-increase-storage-code-lengths.xml"/>
+    <!-- Pathology Specimen Types: Tissue, Cytology, Body Fluid, Blood, Bone Marrow -->
+    <include file="liquibase/3.4.x.x/072-pathology-specimen-types.xml"/>
 
 </databaseChangeLog>

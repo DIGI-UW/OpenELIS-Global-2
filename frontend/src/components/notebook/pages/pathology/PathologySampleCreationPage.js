@@ -37,7 +37,9 @@ import "../../workflow/NotebookWorkflow.css";
  *   - nationalId: OPTIONAL - not required for order acceptance
  *
  * Clinical Samples (sampleCategory = "Clinical diagnostic"):
- *   - patientId, requestingClinician, clinicalDetails (all required)
+ *   - patientEncounterId: MANDATORY - unique identifier for patient encounter/case
+ *   - requestingClinician: MANDATORY - referring physician or department
+ *   - clinicalDetails: OPTIONAL - clinical details/indication
  *
  * Research Samples (sampleCategory = "Research"):
  *   - studyId, piName, participantAnimalId, ethicalApprovalRef (all required)
@@ -88,10 +90,14 @@ function PathologySampleCreationPage({
     receivedBy: "",
     // Specimen Info
     specimenType: "",
+    collectionMethod: "",
     collectionDateTime: "",
     specimenSite: "",
+    collector: "",
+    processingCondition: "",
+    laboratoryMaterial: "",
     // Clinical metadata
-    patientId: "",
+    patientEncounterId: "",
     requestingClinician: "",
     clinicalDetails: "",
     // Research metadata
@@ -113,11 +119,20 @@ function PathologySampleCreationPage({
   }, [entryId, pageData?.id]);
 
   const loadSampleTypes = useCallback(() => {
-    getFromOpenElisServer("/rest/user-sample-types", (response) => {
-      if (componentMounted.current && response) {
-        setSampleTypes(response);
-      }
-    });
+    // Load pathology-specific sample types (Tissue, Cytology, Body Fluid, Blood, Bone Marrow)
+    getFromOpenElisServer(
+      "/rest/notebook/pathology/sample-types",
+      (response) => {
+        if (componentMounted.current && response && response.sampleTypes) {
+          // Transform response format: {id, description} -> {id, value}
+          const transformed = response.sampleTypes.map((type) => ({
+            id: type.id,
+            value: type.description,
+          }));
+          setSampleTypes(transformed);
+        }
+      },
+    );
   }, []);
 
   const loadPageSamples = useCallback(() => {
@@ -162,7 +177,7 @@ function PathologySampleCreationPage({
               collectionDate:
                 sample.collectionDate || sample.collectionDateTime,
               // Clinical metadata
-              patientId: sample.patientId,
+              patientEncounterId: sample.patientEncounterId,
               requestingClinician: sample.requestingClinician,
               clinicalDetails: sample.clinicalDetails,
               // Research metadata
@@ -211,7 +226,6 @@ function PathologySampleCreationPage({
     if (
       !newSample.firstName ||
       !newSample.sampleCategory ||
-      !newSample.specimenType ||
       !newSample.receivedDateTime ||
       !newSample.receivedBy
     ) {
@@ -219,10 +233,44 @@ function PathologySampleCreationPage({
         intl.formatMessage({
           id: "pathology.sampleCreation.error.requiredFields",
           defaultMessage:
-            "Please fill in all required fields: First Name (MANDATORY), Sample Category, Specimen Type, Received Date/Time, and Receiving Staff Name. Note: Surname and National ID are optional.",
+            "Please fill in all required fields: First Name, Sample Category, Received Date/Time, and Receiving Staff Name.",
         }),
       );
       return;
+    }
+
+    // Validate Sample Attributes (ALL MANDATORY)
+    if (
+      !newSample.specimenType ||
+      !newSample.collectionMethod ||
+      !newSample.collectionDateTime ||
+      !newSample.collector ||
+      !newSample.specimenSite ||
+      !newSample.processingCondition ||
+      !newSample.laboratoryMaterial
+    ) {
+      setError(
+        intl.formatMessage({
+          id: "pathology.sampleCreation.error.sampleAttributesRequired",
+          defaultMessage:
+            "Please fill in all sample attributes: Specimen Type, Collection Method, Collection Date & Time, Collector, Patient Site / Anatomical Source, Processing Condition, and Laboratory Material.",
+        }),
+      );
+      return;
+    }
+
+    // Validate Clinical Metadata for Clinical diagnostic samples
+    if (newSample.sampleCategory === "Clinical diagnostic") {
+      if (!newSample.patientEncounterId || !newSample.requestingClinician) {
+        setError(
+          intl.formatMessage({
+            id: "pathology.sampleCreation.error.clinicalMetadataRequired",
+            defaultMessage:
+              "Clinical diagnostic samples require Patient Encounter/Case ID and Referring Physician/Department.",
+          }),
+        );
+        return;
+      }
     }
 
     // Validate date order: Collection Date must be before or equal to Received Date
@@ -292,10 +340,14 @@ function PathologySampleCreationPage({
       receivedBy: "",
       // Specimen Info
       specimenType: "",
+      collectionMethod: "",
       collectionDateTime: "",
       specimenSite: "",
+      collector: "",
+      processingCondition: "",
+      laboratoryMaterial: "",
       // Clinical metadata
-      patientId: "",
+      patientEncounterId: "",
       requestingClinician: "",
       clinicalDetails: "",
       // Research metadata
@@ -445,9 +497,9 @@ function PathologySampleCreationPage({
 
     // For each selected sample, open a print label window
     selectedSamples.forEach((sample) => {
-      // Use the accession number or external ID for the label
+      // Use the external ID as the barcode (primary identifier for pathology samples)
       const labelCode =
-        sample.accessionNumber || sample.externalId || sample.id;
+        sample.externalId || sample.accessionNumber || sample.id;
       // Open the LabelMakerServlet endpoint for pathology block/slide labels
       const printUrl = `${config.serverBaseUrl}/LabelMakerServlet?labelType=block&code=${encodeURIComponent(labelCode)}`;
       window.open(printUrl, "_blank", "width=800,height=600");
@@ -585,18 +637,6 @@ function PathologySampleCreationPage({
           kind="primary"
           size="sm"
           renderIcon={Upload}
-          onClick={() => openImportModal("clinical")}
-        >
-          <FormattedMessage
-            id="pathology.page.sampleCreation.importClinicalManifest"
-            defaultMessage="Import Clinical Manifest"
-          />
-        </Button>
-
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Upload}
           onClick={() => openImportModal("research")}
         >
           <FormattedMessage
@@ -613,7 +653,7 @@ function PathologySampleCreationPage({
         >
           <FormattedMessage
             id="pathology.page.sampleCreation.createSample"
-            defaultMessage="Create Sample"
+            defaultMessage="Create Clinical Sample"
           />
         </Button>
 
@@ -871,12 +911,62 @@ function PathologySampleCreationPage({
           </Column>
 
           <Column lg={8} md={4} sm={4}>
+            <Select
+              id="collectionMethod"
+              name="collectionMethod"
+              labelText={intl.formatMessage({
+                id: "pathology.field.collectionMethod",
+                defaultMessage: "Collection Method *",
+              })}
+              value={newSample.collectionMethod}
+              onChange={handleInputChange}
+            >
+              <SelectItem value="" text="" />
+              <SelectItem
+                value="Biopsy"
+                text={intl.formatMessage({
+                  id: "pathology.collectionMethod.biopsy",
+                  defaultMessage: "Biopsy",
+                })}
+              />
+              <SelectItem
+                value="FNAC"
+                text={intl.formatMessage({
+                  id: "pathology.collectionMethod.fnac",
+                  defaultMessage: "FNAC",
+                })}
+              />
+              <SelectItem
+                value="Fluid Aspiration"
+                text={intl.formatMessage({
+                  id: "pathology.collectionMethod.fluidAspiration",
+                  defaultMessage: "Fluid Aspiration",
+                })}
+              />
+              <SelectItem
+                value="Blood Draw"
+                text={intl.formatMessage({
+                  id: "pathology.collectionMethod.bloodDraw",
+                  defaultMessage: "Blood Draw",
+                })}
+              />
+              <SelectItem
+                value="Amputation"
+                text={intl.formatMessage({
+                  id: "pathology.collectionMethod.amputation",
+                  defaultMessage: "Amputation",
+                })}
+              />
+            </Select>
+          </Column>
+
+          <Column lg={8} md={4} sm={4}>
             <TextInput
               id="specimenSite"
               name="specimenSite"
               labelText={intl.formatMessage({
                 id: "pathology.field.specimenSite",
-                defaultMessage: "Specimen Site",
+                defaultMessage: "Patient Site / Anatomical Source *",
               })}
               value={newSample.specimenSite}
               onChange={handleInputChange}
@@ -884,8 +974,136 @@ function PathologySampleCreationPage({
           </Column>
 
           <Column lg={8} md={4} sm={4}>
+            <TextInput
+              id="collector"
+              name="collector"
+              labelText={intl.formatMessage({
+                id: "pathology.field.collector",
+                defaultMessage: "Collector *",
+              })}
+              value={newSample.collector}
+              onChange={handleInputChange}
+            />
+          </Column>
+
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="processingCondition"
+              name="processingCondition"
+              labelText={intl.formatMessage({
+                id: "pathology.field.processingCondition",
+                defaultMessage: "Processing Condition *",
+              })}
+              value={newSample.processingCondition}
+              onChange={handleInputChange}
+            >
+              <SelectItem value="" text="" />
+              <SelectItem
+                value="Fresh"
+                text={intl.formatMessage({
+                  id: "pathology.processingCondition.fresh",
+                  defaultMessage: "Fresh",
+                })}
+              />
+              <SelectItem
+                value="Fixed"
+                text={intl.formatMessage({
+                  id: "pathology.processingCondition.fixed",
+                  defaultMessage: "Fixed",
+                })}
+              />
+              <SelectItem
+                value="Frozen"
+                text={intl.formatMessage({
+                  id: "pathology.processingCondition.frozen",
+                  defaultMessage: "Frozen",
+                })}
+              />
+              <SelectItem
+                value="FFPE"
+                text={intl.formatMessage({
+                  id: "pathology.processingCondition.ffpe",
+                  defaultMessage: "FFPE",
+                })}
+              />
+              <SelectItem
+                value="Decalcified"
+                text={intl.formatMessage({
+                  id: "pathology.processingCondition.decalcified",
+                  defaultMessage: "Decalcified",
+                })}
+              />
+              <SelectItem
+                value="Smear"
+                text={intl.formatMessage({
+                  id: "pathology.processingCondition.smear",
+                  defaultMessage: "Smear",
+                })}
+              />
+              <SelectItem
+                value="Cell Block"
+                text={intl.formatMessage({
+                  id: "pathology.processingCondition.cellBlock",
+                  defaultMessage: "Cell Block",
+                })}
+              />
+            </Select>
+          </Column>
+
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="laboratoryMaterial"
+              name="laboratoryMaterial"
+              labelText={intl.formatMessage({
+                id: "pathology.field.laboratoryMaterial",
+                defaultMessage: "Laboratory Material *",
+              })}
+              value={newSample.laboratoryMaterial}
+              onChange={handleInputChange}
+            >
+              <SelectItem value="" text="" />
+              <SelectItem
+                value="Blocks"
+                text={intl.formatMessage({
+                  id: "pathology.laboratoryMaterial.blocks",
+                  defaultMessage: "Blocks",
+                })}
+              />
+              <SelectItem
+                value="Slides"
+                text={intl.formatMessage({
+                  id: "pathology.laboratoryMaterial.slides",
+                  defaultMessage: "Slides",
+                })}
+              />
+              <SelectItem
+                value="Smears"
+                text={intl.formatMessage({
+                  id: "pathology.laboratoryMaterial.smears",
+                  defaultMessage: "Smears",
+                })}
+              />
+              <SelectItem
+                value="DNA/RNA extracts"
+                text={intl.formatMessage({
+                  id: "pathology.laboratoryMaterial.dnaRnaExtracts",
+                  defaultMessage: "DNA/RNA extracts",
+                })}
+              />
+              <SelectItem
+                value="Frozen sections"
+                text={intl.formatMessage({
+                  id: "pathology.laboratoryMaterial.frozenSections",
+                  defaultMessage: "Frozen sections",
+                })}
+              />
+            </Select>
+          </Column>
+
+          <Column lg={8} md={4} sm={4}>
             <DatePicker
               datePickerType="single"
+              value={newSample.collectionDateTime}
               onChange={(dates) =>
                 handleDateChange(dates, "collectionDateTime")
               }
@@ -957,6 +1175,7 @@ function PathologySampleCreationPage({
           <Column lg={8} md={4} sm={4}>
             <DatePicker
               datePickerType="single"
+              value={newSample.receivedDateTime}
               onChange={(dates) => handleDateChange(dates, "receivedDateTime")}
             >
               <DatePickerInput
@@ -997,14 +1216,15 @@ function PathologySampleCreationPage({
 
               <Column lg={8} md={4} sm={4}>
                 <TextInput
-                  id="patientId"
-                  name="patientId"
+                  id="patientEncounterId"
+                  name="patientEncounterId"
                   labelText={intl.formatMessage({
-                    id: "pathology.field.patientId",
-                    defaultMessage: "Patient ID",
+                    id: "pathology.field.patientEncounterId",
+                    defaultMessage: "Patient Encounter / Case ID *",
                   })}
-                  value={newSample.patientId}
+                  value={newSample.patientEncounterId}
                   onChange={handleInputChange}
+                  required
                 />
               </Column>
 
@@ -1013,11 +1233,12 @@ function PathologySampleCreationPage({
                   id="requestingClinician"
                   name="requestingClinician"
                   labelText={intl.formatMessage({
-                    id: "pathology.field.requestingClinician",
-                    defaultMessage: "Requesting Clinician",
+                    id: "pathology.field.referringPhysician",
+                    defaultMessage: "Referring Physician / Department *",
                   })}
                   value={newSample.requestingClinician}
                   onChange={handleInputChange}
+                  required
                 />
               </Column>
 
@@ -1027,7 +1248,7 @@ function PathologySampleCreationPage({
                   name="clinicalDetails"
                   labelText={intl.formatMessage({
                     id: "pathology.field.clinicalDetails",
-                    defaultMessage: "Clinical Details",
+                    defaultMessage: "Clinical Details / Indication",
                   })}
                   value={newSample.clinicalDetails}
                   onChange={handleInputChange}

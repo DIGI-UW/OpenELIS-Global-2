@@ -1,5 +1,7 @@
 package org.openelisglobal.notebook.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,13 +16,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import org.hibernate.Hibernate;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
 import org.openelisglobal.common.services.IStatusService;
-import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.notebook.form.VirologyManifestImportForm;
 import org.openelisglobal.notebook.service.VirologyManifestImportService.ParseError;
@@ -427,11 +425,12 @@ public class VirologyManifestImportServiceImpl implements VirologyManifestImport
             parentSample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
             parentSample.setReceivedTimestamp(new Timestamp(System.currentTimeMillis()));
 
-            // Use generic handler to safely generate and insert with unique accession number
+            // Use generic handler to safely generate and insert with unique accession
+            // number
             String sampleIdDb;
             try {
-                AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO,
-                        entityManager, this.getClass());
+                AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO, entityManager,
+                        this.getClass());
                 sampleIdDb = handler.generateAndInsertWithUniqueAccessionNumber(parentSample);
                 parentSample.setId(sampleIdDb);
             } catch (DuplicateAccessionNumberException e) {

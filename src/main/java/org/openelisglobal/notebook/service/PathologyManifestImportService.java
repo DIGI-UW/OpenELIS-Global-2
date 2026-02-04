@@ -33,10 +33,18 @@ public interface PathologyManifestImportService {
      * Patient Identification: - firstName: MANDATORY - primary name field for order
      * acceptance - surname: OPTIONAL - not required for order acceptance -
      * nationalId: OPTIONAL - not required for order acceptance
+     *
+     * Sample Attributes (ALL MANDATORY): - specimenType: Type of specimen (Tissue,
+     * Cytology, etc.) - specimenSite: Patient Site / Anatomical Source -
+     * collectionDateTime: Date and time of collection - collectionMethod: How the
+     * sample was collected (Biopsy, FNAC, etc.) - collector: Personnel who
+     * collected the sample - processingCondition: Condition/state of sample (Fresh,
+     * Fixed, etc.) - laboratoryMaterial: Material type (Blocks, Slides, etc.)
      */
     record PathologyManifestRow(int rowNumber, String firstName, String surname, String nationalId,
             String sampleCategory, String receivedDateTime, String receivedBy, String sourceFacility,
-            String specimenType, String specimenSite, String collectionDateTime, String patientId,
+            String specimenType, String specimenSite, String collectionDateTime, String collectionMethod,
+            String collector, String processingCondition, String laboratoryMaterial, String patientId,
             String requestingClinician, String clinicalDetails, String studyId, String piName,
             String participantAnimalId, String ethicalApprovalRef, String remarks) {
     }

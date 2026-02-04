@@ -1,5 +1,7 @@
 package org.openelisglobal.notebook.controller.rest;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.StringWriter;
 import java.sql.Timestamp;
@@ -11,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
@@ -23,7 +26,10 @@ import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.PathologySop;
+import org.openelisglobal.sample.dao.SampleDAO;
+import org.openelisglobal.sample.exception.DuplicateAccessionNumberException;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.util.AccessionNumberHandler;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -41,6 +47,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * REST controller for Pathology Laboratory workflow operations. Handles
@@ -69,6 +76,12 @@ public class PathologyWorkflowController extends BaseRestController {
     private SampleService sampleService;
 
     @Autowired
+    private SampleDAO sampleDAO;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Autowired
     private TypeOfSampleService typeOfSampleService;
 
     @Autowired
@@ -89,6 +102,7 @@ public class PathologyWorkflowController extends BaseRestController {
      */
     @PostMapping(value = "/sample/create", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
+    @Transactional
     public ResponseEntity<Map<String, Object>> createSample(@RequestBody Map<String, Object> requestData,
             HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
@@ -120,6 +134,39 @@ public class PathologyWorkflowController extends BaseRestController {
                 response.put("error", "First Name is MANDATORY for order acceptance");
                 return ResponseEntity.badRequest().body(response);
             }
+
+            // Extract Clinical Metadata (from Clinical Metadata section)
+            String patientEncounterId = parseString(requestData.get("patientEncounterId"));
+            String requestingClinician = parseString(requestData.get("requestingClinician"));
+
+            // Validate Clinical Metadata for Clinical diagnostic samples
+            if ("Clinical diagnostic".equals(sampleCategory)) {
+                if (patientEncounterId == null || patientEncounterId.isBlank()) {
+                    response.put("success", false);
+                    response.put("error", "Patient Encounter / Case ID is required for clinical diagnostic samples");
+                    return ResponseEntity.badRequest().body(response);
+                }
+                if (requestingClinician == null || requestingClinician.isBlank()) {
+                    response.put("success", false);
+                    response.put("error",
+                            "Referring Physician / Department is required for clinical diagnostic samples");
+                    return ResponseEntity.badRequest().body(response);
+                }
+
+                // Check uniqueness of patientEncounterId within the notebook
+                NotebookEntry entry = notebookEntryService.get(entryId);
+                if (entry != null && entry.getNotebook() != null) {
+                    Integer notebookId = entry.getNotebook().getId();
+                    if (notebookPageSampleService.existsByPatientEncounterIdInNotebook(notebookId,
+                            patientEncounterId)) {
+                        response.put("success", false);
+                        response.put("error", "Patient Encounter / Case ID '" + patientEncounterId
+                                + "' already exists in this notebook. Each encounter ID must be unique.");
+                        return ResponseEntity.badRequest().body(response);
+                    }
+                }
+            }
+
             if (specimenType == null || specimenType.isBlank()) {
                 response.put("success", false);
                 response.put("error", "Specimen Type is required");
@@ -148,9 +195,21 @@ public class PathologyWorkflowController extends BaseRestController {
                 parentSample.setReceivedTimestamp(new Timestamp(System.currentTimeMillis()));
             }
 
-            // Generate accession number and insert sample
-            String sampleIdDb = sampleService.generateAccessionNumberAndInsert(parentSample);
-            parentSample.setId(sampleIdDb);
+            // Generate accession number and insert sample using AccessionNumberHandler
+            // This handles duplicate accession number collisions with retry logic
+            String sampleIdDb;
+            try {
+                AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO, entityManager,
+                        this.getClass());
+                sampleIdDb = handler.generateAndInsertWithUniqueAccessionNumber(parentSample);
+                parentSample.setId(sampleIdDb);
+            } catch (DuplicateAccessionNumberException e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "createSample",
+                        "Failed to generate unique accession number: " + e.getMessage());
+                response.put("success", false);
+                response.put("error", "Failed to generate unique accession number. Please try again.");
+                return ResponseEntity.status(500).body(response);
+            }
 
             // Get status ID for SampleEntered
             String sampleEnteredStatusId = statusService.getStatusID(SampleStatus.Entered);
@@ -206,6 +265,9 @@ public class PathologyWorkflowController extends BaseRestController {
                     sampleData.put("firstName", firstName);
                     sampleData.put("surname", requestData.get("surname"));
                     sampleData.put("nationalId", requestData.get("nationalId"));
+                    // Clinical Metadata (for Clinical diagnostic samples)
+                    sampleData.put("patientEncounterId", patientEncounterId);
+                    sampleData.put("requestingClinician", requestingClinician);
                     // Sample Category
                     sampleData.put("sampleCategory", sampleCategory);
                     // Receiving Info
@@ -216,10 +278,11 @@ public class PathologyWorkflowController extends BaseRestController {
                     sampleData.put("specimenType", specimenTypeDescription);
                     sampleData.put("specimenTypeId", specimenType);
                     sampleData.put("specimenSite", requestData.get("specimenSite"));
+                    sampleData.put("collector", requestData.get("collector"));
+                    sampleData.put("collectionMethod", requestData.get("collectionMethod"));
+                    sampleData.put("processingCondition", requestData.get("processingCondition"));
+                    sampleData.put("laboratoryMaterial", requestData.get("laboratoryMaterial"));
                     sampleData.put("collectionDateTime", collectionDateTime);
-                    // Clinical metadata
-                    sampleData.put("patientId", requestData.get("patientId"));
-                    sampleData.put("requestingClinician", requestData.get("requestingClinician"));
                     sampleData.put("clinicalDetails", requestData.get("clinicalDetails"));
                     // Research metadata
                     sampleData.put("studyId", requestData.get("studyId"));
@@ -238,7 +301,7 @@ public class PathologyWorkflowController extends BaseRestController {
                     if (existingPageSample != null) {
                         // Update existing record with sample metadata
                         existingPageSample.setData(sampleData);
-                        existingPageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+                        existingPageSample.setStatus(NotebookPageSample.Status.PENDING);
                         existingPageSample.setSysUserId(sysUserId);
                         notebookPageSampleService.update(existingPageSample);
                     } else {
@@ -247,7 +310,7 @@ public class PathologyWorkflowController extends BaseRestController {
                         pageSample.setNotebookPage(page);
                         pageSample.setSampleItemId(itemId);
                         pageSample.setData(sampleData);
-                        pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+                        pageSample.setStatus(NotebookPageSample.Status.PENDING);
                         pageSample.setSysUserId(sysUserId);
                         notebookPageSampleService.insert(pageSample);
                     }
@@ -2454,7 +2517,8 @@ public class PathologyWorkflowController extends BaseRestController {
 
                 // Sample identity & metadata columns (always included with sample details)
                 headerBuilder.append(",Sample Category,Source Facility,Received Date,Received By,Specimen Type");
-                headerBuilder.append(",Patient ID,Requesting Clinician,Collection Date,Specimen Site,Clinical Details");
+                headerBuilder.append(
+                        ",Patient Encounter/Case ID,Requesting Clinician,Collection Date,Patient Site,Collector,Collection Method,Processing Condition,Laboratory Material,Clinical Details");
                 headerBuilder.append(",Study ID,PI Name,Participant/Animal ID,Ethical Approval Ref");
 
                 // QC columns
@@ -2546,10 +2610,14 @@ public class PathologyWorkflowController extends BaseRestController {
                     rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "receivedBy")));
                     rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "specimenType")));
                     // Clinical metadata
-                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "patientId")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "patientEncounterId")));
                     rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "requestingClinician")));
                     rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "collectionDateTime")));
                     rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "specimenSite")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "collector")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "collectionMethod")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "processingCondition")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "laboratoryMaterial")));
                     rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "clinicalDetails")));
                     // Research metadata
                     rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "studyId")));
