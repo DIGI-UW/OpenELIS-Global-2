@@ -48,7 +48,7 @@ import {
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { useIntl, FormattedMessage } from "react-intl";
+import { useIntl } from "react-intl";
 import AddDeviceModal from "./shared/AddDeviceModal";
 
 const COLUMNS = [
