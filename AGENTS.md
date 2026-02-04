@@ -514,33 +514,22 @@ every stage.
 Before using SpecKit commands, install them to your AI agent's command
 directory. This is the **single entry point** for SpecKit setup:
 
-**Bash (Linux/macOS):**
+**Cross-platform (Python 3.7+):**
 
 ```bash
 # Install commands for all supported AI agents (Cursor + Claude Code)
-./.specify/scripts/bash/install-commands.sh
+python scripts/install-speckit-commands.py
 
 # Or install for specific agent only
-./.specify/scripts/bash/install-commands.sh cursor   # Cursor IDE
-./.specify/scripts/bash/install-commands.sh claude   # Claude Code CLI
+python scripts/install-speckit-commands.py cursor   # Cursor IDE
+python scripts/install-speckit-commands.py claude   # Claude Code CLI
 
 # Skip confirmation prompt (for automation/CI)
-./.specify/scripts/bash/install-commands.sh -y all
+python scripts/install-speckit-commands.py -y all
 ```
 
-**PowerShell (Windows):**
-
-```powershell
-# Install commands for all supported AI agents
-.\.specify\scripts\powershell\install-commands.ps1
-
-# Or install for specific agent only
-.\.specify\scripts\powershell\install-commands.ps1 -Target cursor
-.\.specify\scripts\powershell\install-commands.ps1 -Target claude
-
-# Skip confirmation prompt
-.\.specify\scripts\powershell\install-commands.ps1 -Yes -Target all
-```
+> **Note:** A `.python-version` file is provided for version managers (pyenv,
+> asdf, uv). If you use one, it will automatically select Python 3.11.
 
 This compiles command definitions from `.specify/core/commands/` (upstream
 SpecKit) and `.specify/oe/commands/` (OpenELIS extensions) into agent-specific

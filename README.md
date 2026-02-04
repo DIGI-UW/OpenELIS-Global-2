@@ -204,14 +204,10 @@ This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
 Spec-Driven Development (SDD). AI coding agents can use slash commands to create
 specifications, plans, and tasks.
 
-**Setup SpecKit Commands (single entry point):**
+**Setup SpecKit Commands (cross-platform, Python 3.7+):**
 
 ```bash
-# Bash (Linux/macOS) - Install for all AI agents
-./.specify/scripts/bash/install-commands.sh
-
-# PowerShell (Windows) - Install for all AI agents
-.\.specify\scripts\powershell\install-commands.ps1
+python scripts/install-speckit-commands.py
 ```
 
 **Available Commands** (after installation):
