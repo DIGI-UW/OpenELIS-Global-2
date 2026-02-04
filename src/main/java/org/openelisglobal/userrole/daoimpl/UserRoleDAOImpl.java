@@ -15,13 +15,11 @@
  */
 package org.openelisglobal.userrole.daoimpl;
 
-import java.math.BigInteger;
-import java.util.ArrayList;
+import jakarta.persistence.TypedQuery;
 import java.util.Collection;
 import java.util.List;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
-import org.hibernate.query.NativeQuery;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -47,9 +45,9 @@ public class UserRoleDAOImpl extends BaseDAOImpl<UserRole, UserRolePK> implement
 
         try {
             String sql = "select cast(role_id AS varchar) from system_user_role where system_user_id = :userId";
-            NativeQuery query = entityManager.unwrap(Session.class).createNativeQuery(sql);
+            TypedQuery<String> query = entityManager.unwrap(Session.class).createNativeQuery(sql, String.class);
             query.setParameter("userId", Integer.parseInt(userId));
-            userRoles = query.list();
+            userRoles = query.getResultList();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in UserRoleDAOImpl getUserRolesForUser()", e);
@@ -64,10 +62,10 @@ public class UserRoleDAOImpl extends BaseDAOImpl<UserRole, UserRolePK> implement
         try {
             String sql = "select count(*) from system_user_role sur " + "join system_role as sr on sr.id = sur.role_id "
                     + "where sur.system_user_id = :userId and sr.name = :roleName";
-            NativeQuery query = entityManager.unwrap(Session.class).createNativeQuery(sql);
+            TypedQuery<Integer> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Integer.class);
             query.setParameter("userId", Integer.parseInt(userId));
             query.setParameter("roleName", roleName);
-            int result = ((BigInteger) query.uniqueResult()).intValue();
+            int result = query.getSingleResult();
 
             inRole = result != 0;
         } catch (HibernateException e) {
@@ -86,10 +84,9 @@ public class UserRoleDAOImpl extends BaseDAOImpl<UserRole, UserRolePK> implement
         try {
             String sql = "select count(*) from system_user_role sur " + "join system_role as sr on sr.id = sur.role_id "
                     + "where sur.system_user_id = :userId and sr.name in (:roleNames)";
-            NativeQuery query = entityManager.unwrap(Session.class).createNativeQuery(sql);
-            query.setParameter("userId", Integer.parseInt(userId));
-            query.setParameterList("roleNames", roleNames);
-            int result = ((BigInteger) query.uniqueResult()).intValue();
+            TypedQuery<Integer> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Integer.class)
+                    .setParameter("userId", Integer.parseInt(userId)).setParameter("roleNames", roleNames);
+            int result = query.getSingleResult();
 
             inRole = result != 0;
         } catch (HibernateException e) {
@@ -112,13 +109,12 @@ public class UserRoleDAOImpl extends BaseDAOImpl<UserRole, UserRolePK> implement
 
     @Override
     public List<String> getUserIdsForRole(String roleName) {
-        List<String> userIds = new ArrayList<>();
+        List<String> userIds;
         try {
             String sql = "select cast(system_user_id AS varchar) from system_user_role sur join system_role as sr on sr.id = sur.role_id where sr.name = :roleName";
-            NativeQuery query = entityManager.unwrap(Session.class).createNativeQuery(sql);
-            query.setParameter("roleName", roleName);
-
-            userIds = query.list();
+            TypedQuery<String> query = entityManager.unwrap(Session.class).createNativeQuery(sql, String.class)
+                    .setParameter("roleName", roleName);
+            userIds = query.getResultList();
         } catch (HibernateException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in UserRoleDAOImpl userInRole()", e);
