@@ -26,11 +26,16 @@
         <hibernate-search.version>6.1.8.Final</hibernate-search.version>
         <postgresql.version>42.7.2</postgresql.version>
         <log4j.version>2.17.1</log4j.version>
-        <springframework.version>6.2.2</springframework.version>
+        <springframework.version>6.2.11</springframework.version>
         <springsecurity.version>6.0.4</springsecurity.version>
         <testContainersVersion>1.19.8</testContainersVersion>
     </properties>
     <dependencies>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>2.2</version>
+        </dependency>
         <dependency>
             <groupId>org.jsmpp</groupId>
             <artifactId>jsmpp</artifactId>
@@ -142,7 +147,7 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.9</version>
+            <version>3.18.0</version>
         </dependency>
         <dependency>
             <groupId>commons-beanutils</groupId>
@@ -258,7 +263,7 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcpkix-jdk18on</artifactId>
-            <version>1.78</version>
+            <version>1.79</version>
         </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>
@@ -822,6 +827,7 @@
                             <excludes>
                                 <exclude>.idea/**</exclude>
                                 <exclude>.cursor/**</exclude>
+                                <exclude>.claude/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
@@ -855,6 +861,7 @@
                             <excludes>
                                 <exclude>.idea/**</exclude>
                                 <exclude>.cursor/**</exclude>
+                                <exclude>.claude/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
@@ -879,6 +886,7 @@
                             <excludes>
                                 <exclude>**/target/**</exclude>
                                 <exclude>.cursor/**</exclude>
+                                <exclude>.claude/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
                                 <exclude>tools/astm-http-bridge/**</exclude>
                                 <exclude>tools/astm-mock-server/**</exclude>
