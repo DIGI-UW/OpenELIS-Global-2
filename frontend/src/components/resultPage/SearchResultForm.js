@@ -1637,15 +1637,11 @@ export function SearchResults(props) {
         actualValue > row.upperAbnormalRange)
     ) {
       return { ...validation, isInvalid: true, outsideValid: true };
-      // Legacy code removed - validation state returned to UI components
-      // UI should display intl.formatMessage({ id: 'result.validation.outOfValid' })
     } else if (
       row.lowerNormalRange != row.upperNormalRange &&
       (actualValue < row.lowerNormalRange || actualValue > row.upperNormalRange)
     ) {
       return { ...validation, outsideNormal: true };
-      // Legacy code removed - validation state returned to UI components
-      // UI should display intl.formatMessage({ id: 'result.validation.outOfNormal' })
     } else {
       return { ...validation, outsideNormal: false };
       // resultBox.style.background = "#ffffff";
