@@ -4,20 +4,21 @@ from typing import Any
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
-from a2a.types import Part, TextPart, TaskState
+from a2a.types import Part, TaskState, TextPart
 from a2a.utils import new_agent_text_message, new_task
 
 from .. import mcp_client
 from ..config import load_llm_config
-from ..llm_clients import LMStudioClient
+from ..llm_clients import create_llm_client
 
 logger = logging.getLogger(__name__)
 
 
 def generate_sql(user_query: str) -> dict[str, Any]:
+    """Generate SQL from natural language query using configured LLM provider."""
     schema = mcp_client.get_schema()
     config = load_llm_config()
-    client = LMStudioClient(config.lmstudio_base_url, config.lmstudio_model)
+    client = create_llm_client(config)
     prompt = f"Schema:\n{schema}\n\nQuestion:\n{user_query}\n\nSQL:"
     sql = client.generate_sql(prompt)
     return {"sql": sql, "schema": schema}
