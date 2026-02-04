@@ -51,7 +51,7 @@ volume/odoo/*
 volume/menu/menu_seed.json
 
 # AI Agent command directories (populated by .specify/scripts/bash/install-commands.sh)
-# These are generated from .specify/commands/ and should not be tracked
+# These are compiled from .specify/core/commands/ and .specify/oe/commands/ and should not be tracked
 .cursor/commands/
 .claude/commands/
 
@@ -66,3 +66,12 @@ volume/menu/menu_seed.json
 # Generated test fixtures (derived from DBUnit XML, never commit)
 # These are generated on-the-fly during test runs from authoritative XML sources
 src/test/resources/testdata/*.generated.sql
+
+# Catalyst dev files
+projects/catalyst/.env
+projects/catalyst/logs/
+*.pyc
+__pycache__/
+.pytest_cache/
+.coverage
+htmlcov/
