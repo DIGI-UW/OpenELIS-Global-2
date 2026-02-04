@@ -1,0 +1,128 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode
+# ============================================================================
+# GENERAL TEST RESULTS
+# ============================================================================
+Test Results,Positive,POS,Y,1,LA6576-8
+Test Results,Negative,NEG,Y,2,LA6577-6
+Test Results,Inconclusive,INCON,Y,3,LA11884-6
+Test Results,Reactive,REACT,Y,4,LA15255-5
+Test Results,Non-Reactive,NREACT,Y,5,LA15256-3
+Test Results,Indeterminate,INDET,Y,6,LA11885-3
+# ============================================================================
+# MALARIA RESULTS
+# ============================================================================
+Malaria Results,Plasmodium falciparum,PF,Y,1,
+Malaria Results,Plasmodium vivax,PV,Y,2,
+Malaria Results,Plasmodium malariae,PM,Y,3,
+Malaria Results,Plasmodium ovale,PO,Y,4,
+Malaria Results,Mixed infection,MIX,Y,5,
+Malaria Results,No parasites seen,NPS,Y,6,
+# ============================================================================
+# URINALYSIS RESULTS
+# ============================================================================
+Urinalysis Results,Clear,CLR,Y,1,
+Urinalysis Results,Slightly Cloudy,SLCL,Y,2,
+Urinalysis Results,Cloudy,CLD,Y,3,
+Urinalysis Results,Turbid,TURB,Y,4,
+Urine Color,Yellow,YLW,Y,1,
+Urine Color,Dark Yellow,DYLW,Y,2,
+Urine Color,Amber,AMB,Y,3,
+Urine Color,Red,RED,Y,4,
+Urine Color,Brown,BRN,Y,5,
+# ============================================================================
+# TITER RESULTS
+# ============================================================================
+Titer Results,1:10,T10,Y,1,
+Titer Results,1:20,T20,Y,2,
+Titer Results,1:40,T40,Y,3,
+Titer Results,1:80,T80,Y,4,
+Titer Results,1:160,T160,Y,5,
+Titer Results,1:320,T320,Y,6,
+Titer Results,1:640,T640,Y,7,
+# ============================================================================
+# AFB (Acid Fast Bacilli) RESULTS - TB Sputum
+# ============================================================================
+AFB Sputum Results,Negatif,NEG,Y,1,
+AFB Sputum Results,Scanty,SCAN,Y,2,
+AFB Sputum Results,1+,1+,Y,3,
+AFB Sputum Results,2+,2+,Y,4,
+AFB Sputum Results,3+,3+,Y,5,
+# ============================================================================
+# AFB RESULTS - Leprosy Skin
+# ============================================================================
+AFB Skin Results,Negatif,NEG,Y,1,
+AFB Skin Results,1+,1+,Y,2,
+AFB Skin Results,2+,2+,Y,3,
+AFB Skin Results,3+,3+,Y,4,
+AFB Skin Results,4+,4+,Y,5,
+AFB Skin Results,5+,5+,Y,6,
+AFB Skin Results,6+,6+,Y,7,
+# ============================================================================
+# GRAM STAIN GENITAL RESULTS - Neisseria gonorrhoeae
+# ============================================================================
+Gram Stain Genital Results,Gram(-) diplococcus ditemukan,GND+,Y,1,
+Gram Stain Genital Results,Gram(-) diplococcus tidak ditemukan,GND-,Y,2,
+# ============================================================================
+# TRICHOMONAS RESULTS
+# ============================================================================
+Trichomonas Results,Trichomonas negatif,TNEG,Y,1,
+Trichomonas Results,Trichomonas positif,TPOS,Y,2,
+# ============================================================================
+# CANDIDA KOH RESULTS
+# ============================================================================
+Candida KOH Results,Yeast cell,YEAST,Y,1,
+Candida KOH Results,Hypa,HYPA,Y,2,
+Candida KOH Results,Spora,SPORA,Y,3,
+# ============================================================================
+# HIV RAPID TEST RESULTS (French) - Négatif/Positif/Indéterminé
+# ============================================================================
+HIV Rapid Results,Négatif,NEG,Y,1,
+HIV Rapid Results,Positif,POS,Y,2,
+HIV Rapid Results,Indéterminé,IND,Y,3,
+# ============================================================================
+# BIOLINE HIV RESULTS - With HIV1/HIV2 differentiation
+# ============================================================================
+Bioline HIV Results,Négatif,NEG,Y,1,
+Bioline HIV Results,Positif VIH 1,HIV1,Y,2,
+Bioline HIV Results,Positif VIH 2,HIV2,Y,3,
+Bioline HIV Results,Positif VIH1 et 2,HIV12,Y,4,
+Bioline HIV Results,Indéterminé,IND,Y,5,
+# ============================================================================
+# GENIE II / CONFIRMATORY HIV RESULTS
+# ============================================================================
+Genie HIV Results,Négatif,NEG,Y,1,
+Genie HIV Results,HIV1,HIV1,Y,2,
+Genie HIV Results,HIV2,HIV2,Y,3,
+Genie HIV Results,HIVD,HIVD,Y,4,
+Genie HIV Results,Indeterminate,IND,Y,5,
+Genie HIV Results,Invalid,INV,Y,6,
+# ============================================================================
+# GENERAL CONFIRMATORY RESULTS (Vironstika, Murex, Integral, Western blot, DNA PCR)
+# ============================================================================
+Confirmatory Results,Positif,POS,Y,1,
+Confirmatory Results,Négatif,NEG,Y,2,
+Confirmatory Results,Indeterminate,IND,Y,3,
+Confirmatory Results,Invalid,INV,Y,4,
+# ============================================================================
+# p24Ag RESULTS
+# ============================================================================
+p24Ag Results,HIV 1,HIV1,Y,1,
+p24Ag Results,Négatif,NEG,Y,2,
+p24Ag Results,Indeterminate,IND,Y,3,
+# ============================================================================
+# HBsAg RESULTS (Hepatitis B)
+# ============================================================================
+HBsAg Results,Positif,POS,Y,1,
+HBsAg Results,Negatif,NEG,Y,2,
+# ============================================================================
+# PREGNANCY TEST RESULTS
+# ============================================================================
+Pregnancy Test Results,Positif,POS,Y,1,
+Pregnancy Test Results,Negatif,NEG,Y,2,
+# ============================================================================
+# PROTEINURIA DIPSTICK RESULTS
+# ============================================================================
+Proteinuria Results,Negatif,NEG,Y,1,
+Proteinuria Results,Positif +,1+,Y,2,
+Proteinuria Results,Positif ++,2+,Y,3,
+Proteinuria Results,Positif +++,3+,Y,4,

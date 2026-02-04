@@ -1,0 +1,219 @@
+testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags
+# ============================================================================
+# DICTIONARY TYPE (D) - HIV and Hepatitis Tests
+# ============================================================================
+HIV Rapid Test,D,Positive,Test Results,1,N,Y,N,,
+HIV Rapid Test,D,Negative,Test Results,2,N,Y,Y,,
+HIV Rapid Test,D,Inconclusive,Test Results,3,N,Y,N,,
+Hepatitis B Surface Antigen,D,Reactive,Test Results,1,N,Y,N,,
+Hepatitis B Surface Antigen,D,Non-Reactive,Test Results,2,N,Y,Y,,
+Hepatitis B Surface Antigen,D,Indeterminate,Test Results,3,N,Y,N,,
+Hepatitis C Antibody,D,Reactive,Test Results,1,N,Y,N,,
+Hepatitis C Antibody,D,Non-Reactive,Test Results,2,N,Y,Y,,
+# ============================================================================
+# DICTIONARY TYPE (D) - French HIV Rapid Tests
+# ============================================================================
+# Determine - Négatif/Positif/Indéterminé
+Determine,D,Négatif,HIV Rapid Results,1,N,Y,Y,,
+Determine,D,Positif,HIV Rapid Results,2,N,Y,N,,
+Determine,D,Indéterminé,HIV Rapid Results,3,N,Y,N,,
+# Stat PaK
+Stat PaK,D,Négatif,HIV Rapid Results,1,N,Y,Y,,
+Stat PaK,D,Positif,HIV Rapid Results,2,N,Y,N,,
+Stat PaK,D,Indéterminé,HIV Rapid Results,3,N,Y,N,,
+# Bioline - With HIV1/HIV2 differentiation
+Bioline,D,Négatif,Bioline HIV Results,1,N,Y,Y,,
+Bioline,D,Positif VIH 1,Bioline HIV Results,2,N,Y,N,,
+Bioline,D,Positif VIH 2,Bioline HIV Results,3,N,Y,N,,
+Bioline,D,Positif VIH1 et 2,Bioline HIV Results,4,N,Y,N,,
+Bioline,D,Indéterminé,Bioline HIV Results,5,N,Y,N,,
+# Genie II
+Genie II,D,Négatif,Genie HIV Results,1,N,Y,Y,,
+Genie II,D,HIV1,Genie HIV Results,2,N,Y,N,,
+Genie II,D,HIV2,Genie HIV Results,3,N,Y,N,,
+Genie II,D,HIVD,Genie HIV Results,4,N,Y,N,,
+Genie II,D,Indeterminate,Genie HIV Results,5,N,Y,N,,
+Genie II,D,Invalid,Genie HIV Results,6,N,Y,N,,
+# Genie II 10
+Genie II 10,D,Négatif,Genie HIV Results,1,N,Y,Y,,
+Genie II 10,D,HIV1,Genie HIV Results,2,N,Y,N,,
+Genie II 10,D,HIV2,Genie HIV Results,3,N,Y,N,,
+Genie II 10,D,HIVD,Genie HIV Results,4,N,Y,N,,
+Genie II 10,D,Indeterminate,Genie HIV Results,5,N,Y,N,,
+Genie II 10,D,Invalid,Genie HIV Results,6,N,Y,N,,
+# Genie II 100
+Genie II 100,D,Négatif,Genie HIV Results,1,N,Y,Y,,
+Genie II 100,D,HIV1,Genie HIV Results,2,N,Y,N,,
+Genie II 100,D,HIV2,Genie HIV Results,3,N,Y,N,,
+Genie II 100,D,HIVD,Genie HIV Results,4,N,Y,N,,
+Genie II 100,D,Indeterminate,Genie HIV Results,5,N,Y,N,,
+Genie II 100,D,Invalid,Genie HIV Results,6,N,Y,N,,
+# Confirmatory tests
+Vironstika,D,Positif,Confirmatory Results,1,N,Y,N,,
+Vironstika,D,Négatif,Confirmatory Results,2,N,Y,Y,,
+Vironstika,D,Indeterminate,Confirmatory Results,3,N,Y,N,,
+Vironstika,D,Invalid,Confirmatory Results,4,N,Y,N,,
+Murex,D,Positif,Confirmatory Results,1,N,Y,N,,
+Murex,D,Négatif,Confirmatory Results,2,N,Y,Y,,
+Murex,D,Indeterminate,Confirmatory Results,3,N,Y,N,,
+Murex,D,Invalid,Confirmatory Results,4,N,Y,N,,
+Integral,D,Positif,Confirmatory Results,1,N,Y,N,,
+Integral,D,Négatif,Confirmatory Results,2,N,Y,Y,,
+Integral,D,Indeterminate,Confirmatory Results,3,N,Y,N,,
+Integral,D,Invalid,Confirmatory Results,4,N,Y,N,,
+Western blot 1,D,Positif,Confirmatory Results,1,N,Y,N,,
+Western blot 1,D,Négatif,Confirmatory Results,2,N,Y,Y,,
+Western blot 1,D,Indeterminate,Confirmatory Results,3,N,Y,N,,
+Western blot 1,D,Invalid,Confirmatory Results,4,N,Y,N,,
+Western blot 2,D,Positif,Confirmatory Results,1,N,Y,N,,
+Western blot 2,D,Négatif,Confirmatory Results,2,N,Y,Y,,
+Western blot 2,D,Indeterminate,Confirmatory Results,3,N,Y,N,,
+Western blot 2,D,Invalid,Confirmatory Results,4,N,Y,N,,
+DNA PCR,D,Positif,Confirmatory Results,1,N,Y,N,,
+DNA PCR,D,Négatif,Confirmatory Results,2,N,Y,Y,,
+DNA PCR,D,Indeterminate,Confirmatory Results,3,N,Y,N,,
+DNA PCR,D,Invalid,Confirmatory Results,4,N,Y,N,,
+# p24Ag
+p24Ag,D,HIV 1,p24Ag Results,1,N,Y,N,,
+p24Ag,D,Négatif,p24Ag Results,2,N,Y,Y,,
+p24Ag,D,Indeterminate,p24Ag Results,3,N,Y,N,,
+# HBsAg
+HBsAg,D,Positif,HBsAg Results,1,N,Y,N,,
+HBsAg,D,Negatif,HBsAg Results,2,N,Y,Y,,
+# ============================================================================
+# DICTIONARY TYPE (D) - AFB Sputum (TB) Results
+# ============================================================================
+AFB Smear Sputum,D,Negatif,AFB Sputum Results,1,N,Y,Y,,
+AFB Smear Sputum,D,Scanty,AFB Sputum Results,2,N,Y,N,,
+AFB Smear Sputum,D,1+,AFB Sputum Results,3,N,Y,N,,
+AFB Smear Sputum,D,2+,AFB Sputum Results,4,N,Y,N,,
+AFB Smear Sputum,D,3+,AFB Sputum Results,5,N,Y,N,,
+# ============================================================================
+# DICTIONARY TYPE (D) - AFB Skin (Leprosy) Results
+# ============================================================================
+AFB Smear Skin,D,Negatif,AFB Skin Results,1,N,Y,Y,,
+AFB Smear Skin,D,1+,AFB Skin Results,2,N,Y,N,,
+AFB Smear Skin,D,2+,AFB Skin Results,3,N,Y,N,,
+AFB Smear Skin,D,3+,AFB Skin Results,4,N,Y,N,,
+AFB Smear Skin,D,4+,AFB Skin Results,5,N,Y,N,,
+AFB Smear Skin,D,5+,AFB Skin Results,6,N,Y,N,,
+AFB Smear Skin,D,6+,AFB Skin Results,7,N,Y,N,,
+# ============================================================================
+# DICTIONARY TYPE (D) - Gram Stain Genital (Neisseria gonorrhoeae)
+# ============================================================================
+Gram Stain Genital,D,Gram(-) diplococcus ditemukan,Gram Stain Genital Results,1,N,Y,N,,
+Gram Stain Genital,D,Gram(-) diplococcus tidak ditemukan,Gram Stain Genital Results,2,N,Y,Y,,
+# ============================================================================
+# DICTIONARY TYPE (D) - Trichomonas Results
+# ============================================================================
+Trichomonas Wet Prep,D,Trichomonas negatif,Trichomonas Results,1,N,Y,Y,,
+Trichomonas Wet Prep,D,Trichomonas positif,Trichomonas Results,2,N,Y,N,,
+# ============================================================================
+# DICTIONARY TYPE (D) - Pregnancy and Proteinuria
+# ============================================================================
+Urine Pregnancy Test,D,Positif,Pregnancy Test Results,1,N,Y,N,,
+Urine Pregnancy Test,D,Negatif,Pregnancy Test Results,2,N,Y,Y,,
+Proteinuria Dipstick,D,Negatif,Proteinuria Results,1,N,Y,Y,,
+Proteinuria Dipstick,D,Positif +,Proteinuria Results,2,N,Y,N,,
+Proteinuria Dipstick,D,Positif ++,Proteinuria Results,3,N,Y,N,,
+Proteinuria Dipstick,D,Positif +++,Proteinuria Results,4,N,Y,N,,
+# ============================================================================
+# NUMERIC TYPE (N) - Basic Hematology
+# ============================================================================
+Hemoglobin,N,,,1,Y,Y,N,1,
+Hematocrit,N,,,1,Y,Y,N,1,
+White Blood Cell Count,N,,,1,Y,Y,N,2,
+Platelet Count,N,,,1,Y,Y,N,0,
+Complete Blood Count,N,,,1,Y,Y,N,0,
+# Indonesian Hematology
+Hemoglobin Bld,N,,,1,Y,Y,N,1,
+Hematocrit Auto,N,,,1,Y,Y,N,1,
+RBC Auto,N,,,1,Y,Y,N,2,
+MCV Auto,N,,,1,Y,Y,N,1,
+MCH Auto,N,,,1,Y,Y,N,1,
+# French Hematology/CBC
+WBC Count,N,,,1,Y,Y,N,1,
+RBC Count,N,,,1,Y,Y,N,2,
+MCV,N,,,1,Y,Y,N,0,
+TCMH,N,,,1,Y,Y,N,1,
+CCMH,N,,,1,Y,Y,N,0,
+Platelets,N,,,1,Y,Y,N,0,
+Neutrophils Percent,N,,,1,Y,Y,N,1,
+Neutrophils Abs,N,,,1,Y,Y,N,0,
+Eosinophils Percent,N,,,1,Y,Y,N,1,
+Eosinophils Abs,N,,,1,Y,Y,N,0,
+Basophils Percent,N,,,1,Y,Y,N,2,
+Basophils Abs,N,,,1,Y,Y,N,0,
+Lymphocytes Percent,N,,,1,Y,Y,N,1,
+Lymphocytes Abs,N,,,1,Y,Y,N,0,
+Monocytes Percent,N,,,1,Y,Y,N,1,
+Monocytes Abs,N,,,1,Y,Y,N,0,
+# ============================================================================
+# NUMERIC TYPE (N) - Biochemistry
+# ============================================================================
+Glucose,N,,,1,Y,Y,N,0,
+Creatinine,N,,,1,Y,Y,N,2,
+Blood Urea Nitrogen,N,,,1,Y,Y,N,1,
+Total Cholesterol,N,,,1,Y,Y,N,0,
+Triglycerides,N,,,1,Y,Y,N,0,
+ALT,N,,,1,Y,Y,N,0,
+AST,N,,,1,Y,Y,N,0,
+# French Biochemistry
+GPT ALAT,N,,,1,Y,Y,N,0,
+GOT ASAT,N,,,1,Y,Y,N,0,
+Amylase,N,,,1,Y,Y,N,0,
+Albumin Urine,N,,,1,Y,Y,N,2,
+HDL Cholesterol,N,,,1,Y,Y,N,2,
+Beta HCG Urine,N,,,1,Y,Y,N,2,
+# ============================================================================
+# NUMERIC TYPE (N) - Hemato-Immunology
+# ============================================================================
+CD4 Absolute,N,,,1,Y,Y,N,0,
+CD4 Percent,N,,,1,Y,Y,N,1,
+Viral Load,N,,,1,Y,Y,N,0,
+# ============================================================================
+# ALPHA TYPE (A) - Alphanumeric text results (free text entry)
+# ============================================================================
+Urinalysis,A,,,1,N,Y,N,,
+# ============================================================================
+# REMARK TYPE (R) - Free-form remarks/comments
+# ============================================================================
+Pathology Report,R,,,1,N,Y,N,,
+# ============================================================================
+# TITER TYPE (T) - Titer/dilution results
+# ============================================================================
+Malaria Rapid Test,T,1:10,Titer Results,1,N,Y,N,,
+Malaria Rapid Test,T,1:20,Titer Results,2,N,Y,N,,
+Malaria Rapid Test,T,1:40,Titer Results,3,N,Y,N,,
+Malaria Rapid Test,T,1:80,Titer Results,4,N,Y,N,,
+Malaria Rapid Test,T,1:160,Titer Results,5,N,Y,N,,
+Malaria Rapid Test,T,1:320,Titer Results,6,N,Y,N,,
+Malaria Rapid Test,T,1:640,Titer Results,7,N,Y,N,,
+HIV Rapid Test,T,1:160,Titer Results,5,N,Y,N,,
+HIV Rapid Test,T,1:320,Titer Results,6,N,Y,N,,
+HIV Rapid Test,T,1:640,Titer Results,7,N,Y,N,,
+# ============================================================================
+# MULTISELECT TYPE (M) - Multiple dictionary selections
+# ============================================================================
+Malaria Microscopy,M,Plasmodium falciparum,Malaria Results,1,N,Y,N,,
+Malaria Microscopy,M,Plasmodium vivax,Malaria Results,2,N,Y,N,,
+Malaria Microscopy,M,Plasmodium malariae,Malaria Results,3,N,Y,N,,
+Malaria Microscopy,M,Plasmodium ovale,Malaria Results,4,N,Y,N,,
+Malaria Microscopy,M,Mixed infection,Malaria Results,5,N,Y,N,,
+Malaria Microscopy,M,No parasites seen,Malaria Results,6,N,Y,Y,,
+# Candida KOH - Multiselect (can have multiple findings)
+Candida KOH Prep,M,Yeast cell,Candida KOH Results,1,N,Y,N,,
+Candida KOH Prep,M,Hypa,Candida KOH Results,2,N,Y,N,,
+Candida KOH Prep,M,Spora,Candida KOH Results,3,N,Y,N,,
+# ============================================================================
+# CASCADING MULTISELECT TYPE (C) - Dependent multiselect
+# ============================================================================
+Urine Appearance,C,Clear,Urinalysis Results,1,N,Y,Y,,
+Urine Appearance,C,Slightly Cloudy,Urinalysis Results,2,N,Y,N,,
+Urine Appearance,C,Cloudy,Urinalysis Results,3,N,Y,N,,
+Urine Appearance,C,Turbid,Urinalysis Results,4,N,Y,N,,
+Urine Appearance,C,Yellow,Urine Color,1,N,Y,Y,,
+Urine Appearance,C,Dark Yellow,Urine Color,2,N,Y,N,,
+Urine Appearance,C,Amber,Urine Color,3,N,Y,N,,
+Urine Appearance,C,Red,Urine Color,4,N,Y,N,,
+Urine Appearance,C,Brown,Urine Color,5,N,Y,N,,

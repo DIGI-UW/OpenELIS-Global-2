@@ -9,3 +9,6 @@ Sputum,SPT,H,Y,7,Sputum,Expectoration
 Swab,SWB,H,Y,8,Swab,Écouvillon
 Tissue,TIS,H,Y,9,Tissue,Tissu
 Saliva,SAL,H,Y,10,Saliva,Salive
+Skin,SKN,H,Y,11,Skin,Peau
+Genital Specimen,GEN,H,Y,12,Genital Specimen,Prélèvement Génital
+Vaginal Fluid,VAG,H,Y,13,Vaginal Fluid,Liquide Vaginal

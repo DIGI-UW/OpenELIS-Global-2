@@ -78,8 +78,8 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
 
         while ((line = reader.readLine()) != null) {
             lineNumber++;
-            // Skip empty lines
-            if (line.trim().isEmpty()) {
+            // Skip empty lines and comments (lines starting with #)
+            if (line.trim().isEmpty() || line.trim().startsWith("#")) {
                 continue;
             }
 
@@ -177,22 +177,18 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
         // Get or create category
         DictionaryCategory category = getOrCreateCategory(categoryName);
 
-        // Check if dictionary already exists in this category
-        Dictionary existingDict = dictionaryService.getDictionaryByDictEntry(dictEntry);
-        if (existingDict != null && existingDict.getDictionaryCategory() != null
-                && existingDict.getDictionaryCategory().getId().equals(category.getId())) {
-            // Update existing dictionary
+        // Check if dictionary already exists in this specific category
+        // Note: The same entry name CAN exist in different categories
+        Dictionary existingDict = dictionaryService.getDictionaryEntrysByNameAndCategoryDescription(dictEntry,
+                categoryName);
+        if (existingDict != null) {
+            // Update existing dictionary in this category
             updateDictionaryFromCsv(existingDict, values, category, localAbbreviationIndex, isActiveIndex,
                     sortOrderIndex, loincCodeIndex);
             dictionaryService.update(existingDict);
             return existingDict;
-        } else if (existingDict != null) {
-            // Dictionary exists but in different category, skip
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
-                    "Dictionary entry '" + dictEntry + "' already exists in a different category. Skipping.");
-            return null;
         } else {
-            // Create new dictionary
+            // Create new dictionary entry in this category
             Dictionary newDict = new Dictionary();
             newDict.setDictEntry(dictEntry);
             updateDictionaryFromCsv(newDict, values, category, localAbbreviationIndex, isActiveIndex, sortOrderIndex,

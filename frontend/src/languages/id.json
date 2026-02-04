@@ -1232,6 +1232,8 @@
   "process.testAdd.pressNext.ageRangeSelectiong": "Tekan tombol Berikutnya. Pemilihan Rentang Usia tidak diperlukan!",
   "process.testAdd.pressNext.selectGroupDictionary": "Tekan tombol Berikutnya. Langkah Memilih Grup Daftar Kamus tidak diperlukan!",
   "program.name.label": "Nama Program",
+  "program.name.code": "Code",
+  "program.name.program": "Program",
   "project.ARVFollowupStudy.name": "Tindak lanjut ARV",
   "project.ARVStudies.name": "ARV",
   "project.ARVStudy.name": "ARV Awal",
