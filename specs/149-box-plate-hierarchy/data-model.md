@@ -356,7 +356,8 @@ CHECK (new_location_type IS NULL OR new_location_type IN ('device', 'shelf', 'ra
 All migration steps will be implemented as Liquibase changesets:
 
 **File**:
-`src/main/resources/liquibase/storage/010-restructure-rack-add-box-plate.xml`
+`src/main/resources/liquibase/3.3.x.x/XXX-restructure-rack-add-box-plate.xml`
+(use next available sequence number)
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>

@@ -291,13 +291,13 @@ public abstract class BaseController extends ControllerUtills implements IAction
             request.setAttribute(Constants.SUCCESS_MSG, successMessage);
 
             Errors errors = (Errors) inputFlashMap.get(Constants.REQUEST_ERRORS);
-            request.setAttribute(Constants.SUCCESS_MSG, errors);
+            request.setAttribute(Constants.REQUEST_ERRORS, errors);
 
             List<String> messages = (List<String>) inputFlashMap.get(Constants.REQUEST_MESSAGES);
             request.setAttribute(Constants.REQUEST_MESSAGES, messages);
 
             List<String> warnings = (List<String>) inputFlashMap.get(Constants.REQUEST_WARNINGS);
-            request.setAttribute(Constants.SUCCESS_MSG, warnings);
+            request.setAttribute(Constants.REQUEST_WARNINGS, warnings);
         }
     }
 
