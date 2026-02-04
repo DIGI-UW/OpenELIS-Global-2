@@ -241,9 +241,10 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 dictionary = dictionaryService.getDictionaryByDictEntry(resultValue);
             }
             if (dictionary == null) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine", "Dictionary entry '" + resultValue
-                        + "'" + (dictionaryCategory.isEmpty() ? "" : " in category '" + dictionaryCategory + "'")
-                        + " not found in line " + lineNumber + " of " + fileName + ". Skipping.");
+                LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
+                        "Dictionary entry '" + resultValue + "'"
+                                + (dictionaryCategory.isEmpty() ? "" : " in category '" + dictionaryCategory + "'")
+                                + " not found in line " + lineNumber + " of " + fileName + ". Skipping.");
                 return null;
             }
 

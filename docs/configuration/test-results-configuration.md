@@ -65,7 +65,7 @@ HIV Rapid Test,D,Inconclusive,Test Results,3,N,Y,N,,
 - Use `dictionaryCategory` to specify which category to look in (recommended)
 - Without `dictionaryCategory`, the system finds the first matching entry
 - Create the dictionary entries first using the
-[dictionaries configuration](./dictionaries-configuration.md).
+  [dictionaries configuration](./dictionaries-configuration.md).
 
 ### Numeric Test Results (e.g., Hemoglobin)
 
