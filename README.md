@@ -216,13 +216,7 @@ This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
 Spec-Driven Development (SDD). AI coding agents can use slash commands to create
 specifications, plans, and tasks.
 
-**Setup SpecKit Commands (cross-platform, Python 3.7+):**
-
-```bash
-python scripts/install-speckit-commands.py
-```
-
-**Available Commands** (after installation):
+**Available Commands:**
 
 - `/speckit.specify` - Create feature specification
 - `/speckit.plan` - Generate implementation plan
@@ -232,8 +226,7 @@ python scripts/install-speckit-commands.py
 
 **Reference Documentation:**
 
-- **AGENTS.md** - Comprehensive guide for AI coding agents (includes full setup
-  options)
+- **AGENTS.md** - Comprehensive guide for AI coding agents
 - **Constitution**: `.specify/memory/constitution.md` - Governance principles
 - **Feature Example**: `specs/001-sample-storage/` - Complete SDD example
 
