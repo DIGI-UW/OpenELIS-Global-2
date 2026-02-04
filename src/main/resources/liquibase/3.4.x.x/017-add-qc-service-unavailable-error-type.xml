@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="3.4-017-add-qc-service-unavailable-error-type" author="demo-madagascar-analyzer">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analyzer_error"/>
+        </preConditions>
+        <comment>Add QC_SERVICE_UNAVAILABLE error type support - update constraint</comment>
+
+        <sql>
+            ALTER TABLE analyzer_error
+            DROP CONSTRAINT IF EXISTS chk_error_type;
+        </sql>
+
+        <sql>
+            ALTER TABLE analyzer_error
+            ADD CONSTRAINT chk_error_type
+            CHECK (error_type IN ('MAPPING', 'VALIDATION', 'TIMEOUT', 'PROTOCOL', 'CONNECTION', 'QC_MAPPING_INCOMPLETE', 'QC_SERVICE_UNAVAILABLE'));
+        </sql>
+
+        <rollback>
+            ALTER TABLE analyzer_error
+            DROP CONSTRAINT IF EXISTS chk_error_type;
+
+            ALTER TABLE analyzer_error
+            ADD CONSTRAINT chk_error_type
+            CHECK (error_type IN ('MAPPING', 'VALIDATION', 'TIMEOUT', 'PROTOCOL', 'CONNECTION', 'QC_MAPPING_INCOMPLETE'));
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

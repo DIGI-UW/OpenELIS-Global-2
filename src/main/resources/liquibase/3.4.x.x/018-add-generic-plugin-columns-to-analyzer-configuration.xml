@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="3.4-018-add-generic-plugin-columns" author="demo-madagascar-analyzer">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analyzer_configuration"/>
+            <not>
+                <columnExists tableName="analyzer_configuration" columnName="identifier_pattern"/>
+            </not>
+        </preConditions>
+        <comment>Add identifier_pattern and is_generic_plugin columns for generic plugin support</comment>
+
+        <addColumn tableName="analyzer_configuration">
+            <column name="identifier_pattern" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="analyzer_configuration">
+            <column name="is_generic_plugin" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <createIndex indexName="idx_analyzer_config_generic_plugin" tableName="analyzer_configuration">
+            <column name="is_generic_plugin"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_analyzer_config_generic_plugin" tableName="analyzer_configuration"/>
+            <dropColumn tableName="analyzer_configuration" columnName="is_generic_plugin"/>
+            <dropColumn tableName="analyzer_configuration" columnName="identifier_pattern"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

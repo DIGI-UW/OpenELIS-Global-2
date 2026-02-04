@@ -1,6 +1,42 @@
 # OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Clarify Pre-Push E2E Test Validation (V.5)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.8.1 → 1.9.0
+Change Type: MINOR - Materially expanded guidance on pre-push test validation
+Date: 2026-01-27
+
+Modified Sections:
+  - Principle V > Section V.5: Test Execution Workflow
+    * CLARIFIED: "Run tests individually during development" does NOT mean
+      "skip full suite validation before pushing"
+    * NEW: Three-phase workflow: Development → Pre-Push → CI
+    * NEW: Pre-push full suite validation is MANDATORY (not optional)
+    * NEW: Scripts to replicate CI locally (scripts/run-e2e-like-ci.sh)
+    * NEW: Explicit anti-patterns section
+    * NEW: Env-controlled fail-fast (E2E_FAIL_FAST env var)
+
+Rationale for Changes:
+  V.5 wording "run tests individually during development, full suite only for
+  CI/CD" was misinterpreted as "only run individual tests, let CI catch everything
+  else." This caused CI failures that could have been caught locally:
+  - Developer adds breaking change (e.g., React Router `exact` prop)
+  - Runs individual non-affected tests locally (pass)
+  - Pushes to CI without running affected tests
+  - CI fails, 60+ minutes wasted, feedback delayed
+
+  The INTENT was always:
+  - Fast iteration during active development (individual tests)
+  - Full validation before pushing (CI replication or full suite)
+  - CI as final confirmation, not first discovery of issues
+
+Templates Requiring Updates:
+  ✅ None - Constitution is the authoritative source for this workflow
+
+Follow-up TODOs:
+  - None
+
 SYNC IMPACT REPORT - Cohesion & Branch Naming Clarifications
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.8.0 → 1.8.1
@@ -553,8 +589,18 @@ direct database access from controllers, NO business logic in DAOs.
    - Include `fhir_uuid UUID` for FHIR-mapped entities
    - **MANDATORY**: Use JPA/Hibernate annotations on entity classes (`@Entity`,
      `@Table`, `@Id`, `@Column`, `@ManyToOne`, etc.)
-   - **PROHIBITED**: NO XML mapping files (`.hbm.xml`) - legacy XML mappings
-     exempt until refactored
+   - **PROHIBITED**: NO XML mapping files (`.hbm.xml`) for new domain models.
+
+     **Legacy extension exception (global)**: Legacy XML-mapped entities may be
+     extended or integrated with when required for backward compatibility. This
+     exception is intended to support incremental modernization in a large,
+     mission-critical codebase.
+
+     - New entities SHOULD be annotation-based.
+     - If a change requires introducing or extending XML mappings, the PR MUST
+       document why, list the impacted entities, and include an explicit
+       migration plan to annotation-based mappings.
+
    - Validation annotations on fields (`@NotNull`, `@Size`, etc.)
    - ID generation via `@GenericGenerator` with sequence name
    - `@PrePersist` hook for fhir_uuid generation
@@ -732,22 +778,54 @@ implementation details.
 
 **Test Execution Workflow**:
 
-- **Individual Execution**: E2E tests MUST be executed individually in small,
-  manageable chunks during development. Full test suite runs are for CI/CD only.
-  - Run individual test files during development
-  - Maximum 5-10 test cases per execution during development
-  - Full suite runs only in CI/CD pipeline or pre-merge validation
-  - **Rationale**: Running tests individually provides faster feedback, easier
-    debugging, and prevents cascading failures from masking root causes.
+1. **During Development (Fast Iteration):**
+
+   - Run tests individually or in small chunks (5-10 tests)
+   - Use `npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"`
+   - Purpose: Fast feedback loop while coding
+   - **Rationale**: Running tests individually provides faster feedback, easier
+     debugging, and prevents cascading failures from masking root causes.
+
+2. **Before Pushing (Pre-Push Validation) - MANDATORY:**
+
+   - MUST validate full suite locally OR use CI replication script
+   - Recommended: `E2E_FAIL_FAST=true ./scripts/run-e2e-like-ci.sh`
+   - Alternative: `npm run cy:run` (full suite, slower)
+   - Purpose: Catch integration issues BEFORE pushing to CI
+   - **Rationale**: CI is expensive (60+ minutes per failure). Validating
+     locally before pushing saves time, money, and catches issues faster.
+
+3. **In CI/CD (Final Validation):**
+   - Full suite runs automatically via GitHub Actions
+   - Fail-fast enabled (`E2E_FAIL_FAST=true`) stops on first failure
+   - Purpose: Final gate before merge, not first discovery of issues
+
+**CRITICAL - What This Workflow Does NOT Mean:**
+
+- ❌ "Only run individual tests, let CI catch everything else"
+- ❌ "Skip full suite validation before pushing"
+- ❌ "CI is the only place to run full tests"
+
+**What This Workflow DOES Mean:**
+
+- ✅ Fast iteration during active development (individual tests)
+- ✅ Full validation before pushing (CI replication script or full suite)
+- ✅ CI as final confirmation, not first discovery of issues
+
+**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
+This wastes 60+ minutes of CI time and delays feedback when issues are found.
 
 **Command Examples**:
 
 ```bash
-# Development (CORRECT - run individual test)
+# 1. Development (fast iteration)
 npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
 
-# CI/CD only (NOT during development)
-npm run cy:run
+# 2. Pre-push validation (MANDATORY before pushing)
+E2E_FAIL_FAST=true ./scripts/run-e2e-like-ci.sh
+
+# 3. Test specific feature area
+E2E_FAIL_FAST=true ./scripts/run-e2e-like-ci.sh --spec "cypress/e2e/AdminE2E/*.cy.js"
 ```
 
 **Configuration Requirements**:
@@ -1026,11 +1104,6 @@ additional slashes) for sub-scoping like milestones.
   Confluence project
 - **GitHub Issues**: `{###}` (e.g., `009`, `123`) - for GitHub-only tracking
 - **Other Trackers**: `{PREFIX}-{###}` - flexible for external integrations
-
-**Note on Branch Naming**: Branch names use **lowercase** versions of Jira
-ticket IDs (e.g., `ogc-49` instead of `OGC-49`) for Git compatibility and
-readability. The Jira format itself remains uppercase (`OGC-{###}`), but branch
-names convert to lowercase.
 
 **SpecKit tooling note**:
 

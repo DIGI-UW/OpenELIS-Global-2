@@ -994,7 +994,7 @@ for (int i = parts.length - 1; i >= 0; i--) {
 
 - `src/main/java/org/openelisglobal/analyzer/service/AnalyzerQueryServiceImpl.java` -
   Parsing implementation
-- `tools/astm-mock-server/server.py` - Mock server R-record format
+- `tools/analyzer-mock-server/server.py` - Mock server R-record format
 - `src/main/java/org/openelisglobal/analyzerimport/analyzerreaders/ASTMQSegmentParserImpl.java` -
   Existing ASTM parsing pattern
 - [OpenELIS ASTM Communication Documentation](https://uwdigi.atlassian.net/wiki/external/YTllOWIzZWEzMmQ3NDllOWI4MGJlODc3MTQzYTI1MWI) -

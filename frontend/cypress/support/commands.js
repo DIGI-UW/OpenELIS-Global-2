@@ -77,26 +77,27 @@ Cypress.Commands.add("enterText", (selector, value) => {
 
 /**
  * Wait for backend API to be ready before running tests
- * Checks both login endpoint and optionally a specific REST endpoint
+ * Uses direct cy.request() for reliability (no intercept timing issues)
+ * Per Constitution V.5: Avoid intercept timing issues by using direct requests
  */
 Cypress.Commands.add("waitForBackend", (restEndpoint = null) => {
-  // Wait for login endpoint
-  cy.intercept("/api/OpenELIS-Global/LoginPage").as("backendReady");
-  cy.visit("/");
-  cy.wait("@backendReady", { timeout: 30000 });
+  // Use cy.request() to verify backend is responding (more reliable than intercepts)
+  // This avoids the timing issue where intercepts may be set up after page load starts
+  const checkEndpoint = restEndpoint || "/api/OpenELIS-Global/rest/menu";
 
-  // If a REST endpoint is specified, wait for it too
-  if (restEndpoint) {
-    cy.intercept("GET", restEndpoint).as("restApiReady");
-    cy.request({
-      method: "GET",
-      url: restEndpoint,
-      failOnStatusCode: false, // Don't fail if endpoint returns error, just check it responds
-    }).then((response) => {
-      // API is responding (even if 404/500, it means backend is up)
-      expect(response.status).to.be.a("number");
-    });
-  }
+  cy.request({
+    method: "GET",
+    url: checkEndpoint,
+    failOnStatusCode: false, // Don't fail on 401/403/404 - just verify backend responds
+    timeout: 30000,
+    retryOnStatusCodeFailure: false,
+  }).then((response) => {
+    // Backend is responding if we get any HTTP status code
+    expect(response.status).to.be.a("number");
+    cy.log(
+      `Backend ready: ${checkEndpoint} responded with status ${response.status}`,
+    );
+  });
 });
 
 /**
