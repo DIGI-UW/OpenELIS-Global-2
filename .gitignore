@@ -46,6 +46,7 @@ volume/logs/*
 volume/ocl/*
 volume/odoo/*
 .specify/temp/
+volume/branding/*
 
 # Implementation-specific menu configuration (use menu_seed.json.example as template)
 volume/menu/menu_seed.json
