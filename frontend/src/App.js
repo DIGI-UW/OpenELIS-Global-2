@@ -18,6 +18,7 @@ import { Admin } from "./components";
 import ResultSearch from "./components/resultPage/ResultSearch";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { getFromOpenElisServer } from "./components/utils/Utils";
+import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import "./App.css";
 import { languages } from "./languages";
 import config from "./config.json";
@@ -79,6 +80,21 @@ export default function App() {
 
   useEffect(() => {
     getUserSessionDetails();
+  }, []);
+
+  // Load and apply site branding (colors, favicon)
+  useEffect(() => {
+    loadAndApplyBranding();
+
+    // Listen for branding updates from admin UI
+    const handleBrandingUpdate = () => {
+      loadAndApplyBranding();
+    };
+    window.addEventListener("branding-updated", handleBrandingUpdate);
+
+    return () => {
+      window.removeEventListener("branding-updated", handleBrandingUpdate);
+    };
   }, []);
 
   const getUserSessionDetails = async () => {
