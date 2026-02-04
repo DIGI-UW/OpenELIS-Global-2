@@ -93,7 +93,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.testcalculated", "org.openelisglobal.odoo", "org.openelisglobal.ocl",
         "org.openelisglobal.storage", "org.openelisglobal.notebook", "org.openelisglobal.storage",
         "org.openelisglobal.coldstorage", "org.openelisglobal.alert", "org.openelisglobal.notification",
-        "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler" }, excludeFilters = {
+        "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler",
+        "org.openelisglobal.sitebranding" }, excludeFilters = {
+
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -320,8 +322,9 @@ public class AppTestConfig implements WebMvcConfigurer {
     }
 
     @Override
-    public void configureMessageConverters(@NonNull List<HttpMessageConverter<?>> converters) {
-        WebMvcConfigurer.super.configureMessageConverters(converters);
+    public void extendMessageConverters(@NonNull List<HttpMessageConverter<?>> converters) {
+        // Add custom converters while keeping default converters
+        // (including ResourceHttpMessageConverter for serving files)
         converters.add(new StringHttpMessageConverter());
         converters.add(jsonConverter());
     }

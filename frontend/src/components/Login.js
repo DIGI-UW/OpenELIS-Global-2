@@ -20,6 +20,7 @@ import { Formik } from "formik";
 import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./layout/Layout";
+import { getBranding } from "./utils/BrandingUtils";
 
 function Login(props) {
   const { notificationVisible, addNotification, setNotificationVisible } =
@@ -29,6 +30,8 @@ function Login(props) {
   const { userSessionDetails, refresh } = useContext(UserSessionDetailsContext);
   const [submitting, setSubmitting] = useState(false);
   const [samlRedirectInitiated, setSamlRedirectInitiated] = useState(false);
+  const [loginLogoUrl, setLoginLogoUrl] = useState(null);
+  const [logoVersion, setLogoVersion] = useState(0); // Version counter for cache-busting
   const firstInput = createRef();
 
   // Auto-redirect to SAML if configured to bypass login page
@@ -63,6 +66,23 @@ function Login(props) {
     return () => clearInterval(interval); // clear your interval to prevent memory leaks.
   }, []);
 
+  // Load branding configuration for login logo
+  // Colors are handled by App.js
+  useEffect(() => {
+    getBranding((response) => {
+      if (response) {
+        // Check useHeaderLogoForLogin flag
+        if (response.useHeaderLogoForLogin && response.headerLogoUrl) {
+          setLoginLogoUrl(response.headerLogoUrl);
+          setLogoVersion((prev) => prev + 1);
+        } else if (response.loginLogoUrl) {
+          setLoginLogoUrl(response.loginLogoUrl);
+          setLogoVersion((prev) => prev + 1);
+        }
+      }
+    });
+  }, []);
+
   useEffect(() => {
     if (userSessionDetails.authenticated) {
       window.location.href = "/";
@@ -74,16 +94,27 @@ function Login(props) {
   };
 
   const loginMessage = () => {
+    // Task Reference: T041 - Use custom login logo if available, otherwise default
+    // Add cache-busting parameter to prevent stale logo display after upload
+    const logoSrc = loginLogoUrl
+      ? `${config.serverBaseUrl}${loginLogoUrl}?v=${logoVersion}`
+      : `images/openelis_logo_full.png`;
+
     return (
       <>
         <Column lg={6} md={0} sm={0} />
         <Column lg={4} md={8} sm={4}>
           <picture>
             <img
-              src={`images/openelis_logo_full.png`}
+              src={logoSrc}
               alt="fullsize logo"
               width="300"
               height="56"
+              style={{ objectFit: "contain" }}
+              onError={(e) => {
+                // Fallback to default logo if custom logo fails to load
+                e.target.src = `images/openelis_logo_full.png`;
+              }}
             />
           </picture>
         </Column>

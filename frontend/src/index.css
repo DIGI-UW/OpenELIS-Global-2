@@ -12,6 +12,18 @@ code {
     source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
+/*
+ * Site Branding - Header Color
+ *
+ * Applies custom header background color. This is a custom property
+ * (not a Carbon token) so we need an explicit rule to apply it.
+ * Doubled selector ensures specificity over Carbon's default.
+ * The value is set on :root at runtime.
+ */
+.cds--header.cds--header {
+  background-color: var(--site-branding-header, #295785);
+}
+
 .slide-over-root {
   position: fixed;
   top: 0;
