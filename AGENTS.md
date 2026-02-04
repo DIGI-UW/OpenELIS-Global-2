@@ -175,7 +175,8 @@ mvn clean install -DskipTests
 
 **Testing:**
 
-- **Cypress 12.17.3** (E2E tests)
+- **Cypress 12.17.3** (E2E tests - existing)
+- **Playwright 1.57.0** (E2E tests - recommended for new tests)
 - **Jest + React Testing Library** (unit tests)
 
 **Code Quality:**
