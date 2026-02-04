@@ -263,4 +263,113 @@ public class NotebookPageSampleDAOTest {
         // Verify
         assertEquals(150L, result);
     }
+
+    // ========================================
+    // Tests for existsByPatientEncounterIdInNotebook
+    // ========================================
+
+    /**
+     * Test: existsByPatientEncounterIdInNotebook returns true when encounter ID
+     * exists
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testExistsByPatientEncounterIdInNotebook_ExistsReturnsTrue() {
+        // Setup
+        Integer notebookId = 1;
+        String patientEncounterId = "ENC-2024-001";
+
+        when(entityManager.unwrap(Session.class)).thenReturn(session);
+        NativeQuery<Object> mockNativeQuery = mock(NativeQuery.class);
+        when(session.createNativeQuery(anyString())).thenReturn(mockNativeQuery);
+        when(mockNativeQuery.setParameter(eq("notebookId"), eq(notebookId))).thenReturn(mockNativeQuery);
+        when(mockNativeQuery.setParameter(eq("patientEncounterId"), eq(patientEncounterId)))
+                .thenReturn(mockNativeQuery);
+        when(mockNativeQuery.getSingleResult()).thenReturn(1L);
+
+        // Execute
+        boolean result = dao.existsByPatientEncounterIdInNotebook(notebookId, patientEncounterId);
+
+        // Verify
+        assertTrue("Should return true when patient encounter ID exists", result);
+        verify(mockNativeQuery).setParameter("notebookId", notebookId);
+        verify(mockNativeQuery).setParameter("patientEncounterId", patientEncounterId);
+    }
+
+    /**
+     * Test: existsByPatientEncounterIdInNotebook returns false when encounter ID
+     * does not exist
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testExistsByPatientEncounterIdInNotebook_NotExistsReturnsFalse() {
+        // Setup
+        Integer notebookId = 1;
+        String patientEncounterId = "ENC-NONEXISTENT";
+
+        when(entityManager.unwrap(Session.class)).thenReturn(session);
+        NativeQuery<Object> mockNativeQuery = mock(NativeQuery.class);
+        when(session.createNativeQuery(anyString())).thenReturn(mockNativeQuery);
+        when(mockNativeQuery.setParameter(eq("notebookId"), eq(notebookId))).thenReturn(mockNativeQuery);
+        when(mockNativeQuery.setParameter(eq("patientEncounterId"), eq(patientEncounterId)))
+                .thenReturn(mockNativeQuery);
+        when(mockNativeQuery.getSingleResult()).thenReturn(0L);
+
+        // Execute
+        boolean result = dao.existsByPatientEncounterIdInNotebook(notebookId, patientEncounterId);
+
+        // Verify
+        assertFalse("Should return false when patient encounter ID does not exist", result);
+    }
+
+    /**
+     * Test: existsByPatientEncounterIdInNotebook returns false for null notebookId
+     */
+    @Test
+    public void testExistsByPatientEncounterIdInNotebook_NullNotebookId_ReturnsFalse() {
+        // Execute
+        boolean result = dao.existsByPatientEncounterIdInNotebook(null, "ENC-2024-001");
+
+        // Verify
+        assertFalse("Should return false for null notebook ID", result);
+    }
+
+    /**
+     * Test: existsByPatientEncounterIdInNotebook returns false for null
+     * patientEncounterId
+     */
+    @Test
+    public void testExistsByPatientEncounterIdInNotebook_NullPatientEncounterId_ReturnsFalse() {
+        // Execute
+        boolean result = dao.existsByPatientEncounterIdInNotebook(1, null);
+
+        // Verify
+        assertFalse("Should return false for null patient encounter ID", result);
+    }
+
+    /**
+     * Test: existsByPatientEncounterIdInNotebook returns false for blank
+     * patientEncounterId
+     */
+    @Test
+    public void testExistsByPatientEncounterIdInNotebook_BlankPatientEncounterId_ReturnsFalse() {
+        // Execute
+        boolean result = dao.existsByPatientEncounterIdInNotebook(1, "   ");
+
+        // Verify
+        assertFalse("Should return false for blank patient encounter ID", result);
+    }
+
+    /**
+     * Test: existsByPatientEncounterIdInNotebook returns false for empty
+     * patientEncounterId
+     */
+    @Test
+    public void testExistsByPatientEncounterIdInNotebook_EmptyPatientEncounterId_ReturnsFalse() {
+        // Execute
+        boolean result = dao.existsByPatientEncounterIdInNotebook(1, "");
+
+        // Verify
+        assertFalse("Should return false for empty patient encounter ID", result);
+    }
 }

@@ -129,4 +129,15 @@ public interface NotebookPageSampleDAO extends BaseDAO<NotebookPageSample, Integ
      * @return map of well coordinate to sample info (sampleItemId, externalId)
      */
     java.util.Map<String, java.util.Map<String, String>> getOccupiedWellsByBoxId(Integer boxId);
+
+    /**
+     * Check if a patient encounter ID already exists within a notebook. Queries the
+     * JSONB data field for patientEncounterId across all pages in the notebook.
+     *
+     * @param notebookId         the notebook ID to check within
+     * @param patientEncounterId the patient encounter ID to check
+     * @return true if the ID exists in any sample's data within the notebook, false
+     *         otherwise
+     */
+    boolean existsByPatientEncounterIdInNotebook(Integer notebookId, String patientEncounterId);
 }

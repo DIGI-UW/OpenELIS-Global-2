@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PATHOLOGY SPECIMEN TYPES                                   -->
+    <!-- Adds specific specimen types for pathology workflow:       -->
+    <!--   - Tissue                                                 -->
+    <!--   - Cytology                                               -->
+    <!--   - Body Fluid                                             -->
+    <!--   - Blood (already exists)                                 -->
+    <!--   - Bone Marrow (already exists)                           -->
+    <!-- Then associates them with Pathology department             -->
+    <!-- ======================================================== -->
+
+    <!-- ======================= -->
+    <!-- 1. ADD MISSING SAMPLE TYPES -->
+    <!-- ======================= -->
+
+    <!-- Tissue (generic) -->
+    <changeSet id="add-pathology-localization-tissue" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization
+                WHERE english = 'Tissue' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Tissue"/>
+            <column name="french" value="Tissu"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-tissue" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'tissue'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Tissue"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="TIS"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="100"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Tissue' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Cytology -->
+    <changeSet id="add-pathology-localization-cytology" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization
+                WHERE english = 'Cytology' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Cytology"/>
+            <column name="french" value="Cytologie"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-cytology" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'cytology'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Cytology"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="CYT"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="101"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Cytology' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Body Fluid -->
+    <changeSet id="add-pathology-localization-body-fluid" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization
+                WHERE english = 'Body Fluid' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Body Fluid"/>
+            <column name="french" value="Liquide corporel"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-body-fluid" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'body fluid'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Body Fluid"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="BDF"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="102"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Body Fluid' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================= -->
+    <!-- 2. ASSOCIATE SAMPLE TYPES WITH PATHOLOGY DEPARTMENT -->
+    <!-- ======================= -->
+
+    <!-- Associate Tissue with Pathology -->
+    <changeSet id="associate-tissue-with-pathology" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Pathology'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'tissue'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.department_sample_type dst
+                JOIN clinlims.test_section ts ON dst.test_section_id = ts.id
+                JOIN clinlims.type_of_sample tos ON dst.sample_type_id = tos.id
+                WHERE ts.name = 'Pathology' AND LOWER(tos.description) = 'tissue'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.department_sample_type (id, test_section_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.department_sample_type_seq'), ts.id, tos.id, 'Y', 1, now()
+            FROM clinlims.test_section ts, clinlims.type_of_sample tos
+            WHERE ts.name = 'Pathology' AND LOWER(tos.description) = 'tissue';
+        </sql>
+    </changeSet>
+
+    <!-- Associate Cytology with Pathology -->
+    <changeSet id="associate-cytology-with-pathology" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Pathology'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'cytology'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.department_sample_type dst
+                JOIN clinlims.test_section ts ON dst.test_section_id = ts.id
+                JOIN clinlims.type_of_sample tos ON dst.sample_type_id = tos.id
+                WHERE ts.name = 'Pathology' AND LOWER(tos.description) = 'cytology'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.department_sample_type (id, test_section_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.department_sample_type_seq'), ts.id, tos.id, 'Y', 2, now()
+            FROM clinlims.test_section ts, clinlims.type_of_sample tos
+            WHERE ts.name = 'Pathology' AND LOWER(tos.description) = 'cytology';
+        </sql>
+    </changeSet>
+
+    <!-- Associate Body Fluid with Pathology -->
+    <changeSet id="associate-body-fluid-with-pathology" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Pathology'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'body fluid'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.department_sample_type dst
+                JOIN clinlims.test_section ts ON dst.test_section_id = ts.id
+                JOIN clinlims.type_of_sample tos ON dst.sample_type_id = tos.id
+                WHERE ts.name = 'Pathology' AND LOWER(tos.description) = 'body fluid'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.department_sample_type (id, test_section_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.department_sample_type_seq'), ts.id, tos.id, 'Y', 3, now()
+            FROM clinlims.test_section ts, clinlims.type_of_sample tos
+            WHERE ts.name = 'Pathology' AND LOWER(tos.description) = 'body fluid';
+        </sql>
+    </changeSet>
+
+    <!-- Associate Blood with Pathology -->
+    <changeSet id="associate-blood-with-pathology" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Pathology'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'blood'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.department_sample_type dst
+                JOIN clinlims.test_section ts ON dst.test_section_id = ts.id
+                JOIN clinlims.type_of_sample tos ON dst.sample_type_id = tos.id
+                WHERE ts.name = 'Pathology' AND LOWER(tos.description) = 'blood'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.department_sample_type (id, test_section_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.department_sample_type_seq'), ts.id, tos.id, 'Y', 4, now()
+            FROM clinlims.test_section ts, clinlims.type_of_sample tos
+            WHERE ts.name = 'Pathology' AND LOWER(tos.description) = 'blood';
+        </sql>
+    </changeSet>
+
+    <!-- Associate Bone Marrow with Pathology -->
+    <changeSet id="associate-bone-marrow-with-pathology" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Pathology'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'bone marrow'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.department_sample_type dst
+                JOIN clinlims.test_section ts ON dst.test_section_id = ts.id
+                JOIN clinlims.type_of_sample tos ON dst.sample_type_id = tos.id
+                WHERE ts.name = 'Pathology' AND LOWER(tos.description) = 'bone marrow'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.department_sample_type (id, test_section_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.department_sample_type_seq'), ts.id, tos.id, 'Y', 5, now()
+            FROM clinlims.test_section ts, clinlims.type_of_sample tos
+            WHERE ts.name = 'Pathology' AND LOWER(tos.description) = 'bone marrow';
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
