@@ -18,10 +18,10 @@ checklist.
 
    ```bash
    # Option 1: Via Docker Compose (recommended)
-   docker compose -f dev.docker-compose.yml -f docker-compose.astm-test.yml up -d openelis-astm-simulator
+   docker compose -f dev.docker-compose.yml -f docker-compose.analyzer-test.yml up -d openelis-astm-simulator
 
    # Option 2: Direct Python execution
-   cd tools/astm-mock-server
+   cd tools/analyzer-mock-server
    python server.py --port 5000 --analyzer-type HEMATOLOGY
    ```
 
@@ -191,7 +191,7 @@ checklist.
    WHERE analyzer_id = '1000'
    ORDER BY field_name;
    ```
-3. Compare with expected fields from `tools/astm-mock-server/fields.json`
+3. Compare with expected fields from `tools/analyzer-mock-server/fields.json`
 
 **Expected Results**:
 
@@ -326,7 +326,8 @@ All verification checklist items should pass:
 - ✅ Stores fields in AnalyzerField entity
 - ✅ Background job executes asynchronously
 - ✅ Job status updates progress with logs
-- ✅ Reads timeout from SystemConfiguration
+- ✅ Reads timeout from SiteInformation (`clinlims.site_information` key
+  `analyzer.query.timeout`)
 - ✅ Handles connection errors gracefully
 - ✅ Integration test verifies actual ASTM query execution
 - ✅ Manual test: Query analyzer 1000 and verify fields appear in UI
