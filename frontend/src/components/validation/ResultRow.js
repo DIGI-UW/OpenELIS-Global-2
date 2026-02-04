@@ -13,16 +13,55 @@ import {
   Tag,
   InlineNotification,
 } from "@carbon/react";
-import { Locked, Unlocked, Renew, CheckmarkOutline } from "@carbon/icons-react";
+import {
+  Locked,
+  Unlocked,
+  Renew,
+  CheckmarkOutline,
+  Save,
+} from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import ResultDetailsPanel from "./ResultDetailsPanel";
 
-const ResultRow = ({ result }) => {
+const ResultRow = ({
+  result,
+  onAcceptRelease,
+  onRetest,
+  onSaveModification,
+}) => {
   const intl = useIntl();
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [editedResult, setEditedResult] = useState(result.result);
   const [editedNote, setEditedNote] = useState(result.note || "");
   const [selectedInterpretation, setSelectedInterpretation] = useState("");
+  const [showRetestReason, setShowRetestReason] = useState(false);
+  const [retestReason, setRetestReason] = useState("");
+  const [hasChanges, setHasChanges] = useState(false);
+
+  const handleResultChange = (e) => {
+    setEditedResult(e.target.value);
+    setHasChanges(
+      e.target.value !== result.result || editedNote !== (result.note || ""),
+    );
+  };
+
+  const handleNoteChange = (e) => {
+    setEditedNote(e.target.value);
+    setHasChanges(
+      editedResult !== result.result || e.target.value !== (result.note || ""),
+    );
+  };
+
+  const handleSaveChanges = () => {
+    if (onSaveModification) {
+      onSaveModification(result.analysisId, {
+        result: editedResult,
+        note: editedNote,
+        interpretation: selectedInterpretation,
+      });
+    }
+    setHasChanges(false);
+  };
 
   const patientInfo = result.patientInfoObject || {};
   const enteredBy = result.enteredByObject || {};
@@ -156,7 +195,7 @@ const ResultRow = ({ result }) => {
               id: "validation.row.result.value",
             })}
             value={editedResult}
-            onChange={(e) => setEditedResult(e.target.value)}
+            onChange={handleResultChange}
             disabled={!isUnlocked}
           />
           <TextInput
@@ -234,7 +273,7 @@ const ResultRow = ({ result }) => {
             id: "validation.row.notes.placeholder",
           })}
           value={editedNote}
-          onChange={(e) => setEditedNote(e.target.value)}
+          onChange={handleNoteChange}
           rows={3}
           disabled={!isUnlocked}
         />
@@ -300,6 +339,64 @@ const ResultRow = ({ result }) => {
         </TabPanels>
       </Tabs>
 
+      {showRetestReason && (
+        <div
+          style={{
+            marginTop: "1rem",
+            padding: "1rem",
+            backgroundColor: "#fff3cd",
+            border: "1px solid #ffc107",
+            borderRadius: "4px",
+          }}
+        >
+          <TextArea
+            id={`retest-reason-${result.analysisId}`}
+            labelText={intl.formatMessage({
+              id: "validation.retest.modal.reason.label",
+            })}
+            placeholder={intl.formatMessage({
+              id: "validation.retest.modal.reason.placeholder",
+            })}
+            value={retestReason}
+            onChange={(e) => setRetestReason(e.target.value)}
+            rows={2}
+          />
+          <div
+            style={{
+              display: "flex",
+              gap: "0.5rem",
+              marginTop: "0.5rem",
+              justifyContent: "flex-end",
+            }}
+          >
+            <Button
+              kind="secondary"
+              size="sm"
+              onClick={() => {
+                setShowRetestReason(false);
+                setRetestReason("");
+              }}
+            >
+              <FormattedMessage id="label.button.cancel" />
+            </Button>
+            <Button
+              kind="danger"
+              size="sm"
+              disabled={!retestReason.trim()}
+              onClick={() => {
+                if (onRetest && retestReason.trim()) {
+                  onRetest(result.analysisId, retestReason);
+                  setShowRetestReason(false);
+                  setRetestReason("");
+                }
+              }}
+            >
+              <FormattedMessage id="validation.retest.modal.confirm" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div
         style={{
           display: "flex",
@@ -308,10 +405,37 @@ const ResultRow = ({ result }) => {
           marginTop: "1rem",
         }}
       >
-        <Button kind="secondary" renderIcon={Renew} size="sm">
+        {isUnlocked && hasChanges && (
+          <Button
+            kind="tertiary"
+            renderIcon={Save}
+            size="sm"
+            onClick={handleSaveChanges}
+          >
+            <FormattedMessage id="label.button.save" />
+          </Button>
+        )}
+        <Button
+          kind="secondary"
+          renderIcon={Renew}
+          size="sm"
+          onClick={() => setShowRetestReason(!showRetestReason)}
+        >
           <FormattedMessage id="validation.row.action.retest" />
         </Button>
-        <Button kind="primary" renderIcon={CheckmarkOutline} size="sm">
+        <Button
+          kind="primary"
+          renderIcon={CheckmarkOutline}
+          size="sm"
+          onClick={() => {
+            if (onAcceptRelease) {
+              onAcceptRelease(result.analysisId, {
+                result: editedResult,
+                note: editedNote,
+              });
+            }
+          }}
+        >
           <FormattedMessage id="validation.row.action.accept" />
         </Button>
       </div>

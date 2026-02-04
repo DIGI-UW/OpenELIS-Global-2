@@ -275,6 +275,137 @@ const ValidationPage = ({ results, setResults, onRefresh }) => {
     }));
   };
 
+  const handleSingleAcceptRelease = (analysisId, modifications = {}) => {
+    const resultItem = results.resultList.find(
+      (item) => item.analysisId === analysisId,
+    );
+    if (!resultItem) {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "validation.accept.error" }),
+      });
+      setNotificationVisible(true);
+      return;
+    }
+
+    const updatedResultList = results.resultList.map((item) => ({
+      ...item,
+      isAccepted: item.analysisId === analysisId,
+      result:
+        item.analysisId === analysisId && modifications.result
+          ? modifications.result
+          : item.result,
+      note:
+        item.analysisId === analysisId && modifications.note
+          ? modifications.note
+          : item.note,
+    }));
+
+    const validationForm = {
+      ...results,
+      resultList: updatedResultList,
+    };
+
+    postToOpenElisServer(
+      "/rest/AccessionValidation",
+      JSON.stringify(validationForm),
+      (status) => {
+        if (status === 200) {
+          addNotification({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage(
+              { id: "validation.accept.success" },
+              { count: 1 },
+            ),
+          });
+          setNotificationVisible(true);
+
+          if (onRefresh) {
+            onRefresh();
+          } else {
+            window.location.reload();
+          }
+        } else {
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage({ id: "validation.accept.error" }),
+          });
+          setNotificationVisible(true);
+        }
+      },
+    );
+  };
+
+  const handleSingleRetest = (analysisId, reason) => {
+    const retestRequest = {
+      resultIds: [analysisId],
+      reason: reason,
+    };
+
+    postToOpenElisServerJsonResponse(
+      "/rest/AccessionValidation/retest",
+      JSON.stringify(retestRequest),
+      (data) => {
+        if (data && (data.success || data.status === 200)) {
+          addNotification({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage(
+              { id: "validation.retest.success" },
+              { count: 1 },
+            ),
+          });
+          setNotificationVisible(true);
+
+          if (onRefresh) {
+            onRefresh();
+          }
+        } else if (data && data.error) {
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message:
+              data.message ||
+              intl.formatMessage({
+                id: "validation.retest.error",
+              }),
+          });
+          setNotificationVisible(true);
+        }
+      },
+    );
+  };
+
+  const handleSaveModification = (analysisId, modifications) => {
+    const updatedResultList = results.resultList.map((item) => {
+      if (item.analysisId === analysisId) {
+        return {
+          ...item,
+          result: modifications.result || item.result,
+          note: modifications.note || item.note,
+        };
+      }
+      return item;
+    });
+
+    setResults({
+      ...results,
+      resultList: updatedResultList,
+    });
+
+    addNotification({
+      kind: NotificationKinds.info,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({
+        id: "validation.modification.saved.locally",
+      }),
+    });
+    setNotificationVisible(true);
+  };
+
   if (!results || !results.resultList || results.resultList.length === 0) {
     return (
       <Section className="validation-empty-state">
@@ -458,6 +589,9 @@ const ValidationPage = ({ results, setResults, onRefresh }) => {
                                 result={
                                   rowsData.find((r) => r.id === row.id)?.rawData
                                 }
+                                onAcceptRelease={handleSingleAcceptRelease}
+                                onRetest={handleSingleRetest}
+                                onSaveModification={handleSaveModification}
                               />
                             </TableExpandedRow>
                           )}
@@ -479,6 +613,38 @@ const ValidationPage = ({ results, setResults, onRefresh }) => {
               setCurrentPage(page);
               setPageSize(pageSize);
             }}
+            forwardText={intl.formatMessage({ id: "pagination.forward" })}
+            backwardText={intl.formatMessage({ id: "pagination.backward" })}
+            itemRangeText={(min, max, total) =>
+              intl.formatMessage(
+                { id: "pagination.item-range" },
+                { min: min, max: max, total: total },
+              )
+            }
+            itemsPerPageText={intl.formatMessage({
+              id: "pagination.items-per-page",
+            })}
+            itemText={(min, max) =>
+              intl.formatMessage(
+                { id: "pagination.item" },
+                { min: min, max: max },
+              )
+            }
+            pageNumberText={intl.formatMessage({
+              id: "pagination.page-number",
+            })}
+            pageRangeText={(_current, total) =>
+              intl.formatMessage(
+                { id: "pagination.page-range" },
+                { total: total },
+              )
+            }
+            pageText={(page, pagesUnknown) =>
+              intl.formatMessage(
+                { id: "pagination.page" },
+                { page: pagesUnknown ? "" : page },
+              )
+            }
           />
         </Column>
       </Grid>

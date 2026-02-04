@@ -2468,6 +2468,7 @@
   "validation.accept.noselection": "Veuillez sélectionner au moins un résultat à accepter",
   "validation.accept.success": "{count} résultat(s) validé(s) et libéré(s) avec succès",
   "validation.accept.error": "Erreur lors de la validation des résultats. Veuillez réessayer.",
+  "validation.modification.saved.locally": "Modifications enregistrées localement. Cliquez sur Accepter et Libérer pour soumettre.",
   "validation.details.nodata": "Aucune donnée détaillée disponible",
   "validation.details.error": "Erreur lors du chargement des détails de validation",
   "validation.details.method.tab": "Méthode et Réactifs",

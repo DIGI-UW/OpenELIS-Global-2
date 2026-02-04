@@ -2469,6 +2469,7 @@
   "validation.accept.noselection": "Please select at least one result to accept",
   "validation.accept.success": "{count} result(s) validated and released successfully",
   "validation.accept.error": "Error validating results. Please try again.",
+  "validation.modification.saved.locally": "Changes saved locally. Click Accept & Release to submit.",
   "validation.details.nodata": "No detailed data available",
   "validation.details.error": "Error loading validation details",
   "validation.details.method.tab": "Method & Reagents",

@@ -67,6 +67,38 @@ const SearchForm = ({ setResults, setIsLoading, setSearchParams }) => {
     const urlParams = new URLSearchParams(window.location.search);
     const typeParam = urlParams.get("type");
     const testParam = urlParams.get("test");
+    const accessionNumberParam = urlParams.get("accessionNumber");
+
+    if (accessionNumberParam && accessionNumberParam.trim()) {
+      setSearchQuery(accessionNumberParam);
+      setIsLoading(true);
+      const params = new URLSearchParams();
+      params.append("q", accessionNumberParam);
+      params.append("doRange", "false"); // Direct sample lookup by accession number
+      if (setSearchParams) {
+        setSearchParams(params.toString());
+      }
+      getFromOpenElisServer(
+        `/rest/AccessionValidation?${params.toString()}`,
+        (data) => {
+          setIsLoading(false);
+          if (data && data.resultList && data.resultList.length > 0) {
+            setResults(data);
+          } else {
+            setResults({ resultList: [] });
+            addNotification({
+              kind: NotificationKinds.info,
+              title: intl.formatMessage({ id: "notification.title" }),
+              message: intl.formatMessage({
+                id: "validation.search.noresults",
+              }),
+            });
+            setNotificationVisible(true);
+          }
+        },
+      );
+      return;
+    }
 
     if (typeParam) {
       if (labUnits.length > 0) {
@@ -77,9 +109,23 @@ const SearchForm = ({ setResults, setIsLoading, setSearchParams }) => {
         );
         if (matchingUnit) {
           setSelectedLabUnit(matchingUnit.id);
-          setTimeout(() => {
-            handleSearch();
-          }, 100);
+          setIsLoading(true);
+          const searchParams = new URLSearchParams();
+          searchParams.append("labUnit", matchingUnit.id);
+          if (setSearchParams) {
+            setSearchParams(searchParams.toString());
+          }
+          getFromOpenElisServer(
+            `/rest/AccessionValidation?${searchParams.toString()}`,
+            (data) => {
+              setIsLoading(false);
+              if (data && data.resultList && data.resultList.length > 0) {
+                setResults(data);
+              } else {
+                setResults({ resultList: [] });
+              }
+            },
+          );
         }
       }
     }
@@ -110,6 +156,11 @@ const SearchForm = ({ setResults, setIsLoading, setSearchParams }) => {
 
     if (searchQuery) {
       params.append("q", searchQuery);
+      // When searching by accession number without lab unit, use doRange=false
+      // to trigger direct sample lookup instead of range-based search
+      if (!selectedLabUnit) {
+        params.append("doRange", "false");
+      }
     }
     if (selectedLabUnit) {
       params.append("labUnit", selectedLabUnit);
@@ -190,10 +241,39 @@ const SearchForm = ({ setResults, setIsLoading, setSearchParams }) => {
     const value = e.target.value;
     setSelectedLabUnit(value);
     if (value) {
-      setTimeout(() => {
-        handleSearch();
-      }, 100);
+      triggerSearchWithLabUnit(value);
     }
+  };
+
+  const triggerSearchWithLabUnit = (labUnitValue) => {
+    setIsLoading(true);
+
+    const params = new URLSearchParams();
+    params.append("labUnit", labUnitValue);
+
+    if (setSearchParams) {
+      setSearchParams(params.toString());
+    }
+
+    getFromOpenElisServer(
+      `/rest/AccessionValidation?${params.toString()}`,
+      (data) => {
+        setIsLoading(false);
+        if (data && data.resultList && data.resultList.length > 0) {
+          setResults(data);
+        } else {
+          setResults({ resultList: [] });
+          addNotification({
+            kind: NotificationKinds.info,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage({
+              id: "validation.search.noresults",
+            }),
+          });
+          setNotificationVisible(true);
+        }
+      },
+    );
   };
 
   const handleQuickFilterChange = (filterType) => {
