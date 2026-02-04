@@ -26,22 +26,23 @@ import "../workflow/NotebookWorkflow.css";
  * PathologyManifestImportModal - Modal for importing pathology samples from CSV manifest files.
  * Supports two manifest types:
  *
- * 1. CLINICAL MANIFEST - For clinical diagnostic samples:
- *    Required: firstName, patientId, requestingClinician, specimenType, collectionDateTime,
- *              clinicalDetails, receivedDateTime, receivedBy
- *    Optional: surname, specimenSite, sourceFacility
+ * 1. CLINICAL MANIFEST - For clinical diagnostic samples (currently disabled)
  *
  * 2. RESEARCH MANIFEST - For research samples:
  *    Required: firstName, studyId, piName, participantAnimalId, specimenType,
- *              collectionDateTime, ethicalApprovalRef, receivedDateTime, receivedBy
- *    Optional: specimenSite, sourceFacility
+ *              specimenSite (Patient Site / Anatomical Source), collectionDateTime,
+ *              collectionMethod, collector, processingCondition, laboratoryMaterial,
+ *              ethicalApprovalRef, receivedDateTime, receivedBy
+ *    Optional: surname, sourceFacility
  *
- * Common fields for ALL samples:
- *    - firstName (MANDATORY)
- *    - specimenType
- *    - collectionDateTime
- *    - receivedDateTime
- *    - receivedBy
+ * Sample Attributes (ALL MANDATORY for all samples):
+ *    - specimenType - Specimen Type (Tissue, Cytology, Body Fluid, Blood, Bone Marrow)
+ *    - specimenSite - Patient Site / Anatomical Source
+ *    - collectionDateTime - Collection Date & Time
+ *    - collectionMethod - How sample was collected (Biopsy, FNAC, etc.)
+ *    - collector - Personnel who collected the sample
+ *    - processingCondition - Sample condition (Fresh, Fixed, Frozen, FFPE, etc.)
+ *    - laboratoryMaterial - Material type (Blocks, Slides, Smears, etc.)
  */
 
 // Clinical manifest column definitions
@@ -112,9 +113,34 @@ const RESEARCH_COLUMNS = {
       csvHeader: "specimenType",
     },
     {
+      key: "specimenSiteColumn",
+      label: "Patient Site / Anatomical Source",
+      csvHeader: "specimenSite",
+    },
+    {
       key: "collectionDateTimeColumn",
       label: "Collection Date & Time",
       csvHeader: "collectionDateTime",
+    },
+    {
+      key: "collectionMethodColumn",
+      label: "Collection Method",
+      csvHeader: "collectionMethod",
+    },
+    {
+      key: "collectorColumn",
+      label: "Collector / Personnel",
+      csvHeader: "collector",
+    },
+    {
+      key: "processingConditionColumn",
+      label: "Processing Condition",
+      csvHeader: "processingCondition",
+    },
+    {
+      key: "laboratoryMaterialColumn",
+      label: "Laboratory Material",
+      csvHeader: "laboratoryMaterial",
     },
     {
       key: "ethicalApprovalRefColumn",
@@ -129,11 +155,7 @@ const RESEARCH_COLUMNS = {
     { key: "receivedByColumn", label: "Received By", csvHeader: "receivedBy" },
   ],
   optional: [
-    {
-      key: "specimenSiteColumn",
-      label: "Specimen Site",
-      csvHeader: "specimenSite",
-    },
+    { key: "surnameColumn", label: "Surname/Last Name", csvHeader: "surname" },
     {
       key: "sourceFacilityColumn",
       label: "Source Facility",

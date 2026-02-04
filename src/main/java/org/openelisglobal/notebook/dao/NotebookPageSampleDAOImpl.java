@@ -220,4 +220,23 @@ public class NotebookPageSampleDAOImpl extends BaseDAOImpl<NotebookPageSample, I
 
         return result;
     }
+
+    @Override
+    public boolean existsByPatientEncounterIdInNotebook(Integer notebookId, String patientEncounterId) {
+        if (notebookId == null || patientEncounterId == null || patientEncounterId.isBlank()) {
+            return false;
+        }
+
+        Session session = entityManager.unwrap(Session.class);
+        // Query JSONB data field for patientEncounterId across all pages in the
+        // notebook
+        String sql = "SELECT COUNT(*) FROM clinlims.notebook_page_sample nps "
+                + "JOIN clinlims.notebook_page np ON nps.notebook_page_id = np.id "
+                + "WHERE np.notebook_id = :notebookId " + "AND nps.data->>'patientEncounterId' = :patientEncounterId";
+
+        Long count = ((Number) session.createNativeQuery(sql).setParameter("notebookId", notebookId)
+                .setParameter("patientEncounterId", patientEncounterId).getSingleResult()).longValue();
+
+        return count > 0;
+    }
 }

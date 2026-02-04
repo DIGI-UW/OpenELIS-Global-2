@@ -1,23 +1,16 @@
-GroupID,SampleType,NumOfSamples,CollectionDate,SampleCategory,SourceFacility,SpecimenSite,PatientID,RequestingClinician,ClinicalDetails,StudyID,PIName,ParticipantAnimalID,EthicalApprovalRef,Notes
-PATH-2025-001,FFPE tissue block,2,2025-01-15,Clinical diagnostic,Alert Hospital,Left breast,PAT-10234,Dr. Kebede,Suspicious mass - mammography finding,,,,,Breast tissue biopsy
-PATH-2025-002,Fresh biopsy,1,2025-01-15,Clinical diagnostic,Alert Hospital,Liver segment VI,PAT-10235,Dr. Alemayehu,Elevated AFP - rule out HCC,,,,,Urgent processing required
-PATH-2025-003,Surgical resection,1,2025-01-16,Clinical diagnostic,Alert Hospital,Sigmoid colon,PAT-10236,Dr. Tadesse,Obstructing colonic mass,,,,,Complete resection specimen
-PATH-2025-004,Fine needle aspirate (FNA),3,2025-01-16,Clinical diagnostic,Alert Hospital,Right thyroid lobe,PAT-10237,Dr. Hailu,Thyroid nodule TIRADS 4,,,,,3 passes performed
-PATH-2025-005,Pleural fluid,2,2025-01-17,Clinical diagnostic,Alert Hospital,Right pleural cavity,PAT-10238,Dr. Bekele,Pleural effusion - unknown etiology,,,,,For cytology and cell block
-PATH-2025-006,Peritoneal fluid,1,2025-01-17,Clinical diagnostic,Alert Hospital,Peritoneal cavity,PAT-10239,Dr. Worku,Ascites - suspected ovarian malignancy,,,,,100ml received
-PATH-2025-007,CSF for cytology,1,2025-01-17,Clinical diagnostic,Alert Hospital,Lumbar puncture L4-L5,PAT-10240,Dr. Getachew,Headache and papilledema - rule out CNS malignancy,,,,,5ml received
-PATH-2025-008,Urine for cytology,2,2025-01-18,Clinical diagnostic,Alert Hospital,Voided urine,PAT-10241,Dr. Mulugeta,Hematuria - cystoscopy scheduled,,,,,3 consecutive days collection
-PATH-2025-009,Cervical smear,5,2025-01-18,Clinical diagnostic,Alert Hospital,Cervix,PAT-10242,Dr. Tigist,VIA positive - routine screening,,,,,Pap smear
-PATH-2025-010,EDTA blood (peripheral smear),3,2025-01-18,Clinical diagnostic,Alert Hospital,Peripheral venous,PAT-10243,Dr. Yohannes,Pancytopenia workup,,,,,2ml EDTA blood
-PATH-2025-011,Human tissue (fresh),2,2025-01-19,Research,Research project,,,,,LPRP-2025-01,Dr. Smith,LPRP-P001,IRB-2024-0567,Fresh skin biopsy - Leprosy tissue biomarkers study
-PATH-2025-012,Human tissue (frozen),4,2025-01-19,Research,Research project,,,,,LPRP-2025-01,Dr. Smith,LPRP-P002,IRB-2024-0567,OCT embedded - snap frozen for biobank
-PATH-2025-013,Human tissue (FFPE),2,2025-01-19,Research,Research project,,,,,LPRP-2025-02,Dr. Johnson,LPRP-P003,IRB-2023-0890,Archival blocks - retrospective IHC study
-PATH-2025-014,Animal tissue (mouse footpad),6,2025-01-20,Research,Research project,Left hind footpad,,,,ANIM-2025-01,Dr. Smith,MOUSE-001 to 006,IACUC-2024-123,M. leprae inoculated - mouse model
-PATH-2025-015,Animal tissue (nerve),3,2025-01-20,Research,Research project,Sciatic nerve,,,,ANIM-2025-01,Dr. Smith,MOUSE-007 to 009,IACUC-2024-123,Bilateral sciatic nerves - nerve pathology study
-PATH-2025-016,Bacterial/cellular pellet,4,2025-01-20,Research,Research project,,,,,MLEP-2025-01,Dr. Cole,MLEP-ISO-001 to 004,IRB-2024-0567,M. leprae genomic studies - DNA extraction
-PATH-2025-017,Primary cell culture,2,2025-01-21,Research,Research project,,,,,CELL-2025-01,Dr. Rambukkana,SC-P3-001,IRB-2024-0567,Schwann cell gene expression - Passage 3
-PATH-2025-018,Tissue slide,10,2025-01-21,Clinical diagnostic,Alert Hospital,Various,PAT-TEACHING,Dr. Pathology Dept,Teaching collection,,,,,H&E stained for teaching
-PATH-2025-019,Cell block,3,2025-01-21,Clinical diagnostic,Alert Hospital,Right pleural cavity,PAT-10238,Dr. Bekele,From pleural fluid PATH-2025-005,,,,,Cell block preparation
-PATH-2025-020,LBC (Liquid-Based Cytology) vial,5,2025-01-22,Clinical diagnostic,Alert Hospital,Cervix,PAT-10244,Dr. Tigist,Routine cervical screening,,,,,ThinPrep collection
-PATH-2025-021,Blood smear slide,4,2025-01-22,Clinical diagnostic,Alert Hospital,Peripheral venous,PAT-10245,Dr. Yohannes,Malaria and anemia workup,,,,,Wright-Giemsa stained
-PATH-2025-022,Nucleic acid extract,6,2025-01-22,Research,Research project,,,,,LPRP-2025-01,Dr. Smith,LPRP-P004 to P009,IRB-2024-0567,DNA/RNA from fresh frozen tissue
+firstName,surname,studyId,piName,participantAnimalId,specimenType,specimenSite,collectionDateTime,collectionMethod,collector,processingCondition,laboratoryMaterial,ethicalApprovalRef,receivedDateTime,receivedBy,sourceFacility
+John,Doe,LPRP-2025-01,Dr. Smith,LPRP-P001,Tissue,Left forearm skin,2025-01-15 09:30,Biopsy,Dr. Kebede,Fresh,Blocks,IRB-2024-0567,2025-01-15 14:00,Lab Tech Abebe,ALERT Hospital
+Jane,Smith,LPRP-2025-01,Dr. Smith,LPRP-P002,Tissue,Right thigh skin,2025-01-15 10:00,Biopsy,Dr. Kebede,Frozen,Frozen sections,IRB-2024-0567,2025-01-15 14:30,Lab Tech Abebe,ALERT Hospital
+Ahmed,Hassan,LPRP-2025-01,Dr. Smith,LPRP-P003,Tissue,Ear lobe,2025-01-16 08:45,Biopsy,Dr. Alemayehu,FFPE,Blocks,IRB-2024-0567,2025-01-16 12:00,Lab Tech Fatuma,St. Paul Hospital
+Maria,Garcia,LPRP-2025-02,Dr. Johnson,LPRP-P004,Cytology,Cervix,2025-01-16 09:15,FNAC,Dr. Tigist,Smear,Slides,IRB-2023-0890,2025-01-16 13:00,Lab Tech Fatuma,St. Paul Hospital
+Samuel,Tekle,LPRP-2025-02,Dr. Johnson,LPRP-P005,Body Fluid,Right pleural cavity,2025-01-17 10:30,Fluid aspiration,Dr. Bekele,Cell Block,Blocks,IRB-2023-0890,2025-01-17 15:00,Lab Tech Hirut,Tikur Anbessa Hospital
+Tigist,Alemu,LPRP-2025-02,Dr. Johnson,LPRP-P006,Body Fluid,Peritoneal cavity,2025-01-17 11:00,Fluid aspiration,Dr. Worku,Fresh,Smears,IRB-2023-0890,2025-01-17 15:30,Lab Tech Hirut,Tikur Anbessa Hospital
+Daniel,Mengistu,ANIM-2025-01,Dr. Smith,MOUSE-001,Tissue,Left hind footpad,2025-01-18 08:00,Amputation,Dr. Cole,Fixed,Slides,IACUC-2024-123,2025-01-18 10:00,Lab Tech Abebe,Research Lab
+Solomon,Haile,ANIM-2025-01,Dr. Smith,MOUSE-002,Tissue,Sciatic nerve,2025-01-18 08:30,Biopsy,Dr. Cole,Frozen,Frozen sections,IACUC-2024-123,2025-01-18 10:30,Lab Tech Abebe,Research Lab
+Hanna,Girma,MLEP-2025-01,Dr. Cole,MLEP-ISO-001,Blood,Peripheral venous,2025-01-19 09:00,Blood draw,Nurse Meron,Fresh,DNA/RNA extracts,IRB-2024-0567,2025-01-19 11:00,Lab Tech Yonas,ALERT Hospital
+Bereket,Tadesse,MLEP-2025-01,Dr. Cole,MLEP-ISO-002,Blood,Peripheral venous,2025-01-19 09:30,Blood draw,Nurse Meron,Fresh,DNA/RNA extracts,IRB-2024-0567,2025-01-19 11:30,Lab Tech Yonas,ALERT Hospital
+Fikremariam,Assefa,CELL-2025-01,Dr. Rambukkana,SC-P3-001,Tissue,Skin punch biopsy,2025-01-20 10:00,Biopsy,Dr. Getachew,Fresh,Blocks,IRB-2024-0567,2025-01-20 14:00,Lab Tech Hirut,Research Lab
+Eleni,Wolde,CELL-2025-01,Dr. Rambukkana,SC-P3-002,Tissue,Nerve biopsy,2025-01-20 10:30,Biopsy,Dr. Getachew,Frozen,Frozen sections,IRB-2024-0567,2025-01-20 14:30,Lab Tech Hirut,Research Lab
+Kidus,Negash,LPRP-2025-03,Dr. Anderson,LPRP-P007,Bone Marrow,Iliac crest,2025-01-21 08:00,Biopsy,Dr. Yohannes,Fixed,Slides,IRB-2025-0012,2025-01-21 12:00,Lab Tech Abebe,Tikur Anbessa Hospital
+Mekdes,Beyene,LPRP-2025-03,Dr. Anderson,LPRP-P008,Bone Marrow,Sternum,2025-01-21 08:45,Biopsy,Dr. Yohannes,Decalcified,Blocks,IRB-2025-0012,2025-01-21 12:30,Lab Tech Abebe,Tikur Anbessa Hospital
+Yared,Kebede,LPRP-2025-03,Dr. Anderson,LPRP-P009,Cytology,Thyroid nodule,2025-01-22 09:00,FNAC,Dr. Hailu,Smear,Smears,IRB-2025-0012,2025-01-22 13:00,Lab Tech Fatuma,St. Paul Hospital

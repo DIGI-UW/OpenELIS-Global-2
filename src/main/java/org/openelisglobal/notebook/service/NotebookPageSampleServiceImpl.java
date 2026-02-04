@@ -944,4 +944,10 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
 
         return totalUpdated;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsByPatientEncounterIdInNotebook(Integer notebookId, String patientEncounterId) {
+        return baseObjectDAO.existsByPatientEncounterIdInNotebook(notebookId, patientEncounterId);
+    }
 }

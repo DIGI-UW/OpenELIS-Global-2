@@ -1,5 +1,7 @@
 package org.openelisglobal.notebook.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.hibernate.Hibernate;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.notebook.form.TraditionalMedicineManifestImportForm;
@@ -19,7 +22,10 @@ import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
+import org.openelisglobal.sample.dao.SampleDAO;
+import org.openelisglobal.sample.exception.DuplicateAccessionNumberException;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.util.AccessionNumberHandler;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -28,12 +34,6 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.sample.dao.SampleDAO;
-import org.openelisglobal.sample.exception.DuplicateAccessionNumberException;
-import org.openelisglobal.sample.util.AccessionNumberHandler;
 
 /**
  * Traditional Medicine manifest import: parses traditional medicine-specific
@@ -276,8 +276,8 @@ public class TraditionalMedicineManifestImportServiceImpl implements Traditional
             parentSample.setReceivedTimestamp(new Timestamp(System.currentTimeMillis()));
             String sampleIdDb;
             try {
-                AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO,
-                        entityManager, this.getClass());
+                AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO, entityManager,
+                        this.getClass());
                 sampleIdDb = handler.generateAndInsertWithUniqueAccessionNumber(parentSample);
                 parentSample.setId(sampleIdDb);
             } catch (DuplicateAccessionNumberException e) {

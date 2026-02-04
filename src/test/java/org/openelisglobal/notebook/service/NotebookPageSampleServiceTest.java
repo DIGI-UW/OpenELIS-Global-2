@@ -413,4 +413,71 @@ public class NotebookPageSampleServiceTest {
         assertEquals(5, updated);
         verify(baseObjectDAO, times(1)).clearDestinationType(pageId, sampleIds);
     }
+
+    // ========================================
+    // Tests for existsByPatientEncounterIdInNotebook
+    // ========================================
+
+    /**
+     * Test: existsByPatientEncounterIdInNotebook delegates to DAO and returns true
+     * when found
+     */
+    @Test
+    public void testExistsByPatientEncounterIdInNotebook_ExistsReturnsTrue() {
+        // Setup
+        Integer notebookId = 1;
+        String patientEncounterId = "ENC-2024-001";
+
+        when(baseObjectDAO.existsByPatientEncounterIdInNotebook(notebookId, patientEncounterId)).thenReturn(true);
+
+        // Execute
+        boolean result = service.existsByPatientEncounterIdInNotebook(notebookId, patientEncounterId);
+
+        // Verify
+        assertTrue("Should return true when DAO finds the patient encounter ID", result);
+        verify(baseObjectDAO, times(1)).existsByPatientEncounterIdInNotebook(notebookId, patientEncounterId);
+    }
+
+    /**
+     * Test: existsByPatientEncounterIdInNotebook delegates to DAO and returns false
+     * when not found
+     */
+    @Test
+    public void testExistsByPatientEncounterIdInNotebook_NotExistsReturnsFalse() {
+        // Setup
+        Integer notebookId = 1;
+        String patientEncounterId = "ENC-NONEXISTENT";
+
+        when(baseObjectDAO.existsByPatientEncounterIdInNotebook(notebookId, patientEncounterId)).thenReturn(false);
+
+        // Execute
+        boolean result = service.existsByPatientEncounterIdInNotebook(notebookId, patientEncounterId);
+
+        // Verify
+        assertFalse("Should return false when DAO does not find the patient encounter ID", result);
+        verify(baseObjectDAO, times(1)).existsByPatientEncounterIdInNotebook(notebookId, patientEncounterId);
+    }
+
+    /**
+     * Test: existsByPatientEncounterIdInNotebook handles different notebook IDs
+     * correctly (uniqueness is scoped to notebook)
+     */
+    @Test
+    public void testExistsByPatientEncounterIdInNotebook_DifferentNotebooks_SeparateScope() {
+        // Setup - same encounter ID exists in notebook 1 but not in notebook 2
+        String patientEncounterId = "ENC-2024-001";
+        Integer notebook1Id = 1;
+        Integer notebook2Id = 2;
+
+        when(baseObjectDAO.existsByPatientEncounterIdInNotebook(notebook1Id, patientEncounterId)).thenReturn(true);
+        when(baseObjectDAO.existsByPatientEncounterIdInNotebook(notebook2Id, patientEncounterId)).thenReturn(false);
+
+        // Execute
+        boolean existsInNotebook1 = service.existsByPatientEncounterIdInNotebook(notebook1Id, patientEncounterId);
+        boolean existsInNotebook2 = service.existsByPatientEncounterIdInNotebook(notebook2Id, patientEncounterId);
+
+        // Verify - same encounter ID can exist in one notebook but not another
+        assertTrue("Should find encounter ID in notebook 1", existsInNotebook1);
+        assertFalse("Should NOT find encounter ID in notebook 2", existsInNotebook2);
+    }
 }

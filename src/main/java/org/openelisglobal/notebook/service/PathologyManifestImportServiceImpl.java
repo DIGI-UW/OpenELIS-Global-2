@@ -50,19 +50,8 @@ public class PathologyManifestImportServiceImpl implements PathologyManifestImpo
      * hematology, and research specimens.
      */
     private static final java.util.Set<String> VALID_PATHOLOGY_SAMPLE_TYPES = java.util.Set.of(
-            // Histopathology
-            "ffpe tissue block", "fresh biopsy", "surgical resection",
-            // Cytopathology
-            "fine needle aspirate (fna)", "pleural fluid", "peritoneal fluid", "pericardial fluid", "csf for cytology",
-            "urine for cytology", "sputum for cytology", "cervical smear",
-            // Hematology
-            "edta blood (peripheral smear)",
-            // Research specimens
-            "human tissue (fresh)", "human tissue (frozen)", "human tissue (ffpe)", "animal tissue (mouse footpad)",
-            "animal tissue (nerve)", "bacterial/cellular pellet", "primary cell culture",
-            // Processed samples
-            "tissue slide", "cell block", "lbc (liquid-based cytology) vial", "blood smear slide",
-            "nucleic acid extract");
+            // Core pathology specimen types
+            "tissue", "cytology", "body fluid", "blood", "bone marrow");
 
     @Autowired
     private TypeOfSampleService typeOfSampleService;
@@ -120,6 +109,10 @@ public class PathologyManifestImportServiceImpl implements PathologyManifestImpo
             Integer specimenTypeIdx = getColumnIndex(columnIndex, columnMapping.getSpecimenTypeColumn());
             Integer specimenSiteIdx = getColumnIndex(columnIndex, columnMapping.getSpecimenSiteColumn());
             Integer collectionDateTimeIdx = getColumnIndex(columnIndex, columnMapping.getCollectionDateTimeColumn());
+            Integer collectionMethodIdx = getColumnIndex(columnIndex, columnMapping.getCollectionMethodColumn());
+            Integer collectorIdx = getColumnIndex(columnIndex, columnMapping.getCollectorColumn());
+            Integer processingConditionIdx = getColumnIndex(columnIndex, columnMapping.getProcessingConditionColumn());
+            Integer laboratoryMaterialIdx = getColumnIndex(columnIndex, columnMapping.getLaboratoryMaterialColumn());
             // Clinical metadata
             Integer patientIdIdx = getColumnIndex(columnIndex, columnMapping.getPatientIdColumn());
             Integer requestingClinicianIdx = getColumnIndex(columnIndex, columnMapping.getRequestingClinicianColumn());
@@ -155,6 +148,10 @@ public class PathologyManifestImportServiceImpl implements PathologyManifestImpo
                 String specimenType = getValueAtIndex(values, specimenTypeIdx);
                 String specimenSite = getValueAtIndex(values, specimenSiteIdx);
                 String collectionDateTime = getValueAtIndex(values, collectionDateTimeIdx);
+                String collectionMethod = getValueAtIndex(values, collectionMethodIdx);
+                String collector = getValueAtIndex(values, collectorIdx);
+                String processingCondition = getValueAtIndex(values, processingConditionIdx);
+                String laboratoryMaterial = getValueAtIndex(values, laboratoryMaterialIdx);
                 // Clinical metadata
                 String patientId = getValueAtIndex(values, patientIdIdx);
                 String requestingClinician = getValueAtIndex(values, requestingClinicianIdx);
@@ -181,16 +178,11 @@ public class PathologyManifestImportServiceImpl implements PathologyManifestImpo
                 }
 
                 // Use the sampleCategory passed from controller (determined by endpoint type)
-                rows.add(new PathologyManifestRow(rowNumber, firstName.trim(), surname, nationalId, sampleCategory, // Use
-                                                                                                                    // the
-                                                                                                                    // category
-                                                                                                                    // from
-                                                                                                                    // endpoint,
-                                                                                                                    // not
-                                                                                                                    // CSV
+                rows.add(new PathologyManifestRow(rowNumber, firstName.trim(), surname, nationalId, sampleCategory,
                         receivedDateTime, receivedBy, sourceFacility, specimenType.trim(), specimenSite,
-                        collectionDateTime, patientId, requestingClinician, clinicalDetails, studyId, piName,
-                        participantAnimalId, ethicalApprovalRef, remarks));
+                        collectionDateTime, collectionMethod, collector, processingCondition, laboratoryMaterial,
+                        patientId, requestingClinician, clinicalDetails, studyId, piName, participantAnimalId,
+                        ethicalApprovalRef, remarks));
             }
 
         } catch (IOException e) {
@@ -239,7 +231,32 @@ public class PathologyManifestImportServiceImpl implements PathologyManifestImpo
                 errors.add(new ParseError(row.rowNumber(), "collectionDateTime", "Collection Date & Time is required"));
             }
 
-            // Note: Specimen Site is OPTIONAL (not required)
+            // Sample Attributes - ALL MANDATORY
+            // Specimen Site (Patient Site / Anatomical Source) is required
+            if (row.specimenSite() == null || row.specimenSite().isBlank()) {
+                errors.add(new ParseError(row.rowNumber(), "specimenSite",
+                        "Patient Site / Anatomical Source is required"));
+            }
+
+            // Collection Method is required
+            if (row.collectionMethod() == null || row.collectionMethod().isBlank()) {
+                errors.add(new ParseError(row.rowNumber(), "collectionMethod", "Collection Method is required"));
+            }
+
+            // Collector is required
+            if (row.collector() == null || row.collector().isBlank()) {
+                errors.add(new ParseError(row.rowNumber(), "collector", "Collector / Personnel is required"));
+            }
+
+            // Processing Condition is required
+            if (row.processingCondition() == null || row.processingCondition().isBlank()) {
+                errors.add(new ParseError(row.rowNumber(), "processingCondition", "Processing Condition is required"));
+            }
+
+            // Laboratory Material is required
+            if (row.laboratoryMaterial() == null || row.laboratoryMaterial().isBlank()) {
+                errors.add(new ParseError(row.rowNumber(), "laboratoryMaterial", "Laboratory Material is required"));
+            }
 
             if (PathologyManifestImportService.isClinical(row)) {
                 // Clinical samples require patient ID, requesting clinician, clinical details
@@ -368,8 +385,44 @@ public class PathologyManifestImportServiceImpl implements PathologyManifestImpo
             createdSamples.add(item);
             createdAccessionNumbers.add(parentSample.getAccessionNumber());
 
+            // Build sample data map with all manifest metadata
+            Map<String, Object> sampleData = new HashMap<>();
+            sampleData.put("firstName", row.firstName());
+            if (row.surname() != null)
+                sampleData.put("surname", row.surname());
+            if (row.nationalId() != null)
+                sampleData.put("nationalId", row.nationalId());
+            sampleData.put("sampleCategory", row.sampleCategory());
+            sampleData.put("receivedDateTime", row.receivedDateTime());
+            sampleData.put("receivedBy", row.receivedBy());
+            if (row.sourceFacility() != null)
+                sampleData.put("sourceFacility", row.sourceFacility());
+            sampleData.put("specimenType", row.specimenType());
+            sampleData.put("specimenSite", row.specimenSite());
+            sampleData.put("collectionDateTime", row.collectionDateTime());
+            sampleData.put("collectionMethod", row.collectionMethod());
+            sampleData.put("collector", row.collector());
+            sampleData.put("processingCondition", row.processingCondition());
+            sampleData.put("laboratoryMaterial", row.laboratoryMaterial());
+            if (row.patientId() != null)
+                sampleData.put("patientEncounterId", row.patientId());
+            if (row.requestingClinician() != null)
+                sampleData.put("requestingClinician", row.requestingClinician());
+            if (row.clinicalDetails() != null)
+                sampleData.put("clinicalDetails", row.clinicalDetails());
+            if (row.studyId() != null)
+                sampleData.put("studyId", row.studyId());
+            if (row.piName() != null)
+                sampleData.put("piName", row.piName());
+            if (row.participantAnimalId() != null)
+                sampleData.put("participantAnimalId", row.participantAnimalId());
+            if (row.ethicalApprovalRef() != null)
+                sampleData.put("ethicalApprovalRef", row.ethicalApprovalRef());
+            if (row.remarks() != null)
+                sampleData.put("remarks", row.remarks());
+
             // Add sample to entry with all metadata
-            notebookEntryService.addSample(entryId, item, sysUserId);
+            notebookEntryService.addSampleWithData(entryId, item, sampleData, sysUserId);
 
             sequenceNumber++;
         }

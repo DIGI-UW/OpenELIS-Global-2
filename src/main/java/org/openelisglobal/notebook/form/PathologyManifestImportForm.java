@@ -56,10 +56,22 @@ public class PathologyManifestImportForm {
     private String specimenTypeColumn;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String specimenSiteColumn; // e.g., "liver biopsy", "lung FNA"
+    private String specimenSiteColumn; // Patient Site / Anatomical Source
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String collectionDateTimeColumn;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String collectionMethodColumn; // Biopsy, FNAC, fluid aspiration, blood draw, amputation
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String collectorColumn; // Collector / Personnel
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String processingConditionColumn; // Fresh, Fixed, Frozen, FFPE, etc.
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String laboratoryMaterialColumn; // Blocks, Slides, Smears, DNA/RNA extracts, Frozen sections
 
     // ========== CLINICAL SAMPLE COLUMNS ==========
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
@@ -180,6 +192,38 @@ public class PathologyManifestImportForm {
 
     public void setCollectionDateTimeColumn(String collectionDateTimeColumn) {
         this.collectionDateTimeColumn = collectionDateTimeColumn;
+    }
+
+    public String getCollectionMethodColumn() {
+        return collectionMethodColumn;
+    }
+
+    public void setCollectionMethodColumn(String collectionMethodColumn) {
+        this.collectionMethodColumn = collectionMethodColumn;
+    }
+
+    public String getCollectorColumn() {
+        return collectorColumn;
+    }
+
+    public void setCollectorColumn(String collectorColumn) {
+        this.collectorColumn = collectorColumn;
+    }
+
+    public String getProcessingConditionColumn() {
+        return processingConditionColumn;
+    }
+
+    public void setProcessingConditionColumn(String processingConditionColumn) {
+        this.processingConditionColumn = processingConditionColumn;
+    }
+
+    public String getLaboratoryMaterialColumn() {
+        return laboratoryMaterialColumn;
+    }
+
+    public void setLaboratoryMaterialColumn(String laboratoryMaterialColumn) {
+        this.laboratoryMaterialColumn = laboratoryMaterialColumn;
     }
 
     public String getPatientIdColumn() {

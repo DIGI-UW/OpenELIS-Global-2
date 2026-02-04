@@ -10,36 +10,32 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.dao.DataIntegrityViolationException;
 
 /**
- * Generic utility class for handling safe accession number generation and insertion
- * with automatic retry logic for duplicate accession numbers.
+ * Generic utility class for handling safe accession number generation and
+ * insertion with automatic retry logic for duplicate accession numbers.
  *
- * This class provides a thread-safe mechanism to generate accession numbers and insert
- * samples while handling duplicate key violations gracefully. It can be used by any
- * manifest import service to ensure accession number uniqueness across single and
- * multi-instance deployments.
+ * This class provides a thread-safe mechanism to generate accession numbers and
+ * insert samples while handling duplicate key violations gracefully. It can be
+ * used by any manifest import service to ensure accession number uniqueness
+ * across single and multi-instance deployments.
  *
- * Features:
- * - Synchronized access to prevent concurrent duplicate generation
- * - Database-level verification before insertion
- * - Configurable retry logic (default: 100 attempts)
- * - Exception handling for DataIntegrityViolationException
- * - Automatic database flush to ensure visibility
- * - Detailed logging and error reporting
+ * Features: - Synchronized access to prevent concurrent duplicate generation -
+ * Database-level verification before insertion - Configurable retry logic
+ * (default: 100 attempts) - Exception handling for
+ * DataIntegrityViolationException - Automatic database flush to ensure
+ * visibility - Detailed logging and error reporting
  *
  * Usage Example:
+ * 
  * <pre>
  * {@code
- * AccessionNumberHandler handler = new AccessionNumberHandler(
- *     sampleService, sampleDAO, entityManager, logger
- * );
+ * AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO, entityManager, logger);
  *
  * Sample sample = new Sample();
  * sample.setSysUserId(userId);
  * sample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
  *
- * String sampleIdDb = handler.generateAndInsertWithUniqueAccessionNumber(
- *     sample, AccessionNumberHandler.DEFAULT_MAX_ATTEMPTS
- * );
+ * String sampleIdDb = handler.generateAndInsertWithUniqueAccessionNumber(sample,
+ *         AccessionNumberHandler.DEFAULT_MAX_ATTEMPTS);
  * }
  * </pre>
  *
@@ -64,12 +60,12 @@ public class AccessionNumberHandler {
      * Constructor for AccessionNumberHandler
      *
      * @param sampleService the sample service for database operations
-     * @param sampleDAO the sample DAO for fallback accession number generation
+     * @param sampleDAO     the sample DAO for fallback accession number generation
      * @param entityManager the entity manager for flushing changes
-     * @param callerClass the class using this handler (for logging purposes)
+     * @param callerClass   the class using this handler (for logging purposes)
      */
-    public AccessionNumberHandler(SampleService sampleService, SampleDAO sampleDAO,
-            EntityManager entityManager, Class<?> callerClass) {
+    public AccessionNumberHandler(SampleService sampleService, SampleDAO sampleDAO, EntityManager entityManager,
+            Class<?> callerClass) {
         this.sampleService = sampleService;
         this.sampleDAO = sampleDAO;
         this.entityManager = entityManager;
@@ -83,18 +79,19 @@ public class AccessionNumberHandler {
      * This method is synchronized to prevent concurrent accession number generation
      * from creating duplicates within a single instance. However, it also includes
      * exception handling for DataIntegrityViolationException to handle cases where
-     * another instance inserts a conflicting accession number between the check
-     * and insert operations.
+     * another instance inserts a conflicting accession number between the check and
+     * insert operations.
      *
-     * @param sample the sample to insert (must have sysUserId, enteredDate, and
-     *        receivedTimestamp set)
+     * @param sample      the sample to insert (must have sysUserId, enteredDate,
+     *                    and receivedTimestamp set)
      * @param maxAttempts the maximum number of retry attempts (use
-     *        DEFAULT_MAX_ATTEMPTS for 100)
+     *                    DEFAULT_MAX_ATTEMPTS for 100)
      * @return the database ID of the inserted sample
      * @throws DuplicateAccessionNumberException if unable to generate a unique
-     *         accession number after maxAttempts
-     * @throws DataIntegrityViolationException if database constraint violation occurs
-     *         other than duplicate accession number
+     *                                           accession number after maxAttempts
+     * @throws DataIntegrityViolationException   if database constraint violation
+     *                                           occurs other than duplicate
+     *                                           accession number
      */
     public String generateAndInsertWithUniqueAccessionNumber(Sample sample, int maxAttempts) {
         synchronized (ACCESSION_NUMBER_LOCK) {
@@ -111,16 +108,14 @@ public class AccessionNumberHandler {
                 } else {
                     attempts++;
                     LogEvent.logWarn(CLASS_NAME, "generateAndInsertWithUniqueAccessionNumber",
-                            "Accession number '" + candidateNumber + "' already exists. "
-                                    + "Retrying (attempt " + attempts + "/" + maxAttempts + ")");
+                            "Accession number '" + candidateNumber + "' already exists. " + "Retrying (attempt "
+                                    + attempts + "/" + maxAttempts + ")");
                 }
             }
 
             if (generatedAccessionNumber == null) {
-                String errorMsg = "Failed to generate unique accession number after " + maxAttempts
-                        + " attempts";
-                LogEvent.logError(CLASS_NAME, "generateAndInsertWithUniqueAccessionNumber",
-                        errorMsg);
+                String errorMsg = "Failed to generate unique accession number after " + maxAttempts + " attempts";
+                LogEvent.logError(CLASS_NAME, "generateAndInsertWithUniqueAccessionNumber", errorMsg);
                 throw new DuplicateAccessionNumberException(errorMsg);
             }
 
@@ -135,10 +130,9 @@ public class AccessionNumberHandler {
                 entityManager.flush();
 
                 String sampleId = sample.getId();
-                LogEvent.logInfo(CLASS_NAME,
-                        "generateAndInsertWithUniqueAccessionNumber",
-                        "Successfully created sample with accession number '" + generatedAccessionNumber
-                                + "' and ID '" + sampleId + "'");
+                LogEvent.logInfo(CLASS_NAME, "generateAndInsertWithUniqueAccessionNumber",
+                        "Successfully created sample with accession number '" + generatedAccessionNumber + "' and ID '"
+                                + sampleId + "'");
 
                 return sampleId;
             } catch (DataIntegrityViolationException e) {
@@ -155,8 +149,7 @@ public class AccessionNumberHandler {
                         String errorMsg = "Failed to insert sample after " + maxAttempts
                                 + " attempts due to duplicate accession numbers";
                         LogEvent.logError(errorMsg, e);
-                        throw new DuplicateAccessionNumberException(generatedAccessionNumber, attempts,
-                                maxAttempts, e);
+                        throw new DuplicateAccessionNumberException(generatedAccessionNumber, attempts, maxAttempts, e);
                     }
                 } else {
                     // Not a duplicate accession number violation, re-throw
@@ -167,8 +160,8 @@ public class AccessionNumberHandler {
     }
 
     /**
-     * Checks if a DataIntegrityViolationException is caused by a duplicate accession
-     * number constraint violation.
+     * Checks if a DataIntegrityViolationException is caused by a duplicate
+     * accession number constraint violation.
      *
      * This method checks for the "accnum_uk" unique constraint that exists on the
      * ACCESSION_NUMBER column in the SAMPLE table.
@@ -181,7 +174,8 @@ public class AccessionNumberHandler {
         String message = e.getMessage();
         if (message != null) {
             // Check for PostgreSQL unique constraint violation on accession number
-            if (message.contains("accnum_uk") || message.contains("duplicate key") && message.contains("accession_number")) {
+            if (message.contains("accnum_uk")
+                    || message.contains("duplicate key") && message.contains("accession_number")) {
                 return true;
             }
         }
@@ -190,7 +184,8 @@ public class AccessionNumberHandler {
         Throwable cause = e.getCause();
         if (cause != null) {
             String causeMessage = cause.getMessage();
-            if (causeMessage != null && (causeMessage.contains("accnum_uk") || causeMessage.contains("duplicate key") && causeMessage.contains("accession_number"))) {
+            if (causeMessage != null && (causeMessage.contains("accnum_uk")
+                    || causeMessage.contains("duplicate key") && causeMessage.contains("accession_number"))) {
                 return true;
             }
         }
@@ -199,8 +194,8 @@ public class AccessionNumberHandler {
     }
 
     /**
-     * Gets the next accession number using the accession number generator or fallback
-     * to DAO if generator is unavailable.
+     * Gets the next accession number using the accession number generator or
+     * fallback to DAO if generator is unavailable.
      *
      * This method should be called from within the synchronized block to ensure
      * thread safety.
@@ -228,7 +223,7 @@ public class AccessionNumberHandler {
      * @param sample the sample to insert
      * @return the database ID of the inserted sample
      * @throws DuplicateAccessionNumberException if unable to generate a unique
-     *         accession number
+     *                                           accession number
      */
     public String generateAndInsertWithUniqueAccessionNumber(Sample sample) {
         return generateAndInsertWithUniqueAccessionNumber(sample, DEFAULT_MAX_ATTEMPTS);
