@@ -7,6 +7,8 @@
 
 #local use files
 liqubase.properties
+id_file
+.env
 
 # IDE files #
 .idea/
@@ -66,6 +68,12 @@ volume/branding/*
 # These are generated on-the-fly during test runs from authoritative XML sources
 src/test/resources/testdata/*.generated.sql
 
+.dev-docs/
+
+# Playwright test artifacts
+**/playwright-report/
+**/playwright/
+**/test-results/
 # Catalyst dev files
 projects/catalyst/.env
 projects/catalyst/logs/
@@ -74,3 +82,7 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+*.bak
+
+cypress-screenshots/
+cypress-videos/

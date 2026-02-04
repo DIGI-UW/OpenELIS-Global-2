@@ -2,7 +2,6 @@ name: OpenELIS Frontend QA framework workflow
 
 on:
   pull_request:
-     branches: [develop]
   workflow_dispatch:
   workflow_call: 
 
@@ -76,12 +75,25 @@ jobs:
         env:
           CI: true
 
+      # Use .env.example as single source of truth: copy to .env so Docker Compose
+      # loads it for ${VAR} substitution (OE_DB_PASSWORD, SSL_*, etc.).
+      - name: Prepare .env from template
+        run: cp .env.example .env
+
       - name: Build OpenELIS Images and Run containers
         run: docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
+
+      - name: Load test fixtures into database
+        run: |
+          docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims --set=ON_ERROR_STOP=on < src/test/resources/e2e-foundational-data.sql
+          docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims --set=ON_ERROR_STOP=on < src/test/resources/analyzer-test-data.sql
 
       - name: Run Frontend QA Workflow (Headless Chrome)
         run: npx cypress run --browser chrome --headless
         working-directory: frontend
+        env:
+          E2E_FAIL_FAST: true  # Stop on first failure (saves CI time)
+          CYPRESS_BASE_URL: https://localhost  # Use localhost in CI (containers run locally)
 
       # Upload Cypress screenshots on failure for debugging
       - name: Upload Cypress screenshots on failure
