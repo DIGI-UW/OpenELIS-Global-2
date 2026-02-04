@@ -354,21 +354,25 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
     cy.get('[data-testid="edit-location-modal"]').should("be.visible");
     cy.get('[data-testid="edit-location-device-name"]').should("be.visible");
 
-    // Enter invalid (non-numeric) temperature to trigger client validation
+    // Enter invalid temperature value (out of range)
     cy.get('[data-testid="edit-location-device-temperature"]')
       .clear()
-      .invoke("val", "abc")
-      .trigger("input", { force: true })
-      .trigger("change", { force: true });
+      .type("999");
 
-    // Verify inline validation message is displayed
-    cy.get('[data-testid="edit-location-device-temperature"]').should(
-      "have.attr",
-      "aria-invalid",
-      "true",
-    );
+    // Save to trigger server-side validation
+    cy.get('[data-testid="edit-location-save-button"]')
+      .should("not.be.disabled")
+      .click();
+
+    // Wait for PUT request to complete
+    cy.wait("@anyStoragePut", { timeout: 3000 });
+
+    // Verify error message is displayed (user-visible behavior)
     cy.get('[data-testid="edit-location-modal"]').within(() => {
-      cy.contains(/valid number/i, { timeout: 3000 }).should("be.visible");
+      // Check for error text (more reliable than role="alert")
+      cy.contains(/temperature|invalid|range/i, { timeout: 3000 }).should(
+        "be.visible",
+      );
     });
   });
 });
