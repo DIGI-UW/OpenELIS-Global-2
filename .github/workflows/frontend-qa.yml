@@ -3,7 +3,7 @@ name: OpenELIS Frontend QA framework workflow
 on:
   pull_request:
   workflow_dispatch:
-  workflow_call: 
+  workflow_call:
 
 env:
   DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-frontend
@@ -67,7 +67,7 @@ jobs:
 
       - name: Check Format
         run: npx prettier ./ --check
-        working-directory: frontend  
+        working-directory: frontend
 
       - name: Run Frontend Unit Tests (Jest)
         run: npm test -- --watchAll=false --coverage=false
@@ -88,11 +88,29 @@ jobs:
           docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims --set=ON_ERROR_STOP=on < src/test/resources/e2e-foundational-data.sql
           docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims --set=ON_ERROR_STOP=on < src/test/resources/analyzer-test-data.sql
 
+      - name: Install Playwright Browsers
+        run: npx playwright install chromium --with-deps
+        working-directory: frontend
+
+      - name: Run Playwright E2E Tests
+        run: npm run pw:test
+        working-directory: frontend
+        env:
+          CI: true
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 30
+
       - name: Run Frontend QA Workflow (Headless Chrome)
         run: npx cypress run --browser chrome --headless
         working-directory: frontend
         env:
-          E2E_FAIL_FAST: true  # Stop on first failure (saves CI time)
+          E2E_FAIL_FAST: "true"  # Stop on first failure (saves CI time)
           CYPRESS_BASE_URL: https://localhost  # Use localhost in CI (containers run locally)
 
       # Upload Cypress screenshots on failure for debugging
@@ -118,4 +136,4 @@ jobs:
         with:
         # Only show last 100 lines of each
           tail: "100"
-          
+

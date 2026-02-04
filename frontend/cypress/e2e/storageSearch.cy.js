@@ -92,6 +92,7 @@ describe("Storage Search - Sample ID Search (P2A)", function () {
       cy.wait("@searchSampleItems", { timeout: 3000 });
 
       // Verify sample found and location displayed in table (retry-ability)
+      // Handle case where search returns no results
       cy.get('[data-testid="sample-row"]', { timeout: 3000 }).then(($rows) => {
         if ($rows.length === 0) {
           cy.log(

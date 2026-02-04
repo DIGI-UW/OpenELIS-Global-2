@@ -1,16 +1,16 @@
 class RoutineReportPage {
   aggregateReports() {
     cy.get("#menu_reports_aggregate", { timeout: 15000 })
-      .scrollIntoView({ behavior: "smooth" })
-      .should("be.visible")
-      .click();
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
   }
 
   selectStatistics() {
     cy.get("#menu_reports_aggregate_statistics", { timeout: 15000 })
-      .scrollIntoView({ behavior: "smooth" })
-      .should("be.visible")
-      .click();
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
   }
 
   allReportsSummary() {

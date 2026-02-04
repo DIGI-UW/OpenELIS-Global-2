@@ -71,10 +71,12 @@ src/test/resources/testdata/*.generated.sql
 
 .dev-docs/
 
-# Playwright test artifacts
+# Playwright test artifacts (generated, not source)
 **/playwright-report/
-**/playwright/
+**/playwright/.cache/
+**/playwright/.auth/
 **/test-results/
+# Note: frontend/playwright/ test sources are tracked (not ignored)
 # Catalyst dev files
 projects/catalyst/.env
 projects/catalyst/logs/

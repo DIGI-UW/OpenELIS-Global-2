@@ -69,7 +69,8 @@ module.exports = defineConfig({
   video: false, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
   watchForFileChanges: false,
   screenshotOnRunFailure: true, // Take screenshots on failure (required per Constitution V.5)
-
+  // Stop on first spec failure when E2E_FAIL_FAST is set (e.g. in CI)
+  bail: process.env.E2E_FAIL_FAST === "true" ? 1 : false,
   env: {
     // Env-controlled fail-fast using cypress-fail-fast plugin
     // Set E2E_FAIL_FAST=true to stop on first failure (saves CI time)

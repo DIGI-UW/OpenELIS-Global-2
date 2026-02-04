@@ -64,7 +64,14 @@
     "cy:admin": "unset ELECTRON_RUN_AS_NODE && cypress run --headless --browser chrome --spec 'cypress/e2e/AdminE2E/*.cy.js'",
     "cy:analyzer": "unset ELECTRON_RUN_AS_NODE && cypress run --headless --browser chrome --spec 'cypress/e2e/analyzer*.cy.js'",
     "cy:failfast": "unset ELECTRON_RUN_AS_NODE && E2E_FAIL_FAST=true cypress run --headless --browser chrome",
-    "cy:failfast:spec": "unset ELECTRON_RUN_AS_NODE && E2E_FAIL_FAST=true cypress run --headless --browser chrome --spec"
+    "cy:failfast:spec": "unset ELECTRON_RUN_AS_NODE && E2E_FAIL_FAST=true cypress run --headless --browser chrome --spec",
+    "cy:quick": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000",
+    "cy:single": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000 --spec",
+    "cy:debug": "ELECTRON_ENABLE_LOGGING=1 cypress run --browser electron --config video=false,defaultCommandTimeout=10000",
+    "pw:install": "playwright install chromium",
+    "pw:test": "playwright test",
+    "pw:test:ui": "playwright test --ui",
+    "pw:test:headed": "playwright test --headed"
   },
   "jest": {
     "transformIgnorePatterns": [
@@ -97,6 +104,7 @@
     "**/@types/react": "16.14.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@testing-library/react-hooks": "^8.0.1",
     "cypress": "^15.9.0",
     "cypress-fail-fast": "^7.1.1",
