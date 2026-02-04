@@ -3,9 +3,12 @@ description:
   Execute the implementation plan by processing and executing all tasks defined
   in tasks.md
 scripts:
-  sh: scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks
+  sh:
+    .specify/scripts/bash/check-prerequisites.sh --json --require-tasks
+    --include-tasks
   ps:
-    scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
+    .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks
+    -IncludeTasks
 ---
 
 ## User Input

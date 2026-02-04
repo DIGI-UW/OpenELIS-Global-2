@@ -356,7 +356,24 @@ public class LogbookResultsController extends LogbookResultsBaseController {
         boolean supportReferrals = FormFields.getInstance().useField(Field.ResultsReferral);
         String statusRuleSet = ConfigurationProperties.getInstance().getPropertyValueUpperCase(Property.StatusRules);
 
-        // load testSections for drop down
+        if (form.getTestResult() != null) {
+            for (TestResultItem item : form.getTestResult()) {
+                if ("M".equals(item.getResultType()) || "C".equals(item.getResultType())) {
+
+                    String raw = item.getMultiSelectResultValues();
+
+                    if (raw != null && !raw.isEmpty()) {
+
+                        String json = extractMultiSelectJson(raw);
+
+                        if (json != null) {
+                            item.setMultiSelectResultValues(json);
+                        }
+                    }
+                }
+            }
+        }
+
         String resultsRoleId = roleService.getRoleByName(Constants.ROLE_RESULTS).getId();
         List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), resultsRoleId);
         form.setTestSections(testSections);
@@ -803,6 +820,87 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             sig.setSysUserId(getSysUserId(request));
         }
         return sig;
+    }
+
+    private String extractMultiSelectJson(String input) {
+
+        String bestJson = null;
+        int maxKeyCount = 0;
+
+        StringBuilder current = new StringBuilder();
+        boolean inObject = false;
+        int braceDepth = 0;
+
+        for (int i = 0; i < input.length(); i++) {
+            char ch = input.charAt(i);
+
+            if (ch == '{') {
+                inObject = true;
+                braceDepth++;
+                current.setLength(0);
+            }
+
+            if (inObject) {
+                current.append(ch);
+            }
+
+            if (ch == '}') {
+                braceDepth--;
+                if (braceDepth == 0) {
+                    inObject = false;
+
+                    String json = current.toString();
+                    int keyCount = countNumericKeys(json);
+
+                    if (keyCount > maxKeyCount) {
+                        maxKeyCount = keyCount;
+                        bestJson = json;
+                    }
+                }
+            }
+        }
+
+        return bestJson;
+    }
+
+    private int countNumericKeys(String json) {
+        boolean insideQuotes = false;
+        StringBuilder key = new StringBuilder();
+        int count = 0;
+
+        for (int i = 0; i < json.length(); i++) {
+            char ch = json.charAt(i);
+
+            if (ch == '"') {
+                insideQuotes = !insideQuotes;
+
+                if (!insideQuotes) {
+                    // closing quote
+                    if (i + 1 < json.length() && json.charAt(i + 1) == ':') {
+                        if (isDigits(key.toString())) {
+                            count++;
+                        }
+                    }
+                    key.setLength(0);
+                }
+                continue;
+            }
+
+            if (insideQuotes) {
+                key.append(ch);
+            }
+        }
+        return count;
+    }
+
+    private boolean isDigits(String s) {
+        if (s.isEmpty())
+            return false;
+        for (char c : s.toCharArray()) {
+            if (!Character.isDigit(c))
+                return false;
+        }
+        return true;
     }
 
     private String findLogBookForward(String forward) {
