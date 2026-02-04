@@ -249,10 +249,10 @@ src/main/java/org/openelisglobal/storage/
     └── StorageLocationFhirTransform.java - FHIR Location mapping
 
 src/main/resources/
-├── liquibase/storage/
-│   ├── 001-create-storage-tables.xml
+├── liquibase/3.3.x.x/
+│   ├── 001-create-storage-hierarchy-tables.xml
 │   ├── 002-create-assignment-tables.xml
-│   └── 003-add-fhir-uuid-columns.xml
+│   └── 003-create-indexes.xml
 └── hibernate/hbm/
     ├── StorageRoom.hbm.xml
     ├── StorageDevice.hbm.xml
@@ -1275,8 +1275,8 @@ simplified label printing (see Amendment 2025-11-16).
   (new)
 - `src/test/java/org/openelisglobal/storage/controller/LabelManagementRestControllerTest.java`
   (new)
-- `src/main/resources/liquibase/storage/004-create-print-history-table.xml`
-  (new)
+- `src/main/resources/liquibase/3.3.x.x/XXX-create-print-history-table.xml`
+  (new - use next available sequence number)
 
 **Frontend**:
 

@@ -58,14 +58,13 @@ import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
 
 export default function App() {
-  let i18nConfig = {
-    locale: navigator.language.split(/[-_]/)[0],
-    defaultLocale: "en",
-    messages: languages["en"].messages,
-  };
-
   const defaultLocale =
     localStorage.getItem("locale") || navigator.language.split(/[-_]/)[0];
+
+  const initialLocale = languages[defaultLocale] ? defaultLocale : "en";
+
+  const [locale, setLocale] = useState(initialLocale);
+  const [messages, setMessages] = useState(languages[initialLocale].messages);
 
   const [userSessionDetails, setUserSessionDetails] = useState({});
   const [errorLoadingSessionDetails, setErrorLoadingSessionDetails] =
@@ -130,10 +129,6 @@ export default function App() {
     return userSessionDetails;
   };
 
-  i18nConfig.locale = languages[defaultLocale] ? defaultLocale : "en";
-
-  i18nConfig.messages = languages[i18nConfig.locale].messages;
-
   const logout = () => {
     if (userSessionDetails.loginMethod === "SAML") {
       fetch(config.serverBaseUrl + "/Logout?useSAML=true", {
@@ -146,18 +141,19 @@ export default function App() {
       })
         .then((response) => response.text())
         .then((html) => {
-          const POPUP_HEIGHT = 700;
-          const POPUP_WIDTH = 600;
-          const top =
-            window.outerHeight / 2 + window.screenY - POPUP_HEIGHT / 2;
-          const left = window.outerWidth / 2 + window.screenX - POPUP_WIDTH / 2;
-          const newWindow = window.open(
-            "",
-            "SAML Popup",
-            `height=${POPUP_HEIGHT},width=${POPUP_WIDTH},top=${top},left=${left}`,
-          );
-          newWindow.document.write(html);
-          newWindow.document.close();
+          // Use a hidden iframe instead of a popup to process SAML SLO silently
+          const iframe = document.createElement("iframe");
+          iframe.style.display = "none";
+          iframe.name = "saml-logout-frame";
+          document.body.appendChild(iframe);
+          iframe.contentDocument.write(html);
+          iframe.contentDocument.close();
+          // Remove the iframe after a short delay to allow the logout request to complete
+          setTimeout(() => {
+            if (iframe.parentNode) {
+              iframe.parentNode.removeChild(iframe);
+            }
+          }, 5000);
           getUserSessionDetails();
           window.location.href = config.loginRedirect;
         })
@@ -188,8 +184,8 @@ export default function App() {
     if (!languages[lang]) {
       lang = "en";
     }
-    i18nConfig.messages = languages[lang].messages;
-    i18nConfig.locale = lang;
+    setLocale(lang);
+    setMessages(languages[lang].messages);
     localStorage.setItem("locale", lang);
   };
 
@@ -223,10 +219,10 @@ export default function App() {
 
   return (
     <IntlProvider
-      locale={i18nConfig.locale}
-      key={i18nConfig.locale}
-      defaultLocale={i18nConfig.defaultLocale}
-      messages={i18nConfig.messages}
+      locale={locale}
+      key={locale}
+      defaultLocale="en"
+      messages={messages}
     >
       <UserSessionDetailsContext.Provider
         value={{

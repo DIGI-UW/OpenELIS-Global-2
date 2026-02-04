@@ -53,7 +53,7 @@ possible to make the addition of the new system as seamless as possible.
 - _Site Overview_
 
   a short Description of the laboratory activity (EG: which lab units are
-  present, how are they oprganized)
+  present, how are they organized)
 
 - _Workflows_
 

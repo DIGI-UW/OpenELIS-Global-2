@@ -382,8 +382,12 @@ production.
 
 **How:**
 
-- Schema migrations in `src/main/resources/liquibase/{module}/`
-- Changesets with unique IDs: `{module}-{sequence}-{description}`
+- Schema migrations in `src/main/resources/liquibase/{version}/` (e.g.,
+  `3.3.x.x/`)
+- Changesets with unique IDs: `{sequence}-{description}` (e.g.,
+  `023-storage-device-connectivity`)
+- All changesets MUST be placed inside versioned folders - NO module-specific
+  folders outside version directories
 - Use Liquibase XML format (NOT raw SQL unless necessary)
 - Rollback scripts MUST be provided for structural changes
 - Test migrations on empty database AND production-like data volume
@@ -508,19 +512,31 @@ every stage.
 **Setup (Required for AI Agents):**
 
 Before using SpecKit commands, install them to your AI agent's command
-directory:
+directory. This is the **single entry point** for SpecKit setup:
+
+**Cross-platform (Python 3.7+):**
 
 ```bash
 # Install commands for all supported AI agents (Cursor + Claude Code)
-./.specify/scripts/bash/install-commands.sh
+python scripts/install-speckit-commands.py
 
 # Or install for specific agent only
-./.specify/scripts/bash/install-commands.sh cursor   # Cursor IDE
-./.specify/scripts/bash/install-commands.sh claude   # Claude Code CLI
+python scripts/install-speckit-commands.py cursor   # Cursor IDE
+python scripts/install-speckit-commands.py claude   # Claude Code CLI
+
+# Skip confirmation prompt (for automation/CI)
+python scripts/install-speckit-commands.py -y all
 ```
 
-This copies command definitions from `.specify/commands/` to agent-specific
+> **Note:** A `.python-version` file is provided for version managers (pyenv,
+> asdf, uv). If you use one, it will automatically select Python 3.11.
+
+This compiles command definitions from `.specify/core/commands/` (upstream
+SpecKit) and `.specify/oe/commands/` (OpenELIS extensions) into agent-specific
 directories (`.cursor/commands/`, `.claude/commands/`).
+
+**CI Validation:** The CI pipeline automatically validates that all 9 SpecKit
+commands compile correctly and contain valid paths.
 
 **Available Commands:**
 
@@ -534,6 +550,7 @@ directories (`.cursor/commands/`, `.claude/commands/`).
 - `/speckit.analyze` - Cross-artifact consistency analysis
 - `/speckit.constitution` - Create/update project constitution
 - `/speckit.checklist` - Generate custom quality validation checklist
+- `/speckit.taskstoissues` - Convert tasks.md into GitHub issues
 
 **Standard Workflow:**
 

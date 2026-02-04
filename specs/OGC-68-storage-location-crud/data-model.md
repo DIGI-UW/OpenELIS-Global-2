@@ -28,7 +28,8 @@
 
 ### Liquibase Changeset
 
-**File**: `src/main/resources/liquibase/storage/storage-device-connectivity.xml`
+**File**:
+`src/main/resources/liquibase/3.3.x.x/023-storage-device-connectivity.xml`
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>

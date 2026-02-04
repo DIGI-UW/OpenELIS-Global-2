@@ -27,7 +27,7 @@ import {
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../utils/Utils.js";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -370,7 +370,9 @@ const TestCatalog = () => {
               onChange={handleSectionChange}
               selectedItems={selectedSections}
               selectionFeedback="top-after-reopen"
-              placeholder="Selected Tests"
+              placeholder={intl.formatMessage({
+                id: "field.select.testSection",
+              })}
             />
           </Column>
         </Grid>
