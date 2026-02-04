@@ -65,6 +65,21 @@ see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
 
 ### For Running OpenELIS Global2 from Source Code
 
+**Prerequisites for all methods below:**
+
+Before running any `docker compose` command, you must create a `.env` file with
+your environment configuration:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` to customize settings for your environment (database passwords,
+domain, etc.). See `.env.example` for detailed documentation of each variable.
+
+**IMPORTANT:** Never commit `.env` to version control as it contains secrets and
+server-specific settings.
+
 #### Running OpenELIS Global2 using docker compose With published docker images on dockerhub
 
     docker compose up -d
