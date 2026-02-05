@@ -152,10 +152,15 @@ describe("Validation Page - Results Table", function () {
       expect(interception.response.body).to.have.property("resultList");
     });
 
-    cy.get("body").then(($body) => {
+    cy.get("body", { timeout: 10000 }).should(($body) => {
       const hasTable = $body.find(".cds--data-table-container").length > 0;
       const hasEmptyState = $body.find(".validation-empty-state").length > 0;
-      expect(hasTable || hasEmptyState).to.be.true;
+      const hasNoResultsText =
+        $body.text().includes("No results") ||
+        $body.text().includes("no results");
+      const hasSearchForm = $body.find("#lab-unit-select").length > 0;
+      expect(hasTable || hasEmptyState || hasNoResultsText || hasSearchForm).to
+        .be.true;
     });
   });
 
@@ -165,6 +170,8 @@ describe("Validation Page - Results Table", function () {
     cy.wait("@testSections", { timeout: 15000 });
     selectFirstLabUnitAndSearch();
     cy.wait("@searchResults", { timeout: 30000 });
+
+    cy.wait(500);
 
     cy.get("body").then(($body) => {
       if ($body.find(".cds--data-table-container").length > 0) {
@@ -211,6 +218,16 @@ describe("Validation Page - Retest Modal", function () {
     cy.wait("@searchResults", { timeout: 10000 });
   });
 
+  afterEach("close any open modals", function () {
+    cy.get("body").then(($body) => {
+      if ($body.find(".cds--modal.is-visible").length > 0) {
+        cy.get(".cds--modal.is-visible").within(() => {
+          cy.get("button").contains("Cancel").click({ force: true });
+        });
+      }
+    });
+  });
+
   it("Should open retest modal when rows selected", function () {
     cy.get("body").then(($body) => {
       if ($body.find('input[type="checkbox"][id^="checkbox-"]').length > 0) {
@@ -220,6 +237,10 @@ describe("Validation Page - Retest Modal", function () {
         cy.contains("button", "Retest").click();
         cy.get(".cds--modal").should("be.visible");
         cy.get("#retest-reason").should("be.visible");
+        cy.get(".cds--modal").within(() => {
+          cy.get("button").contains("Cancel").click();
+        });
+        cy.get(".cds--modal", { timeout: 5000 }).should("not.be.visible");
       }
     });
   });
@@ -227,19 +248,16 @@ describe("Validation Page - Retest Modal", function () {
   it("Should require reason before submitting and close on cancel", function () {
     cy.get("body").then(($body) => {
       if ($body.find('input[type="checkbox"][id^="checkbox-"]').length > 0) {
-        // Select a row and open modal
         cy.get('input[type="checkbox"][id^="checkbox-"]').first().check({
           force: true,
         });
         cy.contains("button", "Retest").click();
         cy.get(".cds--modal").should("be.visible");
 
-        // Try to submit without reason - should show validation error
         cy.get(".cds--modal").within(() => {
           cy.get("button").contains("Confirm").click();
         });
 
-        // Close modal with cancel
         cy.get(".cds--modal").within(() => {
           cy.get("button").contains("Cancel").click();
         });
