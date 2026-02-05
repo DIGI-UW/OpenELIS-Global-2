@@ -123,7 +123,7 @@ describe("Search Patient", function () {
     });
     cy.wait(200).reload();
   });
-  it.skip("Search patient By Date Of Birth", function () {
+  it("Search patient By Date Of Birth", function () {
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
       patientPage.searchPatientByDateOfBirth(patient.DOB);
