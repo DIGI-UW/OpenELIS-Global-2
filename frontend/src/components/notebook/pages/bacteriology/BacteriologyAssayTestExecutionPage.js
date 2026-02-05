@@ -1043,34 +1043,25 @@ function BacteriologyAssayTestExecutionPage({
 
   const loadEnzymes = useCallback(() => {
     setLoadingEnzymes(true);
-    getFromOpenElisServer(
-      "/rest/inventory/items/type/ENZYME",
-      (response) => {
-        if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            const enzymeOptions = response.map((enzyme) => ({
-              id: enzyme.id,
-              text: enzyme.name,
-              name: enzyme.name,
-              catalogNumber: enzyme.catalogNumber,
-              manufacturer: enzyme.manufacturer,
-              ...enzyme,
-            }));
-            setEnzymes(enzymeOptions);
-          } else {
-            setEnzymes(PCR_ENZYMES); // Fallback to hardcoded list
-          }
-          setLoadingEnzymes(false);
-        }
-      },
-      () => {
-        // On error, use the hardcoded PCR_ENZYMES list as fallback
-        if (componentMounted.current) {
+    getFromOpenElisServer("/rest/inventory/items/type/ENZYME", (response) => {
+      if (componentMounted.current) {
+        if (response && Array.isArray(response)) {
+          const enzymeOptions = response.map((enzyme) => ({
+            id: enzyme.id,
+            text: enzyme.name,
+            name: enzyme.name,
+            catalogNumber: enzyme.catalogNumber,
+            manufacturer: enzyme.manufacturer,
+            ...enzyme,
+          }));
+          setEnzymes(enzymeOptions);
+        } else {
+          // Handle error or empty response - use hardcoded list as fallback
           setEnzymes(PCR_ENZYMES);
-          setLoadingEnzymes(false);
         }
-      },
-    );
+        setLoadingEnzymes(false);
+      }
+    });
   }, []);
 
   const loadAntibiotics = useCallback(() => {
@@ -1090,15 +1081,9 @@ function BacteriologyAssayTestExecutionPage({
             }));
             setAntibiotics(antibioticOptions);
           } else {
-            setAntibiotics([]); // No fallback hardcoded list needed
+            // Handle error or empty response
+            setAntibiotics([]);
           }
-          setLoadingAntibiotics(false);
-        }
-      },
-      () => {
-        // On error, set empty list
-        if (componentMounted.current) {
-          setAntibiotics([]);
           setLoadingAntibiotics(false);
         }
       },
@@ -6138,7 +6123,16 @@ function BacteriologyAssayTestExecutionPage({
                     <Dropdown
                       id={`antibiotic-name-${index}`}
                       label="Select"
-                      items={antibiotics}
+                      items={antibiotics.filter(
+                        (antibiotic) =>
+                          // Keep if it's the currently selected antibiotic for this row
+                          antibiotic.id === result.antibioticId ||
+                          // OR keep if it's not selected in any other row
+                          !antibioticResults.some(
+                            (r, i) =>
+                              i !== index && r.antibioticId === antibiotic.id,
+                          ),
+                      )}
                       itemToString={(item) => (item ? item.text : "")}
                       selectedItem={antibiotics.find(
                         (a) => a.id === result.antibioticId,
