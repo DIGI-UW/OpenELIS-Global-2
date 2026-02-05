@@ -52,7 +52,7 @@ function BioanalyticalSampleReceptionPage({
     canRegisterData,
     canSaveData,
     canAccessSampleReception,
-    BIOANALYTICAL_ROLES
+    BIOANALYTICAL_ROLES,
   } = useBioanalyticalPermissions();
 
   // PAGE 1 allowed roles per test.pdf Section 11

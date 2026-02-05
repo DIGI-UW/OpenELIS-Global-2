@@ -511,7 +511,8 @@ function TraditionalMedicineSampleCreationPage({
             !canCreateSamples
               ? intl.formatMessage({
                   id: "notebook.tradmed.registration.insufficientPermissions.import",
-                  defaultMessage: "Insufficient permissions to import samples. Only Lab Technicians, Researchers, and Lab Manager (with appropriate permissions) can create samples.",
+                  defaultMessage:
+                    "Insufficient permissions to import samples. Only Lab Technicians, Researchers, and Lab Manager (with appropriate permissions) can create samples.",
                 })
               : isViewOnly
                 ? intl.formatMessage({
@@ -533,15 +534,14 @@ function TraditionalMedicineSampleCreationPage({
           renderIcon={Checkmark}
           onClick={markAsRegistered}
           disabled={
-            !canMarkComplete ||
-            isViewOnly ||
-            selectedSampleIds.length === 0
+            !canMarkComplete || isViewOnly || selectedSampleIds.length === 0
           }
           title={
             !canMarkComplete
               ? intl.formatMessage({
                   id: "notebook.tradmed.registration.insufficientPermissions.complete",
-                  defaultMessage: "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
+                  defaultMessage:
+                    "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
                 })
               : isViewOnly
                 ? intl.formatMessage({

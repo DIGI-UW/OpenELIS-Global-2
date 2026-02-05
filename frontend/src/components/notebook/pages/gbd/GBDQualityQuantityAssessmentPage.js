@@ -684,7 +684,8 @@ export const GBDQualityQuantityAssessmentPage = ({
             !canPerformQC
               ? intl.formatMessage({
                   id: "notebook.gbd.qc.insufficientPermissions.record",
-                  defaultMessage: "Insufficient permissions to record QC data. Only Lab Technicians and Lab Manager (with appropriate permissions) can perform QC.",
+                  defaultMessage:
+                    "Insufficient permissions to record QC data. Only Lab Technicians and Lab Manager (with appropriate permissions) can perform QC.",
                 })
               : isViewOnly
                 ? intl.formatMessage({
@@ -717,7 +718,8 @@ export const GBDQualityQuantityAssessmentPage = ({
             !canMarkComplete
               ? intl.formatMessage({
                   id: "notebook.gbd.qc.insufficientPermissions.complete",
-                  defaultMessage: "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
+                  defaultMessage:
+                    "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
                 })
               : isViewOnly
                 ? intl.formatMessage({

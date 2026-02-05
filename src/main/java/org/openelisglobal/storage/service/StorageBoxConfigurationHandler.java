@@ -21,15 +21,16 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Configuration handler for creating storage boxes from CSV files.
  *
- * This handler processes CSV files to create storage box entries,
- * which are gridded containers (plates, sample boxes) within storage racks.
+ * This handler processes CSV files to create storage box entries, which are
+ * gridded containers (plates, sample boxes) within storage racks.
  *
- * CSV Format: label,type,rows,columns,positionSchemaHint,code,active,parentRackCode
- * Example:
+ * CSV Format:
  * label,type,rows,columns,positionSchemaHint,code,active,parentRackCode
- * Plate ULF1-S1-R1-001,96-well,8,12,letter-number,P001,true,R1
- * Box ULF1-S2-R1-001,9x9,9,9,number-number,B001,true,R1
- * Archive 2024-001,10x10,10,10,number-number,A2024-001,true,AR1
+ * Example:
+ * label,type,rows,columns,positionSchemaHint,code,active,parentRackCode Plate
+ * ULF1-S1-R1-001,96-well,8,12,letter-number,P001,true,R1 Box
+ * ULF1-S2-R1-001,9x9,9,9,number-number,B001,true,R1 Archive
+ * 2024-001,10x10,10,10,number-number,A2024-001,true,AR1
  */
 @Component
 @Transactional
@@ -77,28 +78,28 @@ public class StorageBoxConfigurationHandler implements DomainConfigurationHandle
         int parentRackCodeIndex = findColumnIndex(headers, "parentRackCode");
 
         if (labelIndex == -1) {
-            throw new IllegalArgumentException("Storage box configuration file " + fileName +
-                    " must have a 'label' column");
+            throw new IllegalArgumentException(
+                    "Storage box configuration file " + fileName + " must have a 'label' column");
         }
         if (typeIndex == -1) {
-            throw new IllegalArgumentException("Storage box configuration file " + fileName +
-                    " must have a 'type' column");
+            throw new IllegalArgumentException(
+                    "Storage box configuration file " + fileName + " must have a 'type' column");
         }
         if (rowsIndex == -1) {
-            throw new IllegalArgumentException("Storage box configuration file " + fileName +
-                    " must have a 'rows' column");
+            throw new IllegalArgumentException(
+                    "Storage box configuration file " + fileName + " must have a 'rows' column");
         }
         if (columnsIndex == -1) {
-            throw new IllegalArgumentException("Storage box configuration file " + fileName +
-                    " must have a 'columns' column");
+            throw new IllegalArgumentException(
+                    "Storage box configuration file " + fileName + " must have a 'columns' column");
         }
         if (codeIndex == -1) {
-            throw new IllegalArgumentException("Storage box configuration file " + fileName +
-                    " must have a 'code' column");
+            throw new IllegalArgumentException(
+                    "Storage box configuration file " + fileName + " must have a 'code' column");
         }
         if (parentRackCodeIndex == -1) {
-            throw new IllegalArgumentException("Storage box configuration file " + fileName +
-                    " must have a 'parentRackCode' column");
+            throw new IllegalArgumentException(
+                    "Storage box configuration file " + fileName + " must have a 'parentRackCode' column");
         }
 
         String line;
@@ -117,7 +118,7 @@ public class StorageBoxConfigurationHandler implements DomainConfigurationHandle
 
             try {
                 boolean processed = processStorageBoxLine(line, labelIndex, typeIndex, rowsIndex, columnsIndex,
-                    positionSchemaIndex, codeIndex, activeIndex, parentRackCodeIndex, fileName, lineNumber);
+                        positionSchemaIndex, codeIndex, activeIndex, parentRackCodeIndex, fileName, lineNumber);
                 if (processed) {
                     processedCount++;
                 } else {
@@ -130,12 +131,13 @@ public class StorageBoxConfigurationHandler implements DomainConfigurationHandle
         }
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
-                "Storage box configuration processing completed for " + fileName +
-                ". Processed: " + processedCount + ", Skipped: " + skippedCount);
+                "Storage box configuration processing completed for " + fileName + ". Processed: " + processedCount
+                        + ", Skipped: " + skippedCount);
     }
 
     private boolean processStorageBoxLine(String line, int labelIndex, int typeIndex, int rowsIndex, int columnsIndex,
-            int positionSchemaIndex, int codeIndex, int activeIndex, int parentRackCodeIndex, String fileName, int lineNumber) {
+            int positionSchemaIndex, int codeIndex, int activeIndex, int parentRackCodeIndex, String fileName,
+            int lineNumber) {
 
         String[] values = parseCsvLine(line);
 
@@ -212,9 +214,8 @@ public class StorageBoxConfigurationHandler implements DomainConfigurationHandle
         // Find parent rack
         StorageRack parentRack = storageRackDAO.findByCode(parentRackCode);
         if (parentRack == null) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processStorageBoxLine",
-                    "Skipping line " + lineNumber + " in " + fileName +
-                    ": parent rack with code '" + parentRackCode + "' not found");
+            LogEvent.logWarn(this.getClass().getSimpleName(), "processStorageBoxLine", "Skipping line " + lineNumber
+                    + " in " + fileName + ": parent rack with code '" + parentRackCode + "' not found");
             return false;
         }
 
@@ -243,8 +244,8 @@ public class StorageBoxConfigurationHandler implements DomainConfigurationHandle
             storageBoxDAO.insert(box);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "processStorageBoxLine",
-                    "Successfully created storage box '" + label + "' with code '" + code +
-                    "' in rack '" + parentRack.getLabel() + "'");
+                    "Successfully created storage box '" + label + "' with code '" + code + "' in rack '"
+                            + parentRack.getLabel() + "'");
             return true;
 
         } catch (Exception e) {

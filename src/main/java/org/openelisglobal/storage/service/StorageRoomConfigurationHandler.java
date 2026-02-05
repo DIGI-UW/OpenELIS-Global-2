@@ -19,14 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Configuration handler for creating storage rooms from CSV files.
  * <p>
- * This handler processes CSV files to create storage room entries,
- * which are the top-level physical locations in the storage hierarchy.
+ * This handler processes CSV files to create storage room entries, which are
+ * the top-level physical locations in the storage hierarchy.
  * <p>
- * CSV Format: name,code,description,active
- * Example:
- * name,code,description,active
- * Main Laboratory,MAIN-LAB,Primary laboratory storage facility with controlled temperature zones,true
- * Sample Processing Room,PROC-ROOM,Room dedicated to sample processing and aliquoting,true
+ * CSV Format: name,code,description,active Example:
+ * name,code,description,active Main Laboratory,MAIN-LAB,Primary laboratory
+ * storage facility with controlled temperature zones,true Sample Processing
+ * Room,PROC-ROOM,Room dedicated to sample processing and aliquoting,true
  * Archive Storage,ARCHIVE,Long-term sample archival storage,true
  */
 @Component
@@ -68,12 +67,12 @@ public class StorageRoomConfigurationHandler implements DomainConfigurationHandl
         int activeIndex = findColumnIndex(headers, "active");
 
         if (nameIndex == -1) {
-            throw new IllegalArgumentException("Storage room configuration file " + fileName +
-                    " must have a 'name' column");
+            throw new IllegalArgumentException(
+                    "Storage room configuration file " + fileName + " must have a 'name' column");
         }
         if (codeIndex == -1) {
-            throw new IllegalArgumentException("Storage room configuration file " + fileName +
-                    " must have a 'code' column");
+            throw new IllegalArgumentException(
+                    "Storage room configuration file " + fileName + " must have a 'code' column");
         }
 
         String line;
@@ -91,7 +90,8 @@ public class StorageRoomConfigurationHandler implements DomainConfigurationHandl
             }
 
             try {
-                boolean processed = processStorageRoomLine(line, nameIndex, codeIndex, descriptionIndex, activeIndex, fileName, lineNumber);
+                boolean processed = processStorageRoomLine(line, nameIndex, codeIndex, descriptionIndex, activeIndex,
+                        fileName, lineNumber);
                 if (processed) {
                     processedCount++;
                 } else {
@@ -104,8 +104,8 @@ public class StorageRoomConfigurationHandler implements DomainConfigurationHandl
         }
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
-                "Storage room configuration processing completed for " + fileName +
-                ". Processed: " + processedCount + ", Skipped: " + skippedCount);
+                "Storage room configuration processing completed for " + fileName + ". Processed: " + processedCount
+                        + ", Skipped: " + skippedCount);
     }
 
     private boolean processStorageRoomLine(String line, int nameIndex, int codeIndex, int descriptionIndex,

@@ -278,6 +278,16 @@ function PathologyTestingMicroscopyPage({
                   pageSampleMap[sample.parentSampleId] ||
                   pageSampleMap[sampleId.split("_")[0]];
                 const sampleData = pageSample?.data || {};
+
+                // Also get parent sample data for fields that may be stored at parent level
+                // (testName, verifiedByPathologist, etc. are often on the parent sample)
+                const parentSampleId = sampleId.split("_")[0];
+                const parentPageSample =
+                  sampleId !== parentSampleId
+                    ? pageSampleMap[parentSampleId]
+                    : null;
+                const parentSampleData = parentPageSample?.data || {};
+
                 // workflowData contains data from PREVIOUS step (staining)
                 const workflowData = sample.workflowData || {};
 
@@ -321,17 +331,35 @@ function PathologyTestingMicroscopyPage({
                     workflowData.routineStains || sample.routineStains || [],
                   specialStains:
                     workflowData.specialStains || sample.specialStains || [],
-                  // Microscopy/testing data from current page ONLY
+                  // Microscopy/testing data from current page
+                  // For child samples (slides), inherit test-related fields from parent if not present on child
                   testsPerformed: sampleData.testsPerformed || 0,
-                  testName: sampleData.testName || workflowData.testName || "",
+                  testName:
+                    sampleData.testName ||
+                    parentSampleData.testName ||
+                    workflowData.testName ||
+                    "",
                   result: sampleData.resultFindings || sampleData.result || "",
-                  hasTestData: !!(sampleData.testName || allStains.length > 0),
+                  hasTestData: !!(
+                    sampleData.testName ||
+                    parentSampleData.testName ||
+                    allStains.length > 0
+                  ),
+                  // verifiedByPathologist for test verification - inherit from parent
                   verifiedByPathologist:
                     sampleData.verifiedByPathologist === true ||
-                    sampleData.verifiedByPathologist === "true",
-                  technicianSignature: sampleData.technicianSignature || "",
-                  testDate: sampleData.technicianDate || "",
-                  // Initial and Final Diagnosis status
+                    sampleData.verifiedByPathologist === "true" ||
+                    parentSampleData.verifiedByPathologist === true ||
+                    parentSampleData.verifiedByPathologist === "true",
+                  technicianSignature:
+                    sampleData.technicianSignature ||
+                    parentSampleData.technicianSignature ||
+                    "",
+                  testDate:
+                    sampleData.technicianDate ||
+                    parentSampleData.technicianDate ||
+                    "",
+                  // Initial and Final Diagnosis status - these are stored on child sample
                   initialFindingsComplete:
                     sampleData.initialFindingsComplete === true ||
                     sampleData.initialFindingsComplete === "true",

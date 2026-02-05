@@ -411,13 +411,15 @@ public class StorageLocationFhirTransform {
                 fhirPersistanceService.updateFhirResourcesInFhirStore(resourceMap);
             }
         } catch (Exception e) {
-            // Handle FHIR sync failures gracefully - especially during bulk configuration loading
+            // Handle FHIR sync failures gracefully - especially during bulk configuration
+            // loading
             String errorMsg = e.getMessage();
-            if (errorMsg != null && (errorMsg.contains("409") || errorMsg.contains("constraint failure") ||
-                                   errorMsg.contains("client-assigned ID") || errorMsg.contains("HAPI-0825"))) {
+            if (errorMsg != null && (errorMsg.contains("409") || errorMsg.contains("constraint failure")
+                    || errorMsg.contains("client-assigned ID") || errorMsg.contains("HAPI-0825"))) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "persistLocation",
                         "FHIR sync conflict during bulk operation (non-critical): " + e.getMessage());
-                // Don't throw exception for FHIR conflicts - storage entity creation should succeed
+                // Don't throw exception for FHIR conflicts - storage entity creation should
+                // succeed
                 return;
             }
             LogEvent.logError("Error persisting Location to FHIR server: " + e.getMessage(), e);

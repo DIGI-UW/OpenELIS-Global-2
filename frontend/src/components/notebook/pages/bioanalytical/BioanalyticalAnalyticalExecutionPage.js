@@ -101,7 +101,7 @@ function BioanalyticalAnalyticalExecutionPage({
     hasFullControl,
     canSaveData,
     canAccessAnalyticalExecution,
-    BIOANALYTICAL_ROLES
+    BIOANALYTICAL_ROLES,
   } = useBioanalyticalPermissions();
   const isMountedRef = useRef(true);
 

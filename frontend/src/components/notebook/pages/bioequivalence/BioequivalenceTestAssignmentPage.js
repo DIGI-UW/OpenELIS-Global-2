@@ -1112,7 +1112,8 @@ function BioequivalenceTestAssignmentPage({
                         !canAssignTests
                           ? intl.formatMessage({
                               id: "notebook.bioequivalence.testassignment.insufficientPermissions",
-                              defaultMessage: "Insufficient permissions to configure test assignments. Only Pharmacists and Lab Supervisors can assign tests.",
+                              defaultMessage:
+                                "Insufficient permissions to configure test assignments. Only Pharmacists and Lab Supervisors can assign tests.",
                             })
                           : undefined
                       }
@@ -1135,7 +1136,8 @@ function BioequivalenceTestAssignmentPage({
                         !canAssignTests
                           ? intl.formatMessage({
                               id: "notebook.bioequivalence.testassignment.completeInsufficientPermissions",
-                              defaultMessage: "Insufficient permissions to complete test assignments. Only Pharmacists and Lab Supervisors can complete assignments.",
+                              defaultMessage:
+                                "Insufficient permissions to complete test assignments. Only Pharmacists and Lab Supervisors can complete assignments.",
                             })
                           : undefined
                       }

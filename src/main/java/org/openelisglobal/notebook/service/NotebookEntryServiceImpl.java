@@ -139,6 +139,7 @@ public class NotebookEntryServiceImpl extends AuditableBaseObjectServiceImpl<Not
             Hibernate.initialize(entry.getCreator());
             Hibernate.initialize(entry.getOrganization());
             Hibernate.initialize(entry.getAccessibleOrganizations());
+            Hibernate.initialize(entry.getSamples());
         }
     }
 
