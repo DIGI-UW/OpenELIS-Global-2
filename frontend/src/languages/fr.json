@@ -1952,6 +1952,7 @@
   "genericSample.order.labNo.placeholder": "Cliquez sur « Générer un numéro de laboratoire » pour générer ",
   "genericSample.order.error.labNoRequired": "Veuillez générer un numéro de laboratoire avant d'enregistrer.",
   "genericSample.order.success.details": "Détails de l'échantillon",
+  "genericSample.order.success.message": "Commande d'échantillon créée avec succès avec le numéro d'accession: {accessionNumber}",
   "genericSample.field.project": "Projet",
   "genericSample.field.type": "Type",
   "genericSample.field.id": "ID",
