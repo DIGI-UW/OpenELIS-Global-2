@@ -3,8 +3,8 @@ description:
   Generate a custom checklist for the current feature based on user
   requirements.
 scripts:
-  sh: scripts/bash/check-prerequisites.sh --json
-  ps: scripts/powershell/check-prerequisites.ps1 -Json
+  sh: .specify/scripts/bash/check-prerequisites.sh --json
+  ps: .specify/scripts/powershell/check-prerequisites.ps1 -Json
 ---
 
 ## Checklist Purpose: "Unit Tests for English"
@@ -300,9 +300,9 @@ You **MUST** consider the user input before proceeding (if not empty).
    - ✅ "Does the spec define [missing aspect]?"
 
 6. **Structure Reference**: Generate the checklist following the canonical
-   template in `templates/checklist-template.md` for title, meta section,
-   category headings, and ID formatting. If template is unavailable, use: H1
-   title, purpose/created meta lines, `##` category sections containing
+   template in `.specify/templates/checklist-template.md` for title, meta
+   section, category headings, and ID formatting. If template is unavailable,
+   use: H1 title, purpose/created meta lines, `##` category sections containing
    `- [ ] CHK### <requirement item>` lines with globally incrementing IDs
    starting at CHK001.
 
