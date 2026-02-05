@@ -142,22 +142,16 @@ describe("Validation Page - Advanced Filters", function () {
 });
 
 describe("Validation Page - Results Table", function () {
-  before("navigate to Validation Page and search", function () {
+  it("Should receive valid API response and display results", function () {
     setupValidationIntercepts();
     navigateToValidationPage("Routine");
     cy.wait("@testSections", { timeout: 15000 });
     selectFirstLabUnitAndSearch();
-    cy.wait("@searchResults", { timeout: 30000 });
-  });
-
-  it("Should receive valid API response", function () {
-    cy.get("@searchResults").then((interception) => {
+    cy.wait("@searchResults", { timeout: 30000 }).then((interception) => {
       expect(interception.response.statusCode).to.be.oneOf([200, 304]);
       expect(interception.response.body).to.have.property("resultList");
     });
-  });
 
-  it("Should display results table or empty state", function () {
     cy.get("body").then(($body) => {
       const hasTable = $body.find(".cds--data-table-container").length > 0;
       const hasEmptyState = $body.find(".validation-empty-state").length > 0;
@@ -166,17 +160,16 @@ describe("Validation Page - Results Table", function () {
   });
 
   it("Should display batch action buttons when results exist", function () {
+    setupValidationIntercepts();
+    navigateToValidationPage("Routine");
+    cy.wait("@testSections", { timeout: 15000 });
+    selectFirstLabUnitAndSearch();
+    cy.wait("@searchResults", { timeout: 30000 });
+
     cy.get("body").then(($body) => {
       if ($body.find(".cds--data-table-container").length > 0) {
         cy.contains("button", "Accept").should("be.visible");
         cy.contains("button", "Retest").should("be.visible");
-      }
-    });
-  });
-
-  it("Should have select all checkbox", function () {
-    cy.get("body").then(($body) => {
-      if ($body.find(".cds--data-table-container").length > 0) {
         cy.get("#select-all").should("exist");
       }
     });
