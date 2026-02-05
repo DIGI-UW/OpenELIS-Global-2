@@ -1952,6 +1952,7 @@
   "genericSample.order.labNo.placeholder": "Click 'Generate Lab Number' to create",
   "genericSample.order.error.labNoRequired": "Please generate a Lab Number before saving.",
   "genericSample.order.success.details": "Sample Details",
+  "genericSample.order.success.message": "Orden de muestra creada exitosamente con número de acceso: {accessionNumber}",
   "genericSample.field.project": "Project",
   "genericSample.field.type": "Type",
   "genericSample.field.id": "ID",
