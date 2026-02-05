@@ -6,10 +6,12 @@ on:
       - '.specify/**'
       - '.cursor/**'
       - '.claude/**'
+      - 'scripts/install-speckit-commands.py'
   push:
     branches: [develop]
     paths:
       - '.specify/**'
+      - 'scripts/install-speckit-commands.py'
   workflow_dispatch:
 
 jobs:
@@ -19,8 +21,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Compile SpecKit commands
-        run: ./.specify/scripts/bash/install-commands.sh -y all
+        run: python scripts/install-speckit-commands.py -y all
 
       - name: Verify all commands exist
         run: |
@@ -39,16 +46,18 @@ jobs:
 
       - name: Verify no invalid path patterns
         run: |
-          # Check for paths that indicate double-rewrite bugs
-          if grep -r '/.specify/' .cursor/commands/ .claude/commands/ 2>/dev/null; then
-            echo "ERROR: Found invalid '/.specify/' paths in compiled commands"
-            exit 1
-          fi
-          if grep -r '.specify/.specify/' .cursor/commands/ .claude/commands/ 2>/dev/null; then
+          # Check for double-rewrite bugs (e.g., .specify/.specify/)
+          if grep -r '\.specify/\.specify/' .cursor/commands/ .claude/commands/ 2>/dev/null; then
             echo "ERROR: Found invalid '.specify/.specify/' paths in compiled commands"
             exit 1
           fi
-          echo "✓ All paths correctly rewritten"
+          # Check that paths use .specify/ prefix (not bare templates/ or scripts/)
+          # Use grep -q to properly handle exit codes when grep -v filters all matches
+          if grep -E '(^|[^.])templates/' .cursor/commands/ .claude/commands/ 2>/dev/null | grep -v '\.specify/templates/' | grep -q .; then
+            echo "ERROR: Found bare 'templates/' paths (should be '.specify/templates/')"
+            exit 1
+          fi
+          echo "✓ All paths correctly formatted"
 
       - name: Summary
         run: |
