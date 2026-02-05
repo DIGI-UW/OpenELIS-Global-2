@@ -21,6 +21,7 @@ import {
   SelectItem,
   Checkbox,
   TextArea,
+  Tag,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { usePermissions } from "../../../../hooks/usePermissions";
@@ -113,6 +114,67 @@ function BioanalyticalReportingPage({
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [autoAdvancedToStage5, setAutoAdvancedToStage5] = useState(false);
+
+  // Render QC Status for Stage 4 study results table
+  const renderStage4QCStatus = useCallback((result) => {
+    // Check for QC outcome records from the result's sample group
+    if (result.samples && result.samples.length > 0) {
+      const qcOutcomes = result.samples
+        .map(sample => sample.data?.qcOutcomeRecord?.overallOutcome)
+        .filter(outcome => outcome);
+
+      if (qcOutcomes.length > 0) {
+        const passedSamples = qcOutcomes.filter(outcome => outcome === "PASS").length;
+        const conditionalSamples = qcOutcomes.filter(outcome => outcome === "CONDITIONAL_PASS").length;
+        const failedSamples = qcOutcomes.filter(outcome => outcome === "FAIL").length;
+        const waiverSamples = qcOutcomes.filter(outcome => outcome === "WAIVER").length;
+
+        let tagType = "gray";
+        let statusText = "";
+
+        if (failedSamples > 0) {
+          tagType = "red";
+          statusText = `${failedSamples} FAILED`;
+        } else if (waiverSamples > 0) {
+          tagType = "blue";
+          statusText = `${waiverSamples} WAIVER`;
+        } else if (conditionalSamples > 0) {
+          tagType = "yellow";
+          statusText = `${conditionalSamples} CONDITIONAL`;
+        } else if (passedSamples > 0) {
+          tagType = "green";
+          statusText = `${passedSamples} PASSED`;
+        }
+
+        return (
+          <Tag
+            type={tagType}
+            size="sm"
+            title={`${passedSamples} passed, ${conditionalSamples} conditional, ${failedSamples} failed, ${waiverSamples} waiver`}
+          >
+            {statusText}
+          </Tag>
+        );
+      }
+    }
+
+    // Check for basic QC approval status
+    const qcApprovedCount = result.samples?.filter(s => s.data?.qcApproved).length || 0;
+    if (qcApprovedCount > 0) {
+      return (
+        <Tag type="green" size="sm" title={`${qcApprovedCount} samples QC approved`}>
+          {qcApprovedCount} QC APPROVED
+        </Tag>
+      );
+    }
+
+    // Default state
+    return (
+      <Tag type="gray" size="sm" title="QC verification pending">
+        QC PENDING
+      </Tag>
+    );
+  }, []);
 
   const exportFormats = [
     { id: "csv", label: "Research Format (CSV)" },
@@ -1593,7 +1655,8 @@ function BioanalyticalReportingPage({
                         }
                       />
                     ) : studyResults.length > 0 ? (
-                      <div style={{ marginTop: "1.5rem" }}>
+                      <>
+                        <div style={{ marginTop: "1.5rem" }}>
                         <Table>
                           <TableHead>
                             <TableRow>
@@ -1635,6 +1698,12 @@ function BioanalyticalReportingPage({
                               </TableHeader>
                               <TableHeader>
                                 <FormattedMessage
+                                  id="notebook.bioanalytical.reporting.qcStatus"
+                                  defaultMessage="QC Status"
+                                />
+                              </TableHeader>
+                              <TableHeader>
+                                <FormattedMessage
                                   id="notebook.bioanalytical.reporting.status"
                                   defaultMessage="Status"
                                 />
@@ -1651,6 +1720,9 @@ function BioanalyticalReportingPage({
                                 <TableCell>{result.cv}</TableCell>
                                 <TableCell style={{ fontSize: "0.875rem" }}>
                                   {result.min} - {result.max}
+                                </TableCell>
+                                <TableCell>
+                                  {renderStage4QCStatus(result)}
                                 </TableCell>
                                 <TableCell>
                                   <span
@@ -2037,6 +2109,382 @@ function BioanalyticalReportingPage({
                             </div>
                           )}
                       </div>
+
+                      {/* Control Sample Performance Report */}
+                      <div
+                        style={{
+                          marginTop: "2rem",
+                          padding: "1.5rem",
+                          backgroundColor: "#e7f6ed",
+                          borderRadius: "4px",
+                          border: "1px solid #24a148",
+                        }}
+                      >
+                        <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
+                          <FormattedMessage
+                            id="notebook.bioanalytical.reporting.controlSampleReport"
+                            defaultMessage="Control Sample Performance Report"
+                          />
+                        </h5>
+
+                        {studyResults.length > 0 ? (
+                          <div>
+                            {/* Overall Control Summary */}
+                            <div
+                              style={{
+                                marginBottom: "1.5rem",
+                                padding: "1rem",
+                                backgroundColor: "white",
+                                borderRadius: "4px",
+                                border: "1px solid #d1d1d1",
+                              }}
+                            >
+                              <h6 style={{ marginBottom: "1rem", fontSize: "1rem", fontWeight: "500" }}>
+                                Study-wide Control Sample Summary:
+                              </h6>
+
+                              {(() => {
+                                // Aggregate control sample data across all study results
+                                let totalControlsAnalyzed = 0;
+                                let totalControlsPassed = 0;
+                                let controlsByType = {};
+                                let controlsByAssay = {};
+
+                                studyResults.forEach(result => {
+                                  if (result.samples) {
+                                    result.samples.forEach(sample => {
+                                      if (sample.data?.controlSampleResults) {
+                                        const controlResults = sample.data.controlSampleResults;
+                                        totalControlsAnalyzed += controlResults.length;
+
+                                        controlResults.forEach(controlResult => {
+                                          // Count passed controls
+                                          const accuracy = parseFloat(controlResult.accuracy || 0);
+                                          const controlType = controlResult.controlType || 'Unknown';
+                                          const assayMethod = sample.data?.analyticalMethod || 'Unknown';
+
+                                          // Determine if control passed based on type
+                                          let passed = false;
+                                          switch (controlType) {
+                                            case 'POSITIVE':
+                                            case 'QC_LOW':
+                                            case 'QC_MEDIUM':
+                                            case 'QC_HIGH':
+                                              passed = accuracy >= 85 && accuracy <= 115;
+                                              break;
+                                            case 'NEGATIVE':
+                                              passed = accuracy <= 5;
+                                              break;
+                                            case 'BLANK':
+                                              passed = accuracy <= 2;
+                                              break;
+                                            default:
+                                              passed = accuracy >= 80 && accuracy <= 120;
+                                          }
+
+                                          if (passed) totalControlsPassed++;
+
+                                          // Group by type
+                                          if (!controlsByType[controlType]) {
+                                            controlsByType[controlType] = { total: 0, passed: 0 };
+                                          }
+                                          controlsByType[controlType].total++;
+                                          if (passed) controlsByType[controlType].passed++;
+
+                                          // Group by assay
+                                          if (!controlsByAssay[assayMethod]) {
+                                            controlsByAssay[assayMethod] = { total: 0, passed: 0 };
+                                          }
+                                          controlsByAssay[assayMethod].total++;
+                                          if (passed) controlsByAssay[assayMethod].passed++;
+                                        });
+                                      }
+                                    });
+                                  }
+                                });
+
+                                const overallPassRate = totalControlsAnalyzed > 0
+                                  ? (totalControlsPassed / totalControlsAnalyzed) * 100
+                                  : 0;
+
+                                return (
+                                  <div>
+                                    {/* Overall Statistics */}
+                                    <div
+                                      style={{
+                                        display: "grid",
+                                        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                                        gap: "1rem",
+                                        marginBottom: "1.5rem",
+                                      }}
+                                    >
+                                      <div style={{ textAlign: "center", padding: "1rem", backgroundColor: "#f4f4f4", borderRadius: "4px" }}>
+                                        <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#24a148" }}>
+                                          {totalControlsAnalyzed}
+                                        </div>
+                                        <div style={{ fontSize: "0.875rem", color: "#525252" }}>
+                                          Total Controls Analyzed
+                                        </div>
+                                      </div>
+                                      <div style={{ textAlign: "center", padding: "1rem", backgroundColor: "#f4f4f4", borderRadius: "4px" }}>
+                                        <div style={{ fontSize: "2rem", fontWeight: "bold", color: overallPassRate >= 80 ? "#24a148" : overallPassRate >= 67 ? "#f1c21b" : "#da1e28" }}>
+                                          {overallPassRate.toFixed(1)}%
+                                        </div>
+                                        <div style={{ fontSize: "0.875rem", color: "#525252" }}>
+                                          Overall Pass Rate
+                                        </div>
+                                      </div>
+                                      <div style={{ textAlign: "center", padding: "1rem", backgroundColor: "#f4f4f4", borderRadius: "4px" }}>
+                                        <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#24a148" }}>
+                                          {totalControlsPassed}
+                                        </div>
+                                        <div style={{ fontSize: "0.875rem", color: "#525252" }}>
+                                          Controls Passed
+                                        </div>
+                                      </div>
+                                      <div style={{ textAlign: "center", padding: "1rem", backgroundColor: "#f4f4f4", borderRadius: "4px" }}>
+                                        <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#da1e28" }}>
+                                          {totalControlsAnalyzed - totalControlsPassed}
+                                        </div>
+                                        <div style={{ fontSize: "0.875rem", color: "#525252" }}>
+                                          Controls Failed
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Control Performance by Type */}
+                                    {Object.keys(controlsByType).length > 0 && (
+                                      <div style={{ marginBottom: "1.5rem" }}>
+                                        <h6 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "500" }}>
+                                          Performance by Control Type:
+                                        </h6>
+                                        <div style={{ display: "grid", gap: "0.5rem" }}>
+                                          {Object.entries(controlsByType).map(([type, stats]) => (
+                                            <div
+                                              key={type}
+                                              style={{
+                                                display: "flex",
+                                                justifyContent: "space-between",
+                                                alignItems: "center",
+                                                padding: "0.75rem",
+                                                backgroundColor: "#f9f9f9",
+                                                borderRadius: "4px",
+                                                border: "1px solid #e0e0e0",
+                                              }}
+                                            >
+                                              <div>
+                                                <span style={{ fontWeight: "500" }}>
+                                                  {type.replace(/_/g, " ")}
+                                                </span>
+                                                <span style={{ marginLeft: "1rem", color: "#525252", fontSize: "0.875rem" }}>
+                                                  {stats.passed}/{stats.total} passed ({((stats.passed / stats.total) * 100).toFixed(1)}%)
+                                                </span>
+                                              </div>
+                                              <Tag
+                                                type={
+                                                  (stats.passed / stats.total) >= 0.8 ? "green" :
+                                                  (stats.passed / stats.total) >= 0.67 ? "yellow" : "red"
+                                                }
+                                                size="sm"
+                                              >
+                                                {(stats.passed / stats.total) >= 0.8 ? "EXCELLENT" :
+                                                 (stats.passed / stats.total) >= 0.67 ? "ACCEPTABLE" : "NEEDS REVIEW"}
+                                              </Tag>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Control Performance by Assay Method */}
+                                    {Object.keys(controlsByAssay).length > 0 && (
+                                      <div>
+                                        <h6 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "500" }}>
+                                          Performance by Analytical Method:
+                                        </h6>
+                                        <div style={{ display: "grid", gap: "0.5rem" }}>
+                                          {Object.entries(controlsByAssay).map(([method, stats]) => (
+                                            <div
+                                              key={method}
+                                              style={{
+                                                display: "flex",
+                                                justifyContent: "space-between",
+                                                alignItems: "center",
+                                                padding: "0.75rem",
+                                                backgroundColor: "#f9f9f9",
+                                                borderRadius: "4px",
+                                                border: "1px solid #e0e0e0",
+                                              }}
+                                            >
+                                              <div>
+                                                <span style={{ fontWeight: "500" }}>
+                                                  {method}
+                                                </span>
+                                                <span style={{ marginLeft: "1rem", color: "#525252", fontSize: "0.875rem" }}>
+                                                  {stats.passed}/{stats.total} controls passed ({((stats.passed / stats.total) * 100).toFixed(1)}%)
+                                                </span>
+                                              </div>
+                                              <Tag
+                                                type={
+                                                  (stats.passed / stats.total) >= 0.8 ? "green" :
+                                                  (stats.passed / stats.total) >= 0.67 ? "yellow" : "red"
+                                                }
+                                                size="sm"
+                                              >
+                                                {(stats.passed / stats.total) >= 0.8 ? "COMPLIANT" :
+                                                 (stats.passed / stats.total) >= 0.67 ? "CONDITIONAL" : "NON-COMPLIANT"}
+                                              </Tag>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+
+                            {/* Control Requirements vs Actual */}
+                            <div
+                              style={{
+                                marginBottom: "1.5rem",
+                                padding: "1rem",
+                                backgroundColor: "white",
+                                borderRadius: "4px",
+                                border: "1px solid #d1d1d1",
+                              }}
+                            >
+                              <h6 style={{ marginBottom: "1rem", fontSize: "1rem", fontWeight: "500" }}>
+                                Control Requirements Compliance:
+                              </h6>
+
+                              <div style={{ fontSize: "0.875rem", color: "#525252", marginBottom: "1rem" }}>
+                                This section shows whether the study met the control sample requirements defined for each analytical method.
+                              </div>
+
+                              {(() => {
+                                // Check control requirements compliance
+                                const methodRequirements = {
+                                  'HPLC_UV_VIS': [
+                                    { type: 'POSITIVE', count: 2, description: 'Reference standard solution' },
+                                    { type: 'NEGATIVE', count: 1, description: 'Solvent blank' },
+                                    { type: 'QC_LOW', count: 1, description: 'Low concentration QC' },
+                                    { type: 'QC_MEDIUM', count: 1, description: 'Medium concentration QC' },
+                                    { type: 'QC_HIGH', count: 1, description: 'High concentration QC' }
+                                  ],
+                                  'LC_MS_MS': [
+                                    { type: 'POSITIVE', count: 3, description: 'Calibration standards' },
+                                    { type: 'NEGATIVE', count: 2, description: 'Blank matrix' },
+                                    { type: 'QC_LOW', count: 2, description: 'QC Low' },
+                                    { type: 'QC_MEDIUM', count: 2, description: 'QC Medium' },
+                                    { type: 'QC_HIGH', count: 2, description: 'QC High' },
+                                    { type: 'BLANK', count: 1, description: 'Double blank' }
+                                  ]
+                                };
+
+                                const methodsUsed = [...new Set(studyResults.flatMap(result =>
+                                  result.samples?.map(s => s.data?.analyticalMethod).filter(Boolean) || []
+                                ))];
+
+                                return (
+                                  <div style={{ display: "grid", gap: "1rem" }}>
+                                    {methodsUsed.map(method => {
+                                      const requirements = methodRequirements[method] || [];
+                                      if (requirements.length === 0) return null;
+
+                                      return (
+                                        <div
+                                          key={method}
+                                          style={{
+                                            padding: "1rem",
+                                            backgroundColor: "#f9f9f9",
+                                            borderRadius: "4px",
+                                            border: "1px solid #e0e0e0",
+                                          }}
+                                        >
+                                          <div style={{ fontWeight: "500", marginBottom: "0.75rem" }}>
+                                            {method}
+                                          </div>
+                                          <div style={{ display: "grid", gap: "0.5rem", fontSize: "0.875rem" }}>
+                                            {requirements.map((req, index) => {
+                                              // Count actual controls of this type for this method
+                                              let actualCount = 0;
+                                              studyResults.forEach(result => {
+                                                if (result.samples) {
+                                                  result.samples.forEach(sample => {
+                                                    if (sample.data?.analyticalMethod === method &&
+                                                        sample.data?.controlSampleResults) {
+                                                      actualCount += sample.data.controlSampleResults
+                                                        .filter(cr => cr.controlType === req.type).length;
+                                                    }
+                                                  });
+                                                }
+                                              });
+
+                                              const isMet = actualCount >= req.count;
+                                              return (
+                                                <div
+                                                  key={index}
+                                                  style={{
+                                                    display: "flex",
+                                                    justifyContent: "space-between",
+                                                    alignItems: "center",
+                                                    padding: "0.5rem",
+                                                    backgroundColor: "white",
+                                                    borderRadius: "4px",
+                                                  }}
+                                                >
+                                                  <div>
+                                                    <span style={{ fontWeight: "500" }}>
+                                                      {req.type.replace(/_/g, " ")}
+                                                    </span>
+                                                    <span style={{ marginLeft: "0.5rem", color: "#525252" }}>
+                                                      - {req.description}
+                                                    </span>
+                                                  </div>
+                                                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                                    <span style={{ fontSize: "0.875rem", color: "#525252" }}>
+                                                      {actualCount}/{req.count}
+                                                    </span>
+                                                    <Tag type={isMet ? "green" : "red"} size="sm">
+                                                      {isMet ? "✓ MET" : "✗ NOT MET"}
+                                                    </Tag>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              textAlign: "center",
+                              padding: "3rem 1rem",
+                              color: "#525252",
+                              backgroundColor: "white",
+                              borderRadius: "4px",
+                              border: "1px solid #e0e0e0",
+                            }}
+                          >
+                            <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🧪</div>
+                            <p style={{ marginBottom: "0.5rem", fontWeight: "500" }}>
+                              Control Sample Report Unavailable
+                            </p>
+                            <p style={{ fontSize: "0.875rem" }}>
+                              Control sample performance data will appear here once analytical execution is completed
+                              and study results are generated.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      </>
                     ) : (
                       <div
                         style={{
