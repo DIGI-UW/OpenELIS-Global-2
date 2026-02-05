@@ -235,12 +235,12 @@ describe("Validation Page - Retest Modal", function () {
           force: true,
         });
         cy.contains("button", "Retest").click();
-        cy.get(".cds--modal").should("be.visible");
+        cy.get(".cds--modal.is-visible").should("be.visible");
         cy.get("#retest-reason").should("be.visible");
-        cy.get(".cds--modal").within(() => {
+        cy.get(".cds--modal.is-visible").within(() => {
           cy.get("button").contains("Cancel").click();
         });
-        cy.get(".cds--modal", { timeout: 5000 }).should("not.be.visible");
+        cy.get(".cds--modal.is-visible", { timeout: 5000 }).should("not.exist");
       }
     });
   });
@@ -252,16 +252,16 @@ describe("Validation Page - Retest Modal", function () {
           force: true,
         });
         cy.contains("button", "Retest").click();
-        cy.get(".cds--modal").should("be.visible");
+        cy.get(".cds--modal.is-visible").should("be.visible");
 
-        cy.get(".cds--modal").within(() => {
+        cy.get(".cds--modal.is-visible").within(() => {
           cy.get("button").contains("Confirm").click();
         });
 
-        cy.get(".cds--modal").within(() => {
+        cy.get(".cds--modal.is-visible").within(() => {
           cy.get("button").contains("Cancel").click();
         });
-        cy.get(".cds--modal", { timeout: 5000 }).should("not.be.visible");
+        cy.get(".cds--modal.is-visible", { timeout: 5000 }).should("not.exist");
       }
     });
   });
