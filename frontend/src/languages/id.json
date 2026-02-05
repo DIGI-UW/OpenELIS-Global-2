@@ -1954,6 +1954,7 @@
   "genericSample.order.labNo.placeholder": "Klik untuk \"Membuat Nomor Registrasi\"",
   "genericSample.order.error.labNoRequired": "Mohon membuat Nomor Registrasi sebelum menyimpan.",
   "genericSample.order.success.details": "Rincian Sampel",
+  "genericSample.order.success.message": "Pesanan sampel berhasil dibuat dengan nomor akses: {accessionNumber}",
   "genericSample.field.project": "Proyek",
   "genericSample.field.type": "Jenis",
   "genericSample.field.id": "Identitas",
