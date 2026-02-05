@@ -1952,6 +1952,7 @@
   "genericSample.order.labNo.placeholder": "点击'生成实验室编号'创建",
   "genericSample.order.error.labNoRequired": "请在保存前生成实验室编号。",
   "genericSample.order.success.details": "标本详情",
+  "genericSample.order.success.message": "样本订单已成功创建，登录号为：{accessionNumber}",
   "genericSample.field.project": "项目",
   "genericSample.field.type": "类型",
   "genericSample.field.id": "ID",
