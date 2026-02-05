@@ -258,12 +258,13 @@ public interface NotebookPageSampleService extends BaseObjectService<NotebookPag
             Boolean pathwayRouting, String sourcePageName, String targetPageName);
 
     /**
-     * Check if a patient encounter ID already exists within a notebook.
-     * Used to enforce uniqueness of patient encounter IDs for pathology samples.
+     * Check if a patient encounter ID already exists within a notebook. Used to
+     * enforce uniqueness of patient encounter IDs for pathology samples.
      *
-     * @param notebookId the notebook ID to check within
+     * @param notebookId         the notebook ID to check within
      * @param patientEncounterId the patient encounter ID to check
-     * @return true if the ID exists in any sample's data within the notebook, false otherwise
+     * @return true if the ID exists in any sample's data within the notebook, false
+     *         otherwise
      */
     boolean existsByPatientEncounterIdInNotebook(Integer notebookId, String patientEncounterId);
 

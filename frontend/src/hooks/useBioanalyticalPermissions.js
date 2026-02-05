@@ -37,12 +37,8 @@ import { usePermissions } from "./usePermissions";
  * }
  */
 export const useBioanalyticalPermissions = () => {
-  const {
-    userSessionDetails,
-    hasRole,
-    hasAnyRole,
-    hasLabUnitRole,
-  } = usePermissions();
+  const { userSessionDetails, hasRole, hasAnyRole, hasLabUnitRole } =
+    usePermissions();
 
   const BIOANALYTICAL_LAB_UNIT = "Bioanalytical Laboratory";
 
@@ -280,7 +276,10 @@ export const useBioanalyticalPermissions = () => {
    * @returns {boolean}
    */
   const canApproveData = useCallback((permissionLevel) => {
-    return permissionLevel && ["APPROVE", "FULL", "FULL_ANALYTICS"].includes(permissionLevel);
+    return (
+      permissionLevel &&
+      ["APPROVE", "FULL", "FULL_ANALYTICS"].includes(permissionLevel)
+    );
   }, []);
 
   /**
@@ -311,7 +310,8 @@ export const useBioanalyticalPermissions = () => {
    */
   const canAnalytics = useCallback((permissionLevel) => {
     return (
-      permissionLevel && ["FULL_ANALYTICS", "FULL", "PROJECT_SPECIFIC"].includes(permissionLevel)
+      permissionLevel &&
+      ["FULL_ANALYTICS", "FULL", "PROJECT_SPECIFIC"].includes(permissionLevel)
     );
   }, []);
 
@@ -323,7 +323,10 @@ export const useBioanalyticalPermissions = () => {
    */
   const canModify = useCallback((permissionLevel) => {
     return (
-      permissionLevel && ["LIMITED", "UPDATE", "FULL", "PROJECT_SPECIFIC", "APPROVE"].includes(permissionLevel)
+      permissionLevel &&
+      ["LIMITED", "UPDATE", "FULL", "PROJECT_SPECIFIC", "APPROVE"].includes(
+        permissionLevel,
+      )
     );
   }, []);
 
@@ -335,7 +338,8 @@ export const useBioanalyticalPermissions = () => {
    */
   const canValidate = useCallback((permissionLevel) => {
     return (
-      permissionLevel && ["VALIDATE", "APPROVE", "FULL"].includes(permissionLevel)
+      permissionLevel &&
+      ["VALIDATE", "APPROVE", "FULL"].includes(permissionLevel)
     );
   }, []);
 
@@ -347,7 +351,8 @@ export const useBioanalyticalPermissions = () => {
    */
   const canReview = useCallback((permissionLevel) => {
     return (
-      permissionLevel && ["REVIEW", "VALIDATE", "APPROVE", "FULL"].includes(permissionLevel)
+      permissionLevel &&
+      ["REVIEW", "VALIDATE", "APPROVE", "FULL"].includes(permissionLevel)
     );
   }, []);
 

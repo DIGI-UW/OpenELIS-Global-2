@@ -52,7 +52,7 @@ function BioequivalenceSampleReceptionPage({
     canRegisterData,
     canSaveData,
     canAccessSampleReception,
-    BIOEQUIVALENCE_ROLES
+    BIOEQUIVALENCE_ROLES,
   } = useBioequivalencePermissions();
 
   // PAGE 1 allowed roles per test.pdf Section 11

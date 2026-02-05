@@ -22,15 +22,16 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Configuration handler for creating storage devices from CSV files.
  * <p>
- * This handler processes CSV files to create storage device entries,
- * which are storage equipment (freezers, refrigerators, cabinets) within rooms.
+ * This handler processes CSV files to create storage device entries, which are
+ * storage equipment (freezers, refrigerators, cabinets) within rooms.
  * <p>
- * CSV Format: name,code,type,temperatureSetting,capacityLimit,active,parentRoomCode
+ * CSV Format:
+ * name,code,type,temperatureSetting,capacityLimit,active,parentRoomCode
  * Example:
  * name,code,type,temperatureSetting,capacityLimit,active,parentRoomCode
- * Ultra-Low Freezer 1,ULF01,freezer,-80.0,1000,true,MAIN-LAB
- * Refrigerator 1,REF01,refrigerator,4.0,300,true,MAIN-LAB
- * Processing Cabinet,PCAB01,cabinet,,100,true,PROC-ROOM
+ * Ultra-Low Freezer 1,ULF01,freezer,-80.0,1000,true,MAIN-LAB Refrigerator
+ * 1,REF01,refrigerator,4.0,300,true,MAIN-LAB Processing
+ * Cabinet,PCAB01,cabinet,,100,true,PROC-ROOM
  */
 @Component
 @Transactional
@@ -77,20 +78,20 @@ public class StorageDeviceConfigurationHandler implements DomainConfigurationHan
         int parentRoomCodeIndex = findColumnIndex(headers, "parentRoomCode");
 
         if (nameIndex == -1) {
-            throw new IllegalArgumentException("Storage device configuration file " + fileName +
-                    " must have a 'name' column");
+            throw new IllegalArgumentException(
+                    "Storage device configuration file " + fileName + " must have a 'name' column");
         }
         if (codeIndex == -1) {
-            throw new IllegalArgumentException("Storage device configuration file " + fileName +
-                    " must have a 'code' column");
+            throw new IllegalArgumentException(
+                    "Storage device configuration file " + fileName + " must have a 'code' column");
         }
         if (typeIndex == -1) {
-            throw new IllegalArgumentException("Storage device configuration file " + fileName +
-                    " must have a 'type' column");
+            throw new IllegalArgumentException(
+                    "Storage device configuration file " + fileName + " must have a 'type' column");
         }
         if (parentRoomCodeIndex == -1) {
-            throw new IllegalArgumentException("Storage device configuration file " + fileName +
-                    " must have a 'parentRoomCode' column");
+            throw new IllegalArgumentException(
+                    "Storage device configuration file " + fileName + " must have a 'parentRoomCode' column");
         }
 
         String line;
@@ -107,8 +108,8 @@ public class StorageDeviceConfigurationHandler implements DomainConfigurationHan
             }
 
             try {
-                boolean processed = processStorageDeviceLine(line, nameIndex, codeIndex, typeIndex,
-                    temperatureIndex, capacityIndex, activeIndex, parentRoomCodeIndex, fileName, lineNumber);
+                boolean processed = processStorageDeviceLine(line, nameIndex, codeIndex, typeIndex, temperatureIndex,
+                        capacityIndex, activeIndex, parentRoomCodeIndex, fileName, lineNumber);
                 if (processed) {
                     processedCount++;
                 } else {
@@ -121,12 +122,13 @@ public class StorageDeviceConfigurationHandler implements DomainConfigurationHan
         }
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
-                "Storage device configuration processing completed for " + fileName +
-                ". Processed: " + processedCount + ", Skipped: " + skippedCount);
+                "Storage device configuration processing completed for " + fileName + ". Processed: " + processedCount
+                        + ", Skipped: " + skippedCount);
     }
 
     private boolean processStorageDeviceLine(String line, int nameIndex, int codeIndex, int typeIndex,
-            int temperatureIndex, int capacityIndex, int activeIndex, int parentRoomCodeIndex, String fileName, int lineNumber) {
+            int temperatureIndex, int capacityIndex, int activeIndex, int parentRoomCodeIndex, String fileName,
+            int lineNumber) {
 
         String[] values = parseCsvLine(line);
 
@@ -167,8 +169,8 @@ public class StorageDeviceConfigurationHandler implements DomainConfigurationHan
             deviceType = StorageDevice.DeviceType.fromValue(type.toLowerCase());
         } catch (IllegalArgumentException e) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "processStorageDeviceLine",
-                    "Skipping line " + lineNumber + " in " + fileName + ": invalid device type '" + type +
-                    "'. Valid types are: freezer, refrigerator, cabinet, other");
+                    "Skipping line " + lineNumber + " in " + fileName + ": invalid device type '" + type
+                            + "'. Valid types are: freezer, refrigerator, cabinet, other");
             return false;
         }
 
@@ -178,7 +180,8 @@ public class StorageDeviceConfigurationHandler implements DomainConfigurationHan
                 temperatureSetting = new BigDecimal(temperatureStr);
             } catch (NumberFormatException e) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "processStorageDeviceLine",
-                        "Invalid temperature setting '" + temperatureStr + "' on line " + lineNumber + " in " + fileName);
+                        "Invalid temperature setting '" + temperatureStr + "' on line " + lineNumber + " in "
+                                + fileName);
                 return false;
             }
         }
@@ -201,9 +204,8 @@ public class StorageDeviceConfigurationHandler implements DomainConfigurationHan
 
         StorageRoom parentRoom = storageRoomDAO.findByCode(parentRoomCode);
         if (parentRoom == null) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processStorageDeviceLine",
-                    "Skipping line " + lineNumber + " in " + fileName +
-                    ": parent room with code '" + parentRoomCode + "' not found");
+            LogEvent.logWarn(this.getClass().getSimpleName(), "processStorageDeviceLine", "Skipping line " + lineNumber
+                    + " in " + fileName + ": parent room with code '" + parentRoomCode + "' not found");
             return false;
         }
 
@@ -229,8 +231,8 @@ public class StorageDeviceConfigurationHandler implements DomainConfigurationHan
             storageDeviceDAO.insert(device);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "processStorageDeviceLine",
-                    "Successfully created storage device '" + name + "' with code '" + code +
-                    "' in room '" + parentRoom.getName() + "'");
+                    "Successfully created storage device '" + name + "' with code '" + code + "' in room '"
+                            + parentRoom.getName() + "'");
             return true;
 
         } catch (Exception e) {

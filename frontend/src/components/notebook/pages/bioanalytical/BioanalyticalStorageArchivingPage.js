@@ -46,7 +46,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     getPagePermissionLevel,
     canApproveData,
     canModify,
-    canAccessStorageArchiving
+    canAccessStorageArchiving,
   } = useBioanalyticalPermissions();
 
   // PAGE 5 allowed roles per test.pdf Section 11 permission matrix

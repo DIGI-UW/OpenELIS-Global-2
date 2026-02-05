@@ -322,17 +322,17 @@ CSV File
 
 ## Component Interaction Matrix
 
-| Component | Interacts With | Purpose |
-|-----------|----------------|---------|
-| AccessionNumberHandler | SampleService | Generate & check accessions |
-| AccessionNumberHandler | SampleDAO | Fallback generation, flush |
-| AccessionNumberHandler | EntityManager | Ensure DB visibility |
-| AccessionNumberHandler | IAccessionNumberGenerator | Primary generation strategy |
-| Handler | DuplicateAccessionNumberException | Signal duplicate detection |
-| VirologyManifestImportServiceImpl | AccessionNumberHandler | Delegate safe sample creation |
-| Other ManifestImportServiceImpl | AccessionNumberHandler | Same delegation pattern |
-| Database (SAMPLE table) | SampleService | INSERT/SELECT operations |
-| Database | Accession constraint | Enforce uniqueness "accnum_uk" |
+| Component                         | Interacts With                    | Purpose                        |
+| --------------------------------- | --------------------------------- | ------------------------------ |
+| AccessionNumberHandler            | SampleService                     | Generate & check accessions    |
+| AccessionNumberHandler            | SampleDAO                         | Fallback generation, flush     |
+| AccessionNumberHandler            | EntityManager                     | Ensure DB visibility           |
+| AccessionNumberHandler            | IAccessionNumberGenerator         | Primary generation strategy    |
+| Handler                           | DuplicateAccessionNumberException | Signal duplicate detection     |
+| VirologyManifestImportServiceImpl | AccessionNumberHandler            | Delegate safe sample creation  |
+| Other ManifestImportServiceImpl   | AccessionNumberHandler            | Same delegation pattern        |
+| Database (SAMPLE table)           | SampleService                     | INSERT/SELECT operations       |
+| Database                          | Accession constraint              | Enforce uniqueness "accnum_uk" |
 
 ## State Transition Diagram
 
@@ -420,6 +420,7 @@ CSV File
 ### Synchronization Points
 
 1. **First Sync: Lock Entry**
+
    ```
    synchronized (ACCESSION_NUMBER_LOCK) {
        // Only one thread at a time can generate
@@ -427,6 +428,7 @@ CSV File
    ```
 
 2. **Second Sync: Database Visibility**
+
    ```
    entityManager.flush();
    // Changes immediately visible to other threads
@@ -467,16 +469,19 @@ T12                         Insert: Success!
 ## Performance Characteristics
 
 ### Time Complexity
+
 - **Successful insert**: O(1) - One check, one insert, one flush
 - **Single retry**: O(2) - Two checks, one insert
 - **N retries**: O(N) - N checks, one insert, one flush
 
 ### Space Complexity
+
 - **Handler instance**: O(1)
 - **Lock object**: O(1) - Static, shared
 - **Recursion depth**: O(attempts) - Default 100, so O(100)
 
 ### Database Load
+
 - **Per sample**: 1-2 SELECT queries, 1 INSERT
 - **Batch (N samples)**: N-2N SELECT, N INSERT
 - **Concurrent safety**: Slightly higher due to retries, but bounded
@@ -484,17 +489,20 @@ T12                         Insert: Success!
 ## Scalability
 
 ### Single Instance
+
 - ✅ Perfect synchronization within JVM
 - ✅ No network overhead
 - ✅ Predictable locking behavior
 
 ### Multi-Instance (Without Sequence)
+
 - ✅ Exception handling catches race conditions
 - ⚠️ Some retries expected (1-2% of imports)
 - ⚠️ Retry adds latency (typically < 100ms)
 - ❌ High load (1000s concurrent) may see increased retries
 
 ### Multi-Instance (With Database Sequence)
+
 - ✅ Zero race conditions
 - ✅ Optimal for high concurrency
 - ✅ Database enforces uniqueness

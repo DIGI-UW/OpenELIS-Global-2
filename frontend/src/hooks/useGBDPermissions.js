@@ -293,7 +293,9 @@ export const useGBDPermissions = () => {
    * @returns {boolean}
    */
   const canApproveData = useCallback((permissionLevel) => {
-    return ["APPROVE", "FINAL_APPROVE", "FULL"].includes(permissionLevel?.toUpperCase());
+    return ["APPROVE", "FINAL_APPROVE", "FULL"].includes(
+      permissionLevel?.toUpperCase(),
+    );
   }, []);
 
   /**

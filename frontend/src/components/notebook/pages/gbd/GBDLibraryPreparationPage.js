@@ -64,8 +64,12 @@ export const GBDLibraryPreparationPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { getPagePermissionLevel, canSaveData, canAccessLibraryPreparation, GBD_PAGES } =
-    useGBDPermissions();
+  const {
+    getPagePermissionLevel,
+    canSaveData,
+    canAccessLibraryPreparation,
+    GBD_PAGES,
+  } = useGBDPermissions();
 
   const allowedRoles = [
     "GBD Lab Technician",

@@ -65,11 +65,13 @@ export const useTMMRDPermissions = () => {
     }
 
     const userTMMRDRoles = Object.values(TMMRD_ROLES).filter((role) => {
-      const allLabUnitsRoles = userSessionDetails.userLabRolesMap["AllLabUnits"] || [];
+      const allLabUnitsRoles =
+        userSessionDetails.userLabRolesMap["AllLabUnits"] || [];
       if (allLabUnitsRoles.includes(role)) {
         return true;
       }
-      const labUnitRoles = userSessionDetails.userLabRolesMap[TMMRD_LAB_UNIT] || [];
+      const labUnitRoles =
+        userSessionDetails.userLabRolesMap[TMMRD_LAB_UNIT] || [];
       return labUnitRoles.includes(role);
     });
 
@@ -186,7 +188,9 @@ export const useTMMRDPermissions = () => {
    * Allows: APPROVE, FINAL_APPROVE, FULL
    */
   const canApproveData = (permissionLevel) => {
-    return ["APPROVE", "FINAL_APPROVE", "FULL"].includes(permissionLevel?.toUpperCase());
+    return ["APPROVE", "FINAL_APPROVE", "FULL"].includes(
+      permissionLevel?.toUpperCase(),
+    );
   };
 
   /**
@@ -382,8 +386,10 @@ export const useTMMRDPermissions = () => {
 
   const canAccessStage1 = canAccessRegistration;
   const canAccessStage2 = canAccessAuthentication;
-  const canAccessStage3to4 = () => canAccessProcessing() || canAccessExtraction();
-  const canAccessStage5to6 = () => canAccessAnalysis() || canAccessProductDevelopment();
+  const canAccessStage3to4 = () =>
+    canAccessProcessing() || canAccessExtraction();
+  const canAccessStage5to6 = () =>
+    canAccessAnalysis() || canAccessProductDevelopment();
   const canAccessStage7 = canAccessProductDevelopment;
   const canAccessStage8 = canAccessHerbarium;
 
