@@ -1,12 +1,26 @@
 import React, { useState, useCallback, useContext, useEffect } from "react";
-import { Grid, Column, Button, Tile, Tag } from "@carbon/react";
+import {
+  Grid,
+  Column,
+  Button,
+  Tile,
+  Tag,
+  Modal,
+  Checkbox,
+  TextArea,
+  NumberInput,
+  Select,
+  SelectItem,
+  DatePicker,
+  DatePickerInput
+} from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import BioanalyticalManifestImportModal from "../../modals/BioanalyticalManifestImportModal";
 import BulkApplyForm from "../../workflow/BulkApplyForm";
 import SampleGrid from "../../workflow/SampleGrid";
-import { Upload, Checkmark, Edit } from "@carbon/react/icons";
+import { Upload, Checkmark, Edit, Chemistry } from "@carbon/react/icons";
 import { postToOpenElisServer } from "../../../utils/Utils";
 import config from "../../../../config.json";
 import { usePermissions } from "../../../../hooks/usePermissions";
@@ -94,6 +108,37 @@ function BioanalyticalSampleReceptionPage({
   // Modal states
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isBulkApplyModalOpen, setIsBulkApplyModalOpen] = useState(false);
+
+  // QC Verification modal state
+  const [isQCVerificationModalOpen, setIsQCVerificationModalOpen] = useState(false);
+  const [qcVerificationData, setQcVerificationData] = useState({
+    volumeAdequate: false,
+    containerIntegrity: false,
+    temperatureOK: false,
+    labelingComplete: false,
+    chainOfCustody: false,
+    comments: "",
+    measuredVolume: "",
+    measuredTemperature: "",
+  });
+
+  // Control Sample Classification state
+  const [controlSampleData, setControlSampleData] = useState({
+    sampleClassification: {
+      type: "STUDY_SAMPLE", // STUDY_SAMPLE, POSITIVE_CONTROL, NEGATIVE_CONTROL, QC_SAMPLE, BLANK
+      isControlSample: false,
+      controlType: "", // "POSITIVE", "NEGATIVE", "BLANK", "QC_LOW", "QC_MEDIUM", "QC_HIGH"
+      controlCategory: "", // "SYSTEM_SUITABILITY", "METHOD_VALIDATION", "RUN_ACCEPTANCE", "MATRIX_EFFECT"
+      expectedResult: "",
+      controlSource: "", // "REFERENCE_STANDARD", "SPIKED_MATRIX", "BLANK_MATRIX"
+      batchInfo: {
+        controlBatch: "",
+        expiryDate: "",
+        storageCondition: "",
+        supplier: ""
+      }
+    }
+  });
 
   // Progress tracking
   // Include both PENDING and IN_PROGRESS statuses as "pending" for the workflow
@@ -240,6 +285,271 @@ function BioanalyticalSampleReceptionPage({
     pageData?.id,
     onProgressUpdate,
   ]);
+
+  // Handle QC Verification modal open
+  const handleQCVerificationModalOpen = useCallback(() => {
+    if (selectedSampleIds.length === 0) {
+      addNotification({
+        kind: NotificationKinds.warning,
+        title: "No Samples Selected",
+        message: "Please select samples to perform QC verification.",
+      });
+      return;
+    }
+
+    // Reset form data
+    setQcVerificationData({
+      volumeAdequate: false,
+      containerIntegrity: false,
+      temperatureOK: false,
+      labelingComplete: false,
+      chainOfCustody: false,
+      comments: "",
+      measuredVolume: "",
+      measuredTemperature: "",
+    });
+
+    // Reset control sample data
+    setControlSampleData({
+      sampleClassification: {
+        type: "STUDY_SAMPLE",
+        isControlSample: false,
+        controlType: "",
+        controlCategory: "",
+        expectedResult: "",
+        controlSource: "",
+        batchInfo: {
+          controlBatch: "",
+          expiryDate: "",
+          storageCondition: "",
+          supplier: ""
+        }
+      }
+    });
+
+    setIsQCVerificationModalOpen(true);
+  }, [selectedSampleIds.length, addNotification]);
+
+  // Handle QC Verification submission
+  const handleQCVerificationSubmit = useCallback(async () => {
+    const hasRealPageId = pageData?.id && !String(pageData.id).startsWith("default-");
+
+    if (!hasRealPageId) {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: "Error",
+        message: "Cannot perform QC verification without a valid page ID.",
+      });
+      return;
+    }
+
+    // Calculate QC status
+    const qcChecks = [
+      qcVerificationData.volumeAdequate,
+      qcVerificationData.containerIntegrity,
+      qcVerificationData.temperatureOK,
+      qcVerificationData.labelingComplete,
+      qcVerificationData.chainOfCustody,
+    ];
+
+    const passedChecks = qcChecks.filter(Boolean).length;
+    const totalChecks = qcChecks.length;
+    const qcPassed = qcChecks.every(Boolean);
+
+    // Prepare QC data for storage in sample.data (using the same pattern as BulkApplyForm)
+    // Explicitly extract only primitive values to avoid circular references
+    const qcData = {
+      receptionQC: {
+        volumeAdequate: Boolean(qcVerificationData.volumeAdequate),
+        containerIntegrity: Boolean(qcVerificationData.containerIntegrity),
+        temperatureOK: Boolean(qcVerificationData.temperatureOK),
+        labelingComplete: Boolean(qcVerificationData.labelingComplete),
+        chainOfCustody: Boolean(qcVerificationData.chainOfCustody),
+        comments: String(qcVerificationData.comments || ""),
+        measuredVolume: String(qcVerificationData.measuredVolume || ""),
+        measuredTemperature: String(qcVerificationData.measuredTemperature || ""),
+        qcPerformed: true,
+        qcDate: new Date().toISOString(),
+        passedChecks,
+        totalChecks,
+        qcPassed,
+        overallStatus: qcPassed ? "PASS" : "FAIL",
+      },
+      // Control Sample Classification
+      sampleClassification: {
+        type: String(controlSampleData.sampleClassification.type),
+        isControlSample: Boolean(controlSampleData.sampleClassification.isControlSample),
+        controlType: String(controlSampleData.sampleClassification.controlType || ""),
+        controlCategory: String(controlSampleData.sampleClassification.controlCategory || ""),
+        expectedResult: String(controlSampleData.sampleClassification.expectedResult || ""),
+        controlSource: String(controlSampleData.sampleClassification.controlSource || ""),
+        batchInfo: {
+          controlBatch: String(controlSampleData.sampleClassification.batchInfo.controlBatch || ""),
+          expiryDate: String(controlSampleData.sampleClassification.batchInfo.expiryDate || ""),
+          storageCondition: String(controlSampleData.sampleClassification.batchInfo.storageCondition || ""),
+          supplier: String(controlSampleData.sampleClassification.batchInfo.supplier || "")
+        },
+        classificationDate: new Date().toISOString(),
+        classificationBy: "current_user" // In real implementation, get from user context
+      },
+    };
+
+    setIsLoading(true);
+
+    // Use the same bulk apply endpoint as Edit Metadata modal
+    const requestBody = {
+      sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+      data: qcData,
+    };
+
+    console.log("QC Verification - requestBody:", requestBody);
+    console.log("QC Verification - qcData:", qcData);
+    console.log("QC Verification - qcVerificationData:", qcVerificationData);
+
+    postToOpenElisServer(
+      `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+      JSON.stringify(requestBody),
+      (status, response) => {
+        setIsLoading(false);
+        if (status === 200) {
+          const passedSamples = qcPassed ? selectedSampleIds.length : 0;
+          const failedSamples = selectedSampleIds.length - passedSamples;
+
+          addNotification({
+            kind: qcPassed ? NotificationKinds.success : NotificationKinds.warning,
+            title: "QC Verification Complete",
+            message: `${selectedSampleIds.length} sample(s) processed. ${passedSamples} passed, ${failedSamples} failed QC.`,
+          });
+
+          setIsQCVerificationModalOpen(false);
+          setSelectedSampleIds([]);
+          loadPageSamples();
+
+          if (onProgressUpdate) {
+            onProgressUpdate();
+          }
+        } else {
+          addNotification({
+            kind: NotificationKinds.error,
+            title: "Error",
+            message: "Failed to save QC verification data. Please try again.",
+          });
+        }
+      },
+    );
+  }, [selectedSampleIds, pageData?.id, qcVerificationData, addNotification, onProgressUpdate]);
+
+  // Render QC Status for sample grid
+  const renderQCStatus = useCallback((value, sample) => {
+    // Handle both value-first and sample-first parameter patterns
+    const sampleData = sample || value;
+
+    console.log("renderQCStatus - value:", value);
+    console.log("renderQCStatus - sample:", sample);
+    console.log("renderQCStatus - sampleData:", sampleData);
+    console.log("renderQCStatus - sampleData.data:", sampleData?.data);
+    console.log("renderQCStatus - sampleData.receptionQC:", sampleData?.receptionQC);
+    console.log("renderQCStatus - sampleData.data.receptionQC:", sampleData?.data?.receptionQC);
+
+    // Safety check for undefined sample
+    if (!sampleData || typeof sampleData !== 'object') {
+      console.log("renderQCStatus - returning QC Pending due to invalid sampleData");
+      return (
+        <Tag type="gray" size="sm" title="QC not yet performed">
+          QC Pending
+        </Tag>
+      );
+    }
+
+    // QC data is available directly on the sample object after transformation
+    // (loadPageSamples spreads ...sampleDataFields which includes receptionQC)
+    const qc = sampleData.receptionQC;
+
+    console.log("renderQCStatus - qc:", qc);
+
+    if (!qc || !qc.qcPerformed) {
+      console.log("renderQCStatus - returning QC Pending due to no QC data or qcPerformed=false");
+      return (
+        <Tag type="gray" size="sm" title="QC not yet performed">
+          QC Pending
+        </Tag>
+      );
+    }
+
+    const { qcPassed, passedChecks, totalChecks } = qc;
+
+    if (qcPassed) {
+      return (
+        <Tag
+          type="green"
+          size="sm"
+          title={`QC passed all ${totalChecks} checks on ${new Date(qc.qcDate).toLocaleString()}`}
+        >
+          QC PASS ({passedChecks}/{totalChecks})
+        </Tag>
+      );
+    } else {
+      return (
+        <Tag
+          type="red"
+          size="sm"
+          title={`QC failed - ${passedChecks}/${totalChecks} checks passed on ${new Date(qc.qcDate).toLocaleString()}`}
+        >
+          QC FAIL ({passedChecks}/{totalChecks})
+        </Tag>
+      );
+    }
+  }, []);
+
+  // Render Control Sample Type for sample grid
+  const renderControlType = useCallback((value, sample) => {
+    // Handle both value-first and sample-first parameter patterns
+    const sampleData = sample || value;
+
+    // Safety check for undefined sample
+    if (!sampleData || typeof sampleData !== 'object') {
+      return (
+        <Tag type="gray" size="sm" title="No classification">
+          Study Sample
+        </Tag>
+      );
+    }
+
+    // Check for control classification data
+    const classification = sampleData.sampleClassification;
+
+    if (!classification || !classification.isControlSample) {
+      return (
+        <Tag type="gray" size="sm" title="Regular study sample">
+          Study Sample
+        </Tag>
+      );
+    }
+
+    // Determine tag type and text based on control type
+    const getControlTypeDisplay = () => {
+      switch (classification.type) {
+        case "POSITIVE_CONTROL":
+          return { type: "green", text: "Positive Ctrl", title: `Positive Control - ${classification.controlType || 'Generic'}` };
+        case "NEGATIVE_CONTROL":
+          return { type: "red", text: "Negative Ctrl", title: `Negative Control - ${classification.controlType || 'Generic'}` };
+        case "QC_SAMPLE":
+          return { type: "blue", text: "QC Sample", title: `QC Sample - ${classification.controlType || 'Generic'}` };
+        case "BLANK":
+          return { type: "purple", text: "Blank", title: `Blank Control - ${classification.controlType || 'Generic'}` };
+        default:
+          return { type: "cyan", text: "Control", title: `Control Sample - ${classification.type}` };
+      }
+    };
+
+    const { type, text, title } = getControlTypeDisplay();
+
+    return (
+      <Tag type={type} size="sm" title={title}>
+        {text}
+      </Tag>
+    );
+  }, []);
 
   // Load Stage 1 samples from backend API
   const loadPageSamples = useCallback(() => {
@@ -510,6 +820,31 @@ function BioanalyticalSampleReceptionPage({
                   Edit Metadata ({selectedSampleIds.length})
                 </Button>
 
+                {/* QC Verification Button */}
+                <Button
+                  kind="secondary"
+                  size="sm"
+                  renderIcon={Chemistry}
+                  onClick={handleQCVerificationModalOpen}
+                  disabled={selectedSampleIds.length === 0 || !canSaveData(pagePermissionLevel)}
+                  title={
+                    selectedSampleIds.length === 0
+                      ? "Select samples to perform QC verification"
+                      : !canSaveData(pagePermissionLevel)
+                      ? intl.formatMessage({
+                          id: "notebook.bioanalytical.stage1.insufficientPermissionsQC",
+                          defaultMessage: "Insufficient permissions for QC verification",
+                        })
+                      : `Perform QC verification on ${selectedSampleIds.length} selected sample(s)`
+                  }
+                >
+                  <FormattedMessage
+                    id="notebook.bioanalytical.stage1.qcVerification"
+                    defaultMessage="QC Verification ({count})"
+                    values={{ count: selectedSampleIds.length }}
+                  />
+                </Button>
+
                 <Button
                   kind="primary"
                   size="sm"
@@ -651,6 +986,20 @@ function BioanalyticalSampleReceptionPage({
                       </Tag>
                     );
                   },
+                },
+                {
+                  key: "qcStatus",
+                  header: "QC Status",
+                  render: renderQCStatus,
+                  width: "120px",
+                  sortable: false,
+                },
+                {
+                  key: "controlType",
+                  header: "Control Type",
+                  render: renderControlType,
+                  width: "140px",
+                  sortable: false,
                 },
               ]}
               additionalColumns={[
@@ -1339,6 +1688,426 @@ function BioanalyticalSampleReceptionPage({
           }}
         />
       )}
+
+      {/* QC Verification Modal */}
+      <Modal
+        open={isQCVerificationModalOpen}
+        onRequestClose={() => setIsQCVerificationModalOpen(false)}
+        modalLabel="Sample Reception"
+        modalHeading={`QC Verification for ${selectedSampleIds.length} Sample(s)`}
+        primaryButtonText="Complete QC Verification"
+        secondaryButtonText="Cancel"
+        onRequestSubmit={handleQCVerificationSubmit}
+        size="md"
+        preventCloseOnClickOutside={isLoading}
+      >
+        <div className="qc-verification-form">
+          <p style={{ marginBottom: "1rem", color: "#6f6f6f" }}>
+            Complete quality control verification for the selected samples.
+            All criteria must pass for QC approval.
+          </p>
+
+          {/* QC Checklist */}
+          <div style={{ marginBottom: "1.5rem" }}>
+            <h5 style={{ marginBottom: "1rem", fontSize: "1rem", fontWeight: "500" }}>
+              Reception QC Criteria:
+            </h5>
+
+            <div style={{ display: "grid", gap: "0.75rem" }}>
+              <Checkbox
+                id="qc-volume"
+                labelText="Volume Adequate (≥2.0mL for bioanalysis)"
+                checked={qcVerificationData.volumeAdequate}
+                onChange={(checked, { name, id }) =>
+                  setQcVerificationData(prev => ({ ...prev, volumeAdequate: checked }))
+                }
+                disabled={isLoading}
+              />
+
+              <Checkbox
+                id="qc-container"
+                labelText="Container integrity acceptable (no cracks, leaks, contamination)"
+                checked={qcVerificationData.containerIntegrity}
+                onChange={(checked, { name, id }) =>
+                  setQcVerificationData(prev => ({ ...prev, containerIntegrity: checked }))
+                }
+                disabled={isLoading}
+              />
+
+              <Checkbox
+                id="qc-temperature"
+                labelText="Temperature maintained during transport (2-8°C)"
+                checked={qcVerificationData.temperatureOK}
+                onChange={(checked, { name, id }) =>
+                  setQcVerificationData(prev => ({ ...prev, temperatureOK: checked }))
+                }
+                disabled={isLoading}
+              />
+
+              <Checkbox
+                id="qc-labeling"
+                labelText="Sample labeling complete and legible"
+                checked={qcVerificationData.labelingComplete}
+                onChange={(checked, { name, id }) =>
+                  setQcVerificationData(prev => ({ ...prev, labelingComplete: checked }))
+                }
+                disabled={isLoading}
+              />
+
+              <Checkbox
+                id="qc-custody"
+                labelText="Chain of custody documentation complete"
+                checked={qcVerificationData.chainOfCustody}
+                onChange={(checked, { name, id }) =>
+                  setQcVerificationData(prev => ({ ...prev, chainOfCustody: checked }))
+                }
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Optional Measurements */}
+          <div style={{ marginBottom: "1.5rem" }}>
+            <h6 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", color: "#6f6f6f" }}>
+              Optional Measurements:
+            </h6>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <NumberInput
+                id="measured-volume"
+                label="Measured Volume (mL)"
+                placeholder="e.g., 2.5"
+                value={qcVerificationData.measuredVolume}
+                onChange={(e, { value }) =>
+                  setQcVerificationData(prev => ({ ...prev, measuredVolume: value }))
+                }
+                min={0}
+                step={0.1}
+                disabled={isLoading}
+              />
+
+              <NumberInput
+                id="measured-temperature"
+                label="Measured Temperature (°C)"
+                placeholder="e.g., 4.2"
+                value={qcVerificationData.measuredTemperature}
+                onChange={(e, { value }) =>
+                  setQcVerificationData(prev => ({ ...prev, measuredTemperature: value }))
+                }
+                min={-20}
+                max={50}
+                step={0.1}
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Comments */}
+          <div style={{ marginBottom: "1rem" }}>
+            <TextArea
+              id="qc-comments"
+              labelText="QC Comments"
+              placeholder="Enter any QC observations, deviations, or corrective actions taken..."
+              value={qcVerificationData.comments}
+              onChange={(e) =>
+                setQcVerificationData(prev => ({ ...prev, comments: e.target.value }))
+              }
+              disabled={isLoading}
+              rows={3}
+            />
+          </div>
+
+          {/* Control Sample Classification */}
+          <div style={{ marginBottom: "1.5rem", borderTop: "1px solid #e0e0e0", paddingTop: "1.5rem" }}>
+            <h5 style={{ marginBottom: "1rem", fontSize: "1rem", fontWeight: "500" }}>
+              Control Sample Classification:
+            </h5>
+
+            {/* Sample Type Selection */}
+            <div style={{ marginBottom: "1rem" }}>
+              <Select
+                id="sample-type"
+                labelText="Sample Type"
+                value={controlSampleData.sampleClassification.type}
+                onChange={(e) => {
+                  const newType = e.target.value;
+                  const isControlSample = newType !== "STUDY_SAMPLE";
+                  setControlSampleData(prev => ({
+                    ...prev,
+                    sampleClassification: {
+                      ...prev.sampleClassification,
+                      type: newType,
+                      isControlSample: isControlSample,
+                      controlType: isControlSample ? (prev.sampleClassification.controlType || "") : "",
+                      controlCategory: isControlSample ? (prev.sampleClassification.controlCategory || "") : "",
+                      expectedResult: isControlSample ? (prev.sampleClassification.expectedResult || "") : "",
+                      controlSource: isControlSample ? (prev.sampleClassification.controlSource || "") : ""
+                    }
+                  }));
+                }}
+                disabled={isLoading}
+              >
+                <SelectItem value="STUDY_SAMPLE" text="Study Sample" />
+                <SelectItem value="POSITIVE_CONTROL" text="Positive Control" />
+                <SelectItem value="NEGATIVE_CONTROL" text="Negative Control" />
+                <SelectItem value="QC_SAMPLE" text="QC Sample" />
+                <SelectItem value="BLANK" text="Blank" />
+              </Select>
+            </div>
+
+            {/* Control Sample Details - Only show if control sample is selected */}
+            {controlSampleData.sampleClassification.isControlSample && (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                  <Select
+                    id="control-type"
+                    labelText="Control Type"
+                    value={controlSampleData.sampleClassification.controlType}
+                    onChange={(e) =>
+                      setControlSampleData(prev => ({
+                        ...prev,
+                        sampleClassification: {
+                          ...prev.sampleClassification,
+                          controlType: e.target.value
+                        }
+                      }))
+                    }
+                    disabled={isLoading}
+                  >
+                    <SelectItem value="" text="Select control type..." />
+                    <SelectItem value="POSITIVE" text="Positive Control" />
+                    <SelectItem value="NEGATIVE" text="Negative Control" />
+                    <SelectItem value="BLANK" text="Blank Control" />
+                    <SelectItem value="QC_LOW" text="QC Low" />
+                    <SelectItem value="QC_MEDIUM" text="QC Medium" />
+                    <SelectItem value="QC_HIGH" text="QC High" />
+                  </Select>
+
+                  <Select
+                    id="control-category"
+                    labelText="Control Category"
+                    value={controlSampleData.sampleClassification.controlCategory}
+                    onChange={(e) =>
+                      setControlSampleData(prev => ({
+                        ...prev,
+                        sampleClassification: {
+                          ...prev.sampleClassification,
+                          controlCategory: e.target.value
+                        }
+                      }))
+                    }
+                    disabled={isLoading}
+                  >
+                    <SelectItem value="" text="Select category..." />
+                    <SelectItem value="SYSTEM_SUITABILITY" text="System Suitability" />
+                    <SelectItem value="METHOD_VALIDATION" text="Method Validation" />
+                    <SelectItem value="RUN_ACCEPTANCE" text="Run Acceptance" />
+                    <SelectItem value="MATRIX_EFFECT" text="Matrix Effect" />
+                  </Select>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                  <Select
+                    id="control-source"
+                    labelText="Control Source"
+                    value={controlSampleData.sampleClassification.controlSource}
+                    onChange={(e) =>
+                      setControlSampleData(prev => ({
+                        ...prev,
+                        sampleClassification: {
+                          ...prev.sampleClassification,
+                          controlSource: e.target.value
+                        }
+                      }))
+                    }
+                    disabled={isLoading}
+                  >
+                    <SelectItem value="" text="Select source..." />
+                    <SelectItem value="REFERENCE_STANDARD" text="Reference Standard" />
+                    <SelectItem value="SPIKED_MATRIX" text="Spiked Matrix" />
+                    <SelectItem value="BLANK_MATRIX" text="Blank Matrix" />
+                  </Select>
+
+                  <TextArea
+                    id="expected-result"
+                    labelText="Expected Result"
+                    placeholder="e.g., 100 ng/mL ± 15%"
+                    value={controlSampleData.sampleClassification.expectedResult}
+                    onChange={(e) =>
+                      setControlSampleData(prev => ({
+                        ...prev,
+                        sampleClassification: {
+                          ...prev.sampleClassification,
+                          expectedResult: e.target.value
+                        }
+                      }))
+                    }
+                    disabled={isLoading}
+                    rows={2}
+                  />
+                </div>
+
+                {/* Control Batch Information */}
+                <div style={{ marginBottom: "1rem", padding: "1rem", backgroundColor: "#f4f4f4", borderRadius: "4px" }}>
+                  <h6 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "500" }}>
+                    Control Batch Information:
+                  </h6>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                    <TextArea
+                      id="control-batch"
+                      labelText="Control Batch/Lot"
+                      placeholder="e.g., CTL-2025-001"
+                      value={controlSampleData.sampleClassification.batchInfo.controlBatch}
+                      onChange={(e) =>
+                        setControlSampleData(prev => ({
+                          ...prev,
+                          sampleClassification: {
+                            ...prev.sampleClassification,
+                            batchInfo: {
+                              ...prev.sampleClassification.batchInfo,
+                              controlBatch: e.target.value
+                            }
+                          }
+                        }))
+                      }
+                      disabled={isLoading}
+                      rows={1}
+                    />
+
+                    <TextArea
+                      id="control-supplier"
+                      labelText="Supplier"
+                      placeholder="e.g., Sigma-Aldrich"
+                      value={controlSampleData.sampleClassification.batchInfo.supplier}
+                      onChange={(e) =>
+                        setControlSampleData(prev => ({
+                          ...prev,
+                          sampleClassification: {
+                            ...prev.sampleClassification,
+                            batchInfo: {
+                              ...prev.sampleClassification.batchInfo,
+                              supplier: e.target.value
+                            }
+                          }
+                        }))
+                      }
+                      disabled={isLoading}
+                      rows={1}
+                    />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                    <DatePicker
+                      datePickerType="single"
+                      value={controlSampleData.sampleClassification.batchInfo.expiryDate}
+                      onChange={([date]) =>
+                        setControlSampleData(prev => ({
+                          ...prev,
+                          sampleClassification: {
+                            ...prev.sampleClassification,
+                            batchInfo: {
+                              ...prev.sampleClassification.batchInfo,
+                              expiryDate: date ? date.toISOString().split('T')[0] : ""
+                            }
+                          }
+                        }))
+                      }
+                      disabled={isLoading}
+                    >
+                      <DatePickerInput
+                        id="expiry-date"
+                        labelText="Expiry Date"
+                        placeholder="mm/dd/yyyy"
+                      />
+                    </DatePicker>
+
+                    <Select
+                      id="storage-condition"
+                      labelText="Storage Condition"
+                      value={controlSampleData.sampleClassification.batchInfo.storageCondition}
+                      onChange={(e) =>
+                        setControlSampleData(prev => ({
+                          ...prev,
+                          sampleClassification: {
+                            ...prev.sampleClassification,
+                            batchInfo: {
+                              ...prev.sampleClassification.batchInfo,
+                              storageCondition: e.target.value
+                            }
+                          }
+                        }))
+                      }
+                      disabled={isLoading}
+                    >
+                      <SelectItem value="" text="Select storage..." />
+                      <SelectItem value="-80°C" text="-80°C (Ultra-low freezer)" />
+                      <SelectItem value="-20°C" text="-20°C (Freezer)" />
+                      <SelectItem value="2-8°C" text="2-8°C (Refrigerator)" />
+                      <SelectItem value="15-25°C" text="15-25°C (Room temperature)" />
+                      <SelectItem value="DESICCATED" text="Desiccated" />
+                    </Select>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* QC Status Preview */}
+          <div style={{
+            padding: "0.75rem",
+            backgroundColor: (() => {
+              const allPassed = [
+                qcVerificationData.volumeAdequate,
+                qcVerificationData.containerIntegrity,
+                qcVerificationData.temperatureOK,
+                qcVerificationData.labelingComplete,
+                qcVerificationData.chainOfCustody,
+              ].every(Boolean);
+              return allPassed ? "#e7f6ed" : "#ffeae6";
+            })(),
+            borderRadius: "4px",
+            border: (() => {
+              const allPassed = [
+                qcVerificationData.volumeAdequate,
+                qcVerificationData.containerIntegrity,
+                qcVerificationData.temperatureOK,
+                qcVerificationData.labelingComplete,
+                qcVerificationData.chainOfCustody,
+              ].every(Boolean);
+              return allPassed ? "1px solid #198038" : "1px solid #da1e28";
+            })(),
+          }}>
+            <div style={{ fontSize: "0.875rem", fontWeight: "500", marginBottom: "0.25rem" }}>
+              QC Status Preview:
+            </div>
+            <div style={{ fontSize: "0.875rem" }}>
+              {(() => {
+                const checks = [
+                  qcVerificationData.volumeAdequate,
+                  qcVerificationData.containerIntegrity,
+                  qcVerificationData.temperatureOK,
+                  qcVerificationData.labelingComplete,
+                  qcVerificationData.chainOfCustody,
+                ];
+                const passed = checks.filter(Boolean).length;
+                const total = checks.length;
+                const allPassed = checks.every(Boolean);
+
+                return allPassed ?
+                  `✅ QC PASS - All ${total} criteria met` :
+                  `❌ QC FAIL - ${passed}/${total} criteria met`;
+              })()}
+            </div>
+          </div>
+
+          {isLoading && (
+            <div style={{ textAlign: "center", marginTop: "1rem" }}>
+              <div>Processing QC verification...</div>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

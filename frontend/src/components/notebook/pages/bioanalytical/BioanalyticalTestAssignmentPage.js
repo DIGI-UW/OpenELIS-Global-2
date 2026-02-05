@@ -28,6 +28,10 @@ import {
   Tab,
   TabPanels,
   TabPanel,
+  Tag,
+  DataTable,
+  TableContainer,
+  InlineNotification,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../../config.json";
@@ -60,6 +64,13 @@ const ANALYTICAL_METHODS = [
       "Label all solutions with date, time, and analyst initials",
       "Document instrument configuration and calibration status",
     ],
+    controlRequirements: [
+      { type: "POSITIVE", count: 2, frequency: "PER_RUN", description: "Reference standard solution" },
+      { type: "NEGATIVE", count: 1, frequency: "PER_RUN", description: "Solvent blank" },
+      { type: "QC_LOW", count: 1, frequency: "PER_RUN", description: "Low concentration QC (20-30% of nominal)" },
+      { type: "QC_MEDIUM", count: 1, frequency: "PER_RUN", description: "Medium concentration QC (50% of nominal)" },
+      { type: "QC_HIGH", count: 1, frequency: "PER_RUN", description: "High concentration QC (150% of nominal)" }
+    ],
   },
   {
     id: "LC_MS_MS",
@@ -82,6 +93,14 @@ const ANALYTICAL_METHODS = [
       "Prepare calibration standard curve (typically 6-8 point curve)",
       "Prepare quality control samples (Low, Medium, High)",
       "Document all preparation conditions and lot numbers",
+    ],
+    controlRequirements: [
+      { type: "POSITIVE", count: 3, frequency: "PER_RUN", description: "Calibration standards (Low, Med, High)" },
+      { type: "NEGATIVE", count: 2, frequency: "PER_RUN", description: "Blank matrix (plasma/serum)" },
+      { type: "QC_LOW", count: 2, frequency: "PER_RUN", description: "QC Low (3x LLOQ)" },
+      { type: "QC_MEDIUM", count: 2, frequency: "PER_RUN", description: "QC Medium (mid-range)" },
+      { type: "QC_HIGH", count: 2, frequency: "PER_RUN", description: "QC High (80% of ULOQ)" },
+      { type: "BLANK", count: 1, frequency: "PER_RUN", description: "Double blank (no IS, no analyte)" }
     ],
   },
   {
@@ -107,6 +126,11 @@ const ANALYTICAL_METHODS = [
       "Record sampling timepoints (typically 15, 30, 45, 60 minutes)",
       "Prepare sampling solutions and document collection times",
     ],
+    controlRequirements: [
+      { type: "POSITIVE", count: 1, frequency: "PER_BATCH", description: "Reference tablet (certified standard)" },
+      { type: "QC_MEDIUM", count: 1, frequency: "PER_RUN", description: "System suitability tablet" },
+      { type: "BLANK", count: 1, frequency: "PER_RUN", description: "Dissolution medium blank" }
+    ],
   },
   {
     id: "PHYSICAL_TESTING",
@@ -125,6 +149,10 @@ const ANALYTICAL_METHODS = [
       "For disintegration: Place tablets in disintegration apparatus",
       "Conduct test in deionized water at 37°C ± 2°C for 30 minutes",
       "Record results and document any deviations from specifications",
+    ],
+    controlRequirements: [
+      { type: "POSITIVE", count: 1, frequency: "PER_BATCH", description: "Reference tablets (hardness ~50N)" },
+      { type: "QC_MEDIUM", count: 1, frequency: "PER_TEST", description: "Calibration tablet for hardness" }
     ],
   },
   {
@@ -156,7 +184,150 @@ const ANALYTICAL_METHODS = [
       "Inject sample solution and compare with reference",
       "Document all analytical parameters and calibration data",
     ],
+    controlRequirements: [
+      { type: "POSITIVE", count: 1, frequency: "PER_RUN", description: "Certified reference standard" },
+      { type: "NEGATIVE", count: 1, frequency: "PER_RUN", description: "Solvent/excipient blank" },
+      { type: "QC_MEDIUM", count: 1, frequency: "PER_BATCH", description: "System suitability test" }
+    ],
   },
+];
+
+/**
+ * Bioanalytical Control Sample Repository - Pre-defined reference standards
+ * Following OpenELIS patterns from virology, TB, and MedLab modules
+ * Stored in sample.data.controlRepository and persisted via bulk endpoints
+ */
+const BIOANALYTICAL_CONTROL_STANDARDS = [
+  // HPLC Controls
+  {
+    id: "HPLC_POS_001",
+    name: "HPLC Positive Control Standard",
+    type: "POSITIVE",
+    methods: ["HPLC_UV_VIS"],
+    description: "Certified reference standard for HPLC UV-VIS analysis",
+    supplier: "USP Reference Standards",
+    catalogNumber: "USP-RS-001",
+    concentration: { value: 100.0, unit: "mg/L" },
+    acceptanceCriteria: { min: 95.0, max: 105.0, unit: "%" },
+    storageConditions: "Store at 2-8°C, protect from light",
+    shelfLife: { value: 24, unit: "months" },
+    qcLevel: "MEDIUM",
+    certificateOfAnalysis: "COA-HPLC-001.pdf"
+  },
+  {
+    id: "HPLC_NEG_001",
+    name: "HPLC Negative Control (Blank)",
+    type: "NEGATIVE",
+    methods: ["HPLC_UV_VIS"],
+    description: "Solvent blank for baseline verification",
+    supplier: "In-house preparation",
+    catalogNumber: "IH-BLANK-001",
+    concentration: { value: 0.0, unit: "mg/L" },
+    acceptanceCriteria: { max: 0.1, unit: "% of LOQ" },
+    storageConditions: "Store at room temperature",
+    shelfLife: { value: 1, unit: "week" },
+    qcLevel: "LOW",
+    preparationSOP: "SOP-BLANK-PREP-001"
+  },
+
+  // LC-MS/MS Controls
+  {
+    id: "LCMS_POS_001",
+    name: "LC-MS/MS Internal Standard",
+    type: "POSITIVE",
+    methods: ["LC_MS_MS"],
+    description: "Deuterated internal standard for LC-MS/MS quantification",
+    supplier: "Cambridge Isotope Laboratories",
+    catalogNumber: "DLM-1234-1",
+    concentration: { value: 500.0, unit: "ng/mL" },
+    acceptanceCriteria: { min: 90.0, max: 110.0, unit: "%" },
+    storageConditions: "Store at -20°C",
+    shelfLife: { value: 12, unit: "months" },
+    qcLevel: "HIGH",
+    mzRatio: { precursor: 285.2, product: 158.1 }
+  },
+  {
+    id: "LCMS_NEG_001",
+    name: "LC-MS/MS Matrix Blank",
+    type: "NEGATIVE",
+    methods: ["LC_MS_MS"],
+    description: "Drug-free biological matrix for interference assessment",
+    supplier: "BioIVT",
+    catalogNumber: "BF-PLASMA-001",
+    concentration: { value: 0.0, unit: "ng/mL" },
+    acceptanceCriteria: { max: 20.0, unit: "% of LLOQ" },
+    storageConditions: "Store at -70°C",
+    shelfLife: { value: 6, unit: "months" },
+    qcLevel: "LOW",
+    matrixType: "Human plasma"
+  },
+
+  // Dissolution Controls
+  {
+    id: "DISS_POS_001",
+    name: "Dissolution Reference Tablet",
+    type: "POSITIVE",
+    methods: ["DISSOLUTION_USP"],
+    description: "USP Dissolution Calibrator Tablets",
+    supplier: "USP",
+    catalogNumber: "USP-DCT-001",
+    concentration: { value: 10.0, unit: "mg per tablet" },
+    acceptanceCriteria: { min: 85.0, max: 115.0, unit: "% dissolved at 30 min" },
+    storageConditions: "Store in original container, desiccant present",
+    shelfLife: { value: 60, unit: "months" },
+    qcLevel: "MEDIUM",
+    dissolutionMedium: "pH 6.8 phosphate buffer",
+    apparatus: "USP Apparatus 2 (paddle)"
+  },
+
+  // Physical Testing Controls
+  {
+    id: "PHYS_POS_001",
+    name: "Hardness Reference Standard",
+    type: "POSITIVE",
+    methods: ["PHYSICAL_TESTING"],
+    description: "Calibrated reference tablets for hardness testing",
+    supplier: "Pharma Test",
+    catalogNumber: "PT-HT-REF-50N",
+    concentration: { value: 50.0, unit: "N" },
+    acceptanceCriteria: { min: 47.5, max: 52.5, unit: "N" },
+    storageConditions: "Store at ambient conditions",
+    shelfLife: { value: 12, unit: "months" },
+    qcLevel: "LOW",
+    calibrationCertificate: "CERT-HT-2024-001"
+  },
+
+  // Identity Test Controls
+  {
+    id: "ID_POS_001",
+    name: "Identity Reference Standard",
+    type: "POSITIVE",
+    methods: ["IDENTITY_TEST"],
+    description: "Authenticated reference material for identity confirmation",
+    supplier: "European Pharmacopoeia",
+    catalogNumber: "EP-REF-001",
+    concentration: { value: 99.8, unit: "% purity" },
+    acceptanceCriteria: { min: 99.0, max: 100.5, unit: "% identity match" },
+    storageConditions: "Store in original vial, desiccated",
+    shelfLife: { value: 36, unit: "months" },
+    qcLevel: "HIGH",
+    identityMethods: ["IR", "HPLC", "MS"]
+  },
+  {
+    id: "ID_NEG_001",
+    name: "Identity Negative Control",
+    type: "NEGATIVE",
+    methods: ["IDENTITY_TEST"],
+    description: "Different compound for specificity verification",
+    supplier: "Sigma-Aldrich",
+    catalogNumber: "SA-ALT-001",
+    concentration: { value: 99.5, unit: "% purity" },
+    acceptanceCriteria: { max: 5.0, unit: "% cross-reactivity" },
+    storageConditions: "Store at room temperature",
+    shelfLife: { value: 24, unit: "months" },
+    qcLevel: "MEDIUM",
+    structuralSimilarity: "Different functional groups"
+  }
 ];
 
 /**
@@ -288,6 +459,88 @@ function BioanalyticalTestAssignmentPage({
 
   // UI states
   const [showAssignmentForm, setShowAssignmentForm] = useState(false);
+
+  // Render QC Status for Stage 2 sample table
+  const renderStage2QCStatus = useCallback((sample) => {
+    // Check for reception QC from Stage 1
+    if (sample.data?.receptionQC || sample.receptionQC) {
+      const receptionQC = sample.data?.receptionQC || sample.receptionQC;
+      if (receptionQC.qcPerformed) {
+        return (
+          <Tag
+            type={receptionQC.qcPassed ? "green" : "red"}
+            size="sm"
+            title={`Reception QC ${receptionQC.overallStatus} - ${receptionQC.passedChecks}/${receptionQC.totalChecks} checks`}
+          >
+            RECEPTION {receptionQC.overallStatus}
+          </Tag>
+        );
+      }
+    }
+
+    // Check if sample has any QC data from downstream stages
+    if (sample.data?.qcApproved) {
+      return (
+        <Tag type="green" size="sm" title="QC approved in downstream stage">
+          QC APPROVED
+        </Tag>
+      );
+    }
+
+    // Default state for Stage 2 (before QC verification)
+    return (
+      <Tag type="gray" size="sm" title="Reception QC pending - complete Stage 1 first">
+        QC PENDING
+      </Tag>
+    );
+  }, []);
+
+  // Render Control Type for Stage 2 sample table
+  const renderStage2ControlType = useCallback((sample) => {
+    // Safety check for undefined sample
+    if (!sample || typeof sample !== 'object') {
+      return (
+        <Tag type="gray" size="sm" title="No classification">
+          Study Sample
+        </Tag>
+      );
+    }
+
+    // Check for control classification data from Stage 1
+    const classification = sample.sampleClassification;
+
+    if (!classification || !classification.isControlSample) {
+      return (
+        <Tag type="gray" size="sm" title="Regular study sample">
+          Study Sample
+        </Tag>
+      );
+    }
+
+    // Determine tag type and text based on control type
+    const getControlTypeDisplay = () => {
+      switch (classification.type) {
+        case "POSITIVE_CONTROL":
+          return { type: "green", text: "Positive Ctrl", title: `Positive Control - ${classification.controlType || 'Generic'}` };
+        case "NEGATIVE_CONTROL":
+          return { type: "red", text: "Negative Ctrl", title: `Negative Control - ${classification.controlType || 'Generic'}` };
+        case "QC_SAMPLE":
+          return { type: "blue", text: "QC Sample", title: `QC Sample - ${classification.controlType || 'Generic'}` };
+        case "BLANK":
+          return { type: "purple", text: "Blank", title: `Blank Control - ${classification.controlType || 'Generic'}` };
+        default:
+          return { type: "cyan", text: "Control", title: `Control Sample - ${classification.type}` };
+      }
+    };
+
+    const { type, text, title } = getControlTypeDisplay();
+
+    return (
+      <Tag type={type} size="sm" title={title}>
+        {text}
+      </Tag>
+    );
+  }, []);
 
   // Notification helper
   const notify = useCallback(
@@ -768,6 +1021,24 @@ function BioanalyticalTestAssignmentPage({
 
       // Use existing bulk operation endpoint to store test assignment data
       // Store test assignment configuration in the sample's JSONB data field
+      // Get assigned control standards from repository for this method
+      const assignedControlStandards = BIOANALYTICAL_CONTROL_STANDARDS.filter(
+        control => control.methods.includes(assignmentConfig.analyticalMethod)
+      );
+
+      const controlStandardAnalysis = {
+        totalSelectedSamples: Array.from(selectedSamples).length,
+        availableControlStandards: assignedControlStandards,
+        controlStandardsByType: assignedControlStandards.reduce((acc, standard) => {
+          acc[standard.type] = (acc[standard.type] || []).concat(standard);
+          return acc;
+        }, {}),
+      };
+
+      // Get method control requirements
+      const method = ANALYTICAL_METHODS.find(m => m.id === assignmentConfig.analyticalMethod);
+      const controlRequirements = method?.controlRequirements || [];
+
       const testAssignmentData = {
         analyticalMethod: assignmentConfig.analyticalMethod,
         assignedStaff: assignmentConfig.assignedStaff,
@@ -779,6 +1050,39 @@ function BioanalyticalTestAssignmentPage({
         notes: assignmentConfig.notes,
         assignmentDate: new Date().toISOString(),
         assignmentStatus: "ASSIGNED",
+        // Control Standards Repository and Assignment Tracking
+        controlStandardsConfig: {
+          [assignmentConfig.analyticalMethod]: {
+            methodRequirements: controlRequirements,
+            availableStandards: assignedControlStandards.map(standard => ({
+              controlId: standard.id,
+              controlName: standard.name,
+              controlType: standard.type,
+              supplier: standard.supplier,
+              catalogNumber: standard.catalogNumber,
+              concentration: standard.concentration,
+              acceptanceCriteria: standard.acceptanceCriteria,
+              qcLevel: standard.qcLevel,
+              storageConditions: standard.storageConditions,
+              shelfLife: standard.shelfLife,
+              assignedAt: new Date().toISOString()
+            })),
+            assignmentSummary: {
+              totalStandardsAvailable: assignedControlStandards.length,
+              totalControlsRequired: controlRequirements.reduce((sum, req) => sum + req.count, 0),
+              standardsByType: controlStandardAnalysis.controlStandardsByType,
+              complianceStatus: (() => {
+                // Check if each required control type has sufficient standards available
+                const allRequirementsMet = controlRequirements.every(req => {
+                  const availableForType = assignedControlStandards.filter(s => s.type === req.type);
+                  return availableForType.length >= req.count;
+                });
+                return allRequirementsMet ? "COMPLIANT" : "INSUFFICIENT_STANDARDS";
+              })(),
+              assignmentDate: new Date().toISOString()
+            }
+          }
+        }
       };
 
       const response = await fetch(
@@ -1201,6 +1505,18 @@ function BioanalyticalTestAssignmentPage({
                             defaultMessage="Assigned Tests"
                           />
                         </TableHeader>
+                        <TableHeader>
+                          <FormattedMessage
+                            id="notebook.bioanalytical.testassignment.column.qcStatus"
+                            defaultMessage="QC Status"
+                          />
+                        </TableHeader>
+                        <TableHeader>
+                          <FormattedMessage
+                            id="notebook.bioanalytical.testassignment.column.controlType"
+                            defaultMessage="Control Type"
+                          />
+                        </TableHeader>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -1286,12 +1602,18 @@ function BioanalyticalTestAssignmentPage({
                                 </span>
                               )}
                             </TableCell>
+                            <TableCell>
+                              {renderStage2QCStatus(sample)}
+                            </TableCell>
+                            <TableCell>
+                              {renderStage2ControlType(sample)}
+                            </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
                           <TableCell
-                            colSpan="5"
+                            colSpan="7"
                             style={{ textAlign: "center" }}
                           >
                             <FormattedMessage
@@ -1752,6 +2074,211 @@ function BioanalyticalTestAssignmentPage({
               </Column>
             </Grid>
           </FormGroup>
+
+          {/* Control Sample Requirements */}
+          <FormGroup legendText="">
+            <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
+              <FormattedMessage
+                id="notebook.bioanalytical.testassignment.controlRequirements"
+                defaultMessage="Control Sample Requirements"
+              />
+            </h5>
+
+            {assignmentConfig.analyticalMethod && (
+              <>
+                <p style={{ color: "#525252", fontSize: "0.875rem", marginBottom: "1rem" }}>
+                  <FormattedMessage
+                    id="notebook.bioanalytical.testassignment.controlInfo"
+                    defaultMessage="Control samples required per analytical run based on selected method"
+                  />
+                </p>
+
+                <div style={{
+                  marginBottom: "1rem",
+                  padding: "1rem",
+                  backgroundColor: "#f2f2f2",
+                  borderRadius: "4px",
+                  border: "1px solid #d1d1d1"
+                }}>
+                  <h6 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "500" }}>
+                    Required Controls for {getMethodName(assignmentConfig.analyticalMethod)}:
+                  </h6>
+
+                  {(() => {
+                    const method = ANALYTICAL_METHODS.find(m => m.id === assignmentConfig.analyticalMethod);
+                    if (!method || !method.controlRequirements) return null;
+
+                    return (
+                      <div style={{ display: "grid", gap: "0.75rem" }}>
+                        {method.controlRequirements.map((control, index) => (
+                          <div key={index} style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "0.5rem",
+                            backgroundColor: "white",
+                            borderRadius: "4px",
+                            border: "1px solid #e0e0e0"
+                          }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: "500", fontSize: "0.875rem" }}>
+                                {control.type.replace(/_/g, ' ')}
+                              </div>
+                              <div style={{ fontSize: "0.75rem", color: "#6f6f6f" }}>
+                                {control.description}
+                              </div>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <Tag
+                                type={control.type.includes('QC') ? 'blue' :
+                                      control.type === 'POSITIVE' ? 'green' :
+                                      control.type === 'NEGATIVE' ? 'red' : 'purple'}
+                                size="sm"
+                              >
+                                {control.count}x {control.frequency.replace(/_/g, ' ')}
+                              </Tag>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
+                  <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "#e7f6ed", borderRadius: "4px" }}>
+                    <div style={{ fontSize: "0.875rem", fontWeight: "500", marginBottom: "0.25rem" }}>
+                      📋 Control Sample Status:
+                    </div>
+                    <div style={{ fontSize: "0.875rem" }}>
+                      {(() => {
+                        // Get available control standards for selected method
+                        const method = ANALYTICAL_METHODS.find(m => m.id === assignmentConfig.analyticalMethod);
+                        const requiredControls = method?.controlRequirements || [];
+
+                        // Find available control standards for this method
+                        const availableControls = BIOANALYTICAL_CONTROL_STANDARDS.filter(
+                          control => control.methods.includes(assignmentConfig.analyticalMethod)
+                        );
+
+                        // Check control availability by type
+                        const controlTypeStatus = requiredControls.map(req => {
+                          const availableForType = availableControls.filter(c => c.type === req.type);
+                          return {
+                            type: req.type,
+                            required: req.count,
+                            available: availableForType.length,
+                            sufficient: availableForType.length >= req.count
+                          };
+                        });
+
+                        const totalRequired = requiredControls.reduce((sum, req) => sum + req.count, 0);
+                        const totalAvailable = availableControls.length;
+                        const allSufficient = controlTypeStatus.every(status => status.sufficient);
+
+                        if (totalAvailable === 0) {
+                          return "⚠️ No control standards configured for this method - contact lab administrator";
+                        } else if (!allSufficient) {
+                          const insufficientTypes = controlTypeStatus
+                            .filter(s => !s.sufficient)
+                            .map(s => `${s.type} (${s.available}/${s.required})`)
+                            .join(', ');
+                          return `⚠️ Insufficient controls: ${insufficientTypes}`;
+                        } else {
+                          return `✅ ${totalAvailable} control standards available (${totalRequired} required)`;
+                        }
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </FormGroup>
+
+          {/* Control Standards Management */}
+          {assignmentConfig.analyticalMethod && (
+            <FormGroup legendText="">
+              <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
+                <FormattedMessage
+                  id="bioanalytical.testAssignment.controlStandards.title"
+                  defaultMessage="Control Standards Configuration"
+                />
+              </h5>
+              {(() => {
+                const availableControls = BIOANALYTICAL_CONTROL_STANDARDS.filter(
+                  control => control.methods.includes(assignmentConfig.analyticalMethod)
+                );
+
+                if (availableControls.length === 0) {
+                  return (
+                    <div className="control-standards-empty">
+                      <InlineNotification
+                        kind="warning"
+                        title="No Control Standards"
+                        subtitle="No control standards are configured for this analytical method. Contact your laboratory administrator to set up control standards."
+                        hideCloseButton
+                      />
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="control-standards-grid">
+                    <DataTable
+                      rows={availableControls.map(control => ({
+                        id: control.id,
+                        name: control.name,
+                        type: control.type,
+                        supplier: control.supplier,
+                        catalogNumber: control.catalogNumber,
+                        concentration: `${control.concentration.value} ${control.concentration.unit}`,
+                        acceptanceCriteria: control.acceptanceCriteria.min
+                          ? `${control.acceptanceCriteria.min}-${control.acceptanceCriteria.max} ${control.acceptanceCriteria.unit}`
+                          : `≤${control.acceptanceCriteria.max} ${control.acceptanceCriteria.unit}`,
+                        qcLevel: control.qcLevel,
+                        shelfLife: `${control.shelfLife.value} ${control.shelfLife.unit}`,
+                        storageConditions: control.storageConditions
+                      }))}
+                      headers={[
+                        { key: 'name', header: 'Control Standard' },
+                        { key: 'type', header: 'Type' },
+                        { key: 'concentration', header: 'Concentration' },
+                        { key: 'acceptanceCriteria', header: 'Acceptance Criteria' },
+                        { key: 'qcLevel', header: 'QC Level' },
+                        { key: 'supplier', header: 'Supplier' },
+                        { key: 'catalogNumber', header: 'Cat. Number' },
+                        { key: 'shelfLife', header: 'Shelf Life' }
+                      ]}
+                      size="sm"
+                    >
+                      {({ rows, headers, getHeaderProps, getRowProps, getTableProps }) => (
+                        <TableContainer title={`Control Standards for ${assignmentConfig.analyticalMethod}`}>
+                          <Table {...getTableProps()}>
+                            <TableHead>
+                              <TableRow>
+                                {headers.map((header) => (
+                                  <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                                    {header.header}
+                                  </TableHeader>
+                                ))}
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {rows.map((row) => (
+                                <TableRow key={row.id} {...getRowProps({ row })}>
+                                  {row.cells.map((cell) => (
+                                    <TableCell key={cell.id}>{cell.value}</TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      )}
+                    </DataTable>
+                  </div>
+                );
+              })()}
+            </FormGroup>
+          )}
 
           {/* Method-Specific Sample Preparation */}
           <FormGroup legendText="">
