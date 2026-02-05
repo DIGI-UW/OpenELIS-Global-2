@@ -34,12 +34,16 @@ import {
   Modal,
   DatePickerInput,
   Tag,
+  RadioButton,
+  RadioButtonGroup,
+  FormGroup,
+  FormLabel,
 } from "@carbon/react";
 import { DocumentAdd, Upload } from "@carbon/react/icons";
 import { FormattedMessage } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
-import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
+import { postToOpenElisServerJsonResponse, postToOpenElisServer } from "../../../utils/Utils";
 import { usePermissions } from "../../../../hooks/usePermissions";
 import { useBioanalyticalPermissions } from "../../../../hooks/useBioanalyticalPermissions";
 import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
@@ -168,7 +172,426 @@ function BioanalyticalAnalyticalExecutionPage({
   const [qcApproved, setQcApproved] = useState(false);
   const [acceptanceCriteria, setAcceptanceCriteria] = useState(null);
 
+  // Enhanced QC Outcome Recording
+  const [qcOutcomeRecord, setQcOutcomeRecord] = useState({
+    overallOutcome: "", // PASS, FAIL, CONDITIONAL_PASS, WAIVER
+    decisionDetails: {
+      reviewer: "",
+      reviewedAt: "",
+      decision: "",
+      justification: "",
+      conditionalAcceptanceReason: ""
+    },
+    calibrationOutcome: {
+      rSquaredOutcome: "",
+      slopeOutcome: "",
+      interceptOutcome: "",
+      overallCalibrationStatus: ""
+    },
+    controlSummary: {
+      totalControls: 0,
+      passedControls: 0,
+      failedControls: 0,
+      passRate: 0,
+      meanAccuracy: 0,
+      cv: 0
+    },
+    linkedDeviations: [],
+    overrideApplied: false,
+    overrideReason: "",
+    overriddenBy: "",
+    statusHistory: []
+  });
+
   const [deviations, setDeviations] = useState([]);
+
+  // Control Sample Results tracking
+  const [controlSampleResults, setControlSampleResults] = useState([]);
+  const [controlSampleComplianceStatus, setControlSampleComplianceStatus] = useState(null);
+
+  // Calculate QC outcome based on current QC results
+  const calculateQCOutcome = useCallback(() => {
+    if (!qcResults || qcResults.length === 0) {
+      return {
+        overallOutcome: "",
+        controlSummary: {
+          totalControls: 0,
+          passedControls: 0,
+          failedControls: 0,
+          passRate: 0,
+          meanAccuracy: 0,
+          cv: 0
+        }
+      };
+    }
+
+    const totalControls = qcResults.length;
+    const passedControls = qcResults.filter(qc => {
+      const accuracy = parseFloat(qc.accuracy);
+      return accuracy >= 85 && accuracy <= 115; // Standard bioanalytical acceptance range
+    }).length;
+    const failedControls = totalControls - passedControls;
+    const passRate = (passedControls / totalControls) * 100;
+
+    // Calculate mean accuracy and CV
+    const accuracyValues = qcResults.map(qc => parseFloat(qc.accuracy)).filter(acc => !isNaN(acc));
+    const meanAccuracy = accuracyValues.length > 0
+      ? accuracyValues.reduce((sum, acc) => sum + acc, 0) / accuracyValues.length
+      : 0;
+
+    const variance = accuracyValues.length > 1
+      ? accuracyValues.reduce((sum, acc) => sum + Math.pow(acc - meanAccuracy, 2), 0) / (accuracyValues.length - 1)
+      : 0;
+    const standardDeviation = Math.sqrt(variance);
+    const cv = meanAccuracy > 0 ? (standardDeviation / meanAccuracy) * 100 : 0;
+
+    // Determine overall outcome based on FDA bioanalytical guidance
+    let overallOutcome = "";
+    if (passRate >= 67) { // At least 2/3 of QCs must pass
+      if (passRate === 100) {
+        overallOutcome = "PASS";
+      } else if (passRate >= 80) {
+        overallOutcome = "CONDITIONAL_PASS";
+      } else {
+        overallOutcome = "CONDITIONAL_PASS";
+      }
+    } else {
+      overallOutcome = "FAIL";
+    }
+
+    return {
+      overallOutcome,
+      controlSummary: {
+        totalControls,
+        passedControls,
+        failedControls,
+        passRate: parseFloat(passRate.toFixed(1)),
+        meanAccuracy: parseFloat(meanAccuracy.toFixed(2)),
+        cv: parseFloat(cv.toFixed(2))
+      }
+    };
+  }, [qcResults]);
+
+  // Calculate calibration outcome
+  const calculateCalibrationOutcome = useCallback(() => {
+    if (!calibrationData || !acceptanceCriteria) {
+      return {
+        rSquaredOutcome: "",
+        slopeOutcome: "",
+        interceptOutcome: "",
+        overallCalibrationStatus: ""
+      };
+    }
+
+    const rSquaredMin = parseFloat(acceptanceCriteria.rSquaredMin) || 0.99;
+    const slopeMin = parseFloat(acceptanceCriteria.slopeRange?.min) || 0.8;
+    const slopeMax = parseFloat(acceptanceCriteria.slopeRange?.max) || 1.2;
+    const interceptMax = parseFloat(acceptanceCriteria.interceptMax) || 20;
+
+    const rSquaredOutcome = calibrationData.rSquared >= rSquaredMin ? "PASS" : "FAIL";
+    const slopeOutcome = (calibrationData.slope >= slopeMin && calibrationData.slope <= slopeMax) ? "PASS" : "FAIL";
+    const interceptOutcome = Math.abs(calibrationData.intercept) <= interceptMax ? "PASS" : "FAIL";
+
+    const overallCalibrationStatus = (rSquaredOutcome === "PASS" && slopeOutcome === "PASS" && interceptOutcome === "PASS")
+      ? "PASS" : "FAIL";
+
+    return {
+      rSquaredOutcome,
+      slopeOutcome,
+      interceptOutcome,
+      overallCalibrationStatus
+    };
+  }, [calibrationData, acceptanceCriteria]);
+
+  // Analyze control sample performance per assay requirements
+  const analyzeControlSamplePerformance = useCallback(() => {
+    if (!controlSampleResults || controlSampleResults.length === 0) {
+      return {
+        complianceStatus: "NO_CONTROL_DATA",
+        summary: {
+          totalControlsAnalyzed: 0,
+          totalControlsPassed: 0,
+          totalControlsFailed: 0,
+          complianceByType: {}
+        }
+      };
+    }
+
+    // Get current assigned samples to find control sample information
+    const controlSamples = assignedSamples.filter(sample =>
+      sample.sampleClassification?.isControlSample
+    );
+
+    // Match control sample results with control sample metadata
+    const enhancedControlResults = controlSampleResults.map(result => {
+      const matchingControlSample = controlSamples.find(sample =>
+        sample.accessionNumber === result.sampleId ||
+        sample.id === result.sampleId
+      );
+
+      return {
+        ...result,
+        controlType: matchingControlSample?.sampleClassification?.controlType || 'UNKNOWN',
+        controlCategory: matchingControlSample?.sampleClassification?.controlCategory || '',
+        expectedResult: matchingControlSample?.sampleClassification?.expectedResult || '',
+        isControlSample: !!matchingControlSample?.sampleClassification?.isControlSample
+      };
+    });
+
+    // Analyze performance by control type
+    const complianceByType = {};
+    const controlTypes = [...new Set(enhancedControlResults.map(r => r.controlType))];
+
+    controlTypes.forEach(type => {
+      const typeResults = enhancedControlResults.filter(r => r.controlType === type);
+      const passedTypeControls = typeResults.filter(r => {
+        const accuracy = parseFloat(r.accuracy || r.result || 0);
+
+        // Different acceptance criteria based on control type
+        switch (type) {
+          case 'POSITIVE':
+            return accuracy >= 85 && accuracy <= 115; // ±15% for positive controls
+          case 'NEGATIVE':
+            return accuracy <= 5; // Negative controls should be <5% of LLOQ
+          case 'QC_LOW':
+          case 'QC_MEDIUM':
+          case 'QC_HIGH':
+            return accuracy >= 85 && accuracy <= 115; // Standard QC range
+          case 'BLANK':
+            return accuracy <= 2; // Blanks should be <2% response
+          default:
+            return accuracy >= 80 && accuracy <= 120; // Generic range
+        }
+      });
+
+      complianceByType[type] = {
+        total: typeResults.length,
+        passed: passedTypeControls.length,
+        failed: typeResults.length - passedTypeControls.length,
+        passRate: typeResults.length > 0 ? (passedTypeControls.length / typeResults.length) * 100 : 0,
+        results: typeResults
+      };
+    });
+
+    const totalControlsAnalyzed = enhancedControlResults.length;
+    const totalControlsPassed = Object.values(complianceByType).reduce((sum, type) => sum + type.passed, 0);
+    const totalControlsFailed = totalControlsAnalyzed - totalControlsPassed;
+    const overallPassRate = totalControlsAnalyzed > 0 ? (totalControlsPassed / totalControlsAnalyzed) * 100 : 0;
+
+    // Determine overall compliance status
+    let complianceStatus = "COMPLIANT";
+    if (overallPassRate < 67) {
+      complianceStatus = "NON_COMPLIANT"; // Less than 2/3 passed
+    } else if (overallPassRate < 80) {
+      complianceStatus = "CONDITIONAL"; // 67-79% passed
+    }
+
+    return {
+      complianceStatus,
+      summary: {
+        totalControlsAnalyzed,
+        totalControlsPassed,
+        totalControlsFailed,
+        overallPassRate,
+        complianceByType
+      }
+    };
+  }, [controlSampleResults, assignedSamples]);
+
+  // Update QC outcome when QC results or calibration data changes
+  useEffect(() => {
+    const qcOutcome = calculateQCOutcome();
+    const calibrationOutcome = calculateCalibrationOutcome();
+
+    setQcOutcomeRecord(prev => ({
+      ...prev,
+      overallOutcome: qcOutcome.overallOutcome,
+      controlSummary: qcOutcome.controlSummary,
+      calibrationOutcome: calibrationOutcome
+    }));
+  }, [calculateQCOutcome, calculateCalibrationOutcome]);
+
+  // Save QC outcome record when it changes (for persistence across tab navigation)
+  useEffect(() => {
+    if (!pageData?.id || !qcOutcomeRecord.overallOutcome || selectedSampleIds.length === 0) {
+      return; // Only save when we have essential data
+    }
+
+    const saveQcOutcomeData = async () => {
+      try {
+        const firstSelectedSample = assignedSamples.find((s) =>
+          selectedSampleIds.includes(s.id),
+        );
+        const existingData = firstSelectedSample?.data || {};
+
+        const requestBody = {
+          sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+          data: {
+            ...existingData,
+            qcOutcomeRecord: {
+              ...qcOutcomeRecord,
+              lastUpdatedAt: new Date().toISOString(),
+              stage: 3,
+              qcType: "ANALYTICAL_EXECUTION_QC",
+            },
+          },
+        };
+
+        postToOpenElisServer(
+          `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+          JSON.stringify(requestBody),
+          (status) => {
+            if (status === 200) {
+              console.log("QC Outcome Record auto-saved successfully");
+            } else {
+              console.warn("Failed to auto-save QC Outcome Record");
+            }
+          }
+        );
+      } catch (error) {
+        console.error("Error auto-saving QC Outcome Record:", error);
+      }
+    };
+
+    // Debounce the save operation to avoid excessive API calls
+    const timeoutId = setTimeout(saveQcOutcomeData, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [qcOutcomeRecord, selectedSampleIds, pageData?.id, assignedSamples]);
+
+  // Process QC results to identify and extract control sample results
+  useEffect(() => {
+    if (!qcResults || qcResults.length === 0 || !assignedSamples || assignedSamples.length === 0) {
+      setControlSampleResults([]);
+      return;
+    }
+
+    // Extract control sample results from QC results by matching sample identifiers
+    const identifiedControlResults = qcResults
+      .map(qcResult => {
+        // Try to match QC result with a control sample
+        const matchingControlSample = assignedSamples.find(sample => {
+          // Match by sample ID, accession number, or control level name
+          return (
+            sample.id === qcResult.sampleId ||
+            sample.accessionNumber === qcResult.sampleId ||
+            sample.accessionNumber === qcResult.controlLevel ||
+            (sample.sampleClassification?.isControlSample &&
+             qcResult.controlLevel?.toLowerCase().includes(sample.sampleClassification.controlType?.toLowerCase()))
+          );
+        });
+
+        if (matchingControlSample?.sampleClassification?.isControlSample) {
+          return {
+            ...qcResult,
+            sampleId: qcResult.sampleId || qcResult.controlLevel || matchingControlSample.accessionNumber,
+            controlType: matchingControlSample.sampleClassification.controlType,
+            controlCategory: matchingControlSample.sampleClassification.controlCategory,
+            expectedResult: matchingControlSample.sampleClassification.expectedResult,
+            isControlSample: true,
+            matchedSample: matchingControlSample
+          };
+        }
+
+        // Also check if this QC result is for a known control level pattern
+        const controlLevelPatterns = {
+          'low': 'QC_LOW',
+          'medium': 'QC_MEDIUM',
+          'high': 'QC_HIGH',
+          'positive': 'POSITIVE',
+          'negative': 'NEGATIVE',
+          'blank': 'BLANK'
+        };
+
+        const controlLevel = qcResult.controlLevel?.toLowerCase() || '';
+        const matchedPattern = Object.keys(controlLevelPatterns).find(pattern =>
+          controlLevel.includes(pattern)
+        );
+
+        if (matchedPattern) {
+          return {
+            ...qcResult,
+            sampleId: qcResult.sampleId || qcResult.controlLevel || `Control-${controlLevelPatterns[matchedPattern]}`,
+            controlType: controlLevelPatterns[matchedPattern],
+            controlCategory: 'RUN_ACCEPTANCE',
+            expectedResult: qcResult.expectedValue || 'As per method',
+            isControlSample: true,
+            matchedSample: null // No specific sample match, but is a control
+          };
+        }
+
+        return null;
+      })
+      .filter(Boolean);
+
+    setControlSampleResults(identifiedControlResults);
+  }, [qcResults, assignedSamples]);
+
+  // Update control sample compliance status when control sample results change
+  useEffect(() => {
+    const complianceAnalysis = analyzeControlSamplePerformance();
+    setControlSampleComplianceStatus(complianceAnalysis);
+  }, [analyzeControlSamplePerformance]);
+
+  // Render QC Status for Stage 3 sample table
+  const renderStage3QCStatus = useCallback((sample) => {
+    // Check for QC outcome record first
+    if (sample.data?.qcOutcomeRecord?.overallOutcome) {
+      const outcome = sample.data.qcOutcomeRecord.overallOutcome;
+      const controlSummary = sample.data.qcOutcomeRecord.controlSummary || {};
+
+      const getTagType = () => {
+        switch (outcome) {
+          case "PASS": return "green";
+          case "CONDITIONAL_PASS": return "yellow";
+          case "FAIL": return "red";
+          case "WAIVER": return "blue";
+          default: return "gray";
+        }
+      };
+
+      return (
+        <Tag
+          type={getTagType()}
+          size="sm"
+          title={`QC ${outcome} - ${controlSummary.passedControls || 0}/${controlSummary.totalControls || 0} controls passed`}
+        >
+          QC {outcome} ({controlSummary.passedControls || 0}/{controlSummary.totalControls || 0})
+        </Tag>
+      );
+    }
+
+    // Check for basic QC approval status
+    if (sample.data?.qcApproved) {
+      return (
+        <Tag type="green" size="sm" title="QC approved in Stage 3">
+          QC APPROVED
+        </Tag>
+      );
+    }
+
+    // Check for reception QC from Stage 1
+    if (sample.data?.receptionQC || sample.receptionQC) {
+      const receptionQC = sample.data?.receptionQC || sample.receptionQC;
+      if (receptionQC.qcPerformed) {
+        return (
+          <Tag
+            type={receptionQC.qcPassed ? "green" : "red"}
+            size="sm"
+            title={`Reception QC ${receptionQC.overallStatus} - ${receptionQC.passedChecks}/${receptionQC.totalChecks} checks`}
+          >
+            RECEPTION {receptionQC.overallStatus} ({receptionQC.passedChecks}/{receptionQC.totalChecks})
+          </Tag>
+        );
+      }
+    }
+
+    // Default state
+    return (
+      <Tag type="gray" size="sm" title="QC verification pending">
+        QC PENDING
+      </Tag>
+    );
+  }, []);
 
   const [completionProgress, setCompletionProgress] = useState({
     step1: { name: "Apply execution data", status: "pending" }, // pending, in-progress, completed, failed
@@ -255,6 +678,19 @@ function BioanalyticalAnalyticalExecutionPage({
           setQuantificationResults(qcData.quantificationResults || []);
           setQcApproved(qcData.qcApproved || false);
           setAcceptanceCriteria(qcData.acceptanceCriteria || null);
+
+          // Load existing QC outcome record if available
+          if (qcData.qcOutcomeRecord) {
+            setQcOutcomeRecord(qcData.qcOutcomeRecord);
+          }
+
+          // Load control sample results if available
+          if (qcData.controlSampleResults) {
+            setControlSampleResults(qcData.controlSampleResults);
+          }
+          if (qcData.controlSampleComplianceStatus) {
+            setControlSampleComplianceStatus(qcData.controlSampleComplianceStatus);
+          }
 
           if (qcData.uploadedFiles) {
             setUploadedFiles(qcData.uploadedFiles);
@@ -842,11 +1278,30 @@ function BioanalyticalAnalyticalExecutionPage({
       }
     }
 
+    // Enhanced QC validation
     if (!qcApproved) {
       notify({
         kind: NotificationKinds.warning,
         title: "Warning",
         message: "Please approve QC results before completing execution.",
+      });
+      return;
+    }
+
+    if (!qcOutcomeRecord.overallOutcome) {
+      notify({
+        kind: NotificationKinds.warning,
+        title: "QC Outcome Required",
+        message: "Please select a QC outcome decision (PASS, CONDITIONAL PASS, FAIL, or WAIVER) before completing execution.",
+      });
+      return;
+    }
+
+    if (qcOutcomeRecord.overallOutcome === "WAIVER" && !qcOutcomeRecord.decisionDetails.justification) {
+      notify({
+        kind: NotificationKinds.warning,
+        title: "Waiver Justification Required",
+        message: "Please provide justification for waiver approval before completing execution.",
       });
       return;
     }
@@ -892,6 +1347,31 @@ function BioanalyticalAnalyticalExecutionPage({
         qcApproved: qcApproved,
         resultsApproved: qcApproved, // Stage 4 requires this flag
         deviations: deviations,
+
+        // Enhanced QC Outcome Record
+        qcOutcomeRecord: {
+          ...qcOutcomeRecord,
+          recordedAt: new Date().toISOString(),
+          recordedBy: executionData.analystId,
+          stage: 3,
+          qcType: "ANALYTICAL_EXECUTION_QC",
+          linkedDeviations: deviations.map(dev => dev.id).filter(Boolean),
+          statusHistory: [
+            ...qcOutcomeRecord.statusHistory,
+            {
+              status: qcOutcomeRecord.overallOutcome,
+              changedAt: new Date().toISOString(),
+              changedBy: executionData.analystId,
+              reason: "QC evaluation completed during Stage 3 execution"
+            }
+          ]
+        },
+
+        // Control Sample Performance Tracking
+        controlSampleResults: controlSampleResults,
+        controlSampleComplianceStatus: controlSampleComplianceStatus,
+        controlSampleAnalysisComplete: controlSampleResults.length > 0,
+
         sampleType:
           firstSelectedSample?.sampleType ||
           existingData.sampleType ||
@@ -1163,6 +1643,7 @@ function BioanalyticalAnalyticalExecutionPage({
     { key: "assignedStaff", header: "Assigned Staff" },
     { key: "assignedMethod", header: "Assigned Method" },
     { key: "instrument", header: "Instrument" },
+    { key: "qcStatus", header: "QC Status" },
     { key: "status", header: "Status" },
     { key: "progress", header: "Progress" },
   ];
@@ -1179,6 +1660,7 @@ function BioanalyticalAnalyticalExecutionPage({
       sample.data?.assignedMethod ||
       "Not assigned",
     instrument: sample.instrumentName || sample.instrumentId || "-",
+    qcStatus: renderStage3QCStatus(sample), // Add QC Status column
     status: "Ready",
     progress: sample.data?.executionStatus || "Pending",
     _original: sample, // Store original sample data for reference
@@ -1553,6 +2035,7 @@ function BioanalyticalAnalyticalExecutionPage({
                               )}
                             </TableCell>
                             <TableCell>{row.instrument}</TableCell>
+                            <TableCell>{row.qcStatus}</TableCell>
                             <TableCell>
                               <Tag type="green" size="sm">
                                 {row.status}
@@ -1971,11 +2454,446 @@ function BioanalyticalAnalyticalExecutionPage({
                       )}
                     </div>
 
+                    {/* Control Sample Performance Analysis */}
+                    <div
+                      style={{
+                        marginTop: "1.5rem",
+                        marginBottom: "1rem",
+                        padding: "1rem",
+                        backgroundColor: "#e7f6ed",
+                        borderRadius: "4px",
+                        border: "1px solid #24a148",
+                      }}
+                    >
+                      <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
+                        Control Sample Performance Analysis
+                      </h5>
+
+                      {controlSampleComplianceStatus ? (
+                        <div>
+                          {/* Overall Compliance Status */}
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              marginBottom: "1rem",
+                              padding: "0.75rem",
+                              backgroundColor: "white",
+                              borderRadius: "4px",
+                              border: "1px solid #d1d1d1",
+                            }}
+                          >
+                            <div>
+                              <strong style={{ fontSize: "1rem" }}>
+                                Overall Control Compliance:
+                              </strong>
+                              <div style={{ fontSize: "0.875rem", color: "#525252", marginTop: "0.25rem" }}>
+                                {controlSampleComplianceStatus.summary.totalControlsPassed}/
+                                {controlSampleComplianceStatus.summary.totalControlsAnalyzed} controls passed
+                                ({controlSampleComplianceStatus.summary.overallPassRate?.toFixed(1)}%)
+                              </div>
+                            </div>
+                            <Tag
+                              type={
+                                controlSampleComplianceStatus.complianceStatus === "COMPLIANT" ? "green" :
+                                controlSampleComplianceStatus.complianceStatus === "CONDITIONAL" ? "yellow" : "red"
+                              }
+                              size="lg"
+                            >
+                              {controlSampleComplianceStatus.complianceStatus === "COMPLIANT" ? "✓ COMPLIANT" :
+                               controlSampleComplianceStatus.complianceStatus === "CONDITIONAL" ? "⚠ CONDITIONAL" :
+                               controlSampleComplianceStatus.complianceStatus === "NON_COMPLIANT" ? "✗ NON-COMPLIANT" :
+                               "NO DATA"}
+                            </Tag>
+                          </div>
+
+                          {/* Control Type Breakdown */}
+                          {Object.keys(controlSampleComplianceStatus.summary.complianceByType).length > 0 && (
+                            <div style={{ marginBottom: "1rem" }}>
+                              <h6 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "500" }}>
+                                Performance by Control Type:
+                              </h6>
+                              <div style={{ display: "grid", gap: "0.5rem" }}>
+                                {Object.entries(controlSampleComplianceStatus.summary.complianceByType).map(
+                                  ([controlType, stats]) => (
+                                    <div
+                                      key={controlType}
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        padding: "0.5rem",
+                                        backgroundColor: "white",
+                                        borderRadius: "4px",
+                                        border: "1px solid #e0e0e0",
+                                      }}
+                                    >
+                                      <div>
+                                        <span style={{ fontWeight: "500", fontSize: "0.875rem" }}>
+                                          {controlType.replace(/_/g, " ")}
+                                        </span>
+                                        <span style={{ marginLeft: "0.5rem", fontSize: "0.75rem", color: "#525252" }}>
+                                          ({stats.passed}/{stats.total} passed, {stats.passRate.toFixed(1)}%)
+                                        </span>
+                                      </div>
+                                      <Tag
+                                        type={stats.passRate >= 80 ? "green" : stats.passRate >= 67 ? "yellow" : "red"}
+                                        size="sm"
+                                      >
+                                        {stats.passRate >= 80 ? "PASS" : stats.passRate >= 67 ? "CONDITIONAL" : "FAIL"}
+                                      </Tag>
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Control Sample Details Table */}
+                          {controlSampleResults.length > 0 && (
+                            <div>
+                              <h6 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "500" }}>
+                                Individual Control Sample Results:
+                              </h6>
+                              <table
+                                style={{
+                                  width: "100%",
+                                  backgroundColor: "white",
+                                  borderRadius: "4px",
+                                  border: "1px solid #e0e0e0",
+                                  fontSize: "0.875rem",
+                                }}
+                              >
+                                <thead style={{ backgroundColor: "#f4f4f4" }}>
+                                  <tr>
+                                    <th style={{ padding: "0.75rem", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>
+                                      Sample ID
+                                    </th>
+                                    <th style={{ padding: "0.75rem", textAlign: "center", borderBottom: "1px solid #e0e0e0" }}>
+                                      Control Type
+                                    </th>
+                                    <th style={{ padding: "0.75rem", textAlign: "center", borderBottom: "1px solid #e0e0e0" }}>
+                                      Expected
+                                    </th>
+                                    <th style={{ padding: "0.75rem", textAlign: "center", borderBottom: "1px solid #e0e0e0" }}>
+                                      Measured
+                                    </th>
+                                    <th style={{ padding: "0.75rem", textAlign: "center", borderBottom: "1px solid #e0e0e0" }}>
+                                      Accuracy (%)
+                                    </th>
+                                    <th style={{ padding: "0.75rem", textAlign: "center", borderBottom: "1px solid #e0e0e0" }}>
+                                      Status
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {controlSampleResults.map((result, index) => {
+                                    const accuracy = parseFloat(result.accuracy || result.result || 0);
+                                    const isAcceptable = (() => {
+                                      const matchingControl = assignedSamples.find(s =>
+                                        (s.accessionNumber === result.sampleId || s.id === result.sampleId) &&
+                                        s.sampleClassification?.isControlSample
+                                      );
+                                      const controlType = matchingControl?.sampleClassification?.controlType || 'UNKNOWN';
+
+                                      switch (controlType) {
+                                        case 'POSITIVE':
+                                        case 'QC_LOW':
+                                        case 'QC_MEDIUM':
+                                        case 'QC_HIGH':
+                                          return accuracy >= 85 && accuracy <= 115;
+                                        case 'NEGATIVE':
+                                          return accuracy <= 5;
+                                        case 'BLANK':
+                                          return accuracy <= 2;
+                                        default:
+                                          return accuracy >= 80 && accuracy <= 120;
+                                      }
+                                    })();
+
+                                    const matchingControl = assignedSamples.find(s =>
+                                      (s.accessionNumber === result.sampleId || s.id === result.sampleId) &&
+                                      s.sampleClassification?.isControlSample
+                                    );
+
+                                    return (
+                                      <tr key={index} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                                        <td style={{ padding: "0.75rem", fontWeight: "500" }}>
+                                          {result.sampleId}
+                                        </td>
+                                        <td style={{ padding: "0.75rem", textAlign: "center" }}>
+                                          <Tag
+                                            type={
+                                              matchingControl?.sampleClassification?.controlType?.includes('QC') ? 'blue' :
+                                              matchingControl?.sampleClassification?.controlType === 'POSITIVE' ? 'green' :
+                                              matchingControl?.sampleClassification?.controlType === 'NEGATIVE' ? 'red' : 'purple'
+                                            }
+                                            size="sm"
+                                          >
+                                            {matchingControl?.sampleClassification?.controlType?.replace(/_/g, ' ') || 'Unknown'}
+                                          </Tag>
+                                        </td>
+                                        <td style={{ padding: "0.75rem", textAlign: "center" }}>
+                                          {matchingControl?.sampleClassification?.expectedResult || 'N/A'}
+                                        </td>
+                                        <td style={{ padding: "0.75rem", textAlign: "center", fontWeight: "500" }}>
+                                          {result.measuredValue || result.result || 'N/A'}
+                                        </td>
+                                        <td
+                                          style={{
+                                            padding: "0.75rem",
+                                            textAlign: "center",
+                                            fontWeight: "500",
+                                            color: isAcceptable ? "#24a148" : "#da1e28",
+                                          }}
+                                        >
+                                          {accuracy.toFixed(1)}%
+                                        </td>
+                                        <td style={{ padding: "0.75rem", textAlign: "center" }}>
+                                          <Tag
+                                            type={isAcceptable ? "green" : "red"}
+                                            size="sm"
+                                          >
+                                            {isAcceptable ? "PASS" : "FAIL"}
+                                          </Tag>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "2rem",
+                            color: "#525252",
+                            backgroundColor: "white",
+                            borderRadius: "4px",
+                            border: "1px solid #e0e0e0",
+                          }}
+                        >
+                          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🧪</div>
+                          <p style={{ marginBottom: "0.5rem", fontWeight: "500" }}>
+                            Control Sample Analysis Pending
+                          </p>
+                          <p style={{ fontSize: "0.875rem" }}>
+                            Control sample results will be analyzed once QC data is processed.
+                            <br />
+                            Upload and process analytical files to view control sample performance.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Enhanced QC Outcome Recording Section */}
+                    <div
+                      style={{
+                        marginTop: "1.5rem",
+                        padding: "1rem",
+                        backgroundColor: "#f4f4f4",
+                        borderRadius: "4px",
+                        border: "1px solid #e0e0e0",
+                      }}
+                    >
+                      <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
+                        QC Outcome Decision & Record
+                      </h5>
+
+                      {/* QC Summary Display */}
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                          gap: "1rem",
+                          marginBottom: "1rem",
+                          padding: "0.75rem",
+                          backgroundColor: "#ffffff",
+                          borderRadius: "4px",
+                          border: "1px solid #e0e0e0",
+                        }}
+                      >
+                        <div>
+                          <strong>Control Results:</strong><br />
+                          {qcOutcomeRecord.controlSummary.passedControls}/{qcOutcomeRecord.controlSummary.totalControls} passed
+                          ({qcOutcomeRecord.controlSummary.passRate}%)
+                        </div>
+                        <div>
+                          <strong>Mean Accuracy:</strong><br />
+                          {qcOutcomeRecord.controlSummary.meanAccuracy}%
+                        </div>
+                        <div>
+                          <strong>CV:</strong><br />
+                          {qcOutcomeRecord.controlSummary.cv}%
+                        </div>
+                        <div>
+                          <strong>Calibration:</strong><br />
+                          <Tag
+                            type={qcOutcomeRecord.calibrationOutcome.overallCalibrationStatus === "PASS" ? "green" : "red"}
+                            size="sm"
+                          >
+                            {qcOutcomeRecord.calibrationOutcome.overallCalibrationStatus || "Pending"}
+                          </Tag>
+                        </div>
+                      </div>
+
+                      {/* QC Outcome Selection */}
+                      <FormGroup legendText="QC Outcome Decision" style={{ marginBottom: "1rem" }}>
+                        <RadioButtonGroup
+                          name="qc-outcome"
+                          value={qcOutcomeRecord.overallOutcome}
+                          onChange={(value) =>
+                            setQcOutcomeRecord(prev => ({
+                              ...prev,
+                              overallOutcome: value,
+                              decisionDetails: {
+                                ...prev.decisionDetails,
+                                reviewer: "current-user", // Should come from session
+                                reviewedAt: new Date().toISOString()
+                              }
+                            }))
+                          }
+                        >
+                          <RadioButton
+                            labelText="PASS - All QC criteria met"
+                            value="PASS"
+                            id="qc-outcome-pass"
+                          />
+                          <RadioButton
+                            labelText="CONDITIONAL PASS - Minor deviations within acceptable limits"
+                            value="CONDITIONAL_PASS"
+                            id="qc-outcome-conditional"
+                          />
+                          <RadioButton
+                            labelText="FAIL - QC criteria not met"
+                            value="FAIL"
+                            id="qc-outcome-fail"
+                          />
+                          <RadioButton
+                            labelText="WAIVER - Override with justification"
+                            value="WAIVER"
+                            id="qc-outcome-waiver"
+                          />
+                        </RadioButtonGroup>
+                      </FormGroup>
+
+                      {/* Conditional fields based on outcome */}
+                      {(qcOutcomeRecord.overallOutcome === "CONDITIONAL_PASS" ||
+                        qcOutcomeRecord.overallOutcome === "FAIL" ||
+                        qcOutcomeRecord.overallOutcome === "WAIVER") && (
+                        <div style={{ marginTop: "1rem" }}>
+                          <TextArea
+                            id="qc-justification"
+                            labelText={
+                              qcOutcomeRecord.overallOutcome === "WAIVER"
+                                ? "Waiver Justification (Required)"
+                                : qcOutcomeRecord.overallOutcome === "CONDITIONAL_PASS"
+                                ? "Conditional Acceptance Reason"
+                                : "Failure Investigation & Action Plan"
+                            }
+                            placeholder={
+                              qcOutcomeRecord.overallOutcome === "WAIVER"
+                                ? "Provide detailed justification for waiver approval..."
+                                : qcOutcomeRecord.overallOutcome === "CONDITIONAL_PASS"
+                                ? "Explain why results are acceptable despite minor deviations..."
+                                : "Document root cause analysis and corrective actions planned..."
+                            }
+                            value={qcOutcomeRecord.decisionDetails.justification}
+                            onChange={(e) =>
+                              setQcOutcomeRecord(prev => ({
+                                ...prev,
+                                decisionDetails: {
+                                  ...prev.decisionDetails,
+                                  justification: e.target.value
+                                }
+                              }))
+                            }
+                            rows={3}
+                            required={qcOutcomeRecord.overallOutcome === "WAIVER"}
+                          />
+                        </div>
+                      )}
+
+                      {/* Override information for waiver */}
+                      {qcOutcomeRecord.overallOutcome === "WAIVER" && (
+                        <div style={{ marginTop: "1rem" }}>
+                          <Select
+                            id="override-reason"
+                            labelText="Override Reason Code"
+                            value={qcOutcomeRecord.overrideReason}
+                            onChange={(e) =>
+                              setQcOutcomeRecord(prev => ({
+                                ...prev,
+                                overrideReason: e.target.value,
+                                overrideApplied: true,
+                                overriddenBy: "current-user" // Should come from session
+                              }))
+                            }
+                          >
+                            <SelectItem value="" text="Select reason..." />
+                            <SelectItem value="DOCUMENTED_SOP_VARIANCE" text="Documented SOP Variance" />
+                            <SelectItem value="EQUIPMENT_LIMITATION" text="Equipment Limitation" />
+                            <SelectItem value="SAMPLE_MATRIX_INTERFERENCE" text="Sample Matrix Interference" />
+                            <SelectItem value="REGULATORY_PRECEDENT" text="Regulatory Precedent" />
+                            <SelectItem value="SCIENTIFIC_JUSTIFICATION" text="Scientific Justification" />
+                            <SelectItem value="CLIENT_SPECIFICATION" text="Client Specification Override" />
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Link to deviations if any failures */}
+                      {qcOutcomeRecord.overallOutcome === "FAIL" && deviations.length > 0 && (
+                        <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "#fff3e0", borderRadius: "4px" }}>
+                          <p style={{ fontSize: "0.875rem", margin: "0" }}>
+                            <strong>Linked Deviations:</strong> {deviations.length} deviation(s) recorded in the Deviations tab.
+                            These will be automatically linked to this QC outcome record.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* QC Decision Status Preview */}
+                      <div
+                        style={{
+                          marginTop: "1rem",
+                          padding: "0.75rem",
+                          backgroundColor:
+                            qcOutcomeRecord.overallOutcome === "PASS" ? "#e7f6ed" :
+                            qcOutcomeRecord.overallOutcome === "CONDITIONAL_PASS" ? "#fff3e0" :
+                            qcOutcomeRecord.overallOutcome === "FAIL" ? "#ffeae6" :
+                            qcOutcomeRecord.overallOutcome === "WAIVER" ? "#e5f3ff" : "#f4f4f4",
+                          borderRadius: "4px",
+                          border: `1px solid ${
+                            qcOutcomeRecord.overallOutcome === "PASS" ? "#198038" :
+                            qcOutcomeRecord.overallOutcome === "CONDITIONAL_PASS" ? "#f1c21b" :
+                            qcOutcomeRecord.overallOutcome === "FAIL" ? "#da1e28" :
+                            qcOutcomeRecord.overallOutcome === "WAIVER" ? "#0f62fe" : "#e0e0e0"
+                          }`,
+                        }}
+                      >
+                        <div style={{ fontSize: "0.875rem", fontWeight: "500", marginBottom: "0.25rem" }}>
+                          QC Decision Summary:
+                        </div>
+                        <div style={{ fontSize: "0.875rem" }}>
+                          {qcOutcomeRecord.overallOutcome
+                            ? `Outcome: ${qcOutcomeRecord.overallOutcome} | ${qcOutcomeRecord.controlSummary.passedControls}/${qcOutcomeRecord.controlSummary.totalControls} controls passed | Calibration: ${qcOutcomeRecord.calibrationOutcome.overallCalibrationStatus}`
+                            : "Please select a QC outcome decision above"
+                          }
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Original QC Approval Checkbox - now requires outcome decision */}
                     <Checkbox
                       id="qc-approval"
-                      labelText="I have reviewed all QC results above and approve them for release"
+                      labelText="I have completed the QC outcome evaluation and approve the final decision for release"
                       checked={qcApproved}
                       onChange={(event, { checked }) => setQcApproved(checked)}
+                      disabled={!qcOutcomeRecord.overallOutcome ||
+                        (qcOutcomeRecord.overallOutcome === "WAIVER" && !qcOutcomeRecord.decisionDetails.justification)}
                       style={{ marginTop: "1rem" }}
                     />
                   </div>
@@ -2264,6 +3182,60 @@ function BioanalyticalAnalyticalExecutionPage({
                         QC results approved
                       </span>
                     </div>
+
+                    {/* QC Outcome Decision Check */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "1rem",
+                          color: qcOutcomeRecord.overallOutcome ? "#198038" : "#da1e28",
+                        }}
+                      >
+                        {qcOutcomeRecord.overallOutcome ? "✓" : "✗"}
+                      </span>
+                      <span
+                        style={{
+                          color: qcOutcomeRecord.overallOutcome ? "#161616" : "#6f6f6f",
+                        }}
+                      >
+                        QC outcome decision selected ({qcOutcomeRecord.overallOutcome || "Pending"})
+                      </span>
+                    </div>
+
+                    {/* Waiver Justification Check */}
+                    {qcOutcomeRecord.overallOutcome === "WAIVER" && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          marginBottom: "0.5rem",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: "1rem",
+                            color: qcOutcomeRecord.decisionDetails.justification ? "#198038" : "#da1e28",
+                          }}
+                        >
+                          {qcOutcomeRecord.decisionDetails.justification ? "✓" : "✗"}
+                        </span>
+                        <span
+                          style={{
+                            color: qcOutcomeRecord.decisionDetails.justification ? "#161616" : "#6f6f6f",
+                          }}
+                        >
+                          Waiver justification provided
+                        </span>
+                      </div>
+                    )}
 
                     {/* File Upload Compliance Check */}
                     <div
