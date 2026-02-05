@@ -97,8 +97,8 @@ class HomePage {
 
   goToBatchOrderEntry() {
     this.openNavigationMenu();
-    cy.get(this.selectors.sampleMenu).click();
-    cy.get(this.selectors.batchEntry).click();
+    cy.get(this.selectors.sampleMenu).should("be.visible").click();
+    cy.get(this.selectors.batchEntry).should("be.visible").click();
     this.closeNavigationMenu();
     return new BatchOrderEntry();
   }
