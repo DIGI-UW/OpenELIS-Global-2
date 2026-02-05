@@ -2513,7 +2513,7 @@
   "validation.details.qc.expected": "Attendu",
   "validation.details.qc.actual": "Réel",
   "validation.details.qc.cv": "CV%",
-  "validation.details.qc.status": "Statut"
+  "validation.details.qc.status": "Statut",
   "site.branding.title": "Site Branding",
   "site.branding.description": "Customize your organization's visual branding including logos and colors",
   "site.branding.section.logos": "Logos",
