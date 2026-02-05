@@ -63,7 +63,7 @@ function detectBaseUrl() {
 
 module.exports = defineConfig({
   defaultCommandTimeout: 3000, // 3 seconds - use Cypress retry-ability instead of long timeouts
-  pageLoadTimeout: 120000, // 2 minutes for development mode with large unminified bundle.js (25MB)
+  pageLoadTimeout: 180000, // 3 minutes - analyzer mappings page loads 3.4MB bundle.js (takes >2min in CI)
   viewportWidth: 1920, // Large desktop for full modal visibility (including warnings/checkboxes)
   viewportHeight: 1080,
   video: false, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
