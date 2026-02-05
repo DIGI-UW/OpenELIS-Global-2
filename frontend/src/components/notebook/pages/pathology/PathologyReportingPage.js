@@ -123,6 +123,11 @@ function PathologyReportingPage({
     totalSamplesProcessed: null,
     pendingReview: null,
     completedReports: null,
+
+    // Report metadata
+    reportId: null,
+    linkedTestOrders: [],
+    specimenVolumeByType: {},
   });
 
   // Specimen volume by type data for table
@@ -193,9 +198,9 @@ function PathologyReportingPage({
   }, [metrics, hasData]);
 
   // Load metrics from backend
-  // Must use notebookId - do not fall back to entryId as they are different ID types
+  // The backend /metrics endpoint expects entryId (notebook_entry.id), not notebookId (notebook.id)
   const loadMetrics = useCallback(() => {
-    if (!notebookId) {
+    if (!entryId) {
       setLoading(false);
       setHasData(false);
       return;
@@ -205,7 +210,7 @@ function PathologyReportingPage({
     setError(null);
 
     const params = new URLSearchParams({
-      entryId: notebookId,
+      entryId: entryId,
       startDate: dateRange.startDate,
       endDate: dateRange.endDate,
     });
@@ -215,42 +220,77 @@ function PathologyReportingPage({
       (response) => {
         if (componentMounted.current) {
           // Check if we got a valid response with any data
-          // Accept response if it has any metrics fields, not just if totalSamplesProcessed > 0
+          // Handle both nested structure (expected) and flat structure (actual API response)
           const hasMetrics =
             response &&
             (response.totalSamplesProcessed !== undefined ||
-              response.monthlySpecimenVolume?.total !== undefined ||
-              response.turnaroundTime?.overall !== undefined ||
-              (response.monthlySpecimenVolume?.byType &&
-                response.monthlySpecimenVolume.byType.length > 0));
+              response.monthlySpecimenVolume !== undefined ||
+              response.averageTAT !== undefined ||
+              response.specimenRejectionRate !== undefined ||
+              response.assaySuccessRate !== undefined);
 
           if (hasMetrics) {
             // We have data from backend (even if values are 0)
             setHasData(true);
+
+            // Handle both flat API response and nested structure
+            // Flat: monthlySpecimenVolume is a number
+            // Nested: monthlySpecimenVolume.total is a number
+            const specimenVolume =
+              typeof response.monthlySpecimenVolume === "number"
+                ? response.monthlySpecimenVolume
+                : (response.monthlySpecimenVolume?.total ?? 0);
+
+            // Flat: averageTAT is a number
+            // Nested: turnaroundTime.overall is a number
+            const avgTAT =
+              response.averageTAT ?? response.turnaroundTime?.overall ?? 0;
+
+            // Flat: equipmentDowntimeHours is a number
+            // Nested: equipmentDowntime.total is a number
+            const equipDowntime =
+              response.equipmentDowntimeHours ??
+              response.equipmentDowntime?.total ??
+              0;
+
+            // Flat: qcIncidents is a number
+            // Nested: qcMeetingsCount is a number
+            const qcCount =
+              response.qcIncidents ?? response.qcMeetingsCount ?? 0;
+
             // Update main metrics
             setMetrics({
               monthlySpecimenVolume: {
-                total: response.monthlySpecimenVolume?.total ?? 0,
+                total: specimenVolume,
                 byType: response.monthlySpecimenVolume?.byType || [],
               },
               turnaroundTime: {
-                overall: response.turnaroundTime?.overall ?? 0,
+                overall: avgTAT,
                 byType: response.turnaroundTime?.byType || [],
               },
               rejectionRates: {
-                overall: response.rejectionRates?.overall ?? 0,
+                overall:
+                  response.rejectionRates?.overall ??
+                  response.specimenRejectionRate ??
+                  0,
                 byReason: response.rejectionRates?.byReason || [],
               },
-              qcMeetingsCount: response.qcMeetingsCount ?? 0,
+              qcMeetingsCount: qcCount,
               specimenRejectionRate: response.specimenRejectionRate ?? 0,
-              assaySuccessRate: response.assaySuccessRate ?? 100, // Default to 100% if not available
+              assaySuccessRate: response.assaySuccessRate ?? 100,
               equipmentDowntime: {
-                total: response.equipmentDowntime?.total ?? 0,
+                total: equipDowntime,
                 byEquipment: response.equipmentDowntime?.byEquipment || [],
               },
-              totalSamplesProcessed: response.totalSamplesProcessed ?? 0,
+              totalSamplesProcessed:
+                response.totalSamplesProcessed ?? specimenVolume,
               pendingReview: response.pendingReview ?? 0,
               completedReports: response.completedReports ?? 0,
+
+              // Report metadata from backend
+              reportId: response.reportId ?? null,
+              linkedTestOrders: response.linkedTestOrders ?? [],
+              specimenVolumeByType: response.specimenVolumeByType ?? {},
             });
 
             // Set table data
@@ -312,6 +352,9 @@ function PathologyReportingPage({
               totalSamplesProcessed: 0,
               pendingReview: 0,
               completedReports: 0,
+              reportId: null,
+              linkedTestOrders: [],
+              specimenVolumeByType: {},
             });
             setSpecimenVolumeData([]);
             setTatByTypeData([]);
@@ -322,7 +365,7 @@ function PathologyReportingPage({
         }
       },
     );
-  }, [notebookId, dateRange]);
+  }, [entryId, dateRange]);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -334,13 +377,13 @@ function PathologyReportingPage({
   }, [loadMetrics]);
 
   // Handle export metrics to Excel
-  // Must use notebookId - do not fall back to entryId as they are different ID types
+  // The backend /metrics/export endpoint expects entryId (notebook_entry.id), not notebookId (notebook.id)
   const handleExportMetrics = async () => {
-    if (!notebookId) {
+    if (!entryId) {
       setError(
         intl.formatMessage({
-          id: "pathology.reporting.error.noNotebook",
-          defaultMessage: "Notebook not found",
+          id: "pathology.reporting.error.noEntry",
+          defaultMessage: "Entry not found",
         }),
       );
       return;
@@ -351,7 +394,7 @@ function PathologyReportingPage({
 
     try {
       const params = new URLSearchParams({
-        entryId: notebookId,
+        entryId: entryId,
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
         format: "excel",
@@ -439,7 +482,25 @@ function PathologyReportingPage({
         `Report Period: ${dateRange.startDate} to ${dateRange.endDate}`,
       ]);
       csvData.push([`Generated: ${new Date().toLocaleString()}`]);
+      csvData.push([`Report ID: ${metrics.reportId || "N/A"}`]);
       csvData.push([`Overall Performance Health Score: ${healthScore}%`]);
+      csvData.push([]);
+
+      // =============================================
+      // Linked Test Orders
+      // =============================================
+      csvData.push(["LINKED TEST ORDERS"]);
+      csvData.push([
+        `Total Linked Orders: ${metrics.linkedTestOrders?.length || 0}`,
+      ]);
+      if (metrics.linkedTestOrders?.length > 0) {
+        csvData.push(["Order ID"]);
+        metrics.linkedTestOrders.forEach((order) => {
+          csvData.push([order]);
+        });
+      } else {
+        csvData.push(["No linked test orders"]);
+      }
       csvData.push([]);
 
       // =============================================
@@ -533,13 +594,29 @@ function PathologyReportingPage({
       // =============================================
       // Specimen Volume by Type
       // =============================================
-      csvData.push(["MONTHLY SPECIMEN VOLUME BY TYPE"]);
+      csvData.push(["SPECIMEN VOLUME BY TYPE"]);
       csvData.push(["Specimen Type", "Count", "Percentage"]);
-      specimenVolumeData.forEach((item) => {
-        csvData.push([item.specimenType, item.count, `${item.percentage}%`]);
-      });
-      if (specimenVolumeData.length === 0) {
-        csvData.push(["No data available", "", ""]);
+
+      // Use specimenVolumeByType from backend if available, otherwise use specimenVolumeData
+      const specimenByTypeEntries = Object.entries(
+        metrics.specimenVolumeByType || {},
+      );
+      const totalSpecimens =
+        metrics.monthlySpecimenVolume?.total ||
+        specimenByTypeEntries.reduce((sum, [, count]) => sum + count, 0) ||
+        1;
+
+      if (specimenByTypeEntries.length > 0) {
+        specimenByTypeEntries.forEach(([type, count]) => {
+          const percentage = ((count / totalSpecimens) * 100).toFixed(1);
+          csvData.push([type, count, `${percentage}%`]);
+        });
+      } else if (specimenVolumeData.length > 0) {
+        specimenVolumeData.forEach((item) => {
+          csvData.push([item.specimenType, item.count, `${item.percentage}%`]);
+        });
+      } else {
+        csvData.push(["No specimen data available", "", ""]);
       }
       csvData.push([]);
       csvData.push([]);
@@ -677,10 +754,11 @@ function PathologyReportingPage({
     }, 100);
   }, []);
 
-  // Handle generating report - downloads CSV file from backend (same pattern as MNTD)
-  // Must use notebookId - do not fall back to entryId as they are different ID types
+  // Handle generating report - downloads Excel file from backend
+  // The backend /report/export-excel endpoint expects entryId (notebook_entry.id), not notebookId (notebook.id)
+  // Excel format includes Sheet 1: Metrics, Sheet 2: All Samples
   const handleGenerateReport = useCallback(() => {
-    if (!notebookId) {
+    if (!entryId) {
       setError("Entry ID not available for report generation.");
       return;
     }
@@ -690,24 +768,15 @@ function PathologyReportingPage({
 
     // Build query params for the pathology report endpoint
     const params = new URLSearchParams({
-      entryId: notebookId,
-      reportType: reportType,
+      entryId: entryId,
       reportPeriod: `${reportData.dateRangeStart || dateRange.startDate} to ${reportData.dateRangeEnd || dateRange.endDate}`,
       startDate: reportData.dateRangeStart || dateRange.startDate,
       endDate: reportData.dateRangeEnd || dateRange.endDate,
-      includeMetrics: "true",
-      includeSampleDetails: "true",
-      includeQcData: "true",
-      includeProcessingData: "true",
-      includeTestingData: "true",
-      includeStorageData: "true",
-      includeDisposalData: "true",
-      includeSopData: "true",
     });
 
-    // Fetch report from backend (same pattern as MNTD)
+    // Fetch Excel report from backend
     fetch(
-      `${config.serverBaseUrl}/rest/notebook/pathology/report/export-csv?${params.toString()}`,
+      `${config.serverBaseUrl}/rest/notebook/pathology/report/export-excel?${params.toString()}`,
       {
         method: "GET",
         credentials: "include",
@@ -722,7 +791,7 @@ function PathologyReportingPage({
         }
         // Get filename from Content-Disposition header if available
         const contentDisposition = response.headers.get("Content-Disposition");
-        let fileName = `Pathology_Summary_Report_${new Date().toISOString().split("T")[0]}.csv`;
+        let fileName = `Pathology_Report_${new Date().toISOString().split("T")[0]}.xlsx`;
 
         if (contentDisposition) {
           const match = contentDisposition.match(/filename="?([^"]+)"?/);
@@ -742,7 +811,7 @@ function PathologyReportingPage({
           intl.formatMessage({
             id: "pathology.reporting.reportGenerated",
             defaultMessage:
-              "Report generated and downloaded successfully. Open in Excel for best viewing.",
+              "Excel report generated successfully with Metrics and Samples sheets.",
           }),
         );
         setShowReportModal(false);
@@ -750,7 +819,7 @@ function PathologyReportingPage({
           dateRangeStart: "",
           dateRangeEnd: "",
           includeAllData: true,
-          reportFormat: "CSV",
+          reportFormat: "Excel",
           reportNotes: "",
         });
       })
@@ -758,16 +827,14 @@ function PathologyReportingPage({
         if (componentMounted.current) {
           console.error("Report generation error (using local fallback):", err);
           setIsGeneratingReport(false);
-          // Fallback to local CSV export - this works fine, so show success message
+          // Fallback to local CSV export
           exportMetricsToCSV();
           setShowReportModal(false);
-          // The exportMetricsToCSV function already sets its own success message
         }
       });
   }, [
     reportData,
-    reportType,
-    notebookId,
+    entryId,
     dateRange,
     intl,
     downloadFile,
@@ -905,6 +972,7 @@ function PathologyReportingPage({
         <Column lg={4} md={4} sm={4}>
           <DatePicker
             datePickerType="single"
+            dateFormat="Y-m-d"
             value={dateRange.startDate}
             onChange={(dates) =>
               handleDateChange(dates, "startDate", setDateRange)
@@ -916,13 +984,14 @@ function PathologyReportingPage({
                 id: "pathology.reporting.startDate",
                 defaultMessage: "Start Date",
               })}
-              placeholder="mm/dd/yyyy"
+              placeholder="yyyy-mm-dd"
             />
           </DatePicker>
         </Column>
         <Column lg={4} md={4} sm={4}>
           <DatePicker
             datePickerType="single"
+            dateFormat="Y-m-d"
             value={dateRange.endDate}
             onChange={(dates) =>
               handleDateChange(dates, "endDate", setDateRange)
@@ -934,7 +1003,7 @@ function PathologyReportingPage({
                 id: "pathology.reporting.endDate",
                 defaultMessage: "End Date",
               })}
-              placeholder="mm/dd/yyyy"
+              placeholder="yyyy-mm-dd"
             />
           </DatePicker>
         </Column>
@@ -1643,7 +1712,7 @@ function PathologyReportingPage({
           <p style={{ color: "#525252", marginBottom: "1rem" }}>
             <FormattedMessage
               id="pathology.reporting.modalDescription"
-              defaultMessage="Generate a comprehensive pathology performance summary report in CSV format."
+              defaultMessage="Generate an Excel report with Performance Metrics (Sheet 1) and All Samples (Sheet 2)."
             />
           </p>
 

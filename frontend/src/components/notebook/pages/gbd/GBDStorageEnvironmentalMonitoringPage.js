@@ -82,8 +82,12 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { getPagePermissionLevel, canSaveData, canAccessSampleStorage, GBD_PAGES } =
-    useGBDPermissions();
+  const {
+    getPagePermissionLevel,
+    canSaveData,
+    canAccessSampleStorage,
+    GBD_PAGES,
+  } = useGBDPermissions();
 
   const allowedRoles = [
     "GBD Lab Technician",

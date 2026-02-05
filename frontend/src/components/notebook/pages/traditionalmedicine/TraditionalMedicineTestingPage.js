@@ -80,7 +80,9 @@ function TraditionalMedicineTestingPage({
   const canAccessPage = canAccessProductDevelopment();
 
   // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.PRODUCT_DEVELOPMENT);
+  const pagePermissionLevel = getPagePermissionLevel(
+    TMMRD_PAGES.PRODUCT_DEVELOPMENT,
+  );
 
   // Function-level permissions per permission matrix
   const canAssignTests = canPerformWork(pagePermissionLevel); // Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (Yes), Lab Manager (Full), Principal Investigator (View)
@@ -1080,7 +1082,8 @@ function TraditionalMedicineTestingPage({
             !canAssignTests
               ? intl.formatMessage({
                   id: "notebook.tradmed.testing.insufficientPermissions.assign",
-                  defaultMessage: "Insufficient permissions to assign tests. Only Lab Technicians, Researchers, Pharmacognosists, and Lab Manager (with appropriate permissions) can assign tests.",
+                  defaultMessage:
+                    "Insufficient permissions to assign tests. Only Lab Technicians, Researchers, Pharmacognosists, and Lab Manager (with appropriate permissions) can assign tests.",
                 })
               : isViewOnly
                 ? intl.formatMessage({
@@ -1126,7 +1129,8 @@ function TraditionalMedicineTestingPage({
             !canMarkComplete
               ? intl.formatMessage({
                   id: "notebook.tradmed.testing.insufficientPermissions.complete",
-                  defaultMessage: "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
+                  defaultMessage:
+                    "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
                 })
               : isViewOnly
                 ? intl.formatMessage({
@@ -1374,7 +1378,10 @@ function TraditionalMedicineTestingPage({
           defaultMessage: "Cancel",
         })}
         primaryButtonDisabled={
-          isApplying || !testResultsData.result || !canRecordResults || isViewOnly
+          isApplying ||
+          !testResultsData.result ||
+          !canRecordResults ||
+          isViewOnly
         }
         size="lg"
       >

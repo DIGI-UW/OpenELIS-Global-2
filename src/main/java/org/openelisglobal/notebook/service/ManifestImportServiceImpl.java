@@ -1,5 +1,7 @@
 package org.openelisglobal.notebook.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,8 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
@@ -198,8 +198,8 @@ public class ManifestImportServiceImpl implements ManifestImportService {
 
             String sampleId;
             try {
-                AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO,
-                        entityManager, this.getClass());
+                AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO, entityManager,
+                        this.getClass());
                 sampleId = handler.generateAndInsertWithUniqueAccessionNumber(parentSample);
                 parentSample.setId(sampleId);
             } catch (DuplicateAccessionNumberException e) {

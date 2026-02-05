@@ -2,7 +2,8 @@
 
 ## Overview
 
-**Test Sections** (also called departments, labs, or units) represent the different laboratory departments or sections in your organization.
+**Test Sections** (also called departments, labs, or units) represent the
+different laboratory departments or sections in your organization.
 
 **File:** `example-test-sections.csv`
 
@@ -14,15 +15,15 @@ testSectionName,description,isActive,sortOrder,isExternal,englishName,frenchName
 
 ### Column Descriptions
 
-| Column | Required | Description | Example |
-|--------|----------|-------------|---------|
-| `testSectionName` | Yes | Unique identifier name for the test section | `Bioanalytical Laboratory` |
-| `description` | Yes | Human-readable description | `Bioanalytical Testing Laboratory Department` |
-| `isActive` | Yes | Activate this test section? (`Y` or `N`) | `Y` |
-| `sortOrder` | Yes | Display order in lists | `1` |
-| `isExternal` | Yes | Is this an external lab? (`Y` or `N`) | `N` |
-| `englishName` | Yes | English display name | `Bioanalytical Laboratory` |
-| `frenchName` | Yes | French display name | `Laboratoire Bianalytique` |
+| Column            | Required | Description                                 | Example                                       |
+| ----------------- | -------- | ------------------------------------------- | --------------------------------------------- |
+| `testSectionName` | Yes      | Unique identifier name for the test section | `Bioanalytical Laboratory`                    |
+| `description`     | Yes      | Human-readable description                  | `Bioanalytical Testing Laboratory Department` |
+| `isActive`        | Yes      | Activate this test section? (`Y` or `N`)    | `Y`                                           |
+| `sortOrder`       | Yes      | Display order in lists                      | `1`                                           |
+| `isExternal`      | Yes      | Is this an external lab? (`Y` or `N`)       | `N`                                           |
+| `englishName`     | Yes      | English display name                        | `Bioanalytical Laboratory`                    |
+| `frenchName`      | Yes      | French display name                         | `Laboratoire Bianalytique`                    |
 
 ## Example
 
@@ -37,7 +38,8 @@ Bioanalytical Laboratory,Bioanalytical Testing Laboratory Department,Y,13,N,Bioa
 
 1. When the application starts, it reads this CSV file
 2. For each row, it creates or updates a test section in the database
-3. Other configurations can then reference these test sections by their `testSectionName`
+3. Other configurations can then reference these test sections by their
+   `testSectionName`
 4. Users can be assigned to test sections
 5. Notebooks and tests can be filtered by test section
 
@@ -78,25 +80,31 @@ ORDER BY sort_order;
 
 ### Test Section Names Must Match
 
-When you configure notebooks to use test sections in `notebook-departments/research-lab-linkages.csv`, the department name **must exactly match** the `testSectionName` in this file:
+When you configure notebooks to use test sections in
+`notebook-departments/research-lab-linkages.csv`, the department name **must
+exactly match** the `testSectionName` in this file:
 
 **test-sections/example-test-sections.csv:**
+
 ```csv
 testSectionName,description,isActive,sortOrder,isExternal,englishName,frenchName
 Bioanalytical Laboratory,Bioanalytical Testing Lab,Y,13,N,Bioanalytical Laboratory,Laboratoire Bianalytique
 ```
 
 **notebook-departments/research-lab-linkages.csv:**
+
 ```csv
 notebookTitle,departmentName
 Bioanalytical Notebook,Bioanalytical Laboratory
 ```
 
-Notice: `testSectionName` in test-sections matches `departmentName` in notebook-departments.
+Notice: `testSectionName` in test-sections matches `departmentName` in
+notebook-departments.
 
 ### Active Status
 
 Only test sections with `isActive = Y` will be:
+
 - Available for user assignment
 - Visible in department selection at login
 - Able to have notebooks linked to them
@@ -105,11 +113,14 @@ Set to `N` to hide a test section without deleting it.
 
 ### Sort Order
 
-Test sections are displayed to users in order of `sortOrder` (ascending). Use numbers like 1, 2, 3, etc. to control the order departments appear in dropdowns and selection screens.
+Test sections are displayed to users in order of `sortOrder` (ascending). Use
+numbers like 1, 2, 3, etc. to control the order departments appear in dropdowns
+and selection screens.
 
 ### External vs. Internal
 
-Set `isExternal = Y` if this is a reference lab or external facility. Use `N` for internal departments.
+Set `isExternal = Y` if this is a reference lab or external facility. Use `N`
+for internal departments.
 
 ## Bilingual Support
 
@@ -118,7 +129,8 @@ This system supports English and French names:
 - **englishName**: Displayed when user's language is set to English
 - **frenchName**: Displayed when user's language is set to French
 
-Users see the appropriate language based on their language preference in application settings.
+Users see the appropriate language based on their language preference in
+application settings.
 
 ## Modifying Test Sections
 
@@ -145,6 +157,7 @@ Users see the appropriate language based on their language preference in applica
 Test sections cannot be deleted via configuration (to prevent data loss).
 
 To permanently remove a test section:
+
 1. First, unassign all users from it
 2. Unlink all notebooks from it
 3. Manually delete from database (if needed)
@@ -175,6 +188,7 @@ You can modify these or add your own.
 ### Changes to CSV Don't Take Effect
 
 **Solution:**
+
 1. Stop the application
 2. Wait a few seconds
 3. Verify the CSV file has correct format
@@ -185,14 +199,17 @@ You can modify these or add your own.
 ### Can't Find Test Section When Configuring Notebooks
 
 **Solution:**
+
 1. Verify the test section was created: `SELECT * FROM test_section;`
-2. Verify `testSectionName` in test-sections CSV matches exactly what you're using in notebook-departments CSV
+2. Verify `testSectionName` in test-sections CSV matches exactly what you're
+   using in notebook-departments CSV
 3. Check that `isActive = Y` for that test section
 4. Names are case-sensitive
 
 ### Test Section Appears in Database But Not in UI
 
 **Checklist:**
+
 - [ ] `isActive = Y` in database
 - [ ] Browser cache cleared
 - [ ] Application restarted
@@ -202,14 +219,18 @@ You can modify these or add your own.
 
 - **Linking Notebooks to Test Sections:** `../notebook-departments/README.md`
 - **Assigning Users to Test Sections:** See NOTEBOOK_DEPARTMENT_DEBUG.md
-- **Configuration Property:** `REQUIRE_LAB_UNIT_AT_LOGIN` (in application properties)
+- **Configuration Property:** `REQUIRE_LAB_UNIT_AT_LOGIN` (in application
+  properties)
 
 ## Reference
 
-Test sections are processed by the **TestSectionConfigurationHandler** class which:
+Test sections are processed by the **TestSectionConfigurationHandler** class
+which:
+
 - Loads on application startup
 - Processes each line in the CSV
 - Creates or updates test sections in the database
 - Manages bilingual display names
 
-See the debugging guide: `NOTEBOOK_DEPARTMENT_DEBUG.md` for more information on setting up the complete workflow.
+See the debugging guide: `NOTEBOOK_DEPARTMENT_DEBUG.md` for more information on
+setting up the complete workflow.

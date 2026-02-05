@@ -773,7 +773,8 @@ export const GBDBioinformaticsAnalysisPage = ({
             !canPerformBioinformatics
               ? intl.formatMessage({
                   id: "notebook.gbd.bioinformatics.insufficientPermissions.record",
-                  defaultMessage: "Insufficient permissions to record bioinformatics analysis. Only Bioinformaticians (with Full access) can record analysis.",
+                  defaultMessage:
+                    "Insufficient permissions to record bioinformatics analysis. Only Bioinformaticians (with Full access) can record analysis.",
                 })
               : isViewOnly
                 ? intl.formatMessage({
@@ -806,7 +807,8 @@ export const GBDBioinformaticsAnalysisPage = ({
             !canMarkComplete
               ? intl.formatMessage({
                   id: "notebook.gbd.bioinformatics.insufficientPermissions.complete",
-                  defaultMessage: "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
+                  defaultMessage:
+                    "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
                 })
               : isViewOnly
                 ? intl.formatMessage({

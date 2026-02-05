@@ -101,7 +101,9 @@ function TraditionalMedicineAuthenticationPage({
   const canAccessPage = canAccessAuthentication();
 
   // Get user's permission level for this specific page
-  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.AUTHENTICATION);
+  const pagePermissionLevel = getPagePermissionLevel(
+    TMMRD_PAGES.AUTHENTICATION,
+  );
 
   // STAGE 2 allowed roles per TMMRD matrix
   const allowedRoles = [
@@ -637,10 +639,7 @@ function TraditionalMedicineAuthenticationPage({
               renderIcon={CheckmarkFilled}
               onClick={handleMarkComplete}
               disabled={
-                isCompleting ||
-                !hasRealPageId ||
-                !canMarkComplete ||
-                isViewOnly
+                isCompleting || !hasRealPageId || !canMarkComplete || isViewOnly
               }
               title={
                 !canMarkComplete || isViewOnly

@@ -3,6 +3,7 @@ package org.openelisglobal.notebook.controller.rest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
+import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
@@ -13,6 +14,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.IStatusService;
@@ -39,6 +47,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,7 +56,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * REST controller for Pathology Laboratory workflow operations. Handles
@@ -2235,20 +2243,164 @@ public class PathologyWorkflowController extends BaseRestController {
 
     /**
      * Get pathology metrics for an entry. GET /rest/notebook/pathology/metrics
+     *
+     * Returns calculated metrics from actual sample data including: - Report ID and
+     * linked test orders - Specimen volume by type - QC pass/fail rates - Assay
+     * success rates - Average turnaround time
      */
     @GetMapping(value = "/metrics", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> getMetrics(@RequestParam Integer entryId, HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> getMetrics(@RequestParam Integer entryId,
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
+            HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            // Return default/placeholder metrics - would be calculated from actual data
-            response.put("specimenRejectionRate", 2.5);
-            response.put("assaySuccessRate", 97.8);
-            response.put("averageTAT", 24);
-            response.put("equipmentDowntimeHours", 4);
-            response.put("monthlySpecimenVolume", 150);
-            response.put("qcIncidents", 3);
+            // Get the notebook entry to find related data
+            NotebookEntry entry = notebookEntryService.getWithRelationships(entryId);
+            if (entry == null) {
+                response.put("error", "Entry not found");
+                return ResponseEntity.notFound().build();
+            }
+
+            // Generate Report ID
+            String reportId = "RPT-" + entryId + "-" + System.currentTimeMillis();
+            response.put("reportId", reportId);
+            response.put("entryId", entryId);
+            response.put("entryTitle", entry.getEffectiveTitle());
+
+            // Get all pages for the notebook
+            Integer notebookId = entry.getNotebook() != null ? entry.getNotebook().getId() : null;
+            List<NoteBookPage> pages = notebookId != null ? noteBookPageService.getByNotebookId(notebookId)
+                    : new ArrayList<>();
+
+            // Get all samples associated with this entry
+            List<SampleItem> samples = entry.getSamples();
+            int totalSamples = samples != null ? samples.size() : 0;
+
+            // Calculate specimen volume by type
+            Map<String, Integer> specimenTypeCount = new HashMap<>();
+            List<Map<String, Object>> linkedTestOrders = new ArrayList<>();
+
+            if (samples != null) {
+                for (SampleItem sample : samples) {
+                    // Count by specimen type
+                    String specimenType = sample.getTypeOfSample() != null ? sample.getTypeOfSample().getDescription()
+                            : "Unknown";
+                    specimenTypeCount.merge(specimenType, 1, Integer::sum);
+
+                    // Collect linked test orders (from sample's parent sample)
+                    if (sample.getSample() != null && sample.getSample().getAccessionNumber() != null) {
+                        Map<String, Object> testOrder = new HashMap<>();
+                        testOrder.put("accessionNumber", sample.getSample().getAccessionNumber());
+                        testOrder.put("sampleId", sample.getId());
+                        testOrder.put("specimenType", specimenType);
+                        // Avoid duplicates
+                        boolean exists = linkedTestOrders.stream().anyMatch(
+                                t -> t.get("accessionNumber").equals(sample.getSample().getAccessionNumber()));
+                        if (!exists) {
+                            linkedTestOrders.add(testOrder);
+                        }
+                    }
+                }
+            }
+
+            // Build specimen volume by type array
+            List<Map<String, Object>> specimenVolumeByType = new ArrayList<>();
+            for (Map.Entry<String, Integer> typeEntry : specimenTypeCount.entrySet()) {
+                Map<String, Object> typeData = new HashMap<>();
+                typeData.put("type", typeEntry.getKey());
+                typeData.put("count", typeEntry.getValue());
+                typeData.put("percentage",
+                        totalSamples > 0 ? Math.round(typeEntry.getValue() * 1000.0 / totalSamples) / 10.0 : 0);
+                specimenVolumeByType.add(typeData);
+            }
+
+            // Sort by count descending
+            specimenVolumeByType.sort((a, b) -> ((Integer) b.get("count")).compareTo((Integer) a.get("count")));
+
+            // Calculate QC and assay metrics from page sample data
+            int qcPassCount = 0;
+            int qcFailCount = 0;
+            int assaySuccessCount = 0;
+            int assayTotalCount = 0;
+            double totalTatHours = 0;
+            int tatSampleCount = 0;
+
+            if (samples != null) {
+                for (SampleItem sample : samples) {
+                    String sampleIdStr = String.valueOf(sample.getId());
+                    for (NoteBookPage page : pages) {
+                        NotebookPageSample pageSample = notebookPageSampleService
+                                .getBySampleItemIdAndPageId(sampleIdStr, page.getId());
+                        if (pageSample != null && pageSample.getData() != null) {
+                            Map<String, Object> data = pageSample.getData();
+
+                            // Count QC pass/fail
+                            String qcStatus = getStringValue(data, "qcStatus");
+                            if ("Pass".equalsIgnoreCase(qcStatus) || "PASS".equals(qcStatus)) {
+                                qcPassCount++;
+                            } else if ("Fail".equalsIgnoreCase(qcStatus) || "FAIL".equals(qcStatus)) {
+                                qcFailCount++;
+                            }
+
+                            // Count assay success
+                            Object controlsAccepted = data.get("controlsAccepted");
+                            if (controlsAccepted != null) {
+                                assayTotalCount++;
+                                if (Boolean.TRUE.equals(controlsAccepted)
+                                        || "true".equals(String.valueOf(controlsAccepted))) {
+                                    assaySuccessCount++;
+                                }
+                            }
+
+                            // Calculate TAT
+                            if (pageSample.getCompletedAt() != null && sample.getLastupdated() != null) {
+                                long tatMs = pageSample.getCompletedAt().getTime() - sample.getLastupdated().getTime();
+                                if (tatMs > 0) {
+                                    totalTatHours += tatMs / (1000.0 * 60 * 60);
+                                    tatSampleCount++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Calculate derived metrics
+            int totalQcSamples = qcPassCount + qcFailCount;
+            double specimenRejectionRate = totalQcSamples > 0 ? (qcFailCount * 100.0) / totalQcSamples : 0;
+            double assaySuccessRate = assayTotalCount > 0 ? (assaySuccessCount * 100.0) / assayTotalCount : 100;
+            double averageTat = tatSampleCount > 0 ? Math.round(totalTatHours / tatSampleCount * 10.0) / 10.0 : 0;
+
+            // Build response with nested structure for frontend compatibility
+            response.put("specimenRejectionRate", Math.round(specimenRejectionRate * 100.0) / 100.0);
+            response.put("assaySuccessRate", Math.round(assaySuccessRate * 100.0) / 100.0);
+            response.put("averageTAT", averageTat);
+            response.put("equipmentDowntimeHours", 0); // TODO: Implement equipment tracking
+            response.put("qcIncidents", qcFailCount);
+
+            // Monthly specimen volume with breakdown
+            Map<String, Object> monthlyVolume = new HashMap<>();
+            monthlyVolume.put("total", totalSamples);
+            monthlyVolume.put("byType", specimenVolumeByType);
+            response.put("monthlySpecimenVolume", monthlyVolume);
+
+            // Turnaround time with breakdown (placeholder for now)
+            Map<String, Object> turnaroundTime = new HashMap<>();
+            turnaroundTime.put("overall", averageTat);
+            turnaroundTime.put("byType", new ArrayList<>()); // TODO: Calculate TAT by type
+            response.put("turnaroundTime", turnaroundTime);
+
+            // Linked test orders
+            response.put("linkedTestOrders", linkedTestOrders);
+            response.put("totalTestOrders", linkedTestOrders.size());
+
+            // Additional stats
+            response.put("totalSamplesProcessed", totalSamples);
+            response.put("qcPassCount", qcPassCount);
+            response.put("qcFailCount", qcFailCount);
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             response.put("error", "Failed to get metrics: " + e.getMessage());
@@ -2780,6 +2932,313 @@ public class PathologyWorkflowController extends BaseRestController {
             org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "exportReportCsv",
                     "Failed to export CSV: " + e.getMessage());
             return ResponseEntity.status(500).build();
+        }
+    }
+
+    /**
+     * Export pathology report as Excel with multiple sheets. GET
+     * /rest/notebook/pathology/report/export-excel
+     *
+     * Sheet 1: Performance Metrics (KPIs, specimen volume, TAT, rejection rates)
+     * Sheet 2: All Samples (complete sample listing with details)
+     *
+     * Following the Biorepository export pattern for consistency.
+     */
+    @GetMapping(value = "/report/export-excel")
+    public void exportReportExcel(@RequestParam Integer entryId, @RequestParam(required = false) String reportPeriod,
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
+            jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+
+        try {
+            // Get the notebook entry with relationships
+            NotebookEntry entry = notebookEntryService.getWithRelationships(entryId);
+            if (entry == null) {
+                response.setStatus(404);
+                return;
+            }
+
+            // Get all pages and samples
+            Integer notebookId = entry.getNotebook() != null ? entry.getNotebook().getId() : null;
+            List<NoteBookPage> pages = notebookId != null ? noteBookPageService.getByNotebookId(notebookId)
+                    : new ArrayList<>();
+            List<SampleItem> samples = entry.getSamples();
+
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            SimpleDateFormat dateOnlyFormat = new SimpleDateFormat("yyyy-MM-dd");
+            String generatedDate = dateFormat.format(new Date());
+
+            // Create Excel workbook
+            Workbook workbook = new XSSFWorkbook();
+
+            // Create header style
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+
+            // =============================================
+            // SHEET 1: Performance Metrics
+            // =============================================
+            Sheet metricsSheet = workbook.createSheet("Performance Metrics");
+            int metricsRowNum = 0;
+
+            // Report Header
+            Row titleRow = metricsSheet.createRow(metricsRowNum++);
+            createExcelCell(titleRow, 0, "PATHOLOGY PERFORMANCE METRICS REPORT", headerStyle);
+
+            Row periodRow = metricsSheet.createRow(metricsRowNum++);
+            createExcelCell(periodRow, 0, "Report Period:", null);
+            createExcelCell(periodRow, 1, reportPeriod != null ? reportPeriod : "All Time", null);
+
+            Row generatedRow = metricsSheet.createRow(metricsRowNum++);
+            createExcelCell(generatedRow, 0, "Generated:", null);
+            createExcelCell(generatedRow, 1, generatedDate, null);
+
+            Row entryRow = metricsSheet.createRow(metricsRowNum++);
+            createExcelCell(entryRow, 0, "Entry:", null);
+            createExcelCell(entryRow, 1, entry.getEffectiveTitle(), null);
+
+            metricsRowNum++; // Empty row
+
+            // Calculate metrics from sample data
+            int totalSamples = samples != null ? samples.size() : 0;
+            Map<String, Integer> specimenTypeCount = new HashMap<>();
+            int qcPassCount = 0;
+            int qcFailCount = 0;
+
+            if (samples != null) {
+                for (SampleItem sample : samples) {
+                    // Count by specimen type
+                    String specimenType = sample.getTypeOfSample() != null ? sample.getTypeOfSample().getDescription()
+                            : "Unknown";
+                    specimenTypeCount.merge(specimenType, 1, Integer::sum);
+
+                    // Get QC data from page samples
+                    String sampleIdStr = String.valueOf(sample.getId());
+                    for (NoteBookPage page : pages) {
+                        NotebookPageSample pageSample = notebookPageSampleService
+                                .getBySampleItemIdAndPageId(sampleIdStr, page.getId());
+                        if (pageSample != null && pageSample.getData() != null) {
+                            Map<String, Object> data = pageSample.getData();
+                            String qcStatus = getStringValue(data, "qcStatus");
+                            if ("Pass".equalsIgnoreCase(qcStatus)) {
+                                qcPassCount++;
+                            } else if ("Fail".equalsIgnoreCase(qcStatus)) {
+                                qcFailCount++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // KPI Section Header
+            Row kpiHeaderRow = metricsSheet.createRow(metricsRowNum++);
+            createExcelCell(kpiHeaderRow, 0, "KEY PERFORMANCE INDICATORS", headerStyle);
+
+            Row kpiColumnsRow = metricsSheet.createRow(metricsRowNum++);
+            createExcelCell(kpiColumnsRow, 0, "Metric", headerStyle);
+            createExcelCell(kpiColumnsRow, 1, "Value", headerStyle);
+            createExcelCell(kpiColumnsRow, 2, "Target", headerStyle);
+            createExcelCell(kpiColumnsRow, 3, "Status", headerStyle);
+
+            // Total Specimens
+            Row totalRow = metricsSheet.createRow(metricsRowNum++);
+            createExcelCell(totalRow, 0, "Total Specimens Processed", null);
+            createExcelCell(totalRow, 1, String.valueOf(totalSamples), null);
+            createExcelCell(totalRow, 2, "-", null);
+            createExcelCell(totalRow, 3, "-", null);
+
+            // Rejection Rate
+            int totalQc = qcPassCount + qcFailCount;
+            double rejectionRate = totalQc > 0 ? (qcFailCount * 100.0) / totalQc : 0;
+            Row rejectionRow = metricsSheet.createRow(metricsRowNum++);
+            createExcelCell(rejectionRow, 0, "Specimen Rejection Rate", null);
+            createExcelCell(rejectionRow, 1, String.format("%.1f%%", rejectionRate), null);
+            createExcelCell(rejectionRow, 2, "<5%", null);
+            createExcelCell(rejectionRow, 3, rejectionRate <= 5 ? "Within Target" : "Above Target", null);
+
+            // QC Pass Rate
+            double passRate = totalQc > 0 ? (qcPassCount * 100.0) / totalQc : 100;
+            Row passRateRow = metricsSheet.createRow(metricsRowNum++);
+            createExcelCell(passRateRow, 0, "QC Pass Rate", null);
+            createExcelCell(passRateRow, 1, String.format("%.1f%%", passRate), null);
+            createExcelCell(passRateRow, 2, ">95%", null);
+            createExcelCell(passRateRow, 3, passRate >= 95 ? "Within Target" : "Below Target", null);
+
+            metricsRowNum++; // Empty row
+
+            // Specimen Volume by Type Section
+            Row volumeHeaderRow = metricsSheet.createRow(metricsRowNum++);
+            createExcelCell(volumeHeaderRow, 0, "SPECIMEN VOLUME BY TYPE", headerStyle);
+
+            Row volumeColumnsRow = metricsSheet.createRow(metricsRowNum++);
+            createExcelCell(volumeColumnsRow, 0, "Specimen Type", headerStyle);
+            createExcelCell(volumeColumnsRow, 1, "Count", headerStyle);
+            createExcelCell(volumeColumnsRow, 2, "Percentage", headerStyle);
+
+            for (Map.Entry<String, Integer> typeEntry : specimenTypeCount.entrySet()) {
+                Row volumeRow = metricsSheet.createRow(metricsRowNum++);
+                double percentage = totalSamples > 0 ? (typeEntry.getValue() * 100.0) / totalSamples : 0;
+                createExcelCell(volumeRow, 0, typeEntry.getKey(), null);
+                createExcelCell(volumeRow, 1, String.valueOf(typeEntry.getValue()), null);
+                createExcelCell(volumeRow, 2, String.format("%.1f%%", percentage), null);
+            }
+
+            // Auto-size columns for metrics sheet
+            for (int i = 0; i < 4; i++) {
+                metricsSheet.autoSizeColumn(i);
+            }
+
+            // =============================================
+            // SHEET 2: All Samples
+            // =============================================
+            Sheet samplesSheet = workbook.createSheet("All Samples");
+            int samplesRowNum = 0;
+
+            // Header row
+            Row samplesHeaderRow = samplesSheet.createRow(samplesRowNum++);
+            createExcelCell(samplesHeaderRow, 0, "Sample ID", headerStyle);
+            createExcelCell(samplesHeaderRow, 1, "External ID", headerStyle);
+            createExcelCell(samplesHeaderRow, 2, "Accession Number", headerStyle);
+            createExcelCell(samplesHeaderRow, 3, "Specimen Type", headerStyle);
+            createExcelCell(samplesHeaderRow, 4, "Collection Date", headerStyle);
+            createExcelCell(samplesHeaderRow, 5, "Received Date", headerStyle);
+            createExcelCell(samplesHeaderRow, 6, "Status", headerStyle);
+            createExcelCell(samplesHeaderRow, 7, "Last Updated", headerStyle);
+            createExcelCell(samplesHeaderRow, 8, "Patient Encounter / Case ID", headerStyle);
+            createExcelCell(samplesHeaderRow, 9, "Authorizing Pathologist", headerStyle);
+            createExcelCell(samplesHeaderRow, 10, "Linked Test Order(s)", headerStyle);
+
+            // Sample data rows
+            if (samples != null) {
+                for (SampleItem sample : samples) {
+                    Row sampleRow = samplesSheet.createRow(samplesRowNum++);
+
+                    createExcelCell(sampleRow, 0, String.valueOf(sample.getId()), null);
+                    createExcelCell(sampleRow, 1, sample.getExternalId() != null ? sample.getExternalId() : "", null);
+
+                    String accessionNumber = "";
+                    String receivedDate = "";
+                    if (sample.getSample() != null) {
+                        accessionNumber = sample.getSample().getAccessionNumber() != null
+                                ? sample.getSample().getAccessionNumber()
+                                : "";
+                        receivedDate = sample.getSample().getReceivedDateForDisplay() != null
+                                ? sample.getSample().getReceivedDateForDisplay()
+                                : "";
+                    }
+                    createExcelCell(sampleRow, 2, accessionNumber, null);
+
+                    String specimenType = sample.getTypeOfSample() != null ? sample.getTypeOfSample().getDescription()
+                            : "";
+                    createExcelCell(sampleRow, 3, specimenType, null);
+
+                    String collectionDate = sample.getCollectionDate() != null
+                            ? dateOnlyFormat.format(sample.getCollectionDate())
+                            : "";
+                    createExcelCell(sampleRow, 4, collectionDate, null);
+                    createExcelCell(sampleRow, 5, receivedDate, null);
+
+                    String status = sample.getStatusId() != null ? sample.getStatusId() : "";
+                    createExcelCell(sampleRow, 6, status, null);
+
+                    String lastUpdated = sample.getLastupdated() != null ? dateFormat.format(sample.getLastupdated())
+                            : "";
+                    createExcelCell(sampleRow, 7, lastUpdated, null);
+
+                    // Get additional data from NotebookPageSample (patientEncounterId,
+                    // requestingClinician)
+                    String patientEncounterId = "";
+                    String authorizingPathologist = "";
+                    String sampleIdStr = String.valueOf(sample.getId());
+
+                    for (NoteBookPage page : pages) {
+                        NotebookPageSample pageSample = notebookPageSampleService
+                                .getBySampleItemIdAndPageId(sampleIdStr, page.getId());
+                        if (pageSample != null && pageSample.getData() != null) {
+                            Map<String, Object> data = pageSample.getData();
+                            // Get patientEncounterId if not already set
+                            if (patientEncounterId.isEmpty()) {
+                                String encounterId = getStringValue(data, "patientEncounterId");
+                                if (encounterId != null && !encounterId.isEmpty()) {
+                                    patientEncounterId = encounterId;
+                                }
+                            }
+                            // Get requestingClinician (Authorizing Pathologist) if not already set
+                            if (authorizingPathologist.isEmpty()) {
+                                String clinician = getStringValue(data, "requestingClinician");
+                                if (clinician != null && !clinician.isEmpty()) {
+                                    authorizingPathologist = clinician;
+                                }
+                            }
+                            // Stop searching if both found
+                            if (!patientEncounterId.isEmpty() && !authorizingPathologist.isEmpty()) {
+                                break;
+                            }
+                        }
+                    }
+
+                    // Get linked test orders (test names from NotebookPageSample data)
+                    // Test names are stored in the 'testName' field of NotebookPageSample.data
+                    // JSONB
+                    List<String> testNames = new ArrayList<>();
+                    for (NoteBookPage page : pages) {
+                        NotebookPageSample pageSampleForTest = notebookPageSampleService
+                                .getBySampleItemIdAndPageId(sampleIdStr, page.getId());
+                        if (pageSampleForTest != null && pageSampleForTest.getData() != null) {
+                            String testName = getStringValue(pageSampleForTest.getData(), "testName");
+                            if (testName != null && !testName.isEmpty() && !testNames.contains(testName)) {
+                                testNames.add(testName);
+                            }
+                        }
+                    }
+                    String linkedTestOrders = String.join(", ", testNames);
+
+                    createExcelCell(sampleRow, 8, patientEncounterId, null);
+                    createExcelCell(sampleRow, 9, authorizingPathologist, null);
+                    createExcelCell(sampleRow, 10, linkedTestOrders, null);
+                }
+            }
+
+            // Auto-size columns for samples sheet
+            for (int i = 0; i < 11; i++) {
+                samplesSheet.autoSizeColumn(i);
+            }
+
+            // Write workbook to byte array
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            workbook.write(baos);
+            workbook.close();
+            byte[] excelBytes = baos.toByteArray();
+
+            // Build response - write directly to HttpServletResponse
+            String filename = "pathology_report_" + entryId + "_"
+                    + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".xlsx";
+
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+            response.setContentLength(excelBytes.length);
+            response.getOutputStream().write(excelBytes);
+            response.getOutputStream().flush();
+
+        } catch (Exception e) {
+            // Log full stack trace for debugging
+            java.io.StringWriter sw = new java.io.StringWriter();
+            e.printStackTrace(new java.io.PrintWriter(sw));
+            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "exportReportExcel",
+                    "Failed to export Excel: " + e.getMessage() + "\nStack trace: " + sw.toString());
+            response.setStatus(500);
+        }
+    }
+
+    /**
+     * Helper method to create Excel cell with optional style.
+     */
+    private void createExcelCell(Row row, int column, String value, CellStyle style) {
+        Cell cell = row.createCell(column);
+        cell.setCellValue(value != null ? value : "");
+        if (style != null) {
+            cell.setCellStyle(style);
         }
     }
 

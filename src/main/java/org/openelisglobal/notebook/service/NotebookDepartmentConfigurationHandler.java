@@ -18,10 +18,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Configuration handler for linking notebook templates to test sections (departments).
+ * Configuration handler for linking notebook templates to test sections
+ * (departments).
  * <p>
- * This handler processes CSV files to create associations between notebooks and departments,
- * allowing test sections to see and access specific notebook templates.
+ * This handler processes CSV files to create associations between notebooks and
+ * departments, allowing test sections to see and access specific notebook
+ * templates.
  * <p>
  * CSV Format: notebookTitle,departmentName
  */
@@ -65,12 +67,12 @@ public class NotebookDepartmentConfigurationHandler implements DomainConfigurati
         int departmentNameIndex = findColumnIndex(headers, "departmentName");
 
         if (notebookTitleIndex == -1) {
-            throw new IllegalArgumentException("Notebook-department configuration file " + fileName +
-                    " must have a 'notebookTitle' column");
+            throw new IllegalArgumentException(
+                    "Notebook-department configuration file " + fileName + " must have a 'notebookTitle' column");
         }
         if (departmentNameIndex == -1) {
-            throw new IllegalArgumentException("Notebook-department configuration file " + fileName +
-                    " must have a 'departmentName' column");
+            throw new IllegalArgumentException(
+                    "Notebook-department configuration file " + fileName + " must have a 'departmentName' column");
         }
 
         String line;
@@ -87,7 +89,8 @@ public class NotebookDepartmentConfigurationHandler implements DomainConfigurati
             }
 
             try {
-                boolean processed = processNotebookDepartmentLine(line, notebookTitleIndex, departmentNameIndex, fileName, lineNumber);
+                boolean processed = processNotebookDepartmentLine(line, notebookTitleIndex, departmentNameIndex,
+                        fileName, lineNumber);
                 if (processed) {
                     processedCount++;
                 } else {
@@ -100,8 +103,8 @@ public class NotebookDepartmentConfigurationHandler implements DomainConfigurati
         }
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
-                "Notebook-department configuration processing completed for " + fileName +
-                ". Processed: " + processedCount + ", Skipped: " + skippedCount);
+                "Notebook-department configuration processing completed for " + fileName + ". Processed: "
+                        + processedCount + ", Skipped: " + skippedCount);
     }
 
     private boolean processNotebookDepartmentLine(String line, int notebookTitleIndex, int departmentNameIndex,
@@ -136,23 +139,22 @@ public class NotebookDepartmentConfigurationHandler implements DomainConfigurati
 
         if (notebook == null) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "processNotebookDepartmentLine",
-                    "Skipping line " + lineNumber + " in " + fileName +
-                    ": notebook template with title '" + notebookTitle + "' not found");
+                    "Skipping line " + lineNumber + " in " + fileName + ": notebook template with title '"
+                            + notebookTitle + "' not found");
             return false;
         }
 
         TestSection department = testSectionService.getTestSectionByName(departmentName);
         if (department == null) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processNotebookDepartmentLine",
-                    "Skipping line " + lineNumber + " in " + fileName +
-                    ": test section with name '" + departmentName + "' not found");
+            LogEvent.logWarn(this.getClass().getSimpleName(), "processNotebookDepartmentLine", "Skipping line "
+                    + lineNumber + " in " + fileName + ": test section with name '" + departmentName + "' not found");
             return false;
         }
 
         if (notebook.getDepartments().contains(department)) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "processNotebookDepartmentLine",
-                    "Association between notebook '" + notebookTitle + "' and department '" +
-                    departmentName + "' already exists. Skipping line " + lineNumber);
+                    "Association between notebook '" + notebookTitle + "' and department '" + departmentName
+                            + "' already exists. Skipping line " + lineNumber);
             return false;
         }
 
@@ -166,8 +168,8 @@ public class NotebookDepartmentConfigurationHandler implements DomainConfigurati
 
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "processNotebookDepartmentLine",
-                    "Failed to create association between notebook '" + notebookTitle +
-                    "' and department '" + departmentName + "': " + e.getMessage());
+                    "Failed to create association between notebook '" + notebookTitle + "' and department '"
+                            + departmentName + "': " + e.getMessage());
             return false;
         }
     }

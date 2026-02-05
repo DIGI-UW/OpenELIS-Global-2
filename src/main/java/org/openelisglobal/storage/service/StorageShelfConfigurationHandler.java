@@ -21,15 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Configuration handler for creating storage shelves from CSV files.
  *
- * This handler processes CSV files to create storage shelf entries,
- * which are shelves within storage devices.
+ * This handler processes CSV files to create storage shelf entries, which are
+ * shelves within storage devices.
  *
- * CSV Format: label,code,capacityLimit,active,parentDeviceCode
- * Example:
- * label,code,capacityLimit,active,parentDeviceCode
- * Shelf 1,S1,50,true,ULF01
- * Top Shelf,TOP,30,true,FRZ01
- * Shelf A,A,25,true,REF01
+ * CSV Format: label,code,capacityLimit,active,parentDeviceCode Example:
+ * label,code,capacityLimit,active,parentDeviceCode Shelf 1,S1,50,true,ULF01 Top
+ * Shelf,TOP,30,true,FRZ01 Shelf A,A,25,true,REF01
  */
 @Component
 @Transactional
@@ -74,16 +71,16 @@ public class StorageShelfConfigurationHandler implements DomainConfigurationHand
         int parentDeviceCodeIndex = findColumnIndex(headers, "parentDeviceCode");
 
         if (labelIndex == -1) {
-            throw new IllegalArgumentException("Storage shelf configuration file " + fileName +
-                    " must have a 'label' column");
+            throw new IllegalArgumentException(
+                    "Storage shelf configuration file " + fileName + " must have a 'label' column");
         }
         if (codeIndex == -1) {
-            throw new IllegalArgumentException("Storage shelf configuration file " + fileName +
-                    " must have a 'code' column");
+            throw new IllegalArgumentException(
+                    "Storage shelf configuration file " + fileName + " must have a 'code' column");
         }
         if (parentDeviceCodeIndex == -1) {
-            throw new IllegalArgumentException("Storage shelf configuration file " + fileName +
-                    " must have a 'parentDeviceCode' column");
+            throw new IllegalArgumentException(
+                    "Storage shelf configuration file " + fileName + " must have a 'parentDeviceCode' column");
         }
 
         String line;
@@ -101,8 +98,8 @@ public class StorageShelfConfigurationHandler implements DomainConfigurationHand
             }
 
             try {
-                boolean processed = processStorageShelfLine(line, labelIndex, codeIndex, capacityIndex,
-                    activeIndex, parentDeviceCodeIndex, fileName, lineNumber);
+                boolean processed = processStorageShelfLine(line, labelIndex, codeIndex, capacityIndex, activeIndex,
+                        parentDeviceCodeIndex, fileName, lineNumber);
                 if (processed) {
                     processedCount++;
                 } else {
@@ -115,8 +112,8 @@ public class StorageShelfConfigurationHandler implements DomainConfigurationHand
         }
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
-                "Storage shelf configuration processing completed for " + fileName +
-                ". Processed: " + processedCount + ", Skipped: " + skippedCount);
+                "Storage shelf configuration processing completed for " + fileName + ". Processed: " + processedCount
+                        + ", Skipped: " + skippedCount);
     }
 
     private boolean processStorageShelfLine(String line, int labelIndex, int codeIndex, int capacityIndex,
@@ -170,9 +167,8 @@ public class StorageShelfConfigurationHandler implements DomainConfigurationHand
         // Find parent device
         StorageDevice parentDevice = storageDeviceDAO.findByCode(parentDeviceCode);
         if (parentDevice == null) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processStorageShelfLine",
-                    "Skipping line " + lineNumber + " in " + fileName +
-                    ": parent device with code '" + parentDeviceCode + "' not found");
+            LogEvent.logWarn(this.getClass().getSimpleName(), "processStorageShelfLine", "Skipping line " + lineNumber
+                    + " in " + fileName + ": parent device with code '" + parentDeviceCode + "' not found");
             return false;
         }
 
@@ -198,8 +194,8 @@ public class StorageShelfConfigurationHandler implements DomainConfigurationHand
             storageShelfDAO.insert(shelf);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "processStorageShelfLine",
-                    "Successfully created storage shelf '" + label + "' with code '" + code +
-                    "' in device '" + parentDevice.getName() + "'");
+                    "Successfully created storage shelf '" + label + "' with code '" + code + "' in device '"
+                            + parentDevice.getName() + "'");
             return true;
 
         } catch (Exception e) {

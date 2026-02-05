@@ -1,6 +1,7 @@
 # AccessionNumberHandler - Implementation Template
 
-This template shows the exact changes needed to integrate `AccessionNumberHandler` into any manifest import service.
+This template shows the exact changes needed to integrate
+`AccessionNumberHandler` into any manifest import service.
 
 ## Step 1: Add Imports
 
@@ -28,7 +29,8 @@ private EntityManager entityManager;
 
 ## Step 3: Find the Sample Creation Code
 
-Look for code that looks like this in your `createSamplesForEntry()` or similar method:
+Look for code that looks like this in your `createSamplesForEntry()` or similar
+method:
 
 ### OLD CODE (Before)
 
@@ -84,18 +86,21 @@ try {
 Delete these if they exist in your service:
 
 ### Remove Static Lock Object
+
 ```java
 // ❌ DELETE THIS
 private static final Object ACCESSION_NUMBER_LOCK = new Object();
 ```
 
 ### Remove Accession Number Generator Field
+
 ```java
 // ❌ DELETE THIS
 private IAccessionNumberGenerator accessionNumberGenerator;
 ```
 
 ### Remove getNextAccessionNumberInternal() Method
+
 ```java
 // ❌ DELETE THIS METHOD
 private String getNextAccessionNumberInternal() {
@@ -110,6 +115,7 @@ private String getNextAccessionNumberInternal() {
 ```
 
 ### Remove Unused Imports
+
 ```java
 // ❌ DELETE THESE IF NOT USED ELSEWHERE
 import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
@@ -254,25 +260,27 @@ public class SomeManifestImportServiceImpl implements SomeManifestImportService 
 
 ## Differences Summary
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| Lock Object | Static field (1 per service) | Shared static in AccessionNumberHandler |
-| Generator Field | Private field in service | Encapsulated in handler |
-| Retry Logic | 50-100 lines inline | 1 line handler call |
-| Exception Handling | Manual while loop | Built-in with try-catch |
-| Database Flush | Manual entityManager.flush() | Automatic in handler |
-| Reusability | Service-specific | Generic across all services |
-| Lines of Code | ~40 lines | ~15 lines |
-| Maintainability | High (duplicated code) | Low (single source of truth) |
+| Aspect             | Before                       | After                                   |
+| ------------------ | ---------------------------- | --------------------------------------- |
+| Lock Object        | Static field (1 per service) | Shared static in AccessionNumberHandler |
+| Generator Field    | Private field in service     | Encapsulated in handler                 |
+| Retry Logic        | 50-100 lines inline          | 1 line handler call                     |
+| Exception Handling | Manual while loop            | Built-in with try-catch                 |
+| Database Flush     | Manual entityManager.flush() | Automatic in handler                    |
+| Reusability        | Service-specific             | Generic across all services             |
+| Lines of Code      | ~40 lines                    | ~15 lines                               |
+| Maintainability    | High (duplicated code)       | Low (single source of truth)            |
 
 ## Testing Your Changes
 
 ### 1. Compile Check
+
 ```bash
 mvn clean compile -DskipTests -Dmaven.test.skip=true
 ```
 
 ### 2. Unit Test
+
 Create a test that verifies the handler is called:
 
 ```java
@@ -296,6 +304,7 @@ public void testSampleCreationWithHandler() {
 ```
 
 ### 3. Integration Test
+
 Import and run against database:
 
 ```bash
@@ -303,14 +312,17 @@ mvn test -Dtest=SomeManifestImportServiceTest
 ```
 
 ### 4. Manual Testing
+
 1. Upload manifest CSV file
 2. Verify samples are created with unique accession numbers
 3. Attempt concurrent uploads (stress test)
-4. Check logs for "Duplicate accession number" messages (should see retries, not errors)
+4. Check logs for "Duplicate accession number" messages (should see retries, not
+   errors)
 
 ## Checklist for Migration
 
-- [ ] Added imports for `DuplicateAccessionNumberException` and `AccessionNumberHandler`
+- [ ] Added imports for `DuplicateAccessionNumberException` and
+      `AccessionNumberHandler`
 - [ ] Sample creation code updated to use handler
 - [ ] Exception handling added with try-catch
 - [ ] Error collection updated with appropriate error messages
@@ -327,27 +339,36 @@ mvn test -Dtest=SomeManifestImportServiceTest
 ## Common Issues & Solutions
 
 ### Issue: "Cannot find symbol: AccessionNumberHandler"
+
 **Solution**: Make sure the import is correct:
+
 ```java
 import org.openelisglobal.sample.util.AccessionNumberHandler;
 ```
 
 ### Issue: "EntityManager is not set"
+
 **Solution**: Ensure `@PersistenceContext` annotation is present:
+
 ```java
 @PersistenceContext
 private EntityManager entityManager;
 ```
 
 ### Issue: "Handler not found in same transaction"
-**Solution**: Create handler inside the `@Transactional` method, not as a service-level dependency.
+
+**Solution**: Create handler inside the `@Transactional` method, not as a
+service-level dependency.
 
 ### Issue: Still getting duplicate key errors
-**Solution**: Make sure you're using `handler.generateAndInsertWithUniqueAccessionNumber()`, not the old method.
+
+**Solution**: Make sure you're using
+`handler.generateAndInsertWithUniqueAccessionNumber()`, not the old method.
 
 ## Next Service to Update
 
 After updating one service, use this template for:
+
 1. **ManifestImportServiceImpl** (foundational service)
 2. **BacteriologyManifestImportServiceImpl**
 3. **BioanalyticalManifestImportServiceImpl**

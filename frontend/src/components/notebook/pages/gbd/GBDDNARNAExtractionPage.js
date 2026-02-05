@@ -547,7 +547,8 @@ export const GBDDNARNAExtractionPage = ({
             !canPerformExtraction
               ? intl.formatMessage({
                   id: "notebook.gbd.extraction.insufficientPermissions.record",
-                  defaultMessage: "Insufficient permissions to record extraction. Only Lab Technicians and Lab Manager (with appropriate permissions) can perform extractions.",
+                  defaultMessage:
+                    "Insufficient permissions to record extraction. Only Lab Technicians and Lab Manager (with appropriate permissions) can perform extractions.",
                 })
               : isViewOnly
                 ? intl.formatMessage({
@@ -580,7 +581,8 @@ export const GBDDNARNAExtractionPage = ({
             !canMarkComplete
               ? intl.formatMessage({
                   id: "notebook.gbd.extraction.insufficientPermissions.complete",
-                  defaultMessage: "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
+                  defaultMessage:
+                    "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
                 })
               : isViewOnly
                 ? intl.formatMessage({

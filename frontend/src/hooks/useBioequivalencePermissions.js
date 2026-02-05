@@ -120,8 +120,10 @@ export const useBioequivalencePermissions = () => {
         return userSessionDetails.bioequivalencePermissions[pageName];
       }
 
-      const userBioequivalenceRoles = Object.values(BIOEQUIVALENCE_ROLES).filter(
-        (role) => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, role),
+      const userBioequivalenceRoles = Object.values(
+        BIOEQUIVALENCE_ROLES,
+      ).filter((role) =>
+        hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, role),
       );
 
       if (userBioequivalenceRoles.length === 0) {
@@ -283,7 +285,10 @@ export const useBioequivalencePermissions = () => {
    * @returns {boolean}
    */
   const canApproveData = useCallback((permissionLevel) => {
-    return permissionLevel && ["APPROVE", "FULL", "FULL_ANALYTICS"].includes(permissionLevel);
+    return (
+      permissionLevel &&
+      ["APPROVE", "FULL", "FULL_ANALYTICS"].includes(permissionLevel)
+    );
   }, []);
 
   /**
@@ -314,7 +319,8 @@ export const useBioequivalencePermissions = () => {
    */
   const canAnalytics = useCallback((permissionLevel) => {
     return (
-      permissionLevel && ["FULL_ANALYTICS", "FULL", "PROJECT_SPECIFIC"].includes(permissionLevel)
+      permissionLevel &&
+      ["FULL_ANALYTICS", "FULL", "PROJECT_SPECIFIC"].includes(permissionLevel)
     );
   }, []);
 
@@ -326,7 +332,10 @@ export const useBioequivalencePermissions = () => {
    */
   const canModify = useCallback((permissionLevel) => {
     return (
-      permissionLevel && ["LIMITED", "UPDATE", "FULL", "PROJECT_SPECIFIC", "APPROVE"].includes(permissionLevel)
+      permissionLevel &&
+      ["LIMITED", "UPDATE", "FULL", "PROJECT_SPECIFIC", "APPROVE"].includes(
+        permissionLevel,
+      )
     );
   }, []);
 
@@ -338,7 +347,8 @@ export const useBioequivalencePermissions = () => {
    */
   const canValidate = useCallback((permissionLevel) => {
     return (
-      permissionLevel && ["VALIDATE", "APPROVE", "FULL"].includes(permissionLevel)
+      permissionLevel &&
+      ["VALIDATE", "APPROVE", "FULL"].includes(permissionLevel)
     );
   }, []);
 
@@ -350,7 +360,8 @@ export const useBioequivalencePermissions = () => {
    */
   const canReview = useCallback((permissionLevel) => {
     return (
-      permissionLevel && ["REVIEW", "VALIDATE", "APPROVE", "FULL"].includes(permissionLevel)
+      permissionLevel &&
+      ["REVIEW", "VALIDATE", "APPROVE", "FULL"].includes(permissionLevel)
     );
   }, []);
 
@@ -398,42 +409,74 @@ export const useBioequivalencePermissions = () => {
    * These use strict checking that does NOT bypass for Global Admins
    */
   const isBioequivalenceSampleReceiver = useCallback(
-    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.SAMPLE_RECEIVER),
+    () =>
+      hasBioequivalenceLabUnitRoleStrict(
+        BIOEQUIVALENCE_LAB_UNIT,
+        BIOEQUIVALENCE_ROLES.SAMPLE_RECEIVER,
+      ),
     [hasBioequivalenceLabUnitRoleStrict],
   );
 
   const isBioequivalenceChemicalAnalyst = useCallback(
-    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST),
+    () =>
+      hasBioequivalenceLabUnitRoleStrict(
+        BIOEQUIVALENCE_LAB_UNIT,
+        BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST,
+      ),
     [hasBioequivalenceLabUnitRoleStrict],
   );
 
   const isBioequivalencePharmacist = useCallback(
-    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.PHARMACIST),
+    () =>
+      hasBioequivalenceLabUnitRoleStrict(
+        BIOEQUIVALENCE_LAB_UNIT,
+        BIOEQUIVALENCE_ROLES.PHARMACIST,
+      ),
     [hasBioequivalenceLabUnitRoleStrict],
   );
 
   const isBioequivalenceResearcher = useCallback(
-    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.RESEARCHER),
+    () =>
+      hasBioequivalenceLabUnitRoleStrict(
+        BIOEQUIVALENCE_LAB_UNIT,
+        BIOEQUIVALENCE_ROLES.RESEARCHER,
+      ),
     [hasBioequivalenceLabUnitRoleStrict],
   );
 
   const isBioequivalenceLabSupervisor = useCallback(
-    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.LAB_SUPERVISOR),
+    () =>
+      hasBioequivalenceLabUnitRoleStrict(
+        BIOEQUIVALENCE_LAB_UNIT,
+        BIOEQUIVALENCE_ROLES.LAB_SUPERVISOR,
+      ),
     [hasBioequivalenceLabUnitRoleStrict],
   );
 
   const isBioequivalenceStudyDirector = useCallback(
-    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR),
+    () =>
+      hasBioequivalenceLabUnitRoleStrict(
+        BIOEQUIVALENCE_LAB_UNIT,
+        BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR,
+      ),
     [hasBioequivalenceLabUnitRoleStrict],
   );
 
   const isBioequivalenceQAOfficer = useCallback(
-    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.QA_OFFICER),
+    () =>
+      hasBioequivalenceLabUnitRoleStrict(
+        BIOEQUIVALENCE_LAB_UNIT,
+        BIOEQUIVALENCE_ROLES.QA_OFFICER,
+      ),
     [hasBioequivalenceLabUnitRoleStrict],
   );
 
   const isBioequivalenceDataManager = useCallback(
-    () => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, BIOEQUIVALENCE_ROLES.DATA_MANAGER),
+    () =>
+      hasBioequivalenceLabUnitRoleStrict(
+        BIOEQUIVALENCE_LAB_UNIT,
+        BIOEQUIVALENCE_ROLES.DATA_MANAGER,
+      ),
     [hasBioequivalenceLabUnitRoleStrict],
   );
 
@@ -443,7 +486,9 @@ export const useBioequivalencePermissions = () => {
    */
   const hasAnyBioequivalenceLabUnitRole = useCallback(
     (roles) => {
-      return roles.some((role) => hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, role));
+      return roles.some((role) =>
+        hasBioequivalenceLabUnitRoleStrict(BIOEQUIVALENCE_LAB_UNIT, role),
+      );
     },
     [hasBioequivalenceLabUnitRoleStrict],
   );

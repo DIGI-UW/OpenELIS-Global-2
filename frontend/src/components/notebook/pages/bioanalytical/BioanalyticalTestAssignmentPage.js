@@ -217,7 +217,7 @@ function BioanalyticalTestAssignmentPage({
     canSaveData,
     hasFullControl,
     canAccessTestAssignment,
-    BIOANALYTICAL_ROLES
+    BIOANALYTICAL_ROLES,
   } = useBioanalyticalPermissions();
 
   // PAGE 2 allowed roles per test.pdf Section 11
@@ -1117,7 +1117,8 @@ function BioanalyticalTestAssignmentPage({
                         !canAssignTests
                           ? intl.formatMessage({
                               id: "notebook.bioanalytical.testassignment.insufficientPermissions",
-                              defaultMessage: "Insufficient permissions to configure test assignments. Only Pharmacists and Lab Supervisors can assign tests.",
+                              defaultMessage:
+                                "Insufficient permissions to configure test assignments. Only Pharmacists and Lab Supervisors can assign tests.",
                             })
                           : undefined
                       }
@@ -1140,7 +1141,8 @@ function BioanalyticalTestAssignmentPage({
                         !canAssignTests
                           ? intl.formatMessage({
                               id: "notebook.bioanalytical.testassignment.completeInsufficientPermissions",
-                              defaultMessage: "Insufficient permissions to complete test assignments. Only Pharmacists and Lab Supervisors can complete assignments.",
+                              defaultMessage:
+                                "Insufficient permissions to complete test assignments. Only Pharmacists and Lab Supervisors can complete assignments.",
                             })
                           : undefined
                       }

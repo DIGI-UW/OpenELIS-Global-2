@@ -354,7 +354,8 @@ export const GBDSampleReceptionPageEnhanced = ({
             !canCreateSamples
               ? intl.formatMessage({
                   id: "notebook.gbd.reception.insufficientPermissions.import",
-                  defaultMessage: "Insufficient permissions to import samples. Only Lab Technicians and Lab Manager (with appropriate permissions) can create samples.",
+                  defaultMessage:
+                    "Insufficient permissions to import samples. Only Lab Technicians and Lab Manager (with appropriate permissions) can create samples.",
                 })
               : isViewOnly
                 ? intl.formatMessage({
@@ -375,15 +376,14 @@ export const GBDSampleReceptionPageEnhanced = ({
           renderIcon={Checkmark}
           onClick={handleMarkComplete}
           disabled={
-            !canMarkReceived ||
-            isViewOnly ||
-            selectedSampleIds.length === 0
+            !canMarkReceived || isViewOnly || selectedSampleIds.length === 0
           }
           title={
             !canMarkReceived
               ? intl.formatMessage({
                   id: "notebook.gbd.reception.insufficientPermissions.complete",
-                  defaultMessage: "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
+                  defaultMessage:
+                    "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
                 })
               : isViewOnly
                 ? intl.formatMessage({

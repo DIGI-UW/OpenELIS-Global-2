@@ -21,14 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Configuration handler for creating storage racks from CSV files.
  *
- * This handler processes CSV files to create storage rack entries,
- * which are racks within storage shelves.
+ * This handler processes CSV files to create storage rack entries, which are
+ * racks within storage shelves.
  *
- * CSV Format: label,code,active,parentShelfCode
- * Example:
- * label,code,active,parentShelfCode
- * Rack 1,R1,true,S1
- * Tray A,TA,true,TOP
+ * CSV Format: label,code,active,parentShelfCode Example:
+ * label,code,active,parentShelfCode Rack 1,R1,true,S1 Tray A,TA,true,TOP
  * Position 1,P1,true,A
  */
 @Component
@@ -73,16 +70,16 @@ public class StorageRackConfigurationHandler implements DomainConfigurationHandl
         int parentShelfCodeIndex = findColumnIndex(headers, "parentShelfCode");
 
         if (labelIndex == -1) {
-            throw new IllegalArgumentException("Storage rack configuration file " + fileName +
-                    " must have a 'label' column");
+            throw new IllegalArgumentException(
+                    "Storage rack configuration file " + fileName + " must have a 'label' column");
         }
         if (codeIndex == -1) {
-            throw new IllegalArgumentException("Storage rack configuration file " + fileName +
-                    " must have a 'code' column");
+            throw new IllegalArgumentException(
+                    "Storage rack configuration file " + fileName + " must have a 'code' column");
         }
         if (parentShelfCodeIndex == -1) {
-            throw new IllegalArgumentException("Storage rack configuration file " + fileName +
-                    " must have a 'parentShelfCode' column");
+            throw new IllegalArgumentException(
+                    "Storage rack configuration file " + fileName + " must have a 'parentShelfCode' column");
         }
 
         String line;
@@ -101,7 +98,7 @@ public class StorageRackConfigurationHandler implements DomainConfigurationHandl
 
             try {
                 boolean processed = processStorageRackLine(line, labelIndex, codeIndex, activeIndex,
-                    parentShelfCodeIndex, fileName, lineNumber);
+                        parentShelfCodeIndex, fileName, lineNumber);
                 if (processed) {
                     processedCount++;
                 } else {
@@ -114,8 +111,8 @@ public class StorageRackConfigurationHandler implements DomainConfigurationHandl
         }
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
-                "Storage rack configuration processing completed for " + fileName +
-                ". Processed: " + processedCount + ", Skipped: " + skippedCount);
+                "Storage rack configuration processing completed for " + fileName + ". Processed: " + processedCount
+                        + ", Skipped: " + skippedCount);
     }
 
     private boolean processStorageRackLine(String line, int labelIndex, int codeIndex, int activeIndex,
@@ -156,9 +153,8 @@ public class StorageRackConfigurationHandler implements DomainConfigurationHandl
         // Find parent shelf
         StorageShelf parentShelf = storageShelfDAO.findByCode(parentShelfCode);
         if (parentShelf == null) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processStorageRackLine",
-                    "Skipping line " + lineNumber + " in " + fileName +
-                    ": parent shelf with code '" + parentShelfCode + "' not found");
+            LogEvent.logWarn(this.getClass().getSimpleName(), "processStorageRackLine", "Skipping line " + lineNumber
+                    + " in " + fileName + ": parent shelf with code '" + parentShelfCode + "' not found");
             return false;
         }
 
@@ -183,8 +179,8 @@ public class StorageRackConfigurationHandler implements DomainConfigurationHandl
             storageRackDAO.insert(rack);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "processStorageRackLine",
-                    "Successfully created storage rack '" + label + "' with code '" + code +
-                    "' in shelf '" + parentShelf.getLabel() + "'");
+                    "Successfully created storage rack '" + label + "' with code '" + code + "' in shelf '"
+                            + parentShelf.getLabel() + "'");
             return true;
 
         } catch (Exception e) {

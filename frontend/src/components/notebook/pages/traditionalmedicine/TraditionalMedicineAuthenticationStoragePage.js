@@ -137,7 +137,9 @@ function TraditionalMedicineAuthenticationStoragePage({
   const canAccessPage = canAccessStage2();
 
   // Get user's permission level for this specific page
-  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.AUTHENTICATION_STORAGE);
+  const pagePermissionLevel = getPagePermissionLevel(
+    TMMRD_PAGES.AUTHENTICATION_STORAGE,
+  );
 
   // Function-level permissions based on matrix
   const canAssignStorage = canPerformWork(pagePermissionLevel);
@@ -1405,10 +1407,7 @@ function TraditionalMedicineAuthenticationStoragePage({
             renderIcon={CheckmarkFilled}
             onClick={handleMarkComplete}
             disabled={
-              isCompleting ||
-              !pageData?.id ||
-              !canMarkComplete ||
-              isViewOnly
+              isCompleting || !pageData?.id || !canMarkComplete || isViewOnly
             }
             title={
               !canMarkComplete || isViewOnly
