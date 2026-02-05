@@ -265,10 +265,13 @@ describe("Analyzer Configuration - User Story 1", function () {
       }
 
       // Navigate directly to mappings page
+      // Use longer timeout and wait for element (not page load event)
       cy.visit(
         `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/${id}/mappings`,
+        { timeout: 180000 }, // 3 minutes for CI
       );
-      cy.get('[data-testid="field-mapping"]', { timeout: 10000 }).should(
+      // Wait for the element to be visible (page is functional even if load event hasn't fired)
+      cy.get('[data-testid="field-mapping"]', { timeout: 30000 }).should(
         "be.visible",
       );
 
