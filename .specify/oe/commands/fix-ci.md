@@ -22,12 +22,35 @@ $ARGUMENTS
 
 Interpret arguments best-effort. Support these patterns:
 
+**Target selection (mutually exclusive):**
+
 - `/fix-ci` → current branch, latest failed run
 - `/fix-ci --pr 123` → target a specific PR
 - `/fix-ci --run-id 12345678` → target a specific run
 - `/fix-ci --branch develop` → target a specific branch
-- `/fix-ci --max-iterations 3` → override max attempts (default: 5)
-- `/fix-ci --dry-run` → diagnose only, do not apply fixes or push
+
+**Behavior options:**
+
+| Flag                    | Default | Description                                              |
+| ----------------------- | ------- | -------------------------------------------------------- |
+| `--max-iterations N`    | 5       | Max fix-push-check cycles before escalating              |
+| `--dry-run`             | off     | Diagnose only — no fixes, no pushes                      |
+| `--local-e2e`           | off     | Run full local E2E suite in parallel with CI after push  |
+| `--reset-env`           | off     | Reset local E2E environment (fixtures) before local runs |
+| `--skip-local-validate` | off     | Skip local validation (push immediately after fix)       |
+| `--jobs <job-names>`    | all     | Only fix specific jobs (e.g., `--jobs e2e-cypress`)      |
+| `--notify`              | off     | Force NOTIFY level (always summarize, even for AUTO)     |
+
+**Examples:**
+
+```
+/fix-ci                                    # Basic: fix current branch
+/fix-ci --pr 123 --local-e2e              # Fix PR 123, run local E2E in parallel
+/fix-ci --dry-run                          # Diagnose only, show what would be fixed
+/fix-ci --local-e2e --reset-env            # Full local replication + CI in parallel
+/fix-ci --max-iterations 2 --jobs e2e-cypress  # Fix only Cypress, max 2 attempts
+/fix-ci --notify                           # Always report what was changed
+```
 
 ## Autonomy Boundaries (non-negotiable)
 
@@ -260,7 +283,10 @@ cd frontend && npm run format && cd ..
 
 ### 4) Local Validation — gate before pushing
 
-Run the appropriate validation based on what was changed:
+Run validation in two tiers: **fast checks** (always) then **local E2E** (when
+the failure was an E2E test).
+
+#### Tier 1: Fast checks (always run)
 
 **Frontend changes:**
 
@@ -279,21 +305,58 @@ cd frontend && npm test -- --watchAll=false --coverage=false
 mvn test
 ```
 
-**E2E test changes (if a specific test file was modified):**
+#### Tier 2: Local E2E replication (when failure was E2E)
+
+If the diagnosed failure was a Cypress or Playwright E2E test, replicate the CI
+environment locally and run the specific failing test **before pushing**. This
+catches fixes that pass unit tests but fail in the full browser context.
+
+**Step 1 — Reset local E2E environment to match CI:**
+
+If `--reset-env` is set, or if containers are unhealthy/stopped, reset the local
+environment using the project's existing fixture scripts:
 
 ```bash
-# Run the specific test that was failing (Cypress)
+# Load the exact same fixtures CI loads (works with both dev and build compose)
+./src/test/resources/load-ci-fixtures.sh
+
+# OR for a full environment reset (if containers are stale/unhealthy):
+./scripts/reset-dev-env.sh --skip-build
+```
+
+If containers are not running or are unhealthy, restart them first:
+
+```bash
+# Quick restart (preserves DB, reloads fixtures)
+docker compose -f dev.docker-compose.yml up -d
+./src/test/resources/load-ci-fixtures.sh
+```
+
+Without `--reset-env`, only reload fixtures if the test failure suggests stale
+data (e.g., missing patient, missing analyzer config).
+
+**Step 2 — Run the specific failing E2E test locally:**
+
+```bash
+# Cypress (MUST use npm scripts, never raw npx — see CLAUDE.md)
 cd frontend && npm run cy:spec "cypress/e2e/<failing-test>.cy.js"
 
-# Or for Playwright
+# Playwright
 cd frontend && npm run pw:test -- <failing-test>.spec.ts
 ```
 
-**Validation checklist:**
+**Step 3 — Interpret local E2E result:**
+
+- **Local passes** → Fix is likely correct. Proceed to push.
+- **Local fails with same error** → Fix didn't work. Go back to Phase 3.
+- **Local fails with different error** → New issue introduced. Investigate.
+
+#### Validation checklist
 
 - [ ] Formatting passes (no diffs)
 - [ ] Relevant unit tests pass
-- [ ] If E2E test was modified: specific test passes locally
+- [ ] If E2E failure: local environment reset via `load-ci-fixtures.sh`
+- [ ] If E2E failure: specific test passes locally against reset environment
 - [ ] No new warnings or errors introduced
 
 **If validation fails:**
@@ -336,21 +399,83 @@ git push
 - Summary of fix
 - Expected CI outcome
 
-**Wait 15 minutes for CI to run:**
+#### Parallel tracks: Local E2E + CI monitoring
 
-Run `sleep 900` in the background, then:
+After pushing, always monitor CI. If `--local-e2e` is set, **also** run the full
+local E2E suite in parallel — local results arrive in minutes while CI takes
+15-30 minutes.
+
+**Track A — Local E2E (only with `--local-e2e` flag):**
+
+Reset the environment and run the **full E2E suite** (not just the single test)
+to catch regressions before CI reports back.
 
 ```bash
-gh run list --branch $BRANCH --limit 1 --json databaseId,status,conclusion
+# Reset fixtures to match CI (include if --reset-env is set, or always
+# when --local-e2e is used for the first time in this iteration)
+./src/test/resources/load-ci-fixtures.sh
+
+# Run full Cypress suite (background)
+cd frontend && npm run cy:run
+
+# Or full Playwright suite (background)
+cd frontend && npm run pw:test
 ```
 
-Poll every 60 seconds after the 15-minute mark until the run completes:
+Run this in the background while monitoring CI. If local E2E fails before CI
+completes, you have early signal to start diagnosing the next failure without
+waiting for CI.
+
+**Without `--local-e2e`:** Skip Track A entirely and only monitor CI.
+
+**Track B — CI monitoring (exponential backoff):**
+
+Poll CI status with exponentially escalating intervals, capped at 20 minutes.
+Early checks catch fast failures (build errors); later checks accommodate slower
+E2E jobs.
+
+| Check | Wait   | Cumulative | Catches                     |
+| ----- | ------ | ---------- | --------------------------- |
+| 1st   | 3 min  | 3 min      | Build failures, lint errors |
+| 2nd   | 6 min  | 9 min      | Unit test failures          |
+| 3rd   | 12 min | 21 min     | Fast E2E failures           |
+| 4th   | 20 min | 41 min     | Full E2E suite completion   |
+| 5th+  | 20 min | 61 min+    | Long-running / queued jobs  |
 
 ```bash
-gh run watch --exit-status
+# Exponential backoff loop
+WAIT_SECS=180  # Start at 3 minutes
+MAX_WAIT=1200  # Cap at 20 minutes
+
+while true; do
+  sleep $WAIT_SECS
+
+  STATUS=$(gh run list --branch $BRANCH --limit 1 \
+    --json databaseId,status,conclusion \
+    --jq '.[0] | "\(.status) \(.conclusion)"')
+
+  if [[ "$STATUS" == *"completed"* ]]; then
+    break
+  fi
+
+  # Exponential escalation: 3 → 6 → 12 → 20 → 20 (capped)
+  WAIT_SECS=$(( WAIT_SECS * 2 ))
+  if [ $WAIT_SECS -gt $MAX_WAIT ]; then
+    WAIT_SECS=$MAX_WAIT
+  fi
+done
 ```
 
-**After CI completes:**
+#### Reconcile results
+
+**After both tracks complete:**
+
+| Local E2E | CI Result | Action                                         |
+| --------- | --------- | ---------------------------------------------- |
+| Pass      | Pass      | Proceed to Phase 6 (Resolution Report)         |
+| Pass      | Fail      | New failure — download logs, loop to Phase 1   |
+| Fail      | (pending) | Start diagnosing locally, don't wait for CI    |
+| Fail      | Fail      | Confirm same error — increment ITERATION, loop |
 
 - If **all green** → proceed to Phase 6 (Resolution Report)
 - If **still failing** → increment ITERATION, loop back to Phase 1
