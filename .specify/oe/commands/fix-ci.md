@@ -111,13 +111,32 @@ If a specific `--run-id` was provided, use that instead.
 - Find `summary.txt` in `.cursor/ci-logs/*/`
 - Identify which jobs failed and which steps within those jobs
 
-**Download artifacts** (screenshots, traces) if available:
+**Download artifacts** — screenshots are **MANDATORY** for E2E failures:
 
 ```bash
-gh run download $RUN_ID -n cypress-screenshots -D .cursor/ci-logs/artifacts/ 2>/dev/null || true
-gh run download $RUN_ID -n playwright-report -D .cursor/ci-logs/artifacts/ 2>/dev/null || true
-gh run download $RUN_ID -n playwright-screenshots -D .cursor/ci-logs/artifacts/ 2>/dev/null || true
+# Always attempt all artifact downloads
+gh run download $RUN_ID -n cypress-screenshots -D .cursor/ci-logs/artifacts/ 2>/dev/null
+gh run download $RUN_ID -n playwright-report -D .cursor/ci-logs/artifacts/ 2>/dev/null
+gh run download $RUN_ID -n playwright-screenshots -D .cursor/ci-logs/artifacts/ 2>/dev/null
+gh run download $RUN_ID -n playwright-traces -D .cursor/ci-logs/artifacts/ 2>/dev/null
 ```
+
+**E2E screenshot gate (non-negotiable):**
+
+If a Cypress or Playwright E2E job failed, you **MUST** download and visually
+review every failure screenshot before proceeding to diagnosis. Screenshots are
+the single most reliable evidence for E2E failures — log text alone is often
+misleading (e.g., "element not visible" doesn't tell you _why_).
+
+- [ ] List all downloaded screenshot files
+      (`find .cursor/ci-logs/artifacts/ -name "*.png"`)
+- [ ] Read **every** screenshot using the Read tool (which renders images)
+- [ ] For each screenshot, note: what page is shown, what state the UI is in,
+      whether the sidenav/overlay is blocking content, whether the correct page
+      loaded, whether test data is present
+- [ ] **Do NOT proceed to Phase 2 for any E2E failure without having reviewed
+      its screenshot.** If no screenshot was uploaded by CI, note this as a gap
+      and rely on logs + code reading instead, but flag reduced confidence.
 
 **Classify each failure** into one of these categories:
 
@@ -162,17 +181,32 @@ For each classified failure, perform targeted diagnosis:
 - Read the source code under test
 - Check if test data/fixtures are correct
 
-**E2E test failures (Cypress/Playwright):**
+**E2E test failures (Cypress/Playwright) — screenshot-first diagnosis:**
 
-- Read the screenshot (Read tool renders images)
-- Check what the test was trying to do (read the spec file)
-- Check page object methods used by the failing test
-- Look for common E2E issues:
-  - Element covered by overlay (z-index/sidenav issue)
-  - Element not visible (timing, wrong page, menu not expanded)
-  - Selector changed (component refactor broke test selector)
-  - Page load timeout (large bundle, slow CI)
-  - Data not present (fixture loading issue)
+E2E failures **require** visual evidence. Follow this exact sequence:
+
+1. **Review the screenshot** (Read tool renders PNG files). Describe what you
+   see: which page, what UI state, any overlays or missing elements.
+2. **Cross-reference with the error message** from logs. The screenshot shows
+   _what happened_; the log shows _what the test expected_. Both are needed.
+3. **Read the failing spec file** to understand the test's intent and flow.
+4. **Read page object methods** used by the test (e.g., `HomePage.js`,
+   `RoutineReportPage.js`) to trace the navigation and action chain.
+5. **Identify the root cause** by matching screenshot evidence to code:
+
+   | Screenshot Shows                             | Likely Root Cause                                  |
+   | -------------------------------------------- | -------------------------------------------------- |
+   | Sidenav overlaying page content              | SHOW vs LOCK state — `closeNavigationMenu()` issue |
+   | Wrong page / still on home page              | Navigation method failed or page didn't load       |
+   | Correct page but element missing             | Selector changed, data not loaded, timing          |
+   | Page partially loaded / spinner visible      | Page load timeout, slow bundle, API delay          |
+   | Login page showing                           | Session expired, auth config issue                 |
+   | Blank/white page                             | JS crash, build error, missing env var             |
+   | Correct page, element visible but test fails | Test logic issue, wrong assertion                  |
+
+6. **Confirm diagnosis aligns with BOTH screenshot and log** before proceeding.
+   If the screenshot contradicts the log message, trust the screenshot — it
+   shows the actual browser state at failure time.
 
 **Config failures:**
 
@@ -182,6 +216,8 @@ For each classified failure, perform targeted diagnosis:
 
 **Diagnosis checklist:**
 
+- [ ] For E2E failures: reviewed ALL failure screenshots (mandatory gate)
+- [ ] For E2E failures: screenshot evidence and log error are consistent
 - [ ] Identified root cause file(s) and line(s)
 - [ ] Understood why the current code fails
 - [ ] Formulated a specific fix (not vague "investigate further")
