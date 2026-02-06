@@ -31,15 +31,18 @@ Interpret arguments best-effort. Support these patterns:
 
 **Behavior options:**
 
-| Flag                    | Default | Description                                              |
-| ----------------------- | ------- | -------------------------------------------------------- |
-| `--max-iterations N`    | 5       | Max fix-push-check cycles before escalating              |
-| `--dry-run`             | off     | Diagnose only — no fixes, no pushes                      |
-| `--local-e2e`           | off     | Run full local E2E suite in parallel with CI after push  |
-| `--reset-env`           | off     | Reset local E2E environment (fixtures) before local runs |
-| `--skip-local-validate` | off     | Skip local validation (push immediately after fix)       |
-| `--jobs <job-names>`    | all     | Only fix specific jobs (e.g., `--jobs e2e-cypress`)      |
-| `--notify`              | off     | Force NOTIFY level (always summarize, even for AUTO)     |
+| Flag                    | Default                | Description                                                                            |
+| ----------------------- | ---------------------- | -------------------------------------------------------------------------------------- |
+| `--max-iterations N`    | 5                      | Max fix-push-check cycles before escalating                                            |
+| `--dry-run`             | off                    | Diagnose only — no fixes, no pushes                                                    |
+| `--local-e2e`           | off                    | Run full local E2E suite in parallel with CI after push                                |
+| `--reset-env`           | off                    | Reset local E2E environment (fixtures) before local runs                               |
+| `--compose-file <path>` | dev.docker-compose.yml | Docker Compose file for local E2E (use `build.docker-compose.yml` to match CI exactly) |
+| `--flaky-retry N`       | 0                      | Re-run suspected flaky tests N times before diagnosing                                 |
+| `--skip-local-validate` | off                    | Skip local validation (push immediately after fix)                                     |
+| `--jobs <job-names>`    | all                    | Only fix specific jobs (e.g., `--jobs e2e-cypress`)                                    |
+| `--notify`              | off                    | Force NOTIFY level (always summarize, even for AUTO)                                   |
+| `--report-to-pr`        | off                    | Post resolution report as a PR comment when done                                       |
 
 **Examples:**
 
@@ -48,8 +51,10 @@ Interpret arguments best-effort. Support these patterns:
 /fix-ci --pr 123 --local-e2e              # Fix PR 123, run local E2E in parallel
 /fix-ci --dry-run                          # Diagnose only, show what would be fixed
 /fix-ci --local-e2e --reset-env            # Full local replication + CI in parallel
+/fix-ci --local-e2e --compose-file build.docker-compose.yml  # Match CI exactly
+/fix-ci --flaky-retry 2                    # Retry suspected flaky tests twice
 /fix-ci --max-iterations 2 --jobs e2e-cypress  # Fix only Cypress, max 2 attempts
-/fix-ci --notify                           # Always report what was changed
+/fix-ci --notify --report-to-pr            # Verbose + post report to PR
 ```
 
 ## Autonomy Boundaries (non-negotiable)
@@ -170,6 +175,27 @@ misleading (e.g., "element not visible" doesn't tell you _why_).
 | **test**   | Assertion failure, element not found, timeout      | Fix test or source code           |
 | **config** | Missing env var, auth failure, container unhealthy | Fix config files                  |
 | **flaky**  | Passes locally, intermittent, timing-dependent     | Add retry/wait or skip with issue |
+
+**Flaky test detection (with `--flaky-retry N`):**
+
+If `--flaky-retry` is set and a test failure looks potentially flaky (e.g.,
+timing-dependent, passes locally, or failed intermittently in recent runs),
+re-run the failed CI job before diagnosing:
+
+```bash
+gh run rerun $RUN_ID --failed
+```
+
+Check if the same test passed in recent runs on this branch:
+
+```bash
+gh run list --branch $BRANCH --limit 5 \
+  --json databaseId,conclusion --jq '.[] | select(.conclusion=="success")'
+```
+
+If the test passes on re-run → classify as **flaky**, log it, and move on. If it
+fails again after N retries → classify as **test** and proceed to diagnosis.
+Track flaky tests in the iteration report for follow-up.
 
 **Triage checklist:**
 
@@ -327,8 +353,10 @@ environment using the project's existing fixture scripts:
 If containers are not running or are unhealthy, restart them first:
 
 ```bash
-# Quick restart (preserves DB, reloads fixtures)
-docker compose -f dev.docker-compose.yml up -d
+# Quick restart using configured compose file (preserves DB, reloads fixtures)
+# Default: dev.docker-compose.yml. Use --compose-file build.docker-compose.yml
+# to match CI exactly (builds from source instead of using pre-built images).
+docker compose -f $COMPOSE_FILE up -d
 ./src/test/resources/load-ci-fixtures.sh
 ```
 
@@ -534,6 +562,37 @@ All CI checks are now passing.
 ### Diagnostic artifacts
 - Logs: .cursor/ci-logs/[path]
 - Screenshots: .cursor/ci-logs/artifacts/[path]
+```
+
+**Post report to PR (with `--report-to-pr`):**
+
+If `--report-to-pr` is set and a PR_NUMBER was detected in preflight, post the
+resolution report as a PR comment for team visibility:
+
+```bash
+gh pr comment $PR_NUMBER --body "$(cat <<'EOF'
+<!-- fix-ci report -->
+[paste the resolution report here]
+EOF
+)"
+```
+
+Use the `<!-- fix-ci report -->` HTML comment as a marker. If a previous
+`/fix-ci` report exists on the PR, edit it instead of creating a new comment to
+avoid clutter:
+
+```bash
+# Find existing report comment
+COMMENT_ID=$(gh api repos/$OWNER/$REPO/issues/$PR_NUMBER/comments \
+  --jq '.[] | select(.body | contains("<!-- fix-ci report -->")) | .id' \
+  | tail -1)
+
+if [ -n "$COMMENT_ID" ]; then
+  gh api repos/$OWNER/$REPO/issues/comments/$COMMENT_ID \
+    -X PATCH -f body="$REPORT_BODY"
+else
+  gh pr comment $PR_NUMBER --body "$REPORT_BODY"
+fi
 ```
 
 **Update agent memory** if a new pattern was discovered:
