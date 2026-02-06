@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ComposedModal,
   ModalHeader,
@@ -36,6 +36,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
   const [testConnectionModalOpen, setTestConnectionModalOpen] = useState(false);
+  const closeTimeoutRef = useRef(null);
 
   // Analyzer type options
   const analyzerTypeOptions = [
@@ -88,6 +89,25 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     setErrors({});
     setNotification(null);
   }, [analyzer, open]);
+
+  // Clear close timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  // Clear close timeout when modal is closed manually (prevents timer firing after user dismisses)
+  const handleModalClose = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    onClose();
+  };
 
   // Validate IP address format
   const validateIPAddress = (ip) => {
@@ -188,8 +208,12 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
           kind: "success",
           title: intl.formatMessage({ id: "analyzer.form.success.save" }),
         });
-        // Close modal after short delay
-        setTimeout(() => {
+        // Close modal after short delay; timer cleared on unmount or when user closes manually
+        if (closeTimeoutRef.current) {
+          clearTimeout(closeTimeoutRef.current);
+        }
+        closeTimeoutRef.current = setTimeout(() => {
+          closeTimeoutRef.current = null;
           onClose();
         }, 1000);
       }
@@ -206,7 +230,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     <>
       <ComposedModal
         open={open}
-        onClose={onClose}
+        onClose={handleModalClose}
         data-testid="analyzer-form"
         className="analyzer-form-modal"
       >

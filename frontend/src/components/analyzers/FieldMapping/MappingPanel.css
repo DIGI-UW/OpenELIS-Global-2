@@ -4,7 +4,7 @@
  */
 
 .mapping-panel {
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--cds-border-subtle);
   border-radius: 4px;
   padding: 1rem;
   height: 100%;
@@ -28,7 +28,7 @@
 .source-field-card,
 .target-field-card {
   padding: 1rem;
-  background-color: #f4f4f4;
+  background-color: var(--cds-layer-01);
   border-radius: 4px;
   margin-bottom: 1rem;
 }

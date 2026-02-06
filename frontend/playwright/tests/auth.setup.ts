@@ -3,8 +3,14 @@ import { test as setup, expect } from "@playwright/test";
 const AUTH_FILE = "playwright/.auth/user.json";
 
 setup("authenticate", async ({ page }) => {
-  const username = process.env.TEST_USER || "admin";
-  const password = process.env.TEST_PASS || "adminADMIN!";
+  const username = process.env.TEST_USER;
+  const password = process.env.TEST_PASS;
+
+  if (!username || !password) {
+    throw new Error(
+      "TEST_USER and TEST_PASS environment variables must be set for Playwright authentication setup.",
+    );
+  }
 
   await page.goto("/");
   await page.getByLabel("Username").fill(username);

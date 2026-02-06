@@ -198,6 +198,15 @@ curl -k -I https://analyzers.openelis-global.org/ 2>&1 | head -1
 
 ---
 
+## Platform Notes
+
+**Windows**: The Cypress npm scripts use `unset ELECTRON_RUN_AS_NODE` (POSIX shell).
+This fails on Windows cmd/PowerShell. Use WSL, Git Bash, or a Unix-like environment
+for local Cypress runs. CI uses Linux. If Windows contributor support is needed,
+consider `cross-env` or a Node-based wrapper to clear env vars cross-platform.
+
+---
+
 ## Feature Testing Checklist
 
 When creating E2E tests for new features:

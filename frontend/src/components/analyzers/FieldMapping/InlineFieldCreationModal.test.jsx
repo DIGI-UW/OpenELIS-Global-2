@@ -81,15 +81,15 @@ describe("InlineFieldCreationModal", () => {
    */
 
   /**
-   * Test: Validate field name with duplicate shows error
+   * Test: Render modal with duplicate-error mock - smoke test
    * Task Reference: T149
    *
-   * When a duplicate field name is submitted, an error should be displayed.
-   * Note: This test verifies error handling structure. Full form submission
-   * testing may require Carbon-specific test utilities.
+   * Verifies modal renders with form fields when createField mock is configured.
+   * Full duplicate-error flow (submit + assert error display) requires Carbon
+   * dropdown interaction; covered by E2E tests in analyzerConfiguration.cy.js.
    */
-  test("testValidateFieldName_WithDuplicate_ShowsError", async () => {
-    // Arrange: Mock API response with duplicate error
+  test("testRender_WithDuplicateMock_ShowsFormFields", async () => {
+    // Arrange: Mock API response with duplicate error (for when submit is triggered)
     analyzerService.createField.mockImplementation((fieldData, callback) => {
       callback(
         {
@@ -110,7 +110,7 @@ describe("InlineFieldCreationModal", () => {
       />,
     );
 
-    // Assert: Form fields are present
+    // Assert: Form fields are present (render/smoke test)
     const fieldNameInput = await screen.findByTestId("field-name-input");
     const entityTypeDropdown = await screen.findByTestId(
       "entity-type-dropdown",
@@ -118,10 +118,6 @@ describe("InlineFieldCreationModal", () => {
 
     expect(fieldNameInput).not.toBeNull();
     expect(entityTypeDropdown).not.toBeNull();
-
-    // Note: The error handling logic (duplicate detection, error display) is
-    // implemented in the component. Full end-to-end error flow testing would
-    // require proper dropdown interaction which may need Carbon-specific setup.
   });
 
   /**
