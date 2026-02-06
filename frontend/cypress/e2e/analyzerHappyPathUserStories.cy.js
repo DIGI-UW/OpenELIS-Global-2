@@ -16,14 +16,14 @@
 
 let testAnalyzerId = null;
 
-// Basic auth credentials
-const AUTH = {
-  username: "admin",
-  password: "adminADMIN!",
-};
+const auth = () => ({
+  username: Cypress.env("USERNAME"),
+  password: Cypress.env("PASSWORD"),
+});
 
 /**
  * Setup: Wait for backend and create test analyzer via API with basic auth
+ * Credentials: Cypress.env('USERNAME') / Cypress.env('PASSWORD')
  */
 before("Setup test analyzer", () => {
   // Wait for backend API to be available
@@ -35,7 +35,7 @@ before("Setup test analyzer", () => {
     cy.request({
       method: "GET",
       url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-      auth: AUTH,
+      auth: auth(),
       failOnStatusCode: false,
     });
   });
@@ -44,7 +44,7 @@ before("Setup test analyzer", () => {
   cy.request({
     method: "POST",
     url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-    auth: AUTH,
+    auth: auth(),
     body: {
       name: "E2E-Test-Analyzer-HappyPath",
       analyzerType: "CHEMISTRY",
@@ -105,7 +105,7 @@ after("Cleanup test analyzer", () => {
     cy.request({
       method: "DELETE",
       url: `/api/OpenELIS-Global/rest/analyzer/analyzers/${testAnalyzerId}`,
-      auth: AUTH,
+      auth: auth(),
       failOnStatusCode: false,
     });
   }
@@ -115,7 +115,7 @@ describe("User Story 1: Configure field mappings for a new ASTM analyzer (P1)", 
   beforeEach(() => {
     cy.viewport(1025, 900);
     // Visit with basic auth in URL format
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/`);
+    cy.visit("/", { auth: auth() });
   });
 
   it("should allow administrator to configure field mappings for a new analyzer", () => {
@@ -128,7 +128,7 @@ describe("User Story 1: Configure field mappings for a new ASTM analyzer (P1)", 
       }
 
       // Navigate to analyzers list
-      cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+      cy.visit("/analyzers", { auth: auth() });
 
       // Find and click on the test analyzer
       cy.get('[data-testid="analyzers-list"]').should("be.visible");
@@ -171,9 +171,7 @@ describe("User Story 1: Configure field mappings for a new ASTM analyzer (P1)", 
         cy.log("Skipping test - analyzer ID not available");
         return;
       }
-      cy.visit(
-        `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/${id}/mappings`,
-      );
+      cy.visit(`/analyzers/${id}/mappings`, { auth: auth() });
       cy.get('[data-testid="field-mapping"]').should("be.visible");
 
       // Check if there are unmapped fields to map
@@ -206,7 +204,7 @@ describe("User Story 1: Configure field mappings for a new ASTM analyzer (P1)", 
 describe("User Story 2: Maintain mappings as instruments and test menus change (P2)", () => {
   beforeEach(() => {
     cy.viewport(1025, 900);
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/`);
+    cy.visit("/", { auth: auth() });
   });
 
   it("should allow updating existing mappings when analyzer configuration changes", () => {
@@ -217,9 +215,7 @@ describe("User Story 2: Maintain mappings as instruments and test menus change (
         cy.log("Skipping test - analyzer ID not available");
         return;
       }
-      cy.visit(
-        `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/${id}/mappings`,
-      );
+      cy.visit(`/analyzers/${id}/mappings`, { auth: auth() });
       cy.get('[data-testid="field-mapping"]').should("be.visible");
 
       // Check if there are existing mappings to update
@@ -253,9 +249,7 @@ describe("User Story 2: Maintain mappings as instruments and test menus change (
         cy.log("Skipping test - analyzer ID not available");
         return;
       }
-      cy.visit(
-        `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/${id}/mappings`,
-      );
+      cy.visit(`/analyzers/${id}/mappings`, { auth: auth() });
       cy.get('[data-testid="field-mapping"]').should("be.visible");
 
       // Verify statistics cards are displayed
@@ -271,14 +265,12 @@ describe("User Story 2: Maintain mappings as instruments and test menus change (
 describe("User Story 3: Resolve unmapped or failed analyzer messages (P3)", () => {
   beforeEach(() => {
     cy.viewport(1025, 900);
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/`);
+    cy.visit("/", { auth: auth() });
   });
 
   it("should display unmapped messages in Error Dashboard", () => {
     // Navigate to Error Dashboard
-    cy.visit(
-      `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/errors`,
-    );
+    cy.visit("/analyzers/errors", { auth: auth() });
     cy.get('[data-testid="error-dashboard"]').should("be.visible");
 
     // Verify Error Dashboard components are visible
@@ -290,9 +282,7 @@ describe("User Story 3: Resolve unmapped or failed analyzer messages (P3)", () =
 
   it("should allow viewing error details with context for mapping", () => {
     // Navigate to Error Dashboard
-    cy.visit(
-      `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/errors`,
-    );
+    cy.visit("/analyzers/errors", { auth: auth() });
     cy.get('[data-testid="error-dashboard"]').should("be.visible");
 
     // Check if there are errors to view
@@ -358,9 +348,7 @@ describe("User Story 3: Resolve unmapped or failed analyzer messages (P3)", () =
 
   it("should allow creating mappings from error context", () => {
     // Navigate to Error Dashboard
-    cy.visit(
-      `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/errors`,
-    );
+    cy.visit("/analyzers/errors", { auth: auth() });
     cy.get('[data-testid="error-dashboard"]').should("be.visible");
 
     // Check if there are errors with mapping options
@@ -405,7 +393,7 @@ describe("User Story 3: Resolve unmapped or failed analyzer messages (P3)", () =
 describe("Cross-Story: End-to-End Happy Path Flow", () => {
   beforeEach(() => {
     cy.viewport(1025, 900);
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/`);
+    cy.visit("/", { auth: auth() });
   });
 
   it("should complete full workflow: configure analyzer → view mappings → check errors", () => {
@@ -418,7 +406,7 @@ describe("Cross-Story: End-to-End Happy Path Flow", () => {
       }
 
       // Step 1: Navigate to analyzers list
-      cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+      cy.visit("/analyzers", { auth: auth() });
       cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
       // Step 2: Open mappings for test analyzer
@@ -438,13 +426,11 @@ describe("Cross-Story: End-to-End Happy Path Flow", () => {
       cy.get('[data-testid="field-mapping"]').should("be.visible");
 
       // Step 4: Navigate to Error Dashboard
-      cy.visit(
-        `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/errors`,
-      );
+      cy.visit("/analyzers/errors", { auth: auth() });
       cy.get('[data-testid="error-dashboard"]').should("be.visible");
 
       // Step 5: Navigate back to analyzers list
-      cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+      cy.visit("/analyzers", { auth: auth() });
       cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
       cy.log(

@@ -77,26 +77,17 @@ Cypress.Commands.add("enterText", (selector, value) => {
 
 /**
  * Wait for backend API to be ready before running tests
- * Uses direct cy.request() for reliability (no intercept timing issues)
+ * Uses cy.task with retry loop for CI reliability - cy.request() fails immediately
+ * on connection errors (ECONNREFUSED) when backend is still starting.
+ * Retries with 2s backoff, max 15 attempts (~30s total).
  * Per Constitution V.5: Avoid intercept timing issues by using direct requests
  */
 Cypress.Commands.add("waitForBackend", (restEndpoint = null) => {
-  // Use cy.request() to verify backend is responding (more reliable than intercepts)
-  // This avoids the timing issue where intercepts may be set up after page load starts
   const checkEndpoint = restEndpoint || "/api/OpenELIS-Global/rest/menu";
 
-  cy.request({
-    method: "GET",
-    url: checkEndpoint,
-    failOnStatusCode: false, // Don't fail on 401/403/404 - just verify backend responds
-    timeout: 30000,
-    retryOnStatusCodeFailure: false,
-  }).then((response) => {
-    // Backend is responding if we get any HTTP status code
-    expect(response.status).to.be.a("number");
-    cy.log(
-      `Backend ready: ${checkEndpoint} responded with status ${response.status}`,
-    );
+  cy.task("waitForBackendReady", { path: checkEndpoint }).then((ready) => {
+    expect(ready).to.be.true;
+    cy.log(`Backend ready: ${checkEndpoint} responded`);
   });
 });
 

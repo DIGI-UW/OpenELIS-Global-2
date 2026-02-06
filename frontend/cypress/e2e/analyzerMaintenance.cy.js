@@ -28,14 +28,14 @@
 let testAnalyzerId = null;
 let testMappingId = null;
 
-// Basic auth credentials
-const AUTH = {
-  username: "admin",
-  password: "adminADMIN!",
-};
+const auth = () => ({
+  username: Cypress.env("USERNAME"),
+  password: Cypress.env("PASSWORD"),
+});
 
 /**
  * Setup: Wait for backend and create test analyzer with mappings via API with basic auth
+ * Credentials: Cypress.env('USERNAME') / Cypress.env('PASSWORD')
  */
 before("Login and setup test analyzer with mappings", () => {
   // Wait for backend API to be available
@@ -47,7 +47,7 @@ before("Login and setup test analyzer with mappings", () => {
     cy.request({
       method: "GET",
       url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-      auth: AUTH,
+      auth: auth(),
       failOnStatusCode: false,
     });
   });
@@ -57,7 +57,7 @@ before("Login and setup test analyzer with mappings", () => {
   cy.request({
     method: "POST",
     url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-    auth: AUTH,
+    auth: auth(),
     body: {
       name: "TEST-Maintenance-Analyzer-E2E",
       analyzerType: "HEMATOLOGY",
@@ -78,7 +78,7 @@ before("Login and setup test analyzer with mappings", () => {
       cy.request({
         method: "GET",
         url: "/api/OpenELIS-Global/rest/analyzer/analyzers/1001",
-        auth: AUTH,
+        auth: auth(),
         failOnStatusCode: false,
       }).then((checkResponse) => {
         if (checkResponse.status === 200) {
@@ -91,7 +91,7 @@ before("Login and setup test analyzer with mappings", () => {
           cy.request({
             method: "GET",
             url: "/api/OpenELIS-Global/rest/analyzer/analyzers/1001/fields",
-            auth: AUTH,
+            auth: auth(),
             failOnStatusCode: false,
           }).then((fieldsResponse) => {
             if (
@@ -108,7 +108,7 @@ before("Login and setup test analyzer with mappings", () => {
                 cy.request({
                   method: "POST",
                   url: `/api/OpenELIS-Global/rest/analyzer/analyzers/1001/mappings`,
-                  auth: AUTH,
+                  auth: auth(),
                   body: {
                     analyzerFieldId: fieldId,
                     openelisFieldId: "TEST-001",
@@ -147,7 +147,7 @@ after("Cleanup test analyzer", () => {
     cy.request({
       method: "DELETE",
       url: `/api/OpenELIS-Global/rest/analyzer/analyzers/${testAnalyzerId}`,
-      auth: AUTH,
+      auth: auth(),
       failOnStatusCode: false,
     });
   }
@@ -196,10 +196,8 @@ describe("Analyzer Maintenance - User Story 2", function () {
         return;
       }
 
-      // Arrange: Navigate to field mappings page with basic auth
-      cy.visit(
-        `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/${testAnalyzerId}/mappings`,
-      );
+      // Arrange: Navigate to field mappings page (credentials from env, not in URL)
+      cy.visit(`/analyzers/${testAnalyzerId}/mappings`, { auth: auth() });
 
       // Wait for page to load
       cy.get('[data-testid="field-mapping"]').should("be.visible");
@@ -294,10 +292,8 @@ describe("Analyzer Maintenance - User Story 2", function () {
         return;
       }
 
-      // Arrange: Navigate to field mappings page with basic auth
-      cy.visit(
-        `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/${testAnalyzerId}/mappings`,
-      );
+      // Arrange: Navigate to field mappings page (credentials from env, not in URL)
+      cy.visit(`/analyzers/${testAnalyzerId}/mappings`, { auth: auth() });
 
       // Wait for page to load
       cy.get('[data-testid="field-mapping"]').should("be.visible");
@@ -394,10 +390,8 @@ describe("Analyzer Maintenance - User Story 2", function () {
         return;
       }
 
-      // Arrange: Navigate to field mappings page
-      cy.visit(
-        `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/${testAnalyzerId}/mappings`,
-      );
+      // Arrange: Navigate to field mappings page (credentials from env, not in URL)
+      cy.visit(`/analyzers/${testAnalyzerId}/mappings`, { auth: auth() });
 
       // Wait for page to load
       cy.get('[data-testid="field-mapping"]').should("be.visible");

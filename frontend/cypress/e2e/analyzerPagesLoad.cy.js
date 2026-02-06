@@ -10,13 +10,14 @@
  * - Navigate to /analyzers/errors - verify page loads, check console logs
  * - Verify sidebar navigation is visible and functional
  * - Verify menu items are clickable and navigate correctly
+ *
+ * Credentials: Cypress.env('USERNAME') / Cypress.env('PASSWORD')
  */
 
-// Basic auth credentials
-const AUTH = {
-  username: "admin",
-  password: "adminADMIN!",
-};
+const auth = () => ({
+  username: Cypress.env("USERNAME"),
+  password: Cypress.env("PASSWORD"),
+});
 
 describe("Analyzer Pages Load", () => {
   before("Setup authentication", () => {
@@ -29,7 +30,7 @@ describe("Analyzer Pages Load", () => {
       cy.request({
         method: "GET",
         url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-        auth: AUTH,
+        auth: auth(),
         failOnStatusCode: false,
       });
     });
@@ -41,8 +42,8 @@ describe("Analyzer Pages Load", () => {
   });
 
   it("should load Analyzers List page without errors", () => {
-    // Navigate to analyzers list with basic auth
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    // Navigate to analyzers list with basic auth (credentials from env, not in URL)
+    cy.visit("/analyzers", { auth: auth() });
 
     // Verify page loads
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
@@ -60,9 +61,7 @@ describe("Analyzer Pages Load", () => {
 
   it("should load Error Dashboard page without errors", () => {
     // Navigate to error dashboard with basic auth
-    cy.visit(
-      `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/errors`,
-    );
+    cy.visit("/analyzers/errors", { auth: auth() });
 
     // Verify page loads
     cy.get('[data-testid="error-dashboard"]').should("be.visible");
@@ -80,16 +79,14 @@ describe("Analyzer Pages Load", () => {
 
   it("should navigate between analyzer pages with sidebar persistent", () => {
     // Start at analyzers list with basic auth
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // Verify sidebar exists (may be collapsed at certain viewport widths per Carbon Design)
     cy.get('nav[aria-label="Side navigation"]').should("exist");
 
     // Navigate to error dashboard with basic auth
-    cy.visit(
-      `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/errors`,
-    );
+    cy.visit("/analyzers/errors", { auth: auth() });
     cy.get('[data-testid="error-dashboard"]').should("be.visible");
 
     // Verify sidebar still exists after navigation (may be collapsed per Carbon Design)
@@ -97,7 +94,7 @@ describe("Analyzer Pages Load", () => {
   });
 
   it("should show analyzer menu items in sidebar", () => {
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    cy.visit("/analyzers", { auth: auth() });
 
     // Verify sidebar exists (may be collapsed at certain viewport widths per Carbon Design)
     cy.get('nav[aria-label="Side navigation"]').should("exist");

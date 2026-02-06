@@ -135,25 +135,14 @@ describe("CopyMappingsModal", () => {
   });
 
   /**
-   * Test: Copy mappings shows confirmation dialog
+   * Test: Copy mappings modal structure supports confirmation flow
    * Task Reference: T196
    *
-   * When copy button is clicked with target selected, a confirmation dialog should appear.
-   * Note: We test the confirmation dialog logic by simulating the component state.
+   * Verifies modal renders with copy button and warning section. Full confirmation
+   * dialog flow (select target + click copy) requires Carbon dropdown interaction;
+   * covered by E2E tests.
    */
-  test("testCopyMappings_ShowsConfirmationDialog", async () => {
-    // Mock component with target already selected (simulating user selection)
-    const CopyMappingsModalWithTarget = () => {
-      const [targetId, setTargetId] = React.useState("TARGET-001");
-      return (
-        <CopyMappingsModal
-          {...defaultProps}
-          // We can't easily set internal state, so we test the confirmation modal rendering
-          // by verifying the component structure
-        />
-      );
-    };
-
+  test("testCopyMappings_ModalStructure_SupportsConfirmation", async () => {
     renderWithIntl(<CopyMappingsModal {...defaultProps} />);
 
     // Wait for modal to render

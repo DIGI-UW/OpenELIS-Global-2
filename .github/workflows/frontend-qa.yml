@@ -109,6 +109,8 @@ jobs:
         working-directory: frontend
         env:
           CI: true
+          TEST_USER: admin
+          TEST_PASS: adminADMIN!
 
       - name: Upload Playwright report on failure
         if: failure()

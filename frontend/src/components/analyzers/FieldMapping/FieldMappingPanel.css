@@ -4,7 +4,7 @@
  */
 
 .field-mapping-panel {
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--cds-border-subtle);
   border-radius: 4px;
   padding: 1rem;
   height: 100%;
@@ -25,13 +25,13 @@
 .panel-footer {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--cds-border-subtle);
   font-size: 0.875rem;
-  color: #525252;
+  color: var(--cds-text-secondary);
 }
 
 .selected-row {
-  background-color: #e8f4f8;
+  background-color: var(--cds-layer-accent-01);
 }
 
 .panel-header-controls {
@@ -46,7 +46,7 @@
 }
 
 .unmapped-field-icon {
-  color: #da1e28;
+  color: var(--cds-support-error);
   width: 16px;
   height: 16px;
   flex-shrink: 0;

@@ -20,14 +20,14 @@
 
 let testAnalyzerId = null;
 
-// Basic auth credentials
-const AUTH = {
-  username: "admin",
-  password: "adminADMIN!",
-};
+const auth = () => ({
+  username: Cypress.env("USERNAME"),
+  password: Cypress.env("PASSWORD"),
+});
 
 /**
  * Setup: Create test analyzer via API and VERIFY it exists
+ * Credentials: Cypress.env('USERNAME') / Cypress.env('PASSWORD')
  * Uses cy.session() for auth caching + correct API path pattern
  * NOTE: /api/OpenELIS-Global/rest/... is the CORRECT pattern (like storage tests)
  *       /rest/... returns HTML, not JSON - other analyzer tests are broken
@@ -41,7 +41,7 @@ before("Setup test analyzer", () => {
     cy.request({
       method: "GET",
       url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-      auth: AUTH,
+      auth: auth(),
       failOnStatusCode: false,
     });
   });
@@ -50,7 +50,7 @@ before("Setup test analyzer", () => {
   cy.request({
     method: "POST",
     url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-    auth: AUTH,
+    auth: auth(),
     body: {
       name: "E2E-Config-Test-Analyzer",
       analyzerType: "CHEMISTRY",
@@ -86,7 +86,7 @@ before("Setup test analyzer", () => {
   cy.request({
     method: "GET",
     url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-    auth: AUTH,
+    auth: auth(),
   }).then((response) => {
     expect(response.status).to.eq(200);
     expect(response.body).to.be.an("array");
@@ -115,7 +115,7 @@ after("Cleanup test analyzer", () => {
     cy.request({
       method: "DELETE",
       url: `/api/OpenELIS-Global/rest/analyzer/analyzers/${testAnalyzerId}`,
-      auth: AUTH,
+      auth: auth(),
       failOnStatusCode: false,
     });
   }
@@ -124,7 +124,7 @@ after("Cleanup test analyzer", () => {
 describe("Analyzer Configuration - User Story 1", function () {
   beforeEach(() => {
     cy.viewport(1025, 900);
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/`);
+    cy.visit("/", { auth: auth() });
 
     // Set up intercepts before actions
     cy.intercept("GET", "**/rest/analyzer/analyzers**").as("getAnalyzers");
@@ -149,7 +149,7 @@ describe("Analyzer Configuration - User Story 1", function () {
    */
   it("should configure analyzer with field mappings", function () {
     // Navigate to analyzers page
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should(
       "be.visible",
     );
@@ -182,7 +182,7 @@ describe("Analyzer Configuration - User Story 1", function () {
    */
   it("should validate IP address format", function () {
     // Navigate to analyzers page
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should(
       "be.visible",
     );
@@ -222,7 +222,7 @@ describe("Analyzer Configuration - User Story 1", function () {
       }
 
       // Navigate to analyzers page
-      cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+      cy.visit("/analyzers", { auth: auth() });
       cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should(
         "be.visible",
       );
@@ -271,10 +271,10 @@ describe("Analyzer Configuration - User Story 1", function () {
 
       // Navigate directly to mappings page
       // Use longer timeout and wait for element (not page load event)
-      cy.visit(
-        `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/${id}/mappings`,
-        { timeout: 180000 }, // 3 minutes for CI
-      );
+      cy.visit(`/analyzers/${id}/mappings`, {
+        auth: auth(),
+        timeout: 180000, // 3 minutes for CI
+      });
       // Wait for the element to be visible (page is functional even if load event hasn't fired)
       cy.get('[data-testid="field-mapping"]', { timeout: 30000 }).should(
         "be.visible",
@@ -307,10 +307,10 @@ describe("Analyzer Configuration - User Story 1", function () {
         return;
       }
 
-      cy.visit(
-        `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/${id}/mappings`,
-        { timeout: 180000 }, // 3 min for CI - page load event doesn't fire consistently
-      );
+      cy.visit(`/analyzers/${id}/mappings`, {
+        auth: auth(),
+        timeout: 180000, // 3 min for CI - page load event doesn't fire consistently
+      });
       cy.get('[data-testid="field-mapping"]', { timeout: 30000 }).should(
         "be.visible",
       );
@@ -341,10 +341,10 @@ describe("Analyzer Configuration - User Story 1", function () {
         return;
       }
 
-      cy.visit(
-        `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/${id}/mappings`,
-        { timeout: 180000 }, // 3 min for CI - page load event doesn't fire consistently
-      );
+      cy.visit(`/analyzers/${id}/mappings`, {
+        auth: auth(),
+        timeout: 180000, // 3 min for CI - page load event doesn't fire consistently
+      });
       cy.get('[data-testid="field-mapping"]', { timeout: 30000 }).should(
         "be.visible",
       );
@@ -375,7 +375,7 @@ describe("Analyzer Configuration - User Story 1", function () {
       }
 
       // Step 1: Navigate to analyzers list
-      cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+      cy.visit("/analyzers", { auth: auth() });
       cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
       // Step 2: Navigate to mappings for our analyzer
@@ -396,7 +396,7 @@ describe("Analyzer Configuration - User Story 1", function () {
       cy.get('[data-testid="field-mapping"]').should("be.visible");
 
       // Step 4: Navigate back to analyzers
-      cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+      cy.visit("/analyzers", { auth: auth() });
       cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
       cy.log(
@@ -417,9 +417,7 @@ describe("Analyzer Configuration - User Story 1", function () {
         return;
       }
 
-      cy.visit(
-        `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/${id}/mappings`,
-      );
+      cy.visit(`/analyzers/${id}/mappings`, { auth: auth() });
       cy.get('[data-testid="field-mapping"]', { timeout: 10000 }).should(
         "be.visible",
       );
@@ -444,7 +442,7 @@ describe("Analyzer Configuration - User Story 1", function () {
    */
   it("should configure new analyzer", function () {
     // Navigate to analyzers page
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should(
       "be.visible",
     );
@@ -459,7 +457,7 @@ describe("Analyzer Configuration - User Story 1", function () {
    * Test: Display analyzer list with existing analyzers
    */
   it("should display analyzer list with existing analyzers", function () {
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should(
       "be.visible",
     );
@@ -482,7 +480,7 @@ describe("Analyzer Configuration - User Story 1", function () {
    * Test: Display analyzer statistics
    */
   it("should display analyzer statistics", function () {
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should(
       "be.visible",
     );

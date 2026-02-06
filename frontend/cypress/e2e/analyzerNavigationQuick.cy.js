@@ -3,13 +3,14 @@
  *
  * Simple test to verify navigation between analyzer pages works correctly
  * and there are no console errors
+ *
+ * Credentials: Cypress.env('USERNAME') / Cypress.env('PASSWORD')
  */
 
-// Basic auth credentials
-const AUTH = {
-  username: "admin",
-  password: "adminADMIN!",
-};
+const auth = () => ({
+  username: Cypress.env("USERNAME"),
+  password: Cypress.env("PASSWORD"),
+});
 
 describe("Quick Analyzer Navigation", () => {
   before("Setup authentication", () => {
@@ -22,7 +23,7 @@ describe("Quick Analyzer Navigation", () => {
       cy.request({
         method: "GET",
         url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-        auth: AUTH,
+        auth: auth(),
         failOnStatusCode: false,
       });
     });
@@ -34,21 +35,19 @@ describe("Quick Analyzer Navigation", () => {
   });
 
   it("should navigate between analyzer pages without errors", () => {
-    // 1. Navigate to Analyzers List with basic auth
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    // 1. Navigate to Analyzers List with basic auth (credentials from env, not in URL)
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
     cy.get('[data-testid="page-title"]').should("be.visible");
     cy.get('[data-testid="analyzers-list-stats"]').should("be.visible");
 
     // 2. Navigate to Error Dashboard with basic auth
-    cy.visit(
-      `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/errors`,
-    );
+    cy.visit("/analyzers/errors", { auth: auth() });
     cy.get('[data-testid="error-dashboard"]').should("be.visible");
     cy.get('[data-testid="error-dashboard-stats"]').should("be.visible");
 
     // 3. Navigate back to Analyzers List with basic auth
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // 4. Try to navigate to field mappings if analyzer exists

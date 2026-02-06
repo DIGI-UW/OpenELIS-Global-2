@@ -122,7 +122,7 @@ const DeleteAnalyzerModal = ({ analyzer, open, onClose, onConfirm }) => {
 
 DeleteAnalyzerModal.propTypes = {
   analyzer: PropTypes.shape({
-    id: PropTypes.string.isRequired,
+    id: PropTypes.string, // Optional - component handles null/missing id with error notification
     name: PropTypes.string,
   }),
   open: PropTypes.bool.isRequired,

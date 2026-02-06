@@ -3,13 +3,14 @@
  *
  * Verifies that the field mappings page opens and displays mappings correctly.
  * Simple test to ensure mappings appear on the page.
+ *
+ * Credentials: Cypress.env('USERNAME') / Cypress.env('PASSWORD')
  */
 
-// Basic auth credentials
-const AUTH = {
-  username: "admin",
-  password: "adminADMIN!",
-};
+const auth = () => ({
+  username: Cypress.env("USERNAME"),
+  password: Cypress.env("PASSWORD"),
+});
 
 describe("Analyzer Field Mappings Display", () => {
   before("Setup authentication", () => {
@@ -22,7 +23,7 @@ describe("Analyzer Field Mappings Display", () => {
       cy.request({
         method: "GET",
         url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-        auth: AUTH,
+        auth: auth(),
         failOnStatusCode: false,
       });
     });
@@ -33,8 +34,8 @@ describe("Analyzer Field Mappings Display", () => {
   });
 
   it("should open field mappings page and display mappings when available", () => {
-    // Navigate to analyzers list with basic auth
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    // Navigate to analyzers list with basic auth (credentials from env, not in URL)
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
     cy.get('[data-testid="analyzers-table-container"]', {
       timeout: 10000,

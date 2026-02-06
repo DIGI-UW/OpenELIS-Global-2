@@ -14,15 +14,16 @@
  * - Uses data-testid selectors (PREFERRED)
  * - Simple happy path test
  *
+ * Credentials: Cypress.env('USERNAME') / Cypress.env('PASSWORD') (set via env or cypress.config.js)
+ *
  * Execution:
  * - Development: npm run cy:single "cypress/e2e/analyzerPagesNavigation.cy.js"
  */
 
-// Basic auth credentials
-const AUTH = {
-  username: "admin",
-  password: "adminADMIN!",
-};
+const auth = () => ({
+  username: Cypress.env("USERNAME"),
+  password: Cypress.env("PASSWORD"),
+});
 
 describe("Analyzer Pages Navigation", () => {
   before("Setup authentication", () => {
@@ -35,7 +36,7 @@ describe("Analyzer Pages Navigation", () => {
       cy.request({
         method: "GET",
         url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-        auth: AUTH,
+        auth: auth(),
         failOnStatusCode: false,
       });
     });
@@ -47,8 +48,8 @@ describe("Analyzer Pages Navigation", () => {
   });
 
   it("should navigate to analyzers list page", () => {
-    // Navigate to analyzers list with basic auth
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    // Navigate to analyzers list with basic auth (credentials from env, not in URL)
+    cy.visit("/analyzers", { auth: auth() });
 
     // Verify page loaded
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
@@ -57,9 +58,7 @@ describe("Analyzer Pages Navigation", () => {
 
   it("should navigate to error dashboard page", () => {
     // Navigate to error dashboard with basic auth
-    cy.visit(
-      `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/errors`,
-    );
+    cy.visit("/analyzers/errors", { auth: auth() });
 
     // Verify page loaded
     cy.get('[data-testid="error-dashboard"]').should("be.visible");
@@ -68,7 +67,7 @@ describe("Analyzer Pages Navigation", () => {
 
   it("should navigate to field mappings page via analyzer row", () => {
     // First go to analyzers list with basic auth
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // Check if there are any analyzers in the table

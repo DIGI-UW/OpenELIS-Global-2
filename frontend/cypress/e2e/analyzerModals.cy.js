@@ -17,15 +17,16 @@
  * - Uses data-testid selectors (PREFERRED)
  * - Simple happy path test (open/close only)
  *
+ * Credentials: Cypress.env('USERNAME') / Cypress.env('PASSWORD')
+ *
  * Execution:
  * - Development: npm run cy:single "cypress/e2e/analyzerModals.cy.js"
  */
 
-// Basic auth credentials
-const AUTH = {
-  username: "admin",
-  password: "adminADMIN!",
-};
+const auth = () => ({
+  username: Cypress.env("USERNAME"),
+  password: Cypress.env("PASSWORD"),
+});
 
 let testAnalyzerId = null;
 
@@ -40,7 +41,7 @@ describe("Analyzer Modals - Open/Close", () => {
       cy.request({
         method: "GET",
         url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-        auth: AUTH,
+        auth: auth(),
         failOnStatusCode: false,
       });
     });
@@ -49,7 +50,7 @@ describe("Analyzer Modals - Open/Close", () => {
     cy.request({
       method: "POST",
       url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-      auth: AUTH,
+      auth: auth(),
       body: {
         name: "TEST-Modal-E2E",
         analyzerType: "HEMATOLOGY",
@@ -71,7 +72,7 @@ describe("Analyzer Modals - Open/Close", () => {
       cy.request({
         method: "DELETE",
         url: `/api/OpenELIS-Global/rest/analyzer/analyzers/${testAnalyzerId}`,
-        auth: AUTH,
+        auth: auth(),
         failOnStatusCode: false,
       });
     }
@@ -83,7 +84,7 @@ describe("Analyzer Modals - Open/Close", () => {
   });
 
   it("should open and close Add Analyzer modal", () => {
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // Click Add Analyzer button
@@ -106,7 +107,7 @@ describe("Analyzer Modals - Open/Close", () => {
   });
 
   it("should open and close Edit Analyzer modal", () => {
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // Wait for analyzers table to load
@@ -158,7 +159,7 @@ describe("Analyzer Modals - Open/Close", () => {
   });
 
   it("should open and close Delete Analyzer modal", () => {
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // Find analyzer row and click overflow menu
@@ -205,7 +206,7 @@ describe("Analyzer Modals - Open/Close", () => {
   });
 
   it("should open and close Test Connection modal", () => {
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // Find analyzer row and click overflow menu
@@ -255,7 +256,7 @@ describe("Analyzer Modals - Open/Close", () => {
   });
 
   it("should open and close Copy Mappings modal", () => {
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // Find analyzer row and click overflow menu
@@ -302,7 +303,7 @@ describe("Analyzer Modals - Open/Close", () => {
   });
 
   it("should navigate to Field Mappings page and verify Test Mapping modal", () => {
-    cy.visit(`https://${AUTH.username}:${AUTH.password}@localhost/analyzers`);
+    cy.visit("/analyzers", { auth: auth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // Navigate to field mappings via analyzer row
@@ -344,9 +345,7 @@ describe("Analyzer Modals - Open/Close", () => {
   });
 
   it("should open and close Error Details modal from Error Dashboard", () => {
-    cy.visit(
-      `https://${AUTH.username}:${AUTH.password}@localhost/analyzers/errors`,
-    );
+    cy.visit("/analyzers/errors", { auth: auth() });
     cy.get('[data-testid="error-dashboard"]').should("be.visible");
 
     // Check if there are any error rows in the table

@@ -72,6 +72,12 @@ module.exports = defineConfig({
   // Stop on first spec failure when E2E_FAIL_FAST is set (e.g. in CI)
   bail: process.env.E2E_FAIL_FAST === "true" ? 1 : false,
   env: {
+    // E2E test credentials - use env vars in CI, fallback for local dev
+    // Set CYPRESS_USERNAME/CYPRESS_PASSWORD or TEST_USER/TEST_PASS for CI
+    USERNAME: process.env.CYPRESS_USERNAME || process.env.TEST_USER || "admin",
+    PASSWORD:
+      process.env.CYPRESS_PASSWORD || process.env.TEST_PASS || "adminADMIN!",
+
     // Env-controlled fail-fast using cypress-fail-fast plugin
     // Set E2E_FAIL_FAST=true to stop on first failure (saves CI time)
     // Set E2E_FAIL_FAST=false or unset to run all tests (default)
@@ -109,6 +115,54 @@ module.exports = defineConfig({
       // Register all Cypress tasks in ONE handler (Cypress does not merge task handlers).
       // This keeps logging/diagnostics and fixture utilities available across specs.
       on("task", {
+        // Poll backend until it responds (retries on connection errors - CI reliability)
+        // cy.request() fails immediately on ECONNREFUSED; this task retries with backoff
+        waitForBackendReady({ path }) {
+          const baseUrl = config.baseUrl || "https://localhost";
+          const url = new URL(path, baseUrl).href;
+          const maxAttempts = 15;
+          const delayMs = 2000;
+
+          const attempt = (attemptNum) =>
+            new Promise((resolve, reject) => {
+              const lib = url.startsWith("https")
+                ? require("https")
+                : require("http");
+              const req = lib.get(url, (res) => {
+                if (typeof res.statusCode === "number") {
+                  console.log(
+                    `Backend ready: ${path} responded with status ${res.statusCode}`,
+                  );
+                  resolve(true);
+                } else {
+                  reject(new Error("No status code in response"));
+                }
+              });
+              req.on("error", (err) => {
+                if (attemptNum >= maxAttempts) {
+                  reject(
+                    new Error(
+                      `Backend did not become ready after ${maxAttempts} attempts: ${err.message}`,
+                    ),
+                  );
+                } else {
+                  console.log(
+                    `Backend not ready (attempt ${attemptNum}/${maxAttempts}), retrying in ${delayMs}ms...`,
+                  );
+                  setTimeout(
+                    () =>
+                      attempt(attemptNum + 1)
+                        .then(resolve)
+                        .catch(reject),
+                    delayMs,
+                  );
+                }
+              });
+            });
+
+          return attempt(1);
+        },
+
         // Log messages to the Node process stdout (captured by CI/tee logs)
         log(message, options = {}) {
           if (options.log !== false) {
