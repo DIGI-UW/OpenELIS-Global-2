@@ -248,6 +248,16 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
                 throw new IllegalArgumentException("Parent sample not found: " + parentId);
             }
 
+            // Fix detached entity issue: Reload Sample in current transaction to ensure
+            // it's managed with proper lastupdated/version field. When parentSample is
+            // loaded,
+            // its Sample reference may be detached with lastupdated=null, causing Hibernate
+            // to treat it as NEW and attempt INSERT when child references parent.
+            if (parentSample.getSample() != null && parentSample.getSample().getId() != null) {
+                Sample managedSample = sampleService.get(parentSample.getSample().getId());
+                parentSample.setSample(managedSample);
+            }
+
             // Create child samples for this parent
             for (int i = 0; i < childCountPerParent; i++) {
                 SampleItem child = createChildSample(parentSample, externalIdPrefix, childSequence++, sysUserId);

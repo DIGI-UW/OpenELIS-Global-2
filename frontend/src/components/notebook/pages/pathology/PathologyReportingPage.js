@@ -832,14 +832,7 @@ function PathologyReportingPage({
           setShowReportModal(false);
         }
       });
-  }, [
-    reportData,
-    entryId,
-    dateRange,
-    intl,
-    downloadFile,
-    exportMetricsToCSV,
-  ]);
+  }, [reportData, entryId, dateRange, intl, downloadFile, exportMetricsToCSV]);
 
   // Helper for date change
   const handleDateChange = (dates, fieldName, setState) => {

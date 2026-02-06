@@ -27,6 +27,9 @@ public class NoteBookPageServiceImpl extends AuditableBaseObjectServiceImpl<Note
     @Autowired
     private NoteBookPageDAO baseObjectDAO;
 
+    @Autowired
+    private NotebookAuditService notebookAuditService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public NoteBookPageServiceImpl() {
@@ -120,5 +123,46 @@ public class NoteBookPageServiceImpl extends AuditableBaseObjectServiceImpl<Note
     @Transactional(readOnly = true)
     public Integer getPageIdByNotebookIdAndTitlePattern(Integer notebookId, String titlePattern) {
         return baseObjectDAO.getPageIdByNotebookIdAndTitlePattern(notebookId, titlePattern);
+    }
+
+    // Audit integration overrides
+
+    @Override
+    @Transactional
+    public NoteBookPage save(NoteBookPage entity) {
+        NoteBookPage saved = super.save(entity);
+        try {
+            notebookAuditService.saveAuditLog(saved, "notebook_page", "I", saved.getSysUserId());
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "save",
+                    "Failed to create audit log for NoteBookPage: " + e.getMessage());
+        }
+        return saved;
+    }
+
+    @Override
+    @Transactional
+    public NoteBookPage update(NoteBookPage entity) {
+        NoteBookPage original = get(entity.getId());
+        NoteBookPage updated = super.update(entity);
+        try {
+            notebookAuditService.saveAuditLog(updated, original, "notebook_page", "U", updated.getSysUserId());
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "update",
+                    "Failed to create audit log for NoteBookPage: " + e.getMessage());
+        }
+        return updated;
+    }
+
+    @Override
+    @Transactional
+    public void delete(NoteBookPage entity) {
+        try {
+            notebookAuditService.saveAuditLog(entity, "notebook_page", "D", entity.getSysUserId());
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "delete",
+                    "Failed to create audit log for NoteBookPage: " + e.getMessage());
+        }
+        super.delete(entity);
     }
 }
