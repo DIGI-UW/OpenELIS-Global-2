@@ -20,15 +20,16 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
-You are updating the project constitution at `/memory/constitution.md`. This
-file is a TEMPLATE containing placeholder tokens in square brackets (e.g.
+You are updating the project constitution at `/.specify/memory/constitution.md`.
+This file is a TEMPLATE containing placeholder tokens in square brackets (e.g.
 `[PROJECT_NAME]`, `[PRINCIPLE_1_NAME]`). Your job is to (a) collect/derive
 concrete values, (b) fill the template precisely, and (c) propagate any
 amendments across dependent artifacts.
 
 Follow this execution flow:
 
-1. Load the existing constitution template at `/memory/constitution.md`.
+1. Load the existing constitution template at
+   `/.specify/memory/constitution.md`.
 
    - Identify every placeholder token of the form `[ALL_CAPS_IDENTIFIER]`.
      **IMPORTANT**: The user might require less or more principles than the ones
@@ -66,16 +67,17 @@ Follow this execution flow:
 4. Consistency propagation checklist (convert prior checklist into active
    validations):
 
-   - Read `/templates/plan-template.md` and ensure any "Constitution Check" or
-     rules align with updated principles.
-   - Read `/templates/spec-template.md` for scope/requirements alignment—update
-     if constitution adds/removes mandatory sections or constraints.
-   - Read `/templates/tasks-template.md` and ensure task categorization reflects
-     new or removed principle-driven task types (e.g., observability,
+   - Read `/.specify/templates/plan-template.md` and ensure any "Constitution
+     Check" or rules align with updated principles.
+   - Read `/.specify/templates/spec-template.md` for scope/requirements
+     alignment—update if constitution adds/removes mandatory sections or
+     constraints.
+   - Read `/.specify/templates/tasks-template.md` and ensure task categorization
+     reflects new or removed principle-driven task types (e.g., observability,
      versioning, testing discipline).
-   - Read each command file in `/templates/commands/*.md` (including this one)
-     to verify no outdated references (agent-specific names like CLAUDE only)
-     remain when generic guidance is required.
+   - Read each command file in `/.specify/templates/commands/*.md` (including
+     this one) to verify no outdated references (agent-specific names like
+     CLAUDE only) remain when generic guidance is required.
    - Read any runtime guidance docs (e.g., `README.md`, `docs/quickstart.md`, or
      agent-specific guidance files if present). Update references to principles
      changed.
@@ -98,7 +100,7 @@ Follow this execution flow:
    - Principles are declarative, testable, and free of vague language ("should"
      → replace with MUST/SHOULD rationale where appropriate).
 
-7. Write the completed constitution back to `/memory/constitution.md`
+7. Write the completed constitution back to `/.specify/memory/constitution.md`
    (overwrite).
 
 8. Output a final summary to the user with:
@@ -124,4 +126,4 @@ If critical info missing (e.g., ratification date truly unknown), insert
 deferred items.
 
 Do not create a new template; always operate on the existing
-`/memory/constitution.md` file.
+`/.specify/memory/constitution.md` file.
