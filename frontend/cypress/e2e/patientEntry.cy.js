@@ -129,7 +129,7 @@ describe("Search Patient", function () {
       patientPage.searchPatientByDateOfBirth(patient.DOB);
       patientPage.clickSearchPatientButton();
       patientPage.validatePatientSearchTablebyRespectiveField(
-        patient.DOB,
+        patient.DOBTableDisplay,
         "DOB",
       );
     });
