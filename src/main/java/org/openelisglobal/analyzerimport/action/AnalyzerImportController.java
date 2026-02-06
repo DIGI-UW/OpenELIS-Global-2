@@ -23,6 +23,7 @@ import org.openelisglobal.analyzer.service.BidirectionalAnalyzer;
 import org.openelisglobal.analyzerimport.analyzerreaders.ASTMAnalyzerReader;
 import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerReader;
 import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerReaderFactory;
+import org.openelisglobal.analyzerimport.analyzerreaders.CSVAnalyzerReader;
 import org.openelisglobal.analyzerimport.analyzerreaders.HL7AnalyzerReader;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.common.action.IActionConstants;
@@ -115,6 +116,43 @@ public class AnalyzerImportController implements IActionConstants {
                 return;
             }
         } else {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            return;
+        }
+    }
+
+    @PostMapping("/analyzer/csv")
+    public void receiveCSV(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        InputStream stream = request.getInputStream();
+        CSVAnalyzerReader reader = (CSVAnalyzerReader) AnalyzerReaderFactory.getReaderFor("csv");
+
+        if (reader != null) {
+            if (reader.readStream(stream)) {
+                boolean success = reader.insertAnalyzerData(getSysUserId(request));
+                if (success) {
+                    response.getWriter().print("OK");
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    return;
+                } else {
+                    String errorMessage = reader.getError();
+                    if (errorMessage != null) {
+                        response.getWriter().print(errorMessage);
+                    }
+                    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                    return;
+                }
+            } else {
+                String errorMessage = reader.getError();
+                if (errorMessage != null) {
+                    response.getWriter().print(errorMessage);
+                }
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                return;
+            }
+        } else {
+            response.getWriter().print("Unable to create CSV reader");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
