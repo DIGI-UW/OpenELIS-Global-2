@@ -23,9 +23,9 @@ class RoutineReportPage {
 
   selectStatistics() {
     cy.get("#menu_reports_aggregate_statistics", { timeout: 15000 })
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
 
   allReportsSummary() {
