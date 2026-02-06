@@ -15,7 +15,6 @@ describe("Routine Reports", function () {
     reportPage = homePage.goToRoutineReports();
   });
   it("User Visits Patient Status Report and checks for Respective Forms", () => {
-    reportPage = homePage.goToRoutineReports();
     reportPage.selectPatientStatusReport();
     reportPage.validatePageHeader("Patient Status Report");
 

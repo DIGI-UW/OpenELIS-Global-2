@@ -1,4 +1,22 @@
 class RoutineReportPage {
+  /**
+   * Idempotent expand: only clicks the Carbon SideNavMenu toggle if it is
+   * currently collapsed (aria-expanded !== "true"). This avoids the
+   * toggle-trap where a second click collapses an already-open menu.
+   */
+  ensureSidenavMenuExpanded(menuId) {
+    cy.get(menuId, { timeout: 15000 })
+      .find("button[aria-expanded]")
+      .first()
+      .then(($btn) => {
+        if ($btn.attr("aria-expanded") !== "true") {
+          cy.wrap($btn).click();
+        }
+      });
+    // Verify expansion completed (retries until true)
+    cy.get(menuId).find('button[aria-expanded="true"]').first().should("exist");
+  }
+
   aggregateReports() {
     cy.get("#menu_reports_aggregate", { timeout: 15000 })
       .scrollIntoView()
@@ -122,6 +140,8 @@ class RoutineReportPage {
   }
 
   selectPatientStatusReport() {
+    this.ensureSidenavMenuExpanded("#menu_reports");
+    this.ensureSidenavMenuExpanded("#menu_reports_routine");
     cy.get("#menu_reports_status_patient", { timeout: 15000 })
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
