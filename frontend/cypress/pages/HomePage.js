@@ -75,6 +75,23 @@ class HomePage {
     return new LoginPage();
   }
 
+  /**
+   * Idempotent expand: only clicks the Carbon SideNavMenu toggle if it is
+   * currently collapsed (aria-expanded !== "true"). This avoids the
+   * toggle-trap where a second click collapses an already-open menu.
+   */
+  ensureSidenavMenuExpanded(menuId) {
+    cy.get(menuId, { timeout: 15000 })
+      .find("button[aria-expanded]")
+      .first()
+      .then(($btn) => {
+        if ($btn.attr("aria-expanded") !== "true") {
+          cy.wrap($btn).click();
+        }
+      });
+    cy.get(menuId).find('button[aria-expanded="true"]').first().should("exist");
+  }
+
   openNavigationMenu() {
     // Sidenav uses a 3-step toggle: CLOSE -> SHOW -> LOCK -> CLOSE
     // aria-label tells us the current state:
@@ -350,38 +367,23 @@ class HomePage {
   // Reports related functions
   goToRoutineReports() {
     this.openNavigationMenu();
-    cy.get(this.selectors.reportsMenu)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
-    cy.get(this.selectors.reportsRoutine)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    this.ensureSidenavMenuExpanded(this.selectors.reportsMenu);
+    this.ensureSidenavMenuExpanded(this.selectors.reportsRoutine);
     this.closeNavigationMenu();
     return new RoutineReportPage();
   }
 
   goToStudyReports() {
     this.openNavigationMenu();
-    cy.get(this.selectors.reportsMenu)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
-    cy.get(this.selectors.reportsStudy)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    this.ensureSidenavMenuExpanded(this.selectors.reportsMenu);
+    this.ensureSidenavMenuExpanded("#menu_reports_study");
     this.closeNavigationMenu();
     return new StudyReportPage();
   }
 
   goToReports() {
     this.openNavigationMenu();
-    cy.get(this.selectors.reportsMenu)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    this.ensureSidenavMenuExpanded(this.selectors.reportsMenu);
     this.closeNavigationMenu();
   }
 

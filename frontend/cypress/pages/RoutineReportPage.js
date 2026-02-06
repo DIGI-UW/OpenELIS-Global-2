@@ -18,10 +18,7 @@ class RoutineReportPage {
   }
 
   aggregateReports() {
-    cy.get("#menu_reports_aggregate", { timeout: 15000 })
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    this.ensureSidenavMenuExpanded("#menu_reports_aggregate");
   }
 
   selectStatistics() {
@@ -46,10 +43,7 @@ class RoutineReportPage {
   }
 
   navigateToManagementReports() {
-    cy.get("#menu_reports_management", { timeout: 15000 })
-      .scrollIntoView({ behavior: "smooth" })
-      .should("be.visible")
-      .click();
+    this.ensureSidenavMenuExpanded("#menu_reports_management");
   }
   selectRejectionReport() {
     cy.get("#menu_reports_management_rejection_nav", { timeout: 15000 })
@@ -59,10 +53,7 @@ class RoutineReportPage {
   }
 
   navigateToReportsActivity() {
-    cy.get("#menu_reports_activity", { timeout: 15000 })
-      .scrollIntoView({ behavior: "smooth" })
-      .should("be.visible")
-      .click();
+    this.ensureSidenavMenuExpanded("#menu_reports_activity");
   }
   selectByTestType() {
     cy.get("#menu_activity_report_test")
@@ -98,10 +89,7 @@ class RoutineReportPage {
   }
 
   navigateToNCReports() {
-    cy.get("#menu_reports_nonconformity")
-      .scrollIntoView({ behavior: "smooth" })
-      .should("be.visible")
-      .click();
+    this.ensureSidenavMenuExpanded("#menu_reports_nonconformity");
   }
 
   selectNCReportByUnit() {
