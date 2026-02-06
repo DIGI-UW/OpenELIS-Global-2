@@ -1,44 +1,39 @@
 # Universal Analyzer Bridge — Updated Implementation Plan v2.0
 
 **Updated**: 2026-02-06 | **Original**: universal-analyzer-bridge.md v1.0
-**Status**: M1-M6 complete (8 PRs merged), M7 in review (PR #11), M7.1-M9 +
-remediation remaining
+**Status**:
+
+- **M1-M6**: ✅ complete (8 PRs merged)
+- **M7**: ⚠️ PR open, **Copilot remediation complete** (tests passing) —
+  awaiting final review/merge:
+  [openelis-analyzer-bridge#11](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/11)
+- **M7.1 (plan)**: ✅ documented in parent repo PR:
+  [OpenELIS-Global-2#2730](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/2730)
+  (implementation still pending)
+- **M8**: ❌ not started (prompt ready; metrics/health/E2E still missing)
+- **M9 + R-OPENELIS**: ❌ pending
 
 ---
 
-## Immediate Next Steps (Execution Setup)
+## Immediate Next Steps (Current)
 
-### Step 1: Create Worktree from `demo/madagascar`
+### Step 1: Merge M7 after final review
 
-```bash
-# From parent repo root
-cd /Users/pmanko/code/OpenELIS-Global-2
-git worktree add ../OpenELIS-bridge-m7 demo/madagascar
-```
+- **Bridge repo**: M7 is ready for merge once PR #11 review is satisfied.
+- **Validation**: `mvn test` and `mvn verify` both pass on the PR branch.
 
-### Step 2: Create M7 Branch in Bridge Submodule
+### Step 2: Merge the plan update PR (this doc + M7.1 plan)
 
-```bash
-cd ../OpenELIS-bridge-m7/tools/astm-http-bridge
-git fetch origin
-git checkout -b feat/universal-bridge-normalizer origin/develop
-```
+- **Parent repo**: merge
+  [OpenELIS-Global-2#2730](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/2730)
+  so the M7.1 security milestone is captured on `demo/madagascar`.
 
-### Step 3: Generate M7 LLM Implementation Prompt
+### Step 3: Start M8 implementation (after M7 merge)
 
-Write a comprehensive, self-contained prompt to
-`OpenELIS-bridge-m7/tools/astm-http-bridge/M7-PROMPT.md` that includes:
-
-- Full context (architecture, current state, what exists, what's missing)
-- All 11 M7 tasks (T01-T11) with file paths and implementation details
-- The ASTM adapter architecture (T08 detail)
-- R-BRIDGE items folded in (RB-05, RB-06)
-- Existing file contents and patterns to follow
-- Test expectations
-- Verification commands
-
-The prompt should be runnable by any LLM agent (Claude, Cursor, etc.) working in
-the `tools/astm-http-bridge/` directory with no additional context needed.
+- **Bridge repo branch**: create `feat/universal-bridge-integration` from
+  `develop` _after_ M7 merges.
+- **Implementation prompt**: use `m8-implementation-prompt.md` in this same
+  folder.
 
 ---
 
@@ -78,22 +73,24 @@ with remediation tracks that can run in parallel.
 
 ## Section 1: Milestone Status
 
-| ID       | Milestone                | Repo         | Status           | PR      | Notes                                                       |
-| -------- | ------------------------ | ------------ | ---------------- | ------- | ----------------------------------------------------------- |
-| M1       | Foundation               | Bridge       | ✅ MERGED        | #5      | Protocol/Transport enums, MessageEnvelope, ProtocolDetector |
-| M2a      | MLLP Listener            | Bridge       | ✅ MERGED        | #7      | HapiMLLPListener, HapiReceivingApplication                  |
-| M2b      | HL7 Endpoint             | OpenELIS     | ✅ MERGED        | #2718   | `/analyzer/hl7`, HL7AnalyzerReader 3-tier ID                |
-| M3       | Serial Listener          | Bridge       | ✅ MERGED        | #9      | SerialPortListener, SerialFrameBuffer                       |
-| M4a      | File Watcher             | Bridge       | ✅ MERGED        | #8      | FileWatcher, CSVParser, FileMessageHandler                  |
-| M4b      | CSV Endpoint             | OpenELIS     | ✅ MERGED        | #2714   | CSVAnalyzerReader, AnalyzerReaderFactory                    |
-| M5       | HTTP Input               | Bridge       | ✅ MERGED        | #6      | AnalyzerInputController `/input`                            |
-| M6       | ASTM Enhancements        | Bridge       | ✅ MERGED        | #4      | X-Source-Analyzer-IP propagation                            |
-| **M7**   | **Message Normalizer**   | **Bridge**   | **⚠️ IN REVIEW** | **#11** | PR open; addressing Copilot comments                        |
-| **M7.1** | **Bridge Auth/Security** | **Bridge**   | **❌ PLANNED**   | —       | Security gap from M7 review; depends on M7 merge            |
-| **M8**   | **Integration & Deploy** | **Bridge**   | **⚠️ ~70%**      | —       | Docker/README done; E2E tests + metrics missing             |
-| **M9**   | **Spec Documentation**   | **OpenELIS** | **❌ 0%**        | —       | No branch created                                           |
+| ID       | Milestone                | Repo         | Status           | PR      | Notes                                                                                                                                   |
+| -------- | ------------------------ | ------------ | ---------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| M1       | Foundation               | Bridge       | ✅ MERGED        | #5      | Protocol/Transport enums, MessageEnvelope, ProtocolDetector                                                                             |
+| M2a      | MLLP Listener            | Bridge       | ✅ MERGED        | #7      | HapiMLLPListener, HapiReceivingApplication                                                                                              |
+| M2b      | HL7 Endpoint             | OpenELIS     | ✅ MERGED        | #2718   | `/analyzer/hl7`, HL7AnalyzerReader 3-tier ID                                                                                            |
+| M3       | Serial Listener          | Bridge       | ✅ MERGED        | #9      | SerialPortListener, SerialFrameBuffer                                                                                                   |
+| M4a      | File Watcher             | Bridge       | ✅ MERGED        | #8      | FileWatcher, CSVParser, FileMessageHandler                                                                                              |
+| M4b      | CSV Endpoint             | OpenELIS     | ✅ MERGED        | #2714   | CSVAnalyzerReader, AnalyzerReaderFactory                                                                                                |
+| M5       | HTTP Input               | Bridge       | ✅ MERGED        | #6      | AnalyzerInputController `/input`                                                                                                        |
+| M6       | ASTM Enhancements        | Bridge       | ✅ MERGED        | #4      | X-Source-Analyzer-IP propagation                                                                                                        |
+| **M7**   | **Message Normalizer**   | **Bridge**   | **⚠️ IN REVIEW** | **#11** | Copilot remediation complete; `mvn test` + `mvn verify` passing; awaiting merge                                                         |
+| **M7.1** | **Bridge Auth/Security** | **Bridge**   | **❌ PLANNED**   | —       | Plan documented in [OpenELIS-Global-2#2730](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/2730); implementation depends on M7 merge |
+| **M8**   | **Integration & Deploy** | **Bridge**   | **❌ 0%**        | —       | Docker compose scaffolding exists; metrics/health/E2E tests not implemented yet                                                         |
+| **M9**   | **Spec Documentation**   | **OpenELIS** | **❌ 0%**        | —       | No branch created                                                                                                                       |
 
-### Current Routing Fragmentation (the core M7 problem)
+### Routing State
+
+**Before M7** (resolved by PR #11):
 
 ```
 MLLP:    HapiReceivingApplication → MessageRouter → HttpForwardingRouter  ✅ CORRECT
@@ -101,6 +98,12 @@ Serial:  SerialMessageHandler → own forwardMessage() with HttpClient      ❌ 
 File:    FileMessageHandler → own forwardToOpenELIS() with RestTemplate   ❌ BYPASS
 ASTM:    ASTMReceiveThread → ASTMHandlerService → legacy handler chain    ❌ LEGACY
 HTTP:    AnalyzerInputController → creates envelope → DOES NOTHING        ❌ BROKEN
+```
+
+**After M7** (PR #11, verified by `UnifiedRoutingTest`):
+
+```
+MLLP/Serial/File/ASTM/HTTP → MessageNormalizer → HttpForwardingRouter → OpenELIS
 ```
 
 ---
@@ -459,18 +462,18 @@ plugins via `isTargetAnalyzer()`.
 
 ### Success Criteria (Carried from Original Plan)
 
-| #   | Criterion                                                         | Verified By                        | Status   |
-| --- | ----------------------------------------------------------------- | ---------------------------------- | -------- |
-| 1   | Single bridge handles: ASTM/TCP, HL7/MLLP, Serial, File, HTTP     | M8 E2E tests (T19-T22)             | PENDING  |
-| 2   | ALL 5 listeners route through MessageNormalizer (no bypasses)     | M7 integration test (T11)          | PENDING  |
-| 3   | All Madagascar analyzers work through bridge                      | M8 E2E + plugin tests              | PENDING  |
-| 4   | <100ms p95 latency for message forwarding (bridge overhead)       | M8 metrics + load test             | PENDING  |
-| 5   | Auto-reconnection on serial disconnect                            | M3 (done) — verified in deployment | COMPLETE |
-| 6   | Prometheus metrics for all listeners                              | M8 MetricsService (T13)            | PENDING  |
-| 7   | Zero protocol code in OpenELIS (HTTP-only at boundary)            | Architecture review                | COMPLETE |
-| 8   | Spec documentation updated with protocol/transport clarifications | M9 (T27-T31)                       | PENDING  |
-| 9   | No raw exception messages returned to clients                     | R-OPENELIS (RO-01-03)              | PENDING  |
-| 10  | Retry/backoff on all forwarding paths                             | M7 (T04)                           | PENDING  |
+| #   | Criterion                                                         | Verified By                        | Status                      |
+| --- | ----------------------------------------------------------------- | ---------------------------------- | --------------------------- |
+| 1   | Single bridge handles: ASTM/TCP, HL7/MLLP, Serial, File, HTTP     | M8 E2E tests (T19-T22)             | PENDING                     |
+| 2   | ALL 5 listeners route through MessageNormalizer (no bypasses)     | M7 integration test (T11)          | DONE (PR #11; `mvn verify`) |
+| 3   | All Madagascar analyzers work through bridge                      | M8 E2E + plugin tests              | PENDING                     |
+| 4   | <100ms p95 latency for message forwarding (bridge overhead)       | M8 metrics + load test             | PENDING                     |
+| 5   | Auto-reconnection on serial disconnect                            | M3 (done) — verified in deployment | COMPLETE                    |
+| 6   | Prometheus metrics for all listeners                              | M8 MetricsService (T13)            | PENDING                     |
+| 7   | Zero protocol code in OpenELIS (HTTP-only at boundary)            | Architecture review                | COMPLETE                    |
+| 8   | Spec documentation updated with protocol/transport clarifications | M9 (T27-T31)                       | PENDING                     |
+| 9   | No raw exception messages returned to clients                     | R-OPENELIS (RO-01-03)              | PENDING                     |
+| 10  | Retry/backoff on all forwarding paths                             | M7 (T04)                           | DONE (PR #11; `mvn verify`) |
 
 ### Verification Steps
 
@@ -557,7 +560,8 @@ mvn test -pl . -Dtest="HL7AnalyzerReaderTest,CSVAnalyzerReaderTest,AnalyzerImpor
 | M8            | T12-T25           | 4    | After M7, parallel with M7.1  | Bridge   |
 | M9            | T26-T32           | 2    | After M8                      | OpenELIS |
 
-**Remaining: 48 tasks, ~10 days with parallelization**
+**Remaining (post-M7 remediation):** implement M7.1 auth, complete M8, complete
+R-OPENELIS, then M9 docs + submodule update.
 
 ---
 
@@ -565,8 +569,7 @@ mvn test -pl . -Dtest="HL7AnalyzerReaderTest,CSVAnalyzerReaderTest,AnalyzerImpor
 
 The following sections from the original plan (v1.0) remain valid and are NOT
 duplicated here. Refer to
-[universal-analyzer-bridge.md](specs/011-madagascar-analyzer-integration/plans/universal-analyzer-bridge.md)
-for:
+[universal-analyzer-bridge.md](universal-analyzer-bridge.md) for:
 
 | Section                                                    | Original Lines | Notes                                        |
 | ---------------------------------------------------------- | -------------- | -------------------------------------------- |
