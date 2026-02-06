@@ -72,12 +72,6 @@ public class CSVAnalyzerReader extends AnalyzerReader {
         }
 
         if (!lines.isEmpty()) {
-            setInserter();
-            if (inserter == null) {
-                error = "Unable to understand which analyzer sent the CSV message";
-                LogEvent.logWarn(this.getClass().getSimpleName(), "readStream", error);
-                return false;
-            }
             return true;
         } else {
             error = "Empty CSV message";
@@ -94,6 +88,9 @@ public class CSVAnalyzerReader extends AnalyzerReader {
      */
     @Override
     public boolean insertAnalyzerData(String systemUserId) {
+        if (inserter == null) {
+            setInserter();
+        }
         if (inserter == null) {
             error = "Unable to understand which analyzer sent the CSV file";
             LogEvent.logError(this.getClass().getSimpleName(), "insertAnalyzerData", error);
@@ -133,7 +130,14 @@ public class CSVAnalyzerReader extends AnalyzerReader {
      * </p>
      */
     private void setInserter() {
-        PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
+        PluginAnalyzerService pluginService;
+        try {
+            pluginService = SpringContext.getBean(PluginAnalyzerService.class);
+        } catch (NullPointerException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "setInserter",
+                    "Spring context not available (expected in unit tests)");
+            return;
+        }
 
         if (pluginService == null) {
             LogEvent.logError(this.getClass().getSimpleName(), "setInserter", "PluginAnalyzerService is not available");
