@@ -1952,7 +1952,7 @@
   "genericSample.order.labNo.placeholder": "Click 'Generate Lab Number' to create",
   "genericSample.order.error.labNoRequired": "Please generate a Lab Number before saving.",
   "genericSample.order.success.details": "Sample Details",
-  "genericSample.order.success.message": "Comanda de probă a fost creată cu succes cu numărul de acces: {accessionNumber}",
+  "genericSample.order.success.message": "Sample order created successfully with accession number: {accessionNumber}",
   "genericSample.field.project": "Project",
   "genericSample.field.type": "Type",
   "genericSample.field.id": "ID",
