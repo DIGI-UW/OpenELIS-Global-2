@@ -61,6 +61,24 @@ function detectBaseUrl() {
   return "https://localhost";
 }
 
+// E2E credentials: in CI require env vars (fail fast); locally allow fallbacks
+const isCI = process.env.CI === "true";
+let cypressUsername, cypressPassword;
+if (isCI) {
+  cypressUsername = process.env.CYPRESS_USERNAME || process.env.TEST_USER;
+  cypressPassword = process.env.CYPRESS_PASSWORD || process.env.TEST_PASS;
+  if (!cypressUsername || !cypressPassword) {
+    throw new Error(
+      "In CI, CYPRESS_USERNAME/CYPRESS_PASSWORD or TEST_USER/TEST_PASS must be set for E2E tests.",
+    );
+  }
+} else {
+  cypressUsername =
+    process.env.CYPRESS_USERNAME || process.env.TEST_USER || "admin";
+  cypressPassword =
+    process.env.CYPRESS_PASSWORD || process.env.TEST_PASS || "adminADMIN!";
+}
+
 module.exports = defineConfig({
   defaultCommandTimeout: 3000, // 3 seconds - use Cypress retry-ability instead of long timeouts
   pageLoadTimeout: 180000, // 3 minutes - analyzer mappings page loads 3.4MB bundle.js (takes >2min in CI)
@@ -72,6 +90,10 @@ module.exports = defineConfig({
   // Stop on first spec failure when E2E_FAIL_FAST is set (e.g. in CI)
   bail: process.env.E2E_FAIL_FAST === "true" ? 1 : false,
   env: {
+    // E2E test credentials - CI: required via env; local: fallback to admin/adminADMIN!
+    USERNAME: cypressUsername,
+    PASSWORD: cypressPassword,
+
     // Env-controlled fail-fast using cypress-fail-fast plugin
     // Set E2E_FAIL_FAST=true to stop on first failure (saves CI time)
     // Set E2E_FAIL_FAST=false or unset to run all tests (default)
@@ -109,6 +131,63 @@ module.exports = defineConfig({
       // Register all Cypress tasks in ONE handler (Cypress does not merge task handlers).
       // This keeps logging/diagnostics and fixture utilities available across specs.
       on("task", {
+        // Poll backend until it responds (retries on connection errors - CI reliability)
+        // cy.request() fails immediately on ECONNREFUSED; this task retries with backoff
+        waitForBackendReady({ path }) {
+          const baseUrl = config.baseUrl || "https://localhost";
+          const url = new URL(path, baseUrl).href;
+          const maxAttempts = 15;
+          const delayMs = 2000;
+
+          const attempt = (attemptNum) =>
+            new Promise((resolve, reject) => {
+              const lib = url.startsWith("https")
+                ? require("https")
+                : require("http");
+              const parsed = new URL(url);
+              const isLocalhost = ["localhost", "127.0.0.1"].includes(
+                parsed.hostname,
+              );
+              const opts =
+                url.startsWith("https") && isLocalhost
+                  ? { rejectUnauthorized: false }
+                  : {};
+              const req = lib.get(url, opts, (res) => {
+                res.resume(); // drain response to avoid socket leaks
+                if (typeof res.statusCode === "number") {
+                  console.log(
+                    `Backend ready: ${path} responded with status ${res.statusCode}`,
+                  );
+                  resolve(true);
+                } else {
+                  reject(new Error("No status code in response"));
+                }
+              });
+              req.on("error", (err) => {
+                if (attemptNum >= maxAttempts) {
+                  reject(
+                    new Error(
+                      `Backend did not become ready after ${maxAttempts} attempts: ${err.message}`,
+                    ),
+                  );
+                } else {
+                  console.log(
+                    `Backend not ready (attempt ${attemptNum}/${maxAttempts}), retrying in ${delayMs}ms...`,
+                  );
+                  setTimeout(
+                    () =>
+                      attempt(attemptNum + 1)
+                        .then(resolve)
+                        .catch(reject),
+                    delayMs,
+                  );
+                }
+              });
+            });
+
+          return attempt(1);
+        },
+
         // Log messages to the Node process stdout (captured by CI/tee logs)
         log(message, options = {}) {
           if (options.log !== false) {
