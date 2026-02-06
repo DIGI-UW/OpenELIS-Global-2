@@ -63,7 +63,8 @@ public class NotebookEntryRoomEnvironmentLogServiceImpl
 
         NotebookEntry entry = notebookEntryService.get(entryId);
         if (entry == null) {
-            throw new IllegalArgumentException("Notebook entry not found: " + entryId);
+            throw new IllegalArgumentException("Notebook entry not found with ID: " + entryId +
+                ". This may indicate a data consistency issue. Please refresh the page or contact support if the problem persists.");
         }
 
         NotebookEntryRoomEnvironmentLog log = new NotebookEntryRoomEnvironmentLog();

@@ -260,18 +260,6 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
                 SampleItem existing = existingItems.getLast();
 
                 sampleItem.setId(existing.getId());
-
-                // Fix detached entity issue: Re-attach the Sample to prevent
-                // duplicate key violation on accession_number during merge.
-                // When SampleItem is fetched in a separate read-only transaction,
-                // both SampleItem and its eagerly-loaded Sample become detached.
-                // Without this, merge() cascades to Sample and Hibernate treats
-                // it as a new entity, causing INSERT instead of UPDATE.
-                if (sampleItem.getSample() != null && sampleItem.getSample().getId() != null) {
-                    sampleItem.setSample(entityManager.getReference(org.openelisglobal.sample.valueholder.Sample.class,
-                            Integer.parseInt(sampleItem.getSample().getId())));
-                }
-
                 entityManager.merge(sampleItem);
             }
 

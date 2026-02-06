@@ -1219,8 +1219,19 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         // Check for "aliquoting" in title since MNTD workflow uses aliquoting page
         // for routing samples to internal analysis (Processing & Quality Control)
+        // BUT NOT for pharmaceutical workflows where "aliquoting" is just processing
         if (title.contains("aliquoting")) {
-            return true;
+            // Only treat as routing page for MNTD workflow, not pharmaceuticals
+            NoteBook notebook = page.getNotebook();
+            if (notebook != null) {
+                Hibernate.initialize(notebook);
+                String notebookTitle = notebook.getTitle() != null ? notebook.getTitle().toLowerCase() : "";
+                // Only MNTD uses aliquoting page for routing; pharmaceuticals use it for
+                // processing
+                if (notebookTitle.contains("mntd")) {
+                    return true;
+                }
+            }
         }
 
         // Check by page order - order 4 is the Child Samples page where routing
@@ -1349,6 +1360,12 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                         || notebookTitle.contains("bioinformatics")) {
                     // In GBD, order 5 is "Gel Electrophoresis", not storage
                     // Samples should proceed to "Library Preparation" (page 6)
+                    return false;
+                }
+                if (notebookTitle.contains("pharmaceutical")) {
+                    // In Pharmaceuticals, order 5 is "Storage & Inventory Management", but it's
+                    // NOT a final storage page
+                    // Samples should proceed to "Reporting & Performance Monitoring" (page 6)
                     return false;
                 }
             }
