@@ -325,17 +325,6 @@ function OEHeader({
     return result;
   };
 
-  const navigateToFirstChild = (item) => {
-    const first = item.childMenus.find((c) => c.menu.actionURL);
-    if (first?.menu.actionURL) {
-      if (first.menu.openInNewWindow) {
-        window.open(first.menu.actionURL);
-      } else {
-        history.push(first.menu.actionURL);
-      }
-    }
-  };
-
   /**
    * Check if a menu item has siblings with paths that start with its own path.
    * This helps avoid prefix matching conflicts (e.g., /analyzers matching /analyzers/errors).
@@ -492,9 +481,6 @@ function OEHeader({
             isActive={carbonIsActive}
             onToggle={(expanded) => {
               setMenuItemExpanded(menuItem, path);
-              if (expanded) {
-                navigateToFirstChild(menuItem);
-              }
             }}
             className={
               level === 0
