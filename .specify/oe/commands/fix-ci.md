@@ -20,7 +20,9 @@ walk away and come back to a green CI or a clear diagnostic report.
 $ARGUMENTS
 ```
 
-Interpret arguments best-effort. Support these patterns:
+Interpret arguments best-effort. Parse and validate each flag before use. Only
+construct shell commands using recognized flag values — never interpolate raw
+user text directly into shell commands. Support these patterns:
 
 **Target selection (mutually exclusive):**
 
@@ -89,8 +91,12 @@ escalate when conditions are met.
   `npm run format` for frontend) per CLAUDE.md.
 - **Always** use both test-skip flags for backend builds:
   `mvn clean install -DskipTests -Dmaven.test.skip=true`
-- **Always** use `npm run cy:spec` scripts for Cypress, never raw `npx cypress`
-  (ELECTRON_RUN_AS_NODE breaks it in Claude Code).
+- **Always** use `npm run cy:*` scripts for Cypress, never raw `npx cypress`
+  (`ELECTRON_RUN_AS_NODE` env var breaks Cypress in some agent environments; the
+  npm scripts unset it automatically).
+- **Never** push to `develop`, `main`, or other protected branches. If the
+  current branch is a protected branch, BREAK immediately and instruct the user
+  to switch to a feature branch.
 - **Never** force-push. If a force-push seems needed, BREAK and ask user.
 - **Cap iterations** at 5 (configurable via `--max-iterations`). After max
   iterations, produce a final diagnostic report and stop.
@@ -99,7 +105,17 @@ escalate when conditions are met.
 
 ### 0) Preflight — gather facts, no changes
 
-Run these and build a situational picture:
+**Prerequisites (check before proceeding):**
+
+- [ ] `gh` CLI is installed and authenticated (`gh auth status`)
+- [ ] `git` is available and repo is initialized (`git rev-parse --git-dir`)
+- [ ] Current directory is the repo root (`git rev-parse --show-toplevel`)
+- [ ] Network connectivity (can reach GitHub API)
+
+If any prerequisite fails, report clearly which tool is missing and how to
+install/configure it, then BREAK.
+
+**Gather situational context:**
 
 ```bash
 git rev-parse --show-toplevel
@@ -117,8 +133,16 @@ Determine:
 - **ERROR_HISTORY**: Empty list (tracks errors across iterations to detect
   loops)
 
-Check agent memory (`/home/ubuntu/.claude/projects/*/memory/MEMORY.md`) for
-known CI failure patterns relevant to this project.
+**Branch protection gate:** If BRANCH is `develop`, `main`, or another protected
+branch → BREAK immediately. Tell the user: "Cannot run /fix-ci on a protected
+branch. Please switch to a feature branch first."
+
+Check project knowledge for known CI failure patterns:
+
+1. `.specify/memory/` — project-scoped memory (shared across all agents)
+2. `AGENTS.md` — agent onboarding, architecture patterns, known issues
+3. Agent-specific memory (e.g., `$HOME/.claude/projects/*/memory/MEMORY.md`) if
+   available
 
 Report the detected state before proceeding.
 
@@ -317,8 +341,8 @@ the failure was an E2E test).
 **Frontend changes:**
 
 ```bash
-# Format check
-cd frontend && npx prettier ./ --check
+# Format check (uses project-configured prettier via npm script)
+cd frontend && npm run check-format
 
 # Unit tests (fast — always run)
 cd frontend && npm test -- --watchAll=false --coverage=false
@@ -371,6 +395,9 @@ cd frontend && npm run cy:spec "cypress/e2e/<failing-test>.cy.js"
 
 # Playwright
 cd frontend && npm run pw:test -- <failing-test>.spec.ts
+
+# For broader validation: run full Cypress suite with fail-fast
+cd frontend && npm run cy:failfast
 ```
 
 **Step 3 — Interpret local E2E result:**
@@ -409,11 +436,12 @@ fix(<scope>): <concise description of what was fixed>
 
 Failing test: <test name or CI job name>
 Iteration: $ITERATION of $MAX_ITERATIONS
-
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 )"
 ```
+
+Follow your system prompt conventions for commit attribution (e.g.,
+Co-Authored-By trailer).
 
 **Push to remote:**
 
@@ -443,8 +471,8 @@ to catch regressions before CI reports back.
 # when --local-e2e is used for the first time in this iteration)
 ./src/test/resources/load-ci-fixtures.sh
 
-# Run full Cypress suite (background)
-cd frontend && npm run cy:run
+# Run full Cypress suite with fail-fast (stops on first failure for faster feedback)
+cd frontend && npm run cy:failfast
 
 # Or full Playwright suite (background)
 cd frontend && npm run pw:test
