@@ -113,6 +113,8 @@ jobs:
           E2E_FAIL_FAST: "false"  # Temporarily disabled to see all failures at once
           CYPRESS_FAIL_FAST_ENABLED: "false"  # Direct override for cypress-fail-fast plugin
           CYPRESS_BASE_URL: https://localhost  # Use localhost in CI (containers run locally)
+          LC_ALL: en_US.UTF-8  # Fix locale so date formats are deterministic (MM/DD/YYYY)
+          LANG: en_US.UTF-8
 
       # Upload Cypress screenshots on failure for debugging
       - name: Upload Cypress screenshots on failure
