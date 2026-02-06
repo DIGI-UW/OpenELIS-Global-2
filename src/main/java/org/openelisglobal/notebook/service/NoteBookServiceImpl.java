@@ -94,6 +94,9 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     @Autowired
     private org.openelisglobal.inventory.service.InventoryItemService inventoryItemService;
 
+    @Autowired
+    private NotebookAuditService notebookAuditService;
+
     public NoteBookServiceImpl() {
         super(NoteBook.class);
         this.auditTrailLog = true;
@@ -2032,5 +2035,74 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         // Save the changes
         update(notebook);
+    }
+
+    @Override
+    @Transactional
+    public Integer insert(NoteBook notebook) {
+        Integer id = super.insert(notebook);
+        try {
+            String sysUserId = notebook.getSysUserId();
+            if (sysUserId == null || sysUserId.isEmpty()) {
+                LogEvent.logDebug("NoteBookService", "insert",
+                        "sysUserId is null, audit log will be created without user info");
+            }
+            notebookAuditService.saveAuditLog(notebook, "notebook", "I", sysUserId);
+        } catch (Exception e) {
+            LogEvent.logWarn("NoteBookService", "insert", "Failed to save notebook audit log: " + e.getMessage());
+        }
+        return id;
+    }
+
+    @Override
+    @Transactional
+    public NoteBook save(NoteBook notebook) {
+        boolean isNew = notebook.getId() == null;
+        NoteBook saved = super.save(notebook);
+        try {
+            String activity = isNew ? "I" : "U";
+            String sysUserId = saved.getSysUserId();
+            if (sysUserId == null || sysUserId.isEmpty()) {
+                LogEvent.logDebug("NoteBookService", "save",
+                        "sysUserId is null, audit log will be created without user info");
+            }
+            notebookAuditService.saveAuditLog(saved, "notebook", activity, sysUserId);
+        } catch (Exception e) {
+            LogEvent.logWarn("NoteBookService", "save", "Failed to save notebook audit log: " + e.getMessage());
+        }
+        return saved;
+    }
+
+    @Override
+    @Transactional
+    public NoteBook update(NoteBook notebook) {
+        NoteBook updated = super.update(notebook);
+        try {
+            String sysUserId = updated.getSysUserId();
+            if (sysUserId == null || sysUserId.isEmpty()) {
+                LogEvent.logDebug("NoteBookService", "update",
+                        "sysUserId is null, audit log will be created without user info");
+            }
+            notebookAuditService.saveAuditLog(updated, "notebook", "U", sysUserId);
+        } catch (Exception e) {
+            LogEvent.logWarn("NoteBookService", "update", "Failed to save notebook audit log: " + e.getMessage());
+        }
+        return updated;
+    }
+
+    @Override
+    @Transactional
+    public void delete(NoteBook notebook) {
+        try {
+            String sysUserId = notebook.getSysUserId();
+            if (sysUserId == null || sysUserId.isEmpty()) {
+                LogEvent.logDebug("NoteBookService", "delete",
+                        "sysUserId is null, audit log will be created without user info");
+            }
+            notebookAuditService.saveAuditLog(notebook, "notebook", "D", sysUserId);
+        } catch (Exception e) {
+            LogEvent.logWarn("NoteBookService", "delete", "Failed to save notebook audit log: " + e.getMessage());
+        }
+        super.delete(notebook);
     }
 }

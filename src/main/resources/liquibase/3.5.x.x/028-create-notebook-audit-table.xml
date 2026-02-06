@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="notebook-audit-001-create-audit-log-table" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_audit" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create immutable audit log table for notebook feature operations</comment>
+
+        <createTable tableName="notebook_audit" schemaName="clinlims">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <!-- Core Audit Fields (matching history table pattern) -->
+            <column name="reference_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference_table" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="timestamp" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="activity" type="CHAR(1)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Activity type: 'I' (Insert), 'U' (Update), 'D' (Delete) -->
+
+            <!-- Denormalized fields for fast queries -->
+            <column name="entity_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- NOTEBOOK, NOTEBOOK_ENTRY, NOTEBOOK_PAGE_SAMPLE, NOTEBOOK_PAGE,
+                 NOTEBOOK_COMMENT, NOTEBOOK_ENTRY_COMMENT, NOTEBOOK_FILE -->
+
+            <column name="entity_title" type="VARCHAR(500)"/>
+            <column name="status_old" type="VARCHAR(50)"/>
+            <column name="status_new" type="VARCHAR(50)"/>
+            <column name="performed_by_user" type="VARCHAR(255)"/>
+
+            <!-- Full change details (XML from AuditTrailService) -->
+            <column name="changes_xml" type="TEXT"/>
+
+            <column name="created_at" type="TIMESTAMP"/>
+
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <addDefaultValue tableName="notebook_audit"
+                        columnName="created_at"
+                        defaultValueComputed="CURRENT_TIMESTAMP"
+                        schemaName="clinlims"/>
+
+        <addDefaultValue tableName="notebook_audit"
+                        columnName="last_updated"
+                        defaultValueComputed="CURRENT_TIMESTAMP"
+                        schemaName="clinlims"/>
+    </changeSet>
+
+    <changeSet id="notebook-audit-002-create-sequence" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="notebook_audit_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sequence for notebook_audit primary keys</comment>
+
+        <createSequence sequenceName="notebook_audit_seq"
+                       schemaName="clinlims"
+                       startValue="1"
+                       incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="notebook-audit-003-create-indexes" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_audit" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Create indexes for efficient querying of audit logs</comment>
+
+        <!-- Reference lookup (composite) -->
+        <createIndex indexName="idx_notebook_audit_ref"
+                    tableName="notebook_audit"
+                    schemaName="clinlims">
+            <column name="reference_id"/>
+            <column name="reference_table"/>
+        </createIndex>
+
+        <!-- Entity type filtering -->
+        <createIndex indexName="idx_notebook_audit_entity"
+                    tableName="notebook_audit"
+                    schemaName="clinlims">
+            <column name="entity_type"/>
+            <column name="timestamp"/>
+        </createIndex>
+
+        <!-- Time-based queries -->
+        <createIndex indexName="idx_notebook_audit_timestamp"
+                    tableName="notebook_audit"
+                    schemaName="clinlims">
+            <column name="timestamp"/>
+        </createIndex>
+
+        <!-- Activity type queries -->
+        <createIndex indexName="idx_notebook_audit_activity"
+                    tableName="notebook_audit"
+                    schemaName="clinlims">
+            <column name="activity"/>
+        </createIndex>
+
+        <!-- Composite index for entity audit trail -->
+        <createIndex indexName="idx_notebook_audit_entity_timeline"
+                    tableName="notebook_audit"
+                    schemaName="clinlims">
+            <column name="entity_type"/>
+            <column name="reference_id"/>
+            <column name="timestamp"/>
+        </createIndex>
+
+        <!-- Status change queries -->
+        <createIndex indexName="idx_notebook_audit_status"
+                    tableName="notebook_audit"
+                    schemaName="clinlims">
+            <column name="status_new"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Note: FK constraint to system_user is omitted due to History table's custom type converter
+         (LIMSStringNumberUserType) which maps String to NUMERIC. Pure JPA doesn't support this pattern
+         easily, so we maintain referential integrity at application level instead. -->
+
+
+    <changeSet id="notebook-audit-005-add-table-comments" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_audit" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add table and column comments for documentation</comment>
+
+        <sql>
+            COMMENT ON TABLE clinlims.notebook_audit IS
+            'Immutable audit trail for all notebook feature operations.
+            Records all changes to NoteBook, NotebookEntry, NotebookPageSample, NoteBookPage,
+            NoteBookComment, NotebookEntryComment, and NoteBookFile entities.
+            Pattern: Insert-only, never UPDATE or DELETE (enforced by trigger).';
+        </sql>
+
+        <sql>
+            COMMENT ON COLUMN clinlims.notebook_audit.activity IS
+            'Activity type: I=Insert (create), U=Update (modify), D=Delete (remove)';
+        </sql>
+
+        <sql>
+            COMMENT ON COLUMN clinlims.notebook_audit.entity_type IS
+            'Type of notebook entity. Values: NOTEBOOK, NOTEBOOK_ENTRY, NOTEBOOK_PAGE_SAMPLE,
+            NOTEBOOK_PAGE, NOTEBOOK_COMMENT, NOTEBOOK_ENTRY_COMMENT, NOTEBOOK_FILE';
+        </sql>
+
+        <sql>
+            COMMENT ON COLUMN clinlims.notebook_audit.changes_xml IS
+            'XML representation of field changes in format:
+            &lt;field name="fieldName"&gt;&lt;old&gt;oldValue&lt;/old&gt;&lt;new&gt;newValue&lt;/new&gt;&lt;/field&gt;';
+        </sql>
+
+        <sql>
+            COMMENT ON COLUMN clinlims.notebook_audit.status_old IS
+            'Previous status value (denormalized for quick status change queries)';
+        </sql>
+
+        <sql>
+            COMMENT ON COLUMN clinlims.notebook_audit.status_new IS
+            'New status value (denormalized for quick status change queries)';
+        </sql>
+
+        <sql>
+            COMMENT ON COLUMN clinlims.notebook_audit.performed_by_user IS
+            'Cached username for display (avoids JOIN to system_user table for basic queries)';
+        </sql>
+    </changeSet>
+
+    <changeSet id="notebook-audit-006-add-immutability-trigger" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_audit" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Create trigger to enforce immutability (prevent UPDATE/DELETE)</comment>
+
+        <sql splitStatements="false">
+            CREATE OR REPLACE FUNCTION clinlims.prevent_notebook_audit_modification()
+            RETURNS TRIGGER AS $BODY$
+            BEGIN
+                IF (TG_OP = 'UPDATE' OR TG_OP = 'DELETE') THEN
+                    RAISE EXCEPTION 'Audit logs are immutable and cannot be modified or deleted';
+                END IF;
+                RETURN NEW;
+            END;
+            $BODY$ LANGUAGE plpgsql;
+        </sql>
+
+        <sql>
+            CREATE TRIGGER notebook_audit_immutability_check
+            BEFORE UPDATE OR DELETE ON clinlims.notebook_audit
+            FOR EACH ROW EXECUTE FUNCTION clinlims.prevent_notebook_audit_modification();
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

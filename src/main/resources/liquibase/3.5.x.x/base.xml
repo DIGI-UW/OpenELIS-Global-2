@@ -70,4 +70,14 @@
     <!-- M11: QC inspection for stored samples -->
     <include file="liquibase/3.5.x.x/027-create-qc-inspection-table.xml"/>
 
+    <!-- ======================================================== -->
+    <!-- Notebook Audit Log System -->
+    <!-- Dedicated audit trail for notebook feature entities -->
+    <!-- ======================================================== -->
+
+    <!-- M12: Create notebook_audit table for dedicated notebook audit logging -->
+    <include file="liquibase/3.5.x.x/028-create-notebook-audit-table.xml"/>
+
+    <!-- M13: Backfill historical data from history table to notebook_audit -->
+
 </databaseChangeLog>

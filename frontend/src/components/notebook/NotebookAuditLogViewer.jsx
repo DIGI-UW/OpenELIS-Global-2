@@ -18,9 +18,14 @@ import {
   Grid,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { NotebookAuditLogAPI } from "./NotebookService";
-import "../inventory/AuditLogViewer.css";
+import NotebookAuditLogAPI from "./NotebookAuditLogAPI";
 
+/**
+ * Notebook Audit Log Viewer Component
+ *
+ * Displays audit trail for notebook entities (NoteBook, NotebookEntry, etc.)
+ * with expandable rows showing field-level changes.
+ */
 const NotebookAuditLogViewer = ({ entityType, entityId }) => {
   const intl = useIntl();
   const [auditLogs, setAuditLogs] = useState([]);
@@ -28,41 +33,95 @@ const NotebookAuditLogViewer = ({ entityType, entityId }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    console.log(
+      "NotebookAuditLogViewer: entityType=",
+      entityType,
+      "entityId=",
+      entityId,
+    );
     if (entityType && entityId) {
       fetchAuditLogs();
+    } else {
+      setLoading(false);
+      if (!entityId) {
+        console.warn("NotebookAuditLogViewer: entityId is null or undefined");
+      }
     }
   }, [entityType, entityId]);
 
-  const fetchAuditLogs = async () => {
+  const fetchAuditLogs = () => {
     setLoading(true);
     setError(null);
 
+    console.log(
+      "Fetching audit logs for entityType:",
+      entityType,
+      "entityId:",
+      entityId,
+    );
+
+    const handleSuccess = (data) => {
+      console.log("Audit logs fetched:", data);
+      // Ensure data is an array and filter out any null/undefined entries
+      if (Array.isArray(data)) {
+        setAuditLogs(data.filter((log) => log != null));
+      } else if (data && data.error) {
+        // Handle error response from server
+        setError(data.error || "Failed to load audit logs");
+        setAuditLogs([]);
+      } else {
+        // Fallback to empty array
+        setAuditLogs([]);
+      }
+      setLoading(false);
+    };
+
+    const handleError = (err) => {
+      console.error("Error fetching audit logs:", err);
+      setError(err?.message || "Failed to load audit logs");
+      setLoading(false);
+    };
+
     try {
-      let logs;
-      if (entityType === "NOTEBOOK") {
-        logs = await NotebookAuditLogAPI.getNotebookAuditTrail(entityId);
-      } else if (entityType === "INSTANCE") {
-        logs = await NotebookAuditLogAPI.getInstanceAuditTrail(entityId);
+      if (entityType === "NOTEBOOK" || entityType === "INSTANCE") {
+        NotebookAuditLogAPI.getNotebookAuditTrail(entityId, handleSuccess);
+      } else if (entityType === "ENTRY") {
+        NotebookAuditLogAPI.getEntryAuditTrail(entityId, handleSuccess);
+      } else if (entityType === "PAGE_SAMPLE") {
+        NotebookAuditLogAPI.getPageSampleAuditTrail(entityId, handleSuccess);
       } else {
         console.error("Unknown entity type:", entityType);
         setError("Unsupported entity type: " + entityType);
         setLoading(false);
-        return;
       }
-      setAuditLogs(logs || []);
     } catch (err) {
-      console.error("Error fetching audit logs:", err);
-      setError(err.message || "Failed to load audit logs");
-    } finally {
-      setLoading(false);
+      handleError(err);
     }
   };
 
   const getActivityTag = (activity) => {
     const tagMap = {
-      INSERT: { type: "green", label: "Created" },
-      UPDATE: { type: "blue", label: "Updated" },
-      DELETE: { type: "red", label: "Deleted" },
+      INSERT: {
+        type: "green",
+        label: intl.formatMessage({
+          id: "notebook.audit.activity.INSERT",
+          defaultMessage: "Created",
+        }),
+      },
+      UPDATE: {
+        type: "blue",
+        label: intl.formatMessage({
+          id: "notebook.audit.activity.UPDATE",
+          defaultMessage: "Updated",
+        }),
+      },
+      DELETE: {
+        type: "red",
+        label: intl.formatMessage({
+          id: "notebook.audit.activity.DELETE",
+          defaultMessage: "Deleted",
+        }),
+      },
     };
 
     const config = tagMap[activity] || {
@@ -72,29 +131,30 @@ const NotebookAuditLogViewer = ({ entityType, entityId }) => {
     return <Tag type={config.type}>{config.label}</Tag>;
   };
 
+  const getStatusChangeTag = (log) => {
+    if (log.statusOld && log.statusNew && log.statusOld !== log.statusNew) {
+      return (
+        <span>
+          <Tag type="gray" size="sm">
+            {log.statusOld}
+          </Tag>
+          {" → "}
+          <Tag type="cyan" size="sm">
+            {log.statusNew}
+          </Tag>
+        </span>
+      );
+    }
+    return null;
+  };
+
   const formatTimestamp = (timestamp) => {
     try {
       const date = new Date(timestamp);
-      return date.toLocaleString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      });
+      return date.toLocaleString();
     } catch (e) {
       return timestamp;
     }
-  };
-
-  const formatFieldName = (fieldName) => {
-    // Convert camelCase or snake_case to Title Case
-    return fieldName
-      .replace(/([A-Z])/g, " $1")
-      .replace(/_/g, " ")
-      .replace(/^./, (str) => str.toUpperCase())
-      .trim();
   };
 
   const renderChanges = (log) => {
@@ -104,7 +164,7 @@ const NotebookAuditLogViewer = ({ entityType, entityId }) => {
       return (
         <p>
           <FormattedMessage
-            id="audit.changes.none"
+            id="notebook.audit.noChanges"
             defaultMessage="No field changes recorded"
           />
         </p>
@@ -118,19 +178,19 @@ const NotebookAuditLogViewer = ({ entityType, entityId }) => {
             <tr>
               <th>
                 <FormattedMessage
-                  id="audit.changes.field"
+                  id="notebook.audit.field"
                   defaultMessage="Field"
                 />
               </th>
               <th>
                 <FormattedMessage
-                  id="audit.changes.old"
+                  id="notebook.audit.oldValue"
                   defaultMessage="Old Value"
                 />
               </th>
               <th>
                 <FormattedMessage
-                  id="audit.changes.new"
+                  id="notebook.audit.newValue"
                   defaultMessage="New Value"
                 />
               </th>
@@ -140,10 +200,10 @@ const NotebookAuditLogViewer = ({ entityType, entityId }) => {
             {Object.entries(changes).map(([field, values]) => (
               <tr key={field}>
                 <td>
-                  <strong>{formatFieldName(field)}</strong>
+                  <strong>{field}</strong>
                 </td>
-                <td className="old-value">{values.old || <em>—</em>}</td>
-                <td className="new-value">{values.new || <em>—</em>}</td>
+                <td>{values.old || <em>—</em>}</td>
+                <td>{values.new || <em>—</em>}</td>
               </tr>
             ))}
           </tbody>
@@ -156,168 +216,211 @@ const NotebookAuditLogViewer = ({ entityType, entityId }) => {
     {
       key: "timestamp",
       header: intl.formatMessage({
-        id: "notebook.auditTrail.timestamp",
+        id: "notebook.audit.timestamp",
         defaultMessage: "Timestamp",
       }),
     },
     {
       key: "activity",
       header: intl.formatMessage({
-        id: "notebook.auditTrail.activity",
+        id: "notebook.audit.activity",
         defaultMessage: "Activity",
       }),
     },
     {
       key: "performedByUser",
       header: intl.formatMessage({
-        id: "notebook.auditTrail.user",
+        id: "notebook.audit.user",
         defaultMessage: "User",
       }),
     },
     {
       key: "summary",
       header: intl.formatMessage({
-        id: "notebook.auditTrail.summary",
+        id: "notebook.audit.summary",
         defaultMessage: "Summary",
       }),
     },
   ];
 
-  const rows = auditLogs.map((log, index) => ({
-    id: `${log.id}-${index}`,
-    timestamp: formatTimestamp(log.timestamp),
-    activity: log.activity,
-    performedByUser: log.performedByUser,
-    summary: log.summary || "—",
-    _log: log, // Store full log for expanded row
-  }));
+  // Create a lookup map for original logs by ID
+  const logLookup = {};
+  const rows = auditLogs
+    .filter((log) => log != null) // Filter out null/undefined entries
+    .map((log, index) => {
+      const rowId = log.id || `log-${index}`;
+      logLookup[rowId] = log; // Store original log for later lookup
+      return {
+        id: rowId,
+        timestamp: formatTimestamp(log.timestamp),
+        activity: log.activityDisplay || log.activity,
+        activityRaw: log.activityDisplay || log.activity || "Unknown", // Store for tag rendering
+        performedByUser: log.performedByUser || "Unknown",
+        summary: log.summary || "No summary available",
+        statusChange: getStatusChangeTag(log),
+        _originalLog: log,
+      };
+    });
 
   if (loading) {
     return (
-      <Column lg={16} md={8} sm={4}>
-        <div className="loading-container">
+      <Grid fullWidth={true} className="gridBoundary">
+        <Column lg={16} md={8} sm={4}>
           <SkeletonText paragraph lineCount={5} />
-        </div>
-      </Column>
+        </Column>
+      </Grid>
     );
   }
 
   if (error) {
     return (
-      <Column lg={16} md={8} sm={4}>
-        <InlineNotification
-          kind="error"
-          title={intl.formatMessage({
-            id: "notebook.auditTrail.error.title",
-            defaultMessage: "Error Loading Audit Logs",
-          })}
-          subtitle={error}
-          lowContrast
-        />
-      </Column>
+      <Grid fullWidth={true} className="gridBoundary">
+        <Column lg={16} md={8} sm={4}>
+          <InlineNotification
+            kind="error"
+            title={intl.formatMessage({
+              id: "notebook.audit.error.title",
+              defaultMessage: "Error",
+            })}
+            subtitle={error}
+          />
+        </Column>
+      </Grid>
     );
   }
 
-  if (auditLogs.length === 0) {
+  // If no entityId, show message that entity must be saved first
+  if (!entityId) {
     return (
-      <Column lg={16} md={8} sm={4}>
-        <InlineNotification
-          kind="info"
-          title={intl.formatMessage({
-            id: "notebook.auditTrail.empty.title",
-            defaultMessage: "No Audit Logs",
-          })}
-          subtitle={intl.formatMessage({
-            id: "notebook.auditTrail.empty.message",
-            defaultMessage:
-              "No audit trail found for this entry. Changes will be recorded here once you start editing.",
-          })}
-          lowContrast
-        />
-      </Column>
+      <Grid fullWidth={true} className="gridBoundary">
+        <Column lg={16} md={8} sm={4}>
+          <InlineNotification
+            kind="info"
+            title={intl.formatMessage({
+              id: "notebook.audit.notSaved.title",
+              defaultMessage: "Not Saved Yet",
+            })}
+            subtitle={intl.formatMessage({
+              id: "notebook.audit.notSaved.subtitle",
+              defaultMessage:
+                "Save this notebook entry first to view its audit trail.",
+            })}
+            hideCloseButton
+          />
+        </Column>
+      </Grid>
+    );
+  }
+
+  if (auditLogs.length === 0 && !loading) {
+    return (
+      <Grid fullWidth={true} className="gridBoundary">
+        <Column lg={16} md={8} sm={4}>
+          <InlineNotification
+            kind="info"
+            title={intl.formatMessage({
+              id: "notebook.audit.empty.title",
+              defaultMessage: "No Audit Logs",
+            })}
+            subtitle={intl.formatMessage({
+              id: "notebook.audit.empty.subtitle",
+              defaultMessage:
+                "No audit trail found for this entry. Changes will be recorded here once you start editing.",
+            })}
+            hideCloseButton
+          />
+        </Column>
+      </Grid>
     );
   }
 
   return (
-    <Column lg={16} md={8} sm={4}>
-      <Grid fullWidth={true} className="gridBoundary">
-        <Column lg={16} md={8} sm={4}>
-          <h5>
-            <FormattedMessage id="notebook.auditTrail.title" />
-          </h5>
-        </Column>
-        <Column lg={16} md={8} sm={4}>
-          <DataTable rows={rows} headers={headers}>
-            {({
-              rows,
-              headers,
-              getHeaderProps,
-              getRowProps,
-              getTableProps,
-              getTableContainerProps,
-            }) => (
-              <TableContainer
-                title=""
-                description=""
-                {...getTableContainerProps()}
-              >
-                <Table {...getTableProps()}>
-                  <TableHead>
-                    <TableRow>
-                      <TableExpandHeader />
-                      {headers.map((header) => (
-                        <TableHeader
-                          key={header.key}
-                          {...getHeaderProps({ header })}
-                        >
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {rows.map((row, rowIndex) => {
-                      const log = auditLogs[rowIndex];
-                      return (
-                        <React.Fragment key={row.id}>
-                          <TableExpandRow {...getRowProps({ row })}>
-                            {row.cells.map((cell) => {
-                              if (cell.info.header === "activity") {
-                                return (
-                                  <TableCell key={cell.id}>
-                                    {getActivityTag(cell.value)}
-                                  </TableCell>
-                                );
-                              }
-                              return (
-                                <TableCell key={cell.id}>
-                                  {cell.value}
-                                </TableCell>
-                              );
-                            })}
-                          </TableExpandRow>
-                          <TableExpandedRow colSpan={headers.length + 1}>
-                            <div className="expanded-audit-details">
-                              <h5>
-                                <FormattedMessage
-                                  id="notebook.auditTrail.details.changes"
-                                  defaultMessage="Field Changes"
-                                />
-                              </h5>
-                              {renderChanges(log)}
-                            </div>
-                          </TableExpandedRow>
-                        </React.Fragment>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </DataTable>
-        </Column>
-      </Grid>
-    </Column>
+    <Grid fullWidth={true} className="gridBoundary">
+      <Column lg={16} md={8} sm={4}>
+        <DataTable rows={rows} headers={headers}>
+          {({
+            rows,
+            headers,
+            getHeaderProps,
+            getRowProps,
+            getTableProps,
+            getTableContainerProps,
+          }) => (
+            <TableContainer
+              {...getTableContainerProps()}
+              title={intl.formatMessage({
+                id: "notebook.audit.title",
+                defaultMessage: "Audit Trail",
+              })}
+              description={intl.formatMessage({
+                id: "notebook.audit.description",
+                defaultMessage:
+                  "Complete history of changes made to this notebook",
+              })}
+            >
+              <Table {...getTableProps()}>
+                <TableHead>
+                  <TableRow>
+                    <TableExpandHeader />
+                    {headers.map((header) => (
+                      <TableHeader
+                        key={header.key}
+                        {...getHeaderProps({ header })}
+                      >
+                        {header.header}
+                      </TableHeader>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {rows.map((row) => (
+                    <React.Fragment key={row.id}>
+                      <TableExpandRow {...getRowProps({ row })}>
+                        {row.cells.map((cell) => {
+                          if (cell.info.header === "activity") {
+                            // Use cell.value which contains the activity from the row data
+                            const originalLog = logLookup[row.id];
+                            const activityValue =
+                              cell.value ||
+                              originalLog?.activityDisplay ||
+                              "Unknown";
+                            return (
+                              <TableCell key={cell.id}>
+                                {getActivityTag(activityValue)}
+                                {row.statusChange && (
+                                  <div style={{ marginTop: "0.5rem" }}>
+                                    {row.statusChange}
+                                  </div>
+                                )}
+                              </TableCell>
+                            );
+                          }
+                          return (
+                            <TableCell key={cell.id}>{cell.value}</TableCell>
+                          );
+                        })}
+                      </TableExpandRow>
+                      <TableExpandedRow colSpan={headers.length + 1}>
+                        {logLookup[row.id] ? (
+                          renderChanges(logLookup[row.id])
+                        ) : (
+                          <p>
+                            <FormattedMessage
+                              id="notebook.audit.noData"
+                              defaultMessage="No data available"
+                            />
+                          </p>
+                        )}
+                      </TableExpandedRow>
+                    </React.Fragment>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DataTable>
+      </Column>
+    </Grid>
   );
 };
 

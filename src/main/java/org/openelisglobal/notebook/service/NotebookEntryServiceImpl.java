@@ -42,6 +42,9 @@ public class NotebookEntryServiceImpl extends AuditableBaseObjectServiceImpl<Not
     @Autowired
     private NotebookPageSampleService notebookPageSampleService;
 
+    @Autowired
+    private NotebookAuditService notebookAuditService;
+
     public NotebookEntryServiceImpl() {
         super(NotebookEntry.class);
     }
@@ -413,5 +416,56 @@ public class NotebookEntryServiceImpl extends AuditableBaseObjectServiceImpl<Not
         }
 
         return false;
+    }
+
+    // ==================== Notebook Audit Logging Integration ====================
+
+    @Override
+    @Transactional
+    public Integer insert(NotebookEntry entry) {
+        Integer id = super.insert(entry);
+        try {
+            notebookAuditService.saveAuditLog(entry, "notebook_entry", "I", entry.getSysUserId());
+        } catch (Exception e) {
+            LogEvent.logWarn("NotebookEntryService", "insert", "Failed to save audit log: " + e.getMessage());
+        }
+        return id;
+    }
+
+    @Override
+    @Transactional
+    public NotebookEntry save(NotebookEntry entry) {
+        boolean isNew = entry.getId() == null;
+        NotebookEntry saved = super.save(entry);
+        try {
+            String activity = isNew ? "I" : "U";
+            notebookAuditService.saveAuditLog(saved, "notebook_entry", activity, saved.getSysUserId());
+        } catch (Exception e) {
+            LogEvent.logWarn("NotebookEntryService", "save", "Failed to save audit log: " + e.getMessage());
+        }
+        return saved;
+    }
+
+    @Override
+    @Transactional
+    public NotebookEntry update(NotebookEntry entry) {
+        NotebookEntry updated = super.update(entry);
+        try {
+            notebookAuditService.saveAuditLog(updated, "notebook_entry", "U", updated.getSysUserId());
+        } catch (Exception e) {
+            LogEvent.logWarn("NotebookEntryService", "update", "Failed to save audit log: " + e.getMessage());
+        }
+        return updated;
+    }
+
+    @Override
+    @Transactional
+    public void delete(NotebookEntry entry) {
+        try {
+            notebookAuditService.saveAuditLog(entry, "notebook_entry", "D", entry.getSysUserId());
+        } catch (Exception e) {
+            LogEvent.logWarn("NotebookEntryService", "delete", "Failed to save audit log: " + e.getMessage());
+        }
+        super.delete(entry);
     }
 }

@@ -68,7 +68,6 @@ import {
 } from "../utils/Utils";
 import { Add, Json } from "@carbon/icons-react";
 import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
-import NotebookAuditLogViewer from "./NotebookAuditLogViewer";
 
 const NoteBookEntryForm = () => {
   let breadcrumbs = [
@@ -1713,12 +1712,6 @@ const NoteBookEntryForm = () => {
               </Column>
             </Grid>
           </Column>
-        )}
-        {selectedTab === TABS.AUDIT_TRAIL && (
-          <NotebookAuditLogViewer
-            entityType="NOTEBOOK"
-            entityId={noteBookData.id}
-          />
         )}
       </Grid>
       <Modal
