@@ -109,8 +109,9 @@ jobs:
         working-directory: frontend
         env:
           CI: true
-          TEST_USER: admin
-          TEST_PASS: adminADMIN!
+          # Use vars/secrets when configured; defaults allow workflow to run out of the box
+          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ secrets.TEST_PASS || 'adminADMIN!' }}
 
       - name: Upload Playwright report on failure
         if: failure()
@@ -175,6 +176,9 @@ jobs:
           CYPRESS_BASE_URL: https://localhost
           LC_ALL: en_US.UTF-8  # Fix locale so date formats are deterministic (MM/DD/YYYY)
           LANG: en_US.UTF-8
+          # Use vars/secrets when configured; defaults allow workflow to run out of the box
+          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ secrets.TEST_PASS || 'adminADMIN!' }}
 
       - name: Upload Cypress screenshots on failure
         if: failure()

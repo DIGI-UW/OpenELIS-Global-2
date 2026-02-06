@@ -23,11 +23,6 @@
  * - Development: npm run cy:single "cypress/e2e/analyzerModals.cy.js"
  */
 
-const auth = () => ({
-  username: Cypress.env("USERNAME"),
-  password: Cypress.env("PASSWORD"),
-});
-
 let testAnalyzerId = null;
 
 describe("Analyzer Modals - Open/Close", () => {
@@ -41,7 +36,7 @@ describe("Analyzer Modals - Open/Close", () => {
       cy.request({
         method: "GET",
         url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-        auth: auth(),
+        auth: Cypress.getBasicAuth(),
         failOnStatusCode: false,
       });
     });
@@ -50,7 +45,7 @@ describe("Analyzer Modals - Open/Close", () => {
     cy.request({
       method: "POST",
       url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-      auth: auth(),
+      auth: Cypress.getBasicAuth(),
       body: {
         name: "TEST-Modal-E2E",
         analyzerType: "HEMATOLOGY",
@@ -72,7 +67,7 @@ describe("Analyzer Modals - Open/Close", () => {
       cy.request({
         method: "DELETE",
         url: `/api/OpenELIS-Global/rest/analyzer/analyzers/${testAnalyzerId}`,
-        auth: auth(),
+        auth: Cypress.getBasicAuth(),
         failOnStatusCode: false,
       });
     }
@@ -84,7 +79,7 @@ describe("Analyzer Modals - Open/Close", () => {
   });
 
   it("should open and close Add Analyzer modal", () => {
-    cy.visit("/analyzers", { auth: auth() });
+    cy.visit("/analyzers", { auth: Cypress.getBasicAuth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // Click Add Analyzer button
@@ -107,7 +102,7 @@ describe("Analyzer Modals - Open/Close", () => {
   });
 
   it("should open and close Edit Analyzer modal", () => {
-    cy.visit("/analyzers", { auth: auth() });
+    cy.visit("/analyzers", { auth: Cypress.getBasicAuth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // Wait for analyzers table to load
@@ -159,7 +154,7 @@ describe("Analyzer Modals - Open/Close", () => {
   });
 
   it("should open and close Delete Analyzer modal", () => {
-    cy.visit("/analyzers", { auth: auth() });
+    cy.visit("/analyzers", { auth: Cypress.getBasicAuth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // Find analyzer row and click overflow menu
@@ -206,7 +201,7 @@ describe("Analyzer Modals - Open/Close", () => {
   });
 
   it("should open and close Test Connection modal", () => {
-    cy.visit("/analyzers", { auth: auth() });
+    cy.visit("/analyzers", { auth: Cypress.getBasicAuth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // Find analyzer row and click overflow menu
@@ -256,7 +251,7 @@ describe("Analyzer Modals - Open/Close", () => {
   });
 
   it("should open and close Copy Mappings modal", () => {
-    cy.visit("/analyzers", { auth: auth() });
+    cy.visit("/analyzers", { auth: Cypress.getBasicAuth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // Find analyzer row and click overflow menu
@@ -303,7 +298,7 @@ describe("Analyzer Modals - Open/Close", () => {
   });
 
   it("should navigate to Field Mappings page and verify Test Mapping modal", () => {
-    cy.visit("/analyzers", { auth: auth() });
+    cy.visit("/analyzers", { auth: Cypress.getBasicAuth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // Navigate to field mappings via analyzer row
@@ -345,7 +340,7 @@ describe("Analyzer Modals - Open/Close", () => {
   });
 
   it("should open and close Error Details modal from Error Dashboard", () => {
-    cy.visit("/analyzers/errors", { auth: auth() });
+    cy.visit("/analyzers/errors", { auth: Cypress.getBasicAuth() });
     cy.get('[data-testid="error-dashboard"]').should("be.visible");
 
     // Check if there are any error rows in the table

@@ -61,6 +61,24 @@ function detectBaseUrl() {
   return "https://localhost";
 }
 
+// E2E credentials: in CI require env vars (fail fast); locally allow fallbacks
+const isCI = process.env.CI === "true";
+let cypressUsername, cypressPassword;
+if (isCI) {
+  cypressUsername = process.env.CYPRESS_USERNAME || process.env.TEST_USER;
+  cypressPassword = process.env.CYPRESS_PASSWORD || process.env.TEST_PASS;
+  if (!cypressUsername || !cypressPassword) {
+    throw new Error(
+      "In CI, CYPRESS_USERNAME/CYPRESS_PASSWORD or TEST_USER/TEST_PASS must be set for E2E tests.",
+    );
+  }
+} else {
+  cypressUsername =
+    process.env.CYPRESS_USERNAME || process.env.TEST_USER || "admin";
+  cypressPassword =
+    process.env.CYPRESS_PASSWORD || process.env.TEST_PASS || "adminADMIN!";
+}
+
 module.exports = defineConfig({
   defaultCommandTimeout: 3000, // 3 seconds - use Cypress retry-ability instead of long timeouts
   pageLoadTimeout: 180000, // 3 minutes - analyzer mappings page loads 3.4MB bundle.js (takes >2min in CI)
@@ -72,11 +90,9 @@ module.exports = defineConfig({
   // Stop on first spec failure when E2E_FAIL_FAST is set (e.g. in CI)
   bail: process.env.E2E_FAIL_FAST === "true" ? 1 : false,
   env: {
-    // E2E test credentials - use env vars in CI, fallback for local dev
-    // Set CYPRESS_USERNAME/CYPRESS_PASSWORD or TEST_USER/TEST_PASS for CI
-    USERNAME: process.env.CYPRESS_USERNAME || process.env.TEST_USER || "admin",
-    PASSWORD:
-      process.env.CYPRESS_PASSWORD || process.env.TEST_PASS || "adminADMIN!",
+    // E2E test credentials - CI: required via env; local: fallback to admin/adminADMIN!
+    USERNAME: cypressUsername,
+    PASSWORD: cypressPassword,
 
     // Env-controlled fail-fast using cypress-fail-fast plugin
     // Set E2E_FAIL_FAST=true to stop on first failure (saves CI time)
@@ -128,7 +144,16 @@ module.exports = defineConfig({
               const lib = url.startsWith("https")
                 ? require("https")
                 : require("http");
-              const req = lib.get(url, (res) => {
+              const parsed = new URL(url);
+              const isLocalhost = ["localhost", "127.0.0.1"].includes(
+                parsed.hostname,
+              );
+              const opts =
+                url.startsWith("https") && isLocalhost
+                  ? { rejectUnauthorized: false }
+                  : {};
+              const req = lib.get(url, opts, (res) => {
+                res.resume(); // drain response to avoid socket leaks
                 if (typeof res.statusCode === "number") {
                   console.log(
                     `Backend ready: ${path} responded with status ${res.statusCode}`,

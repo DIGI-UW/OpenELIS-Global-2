@@ -20,11 +20,6 @@
  * - Development: npm run cy:single "cypress/e2e/analyzerPagesNavigation.cy.js"
  */
 
-const auth = () => ({
-  username: Cypress.env("USERNAME"),
-  password: Cypress.env("PASSWORD"),
-});
-
 describe("Analyzer Pages Navigation", () => {
   before("Setup authentication", () => {
     // Wait for backend API to be available
@@ -36,7 +31,7 @@ describe("Analyzer Pages Navigation", () => {
       cy.request({
         method: "GET",
         url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-        auth: auth(),
+        auth: Cypress.getBasicAuth(),
         failOnStatusCode: false,
       });
     });
@@ -49,7 +44,7 @@ describe("Analyzer Pages Navigation", () => {
 
   it("should navigate to analyzers list page", () => {
     // Navigate to analyzers list with basic auth (credentials from env, not in URL)
-    cy.visit("/analyzers", { auth: auth() });
+    cy.visit("/analyzers", { auth: Cypress.getBasicAuth() });
 
     // Verify page loaded
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
@@ -58,7 +53,7 @@ describe("Analyzer Pages Navigation", () => {
 
   it("should navigate to error dashboard page", () => {
     // Navigate to error dashboard with basic auth
-    cy.visit("/analyzers/errors", { auth: auth() });
+    cy.visit("/analyzers/errors", { auth: Cypress.getBasicAuth() });
 
     // Verify page loaded
     cy.get('[data-testid="error-dashboard"]').should("be.visible");
@@ -67,7 +62,7 @@ describe("Analyzer Pages Navigation", () => {
 
   it("should navigate to field mappings page via analyzer row", () => {
     // First go to analyzers list with basic auth
-    cy.visit("/analyzers", { auth: auth() });
+    cy.visit("/analyzers", { auth: Cypress.getBasicAuth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
 
     // Check if there are any analyzers in the table

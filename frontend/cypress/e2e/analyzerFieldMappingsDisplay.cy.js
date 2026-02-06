@@ -7,11 +7,6 @@
  * Credentials: Cypress.env('USERNAME') / Cypress.env('PASSWORD')
  */
 
-const auth = () => ({
-  username: Cypress.env("USERNAME"),
-  password: Cypress.env("PASSWORD"),
-});
-
 describe("Analyzer Field Mappings Display", () => {
   before("Setup authentication", () => {
     // Wait for backend API to be available
@@ -23,7 +18,7 @@ describe("Analyzer Field Mappings Display", () => {
       cy.request({
         method: "GET",
         url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
-        auth: auth(),
+        auth: Cypress.getBasicAuth(),
         failOnStatusCode: false,
       });
     });
@@ -35,7 +30,7 @@ describe("Analyzer Field Mappings Display", () => {
 
   it("should open field mappings page and display mappings when available", () => {
     // Navigate to analyzers list with basic auth (credentials from env, not in URL)
-    cy.visit("/analyzers", { auth: auth() });
+    cy.visit("/analyzers", { auth: Cypress.getBasicAuth() });
     cy.get('[data-testid="analyzers-list"]').should("be.visible");
     cy.get('[data-testid="analyzers-table-container"]', {
       timeout: 10000,

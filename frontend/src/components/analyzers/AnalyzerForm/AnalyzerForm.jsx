@@ -90,7 +90,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     setNotification(null);
   }, [analyzer, open]);
 
-  // Clear close timeout on unmount or when modal closes
+  // Clear close timeout on unmount
   useEffect(() => {
     return () => {
       if (closeTimeoutRef.current) {
@@ -99,6 +99,15 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
       }
     };
   }, []);
+
+  // Clear close timeout when modal is closed manually (prevents timer firing after user dismisses)
+  const handleModalClose = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    onClose();
+  };
 
   // Validate IP address format
   const validateIPAddress = (ip) => {
@@ -199,7 +208,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
           kind: "success",
           title: intl.formatMessage({ id: "analyzer.form.success.save" }),
         });
-        // Close modal after short delay; store timer for cleanup on unmount
+        // Close modal after short delay; timer cleared on unmount or when user closes manually
         if (closeTimeoutRef.current) {
           clearTimeout(closeTimeoutRef.current);
         }
@@ -221,7 +230,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     <>
       <ComposedModal
         open={open}
-        onClose={onClose}
+        onClose={handleModalClose}
         data-testid="analyzer-form"
         className="analyzer-form-modal"
       >

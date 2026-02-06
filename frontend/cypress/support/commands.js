@@ -9,6 +9,16 @@
 // ***********************************************
 
 /**
+ * Returns basic auth object for cy.visit/cy.request when using HTTP basic auth.
+ * Credentials from Cypress.env('USERNAME') / Cypress.env('PASSWORD').
+ * Usage: cy.visit('/path', { auth: Cypress.getBasicAuth() })
+ */
+Cypress.getBasicAuth = () => ({
+  username: Cypress.env("USERNAME"),
+  password: Cypress.env("PASSWORD"),
+});
+
+/**
  * Login command with session caching for faster tests
  * Uses cy.session() to cache login state across tests
  * Usage: cy.login("admin", "password")

@@ -19,7 +19,7 @@
 }
 
 .warning-icon {
-  color: var(--cds-support-warning);
+  color: var(--cds-support-warning, #f1c21b);
 }
 
 .warning-messages {
@@ -31,5 +31,5 @@
 .mapping-activation-confirmation {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--cds-border-subtle);
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
 }
