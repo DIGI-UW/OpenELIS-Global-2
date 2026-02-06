@@ -111,6 +111,7 @@ jobs:
         working-directory: frontend
         env:
           E2E_FAIL_FAST: "false"  # Temporarily disabled to see all failures at once
+          CYPRESS_FAIL_FAST_ENABLED: "false"  # Direct override for cypress-fail-fast plugin
           CYPRESS_BASE_URL: https://localhost  # Use localhost in CI (containers run locally)
 
       # Upload Cypress screenshots on failure for debugging
