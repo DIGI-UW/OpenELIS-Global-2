@@ -98,6 +98,7 @@ import org.openelisglobal.patient.action.IPatientUpdate;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
@@ -175,6 +176,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private FhirUtil fhirUtil;
     @Autowired
     private FhirFacilityOrganizationService facilityOrganizationService;
+    @Autowired
+    private PersonService personService;
 
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
@@ -1731,13 +1734,23 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
     @Override
     public Provider transformToProvider(Practitioner practitioner) {
-        Provider provider = new Provider();
+        String idPart = practitioner.getIdPart();
+        Provider provider = providerService.getProviderByFhirId(UUID.fromString(idPart));
+        System.out.println(">>>>>>>>>>>>>>>>>" + idPart);
         provider.setActive(practitioner.getActive());
         provider.setFhirUuid(UUID.fromString(practitioner.getIdElement().getIdPart()));
 
-        provider.setPerson(new Person());
-        addHumanNameToPerson(practitioner.getNameFirstRep(), provider.getPerson());
-        addTelecomToPerson(practitioner.getTelecom(), provider.getPerson());
+        Person person = personService.getPersonByLastName(provider.getPerson().getLastName());
+        addHumanNameToPerson(practitioner.getNameFirstRep(), person);
+        addTelecomToPerson(practitioner.getTelecom(), person);
+        Person savedPerson = personService.save(person);
+
+        provider.setPerson(savedPerson);
+
+        System.out.println(">>>>>>>>>>>>>>>>>" + idPart);
+        System.out.println(">>>>>>>>>>>>>>>>>" + provider.getPerson().getFirstName());
+        System.out.println(">>>>>>>>>>>>>>>>>" + provider.getFhirUuidAsString());
+        System.out.println(">>>>>>>>>>>>>>>>>" + provider.getActive());
 
         return provider;
     }
