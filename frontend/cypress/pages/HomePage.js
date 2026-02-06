@@ -92,19 +92,18 @@ class HomePage {
   }
 
   closeNavigationMenu() {
+    // Pin the sidenav (LOCK state) instead of fully closing it.
+    // LOCK mode pushes content aside so both sidenav items AND page
+    // content remain accessible — unlike SHOW mode which overlays content.
     cy.get(this.selectors.menuButton).then(($btn) => {
       const label = $btn.attr("aria-label");
       if (label === "Pin menu") {
-        // SHOW -> click twice -> LOCK -> CLOSE
-        cy.get(this.selectors.menuButton).click();
-        cy.get(this.selectors.menuButton).click();
-      } else if (label === "Close menu") {
-        // LOCK -> click once -> CLOSE
+        // SHOW -> click once -> LOCK (pin; content pushed aside)
         cy.get(this.selectors.menuButton).click();
       }
-      // "Open menu": already closed, no click needed
+      // "Close menu" (LOCK): already pinned, no action needed
+      // "Open menu" (CLOSE): already closed, no action needed
     });
-    cy.wait(300);
   }
 
   // Order Entry related functions
