@@ -479,7 +479,9 @@ delay feedback. Milestone-based delivery enables manageable code reviews.
 # Clone repository with submodules
 git clone https://github.com/DIGI-UW/OpenELIS-Global-2.git
 cd OpenELIS-Global-2
-git submodule update --init --recursive
+
+# Run workspace setup (initializes submodules, hooks, .env)
+bash scripts/setup-workspace.sh
 
 # Verify Java version
 java -version  # Must be Java 21
