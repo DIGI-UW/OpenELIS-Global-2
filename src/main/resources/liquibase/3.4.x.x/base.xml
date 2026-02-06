@@ -30,4 +30,5 @@
   <include relativeToChangelogFile="true" file="022-create-analyzer-type-table.xml"/>
   <include relativeToChangelogFile="true" file="023-add-menu-items.xml"/>
   <include relativeToChangelogFile="true" file="024-add-query-timeout-config.xml"/>
+  <include relativeToChangelogFile="true" file="025-add-prefer-generic-plugin-to-analyzer-configuration.xml"/>
 </databaseChangeLog>

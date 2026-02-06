@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analyzer.dao.AnalyzerConfigurationDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
@@ -69,6 +70,42 @@ public class AnalyzerConfigurationServiceImpl extends BaseObjectServiceImpl<Anal
     }
 
     @Override
+    public String insert(AnalyzerConfiguration config) {
+        validateIdentifierPatternForGenericPlugin(config);
+        return getBaseObjectDAO().insert(config);
+    }
+
+    @Override
+    public AnalyzerConfiguration update(AnalyzerConfiguration config) {
+        validateIdentifierPatternForGenericPlugin(config);
+        return getBaseObjectDAO().update(config);
+    }
+
+    /**
+     * When is_generic_plugin=true, identifier_pattern must be non-empty and a valid
+     * Java regex. Used by GenericASTM/GenericHL7 to match incoming messages.
+     *
+     * @throws LIMSRuntimeException if validation fails
+     */
+    private void validateIdentifierPatternForGenericPlugin(AnalyzerConfiguration config) {
+        if (config == null || !config.isGenericPlugin()) {
+            return;
+        }
+        String pattern = config.getIdentifierPattern();
+        if (GenericValidator.isBlankOrNull(pattern)) {
+            throw new LIMSRuntimeException(
+                    "identifier_pattern is required when is_generic_plugin is true (analyzer_configuration id="
+                            + (config.getId() != null ? config.getId() : "new") + ")");
+        }
+        try {
+            Pattern.compile(pattern.trim());
+        } catch (PatternSyntaxException e) {
+            throw new LIMSRuntimeException("identifier_pattern must be a valid regex: " + e.getMessage()
+                    + " (analyzer_configuration id=" + (config.getId() != null ? config.getId() : "new") + ")");
+        }
+    }
+
+    @Override
     public String createConfiguration(Analyzer analyzer, String ipAddress, Integer port, List<String> testUnitIds) {
         // Check if configuration already exists
         Optional<AnalyzerConfiguration> existing = analyzerConfigurationDAO.findByAnalyzerId(analyzer.getId());
@@ -97,10 +134,15 @@ public class AnalyzerConfigurationServiceImpl extends BaseObjectServiceImpl<Anal
     @Transactional(readOnly = true)
     public Optional<AnalyzerConfiguration> findByIdentifierPatternMatch(String analyzerIdentifier) {
         if (analyzerIdentifier == null || analyzerIdentifier.trim().isEmpty()) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
+                    "Empty analyzer identifier");
             return Optional.empty();
         }
 
         List<AnalyzerConfiguration> candidates = analyzerConfigurationDAO.findGenericPluginConfigsWithPatterns();
+        LogEvent.logDebug(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
+                "Looking for match: identifier='" + analyzerIdentifier + "', candidates="
+                        + (candidates != null ? candidates.size() : 0));
         if (candidates == null || candidates.isEmpty()) {
             return Optional.empty();
         }
@@ -112,8 +154,17 @@ public class AnalyzerConfigurationServiceImpl extends BaseObjectServiceImpl<Anal
             }
 
             try {
-                Pattern p = Pattern.compile(config.getIdentifierPattern());
-                if (p.matcher(identifier).find()) {
+                String pattern = config.getIdentifierPattern();
+                LogEvent.logDebug(this.getClass().getSimpleName(), "findByIdentifierPatternMatch", "Trying pattern '"
+                        + pattern + "' against identifier '" + identifier + "' for config " + config.getId());
+                Pattern p = Pattern.compile(pattern);
+                boolean matches = p.matcher(identifier).find();
+                LogEvent.logDebug(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
+                        "Pattern match result: " + matches);
+                if (matches) {
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
+                            "MATCHED: '" + identifier + "' matched pattern '" + pattern + "' for analyzer "
+                                    + (config.getAnalyzer() != null ? config.getAnalyzer().getName() : config.getId()));
                     return Optional.of(config);
                 }
             } catch (PatternSyntaxException e) {
@@ -125,6 +176,8 @@ public class AnalyzerConfigurationServiceImpl extends BaseObjectServiceImpl<Anal
             }
         }
 
+        LogEvent.logWarn(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
+                "No match found for identifier '" + identifier + "' among " + candidates.size() + " candidates");
         return Optional.empty();
     }
 

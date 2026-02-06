@@ -655,3 +655,74 @@ export const deleteValidationRule = (
       callback(false, { error: error.message || "Network error" });
     });
 };
+
+/**
+ * Get all analyzer plugin types from the analyzer_type table.
+ *
+ * <p>Returns plugin type definitions including:
+ * - id: Database ID
+ * - name: Human-readable name (e.g., "Generic ASTM", "Horiba Pentra 60")
+ * - protocol: Communication protocol (ASTM, HL7, FILE)
+ * - isGenericPlugin: Whether this is a dashboard-configurable generic plugin
+ * - identifierPattern: Regex pattern for generic plugins
+ *
+ * <p>Task Reference: Phase 1.1 - Analyzer type API integration
+ *
+ * @param {Object} filters - Optional filters { active, genericOnly, search }
+ * @param {Function} callback - Callback function (data) => void
+ */
+export const getAnalyzerTypes = (filters, callback) => {
+  let endpoint = "/rest/analyzer-types";
+  const params = new URLSearchParams();
+
+  if (filters) {
+    if (filters.active !== undefined) {
+      params.append("active", filters.active);
+    }
+    if (filters.genericOnly !== undefined) {
+      params.append("genericOnly", filters.genericOnly);
+    }
+    if (filters.search) {
+      params.append("search", filters.search);
+    }
+  }
+
+  if (params.toString()) {
+    endpoint += "?" + params.toString();
+  }
+
+  getFromOpenElisServer(endpoint, callback);
+};
+
+/**
+ * Get list of available default analyzer configurations.
+ *
+ * <p>Returns minimal metadata for each template:
+ * - id (e.g., "astm/mindray-ba88a")
+ * - protocol ("ASTM" or "HL7")
+ * - analyzerName (from JSON)
+ *
+ * <p>Task Reference: M20 - Default config templates API
+ *
+ * @param {Function} callback - Callback function (data) => void
+ */
+export const getDefaultConfigs = (callback) => {
+  const endpoint = "/rest/analyzer/defaults";
+  getFromOpenElisServer(endpoint, callback);
+};
+
+/**
+ * Get specific default analyzer configuration template.
+ *
+ * <p>Loads JSON template from filesystem for the specified protocol and name.
+ *
+ * <p>Task Reference: M20 - Default config templates API
+ *
+ * @param {String} protocol - Protocol type ("astm" or "hl7")
+ * @param {String} name - Template name (without .json extension)
+ * @param {Function} callback - Callback function (data) => void
+ */
+export const getDefaultConfig = (protocol, name, callback) => {
+  const endpoint = `/rest/analyzer/defaults/${protocol}/${name}`;
+  getFromOpenElisServer(endpoint, callback);
+};

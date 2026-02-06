@@ -21,6 +21,16 @@ window.getComputedStyle = (element, pseudoElement) => {
   return originalGetComputedStyle(element);
 };
 
+// Mock ResizeObserver for Carbon components and other UI elements
+global.ResizeObserver = class ResizeObserver {
+  constructor(callback) {
+    this.callback = callback;
+  }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 // Mock MessageChannel for react-idle-timer (used in SecureRoute)
 global.MessageChannel = class MessageChannel {
   constructor() {

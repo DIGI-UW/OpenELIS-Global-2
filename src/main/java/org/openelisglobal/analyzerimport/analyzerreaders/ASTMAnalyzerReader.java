@@ -70,22 +70,33 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
             return false;
         }
 
-        if (!lines.isEmpty()) {
-            setInserterResponder();
-            if (inserter == null) {
-                error = "Unable to understand which analyzer sent the message";
-                return false;
-            }
-            return true;
-        } else {
+        if (lines.isEmpty()) {
             error = "Empty message";
             return false;
         }
+        return true;
+    }
+
+    /**
+     * Resolve plugin/inserter/responder from message lines. Call before processData
+     * or insertAnalyzerData so that "no plugin matched" is reported at process time
+     * (HL7-aligned).
+     */
+    private void ensureInserterResponder() {
+        if (plugin != null) {
+            return;
+        }
+        setInserterResponder();
     }
 
     public boolean processData(String currentUserId) {
-        // it is assumed that all requests are either requests for information
-        // or analyzer results to be entered
+        error = null;
+        ensureInserterResponder();
+        if (plugin == null) {
+            error = "No ASTM plugin matched this message (e.g. configure GenericASTM with matching identifier pattern)";
+            LogEvent.logError(getClass().getSimpleName(), "processData", error);
+            return false;
+        }
         if (plugin.isAnalyzerResult(lines)) {
             return insertAnalyzerData(currentUserId);
         } else {
@@ -104,7 +115,9 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     }
 
     private void setInserterResponder() {
-        for (AnalyzerImporterPlugin plugin : SpringContext.getBean(PluginAnalyzerService.class).getAnalyzerPlugins()) {
+        PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
+        List<AnalyzerImporterPlugin> plugins = choosePluginOrder(pluginService);
+        for (AnalyzerImporterPlugin plugin : plugins) {
             if (plugin.isTargetAnalyzer(lines)) {
                 try {
                     this.plugin = plugin;
@@ -118,9 +131,51 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
         }
     }
 
+    /**
+     * When a config matches the message and has prefer_generic_plugin=true, try
+     * generic plugins first so admin can switch from legacy to generic without
+     * removing the legacy JAR.
+     */
+    private List<AnalyzerImporterPlugin> choosePluginOrder(PluginAnalyzerService pluginService) {
+        String identifier = parseIdentifierFromAstmHeader();
+        if (identifier == null || identifier.trim().isEmpty()) {
+            return pluginService.getAnalyzerPlugins();
+        }
+        AnalyzerConfigurationService configService = SpringContext.getBean(AnalyzerConfigurationService.class);
+        if (configService == null) {
+            return pluginService.getAnalyzerPlugins();
+        }
+        Optional<org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration> config = configService
+                .findByIdentifierPatternMatch(identifier.trim());
+        if (config.isPresent() && config.get().isPreferGenericPlugin()) {
+            return pluginService.getAnalyzerPluginsWithGenericFirst();
+        }
+        return pluginService.getAnalyzerPlugins();
+    }
+
+    /**
+     * ASTM H-segment field 4 (manufacturer^model^version). Same as
+     * GenericASTM.parseAnalyzerIdentifier.
+     */
+    private String parseIdentifierFromAstmHeader() {
+        if (lines == null || lines.isEmpty()) {
+            return null;
+        }
+        for (String line : lines) {
+            if (line != null && line.startsWith("H|")) {
+                String[] fields = line.split("\\|");
+                if (fields.length > 4 && fields[4] != null && !fields[4].trim().isEmpty()) {
+                    return fields[4].trim();
+                }
+                break;
+            }
+        }
+        return null;
+    }
+
     private String buildResponseForQuery() {
         if (responder == null) {
-            error = "Unable to understand which analyzer sent the query or plugin doesn't support responding";
+            error = "No ASTM plugin matched this message or plugin doesn't support responding (e.g. configure GenericASTM with matching identifier pattern)";
             LogEvent.logError(this.getClass().getSimpleName(), "buildResponseForQuery", error);
             return "";
         } else {
@@ -131,8 +186,9 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
 
     @Override
     public boolean insertAnalyzerData(String systemUserId) {
+        ensureInserterResponder();
         if (inserter == null) {
-            error = "Unable to understand which analyzer sent the file";
+            error = "No ASTM plugin matched this message (e.g. configure GenericASTM with matching identifier pattern)";
             LogEvent.logError(this.getClass().getSimpleName(), "insertAnalyzerData", error);
             return false;
         } else {

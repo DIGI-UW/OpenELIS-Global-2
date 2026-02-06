@@ -15,8 +15,12 @@ import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerConfigurationService;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.service.FileImportService;
+import org.openelisglobal.analyzer.service.SerialPortService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
+import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
+import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.slf4j.Logger;
@@ -44,6 +48,12 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private AnalyzerFieldService analyzerFieldService;
+
+    @Autowired
+    private FileImportService fileImportService;
+
+    @Autowired
+    private SerialPortService serialPortService;
 
     @Autowired
     private org.openelisglobal.analyzer.service.AnalyzerQueryService analyzerQueryService;
@@ -159,6 +169,15 @@ public class AnalyzerRestController extends BaseRestController {
                 config.setProtocolVersion(
                         form.getProtocolVersion() != null ? form.getProtocolVersion() : "ASTM LIS2-A2");
                 config.setTestUnitIds(testUnitIds);
+                if (form.getIdentifierPattern() != null) {
+                    config.setIdentifierPattern(form.getIdentifierPattern());
+                }
+                if (form.getGenericPlugin() != null) {
+                    config.setGenericPlugin(form.getGenericPlugin());
+                }
+                if (form.getPreferGenericPlugin() != null) {
+                    config.setPreferGenericPlugin(form.getPreferGenericPlugin());
+                }
                 // Set unified status (use form status or default to SETUP)
                 String status = form.getStatus() != null ? form.getStatus() : "SETUP";
                 try {
@@ -205,20 +224,46 @@ public class AnalyzerRestController extends BaseRestController {
             }
             Optional<AnalyzerConfiguration> configOpt = analyzerConfigurationService.getByAnalyzerId(id);
 
-            if (!configOpt.isPresent() || configOpt.get().getIpAddress() == null || configOpt.get().getPort() == null) {
+            if (!configOpt.isPresent()) {
                 Map<String, Object> error = new HashMap<>();
-                error.put("error", "Analyzer configuration not found or incomplete");
+                error.put("error", "Analyzer configuration not found");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
 
             AnalyzerConfiguration config = configOpt.get();
+            String protocol = config.getProtocolVersion();
 
-            // Perform actual TCP connection test with ASTM handshake
-            Map<String, Object> response = testTcpConnection(config.getIpAddress(), config.getPort());
+            // Protocol-aware connection testing
+            Map<String, Object> response;
+            if (protocol != null && protocol.toUpperCase().startsWith("HL7")) {
+                response = testHl7Connection(config);
+            } else if (protocol != null && (protocol.toUpperCase().startsWith("ASTM")
+                    || protocol.toUpperCase().contains("E1381") || protocol.toUpperCase().contains("LIS2"))) {
+                response = testAstmConnection(config);
+            } else if (protocol != null && protocol.toUpperCase().contains("FILE")) {
+                response = testFileConfiguration(config, analyzer);
+            } else if (protocol != null && protocol.toUpperCase().contains("RS232")) {
+                response = testSerialConfiguration(id);
+            } else {
+                // Fallback: try TCP connection if IP/port available
+                if (config.getIpAddress() != null && config.getPort() != null) {
+                    response = testTcpConnection(config.getIpAddress(), config.getPort());
+                } else {
+                    response = new HashMap<>();
+                    response.put("success", false);
+                    response.put("message", "Unknown protocol or missing connection details: " + protocol);
+                }
+            }
+
             response.put("analyzerId", id);
             response.put("analyzerName", analyzer.getName());
-            response.put("ipAddress", config.getIpAddress());
-            response.put("port", config.getPort());
+            response.put("protocol", protocol);
+            if (config.getIpAddress() != null) {
+                response.put("ipAddress", config.getIpAddress());
+            }
+            if (config.getPort() != null) {
+                response.put("port", config.getPort());
+            }
 
             // Always return 200 with success status in response body
             // Client should check response.success to determine if connection worked
@@ -332,6 +377,15 @@ public class AnalyzerRestController extends BaseRestController {
                 if (form.getTestUnitIds() != null) {
                     config.setTestUnitIds(form.getTestUnitIds());
                 }
+                if (form.getIdentifierPattern() != null) {
+                    config.setIdentifierPattern(form.getIdentifierPattern());
+                }
+                if (form.getGenericPlugin() != null) {
+                    config.setGenericPlugin(form.getGenericPlugin());
+                }
+                if (form.getPreferGenericPlugin() != null) {
+                    config.setPreferGenericPlugin(form.getPreferGenericPlugin());
+                }
                 // Update unified status if provided
                 if (form.getStatus() != null) {
                     try {
@@ -351,6 +405,15 @@ public class AnalyzerRestController extends BaseRestController {
                 config.setProtocolVersion(
                         form.getProtocolVersion() != null ? form.getProtocolVersion() : "ASTM LIS2-A2");
                 config.setTestUnitIds(testUnitIds);
+                if (form.getIdentifierPattern() != null) {
+                    config.setIdentifierPattern(form.getIdentifierPattern());
+                }
+                if (form.getGenericPlugin() != null) {
+                    config.setGenericPlugin(form.getGenericPlugin());
+                }
+                if (form.getPreferGenericPlugin() != null) {
+                    config.setPreferGenericPlugin(form.getPreferGenericPlugin());
+                }
                 // Set unified status
                 if (form.getStatus() != null) {
                     try {
@@ -502,6 +565,9 @@ public class AnalyzerRestController extends BaseRestController {
                 map.put("port", config.getPort());
                 map.put("protocolVersion", config.getProtocolVersion());
                 map.put("testUnitIds", config.getTestUnitIds());
+                map.put("identifierPattern", config.getIdentifierPattern());
+                map.put("genericPlugin", config.isGenericPlugin());
+                map.put("preferGenericPlugin", config.isPreferGenericPlugin());
                 // Include unified status (defaults to SETUP if not set)
                 if (config.getStatus() != null) {
                     map.put("status", config.getStatus().toString());
@@ -599,6 +665,154 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
+     * Test HL7 analyzer connection.
+     *
+     * In OpenELIS, HL7 analyzers are typically push-based (results are posted to
+     * OpenELIS), so there is no reliable outbound \"connection test\" from OpenELIS
+     * to the analyzer. This returns success when the analyzer is configured.
+     *
+     * @param config Analyzer configuration (protocol metadata)
+     * @return Map with success status and message
+     */
+    private Map<String, Object> testHl7Connection(AnalyzerConfiguration config) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "HL7 analyzers are push-based; validate by sending an HL7 message to OpenELIS");
+        return response;
+    }
+
+    /**
+     * Test ASTM analyzer connection ASTM requires ENQ/ACK handshake for connection
+     * validation
+     * 
+     * @param config Analyzer configuration with IP/port
+     * @return Map with success status and message
+     */
+    private Map<String, Object> testAstmConnection(AnalyzerConfiguration config) {
+        if (config.getIpAddress() == null || config.getPort() == null) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "ASTM configuration incomplete - missing IP address or port");
+            return response;
+        }
+
+        // Use existing testTcpConnection which implements ASTM ENQ/ACK
+        Map<String, Object> response = testTcpConnection(config.getIpAddress(), config.getPort());
+        response.put("connectionType", "ASTM");
+        return response;
+    }
+
+    /**
+     * Test FILE analyzer configuration Verifies that the file import directory
+     * exists and is accessible
+     * 
+     * @param config   Analyzer configuration
+     * @param analyzer Analyzer entity
+     * @return Map with success status and message
+     */
+    private Map<String, Object> testFileConfiguration(AnalyzerConfiguration config, Analyzer analyzer) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // Check if file import configuration exists
+            Optional<FileImportConfiguration> fileConfigOpt = fileImportService
+                    .getByAnalyzerId(Integer.valueOf(analyzer.getId()));
+
+            if (!fileConfigOpt.isPresent()) {
+                response.put("success", false);
+                response.put("message", "File import configuration not found for analyzer");
+                return response;
+            }
+
+            FileImportConfiguration fileConfig = fileConfigOpt.get();
+            String importDir = fileConfig.getImportDirectory();
+
+            if (importDir == null || importDir.trim().isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Import directory not configured");
+                return response;
+            }
+
+            // Verify directory exists
+            java.io.File directory = new java.io.File(importDir);
+            if (directory.exists() && directory.isDirectory() && directory.canRead()) {
+                response.put("success", true);
+                response.put("message", "File import directory accessible: " + importDir);
+                response.put("importDirectory", importDir);
+                response.put("filePattern", fileConfig.getFilePattern());
+            } else {
+                response.put("success", false);
+                response.put("message", "Import directory not accessible: " + importDir);
+                response.put("importDirectory", importDir);
+            }
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error checking file configuration: " + e.getMessage());
+            logger.error("Error testing file configuration for analyzer {}", analyzer.getId(), e);
+        }
+
+        return response;
+    }
+
+    /**
+     * Test Serial analyzer configuration Verifies that the serial port
+     * configuration exists and port is accessible
+     * 
+     * @param analyzerId Analyzer ID
+     * @return Map with success status and message
+     */
+    private Map<String, Object> testSerialConfiguration(String analyzerId) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Optional<SerialPortConfiguration> serialConfigOpt = serialPortService
+                    .getByAnalyzerId(Integer.valueOf(analyzerId));
+
+            if (!serialConfigOpt.isPresent()) {
+                response.put("success", false);
+                response.put("message", "Serial port configuration not found for analyzer");
+                return response;
+            }
+
+            SerialPortConfiguration serialConfig = serialConfigOpt.get();
+            String portName = serialConfig.getPortName();
+
+            if (portName == null || portName.trim().isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Serial port name not configured");
+                return response;
+            }
+
+            // Check if port exists (file descriptor check)
+            java.io.File portFile = new java.io.File(portName);
+            boolean portExists = portFile.exists();
+
+            if (portExists) {
+                response.put("success", true);
+                response.put("message", "Serial port accessible: " + portName);
+                response.put("portName", portName);
+                response.put("baudRate", serialConfig.getBaudRate());
+                response.put("dataBits", serialConfig.getDataBits());
+                response.put("parity", serialConfig.getParity());
+                response.put("stopBits", serialConfig.getStopBits());
+            } else {
+                response.put("success", false);
+                response.put("message", "Serial port not accessible: " + portName
+                        + " (check hardware connection or virtual serial setup)");
+                response.put("portName", portName);
+            }
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error checking serial configuration: " + e.getMessage());
+            logger.error("Error testing serial configuration for analyzer {}", analyzerId, e);
+        }
+
+        return response;
+    }
+
+    /**
      * POST /rest/analyzer/analyzers/{id}/query Start an asynchronous query job for
      * an analyzer
      */
@@ -637,6 +851,169 @@ public class AnalyzerRestController extends BaseRestController {
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * GET /rest/analyzer/defaults List available default configuration templates
+     * from filesystem.
+     *
+     * <p>
+     * Returns minimal metadata for each template: - id (e.g., "astm/mindray-ba88a")
+     * - protocol ("ASTM" or "HL7") - analyzer_name (from JSON)
+     *
+     * <p>
+     * Task Reference: T215 (M20) - Create REST endpoint for listing defaults
+     */
+    @GetMapping("/defaults")
+    public ResponseEntity<?> getDefaults() {
+        try {
+            String defaultsDir = System.getenv("ANALYZER_DEFAULTS_DIR");
+            if (defaultsDir == null || defaultsDir.isEmpty()) {
+                defaultsDir = "/data/analyzer-defaults";
+            }
+
+            java.io.File baseDir = new java.io.File(defaultsDir);
+            if (!baseDir.exists() || !baseDir.isDirectory()) {
+                logger.warn("Analyzer defaults directory not found: " + defaultsDir);
+                return ResponseEntity.ok(new ArrayList<>());
+            }
+
+            List<Map<String, Object>> templates = new ArrayList<>();
+
+            // Scan ASTM directory
+            java.io.File astmDir = new java.io.File(baseDir, "astm");
+            if (astmDir.exists() && astmDir.isDirectory()) {
+                scanTemplates(astmDir, "astm", templates);
+            }
+
+            // Scan HL7 directory
+            java.io.File hl7Dir = new java.io.File(baseDir, "hl7");
+            if (hl7Dir.exists() && hl7Dir.isDirectory()) {
+                scanTemplates(hl7Dir, "hl7", templates);
+            }
+
+            return ResponseEntity.ok(templates);
+        } catch (Exception e) {
+            logger.error("Error listing default configs", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to list default configurations: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * GET /rest/analyzer/defaults/{protocol}/{name} Load specific default
+     * configuration template from filesystem.
+     *
+     * <p>
+     * Implements strict security controls: - Protocol allowlist: only "astm" or
+     * "hl7" - Path sanitization: no "..", "/", or special characters in name -
+     * Canonical path verification: must be within defaults directory
+     *
+     * <p>
+     * Task Reference: T216 (M20) - Create REST endpoint for loading specific
+     * template
+     */
+    @GetMapping("/defaults/{protocol}/{name}")
+    public ResponseEntity<?> getDefaultConfig(@PathVariable String protocol, @PathVariable String name) {
+        try {
+            // Validate protocol (allowlist)
+            if (!protocol.equals("astm") && !protocol.equals("hl7")) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Invalid protocol: must be 'astm' or 'hl7'");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
+            // Sanitize filename: only alphanumeric, dash, underscore, period
+            if (!name.matches("^[a-zA-Z0-9\\-_.]+$")) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Invalid filename: only alphanumeric, dash, underscore, and period allowed");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
+            // Ensure .json extension
+            String filename = name.endsWith(".json") ? name : name + ".json";
+
+            // Build path
+            String defaultsDir = System.getenv("ANALYZER_DEFAULTS_DIR");
+            if (defaultsDir == null || defaultsDir.isEmpty()) {
+                defaultsDir = "/data/analyzer-defaults";
+            }
+
+            java.io.File baseDir = new java.io.File(defaultsDir);
+            java.io.File templateFile = new java.io.File(baseDir, protocol + "/" + filename);
+
+            // Verify canonical path (prevents path traversal)
+            String canonicalPath = templateFile.getCanonicalPath();
+            String baseDirCanonical = baseDir.getCanonicalPath();
+
+            if (!canonicalPath.startsWith(baseDirCanonical)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Invalid path: template must be within defaults directory");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
+            // Check file exists
+            if (!templateFile.exists() || !templateFile.isFile()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Template not found: " + protocol + "/" + name);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            }
+
+            // Read and parse JSON
+            String jsonContent = new String(java.nio.file.Files.readAllBytes(templateFile.toPath()),
+                    java.nio.charset.StandardCharsets.UTF_8);
+
+            Map<String, Object> config = objectMapper.readValue(jsonContent, Map.class);
+            return ResponseEntity.ok(config);
+
+        } catch (IOException e) {
+            logger.error("Error reading default config: " + protocol + "/" + name, e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to read template: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        } catch (Exception e) {
+            logger.error("Error loading default config", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to load template: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Scan directory for JSON template files and add to list.
+     *
+     * @param directory Protocol directory (astm/ or hl7/)
+     * @param protocol  Protocol name ("astm" or "hl7")
+     * @param templates List to populate with template metadata
+     */
+    private void scanTemplates(java.io.File directory, String protocol, List<Map<String, Object>> templates) {
+        java.io.File[] files = directory.listFiles((dir, name) -> name.endsWith(".json"));
+        if (files == null) {
+            return;
+        }
+
+        for (java.io.File file : files) {
+            try {
+                // Read JSON to extract analyzer_name
+                String jsonContent = new String(java.nio.file.Files.readAllBytes(file.toPath()),
+                        java.nio.charset.StandardCharsets.UTF_8);
+                Map<String, Object> config = objectMapper.readValue(jsonContent, Map.class);
+
+                Map<String, Object> template = new HashMap<>();
+                String filename = file.getName().replace(".json", "");
+                template.put("id", protocol + "/" + filename);
+                template.put("protocol", protocol.toUpperCase());
+                template.put("analyzerName", config.get("analyzer_name"));
+                template.put("manufacturer", config.get("manufacturer"));
+                template.put("category", config.get("category"));
+
+                templates.add(template);
+            } catch (Exception e) {
+                logger.warn("Failed to parse template file: " + file.getName(), e);
+                // Skip invalid files, continue with others
+            }
         }
     }
 }

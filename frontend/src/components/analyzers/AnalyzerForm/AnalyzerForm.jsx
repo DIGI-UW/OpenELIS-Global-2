@@ -14,6 +14,9 @@ import { useIntl } from "react-intl";
 import {
   createAnalyzer,
   updateAnalyzer,
+  getDefaultConfigs,
+  getDefaultConfig,
+  getAnalyzerTypes,
 } from "../../../services/analyzerService";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import "./AnalyzerForm.css";
@@ -25,6 +28,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
   const [formData, setFormData] = useState({
     name: "",
     analyzerType: "",
+    pluginTypeId: "",
     ipAddress: "",
     port: "",
     protocolVersion: "ASTM_E1394",
@@ -38,12 +42,39 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
   const [testConnectionModalOpen, setTestConnectionModalOpen] = useState(false);
   const closeTimeoutRef = useRef(null);
 
-  // Analyzer type options
+  // Default configuration template state (M20)
+  const [defaultConfigs, setDefaultConfigs] = useState([]);
+  const [loadingDefaults, setLoadingDefaults] = useState(false);
+  const [selectedDefault, setSelectedDefault] = useState(null);
+
+  // Plugin types from /rest/analyzer-types API (Phase 1.1)
+  const [pluginTypes, setPluginTypes] = useState([]);
+  const [loadingPluginTypes, setLoadingPluginTypes] = useState(false);
+
+  // Fallback plugin types if API returns empty
+  const FALLBACK_PLUGIN_TYPES = [
+    {
+      id: "generic-astm",
+      name: "Generic ASTM",
+      protocol: "ASTM",
+      isGenericPlugin: true,
+    },
+    {
+      id: "generic-hl7",
+      name: "Generic HL7",
+      protocol: "HL7",
+      isGenericPlugin: true,
+    },
+  ];
+
+  // Analyzer type options (must match DB analyzer_type column values)
   const analyzerTypeOptions = [
     { id: "HEMATOLOGY", text: "Hematology" },
     { id: "CHEMISTRY", text: "Chemistry" },
     { id: "IMMUNOLOGY", text: "Immunology" },
     { id: "MICROBIOLOGY", text: "Microbiology" },
+    { id: "MOLECULAR", text: "Molecular" },
+    { id: "COAGULATION", text: "Coagulation" },
     {
       id: "OTHER",
       text: intl.formatMessage({ id: "analyzer.form.type.other" }),
@@ -69,6 +100,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
       setFormData({
         name: analyzer.name || "",
         analyzerType: analyzer.analyzerType || analyzer.type || "",
+        pluginTypeId: analyzer.pluginTypeId || analyzer.analyzerTypeId || "",
         ipAddress: analyzer.ipAddress || "",
         port: analyzer.port ? String(analyzer.port) : "",
         protocolVersion: analyzer.protocolVersion || "ASTM_E1394",
@@ -79,6 +111,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
       setFormData({
         name: "",
         analyzerType: "",
+        pluginTypeId: "",
         ipAddress: "",
         port: "",
         protocolVersion: "ASTM_E1394",
@@ -88,6 +121,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     }
     setErrors({});
     setNotification(null);
+    setSelectedDefault(null);
   }, [analyzer, open]);
 
   // Clear close timeout on unmount
@@ -108,6 +142,41 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     }
     onClose();
   };
+
+  // Load plugin types from API (Phase 1.1)
+  useEffect(() => {
+    if (open) {
+      setLoadingPluginTypes(true);
+      getAnalyzerTypes({ active: true }, (data) => {
+        setLoadingPluginTypes(false);
+        if (Array.isArray(data) && data.length > 0) {
+          setPluginTypes(data);
+        } else {
+          // Fallback to hardcoded list if API returns empty
+          console.warn(
+            "Analyzer types API returned empty - using fallback list",
+          );
+          setPluginTypes(FALLBACK_PLUGIN_TYPES);
+        }
+      });
+    }
+  }, [open]);
+
+  // Load default configs when in create mode (M20)
+  useEffect(() => {
+    if (!isEditMode && open) {
+      setLoadingDefaults(true);
+      getDefaultConfigs((data) => {
+        setLoadingDefaults(false);
+        if (Array.isArray(data)) {
+          setDefaultConfigs(data);
+        } else {
+          console.error("Failed to load default configs:", data);
+          setDefaultConfigs([]);
+        }
+      });
+    }
+  }, [isEditMode, open]);
 
   // Validate IP address format
   const validateIPAddress = (ip) => {
@@ -140,6 +209,55 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         return newErrors;
       });
     }
+  };
+
+  // Handle default config selection (M20)
+  const handleDefaultConfigSelect = (defaultItem) => {
+    if (!defaultItem || !defaultItem.id) {
+      return;
+    }
+
+    setSelectedDefault(defaultItem);
+
+    // Parse protocol and name from id (e.g., "hl7/mindray-bc2000")
+    const [protocol, name] = defaultItem.id.split("/");
+
+    // Load the full config JSON
+    getDefaultConfig(protocol, name, (configData) => {
+      if (configData && !configData.error) {
+        // Populate form fields from config
+        setFormData((prev) => ({
+          ...prev,
+          name: configData.analyzer_name || prev.name,
+          analyzerType: configData.category || prev.analyzerType,
+          protocolVersion:
+            protocol === "hl7"
+              ? `HL7 v${configData.protocol_version || "2.3.1"}`
+              : configData.protocol_version || prev.protocolVersion,
+          port: configData.default_port
+            ? String(configData.default_port)
+            : prev.port,
+        }));
+
+        // Show success notification
+        setNotification({
+          kind: "info",
+          title: intl.formatMessage({ id: "analyzer.form.defaults.loaded" }),
+          subtitle: intl.formatMessage(
+            { id: "analyzer.form.defaults.loaded.subtitle" },
+            { name: configData.analyzer_name },
+          ),
+        });
+      } else {
+        setNotification({
+          kind: "error",
+          title: intl.formatMessage({ id: "analyzer.form.defaults.error" }),
+          subtitle:
+            configData?.error ||
+            intl.formatMessage({ id: "analyzer.form.error.unknown" }),
+        });
+      }
+    });
   };
 
   // Validate form
@@ -289,6 +407,74 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
               invalidText={errors.analyzerType}
               required
             />
+
+            <Dropdown
+              id="analyzer-plugin-type"
+              data-testid="analyzer-form-plugin-type-dropdown"
+              titleText={intl.formatMessage({
+                id: "analyzer.form.pluginType",
+                defaultMessage: "Plugin Type",
+              })}
+              label={intl.formatMessage({
+                id: "analyzer.form.pluginType.placeholder",
+                defaultMessage: "Select plugin type...",
+              })}
+              items={pluginTypes}
+              selectedItem={
+                pluginTypes.find((opt) => opt.id === formData.pluginTypeId) ||
+                null
+              }
+              itemToString={(item) =>
+                item ? `${item.name} (${item.protocol})` : ""
+              }
+              onChange={({ selectedItem }) => {
+                handleFieldChange("pluginTypeId", selectedItem?.id || "");
+                // Auto-set protocol version based on plugin type
+                if (selectedItem?.protocol) {
+                  const protocolMap = {
+                    ASTM: "ASTM_E1394",
+                    HL7: "HL7_v2.3.1",
+                    FILE: "FILE_IMPORT",
+                  };
+                  handleFieldChange(
+                    "protocolVersion",
+                    protocolMap[selectedItem.protocol] ||
+                      formData.protocolVersion,
+                  );
+                }
+              }}
+              disabled={loadingPluginTypes}
+              helperText={intl.formatMessage({
+                id: "analyzer.form.pluginType.helperText",
+                defaultMessage:
+                  "The analyzer plugin that will handle incoming messages",
+              })}
+            />
+
+            {!isEditMode && (
+              <Dropdown
+                id="analyzer-default-config"
+                data-testid="analyzer-form-default-config-dropdown"
+                titleText={intl.formatMessage({
+                  id: "analyzer.form.loadDefaultConfig",
+                })}
+                label={intl.formatMessage({
+                  id: "analyzer.form.loadDefaultConfig.placeholder",
+                })}
+                items={defaultConfigs}
+                selectedItem={selectedDefault}
+                itemToString={(item) =>
+                  item ? `${item.analyzerName} (${item.protocol})` : ""
+                }
+                onChange={({ selectedItem }) =>
+                  handleDefaultConfigSelect(selectedItem)
+                }
+                disabled={loadingDefaults}
+                helperText={intl.formatMessage({
+                  id: "analyzer.form.loadDefaultConfig.helperText",
+                })}
+              />
+            )}
 
             <div
               className="connection-fields"

@@ -1,0 +1,93 @@
+{
+  "schema_version": "1.0",
+  "analyzer_name": "Mindray BC-5380",
+  "manufacturer": "Mindray",
+  "category": "HEMATOLOGY",
+  "protocol": "HL7",
+  "protocol_version": "2.3.1",
+  "identifier_pattern": "MINDRAY.*BC.?5380",
+  "transport": "TCP/IP",
+  "default_port": 5380,
+  "msh3_pattern": "MINDRAY",
+  "default_test_mappings": [
+    {
+      "obx_identifier": "WBC",
+      "test_name": "White Blood Cells",
+      "loinc": "6690-2",
+      "unit": "10^3/uL"
+    },
+    {
+      "obx_identifier": "RBC",
+      "test_name": "Red Blood Cells",
+      "loinc": "789-8",
+      "unit": "10^6/uL"
+    },
+    {
+      "obx_identifier": "HGB",
+      "test_name": "Hemoglobin",
+      "loinc": "718-7",
+      "unit": "g/dL"
+    },
+    {
+      "obx_identifier": "HCT",
+      "test_name": "Hematocrit",
+      "loinc": "4544-3",
+      "unit": "%"
+    },
+    {
+      "obx_identifier": "MCV",
+      "test_name": "Mean Corpuscular Volume",
+      "loinc": "787-2",
+      "unit": "fL"
+    },
+    {
+      "obx_identifier": "MCH",
+      "test_name": "Mean Corpuscular Hemoglobin",
+      "loinc": "785-6",
+      "unit": "pg"
+    },
+    {
+      "obx_identifier": "MCHC",
+      "test_name": "Mean Corpuscular Hemoglobin Concentration",
+      "loinc": "786-4",
+      "unit": "g/dL"
+    },
+    {
+      "obx_identifier": "PLT",
+      "test_name": "Platelet Count",
+      "loinc": "777-3",
+      "unit": "10^3/uL"
+    },
+    {
+      "obx_identifier": "NEUT",
+      "test_name": "Neutrophils",
+      "loinc": "751-8",
+      "unit": "%"
+    },
+    {
+      "obx_identifier": "LYMPH",
+      "test_name": "Lymphocytes",
+      "loinc": "736-9",
+      "unit": "%"
+    },
+    {
+      "obx_identifier": "MONO",
+      "test_name": "Monocytes",
+      "loinc": "742-7",
+      "unit": "%"
+    },
+    {
+      "obx_identifier": "EOS",
+      "test_name": "Eosinophils",
+      "loinc": "711-2",
+      "unit": "%"
+    },
+    {
+      "obx_identifier": "BASO",
+      "test_name": "Basophils",
+      "loinc": "704-7",
+      "unit": "%"
+    }
+  ],
+  "notes": "Requires MLLP framing (0x0B start, 0x1C 0x0D end). MSH-3 sending application = 'MINDRAY'. Complete CBC panel with 5-part differential."
+}

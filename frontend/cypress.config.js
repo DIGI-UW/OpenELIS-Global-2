@@ -81,7 +81,7 @@ if (isCI) {
 
 module.exports = defineConfig({
   defaultCommandTimeout: 3000, // 3 seconds - use Cypress retry-ability instead of long timeouts
-  pageLoadTimeout: 180000, // 3 minutes - analyzer mappings page loads 3.4MB bundle.js (takes >2min in CI)
+  pageLoadTimeout: 120000, // 2 minutes for development mode with large unminified bundle.js (25MB)
   viewportWidth: 1920, // Large desktop for full modal visibility (including warnings/checkboxes)
   viewportHeight: 1080,
   video: false, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
@@ -303,6 +303,33 @@ module.exports = defineConfig({
           } catch (error) {
             console.error("Error cleaning storage test data:", error);
             return null;
+          }
+        },
+
+        // Madagascar Analyzer Fixtures (Feature 011)
+        loadMadagascarAnalyzerFixtures() {
+          const { execSync } = require("child_process");
+          const loaderScript = path.join(
+            PROJECT_ROOT,
+            "src/test/resources/load-analyzer-test-data.sh",
+          );
+          if (!fs.existsSync(loaderScript)) {
+            throw new Error(
+              `Analyzer fixture loader script not found: ${loaderScript}`,
+            );
+          }
+          try {
+            execSync(`bash "${loaderScript}" --dataset-011`, {
+              stdio: "inherit",
+              cwd: PROJECT_ROOT,
+              shell: "/bin/bash",
+            });
+            return null;
+          } catch (error) {
+            console.error("Error loading Madagascar analyzer fixtures:", error);
+            throw new Error(
+              `Failed to load Madagascar analyzer fixtures: ${error.message || error}`,
+            );
           }
         },
       });

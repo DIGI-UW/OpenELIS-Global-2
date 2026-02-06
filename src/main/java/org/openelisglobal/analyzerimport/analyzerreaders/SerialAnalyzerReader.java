@@ -10,6 +10,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.openelisglobal.analyzer.service.AnalyzerConfigurationService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.MappingApplicationService;
 import org.openelisglobal.analyzer.service.MappingAwareAnalyzerLineInserter;
@@ -154,22 +155,32 @@ public class SerialAnalyzerReader extends AnalyzerReader {
             return false;
         }
 
-        if (!lines.isEmpty()) {
-            setInserterResponder();
-            if (inserter == null) {
-                error = "Unable to understand which analyzer sent the message";
-                return false;
-            }
-            return true;
-        } else {
+        if (lines.isEmpty()) {
             error = "Empty message from serial port";
             return false;
         }
+        return true;
+    }
+
+    /**
+     * Resolve plugin/inserter/responder from message lines (HL7-aligned: match at
+     * process time).
+     */
+    private void ensureInserterResponder() {
+        if (plugin != null) {
+            return;
+        }
+        setInserterResponder();
     }
 
     public boolean processData(String currentUserId) {
-        // it is assumed that all requests are either requests for information
-        // or analyzer results to be entered
+        error = null;
+        ensureInserterResponder();
+        if (plugin == null) {
+            error = "No ASTM plugin matched this message (e.g. configure GenericASTM with matching identifier pattern)";
+            LogEvent.logError(getClass().getSimpleName(), "processData", error);
+            return false;
+        }
         if (plugin.isAnalyzerResult(lines)) {
             return insertAnalyzerData(currentUserId);
         } else {
@@ -188,7 +199,9 @@ public class SerialAnalyzerReader extends AnalyzerReader {
     }
 
     private void setInserterResponder() {
-        for (AnalyzerImporterPlugin plugin : SpringContext.getBean(PluginAnalyzerService.class).getAnalyzerPlugins()) {
+        PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
+        List<AnalyzerImporterPlugin> plugins = choosePluginOrder(pluginService);
+        for (AnalyzerImporterPlugin plugin : plugins) {
             if (plugin.isTargetAnalyzer(lines)) {
                 try {
                     this.plugin = plugin;
@@ -200,6 +213,39 @@ public class SerialAnalyzerReader extends AnalyzerReader {
                 }
             }
         }
+    }
+
+    private List<AnalyzerImporterPlugin> choosePluginOrder(PluginAnalyzerService pluginService) {
+        String identifier = parseIdentifierFromAstmHeader();
+        if (identifier == null || identifier.trim().isEmpty()) {
+            return pluginService.getAnalyzerPlugins();
+        }
+        AnalyzerConfigurationService configService = SpringContext.getBean(AnalyzerConfigurationService.class);
+        if (configService == null) {
+            return pluginService.getAnalyzerPlugins();
+        }
+        Optional<org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration> config = configService
+                .findByIdentifierPatternMatch(identifier.trim());
+        if (config.isPresent() && config.get().isPreferGenericPlugin()) {
+            return pluginService.getAnalyzerPluginsWithGenericFirst();
+        }
+        return pluginService.getAnalyzerPlugins();
+    }
+
+    private String parseIdentifierFromAstmHeader() {
+        if (lines == null || lines.isEmpty()) {
+            return null;
+        }
+        for (String line : lines) {
+            if (line != null && line.startsWith("H|")) {
+                String[] fields = line.split("\\|");
+                if (fields.length > 4 && fields[4] != null && !fields[4].trim().isEmpty()) {
+                    return fields[4].trim();
+                }
+                break;
+            }
+        }
+        return null;
     }
 
     private String buildResponseForQuery() {
@@ -215,8 +261,9 @@ public class SerialAnalyzerReader extends AnalyzerReader {
 
     @Override
     public boolean insertAnalyzerData(String systemUserId) {
+        ensureInserterResponder();
         if (inserter == null) {
-            error = "Unable to understand which analyzer sent the file";
+            error = "No ASTM plugin matched this message (e.g. configure GenericASTM with matching identifier pattern)";
             LogEvent.logError(this.getClass().getSimpleName(), "insertAnalyzerData", error);
             return false;
         } else {

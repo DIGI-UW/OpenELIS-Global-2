@@ -15,6 +15,11 @@
 
 jest.mock("../../../services/analyzerService", () => ({
   getAnalyzers: jest.fn(),
+  getAnalyzerTypes: jest.fn(),
+  getDefaultConfigs: jest.fn(),
+  getDefaultConfig: jest.fn(),
+  createAnalyzer: jest.fn(),
+  updateAnalyzer: jest.fn(),
 }));
 
 const mockHistory = {
@@ -51,7 +56,13 @@ import { BrowserRouter } from "react-router-dom";
 import AnalyzersList from "./AnalyzersList";
 
 // 8. Utilities (import functions, not just for mocking)
-import { getAnalyzers } from "../../../services/analyzerService";
+import {
+  getAnalyzers,
+  getAnalyzerTypes,
+  getDefaultConfigs,
+  getDefaultConfig,
+  createAnalyzer,
+} from "../../../services/analyzerService";
 
 // 9. Messages/translations
 import messages from "../../../languages/en.json";
@@ -89,6 +100,36 @@ describe("AnalyzersList", () => {
     jest.clearAllMocks();
     mockHistory.push.mockClear();
     mockHistory.replace.mockClear();
+
+    // Default mock implementations for AnalyzerForm dependencies
+    getAnalyzerTypes.mockImplementation((filters, callback) => {
+      callback([
+        {
+          id: "1",
+          name: "Generic ASTM",
+          protocol: "ASTM",
+          isGenericPlugin: true,
+        },
+        {
+          id: "2",
+          name: "Generic HL7",
+          protocol: "HL7",
+          isGenericPlugin: true,
+        },
+      ]);
+    });
+
+    getDefaultConfigs.mockImplementation((callback) => {
+      callback([]);
+    });
+
+    getDefaultConfig.mockImplementation((protocol, name, callback) => {
+      callback({ error: "Not found" });
+    });
+
+    createAnalyzer.mockImplementation((data, callback) => {
+      callback({ id: "new-id", ...data });
+    });
   });
 
   /**

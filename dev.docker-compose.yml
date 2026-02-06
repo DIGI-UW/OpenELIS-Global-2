@@ -62,7 +62,7 @@ services:
             - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
         volumes:
             -  key_trust-store-volume:/etc/openelis-global
-            - ./volume/lucene:/var/lib/lucene_index
+            -  lucene_index-vol:/var/lib/lucene_index
             - ./volume/plugins/:/var/lib/openelis-global/plugins
             - ./volume/programs/:/var/lib/openelis-global/programs
             - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
@@ -75,6 +75,7 @@ services:
             - ./volume/configuration:/var/lib/openelis-global/configuration
             - ./volume/branding:/var/lib/openelis-global/branding
             - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
+            - ./volume/analyzer-imports:/data/analyzer-imports  # FILE-based analyzer import directories
         # devices:
             # Serial port device mapping example for RS232 analyzer integration (Task Reference: T039, M2)
             # Uncomment and adjust device path as needed for your system
@@ -169,3 +170,4 @@ volumes:
   key_trust-store-volume:
   certs-vol:
   keys-vol:
+  lucene_index-vol:

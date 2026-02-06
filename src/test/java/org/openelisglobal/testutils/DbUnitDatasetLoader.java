@@ -124,7 +124,9 @@ public class DbUnitDatasetLoader {
             DatabaseConfig config = dbConnection.getConfig();
             config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new PostgresqlDataTypeFactory());
             config.setProperty(DatabaseConfig.FEATURE_QUALIFIED_TABLE_NAMES, false);
-            config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, false);
+            // Preserve lowercase column names (PostgreSQL) so REFRESH matches XML
+            // attributes (e.g. fhir_uuid).
+            config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, true);
 
             // Load dataset
             IDataSet dataSet = loadDataSetFromPath(datasetPath);
@@ -149,6 +151,7 @@ public class DbUnitDatasetLoader {
     private static IDataSet loadDataSetFromPath(String path) throws Exception {
         FlatXmlDataSetBuilder builder = new FlatXmlDataSetBuilder();
         builder.setColumnSensing(true); // Handle missing columns gracefully
+        builder.setCaseSensitiveTableNames(true); // Preserve XML column case (e.g. fhir_uuid) for REFRESH
 
         // Try classpath first
         InputStream is = DbUnitDatasetLoader.class.getClassLoader().getResourceAsStream(path);
