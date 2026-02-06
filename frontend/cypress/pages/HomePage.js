@@ -76,13 +76,34 @@ class HomePage {
   }
 
   openNavigationMenu() {
-    cy.get(this.selectors.menuButton).click();
+    // Sidenav uses a 3-step toggle: CLOSE -> SHOW -> LOCK -> CLOSE
+    // aria-label tells us the current state:
+    //   "Open menu"  = CLOSE (menu hidden)
+    //   "Pin menu"   = SHOW  (menu visible, overlay)
+    //   "Close menu" = LOCK  (menu visible, pinned)
+    cy.get(this.selectors.menuButton).then(($btn) => {
+      const label = $btn.attr("aria-label");
+      if (label === "Open menu") {
+        // CLOSE -> click once -> SHOW (opens menu)
+        cy.get(this.selectors.menuButton).click();
+      }
+      // SHOW or LOCK: menu is already open, no click needed
+    });
   }
 
   closeNavigationMenu() {
-    // Toggle the sidenav closed by clicking the menu button again
-    cy.get(this.selectors.menuButton).click();
-    // Wait for sidenav animation to complete
+    cy.get(this.selectors.menuButton).then(($btn) => {
+      const label = $btn.attr("aria-label");
+      if (label === "Pin menu") {
+        // SHOW -> click twice -> LOCK -> CLOSE
+        cy.get(this.selectors.menuButton).click();
+        cy.get(this.selectors.menuButton).click();
+      } else if (label === "Close menu") {
+        // LOCK -> click once -> CLOSE
+        cy.get(this.selectors.menuButton).click();
+      }
+      // "Open menu": already closed, no click needed
+    });
     cy.wait(300);
   }
 
@@ -97,8 +118,8 @@ class HomePage {
 
   goToBatchOrderEntry() {
     this.openNavigationMenu();
-    cy.get(this.selectors.sampleMenu).click({ force: true });
-    cy.get(this.selectors.batchEntry).click({ force: true });
+    cy.get(this.selectors.sampleMenu).should("be.visible").click();
+    cy.get(this.selectors.batchEntry).should("be.visible").click();
     this.closeNavigationMenu();
     return new BatchOrderEntry();
   }
