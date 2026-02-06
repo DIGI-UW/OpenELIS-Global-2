@@ -110,7 +110,7 @@ jobs:
         run: npx cypress run --browser chrome --headless
         working-directory: frontend
         env:
-          E2E_FAIL_FAST: "true"  # Stop on first failure (saves CI time)
+          E2E_FAIL_FAST: "false"  # Temporarily disabled to see all failures at once
           CYPRESS_BASE_URL: https://localhost  # Use localhost in CI (containers run locally)
 
       # Upload Cypress screenshots on failure for debugging
