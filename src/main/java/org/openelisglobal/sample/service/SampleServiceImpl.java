@@ -1,6 +1,8 @@
 package org.openelisglobal.sample.service;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -30,6 +32,7 @@ import org.openelisglobal.requester.valueholder.RequesterType;
 import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.openelisglobal.sample.dao.SampleAdditionalFieldDAO;
 import org.openelisglobal.sample.dao.SampleDAO;
+import org.openelisglobal.sample.util.AccessionNumberHandler;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
@@ -79,6 +82,8 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     private SampleAdditionalFieldDAO sampleAdditionalFieldDAO;
     @Autowired
     private StatusOfSampleService statusOfSampleService;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @PostConstruct
     private void initializeGlobalVariables() {
@@ -524,8 +529,12 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
 
     @Override
     public String generateAccessionNumberAndInsert(Sample sample) {
-        sample.setAccessionNumber(getBaseObjectDAO().getNextAccessionNumber());
-        return insert(sample);
+        // Use thread-safe AccessionNumberHandler to prevent duplicate accession number
+        // violations
+        // This handler includes retry logic and proper synchronization for
+        // multi-instance deployments
+        AccessionNumberHandler handler = new AccessionNumberHandler(this, sampleDAO, entityManager, this.getClass());
+        return handler.generateAndInsertWithUniqueAccessionNumber(sample);
     }
 
     @Override

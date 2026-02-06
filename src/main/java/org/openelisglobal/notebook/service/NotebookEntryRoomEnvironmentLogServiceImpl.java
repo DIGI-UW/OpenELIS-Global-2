@@ -2,6 +2,7 @@ package org.openelisglobal.notebook.service;
 
 import java.sql.Timestamp;
 import java.util.List;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.notebook.dao.NotebookEntryRoomEnvironmentLogDAO;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
@@ -20,6 +21,9 @@ public class NotebookEntryRoomEnvironmentLogServiceImpl
 
     @Autowired
     private NotebookEntryRoomEnvironmentLogDAO roomEnvironmentLogDAO;
+
+    @Autowired
+    private NotebookAuditService notebookAuditService;
 
     @Autowired
     private NotebookEntryService notebookEntryService;
@@ -59,7 +63,8 @@ public class NotebookEntryRoomEnvironmentLogServiceImpl
 
         NotebookEntry entry = notebookEntryService.get(entryId);
         if (entry == null) {
-            throw new IllegalArgumentException("Notebook entry not found: " + entryId);
+            throw new IllegalArgumentException("Notebook entry not found with ID: " + entryId +
+                ". This may indicate a data consistency issue. Please refresh the page or contact support if the problem persists.");
         }
 
         NotebookEntryRoomEnvironmentLog log = new NotebookEntryRoomEnvironmentLog();
@@ -78,5 +83,19 @@ public class NotebookEntryRoomEnvironmentLogServiceImpl
         Integer id = insert(log);
         log.setId(id);
         return log;
+    }
+
+    @Override
+    @Transactional
+    public Integer insert(NotebookEntryRoomEnvironmentLog notebookEntryRoomEnvironmentLog) {
+        Integer id = super.insert(notebookEntryRoomEnvironmentLog);
+        try {
+            notebookAuditService.saveAuditLog(notebookEntryRoomEnvironmentLog, "notebook_entry_room_environment_log",
+                    "I", notebookEntryRoomEnvironmentLog.getSysUserId());
+        } catch (Exception e) {
+            LogEvent.logWarn("NotebookEntryRoomEnvironmentLogService", "insert",
+                    "Failed to save audit log: " + e.getMessage());
+        }
+        return id;
     }
 }

@@ -115,6 +115,14 @@ public class SampleManagementServiceImpl implements SampleManagementService {
             throw new IllegalArgumentException("Parent sample item not found: " + form.getParentSampleItemId());
         }
 
+        // Fix detached entity issue: Reload Sample in current transaction to ensure
+        // it's managed with proper lastupdated/version field. Without this, when
+        // parent.getSample() has lastupdated=null, Hibernate's optimistic locking
+        // treats it as a NEW transient entity and tries to INSERT it, causing
+        // duplicate key violation on accession_number.
+        Sample managedSample = sampleService.get(parent.getSample().getId());
+        parent.setSample(managedSample);
+
         BigDecimal totalQuantityToTransfer = form.getQuantityToTransfer();
         int numberOfAliquots = form.getNumberOfAliquots();
 

@@ -94,6 +94,9 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     @Autowired
     private org.openelisglobal.inventory.service.InventoryItemService inventoryItemService;
 
+    @Autowired
+    private NotebookAuditService notebookAuditService;
+
     public NoteBookServiceImpl() {
         super(NoteBook.class);
         this.auditTrailLog = true;
@@ -1216,8 +1219,19 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         // Check for "aliquoting" in title since MNTD workflow uses aliquoting page
         // for routing samples to internal analysis (Processing & Quality Control)
+        // BUT NOT for pharmaceutical workflows where "aliquoting" is just processing
         if (title.contains("aliquoting")) {
-            return true;
+            // Only treat as routing page for MNTD workflow, not pharmaceuticals
+            NoteBook notebook = page.getNotebook();
+            if (notebook != null) {
+                Hibernate.initialize(notebook);
+                String notebookTitle = notebook.getTitle() != null ? notebook.getTitle().toLowerCase() : "";
+                // Only MNTD uses aliquoting page for routing; pharmaceuticals use it for
+                // processing
+                if (notebookTitle.contains("mntd")) {
+                    return true;
+                }
+            }
         }
 
         // Check by page order - order 4 is the Child Samples page where routing
@@ -1346,6 +1360,12 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                         || notebookTitle.contains("bioinformatics")) {
                     // In GBD, order 5 is "Gel Electrophoresis", not storage
                     // Samples should proceed to "Library Preparation" (page 6)
+                    return false;
+                }
+                if (notebookTitle.contains("pharmaceutical")) {
+                    // In Pharmaceuticals, order 5 is "Storage & Inventory Management", but it's
+                    // NOT a final storage page
+                    // Samples should proceed to "Reporting & Performance Monitoring" (page 6)
                     return false;
                 }
             }
@@ -2032,5 +2052,65 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         // Save the changes
         update(notebook);
+    }
+
+    @Override
+    @Transactional
+    public Integer insert(NoteBook notebook) {
+        Integer id = super.insert(notebook);
+        // Note: Audit logging handled by save() method to avoid duplicates
+        return id;
+    }
+
+    @Override
+    @Transactional
+    public NoteBook save(NoteBook notebook) {
+        boolean isNew = notebook.getId() == null;
+        NoteBook saved = super.save(notebook);
+        try {
+            String activity = isNew ? "I" : "U";
+            String sysUserId = saved.getSysUserId();
+            if (sysUserId == null || sysUserId.isEmpty()) {
+                LogEvent.logDebug("NoteBookService", "save",
+                        "sysUserId is null, audit log will be created without user info");
+            }
+            notebookAuditService.saveAuditLog(saved, "notebook", activity, sysUserId);
+        } catch (Exception e) {
+            LogEvent.logWarn("NoteBookService", "save", "Failed to save notebook audit log: " + e.getMessage());
+        }
+        return saved;
+    }
+
+    @Override
+    @Transactional
+    public NoteBook update(NoteBook notebook) {
+        NoteBook updated = super.update(notebook);
+        try {
+            String sysUserId = updated.getSysUserId();
+            if (sysUserId == null || sysUserId.isEmpty()) {
+                LogEvent.logDebug("NoteBookService", "update",
+                        "sysUserId is null, audit log will be created without user info");
+            }
+            notebookAuditService.saveAuditLog(updated, "notebook", "U", sysUserId);
+        } catch (Exception e) {
+            LogEvent.logWarn("NoteBookService", "update", "Failed to save notebook audit log: " + e.getMessage());
+        }
+        return updated;
+    }
+
+    @Override
+    @Transactional
+    public void delete(NoteBook notebook) {
+        try {
+            String sysUserId = notebook.getSysUserId();
+            if (sysUserId == null || sysUserId.isEmpty()) {
+                LogEvent.logDebug("NoteBookService", "delete",
+                        "sysUserId is null, audit log will be created without user info");
+            }
+            notebookAuditService.saveAuditLog(notebook, "notebook", "D", sysUserId);
+        } catch (Exception e) {
+            LogEvent.logWarn("NoteBookService", "delete", "Failed to save notebook audit log: " + e.getMessage());
+        }
+        super.delete(notebook);
     }
 }

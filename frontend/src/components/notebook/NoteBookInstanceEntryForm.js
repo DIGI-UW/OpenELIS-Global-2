@@ -72,8 +72,8 @@ import BioequivalenceWorkflowTab from "./workflow/BioequivalenceWorkflowTab";
 import MedLabWorkflowTab from "./workflow/MedLabWorkflowTab";
 import BiorepositoryWorkflowTab from "./workflow/BiorepositoryWorkflowTab";
 import TraditionalMedicineWorkflowTab from "./workflow/TraditionalMedicineWorkflowTab";
-import NotebookAuditLogViewer from "./NotebookAuditLogViewer";
 import GBDWorkflowTab from "./workflow/GBDWorkflowTab";
+import NotebookAuditLogViewer from "./NotebookAuditLogViewer";
 
 const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
@@ -226,10 +226,6 @@ const NoteBookInstanceEntryForm = () => {
   const [showTagModal, setShowTagModal] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [tagError, setTagError] = useState("");
-  const [auditTrailItems, setAuditTrailItems] = useState([]);
-  const [auditTrailLoading, setAuditTrailLoading] = useState(false);
-  const [auditTrailPage, setAuditTrailPage] = useState(1);
-  const [auditTrailPageSize, setAuditTrailPageSize] = useState(10);
 
   const openTagModal = () => {
     setNewTag("");
@@ -597,49 +593,6 @@ const NoteBookInstanceEntryForm = () => {
         setInitialMount(true);
       }
     }
-  };
-
-  const loadAuditTrail = (notebookId) => {
-    if (!notebookId) {
-      return;
-    }
-    setAuditTrailLoading(true);
-    getFromOpenElisServer(
-      "/rest/notebook/auditTrail?notebookId=" + notebookId,
-      (data) => {
-        if (data && data.log && Array.isArray(data.log)) {
-          const updatedAuditTrailItems = data.log.map((item, index) => {
-            // Format time from timestamp as "DD/MM/YYYY HH:MM"
-            let formattedTime = "-";
-            if (item.timeStamp) {
-              const date = new Date(item.timeStamp);
-              formattedTime = date.toLocaleString("en-GB", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false,
-              });
-            }
-            return { ...item, id: String(index + 1), time: formattedTime };
-          });
-          setAuditTrailItems(updatedAuditTrailItems);
-        } else {
-          setAuditTrailItems([]);
-        }
-        setAuditTrailLoading(false);
-      },
-      () => {
-        setAuditTrailItems([]);
-        setAuditTrailLoading(false);
-      },
-    );
-  };
-
-  const handleAuditTrailPageChange = (pageInfo) => {
-    setAuditTrailPage(pageInfo.page);
-    setAuditTrailPageSize(pageInfo.pageSize);
   };
 
   const statusColors = {
@@ -1584,10 +1537,12 @@ const NoteBookInstanceEntryForm = () => {
           </Column>
         )}
         {selectedTab === TABS.AUDIT_TRAIL && (
-          <NotebookAuditLogViewer
-            entityType="INSTANCE"
-            entityId={noteBookData.id}
-          />
+          <Column lg={16} md={8} sm={4}>
+            <NotebookAuditLogViewer
+              entityType="INSTANCE"
+              entityId={noteBookData.id}
+            />
+          </Column>
         )}
       </Grid>
       <Modal

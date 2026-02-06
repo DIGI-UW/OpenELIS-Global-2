@@ -22,6 +22,9 @@ public class NoteBookSampleServiceImpl extends AuditableBaseObjectServiceImpl<No
     @Autowired
     NoteBookService noteBookService;
 
+    @Autowired
+    private NotebookAuditService notebookAuditService;
+
     public NoteBookSampleServiceImpl() {
         super(NoteBookSample.class);
     }
@@ -45,5 +48,44 @@ public class NoteBookSampleServiceImpl extends AuditableBaseObjectServiceImpl<No
         List<SampleItem> samples = noteBookSamples.stream().map(s -> s.getSampleItem()).collect(Collectors.toList());
 
         return samples.stream().map(s -> noteBookService.convertSampleToDisplayBean(s)).collect(Collectors.toList());
+    }
+
+    // Audit integration overrides
+
+    @Override
+    @Transactional
+    public NoteBookSample save(NoteBookSample entity) {
+        NoteBookSample saved = super.save(entity);
+        try {
+            notebookAuditService.saveAuditLog(saved, "notebook_sample", "I", saved.getSysUserId());
+        } catch (Exception e) {
+            // Use simple println since LogEvent import might not be available
+            System.err.println("Failed to create audit log for NoteBookSample: " + e.getMessage());
+        }
+        return saved;
+    }
+
+    @Override
+    @Transactional
+    public NoteBookSample update(NoteBookSample entity) {
+        NoteBookSample original = get(entity.getId());
+        NoteBookSample updated = super.update(entity);
+        try {
+            notebookAuditService.saveAuditLog(updated, original, "notebook_sample", "U", updated.getSysUserId());
+        } catch (Exception e) {
+            System.err.println("Failed to create audit log for NoteBookSample: " + e.getMessage());
+        }
+        return updated;
+    }
+
+    @Override
+    @Transactional
+    public void delete(NoteBookSample entity) {
+        try {
+            notebookAuditService.saveAuditLog(entity, "notebook_sample", "D", entity.getSysUserId());
+        } catch (Exception e) {
+            System.err.println("Failed to create audit log for NoteBookSample: " + e.getMessage());
+        }
+        super.delete(entity);
     }
 }
