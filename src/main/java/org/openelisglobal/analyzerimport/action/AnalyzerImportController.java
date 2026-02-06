@@ -26,6 +26,7 @@ import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerReaderFactory;
 import org.openelisglobal.analyzerimport.analyzerreaders.HL7AnalyzerReader;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.service.LoginUserService;
@@ -121,11 +122,39 @@ public class AnalyzerImportController implements IActionConstants {
 
     /**
      * HTTP endpoint for HL7 ORU^R01 messages (e.g. from mock server or HL7 bridge).
-     * Body is raw HL7 message; analyzer is identified from MSH segment.
+     * Body is raw HL7 message; analyzer is identified from MSH segment or bridge
+     * headers.
+     *
+     * <p>
+     * Supports headers from Universal Bridge (M2a MLLP transport):
+     * <ul>
+     * <li>X-Source-Analyzer-IP: Source IP address (for fallback identification and
+     * audit)</li>
+     * <li>X-Source-Protocol: Protocol used (HL7)</li>
+     * <li>X-Source-Transport: Transport method (MLLP, SERIAL, FILE, HTTP)</li>
+     * <li>X-Analyzer-Id: Pre-identified analyzer ID from bridge</li>
+     * </ul>
      */
     @PostMapping("/analyzer/hl7")
     public void doPostHl7(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+
+        // Extract bridge headers for audit trail and fallback identification
+        String sourceIp = request.getHeader("X-Source-Analyzer-IP");
+        String sourceProtocol = request.getHeader("X-Source-Protocol");
+        String sourceTransport = request.getHeader("X-Source-Transport");
+        String analyzerId = request.getHeader("X-Analyzer-Id");
+
+        // Fallback to direct connection IP if header not present
+        if (sourceIp == null || sourceIp.isEmpty()) {
+            sourceIp = request.getRemoteAddr();
+        }
+
+        LogEvent.logInfo(this.getClass().getSimpleName(), "doPostHl7",
+                "Received HL7 message from " + sourceIp + " (protocol: "
+                        + (sourceProtocol != null ? sourceProtocol : "unknown") + ", transport: "
+                        + (sourceTransport != null ? sourceTransport : "direct") + ", analyzer: "
+                        + (analyzerId != null ? analyzerId : "auto-detect") + ")");
 
         response.setContentType("text/plain;charset=UTF-8");
         HL7AnalyzerReader reader = (HL7AnalyzerReader) AnalyzerReaderFactory.getReaderFor("hl7");
@@ -133,6 +162,11 @@ public class AnalyzerImportController implements IActionConstants {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "HL7 reader not available");
             return;
         }
+
+        // Pass source IP to reader for fallback identification
+        reader.setSourceIp(sourceIp);
+        reader.setBridgeAnalyzerId(analyzerId);
+
         boolean read = reader.readStream(request.getInputStream());
         if (!read) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST,
