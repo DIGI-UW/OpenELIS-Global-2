@@ -62,7 +62,7 @@ services:
             - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
         volumes:
             -  key_trust-store-volume:/etc/openelis-global
-            -  lucene_index-vol:/var/lib/lucene_index
+            - ./volume/lucene:/var/lib/lucene_index
             - ./volume/plugins/:/var/lib/openelis-global/plugins
             - ./volume/programs/:/var/lib/openelis-global/programs
             - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
@@ -165,4 +165,3 @@ volumes:
   key_trust-store-volume:
   certs-vol:
   keys-vol:
-  lucene_index-vol:

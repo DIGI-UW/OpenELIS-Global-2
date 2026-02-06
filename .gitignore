@@ -47,6 +47,7 @@ volume/ocl/*
 volume/odoo/*
 .specify/temp/
 volume/branding/*
+volume/lucene/*
 
 # AI Agent command directories (populated by scripts/install-speckit-commands.py)
 # These are compiled from .specify/core/commands/ and .specify/oe/commands/ and should not be tracked
