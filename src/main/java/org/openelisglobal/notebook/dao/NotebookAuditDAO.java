@@ -84,4 +84,20 @@ public interface NotebookAuditDAO extends BaseDAO<NotebookAuditLog, Long> {
      * @return Map of entity type to count
      */
     Map<String, Long> getAuditLogStatistics();
+
+    /**
+     * Get ALL audit logs related to a notebook (including all child entities:
+     * entries, pages, page samples, etc.).
+     *
+     * This query finds all audit logs where: - reference_id = notebookId AND
+     * entity_type = 'NOTEBOOK', OR - reference_id IN (entry IDs) AND entity_type =
+     * 'NOTEBOOK_ENTRY', OR - reference_id IN (page IDs) AND entity_type =
+     * 'NOTEBOOK_PAGE', OR - reference_id IN (page sample IDs) AND entity_type =
+     * 'NOTEBOOK_PAGE_SAMPLE'
+     *
+     * @param notebookId The notebook ID
+     * @return List of all audit logs related to this notebook, ordered by timestamp
+     *         DESC
+     */
+    List<NotebookAuditLog> getAllAuditLogsForNotebook(Long notebookId);
 }

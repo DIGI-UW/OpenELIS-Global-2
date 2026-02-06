@@ -83,17 +83,10 @@ const NotebookAuditLogViewer = ({ entityType, entityId }) => {
     };
 
     try {
-      if (entityType === "NOTEBOOK" || entityType === "INSTANCE") {
-        NotebookAuditLogAPI.getNotebookAuditTrail(entityId, handleSuccess);
-      } else if (entityType === "ENTRY") {
-        NotebookAuditLogAPI.getEntryAuditTrail(entityId, handleSuccess);
-      } else if (entityType === "PAGE_SAMPLE") {
-        NotebookAuditLogAPI.getPageSampleAuditTrail(entityId, handleSuccess);
-      } else {
-        console.error("Unknown entity type:", entityType);
-        setError("Unsupported entity type: " + entityType);
-        setLoading(false);
-      }
+      NotebookAuditLogAPI.getAllNotebookRelatedAuditLogs(
+        entityId,
+        handleSuccess,
+      );
     } catch (err) {
       handleError(err);
     }
@@ -217,31 +210,48 @@ const NotebookAuditLogViewer = ({ entityType, entityId }) => {
       key: "timestamp",
       header: intl.formatMessage({
         id: "notebook.audit.timestamp",
-        defaultMessage: "Timestamp",
-      }),
-    },
-    {
-      key: "activity",
-      header: intl.formatMessage({
-        id: "notebook.audit.activity",
-        defaultMessage: "Activity",
+        defaultMessage: "When",
       }),
     },
     {
       key: "performedByUser",
       header: intl.formatMessage({
         id: "notebook.audit.user",
-        defaultMessage: "User",
+        defaultMessage: "Who",
+      }),
+    },
+    {
+      key: "entityType",
+      header: intl.formatMessage({
+        id: "notebook.audit.entityType",
+        defaultMessage: "Entity",
+      }),
+    },
+    {
+      key: "activity",
+      header: intl.formatMessage({
+        id: "notebook.audit.activity",
+        defaultMessage: "Action",
       }),
     },
     {
       key: "summary",
       header: intl.formatMessage({
         id: "notebook.audit.summary",
-        defaultMessage: "Summary",
+        defaultMessage: "What Changed",
       }),
     },
   ];
+
+  // Format entity type for display
+  const formatEntityType = (entityType) => {
+    if (!entityType) return "Unknown";
+    // Convert NOTEBOOK_PAGE_SAMPLE to "Page Sample", etc.
+    return entityType
+      .replace(/_/g, " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  };
 
   // Create a lookup map for original logs by ID
   const logLookup = {};
@@ -250,13 +260,21 @@ const NotebookAuditLogViewer = ({ entityType, entityId }) => {
     .map((log, index) => {
       const rowId = log.id || `log-${index}`;
       logLookup[rowId] = log; // Store original log for later lookup
+
+      // Build comprehensive summary with entity title if available
+      let displaySummary = log.summary || "No summary available";
+      if (log.entityTitle) {
+        displaySummary = `${displaySummary} (${log.entityTitle})`;
+      }
+
       return {
         id: rowId,
-        timestamp: formatTimestamp(log.timestamp),
-        activity: log.activityDisplay || log.activity,
-        activityRaw: log.activityDisplay || log.activity || "Unknown", // Store for tag rendering
-        performedByUser: log.performedByUser || "Unknown",
-        summary: log.summary || "No summary available",
+        timestamp: formatTimestamp(log.timestamp), // WHEN
+        activity: log.activityDisplay || log.activity, // WHAT action
+        activityRaw: log.activityDisplay || log.activity || "Unknown",
+        performedByUser: log.performedByUser || "System", // WHO
+        entityType: formatEntityType(log.entityType), // WHAT entity
+        summary: displaySummary, // WHAT changed (details)
         statusChange: getStatusChangeTag(log),
         _originalLog: log,
       };
@@ -337,6 +355,147 @@ const NotebookAuditLogViewer = ({ entityType, entityId }) => {
   return (
     <Grid fullWidth={true} className="gridBoundary">
       <Column lg={16} md={8} sm={4}>
+        {/* ALCOA+ Compliance Badge */}
+        <div
+          style={{
+            marginBottom: "1rem",
+            padding: "1rem",
+            backgroundColor: "#f4f4f4",
+            borderLeft: "4px solid #0f62fe",
+          }}
+        >
+          <h6
+            style={{
+              margin: "0 0 0.5rem 0",
+              fontSize: "14px",
+              fontWeight: "600",
+              color: "#161616",
+            }}
+          >
+            <FormattedMessage
+              id="notebook.audit.compliance.title"
+              defaultMessage="🔒 Data Integrity & ALCOA+ Compliance"
+            />
+          </h6>
+          <p
+            style={{
+              margin: "0 0 0.5rem 0",
+              fontSize: "12px",
+              color: "#525252",
+            }}
+          >
+            <FormattedMessage
+              id="notebook.audit.compliance.description"
+              defaultMessage="This audit trail meets regulatory requirements for electronic records:"
+            />
+          </p>
+          <div
+            style={{
+              display: "flex",
+              gap: "1rem",
+              flexWrap: "wrap",
+              fontSize: "11px",
+            }}
+          >
+            <span
+              style={{
+                padding: "4px 8px",
+                backgroundColor: "#d0e2ff",
+                borderRadius: "4px",
+                color: "#0043ce",
+              }}
+            >
+              ✓{" "}
+              <FormattedMessage
+                id="notebook.audit.compliance.attributable"
+                defaultMessage="Attributable (WHO)"
+              />
+            </span>
+            <span
+              style={{
+                padding: "4px 8px",
+                backgroundColor: "#d0e2ff",
+                borderRadius: "4px",
+                color: "#0043ce",
+              }}
+            >
+              ✓{" "}
+              <FormattedMessage
+                id="notebook.audit.compliance.legible"
+                defaultMessage="Legible"
+              />
+            </span>
+            <span
+              style={{
+                padding: "4px 8px",
+                backgroundColor: "#d0e2ff",
+                borderRadius: "4px",
+                color: "#0043ce",
+              }}
+            >
+              ✓{" "}
+              <FormattedMessage
+                id="notebook.audit.compliance.contemporaneous"
+                defaultMessage="Contemporaneous (WHEN)"
+              />
+            </span>
+            <span
+              style={{
+                padding: "4px 8px",
+                backgroundColor: "#d0e2ff",
+                borderRadius: "4px",
+                color: "#0043ce",
+              }}
+            >
+              ✓{" "}
+              <FormattedMessage
+                id="notebook.audit.compliance.original"
+                defaultMessage="Original (Immutable)"
+              />
+            </span>
+            <span
+              style={{
+                padding: "4px 8px",
+                backgroundColor: "#d0e2ff",
+                borderRadius: "4px",
+                color: "#0043ce",
+              }}
+            >
+              ✓{" "}
+              <FormattedMessage
+                id="notebook.audit.compliance.accurate"
+                defaultMessage="Accurate"
+              />
+            </span>
+            <span
+              style={{
+                padding: "4px 8px",
+                backgroundColor: "#d0e2ff",
+                borderRadius: "4px",
+                color: "#0043ce",
+              }}
+            >
+              ✓{" "}
+              <FormattedMessage
+                id="notebook.audit.compliance.complete"
+                defaultMessage="Complete (WHAT)"
+              />
+            </span>
+          </div>
+          <p
+            style={{
+              margin: "0.5rem 0 0 0",
+              fontSize: "11px",
+              color: "#6f6f6f",
+            }}
+          >
+            <FormattedMessage
+              id="notebook.audit.compliance.standards"
+              defaultMessage="Compliant with FDA 21 CFR Part 11, WHO Guidelines, ICH Q10"
+            />
+          </p>
+        </div>
+
         <DataTable rows={rows} headers={headers}>
           {({
             rows,

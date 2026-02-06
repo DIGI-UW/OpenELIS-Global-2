@@ -52,6 +52,15 @@ public interface NotebookAuditService extends BaseObjectService<NotebookAuditLog
     List<NotebookAuditLog> getAuditLogsForEntity(String entityId, String entityType);
 
     /**
+     * Get ALL audit logs related to a notebook (including all child entities:
+     * entries, pages, page samples, etc.).
+     *
+     * @param notebookId The notebook ID
+     * @return List of all audit logs related to this notebook
+     */
+    List<NotebookAuditLog> getAllAuditLogsForNotebook(String notebookId);
+
+    /**
      * Search audit logs with filters and pagination.
      *
      * <p>

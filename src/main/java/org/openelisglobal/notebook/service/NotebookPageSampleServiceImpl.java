@@ -51,6 +51,9 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
     @Autowired
     private SampleRoutingService sampleRoutingService;
 
+    @Autowired
+    private NotebookAuditService notebookAuditService;
+
     public NotebookPageSampleServiceImpl() {
         super(NotebookPageSample.class);
     }
@@ -119,6 +122,21 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
 
             int updated = baseObjectDAO.bulkUpdateStatus(pageId, batch, status);
             totalUpdated += updated;
+
+            // Create audit logs for bulk-updated samples
+            if (updated > 0) {
+                try {
+                    for (Integer sampleId : batch) {
+                        NotebookPageSample nps = getByPageIdAndSampleItemId(pageId, sampleId);
+                        if (nps != null) {
+                            notebookAuditService.saveAuditLog(nps, "notebook_page_sample", "U", userId);
+                        }
+                    }
+                } catch (Exception e) {
+                    LogEvent.logWarn(this.getClass().getName(), "bulkUpdateStatus",
+                            "Failed to create audit logs for bulk update: " + e.getMessage());
+                }
+            }
 
             // For samples that don't have NotebookPageSample records yet (e.g., dynamically
             // loaded aliquots), create them with the target status
@@ -353,6 +371,21 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
             int updated = baseObjectDAO.bulkUpdateStatusString(pageId, batch, status);
             totalUpdated += updated;
 
+            // Create audit logs for bulk-updated samples
+            if (updated > 0) {
+                try {
+                    for (String sampleId : batch) {
+                        NotebookPageSample nps = getBySampleItemIdAndPageId(sampleId, pageId);
+                        if (nps != null) {
+                            notebookAuditService.saveAuditLog(nps, "notebook_page_sample", "U", userId);
+                        }
+                    }
+                } catch (Exception e) {
+                    LogEvent.logWarn(this.getClass().getName(), "bulkUpdateStatusString",
+                            "Failed to create audit logs for bulk update: " + e.getMessage());
+                }
+            }
+
             // For samples that don't have NotebookPageSample records yet, create them
             for (String sampleId : batch) {
                 NotebookPageSample existing = getBySampleItemIdAndPageId(sampleId, pageId);
@@ -555,6 +588,18 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
 
                         LogEvent.logInfo(this.getClass().getName(), "bulkAppendToArray",
                                 "Native SQL updated " + updated + " record(s) for npsId=" + nps.getId());
+
+                        // Create audit log for native SQL update
+                        if (updated > 0) {
+                            try {
+                                // Refresh entity to get updated state
+                                entityManager.refresh(nps);
+                                notebookAuditService.saveAuditLog(nps, "notebook_page_sample", "U", userId);
+                            } catch (Exception auditEx) {
+                                LogEvent.logWarn(this.getClass().getName(), "bulkAppendToArray",
+                                        "Failed to create audit log for native SQL update: " + auditEx.getMessage());
+                            }
+                        }
 
                         totalUpdated++;
                     } catch (Exception e) {
@@ -949,5 +994,56 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
     @Transactional(readOnly = true)
     public boolean existsByPatientEncounterIdInNotebook(Integer notebookId, String patientEncounterId) {
         return baseObjectDAO.existsByPatientEncounterIdInNotebook(notebookId, patientEncounterId);
+    }
+
+    // Audit integration overrides
+
+    @Override
+    @Transactional
+    public Integer insert(NotebookPageSample entity) {
+        Integer id = super.insert(entity);
+        // Note: Audit logging handled by save() method to avoid duplicates
+        return id;
+    }
+
+    @Override
+    @Transactional
+    public NotebookPageSample save(NotebookPageSample entity) {
+        boolean isNew = entity.getId() == null;
+        NotebookPageSample saved = super.save(entity);
+        try {
+            String activity = isNew ? "I" : "U";
+            notebookAuditService.saveAuditLog(saved, "notebook_page_sample", activity, saved.getSysUserId());
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "save",
+                    "Failed to create audit log for NotebookPageSample: " + e.getMessage());
+        }
+        return saved;
+    }
+
+    @Override
+    @Transactional
+    public NotebookPageSample update(NotebookPageSample entity) {
+        NotebookPageSample original = get(entity.getId());
+        NotebookPageSample updated = super.update(entity);
+        try {
+            notebookAuditService.saveAuditLog(updated, original, "notebook_page_sample", "U", updated.getSysUserId());
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "update",
+                    "Failed to create audit log for NotebookPageSample: " + e.getMessage());
+        }
+        return updated;
+    }
+
+    @Override
+    @Transactional
+    public void delete(NotebookPageSample entity) {
+        try {
+            notebookAuditService.saveAuditLog(entity, "notebook_page_sample", "D", entity.getSysUserId());
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "delete",
+                    "Failed to create audit log for NotebookPageSample: " + e.getMessage());
+        }
+        super.delete(entity);
     }
 }

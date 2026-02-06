@@ -164,10 +164,10 @@ public class NotebookAuditLog extends BaseObject<Long> {
             return null;
         }
         return switch (activity.toUpperCase()) {
-            case "I" -> "INSERT";
-            case "U" -> "UPDATE";
-            case "D" -> "DELETE";
-            default -> activity.toUpperCase();
+        case "I" -> "INSERT";
+        case "U" -> "UPDATE";
+        case "D" -> "DELETE";
+        default -> activity.toUpperCase();
         };
     }
 }

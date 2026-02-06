@@ -63,6 +63,24 @@ public class NotebookAuditLogRestController extends BaseRestController {
     }
 
     /**
+     * Get ALL audit logs for a notebook and its related entities (entries, pages,
+     * page samples, etc.).
+     */
+    @GetMapping(value = "/notebook/{notebookId}/all", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<Map<String, Object>>> getAllNotebookRelatedAuditLogs(@PathVariable String notebookId) {
+        try {
+            // Get all logs related to this notebook (all entity types)
+            List<NotebookAuditLog> logs = notebookAuditService.getAllAuditLogsForNotebook(notebookId);
+            List<Map<String, Object>> result = logs.stream().map(this::transformAuditLogToMap)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
      * Get audit logs for a specific notebook entry.
      */
     @GetMapping(value = "/entry/{entryId}", produces = MediaType.APPLICATION_JSON_VALUE)

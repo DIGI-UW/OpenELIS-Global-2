@@ -20,6 +20,17 @@ export const NotebookAuditLogAPI = {
   },
 
   /**
+   * Get ALL audit logs for a notebook and its related entities
+   * (entries, pages, page samples, etc.).
+   *
+   * @param {string} notebookId - The notebook ID
+   * @param {function} callback - Callback function to receive the data
+   */
+  getAllNotebookRelatedAuditLogs: (notebookId, callback) => {
+    getFromOpenElisServer(`${BASE_URL}/notebook/${notebookId}/all`, callback);
+  },
+
+  /**
    * Get audit logs for a specific notebook entry.
    *
    * @param {string} entryId - The entry ID

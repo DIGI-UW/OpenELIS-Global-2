@@ -253,6 +253,37 @@ public class NotebookAuditDAOImpl extends BaseDAOImpl<NotebookAuditLog, Long> im
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<NotebookAuditLog> getAllAuditLogsForNotebook(Long notebookId) {
+        try {
+            // Use native SQL to efficiently get all related audit logs
+            String sql = "SELECT DISTINCT na.* FROM clinlims.notebook_audit na " + "WHERE " +
+            // Notebook itself
+                    "(na.entity_type = 'NOTEBOOK' AND na.reference_id = :notebookId) " + "OR " +
+                    // Notebook entries
+                    "(na.entity_type = 'NOTEBOOK_ENTRY' AND na.reference_id IN "
+                    + "  (SELECT id FROM clinlims.notebook_entry WHERE notebook_id = :notebookId)) " + "OR " +
+                    // Notebook pages
+                    "(na.entity_type = 'NOTEBOOK_PAGE' AND na.reference_id IN "
+                    + "  (SELECT id FROM clinlims.notebook_page WHERE notebook_id = :notebookId)) " + "OR " +
+                    // Notebook page samples
+                    "(na.entity_type = 'NOTEBOOK_PAGE_SAMPLE' AND na.reference_id IN "
+                    + "  (SELECT nps.id FROM clinlims.notebook_page_sample nps "
+                    + "   INNER JOIN clinlims.notebook_page np ON nps.notebook_page_id = np.id "
+                    + "   WHERE np.notebook_id = :notebookId)) " + "ORDER BY na.timestamp DESC";
+
+            @SuppressWarnings("unchecked")
+            List<NotebookAuditLog> results = entityManager.createNativeQuery(sql, NotebookAuditLog.class)
+                    .setParameter("notebookId", notebookId).getResultList();
+
+            return results;
+        } catch (RuntimeException e) {
+            handleException(e, "getAllAuditLogsForNotebook");
+            return new ArrayList<>();
+        }
+    }
+
     /**
      * Handle exceptions and log errors.
      */

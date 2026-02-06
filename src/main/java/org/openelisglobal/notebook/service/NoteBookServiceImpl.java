@@ -2041,16 +2041,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     @Transactional
     public Integer insert(NoteBook notebook) {
         Integer id = super.insert(notebook);
-        try {
-            String sysUserId = notebook.getSysUserId();
-            if (sysUserId == null || sysUserId.isEmpty()) {
-                LogEvent.logDebug("NoteBookService", "insert",
-                        "sysUserId is null, audit log will be created without user info");
-            }
-            notebookAuditService.saveAuditLog(notebook, "notebook", "I", sysUserId);
-        } catch (Exception e) {
-            LogEvent.logWarn("NoteBookService", "insert", "Failed to save notebook audit log: " + e.getMessage());
-        }
+        // Note: Audit logging handled by save() method to avoid duplicates
         return id;
     }
 

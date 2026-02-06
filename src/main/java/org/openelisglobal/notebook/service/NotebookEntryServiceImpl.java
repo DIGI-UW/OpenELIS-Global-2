@@ -418,17 +418,11 @@ public class NotebookEntryServiceImpl extends AuditableBaseObjectServiceImpl<Not
         return false;
     }
 
-    // ==================== Notebook Audit Logging Integration ====================
-
     @Override
     @Transactional
     public Integer insert(NotebookEntry entry) {
         Integer id = super.insert(entry);
-        try {
-            notebookAuditService.saveAuditLog(entry, "notebook_entry", "I", entry.getSysUserId());
-        } catch (Exception e) {
-            LogEvent.logWarn("NotebookEntryService", "insert", "Failed to save audit log: " + e.getMessage());
-        }
+        // Note: Audit logging handled by save() method to avoid duplicates
         return id;
     }
 

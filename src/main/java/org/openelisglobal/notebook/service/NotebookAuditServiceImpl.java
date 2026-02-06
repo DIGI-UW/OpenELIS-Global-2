@@ -5,7 +5,6 @@ import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.valueholder.BaseObject;
@@ -16,7 +15,6 @@ import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,8 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Service implementation for NotebookAuditLog operations.
  *
  * <p>
- * Integrates with existing AuditTrailService for dual-write during validation
- * period.
+ * Provides comprehensive audit logging for all notebook-related entities.
  */
 @Service
 public class NotebookAuditServiceImpl extends AuditableBaseObjectServiceImpl<NotebookAuditLog, Long>
@@ -34,10 +31,6 @@ public class NotebookAuditServiceImpl extends AuditableBaseObjectServiceImpl<Not
 
     @Autowired
     protected NotebookAuditDAO baseObjectDAO;
-
-    @Autowired
-    @Lazy
-    private AuditTrailService auditTrailService;
 
     @Autowired
     private SystemUserService systemUserService;
@@ -83,7 +76,7 @@ public class NotebookAuditServiceImpl extends AuditableBaseObjectServiceImpl<Not
                 auditLog.setReferenceTable(Long.parseLong(refTable.getId()));
             } else {
                 LogEvent.logWarn("NotebookAuditService", "saveAuditLog", "Reference table not found for: " + tableName);
-                return; // Skip audit logging if reference table not found
+                return;
             }
 
             auditLog.setActivity(activity);
@@ -120,27 +113,6 @@ public class NotebookAuditServiceImpl extends AuditableBaseObjectServiceImpl<Not
             insert(auditLog);
             LogEvent.logInfo(this.getClass().getSimpleName(), "saveAuditLog",
                     "Created " + activity + " audit log for " + tableName + " (ID: " + referenceId + ")");
-
-            // DUAL-WRITE: Also save to history table (during validation period)
-            // This can be disabled after validation period by commenting out this block
-            // Only attempt dual-write if sysUserId is not null (AuditTrailService requires
-            // it)
-            if (sysUserId != null && !sysUserId.isEmpty()) {
-                try {
-                    if ("I".equals(activity)) {
-                        auditTrailService.saveNewHistory(newEntity, sysUserId, tableName);
-                    } else {
-                        auditTrailService.saveHistory(newEntity, oldEntity, sysUserId, activity, tableName);
-                    }
-                } catch (Exception e) {
-                    // Log but don't fail - audit log is primary
-                    LogEvent.logWarn("NotebookAuditService", "saveAuditLog",
-                            "Dual-write to history table failed: " + e.getMessage());
-                }
-            } else {
-                LogEvent.logDebug("NotebookAuditService", "saveAuditLog",
-                        "Skipping dual-write to history table (sysUserId is null)");
-            }
 
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -295,6 +267,12 @@ public class NotebookAuditServiceImpl extends AuditableBaseObjectServiceImpl<Not
     @Transactional(readOnly = true)
     public List<NotebookAuditLog> getAuditLogsForEntity(String entityId, String entityType) {
         return baseObjectDAO.getAuditLogsByEntityId(Long.parseLong(entityId), entityType);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NotebookAuditLog> getAllAuditLogsForNotebook(String notebookId) {
+        return baseObjectDAO.getAllAuditLogsForNotebook(Long.parseLong(notebookId));
     }
 
     @Override

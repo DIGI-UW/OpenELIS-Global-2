@@ -208,4 +208,24 @@
         </sql>
     </changeSet>
 
+    <changeSet id="notebook-audit-007-add-notebook-entry-reference-table" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'NOTEBOOK_ENTRY'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add NOTEBOOK_ENTRY to reference_tables for audit logging support</comment>
+
+        <sql>
+            INSERT INTO clinlims.reference_tables (id, name, keep_history, is_hl7_encoded, lastupdated)
+            VALUES (
+                (SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims.reference_tables),
+                'NOTEBOOK_ENTRY',
+                'Y',
+                'N',
+                CURRENT_TIMESTAMP
+            );
+        </sql>
+    </changeSet>
+
 </databaseChangeLog>
