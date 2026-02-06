@@ -23,6 +23,8 @@ class RoutineReportPage {
 
   selectStatistics() {
     cy.get("#menu_reports_aggregate_statistics", { timeout: 15000 })
+      .find("a")
+      .first()
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();
@@ -57,6 +59,8 @@ class RoutineReportPage {
   }
   selectByTestType() {
     cy.get("#menu_activity_report_test")
+      .find("a")
+      .first()
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();
@@ -67,7 +71,10 @@ class RoutineReportPage {
 
   selectByPanel() {
     cy.get("#menu_activity_report_panel")
+      .find("a")
+      .first()
       .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
       .click();
   }
 
@@ -77,12 +84,16 @@ class RoutineReportPage {
 
   selectByUnit() {
     cy.get("#menu_activity_report_bench")
+      .find("a")
+      .first()
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();
   }
   selectReferredOutTestReport() {
     cy.get("#menu_reports_referred")
+      .find("a")
+      .first()
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();
@@ -94,6 +105,8 @@ class RoutineReportPage {
 
   selectNCReportByUnit() {
     cy.get("#menu_reports_nonconformity_section")
+      .find("a")
+      .first()
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();
@@ -101,6 +114,8 @@ class RoutineReportPage {
 
   selectNCReportByDate() {
     cy.get("#menu_reports_nonconformity_date")
+      .find("a")
+      .first()
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();
@@ -108,6 +123,8 @@ class RoutineReportPage {
 
   navigateToRoutineCSVReport() {
     cy.get("#menu_reports_export_routine")
+      .find("a")
+      .first()
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();
@@ -131,6 +148,8 @@ class RoutineReportPage {
     this.ensureSidenavMenuExpanded("#menu_reports");
     this.ensureSidenavMenuExpanded("#menu_reports_routine");
     cy.get("#menu_reports_status_patient", { timeout: 15000 })
+      .find("a")
+      .first()
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();
