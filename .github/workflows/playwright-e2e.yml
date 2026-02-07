@@ -52,6 +52,8 @@ jobs:
         env:
           CI: true
           BASE_URL: https://localhost
+          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ secrets.TEST_PASS || 'adminADMIN!' }}
 
       - name: Upload Playwright HTML report
         if: failure()
