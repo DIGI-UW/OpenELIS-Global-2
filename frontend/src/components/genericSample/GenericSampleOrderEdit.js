@@ -493,6 +493,7 @@ export default function GenericSampleOrderEdit({
                         />
                       }
                       type="number"
+                      min="0"
                       value={defaultForm.quantity}
                       onChange={(e) =>
                         updateDefaultField("quantity", e.target.value)

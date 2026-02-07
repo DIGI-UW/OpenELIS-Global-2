@@ -654,6 +654,8 @@ export default function GenericSampleOrder({
                       />
                     }
                     type="number"
+                    min="0"
+                    step="1"     // (no decimals digits)
                     value={defaultForm.quantity}
                     onChange={(e) =>
                       updateDefaultField("quantity", e.target.value)
