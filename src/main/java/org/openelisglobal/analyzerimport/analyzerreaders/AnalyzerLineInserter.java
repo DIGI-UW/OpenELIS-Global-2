@@ -56,7 +56,7 @@ public abstract class AnalyzerLineInserter {
 
         if (results.size() > 0) {
             for (AnalyzerResults analyzerResults : results) {
-                if (analyzerResults.getTestId().equals("-1")) {
+                if ("-1".equals(analyzerResults.getTestId())) {
                     analyzerResults.setTestId(null);
                     analyzerResults.setReadOnly(true);
                 }

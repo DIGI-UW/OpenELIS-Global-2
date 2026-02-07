@@ -76,9 +76,11 @@ public class HL7AnalyzerReader extends AnalyzerReader {
         PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
         List<AnalyzerImporterPlugin> plugins = choosePluginOrder(pluginService);
 
+        boolean pluginMatched = false;
         for (AnalyzerImporterPlugin plugin : plugins) {
             try {
                 if (plugin.isTargetAnalyzer(lines)) {
+                    pluginMatched = true;
                     AnalyzerLineInserter inserter = plugin.getAnalyzerLineInserter();
                     if (inserter != null) {
                         boolean success = inserter.insert(lines, systemUserId);
@@ -90,12 +92,15 @@ public class HL7AnalyzerReader extends AnalyzerReader {
                     }
                 }
             } catch (RuntimeException e) {
-                LogEvent.logError("Error checking plugin " + plugin.getClass().getSimpleName() + ": " + e.getMessage(),
-                        e);
+                pluginMatched = true;
+                error = "Plugin " + plugin.getClass().getSimpleName() + " matched but failed: " + e.getMessage();
+                LogEvent.logError(error, e);
             }
         }
 
-        error = "No HL7 plugin matched this message (e.g. configure GenericHL7 with matching identifier pattern)";
+        if (!pluginMatched) {
+            error = "No HL7 plugin matched this message (e.g. configure GenericHL7 with matching identifier pattern)";
+        }
         LogEvent.logError(getClass().getSimpleName(), "insertAnalyzerData", error);
         return false;
     }

@@ -9,7 +9,13 @@ import messages from "../../../../languages/en.json";
 import * as analyzerService from "../../../../services/analyzerService";
 
 // Mock analyzer service
-jest.mock("../../../../services/analyzerService");
+jest.mock("../../../../services/analyzerService", () => ({
+  getDefaultConfigs: jest.fn(),
+  getDefaultConfig: jest.fn(),
+  getAnalyzerTypes: jest.fn(),
+  createAnalyzer: jest.fn(),
+  updateAnalyzer: jest.fn(),
+}));
 
 const renderWithIntl = (component) => {
   return render(
