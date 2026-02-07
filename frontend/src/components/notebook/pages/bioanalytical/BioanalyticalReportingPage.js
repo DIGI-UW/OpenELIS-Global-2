@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useContext } from "react";
 import config from "../../../../config.json";
 import {
   Grid,
@@ -22,10 +22,14 @@ import {
   Checkbox,
   TextArea,
   Tag,
+  Modal,
+  TextInput,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { usePermissions } from "../../../../hooks/usePermissions";
 import { useBioanalyticalPermissions } from "../../../../hooks/useBioanalyticalPermissions";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
 import "./BioanalyticalPages.css";
 
@@ -47,6 +51,67 @@ import "./BioanalyticalPages.css";
  * @param {Object} props.notebookData - Notebook configuration data
  * @param {function} props.onPageNavigation - Function to navigate to specific page by order
  */
+
+// Helper function to map submission target to delivery type
+const getDeliveryType = (targetId) => {
+  const deliveryTypeMap = {
+    medical_lab: "internal",
+    research_unit: "research",
+    principal_investigator: "research",
+    regulatory_affairs: "regulatory",
+    external_client: "external",
+  };
+  return deliveryTypeMap[targetId] || "internal";
+};
+
+// Submission targets for result delivery
+const submissionTargets = [
+  {
+    id: "medical_lab",
+    label: "Medical Laboratory",
+    department: "Clinical Laboratory Services",
+  },
+  {
+    id: "research_unit",
+    label: "Research Unit",
+    department: "Clinical Research Department",
+  },
+  {
+    id: "principal_investigator",
+    label: "Principal Investigator",
+    department: "Study Sponsor",
+  },
+  {
+    id: "regulatory_affairs",
+    label: "Regulatory Affairs",
+    department: "Compliance Team",
+  },
+  {
+    id: "external_client",
+    label: "External Client",
+    department: "Contract Research Organization",
+  },
+];
+
+// Submission formats for result delivery
+const submissionFormats = [
+  {
+    id: "pdf",
+    label: "PDF Report",
+    description: "Comprehensive formatted report with charts and analysis",
+  },
+  {
+    id: "excel",
+    label: "Excel Workbook",
+    description: "Detailed data with multiple sheets for analysis",
+  },
+  {
+    id: "csv",
+    label: "CSV Data",
+    description: "Raw data in comma-separated format for processing",
+  },
+];
+
 function BioanalyticalReportingPage({
   entryId,
   pageData,
@@ -56,7 +121,17 @@ function BioanalyticalReportingPage({
   onPageNavigation,
 }) {
   const intl = useIntl();
+  const { setNotificationVisible, addNotification } = useContext(NotificationContext);
   const { hasAnyRole } = usePermissions();
+
+  // Notification helper following the existing pattern
+  const notify = useCallback(
+    ({ kind = NotificationKinds.info, title, message }) => {
+      setNotificationVisible(true);
+      addNotification({ kind, title, message });
+    },
+    [addNotification, setNotificationVisible],
+  );
   const {
     BIOANALYTICAL_ROLES,
     getPagePermissionLevel,
@@ -97,6 +172,18 @@ function BioanalyticalReportingPage({
   const [exportStatus, setExportStatus] = useState(null);
   const [submissionTarget, setSubmissionTarget] = useState("");
   const [submissionStatus, setSubmissionStatus] = useState(null);
+  const [submissionFormat, setSubmissionFormat] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [deliveryNotes, setDeliveryNotes] = useState("");
+
+  // REDCap export state
+  const [redcapModalOpen, setRedcapModalOpen] = useState(false);
+  const [redcapData, setRedcapData] = useState({
+    projectId: "",
+    recordIdField: "record_id",
+    eventName: "",
+    instrumentName: "bioanalytical_study",
+  });
   const [qaChecklist, setQaChecklist] = useState({
     rawDataValidated: false,
     calibrationAcceptable: false,
@@ -179,38 +266,10 @@ function BioanalyticalReportingPage({
   const exportFormats = [
     { id: "csv", label: "Research Format (CSV)" },
     { id: "pdf", label: "PDF Report" },
+    { id: "redcap", label: "REDCap (Research Electronic Data Capture)" },
     // Disabled for this phase - will be handled later
     // { id: "lmis", label: "LMIS (Laboratory Management Information System)" },
-    // { id: "redcap", label: "REDCap (Research Electronic Data Capture)" },
     // { id: "cdisc", label: "CDISC/SDTM (Clinical Data Interchange Standards)" },
-  ];
-
-  const submissionTargets = [
-    {
-      id: "medical_lab",
-      label: "Medical Laboratory",
-      department: "Clinical Laboratory Services",
-    },
-    {
-      id: "research_unit",
-      label: "Research Unit",
-      department: "Clinical Research Department",
-    },
-    {
-      id: "principal_investigator",
-      label: "Principal Investigator",
-      department: "Study Sponsor",
-    },
-    {
-      id: "regulatory_affairs",
-      label: "Regulatory Affairs",
-      department: "Compliance Team",
-    },
-    {
-      id: "external_client",
-      label: "External Client",
-      department: "Contract Research Organization",
-    },
   ];
 
   const loadStudyResults = useCallback(async () => {
@@ -1124,28 +1183,42 @@ function BioanalyticalReportingPage({
 
   const handleExport = useCallback(async () => {
     if (!exportFormat) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.reporting.selectFormat",
           defaultMessage: "Please select an export format",
         }),
-      );
+      });
       return;
     }
 
     if (!qaApproved) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.reporting.qaRequired",
           defaultMessage: "QA approval is required before exporting data",
         }),
-      );
+      });
+      return;
+    }
+
+    // For REDCap export, open configuration modal
+    if (exportFormat === "redcap") {
+      setRedcapModalOpen(true);
       return;
     }
 
     setIsLoading(true);
-    setErrorMessage("");
-    setSuccessMessage("");
 
     try {
       // Collect all numeric sample IDs from all result groups
@@ -1164,7 +1237,7 @@ function BioanalyticalReportingPage({
       // Map export format ID to endpoint path and file extension
       const exportConfig = {
         redcap: {
-          endpoint: "/export/redcap",
+          endpoint: "/redcap/export",
           extension: "csv",
           body: { sampleIds, recordIdField: "record_id", eventName: null },
         },
@@ -1257,7 +1330,7 @@ function BioanalyticalReportingPage({
       }
 
       const response = await fetch(
-        `${config.serverBaseUrl}/rest/notebook/bioanalytical/page/${pageData.id}${config_export.endpoint}`,
+        `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData.id}${config_export.endpoint}`,
         {
           method: "POST",
           credentials: "include",
@@ -1315,8 +1388,13 @@ function BioanalyticalReportingPage({
         filename: `bioanalytical_study_${entryId}_${exportFormat}.${config_export.extension}`,
       });
 
-      setSuccessMessage(
-        intl.formatMessage(
+      notify({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.success",
+          defaultMessage: "Success",
+        }),
+        message: intl.formatMessage(
           {
             id: "notebook.bioanalytical.reporting.exportSuccess",
             defaultMessage:
@@ -1327,17 +1405,22 @@ function BioanalyticalReportingPage({
             records: studyResults.length,
           },
         ),
-      );
+      });
     } catch (error) {
-      setErrorMessage(
-        intl.formatMessage(
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage(
           {
             id: "notebook.bioanalytical.reporting.exportError",
             defaultMessage: "Error exporting data: {error}",
           },
           { error: error.message },
         ),
-      );
+      });
     } finally {
       setIsLoading(false);
     }
@@ -1356,34 +1439,180 @@ function BioanalyticalReportingPage({
     exportFormats,
   ]);
 
+  // REDCap export function
+  const handleRedcapExport = useCallback(async () => {
+    if (!redcapData.recordIdField) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.recordIdRequired",
+          defaultMessage: "Record ID field is required",
+        }),
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Collect all numeric sample IDs from all result groups
+      const sampleIds = studyResults.flatMap(
+        (result) => result.sampleIds || [],
+      );
+
+      if (sampleIds.length === 0) {
+        throw new Error("No samples available for export");
+      }
+
+      const requestBody = {
+        sampleIds,
+        recordIdField: redcapData.recordIdField,
+        eventName: redcapData.eventName || null,
+        instrumentName: redcapData.instrumentName || "bioanalytical_study",
+        projectId: redcapData.projectId || null,
+      };
+
+      const response = await fetch(
+        `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData.id}/redcap/export`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+          body: JSON.stringify(requestBody),
+        },
+      );
+
+      if (!response.ok) {
+        let errorMessage;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message;
+        } catch (e) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage || "Failed to export to REDCap");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const projectSuffix = redcapData.projectId ? `_${redcapData.projectId}` : "";
+      link.download = `bioanalytical_redcap_${entryId}${projectSuffix}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+
+      // Update export status
+      setExportStatus({
+        format: "REDCap CSV",
+        records: studyResults.length,
+        filename: `bioanalytical_redcap_${entryId}${projectSuffix}.csv`,
+        timestamp: new Date().toLocaleString(),
+      });
+
+      notify({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.success",
+          defaultMessage: "Success",
+        }),
+        message: intl.formatMessage(
+          {
+            id: "notebook.bioanalytical.reporting.redcapExportSuccess",
+            defaultMessage: "REDCap export completed successfully. {records} records exported.",
+          },
+          { records: studyResults.length },
+        ),
+      });
+
+      setRedcapModalOpen(false);
+    } catch (error) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage(
+          {
+            id: "notebook.bioanalytical.reporting.redcapExportError",
+            defaultMessage: "Failed to export to REDCap: {error}",
+          },
+          { error: error.message },
+        ),
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [redcapData, studyResults, intl, notify, pageData.id, entryId]);
+
   const handleSubmitResults = useCallback(async () => {
     if (!submissionTarget) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.submissionError",
+          defaultMessage: "Submission Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.reporting.selectSubmissionTarget",
           defaultMessage: "Please select a submission target",
         }),
-      );
+      });
+      return;
+    }
+
+    if (!submissionFormat) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.submissionError",
+          defaultMessage: "Submission Error",
+        }),
+        message: intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.selectSubmissionFormat",
+          defaultMessage: "Please select a submission format",
+        }),
+      });
       return;
     }
 
     if (!qaApproved) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.submissionError",
+          defaultMessage: "Submission Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.reporting.qaRequiredForSubmission",
           defaultMessage: "QA approval is required before submitting results",
         }),
-      );
+      });
       return;
     }
 
     if (studyResults.length === 0) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.submissionError",
+          defaultMessage: "Submission Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.reporting.noResultsToSubmit",
           defaultMessage: "No results available for submission",
         }),
-      );
+      });
       return;
     }
 
@@ -1420,9 +1649,19 @@ function BioanalyticalReportingPage({
         },
       };
 
-      // Submit via backend API
+      // Submit via delivery endpoint - using existing backend infrastructure
+      const deliveryRequest = {
+        recipientName: selectedTarget.label,
+        recipientEmail: recipientEmail || null,
+        deliveryType: getDeliveryType(selectedTarget.id),
+        regulatoryBody: selectedTarget.id === "regulatory_affairs" ? "FDA" : null,
+        notes: deliveryNotes || `Bioanalytical results submitted via ${submissionFormat?.toUpperCase()} format. Total samples: ${studyResults.reduce((sum, result) => sum + result.dataPoints, 0)}`,
+        exportFormat: submissionFormat,
+        submissionData: submissionData,
+      };
+
       const response = await fetch(
-        `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData?.id}/samples/apply`,
+        `${config.serverBaseUrl}/rest/notebook/bulk/notebook/${entryId}/deliver`,
         {
           method: "POST",
           credentials: "include",
@@ -1430,44 +1669,44 @@ function BioanalyticalReportingPage({
             "Content-Type": "application/json",
             "X-CSRF-Token": localStorage.getItem("CSRF"),
           },
-          body: JSON.stringify({
-            sampleIds: studyResults.flatMap(
-              (r) => r.samples?.map((s) => s.id) || [],
-            ),
-            data: {
-              submissionStatus: "SUBMITTED",
-              submissionData: submissionData,
-              submittedAt: new Date().toISOString(),
-              submittedBy: "CURRENT_USER",
-            },
-            userId: "CURRENT_USER",
-          }),
+          body: JSON.stringify(deliveryRequest),
         },
       );
 
       if (response.ok) {
+        const responseData = await response.json();
+        const confirmationNumber = `BR-${responseData.deliveryId || Date.now()}`;
+
         setSubmissionStatus({
           target: selectedTarget.label,
           department: selectedTarget.department,
           records: studyResults.length,
           status: "SUBMISSION_COMPLETE",
           timestamp: new Date().toLocaleString(),
-          confirmationNumber: `BR-${Date.now()}`,
+          confirmationNumber: confirmationNumber,
+          format: submissionFormat.toUpperCase(),
+          deliveryId: responseData.deliveryId,
         });
 
-        setSuccessMessage(
-          intl.formatMessage(
+        notify({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({
+            id: "notebook.bioanalytical.reporting.submissionSuccessTitle",
+            defaultMessage: "Submission Complete",
+          }),
+          message: intl.formatMessage(
             {
               id: "notebook.bioanalytical.reporting.submissionSuccess",
               defaultMessage:
-                "Results submitted successfully to {target}. Confirmation: {confirmationNumber}",
+                "Results submitted successfully to {target} in {format} format. Confirmation: {confirmationNumber}",
             },
             {
               target: selectedTarget.label,
-              confirmationNumber: `BR-${Date.now()}`,
+              format: submissionFormat.toUpperCase(),
+              confirmationNumber: confirmationNumber,
             },
           ),
-        );
+        });
 
         if (onProgressUpdate) {
           onProgressUpdate();
@@ -1480,26 +1719,35 @@ function BioanalyticalReportingPage({
       }
     } catch (error) {
       console.error("Submission error:", error);
-      setErrorMessage(
-        intl.formatMessage(
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.submissionFailureTitle",
+          defaultMessage: "Submission Failed",
+        }),
+        message: intl.formatMessage(
           {
-            id: "notebook.bioanalytical.reporting.submissionError",
+            id: "notebook.bioanalytical.reporting.submissionFailure",
             defaultMessage: "Failed to submit results: {error}",
           },
           { error: error.message },
         ),
-      );
+      });
     } finally {
       setIsLoading(false);
     }
   }, [
     submissionTarget,
+    submissionFormat,
+    recipientEmail,
+    deliveryNotes,
     qaApproved,
     studyResults,
     qaComments,
     entryId,
     pageData?.id,
     intl,
+    notify,
     onProgressUpdate,
     submissionTargets,
   ]);
@@ -3375,7 +3623,7 @@ function BioanalyticalReportingPage({
                     </p>
                   </div>
 
-                  {/* Submission Form - Disabled for this phase */}
+                  {/* Submission Form */}
                   <div style={{ marginTop: "1.5rem" }}>
                     <Select
                       id="submission-target"
@@ -3385,8 +3633,18 @@ function BioanalyticalReportingPage({
                       })}
                       value={submissionTarget}
                       onChange={(e) => setSubmissionTarget(e.target.value)}
-                      disabled={true}
-                      helperText="External system integrations will be handled in a future phase"
+                      disabled={!qaApproved}
+                      helperText={
+                        !qaApproved
+                          ? intl.formatMessage({
+                              id: "notebook.bioanalytical.reporting.qaRequiredHelp",
+                              defaultMessage: "QA approval required before submission",
+                            })
+                          : intl.formatMessage({
+                              id: "notebook.bioanalytical.reporting.selectTargetHelp",
+                              defaultMessage: "Choose the unit to receive your validated results",
+                            })
+                      }
                     >
                       <SelectItem
                         value=""
@@ -3503,6 +3761,92 @@ function BioanalyticalReportingPage({
                     </div>
                   )}
 
+                  {/* Submission Configuration Form */}
+                  {submissionTarget && qaApproved && !submissionStatus && (
+                    <div
+                      style={{
+                        marginTop: "1.5rem",
+                        padding: "1rem",
+                        backgroundColor: "#f4f4f4",
+                        borderRadius: "4px",
+                        border: "1px solid #c6c6c6",
+                      }}
+                    >
+                      <h5 style={{ marginBottom: "1rem" }}>
+                        <FormattedMessage
+                          id="notebook.bioanalytical.reporting.submissionConfiguration"
+                          defaultMessage="Submission Configuration"
+                        />
+                      </h5>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "1rem",
+                          marginBottom: "1rem",
+                        }}
+                      >
+                        <Select
+                          id="submission-format"
+                          labelText={intl.formatMessage({
+                            id: "notebook.bioanalytical.reporting.selectFormat",
+                            defaultMessage: "Select Format",
+                          })}
+                          value={submissionFormat}
+                          onChange={(e) => setSubmissionFormat(e.target.value)}
+                          helperText={intl.formatMessage({
+                            id: "notebook.bioanalytical.reporting.formatHelp",
+                            defaultMessage: "Choose the delivery format for your results",
+                          })}
+                        >
+                          <SelectItem
+                            value=""
+                            text="-- Choose format --"
+                          />
+                          {submissionFormats.map((format) => (
+                            <SelectItem
+                              key={format.id}
+                              value={format.id}
+                              text={`${format.label} - ${format.description}`}
+                            />
+                          ))}
+                        </Select>
+                        <TextInput
+                          id="recipient-email"
+                          labelText={intl.formatMessage({
+                            id: "notebook.bioanalytical.reporting.recipientEmail",
+                            defaultMessage: "Recipient Email (Optional)",
+                          })}
+                          value={recipientEmail}
+                          onChange={(e) => setRecipientEmail(e.target.value)}
+                          placeholder="contact@example.com"
+                          helperText={intl.formatMessage({
+                            id: "notebook.bioanalytical.reporting.emailHelp",
+                            defaultMessage: "Email address for delivery confirmation",
+                          })}
+                        />
+                      </div>
+                      <TextArea
+                        id="delivery-notes"
+                        labelText={intl.formatMessage({
+                          id: "notebook.bioanalytical.reporting.deliveryNotes",
+                          defaultMessage: "Delivery Notes (Optional)",
+                        })}
+                        value={deliveryNotes}
+                        onChange={(e) => setDeliveryNotes(e.target.value)}
+                        placeholder={intl.formatMessage({
+                          id: "notebook.bioanalytical.reporting.notesPlaceholder",
+                          defaultMessage: "Additional instructions or metadata for the receiving unit...",
+                        })}
+                        helperText={intl.formatMessage({
+                          id: "notebook.bioanalytical.reporting.notesHelp",
+                          defaultMessage: "Optional notes about the submission (study protocol, special requirements, etc.)",
+                        })}
+                        rows={3}
+                      />
+                    </div>
+                  )}
+
                   {/* Submission Status */}
                   {submissionStatus && (
                     <div
@@ -3549,7 +3893,7 @@ function BioanalyticalReportingPage({
                           </strong>{" "}
                           {submissionStatus.timestamp}
                         </div>
-                        <div>
+                        <div style={{ marginBottom: "0.5rem" }}>
                           <strong>
                             <FormattedMessage
                               id="notebook.bioanalytical.reporting.recordsSubmitted"
@@ -3557,6 +3901,15 @@ function BioanalyticalReportingPage({
                             />
                           </strong>{" "}
                           {submissionStatus.records}
+                        </div>
+                        <div>
+                          <strong>
+                            <FormattedMessage
+                              id="notebook.bioanalytical.reporting.submissionFormat"
+                              defaultMessage="Format:"
+                            />
+                          </strong>{" "}
+                          {submissionStatus.format}
                         </div>
                       </div>
                     </div>
@@ -3568,8 +3921,23 @@ function BioanalyticalReportingPage({
                       <Button
                         kind="primary"
                         onClick={handleSubmitResults}
-                        disabled={true}
-                        title="External system submissions will be handled in a future phase"
+                        disabled={isLoading || !submissionFormat}
+                        title={
+                          !submissionFormat
+                            ? intl.formatMessage({
+                                id: "notebook.bioanalytical.reporting.selectFormatFirst",
+                                defaultMessage: "Please select a submission format first",
+                              })
+                            : isLoading
+                            ? intl.formatMessage({
+                                id: "notebook.bioanalytical.reporting.submitting",
+                                defaultMessage: "Submitting results...",
+                              })
+                            : intl.formatMessage({
+                                id: "notebook.bioanalytical.reporting.submitReady",
+                                defaultMessage: "Submit validated results to requesting unit",
+                              })
+                        }
                       >
                         {isLoading ? (
                           <>
@@ -3614,6 +3982,147 @@ function BioanalyticalReportingPage({
           </TabPanel>
         </TabPanels>
       </Tabs>
+
+      {/* REDCap Export Configuration Modal */}
+      <Modal
+        open={redcapModalOpen}
+        onRequestClose={() => setRedcapModalOpen(false)}
+        modalHeading={intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.redcapModalTitle",
+          defaultMessage: "REDCap Export Configuration",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "notebook.bioanalytical.reporting.exportToRedcap",
+          defaultMessage: "Export to REDCap",
+        })}
+        secondaryButtonText={intl.formatMessage({
+          id: "common.cancel",
+          defaultMessage: "Cancel",
+        })}
+        onRequestSubmit={handleRedcapExport}
+        size="md"
+      >
+        <div style={{ marginBottom: "1.5rem" }}>
+          <p style={{ fontSize: "0.875rem", color: "#525252", marginBottom: "1rem" }}>
+            <FormattedMessage
+              id="notebook.bioanalytical.reporting.redcapModalDescription"
+              defaultMessage="Configure REDCap export settings. The system will generate a CSV file compatible with REDCap data import containing bioanalytical study results and bioequivalence statistics."
+            />
+          </p>
+
+          <TextInput
+            id="redcap-project-id"
+            labelText={intl.formatMessage({
+              id: "notebook.bioanalytical.reporting.redcapProjectId",
+              defaultMessage: "Project ID (Optional)",
+            })}
+            helperText={intl.formatMessage({
+              id: "notebook.bioanalytical.reporting.redcapProjectIdHelp",
+              defaultMessage: "REDCap project identifier for reference",
+            })}
+            value={redcapData.projectId}
+            onChange={(e) =>
+              setRedcapData({ ...redcapData, projectId: e.target.value })
+            }
+            placeholder="e.g., BIOEQ_2024_001"
+          />
+
+          <TextInput
+            id="redcap-record-id-field"
+            labelText={intl.formatMessage({
+              id: "notebook.bioanalytical.reporting.redcapRecordIdField",
+              defaultMessage: "Record ID Field",
+            })}
+            helperText={intl.formatMessage({
+              id: "notebook.bioanalytical.reporting.redcapRecordIdFieldHelp",
+              defaultMessage: "Primary key field name in REDCap (default: record_id)",
+            })}
+            value={redcapData.recordIdField}
+            onChange={(e) =>
+              setRedcapData({ ...redcapData, recordIdField: e.target.value })
+            }
+            required
+          />
+
+          <TextInput
+            id="redcap-event-name"
+            labelText={intl.formatMessage({
+              id: "notebook.bioanalytical.reporting.redcapEventName",
+              defaultMessage: "Event Name (Optional)",
+            })}
+            helperText={intl.formatMessage({
+              id: "notebook.bioanalytical.reporting.redcapEventNameHelp",
+              defaultMessage: "For longitudinal studies with multiple events",
+            })}
+            value={redcapData.eventName}
+            onChange={(e) =>
+              setRedcapData({ ...redcapData, eventName: e.target.value })
+            }
+            placeholder="e.g., baseline_arm_1"
+          />
+
+          <TextInput
+            id="redcap-instrument-name"
+            labelText={intl.formatMessage({
+              id: "notebook.bioanalytical.reporting.redcapInstrumentName",
+              defaultMessage: "Instrument Name",
+            })}
+            helperText={intl.formatMessage({
+              id: "notebook.bioanalytical.reporting.redcapInstrumentNameHelp",
+              defaultMessage: "REDCap instrument/form name for completion status",
+            })}
+            value={redcapData.instrumentName}
+            onChange={(e) =>
+              setRedcapData({ ...redcapData, instrumentName: e.target.value })
+            }
+          />
+
+          <div
+            style={{
+              marginTop: "1rem",
+              padding: "0.75rem",
+              backgroundColor: "#e7f1f5",
+              borderRadius: "4px",
+              borderLeft: "4px solid #0043ce",
+            }}
+          >
+            <p style={{ fontSize: "0.875rem", margin: 0, color: "#161616" }}>
+              <strong>
+                <FormattedMessage
+                  id="notebook.bioanalytical.reporting.redcapDataIncluded"
+                  defaultMessage="Data Included:"
+                />
+              </strong>
+            </p>
+            <ul style={{ fontSize: "0.875rem", marginTop: "0.5rem", color: "#525252" }}>
+              <li>
+                <FormattedMessage
+                  id="notebook.bioanalytical.reporting.redcapDataSamples"
+                  defaultMessage="Sample IDs and collection information"
+                />
+              </li>
+              <li>
+                <FormattedMessage
+                  id="notebook.bioanalytical.reporting.redcapDataAnalytical"
+                  defaultMessage="Analytical method and execution details"
+                />
+              </li>
+              <li>
+                <FormattedMessage
+                  id="notebook.bioanalytical.reporting.redcapDataBioequivalence"
+                  defaultMessage="Bioequivalence statistics (accuracy, CV, R²)"
+                />
+              </li>
+              <li>
+                <FormattedMessage
+                  id="notebook.bioanalytical.reporting.redcapDataQA"
+                  defaultMessage="QA approval status and regulatory compliance"
+                />
+              </li>
+            </ul>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

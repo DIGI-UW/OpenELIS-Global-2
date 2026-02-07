@@ -1,10 +1,9 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useContext } from "react";
 import config from "../../../../config.json";
 import {
   Grid,
   Column,
   Button,
-  InlineNotification,
   Loading,
   Tag,
   Modal,
@@ -19,6 +18,8 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { usePermissions } from "../../../../hooks/usePermissions";
 import { useBioanalyticalPermissions } from "../../../../hooks/useBioanalyticalPermissions";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
@@ -40,7 +41,16 @@ import "./BioanalyticalPages.css";
  */
 function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
   const intl = useIntl();
+  const { setNotificationVisible, addNotification } = useContext(NotificationContext);
   const { hasAnyRole } = usePermissions();
+
+  const notify = useCallback(
+    ({ kind = NotificationKinds.info, title, message }) => {
+      setNotificationVisible(true);
+      addNotification({ kind, title, message });
+    },
+    [addNotification, setNotificationVisible],
+  );
   const {
     BIOANALYTICAL_ROLES,
     getPagePermissionLevel,
@@ -49,8 +59,6 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     canAccessStorageArchiving,
   } = useBioanalyticalPermissions();
 
-  // PAGE 5 allowed roles per test.pdf Section 11 permission matrix
-  // Matrix: Sample Receivers (No), Chemical Analysts (No), Pharmacists (No), Researchers (No), Lab Supervisors (Approve), Study Directors (Approve), QA Officers (No), Data Managers (No)
   const allowedRoles = [
     BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
     BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
@@ -58,12 +66,10 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
 
   const canAccessPage = canAccessStorageArchiving();
 
-  // Get user's action-level permission for this page
   const pagePermissionLevel = getPagePermissionLevel("Storage & Archiving");
   const canApproveStorage = canApproveData(pagePermissionLevel);
   const canModifyStorage = canModify(pagePermissionLevel);
 
-  // Check page access - show access denied if user lacks required roles
   if (!canAccessPage) {
     return (
       <AccessDeniedMessage
@@ -77,22 +83,17 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
   const [isLoading, setIsLoading] = useState(false);
   const [storageSamples, setStorageSamples] = useState([]);
   const [selectedSamples, setSelectedSamples] = useState(new Set());
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
 
-  // Modal states
   const [disposalModalOpen, setDisposalModalOpen] = useState(false);
   const [disposalReason, setDisposalReason] = useState("");
   const [disposalMethod, setDisposalMethod] = useState("");
   const [disposalNotes, setDisposalNotes] = useState("");
   const [supervisorApproval, setSupervisorApproval] = useState("");
 
-  // View details modal states
   const [viewDetailsModalOpen, setViewDetailsModalOpen] = useState(false);
   const [selectedSampleDetail, setSelectedSampleDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  // Biorepository and retention storage modal states
   const [biorepositoryModalOpen, setBiorepositoryModalOpen] = useState(false);
   const [retentionStorageModalOpen, setRetentionStorageModalOpen] =
     useState(false);
@@ -101,7 +102,22 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
   const [retentionPeriod, setRetentionPeriod] = useState("");
   const [storageNotes, setStorageNotes] = useState("");
 
-  // Storage hierarchy selection state for retention storage
+  const temperatureOptions = [
+    { id: "-80C", text: "-80°C (Ultra-low freezer)" },
+    { id: "-20C", text: "-20°C (Freezer)" },
+    { id: "4C", text: "4°C (Refrigerated)" },
+    { id: "RT", text: "Room Temperature (15-25°C)" },
+    { id: "-196C", text: "-196°C (Liquid nitrogen)" },
+    { id: "DRY_ICE", text: "Dry ice (-78°C)" },
+  ];
+  const [selectedStorageHierarchy, setSelectedStorageHierarchy] = useState({
+    room: null,
+    device: null,
+    shelf: null,
+    rack: null,
+    box: null,
+  });
+
   const [storageSelection, setStorageSelection] = useState({
     room: null,
     device: null,
@@ -110,14 +126,12 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     box: null,
   });
 
-  // Data archival modal and tracking states
   const [archivalModalOpen, setArchivalModalOpen] = useState(false);
   const [archiveRecords, setArchiveRecords] = useState([]);
   const [archiveType, setArchiveType] = useState("");
   const [archiveLocation, setArchiveLocation] = useState("");
   const [retentionYears, setRetentionYears] = useState("");
   const [archiveNotes, setArchiveNotes] = useState("");
-  // Enhanced archival states
   const [archiveFiles, setArchiveFiles] = useState([]);
   const [linkedSamples, setLinkedSamples] = useState([]);
   const [archiveMetadata, setArchiveMetadata] = useState({
@@ -265,18 +279,21 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
 
         setStorageSamples(transformedSamples);
       } else {
-        console.error("Failed to load samples:", response.status);
         setStorageSamples([]);
       }
     } catch (error) {
-      console.error("Error loading storage samples:", error);
       setStorageSamples([]);
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.storage.loadError",
           defaultMessage: "Failed to load samples. Please refresh the page.",
         }),
-      );
+      });
     } finally {
       setIsLoading(false);
     }
@@ -320,11 +337,9 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
         const data = await response.json();
         setArchiveRecords(data || []);
       } else {
-        console.error("Failed to load archive records:", response.status);
         setArchiveRecords([]);
       }
     } catch (error) {
-      console.error("Error loading archive records:", error);
       setArchiveRecords([]);
     }
   }, [pageData.id]);
@@ -337,42 +352,62 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
   // Stage 5 Handler: Sample Disposal Management (via bulk apply endpoint)
   const handleSampleDisposal = useCallback(async () => {
     if (selectedSamples.size === 0) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.storage.selectSamplesFirst",
           defaultMessage: "Please select samples for disposal",
         }),
-      );
+      });
       return;
     }
 
     if (!disposalReason) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.storage.selectDisposalReason",
           defaultMessage: "Please select disposal reason",
         }),
-      );
+      });
       return;
     }
 
     if (!disposalMethod) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.storage.selectDisposalMethod",
           defaultMessage: "Please select disposal method",
         }),
-      );
+      });
       return;
     }
 
     if (!supervisorApproval) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.storage.supervisorApprovalRequired",
           defaultMessage: "Supervisor approval is required for sample disposal",
         }),
-      );
+      });
       return;
     }
 
@@ -407,8 +442,13 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
 
       if (response.ok) {
         const result = await response.json();
-        setSuccessMessage(
-          intl.formatMessage(
+        notify({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({
+            id: "notebook.bioanalytical.storage.success",
+            defaultMessage: "Success",
+          }),
+          message: intl.formatMessage(
             {
               id: "notebook.bioanalytical.storage.disposalSuccess",
               defaultMessage:
@@ -421,7 +461,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
               supervisor: supervisorApproval,
             },
           ),
-        );
+        });
 
         setDisposalModalOpen(false);
         setSelectedSamples(new Set());
@@ -434,13 +474,17 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
         throw new Error("Failed to schedule disposal");
       }
     } catch (error) {
-      console.error("Sample disposal error:", error);
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.storage.disposalError",
           defaultMessage: "Failed to schedule sample disposal",
         }),
-      );
+      });
     } finally {
       setIsLoading(false);
     }
@@ -478,43 +522,101 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
       if (response.ok) {
         const fullSample = await response.json();
         setSelectedSampleDetail(fullSample);
-      } else {
-        console.error("Failed to fetch sample details:", response.status);
-        // Keep the basic sample data if full fetch fails
       }
     } catch (error) {
-      console.error("Error fetching sample details:", error);
       // Keep the basic sample data if fetch fails
     } finally {
       setDetailLoading(false);
     }
   }, []);
 
+  // Helper function to clear biorepository modal state
+  const clearBiorepositoryModalState = useCallback(() => {
+    setBiorepositoryModalOpen(false);
+    setStorageLocation("");
+    setStorageTemperature("");
+    setStorageNotes("");
+    setSelectedStorageHierarchy({
+      room: null,
+      device: null,
+      shelf: null,
+      rack: null,
+      box: null,
+    });
+  }, []);
+
   // Handle biorepository transfer
   const handleBiorepositoryTransfer = useCallback(async () => {
     if (selectedSamples.size === 0) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.storage.selectSamplesFirst",
           defaultMessage: "Please select samples for biorepository transfer",
         }),
-      );
+      });
       return;
     }
 
     setIsLoading(true);
     try {
+      // Step 1: Create transfer request using the biorepository transfer API
+      const transferRequest = {
+        sourceLab: "Bioanalytical Laboratory",
+        sampleItemIds: Array.from(selectedSamples).map((id) =>
+          parseInt(id, 10),
+        ),
+        requestNotes: `Bioanalytical transfer to biorepository. Storage Location: ${storageLocation || "Biorepository"}. Temperature: ${storageTemperature || "-80°C"}. Notes: ${storageNotes || "Standard bioanalytical completion transfer"}`,
+      };
+
+      const transferResponse = await fetch(
+        `${config.serverBaseUrl}/rest/biorepository/transfer`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+          body: JSON.stringify(transferRequest),
+        },
+      );
+
+      if (!transferResponse.ok) {
+        let errorMessage = "Failed to create transfer request";
+        try {
+          const errorData = await transferResponse.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (parseError) {
+          // If JSON parsing fails, try to get text response
+          try {
+            const errorText = await transferResponse.text();
+            errorMessage = errorText || errorMessage;
+          } catch (textError) {
+            // Keep default error message
+          }
+        }
+        throw new Error(errorMessage);
+      }
+
+      const transferResult = await transferResponse.json();
+
       const bulkRequest = {
         sampleIds: Array.from(selectedSamples).map((id) => parseInt(id, 10)),
         data: {
           storageStatus: "BIOREPOSITORY_TRANSFER",
           storageLocation: storageLocation || "Biorepository",
           storageTemperature: storageTemperature || "-80°C",
-          storageNotes: storageNotes,
+          storageNotes: `${storageNotes || ""}. Transfer Request ID: ${transferResult.id}`,
+          transferRequestId: transferResult.id,
         },
       };
 
-      const response = await fetch(
+      const statusResponse = await fetch(
         `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
         {
           method: "POST",
@@ -527,32 +629,49 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
         },
       );
 
-      if (response.ok) {
-        setSuccessMessage(
-          intl.formatMessage({
-            id: "notebook.bioanalytical.storage.biorepositorySuccess",
-            defaultMessage:
-              "{count} samples transferred to biorepository at {location}",
-            values: { count: selectedSamples.size, location: storageLocation },
+      if (statusResponse.ok) {
+        notify({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({
+            id: "notebook.bioanalytical.storage.success",
+            defaultMessage: "Success",
           }),
-        );
-        setBiorepositoryModalOpen(false);
+          message: intl.formatMessage(
+            {
+              id: "notebook.bioanalytical.storage.biorepositorySuccess",
+              defaultMessage:
+                "{count} samples transferred to biorepository at {location} ({temperature}). Transfer #{transferId}",
+            },
+            {
+              count: selectedSamples.size,
+              location: storageLocation || "Biorepository",
+              temperature: storageTemperature || "-80°C",
+              transferId: transferResult.id,
+            },
+          ),
+        });
+        clearBiorepositoryModalState();
         setSelectedSamples(new Set());
-        setStorageLocation("");
-        setStorageTemperature("");
-        setStorageNotes("");
         loadStorageSamples();
       } else {
-        throw new Error("Failed to transfer samples to biorepository");
+        throw new Error(
+          "Transfer request created but failed to update sample status",
+        );
       }
     } catch (error) {
-      console.error("Biorepository transfer error:", error);
-      setErrorMessage(
-        intl.formatMessage({
-          id: "notebook.bioanalytical.storage.biorepositoryError",
-          defaultMessage: "Failed to transfer samples to biorepository",
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.error",
+          defaultMessage: "Error",
         }),
-      );
+        message: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.biorepositoryError",
+          defaultMessage:
+            "Failed to transfer samples to biorepository: {error}",
+          values: { error: error.message },
+        }),
+      });
     } finally {
       setIsLoading(false);
     }
@@ -564,27 +683,38 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     intl,
     loadStorageSamples,
     pageData?.id,
+    clearBiorepositoryModalState,
   ]);
 
   // Handle retention storage
   const handleRetentionStorage = useCallback(async () => {
     if (selectedSamples.size === 0) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.storage.selectSamplesFirst",
           defaultMessage: "Please select samples for retention storage",
         }),
-      );
+      });
       return;
     }
 
     if (!retentionPeriod) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.storage.selectRetentionPeriod",
           defaultMessage: "Please select retention period",
         }),
-      );
+      });
       return;
     }
 
@@ -616,14 +746,19 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
       );
 
       if (response.ok) {
-        setSuccessMessage(
-          intl.formatMessage({
+        notify({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({
+            id: "notebook.bioanalytical.storage.success",
+            defaultMessage: "Success",
+          }),
+          message: intl.formatMessage({
             id: "notebook.bioanalytical.storage.retentionSuccess",
             defaultMessage:
               "{count} samples placed in retention storage for {period}",
             values: { count: selectedSamples.size, period: retentionPeriod },
           }),
-        );
+        });
         setRetentionStorageModalOpen(false);
         setSelectedSamples(new Set());
         setStorageLocation("");
@@ -635,13 +770,17 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
         throw new Error("Failed to place samples in retention storage");
       }
     } catch (error) {
-      console.error("Retention storage error:", error);
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.storage.retentionError",
           defaultMessage: "Failed to place samples in retention storage",
         }),
-      );
+      });
     } finally {
       setIsLoading(false);
     }
@@ -676,32 +815,47 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
 
   const handleAddArchiveRecord = useCallback(async () => {
     if (!archiveType) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.storage.selectArchiveType",
           defaultMessage: "Please select archive type",
         }),
-      );
+      });
       return;
     }
 
     if (!archiveLocation) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.storage.enterArchiveLocation",
           defaultMessage: "Please enter archive location/system",
         }),
-      );
+      });
       return;
     }
 
     if (!retentionYears) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.storage.selectRetentionYears",
           defaultMessage: "Please select retention period",
         }),
-      );
+      });
       return;
     }
 
@@ -765,25 +919,34 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
       );
 
       if (archiveResponse.ok) {
-        setSuccessMessage(
-          intl.formatMessage({
+        notify({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({
+            id: "notebook.bioanalytical.storage.success",
+            defaultMessage: "Success",
+          }),
+          message: intl.formatMessage({
             id: "notebook.bioanalytical.storage.archiveRecordAdded",
             defaultMessage: "Archive record added: {type}",
             values: { type: newRecord.archiveTypeLabel },
           }),
-        );
+        });
       } else {
         const errorText = await archiveResponse.text();
         throw new Error(`Archive failed: ${errorText}`);
       }
     } catch (error) {
-      console.error("Error archiving samples:", error);
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.storage.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.storage.archiveRecordError",
           defaultMessage: "Failed to archive samples. Please try again.",
         }),
-      );
+      });
       return; // Don't reset form on error
     }
 
@@ -969,13 +1132,47 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     return <Tag type={type}>{displayText}</Tag>;
   };
 
+  // Helper function to get actionable samples (not transferred or disposed)
+  const getActionableSamples = useCallback(() => {
+    return storageSamples.filter((sample) =>
+      sample.status !== "DISPOSED" &&
+      sample.status !== "BIOREPOSITORY_TRANSFER"
+    );
+  }, [storageSamples]);
+
+  // Helper function to check if selected samples can be used for biorepository transfer
+  const hasActionableSelectedSamples = useMemo(() => {
+    if (selectedSamples.size === 0) return false;
+    const actionableSamples = getActionableSamples();
+    const selectedIds = Array.from(selectedSamples);
+    return selectedIds.some(id => actionableSamples.find(sample => sample.id === id));
+  }, [selectedSamples, getActionableSamples]);
+
+  // Helper to get counts of selected sample statuses
+  const selectedSampleStatuses = useMemo(() => {
+    const selectedIds = Array.from(selectedSamples);
+    const transferredCount = selectedIds.filter(id => {
+      const sample = storageSamples.find(s => s.id === id);
+      return sample && sample.status === "BIOREPOSITORY_TRANSFER";
+    }).length;
+    const disposedCount = selectedIds.filter(id => {
+      const sample = storageSamples.find(s => s.id === id);
+      return sample && sample.status === "DISPOSED";
+    }).length;
+    const actionableCount = selectedIds.filter(id => {
+      const sample = storageSamples.find(s => s.id === id);
+      return sample && sample.status !== "BIOREPOSITORY_TRANSFER" && sample.status !== "DISPOSED";
+    }).length;
+
+    return { transferredCount, disposedCount, actionableCount };
+  }, [selectedSamples, storageSamples]);
+
   const headers = [
     { key: "sampleId", header: "Sample ID" },
     { key: "type", header: "Type" },
     { key: "storageTemp", header: "Temperature" },
     { key: "retentionPeriod", header: "Retention Period" },
     { key: "retentionExpiryDate", header: "Expiry Date" },
-    { key: "disposalStatus", header: "Disposal Status" },
     { key: "disposalReason", header: "Disposal Reason" },
     { key: "disposalMethod", header: "Disposal Method" },
     { key: "disposalDate", header: "Disposal Date" },
@@ -1020,35 +1217,6 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
         </p>
       </div>
 
-      {errorMessage && (
-        <div style={{ marginBottom: "1rem" }}>
-          <InlineNotification
-            kind="error"
-            title={intl.formatMessage({
-              id: "notebook.bioanalytical.storage.error",
-              defaultMessage: "Error",
-            })}
-            subtitle={errorMessage}
-            lowContrast
-            onCloseButtonClick={() => setErrorMessage("")}
-          />
-        </div>
-      )}
-
-      {successMessage && (
-        <div style={{ marginBottom: "1rem" }}>
-          <InlineNotification
-            kind="success"
-            title={intl.formatMessage({
-              id: "notebook.bioanalytical.storage.success",
-              defaultMessage: "Success",
-            })}
-            subtitle={successMessage}
-            lowContrast
-            onCloseButtonClick={() => setSuccessMessage("")}
-          />
-        </div>
-      )}
 
       <div style={{ paddingTop: "1.5rem" }}>
         <Grid>
@@ -1083,19 +1251,36 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                       <strong>
                         <FormattedMessage
                           id="notebook.bioanalytical.storage.totalSamples"
-                          defaultMessage="Total Samples in Storage:"
+                          defaultMessage="Total Samples:"
                         />
                       </strong>{" "}
                       {storageSamples.length}
+                      {" "}
+                      <span style={{ color: "#525252" }}>
+                        (
+                        <FormattedMessage
+                          id="notebook.bioanalytical.storage.actionableSamples"
+                          defaultMessage="{actionable} actionable, {transferred} transferred"
+                          values={{
+                            actionable: getActionableSamples().length,
+                            transferred: storageSamples.filter(s => s.status === "BIOREPOSITORY_TRANSFER" || s.status === "DISPOSED").length
+                          }}
+                        />
+                        )
+                      </span>
                       {selectedSamples.size > 0 && (
                         <span style={{ marginLeft: "1rem", color: "#0043ce" }}>
-                          (
+                          |{" "}
                           <FormattedMessage
                             id="notebook.bioanalytical.storage.samplesSelected"
                             defaultMessage="{count} selected"
                             values={{ count: selectedSamples.size }}
                           />
-                          )
+                          {!hasActionableSelectedSamples && (
+                            <span style={{ color: "#fa4d56", marginLeft: "0.5rem" }}>
+                              (already processed)
+                            </span>
+                          )}
                         </span>
                       )}
                     </p>
@@ -1110,32 +1295,51 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                         flexWrap: "wrap",
                       }}
                     >
-                      {/* Biorepository Transfer - Disabled for this phase */}
+                      {/* Biorepository Transfer - Now Enabled */}
                       <Button
                         kind="primary"
                         onClick={() => setBiorepositoryModalOpen(true)}
-                        disabled={true}
-                        title="Biorepository integration will be handled in a future phase"
+                        disabled={!hasActionableSelectedSamples}
+                        title={
+                          selectedSamples.size === 0
+                            ? "Select samples to transfer to biorepository"
+                            : !hasActionableSelectedSamples
+                            ? "Selected samples have already been transferred or disposed"
+                            : "Transfer selected samples to biorepository for long-term storage"
+                        }
                       >
-                        <FormattedMessage
-                          id="notebook.bioanalytical.storage.transferBiorepository"
-                          defaultMessage="Transfer to Biorepository"
-                        />
-                        <span
-                          style={{
-                            fontSize: "0.75rem",
-                            marginLeft: "0.5rem",
-                            opacity: 0.6,
-                          }}
-                        >
-                          (Coming Soon)
-                        </span>
+                        {selectedSampleStatuses.transferredCount > 0 && selectedSampleStatuses.actionableCount === 0 ? (
+                          <FormattedMessage
+                            id="notebook.bioanalytical.storage.samplesAlreadyTransferred"
+                            defaultMessage="{count} samples already transferred"
+                            values={{ count: selectedSampleStatuses.transferredCount }}
+                          />
+                        ) : selectedSampleStatuses.transferredCount > 0 ? (
+                          <FormattedMessage
+                            id="notebook.bioanalytical.storage.transferRemaining"
+                            defaultMessage="Transfer {actionable} remaining ({transferred} already transferred)"
+                            values={{
+                              actionable: selectedSampleStatuses.actionableCount,
+                              transferred: selectedSampleStatuses.transferredCount
+                            }}
+                          />
+                        ) : (
+                          <FormattedMessage
+                            id="notebook.bioanalytical.storage.transferBiorepository"
+                            defaultMessage="Transfer to Biorepository"
+                          />
+                        )}
                       </Button>
                       <Button
                         kind="secondary"
                         onClick={() => setRetentionStorageModalOpen(true)}
                         disabled={
-                          isLoading || !(canModifyStorage || canApproveStorage)
+                          isLoading || !(canModifyStorage || canApproveStorage) || !hasActionableSelectedSamples
+                        }
+                        title={
+                          !hasActionableSelectedSamples && selectedSamples.size > 0
+                            ? "Selected samples have already been transferred or disposed"
+                            : "Place selected samples in retention storage"
                         }
                       >
                         <FormattedMessage
@@ -1146,7 +1350,12 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                       <Button
                         kind="danger--tertiary"
                         onClick={() => setDisposalModalOpen(true)}
-                        disabled={isLoading || !canApproveStorage}
+                        disabled={isLoading || !canApproveStorage || !hasActionableSelectedSamples}
+                        title={
+                          !hasActionableSelectedSamples && selectedSamples.size > 0
+                            ? "Selected samples have already been transferred or disposed"
+                            : "Schedule selected samples for disposal"
+                        }
                       >
                         <FormattedMessage
                           id="notebook.bioanalytical.storage.manageSampleDisposal"
@@ -1162,10 +1371,12 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                     samples={storageSamples}
                     selectedIds={Array.from(selectedSamples)}
                     onSelectionChange={(ids) => {
-                      // Only allow selection of non-disposed samples
+                      // Only allow selection of samples that haven't been transferred or disposed
                       const selectableSamples = ids.filter((id) => {
                         const sample = storageSamples.find((s) => s.id === id);
-                        return sample && sample.status !== "DISPOSED";
+                        return sample &&
+                               sample.status !== "DISPOSED" &&
+                               sample.status !== "BIOREPOSITORY_TRANSFER";
                       });
                       setSelectedSamples(new Set(selectableSamples));
                     }}
@@ -1864,7 +2075,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
       {/* Biorepository Transfer Modal */}
       <Modal
         open={biorepositoryModalOpen}
-        onRequestClose={() => setBiorepositoryModalOpen(false)}
+        onRequestClose={clearBiorepositoryModalState}
         modalHeading="Transfer to Biorepository"
         primaryButtonText="Confirm Transfer"
         secondaryButtonText="Cancel"
@@ -1874,60 +2085,95 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
       >
         <div style={{ marginBottom: "1.5rem" }}>
           <p style={{ marginBottom: "1rem", color: "#525252" }}>
-            Transfer selected samples to biorepository storage for long-term
-            preservation and future research use.
+            Transfer selected samples to the biorepository for long-term storage
+            and preservation. This will create a formal transfer request that
+            biorepository staff can review and accept.
+          </p>
+          <p
+            style={{
+              marginBottom: "1rem",
+              color: "#525252",
+              fontSize: "0.875rem",
+            }}
+          >
+            Selected samples: <strong>{selectedSamples.size}</strong>
           </p>
 
           <div style={{ marginBottom: "1rem" }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontWeight: "600",
-                fontSize: "0.875rem",
-              }}
-            >
-              Storage Location
-            </label>
-            <input
-              type="text"
-              value={storageLocation}
-              onChange={(e) => setStorageLocation(e.target.value)}
-              placeholder="e.g., Biorepository Building A, Room 201"
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                fontSize: "0.875rem",
-              }}
-            />
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "600",
+                  fontSize: "0.875rem",
+                }}
+              >
+                Biorepository Storage Location
+              </label>
+              <p
+                style={{
+                  marginBottom: "1rem",
+                  color: "#525252",
+                  fontSize: "0.875rem",
+                }}
+              >
+                Select the specific storage location in the biorepository where
+                samples will be placed. You can assign at any level.
+              </p>
+              <StorageHierarchySelector
+                onSelectionChange={(selection) => {
+                  setSelectedStorageHierarchy(selection);
+                  const locationParts = [];
+                  if (selection.room?.name)
+                    locationParts.push(`Room: ${selection.room.name}`);
+                  if (selection.device?.name)
+                    locationParts.push(`Device: ${selection.device.name}`);
+                  if (selection.shelf?.name)
+                    locationParts.push(`Shelf: ${selection.shelf.name}`);
+                  if (selection.rack?.name)
+                    locationParts.push(`Rack: ${selection.rack.name}`);
+                  if (selection.box?.name)
+                    locationParts.push(`Box: ${selection.box.name}`);
+                  setStorageLocation(
+                    locationParts.join(", ") || "Biorepository",
+                  );
+                }}
+                initialSelection={selectedStorageHierarchy}
+                boxRequired={true}
+                showPath={true}
+              />
+            </div>
           </div>
 
           <div style={{ marginBottom: "1rem" }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontWeight: "600",
-                fontSize: "0.875rem",
-              }}
-            >
-              Storage Temperature
-            </label>
-            <input
-              type="text"
-              value={storageTemperature}
-              onChange={(e) => setStorageTemperature(e.target.value)}
-              placeholder="e.g., -80°C"
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                fontSize: "0.875rem",
-              }}
-            />
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "600",
+                  fontSize: "0.875rem",
+                }}
+              >
+                Storage Temperature
+              </label>
+              <ComboBox
+                id="storage-temperature-selector"
+                items={temperatureOptions}
+                itemToString={(item) => (item ? item.text : "")}
+                selectedItem={
+                  storageTemperature
+                    ? temperatureOptions.find((item) => item.id === storageTemperature)
+                    : null
+                }
+                onChange={({ selectedItem }) => {
+                  setStorageTemperature(selectedItem ? selectedItem.id : "");
+                }}
+                placeholder="Select storage temperature"
+                helperText="Select the required storage temperature for the samples"
+              />
+            </div>
           </div>
 
           <div style={{ marginBottom: "1rem" }}>
