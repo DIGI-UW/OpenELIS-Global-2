@@ -202,3 +202,27 @@ jobs:
         with:
         # Only show last 100 lines of each
           tail: "100"
+
+  # ---------- Summary job: satisfies branch-protection required check ----------
+  # The old monolithic job was named "build-and-run-qa-tests". Branch protection
+  # still requires that check name. This fan-in job reports the same name so the
+  # PR status goes green once all real jobs finish.
+  build-and-run-qa-tests:
+    if: always()
+    needs: [static-checks, build-prod-frontend-image, e2e-playwright, e2e-cypress]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check sub-job results
+        run: |
+          if [[ "${{ needs.static-checks.result }}" != "success" ]] ||
+             [[ "${{ needs.build-prod-frontend-image.result }}" != "success" ]] ||
+             [[ "${{ needs.e2e-playwright.result }}" != "success" ]] ||
+             [[ "${{ needs.e2e-cypress.result }}" != "success" ]]; then
+            echo "One or more sub-jobs failed:"
+            echo "  static-checks: ${{ needs.static-checks.result }}"
+            echo "  build-prod-frontend-image: ${{ needs.build-prod-frontend-image.result }}"
+            echo "  e2e-playwright: ${{ needs.e2e-playwright.result }}"
+            echo "  e2e-cypress: ${{ needs.e2e-cypress.result }}"
+            exit 1
+          fi
+          echo "All sub-jobs passed."
