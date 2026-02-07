@@ -94,23 +94,23 @@ class StudyReportPage {
   // --- Parent menu expanders (SideNavMenu toggles) ---
 
   selectPatientStatusReport() {
-    this.ensureSidenavMenuExpanded("#openreports\\.patientreports\\.title");
+    this.ensureSidenavMenuExpanded("#menu_reports_patients");
   }
 
   selectARV() {
-    this.ensureSidenavMenuExpanded("#project\\.ARVStudies\\.name");
+    this.ensureSidenavMenuExpanded("#menu_reports_arv");
   }
 
   selectEID() {
-    this.ensureSidenavMenuExpanded("#project\\.EIDStudy\\.name");
+    this.ensureSidenavMenuExpanded("#menu_reports_eid");
   }
 
   selectVL() {
-    this.ensureSidenavMenuExpanded("#project\\.VLStudy\\.name");
+    this.ensureSidenavMenuExpanded("#menu_reports_vl");
   }
 
   selectIndetermenate() {
-    this.ensureSidenavMenuExpanded("#project\\.IndeterminateStudy\\.name");
+    this.ensureSidenavMenuExpanded("#menu_reports_indeterminate");
   }
 
   // --- Leaf nav items (navigate via native DOM click on inner <a>) ---
