@@ -163,7 +163,7 @@ const InventoryReports = () => {
       console.error("Error generating report:", err);
       setError(
         err.message ||
-          intl.formatMessage({ id: "reports.error.generationFailed" }),
+        intl.formatMessage({ id: "reports.error.generationFailed" }),
       );
     } finally {
       setGenerating(false);
@@ -212,6 +212,7 @@ const InventoryReports = () => {
                   titleText={intl.formatMessage({ id: "reports.format" })}
                   label={intl.formatMessage({ id: "reports.format.select" })}
                   items={exportFormats}
+                  itemToString={(item) => (item ? item.text : "")}
                   selectedItem={formData.exportFormat}
                   onChange={({ selectedItem }) =>
                     handleChange("exportFormat", selectedItem)
@@ -281,31 +282,31 @@ const InventoryReports = () => {
                 {["STOCK_LEVELS", "LOW_STOCK", "EXPIRATION_FORECAST"].includes(
                   formData.reportType.id,
                 ) && (
-                  <FormGroup
-                    legendText={intl.formatMessage({ id: "reports.grouping" })}
-                  >
-                    <Checkbox
-                      id="groupByType"
-                      labelText={intl.formatMessage({
-                        id: "reports.groupByType",
-                      })}
-                      checked={formData.groupByType}
-                      onChange={(e) =>
-                        handleChange("groupByType", e.target.checked)
-                      }
-                    />
-                    <Checkbox
-                      id="groupByLocation"
-                      labelText={intl.formatMessage({
-                        id: "reports.groupByLocation",
-                      })}
-                      checked={formData.groupByLocation}
-                      onChange={(e) =>
-                        handleChange("groupByLocation", e.target.checked)
-                      }
-                    />
-                  </FormGroup>
-                )}
+                    <FormGroup
+                      legendText={intl.formatMessage({ id: "reports.grouping" })}
+                    >
+                      <Checkbox
+                        id="groupByType"
+                        labelText={intl.formatMessage({
+                          id: "reports.groupByType",
+                        })}
+                        checked={formData.groupByType}
+                        onChange={(e) =>
+                          handleChange("groupByType", e.target.checked)
+                        }
+                      />
+                      <Checkbox
+                        id="groupByLocation"
+                        labelText={intl.formatMessage({
+                          id: "reports.groupByLocation",
+                        })}
+                        checked={formData.groupByLocation}
+                        onChange={(e) =>
+                          handleChange("groupByLocation", e.target.checked)
+                        }
+                      />
+                    </FormGroup>
+                  )}
 
                 {/* Error notification */}
                 {error && (
