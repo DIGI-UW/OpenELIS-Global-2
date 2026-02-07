@@ -134,7 +134,12 @@ function AutoComplete(props) {
   }
 
   return (
-    <>
+    <div
+      style={{
+        position: "relative",
+        marginBottom: showSuggestions && userInput ? "3rem" : "0",
+      }}
+    >
       <TextInput
         type="text"
         id={props.id}
@@ -149,7 +154,7 @@ function AutoComplete(props) {
         invalidText={props.invalidText}
       />
       {suggestionsListComponent}
-    </>
+    </div>
   );
 }
 
