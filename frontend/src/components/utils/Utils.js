@@ -1,68 +1,63 @@
 import config from "../../config.json";
 
 export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      credentials: "include",
-      method: "GET",
-      signal: signal,
-    },
-  )
+  fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include", // include browser session for backend auth
+    method: "GET",
+    signal,
+  })
     .then((response) => {
-      console.debug("checking response");
-      // if (response.url.includes("LoginPage")) {
-      //     throw "No Login Session";
-      // }
       const contentType = response.headers.get("content-type");
-      if (contentType && contentType.indexOf("application/json") !== -1) {
-        return response.json().then((jsonResp) => {
-          callback(jsonResp);
-        });
-      } else {
-        callback();
+
+      if (contentType?.includes("application/json")) {
+        return response.json();
       }
+
+      return undefined;
+    })
+    .then((data) => {
+      callback(data);
     })
     .catch((error) => {
-      // Don't log AbortError - it's expected when component unmounts
-      if (error.name !== "AbortError") {
-        console.error(error);
+      if (error?.name === "AbortError") {
+        return;
       }
-      // Ensure callback is always called, even on error, to avoid hanging promises
-      callback(undefined);
+
+      callback(undefined, error);
     });
 };
+
 
 export const postToOpenElisServer = (
   endPoint,
   payLoad,
   callback,
   extraParams,
+  signal = null,
 ) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      credentials: "include",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
-      },
-      body: payLoad,
+  fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include", // include browser session for backend auth
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
     },
-  )
+    body: payLoad,
+    signal,
+  })
     .then((response) => response.status)
     .then((status) => {
       callback(status, extraParams);
     })
     .catch((error) => {
-      console.error(error);
+      if (error?.name === "AbortError") {
+        return;
+      }
+
+      callback(undefined, extraParams);
     });
 };
+
 
 export const postToOpenElisServerFullResponse = (
   endPoint,
@@ -148,7 +143,6 @@ export const postToOpenElisServerFormDataJson = (
       callback(json, extraParams);
     })
     .catch((error) => {
-      console.error("postToOpenElisServerFormDataJson error:", error);
       callback(
         {
           error: error.message || "Network error",
@@ -165,48 +159,47 @@ export const postToOpenElisServerJsonResponse = (
   payLoad,
   callback,
   extraParams,
+  signal = null,
 ) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      credentials: "include",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
-      },
-      body: payLoad,
+  fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include", // include browser session for backend auth
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
     },
-  )
-    .then((response) => {
-      // Check if response is ok (status 200-299)
+    body: payLoad,
+    signal,
+  })
+    .then(async (response) => {
+      const contentType = response.headers.get("content-type");
+      const isJson = contentType?.includes("application/json");
+
+      const body = isJson ? await response.json() : undefined;
+
       if (!response.ok) {
-        // For error responses, try to parse JSON error message
-        return response.json().then((errorJson) => {
-          // Include status code in error response for better error handling
-          return {
-            ...errorJson,
-            status: response.status,
-            statusCode: response.status,
-            statusText: response.statusText,
-          };
-        });
+        return {
+          ...(body || {}),
+          status: response.status,
+          statusCode: response.status,
+          statusText: response.statusText,
+        };
       }
-      // For successful responses, parse JSON normally
-      return response.json();
+
+      return body;
     })
     .then((json) => {
       callback(json, extraParams);
     })
     .catch((error) => {
-      console.error("postToOpenElisServerJsonResponse error:", error);
-      // Pass error to callback so calling code can handle it
+      if (error?.name === "AbortError") {
+        return;
+      }
+
       callback(
         {
-          error: error.message || "Network error",
-          message: error.message || "Network error",
+          error: error?.message || "Network error",
+          message: error?.message || "Network error",
           status: 0,
         },
         extraParams,
@@ -256,7 +249,6 @@ export const postToOpenElisServerForBlob = (
       callback(blob, response);
     })
     .catch((error) => {
-      console.error(error);
       if (errorCallback) {
         errorCallback(error);
       }
@@ -384,7 +376,6 @@ export const putToOpenElisServerJsonResponse = (
       callback(json, extraParams);
     })
     .catch((error) => {
-      console.error("putToOpenElisServerJsonResponse error:", error);
       callback(
         {
           error: error.message || "Network error",

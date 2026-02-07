@@ -788,6 +788,10 @@ function RetentionPolicySection() {
               id: "biorepository.retention.import.selectFile",
               defaultMessage: "Select CSV file",
             })}
+            iconDescription={intl.formatMessage({
+              id: "biorepository.retention.import.iconDescription",
+              defaultMessage: "Delete file",
+            })}
             filenameStatus="edit"
             labelDescription={intl.formatMessage({
               id: "biorepository.retention.import.fileTypes",

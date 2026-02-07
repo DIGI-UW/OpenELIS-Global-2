@@ -186,7 +186,6 @@ function BioanalyticalWorkflowTab({ notebookId, entryId: propEntryId }) {
           },
         );
       } else {
-        console.error("Failed to load notebook:", nbId);
         setLoading(false);
       }
     });
@@ -216,7 +215,6 @@ function BioanalyticalWorkflowTab({ notebookId, entryId: propEntryId }) {
         if (!response.ok) {
           const errorMsg =
             data.error || `HTTP ${response.status}: ${response.statusText}`;
-          console.error("Entry creation failed:", errorMsg);
           throw new Error(errorMsg);
         }
         return data;
@@ -227,7 +225,7 @@ function BioanalyticalWorkflowTab({ notebookId, entryId: propEntryId }) {
             setEntry(data);
             setEntryId(data.id);
             setSamples([]);
-            setIsCreatingEntry(false); // Entry created - apply page restrictions
+            setIsCreatingEntry(false);
           } else if (data && data.error) {
             console.error("Entry creation error:", data.error);
           } else {
@@ -237,7 +235,6 @@ function BioanalyticalWorkflowTab({ notebookId, entryId: propEntryId }) {
         }
       })
       .catch((error) => {
-        console.error("Failed to create notebook entry:", error.message);
         if (componentMounted.current) {
           setErrorMessage(error.message);
           setLoading(false);

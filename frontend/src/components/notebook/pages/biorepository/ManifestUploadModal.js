@@ -824,6 +824,10 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
               id: "biorepository.manifest.upload.button",
               defaultMessage: "Select CSV file",
             })}
+            iconDescription={intl.formatMessage({
+              id: "biorepository.manifest.upload.iconDescription",
+              defaultMessage: "Delete file",
+            })}
             accept={[".csv"]}
             multiple={false}
             onChange={handleFileChange}

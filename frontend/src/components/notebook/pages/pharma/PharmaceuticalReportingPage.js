@@ -1229,6 +1229,10 @@ function PharmaceuticalReportingPage({
             <span className="metric-label">QC Pass Rate</span>
             <span className="metric-value">{metrics.qcPassRate}%</span>
             <ProgressBar
+              label={intl.formatMessage({
+                id: "notebook.pharma.reporting.metrics.qcPassRate.progress",
+                defaultMessage: "QC Pass Rate Progress",
+              })}
               value={metrics.qcPassRate}
               max={100}
               size="small"
@@ -1241,6 +1245,10 @@ function PharmaceuticalReportingPage({
             <span className="metric-label">Assay Success</span>
             <span className="metric-value">{metrics.assaySuccessRate}%</span>
             <ProgressBar
+              label={intl.formatMessage({
+                id: "notebook.pharma.reporting.metrics.assaySuccessRate.progress",
+                defaultMessage: "Assay Success Rate Progress",
+              })}
               value={metrics.assaySuccessRate}
               max={100}
               size="small"
@@ -1257,6 +1265,10 @@ function PharmaceuticalReportingPage({
               {metrics.oosRate}%
             </span>
             <ProgressBar
+              label={intl.formatMessage({
+                id: "notebook.pharma.reporting.metrics.oosRate.progress",
+                defaultMessage: "OOS Rate Progress",
+              })}
               value={metrics.oosRate}
               max={100}
               size="small"
@@ -1305,57 +1317,140 @@ function PharmaceuticalReportingPage({
                 >
                   {!qcEditMode ? (
                     <>
-                      <Button
-                        kind="ghost"
-                        size="sm"
-                        renderIcon={Time}
-                        iconDescription={intl.formatMessage({
+                      <div
+                        className="accordion-action-button"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.25rem",
+                          padding: "0.25rem 0.5rem",
+                          cursor: "pointer",
+                          borderRadius: "4px",
+                          border: "1px solid transparent",
+                          fontSize: "0.875rem",
+                          color: "var(--cds-text-primary)",
+                          backgroundColor: "transparent",
+                          transition: "background-color 0.15s ease",
+                        }}
+                        onClick={handleViewQcHistory}
+                        onMouseEnter={(e) => {
+                          e.target.style.backgroundColor = "var(--cds-layer-hover)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = "transparent";
+                        }}
+                        title={intl.formatMessage({
                           id: "button.history",
                           defaultMessage: "History",
                         })}
-                        onClick={handleViewQcHistory}
                       >
+                        <Time size={16} />
                         <FormattedMessage
                           id="button.history"
                           defaultMessage="History"
                         />
-                      </Button>
-                      <Button
-                        kind="ghost"
-                        size="sm"
-                        renderIcon={Edit}
-                        iconDescription={intl.formatMessage({
+                      </div>
+                      <div
+                        className="accordion-action-button"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.25rem",
+                          padding: "0.25rem 0.5rem",
+                          cursor: "pointer",
+                          borderRadius: "4px",
+                          border: "1px solid transparent",
+                          fontSize: "0.875rem",
+                          color: "var(--cds-text-primary)",
+                          backgroundColor: "transparent",
+                          transition: "background-color 0.15s ease",
+                        }}
+                        onClick={() => setQcEditMode(true)}
+                        onMouseEnter={(e) => {
+                          e.target.style.backgroundColor = "var(--cds-layer-hover)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = "transparent";
+                        }}
+                        title={intl.formatMessage({
                           id: "button.edit",
                           defaultMessage: "Edit",
                         })}
-                        onClick={() => setQcEditMode(true)}
                       >
+                        <Edit size={16} />
                         <FormattedMessage
                           id="button.edit"
                           defaultMessage="Edit"
                         />
-                      </Button>
+                      </div>
                     </>
                   ) : (
                     <>
-                      <Button
-                        kind="secondary"
-                        size="sm"
-                        renderIcon={Close}
-                        onClick={handleCancelQcEdit}
-                        disabled={qcSaving}
+                      <div
+                        className="accordion-action-button"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.25rem",
+                          padding: "0.25rem 0.5rem",
+                          cursor: qcSaving ? "not-allowed" : "pointer",
+                          borderRadius: "4px",
+                          border: "1px solid var(--cds-border-strong)",
+                          fontSize: "0.875rem",
+                          color: "var(--cds-text-primary)",
+                          backgroundColor: "var(--cds-layer)",
+                          opacity: qcSaving ? 0.5 : 1,
+                          transition: "background-color 0.15s ease",
+                        }}
+                        onClick={!qcSaving ? handleCancelQcEdit : undefined}
+                        onMouseEnter={(e) => {
+                          if (!qcSaving) {
+                            e.target.style.backgroundColor = "var(--cds-layer-hover)";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = "var(--cds-layer)";
+                        }}
+                        title={intl.formatMessage({
+                          id: "button.cancel",
+                          defaultMessage: "Cancel",
+                        })}
                       >
+                        <Close size={16} />
                         <FormattedMessage
                           id="button.cancel"
                           defaultMessage="Cancel"
                         />
-                      </Button>
-                      <Button
-                        kind="primary"
-                        size="sm"
-                        renderIcon={Save}
-                        onClick={handleSaveQcParams}
-                        disabled={qcSaving}
+                      </div>
+                      <div
+                        className="accordion-action-button"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.25rem",
+                          padding: "0.25rem 0.5rem",
+                          cursor: qcSaving ? "not-allowed" : "pointer",
+                          borderRadius: "4px",
+                          border: "1px solid var(--cds-support-success)",
+                          fontSize: "0.875rem",
+                          color: "white",
+                          backgroundColor: "var(--cds-support-success)",
+                          opacity: qcSaving ? 0.5 : 1,
+                          transition: "background-color 0.15s ease",
+                        }}
+                        onClick={!qcSaving ? handleSaveQcParams : undefined}
+                        onMouseEnter={(e) => {
+                          if (!qcSaving) {
+                            e.target.style.backgroundColor = "var(--cds-support-success-hover)";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = "var(--cds-support-success)";
+                        }}
+                        title={intl.formatMessage({
+                          id: "button.save",
+                          defaultMessage: "Save",
+                        })}
                       >
                         {qcSaving ? (
                           <FormattedMessage
@@ -1368,7 +1463,7 @@ function PharmaceuticalReportingPage({
                             defaultMessage="Save"
                           />
                         )}
-                      </Button>
+                      </div>
                     </>
                   )}
                 </span>
@@ -1508,9 +1603,21 @@ function PharmaceuticalReportingPage({
                       {qcParameters?.controlsRequired?.positiveControls
                         ?.enabled && (
                         <ListItem>
-                          <Tag type="green" size="sm">
+                          <span
+                            className="tag-replacement"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              backgroundColor: "var(--cds-tag-color-green)",
+                              color: "var(--cds-tag-text-green)",
+                              padding: "0.125rem 0.25rem",
+                              borderRadius: "0.125rem",
+                              fontSize: "0.75rem",
+                              fontWeight: "400",
+                            }}
+                          >
                             <Checkmark size={12} />
-                          </Tag>
+                          </span>
                           <span style={{ marginLeft: "0.5rem" }}>
                             <FormattedMessage
                               id="notebook.pharma.reporting.qcParameters.positiveControls"
@@ -1531,9 +1638,21 @@ function PharmaceuticalReportingPage({
                       {qcParameters?.controlsRequired?.negativeControls
                         ?.enabled && (
                         <ListItem>
-                          <Tag type="green" size="sm">
+                          <span
+                            className="tag-replacement"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              backgroundColor: "var(--cds-tag-color-green)",
+                              color: "var(--cds-tag-text-green)",
+                              padding: "0.125rem 0.25rem",
+                              borderRadius: "0.125rem",
+                              fontSize: "0.75rem",
+                              fontWeight: "400",
+                            }}
+                          >
                             <Checkmark size={12} />
-                          </Tag>
+                          </span>
                           <span style={{ marginLeft: "0.5rem" }}>
                             <FormattedMessage
                               id="notebook.pharma.reporting.qcParameters.negativeControls"
@@ -1554,9 +1673,21 @@ function PharmaceuticalReportingPage({
                       {qcParameters?.controlsRequired?.internalStandards
                         ?.enabled && (
                         <ListItem>
-                          <Tag type="green" size="sm">
+                          <span
+                            className="tag-replacement"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              backgroundColor: "var(--cds-tag-color-green)",
+                              color: "var(--cds-tag-text-green)",
+                              padding: "0.125rem 0.25rem",
+                              borderRadius: "0.125rem",
+                              fontSize: "0.75rem",
+                              fontWeight: "400",
+                            }}
+                          >
                             <Checkmark size={12} />
-                          </Tag>
+                          </span>
                           <span style={{ marginLeft: "0.5rem" }}>
                             <FormattedMessage
                               id="notebook.pharma.reporting.qcParameters.internalStandards"
@@ -1577,9 +1708,23 @@ function PharmaceuticalReportingPage({
                             <div className="qc-param-tags">
                               {qcParameters.controlsRequired.internalStandards.applicableMethods.map(
                                 (method) => (
-                                  <Tag key={method} type="blue" size="sm">
+                                  <span
+                                    key={method}
+                                    className="tag-replacement"
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      backgroundColor: "var(--cds-tag-color-blue)",
+                                      color: "var(--cds-tag-text-blue)",
+                                      padding: "0.125rem 0.25rem",
+                                      borderRadius: "0.125rem",
+                                      fontSize: "0.75rem",
+                                      fontWeight: "400",
+                                      marginRight: "0.25rem",
+                                    }}
+                                  >
                                     {method}
-                                  </Tag>
+                                  </span>
                                 ),
                               )}
                             </div>
@@ -1806,9 +1951,21 @@ function PharmaceuticalReportingPage({
                       {qcParameters?.acceptanceCriteria
                         ?.referenceStandardsComparison?.enabled && (
                         <ListItem>
-                          <Tag type="green" size="sm">
+                          <span
+                            className="tag-replacement"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              backgroundColor: "var(--cds-tag-color-green)",
+                              color: "var(--cds-tag-text-green)",
+                              padding: "0.125rem 0.25rem",
+                              borderRadius: "0.125rem",
+                              fontSize: "0.75rem",
+                              fontWeight: "400",
+                            }}
+                          >
                             <Checkmark size={12} />
-                          </Tag>
+                          </span>
                           <span style={{ marginLeft: "0.5rem" }}>
                             <FormattedMessage
                               id="notebook.pharma.reporting.qcParameters.referenceStandards"
@@ -1829,9 +1986,23 @@ function PharmaceuticalReportingPage({
                           <div className="qc-param-tags">
                             {qcParameters.acceptanceCriteria.pharmacopeialSpecifications.standards?.map(
                               (spec) => (
-                                <Tag key={spec} type="purple" size="sm">
+                                <span
+                                  key={spec}
+                                  className="tag-replacement"
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    backgroundColor: "var(--cds-tag-color-purple)",
+                                    color: "var(--cds-tag-text-purple)",
+                                    padding: "0.125rem 0.25rem",
+                                    borderRadius: "0.125rem",
+                                    fontSize: "0.75rem",
+                                    fontWeight: "400",
+                                    marginRight: "0.25rem",
+                                  }}
+                                >
                                   {spec}
-                                </Tag>
+                                </span>
                               ),
                             )}
                           </div>
@@ -2010,9 +2181,21 @@ function PharmaceuticalReportingPage({
                       {qcParameters?.deviationManagement?.logInLmis
                         ?.enabled && (
                         <ListItem>
-                          <Tag type="green" size="sm">
+                          <span
+                            className="tag-replacement"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              backgroundColor: "var(--cds-tag-color-green)",
+                              color: "var(--cds-tag-text-green)",
+                              padding: "0.125rem 0.25rem",
+                              borderRadius: "0.125rem",
+                              fontSize: "0.75rem",
+                              fontWeight: "400",
+                            }}
+                          >
                             <Checkmark size={12} />
-                          </Tag>
+                          </span>
                           <span style={{ marginLeft: "0.5rem" }}>
                             <FormattedMessage
                               id="notebook.pharma.reporting.qcParameters.logInLmis"
@@ -2033,9 +2216,21 @@ function PharmaceuticalReportingPage({
                       {qcParameters?.deviationManagement?.documentReason
                         ?.enabled && (
                         <ListItem>
-                          <Tag type="green" size="sm">
+                          <span
+                            className="tag-replacement"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              backgroundColor: "var(--cds-tag-color-green)",
+                              color: "var(--cds-tag-text-green)",
+                              padding: "0.125rem 0.25rem",
+                              borderRadius: "0.125rem",
+                              fontSize: "0.75rem",
+                              fontWeight: "400",
+                            }}
+                          >
                             <Checkmark size={12} />
-                          </Tag>
+                          </span>
                           <span style={{ marginLeft: "0.5rem" }}>
                             <FormattedMessage
                               id="notebook.pharma.reporting.qcParameters.documentReason"
@@ -2055,9 +2250,21 @@ function PharmaceuticalReportingPage({
                       )}
                       {qcParameters?.deviationManagement?.capa?.enabled && (
                         <ListItem>
-                          <Tag type="green" size="sm">
+                          <span
+                            className="tag-replacement"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              backgroundColor: "var(--cds-tag-color-green)",
+                              color: "var(--cds-tag-text-green)",
+                              padding: "0.125rem 0.25rem",
+                              borderRadius: "0.125rem",
+                              fontSize: "0.75rem",
+                              fontWeight: "400",
+                            }}
+                          >
                             <Checkmark size={12} />
-                          </Tag>
+                          </span>
                           <span style={{ marginLeft: "0.5rem" }}>
                             <FormattedMessage
                               id="notebook.pharma.reporting.qcParameters.capa"
@@ -2075,9 +2282,21 @@ function PharmaceuticalReportingPage({
                           )}
                           {qcParameters.deviationManagement.capa.timeline && (
                             <p className="qc-param-timeline">
-                              <Tag type="cyan" size="sm">
+                              <span
+                                className="tag-replacement"
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  backgroundColor: "var(--cds-tag-color-cyan)",
+                                  color: "var(--cds-tag-text-cyan)",
+                                  padding: "0.125rem 0.25rem",
+                                  borderRadius: "0.125rem",
+                                  fontSize: "0.75rem",
+                                  fontWeight: "400",
+                                }}
+                              >
                                 {qcParameters.deviationManagement.capa.timeline}
-                              </Tag>
+                              </span>
                             </p>
                           )}
                         </ListItem>
@@ -2085,9 +2304,21 @@ function PharmaceuticalReportingPage({
                       {qcParameters?.deviationManagement?.oosFlagging
                         ?.enabled && (
                         <ListItem>
-                          <Tag type="red" size="sm">
+                          <span
+                            className="tag-replacement"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              backgroundColor: "var(--cds-tag-color-red)",
+                              color: "var(--cds-tag-text-red)",
+                              padding: "0.125rem 0.25rem",
+                              borderRadius: "0.125rem",
+                              fontSize: "0.75rem",
+                              fontWeight: "400",
+                            }}
+                          >
                             <Warning size={12} />
-                          </Tag>
+                          </span>
                           <span style={{ marginLeft: "0.5rem" }}>
                             <FormattedMessage
                               id="notebook.pharma.reporting.qcParameters.oosFlagging"
