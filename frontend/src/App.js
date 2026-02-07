@@ -12,6 +12,7 @@ import { Admin } from "./components";
 import ResultSearch from "./components/resultPage/ResultSearch";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { getFromOpenElisServer } from "./components/utils/Utils";
+import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import "./App.css";
 import { languages } from "./languages";
 import config from "./config.json";
@@ -72,6 +73,21 @@ export default function App() {
 
   useEffect(() => {
     getUserSessionDetails();
+  }, []);
+
+  // Load and apply site branding (colors, favicon)
+  useEffect(() => {
+    loadAndApplyBranding();
+
+    // Listen for branding updates from admin UI
+    const handleBrandingUpdate = () => {
+      loadAndApplyBranding();
+    };
+    window.addEventListener("branding-updated", handleBrandingUpdate);
+
+    return () => {
+      window.removeEventListener("branding-updated", handleBrandingUpdate);
+    };
   }, []);
 
   const getUserSessionDetails = async () => {
@@ -141,18 +157,19 @@ export default function App() {
       })
         .then((response) => response.text())
         .then((html) => {
-          const POPUP_HEIGHT = 700;
-          const POPUP_WIDTH = 600;
-          const top =
-            window.outerHeight / 2 + window.screenY - POPUP_HEIGHT / 2;
-          const left = window.outerWidth / 2 + window.screenX - POPUP_WIDTH / 2;
-          const newWindow = window.open(
-            "",
-            "SAML Popup",
-            `height=${POPUP_HEIGHT},width=${POPUP_WIDTH},top=${top},left=${left}`,
-          );
-          newWindow.document.write(html);
-          newWindow.document.close();
+          // Use a hidden iframe instead of a popup to process SAML SLO silently
+          const iframe = document.createElement("iframe");
+          iframe.style.display = "none";
+          iframe.name = "saml-logout-frame";
+          document.body.appendChild(iframe);
+          iframe.contentDocument.write(html);
+          iframe.contentDocument.close();
+          // Remove the iframe after a short delay to allow the logout request to complete
+          setTimeout(() => {
+            if (iframe.parentNode) {
+              iframe.parentNode.removeChild(iframe);
+            }
+          }, 5000);
           getUserSessionDetails();
           window.location.href = config.loginRedirect;
         })

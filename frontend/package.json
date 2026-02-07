@@ -2,6 +2,9 @@
   "name": "openelis-global-react-app",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "^20.1.0 || ^22.0.0 || >=24.0.0"
+  },
   "dependencies": {
     "@carbon/charts": "^1.27.2",
     "@carbon/charts-react": "^1.5.2",
@@ -96,8 +99,7 @@
   },
   "devDependencies": {
     "@testing-library/react-hooks": "^8.0.1",
-    "cypress": "^12.17.4",
-    "cypress-xpath": "^2.0.1",
+    "cypress": "^15.9.0",
     "eslint": "^8.48.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
@@ -105,5 +107,24 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "prettier": "^3.4.2",
     "prettier-eslint": "15.0.1"
+  },
+  "overrides": {
+    "@svgr/babel-plugin-add-jsx-attribute": "8.0.0",
+    "@svgr/babel-plugin-remove-jsx-attribute": "8.0.0",
+    "@svgr/babel-plugin-remove-jsx-empty-expression": "8.0.0",
+    "@svgr/babel-plugin-replace-jsx-attribute-value": "8.0.0",
+    "@svgr/babel-plugin-svg-dynamic-title": "8.0.0",
+    "@svgr/babel-plugin-svg-em-dimensions": "8.0.0",
+    "@svgr/babel-plugin-transform-react-native-svg": "8.1.0",
+    "@svgr/babel-plugin-transform-svg-component": "8.0.0",
+    "@svgr/babel-preset": "8.1.0",
+    "@svgr/core": "8.1.0",
+    "@svgr/hast-util-to-babel-ast": "8.0.0",
+    "@svgr/plugin-jsx": "8.1.0",
+    "@svgr/plugin-svgo": "8.1.0",
+    "@svgr/webpack": "8.1.0",
+    "body-parser": "1.20.4",
+    "qs": "6.14.1",
+    "resolve-url-loader": "5.0.0"
   }
 }

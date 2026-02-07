@@ -1,0 +1,21 @@
+{
+  "protocolVersions": ["0.3.0"],
+  "name": "SQLGenAgent",
+  "description": "Generates SQL from natural language queries using schema context from SchemaAgent",
+  "url": "http://localhost:9103",
+  "version": "0.0.1",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "defaultInputModes": ["application/json"],
+  "defaultOutputModes": ["application/json"],
+  "skills": [
+    {
+      "id": "generate_sql",
+      "name": "Generate SQL",
+      "description": "Convert natural language to SQL using provided schema context",
+      "tags": ["text-to-sql", "sql-generation", "llm"]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "protocolVersions": ["0.3.0"],
+  "name": "SchemaAgent",
+  "description": "Retrieves relevant database schema metadata via MCP based on user queries",
+  "url": "http://localhost:9102",
+  "version": "0.0.1",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "defaultInputModes": ["application/json"],
+  "defaultOutputModes": ["application/json"],
+  "skills": [
+    {
+      "id": "retrieve_schema",
+      "name": "Retrieve Schema",
+      "description": "Get relevant schema context for a natural language query via MCP",
+      "tags": ["schema", "mcp", "metadata"]
+    }
+  ]
+}
