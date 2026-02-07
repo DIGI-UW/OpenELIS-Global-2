@@ -305,33 +305,6 @@ module.exports = defineConfig({
             return null;
           }
         },
-
-        // Madagascar Analyzer Fixtures (Feature 011)
-        loadMadagascarAnalyzerFixtures() {
-          const { execSync } = require("child_process");
-          const loaderScript = path.join(
-            PROJECT_ROOT,
-            "src/test/resources/load-analyzer-test-data.sh",
-          );
-          if (!fs.existsSync(loaderScript)) {
-            throw new Error(
-              `Analyzer fixture loader script not found: ${loaderScript}`,
-            );
-          }
-          try {
-            execSync(`bash "${loaderScript}" --dataset-011`, {
-              stdio: "inherit",
-              cwd: PROJECT_ROOT,
-              shell: "/bin/bash",
-            });
-            return null;
-          } catch (error) {
-            console.error("Error loading Madagascar analyzer fixtures:", error);
-            throw new Error(
-              `Failed to load Madagascar analyzer fixtures: ${error.message || error}`,
-            );
-          }
-        },
       });
 
       // Patient Merge tasks

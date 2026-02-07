@@ -126,15 +126,6 @@ Cypress.Commands.add("cleanStorageFixtures", () => {
 });
 
 /**
- * Load Madagascar analyzer fixtures (Feature 011)
- * Populates Analyzer Dashboard with 12 analyzers + serial/file configs
- * Usage: cy.loadMadagascarAnalyzerFixtures()
- */
-Cypress.Commands.add("loadMadagascarAnalyzerFixtures", () => {
-  cy.task("loadMadagascarAnalyzerFixtures");
-});
-
-/**
  * Ensure user is logged out via API (proper auth check, not DOM-based)
  * Checks /session endpoint and calls /Logout if authenticated
  * Usage: cy.ensureLoggedOut()
