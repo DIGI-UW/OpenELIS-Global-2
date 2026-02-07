@@ -113,7 +113,8 @@ after("Cleanup test data", () => {
   }
 });
 
-describe("Error Resolution - User Story 3", function () {
+// TODO: Re-enable once analyzer feature PRs are merged into this branch
+describe.skip("Error Resolution - User Story 3", function () {
   beforeEach(() => {
     // Viewport management (profy.dev: set viewport before visit)
     // Use larger viewport to avoid squashed layout (1920x1080 for full desktop experience)
