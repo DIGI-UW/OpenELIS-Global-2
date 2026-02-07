@@ -16,6 +16,9 @@ jest.mock("../../../services/analyzerService", () => ({
   createAnalyzer: jest.fn(),
   updateAnalyzer: jest.fn(),
   testConnection: jest.fn(),
+  getAnalyzerTypes: jest.fn(),
+  getDefaultConfigs: jest.fn(),
+  getDefaultConfig: jest.fn(),
 }));
 
 // ========== IMPORTS ==========

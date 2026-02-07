@@ -7,6 +7,7 @@
 #   --skip-build     Skip WAR rebuild (use existing WAR)
 #   --skip-fixtures  Skip loading test fixtures
 #   --full-reset     Remove volumes (wipe DB) before starting
+#   --analyzer       Include analyzer test stack (ASTM bridge, simulator, virtual serial)
 #   --help           Show this help message
 #
 # This script:
@@ -29,6 +30,7 @@ NC='\033[0m' # No Color
 SKIP_BUILD=false
 SKIP_FIXTURES=false
 FULL_RESET=false
+ANALYZER=false
 LETSENCRYPT_DOMAIN="${LETSENCRYPT_DOMAIN:-analyzers.openelis-global.org}"
 
 # Parse arguments
@@ -46,8 +48,12 @@ while [[ $# -gt 0 ]]; do
             FULL_RESET=true
             shift
             ;;
+        --analyzer)
+            ANALYZER=true
+            shift
+            ;;
         --help)
-            head -20 "$0" | tail -18
+            head -24 "$0" | tail -22
             exit 0
             ;;
         *)
@@ -56,6 +62,12 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Compose file list (analyzer stack adds ASTM bridge, simulator, virtual serial)
+COMPOSE_FILES="-f dev.docker-compose.yml -f docker-compose.letsencrypt.yml"
+if [ "$ANALYZER" = true ]; then
+    COMPOSE_FILES="$COMPOSE_FILES -f analyzer-setup.docker-compose.yml"
+fi
 
 # Change to project root
 cd "$(dirname "$0")/.."
@@ -70,9 +82,9 @@ echo ""
 echo -e "${YELLOW}[1/5] Stopping containers...${NC}"
 if [ "$FULL_RESET" = true ]; then
     echo -e "  ${YELLOW}→ Full reset: removing volumes${NC}"
-    docker compose -f dev.docker-compose.yml down -v 2>/dev/null || true
+    docker compose $COMPOSE_FILES down -v 2>/dev/null || true
 else
-    docker compose -f dev.docker-compose.yml down 2>/dev/null || true
+    docker compose $COMPOSE_FILES down 2>/dev/null || true
 fi
 echo -e "  ${GREEN}✓ Containers stopped${NC}"
 
@@ -85,10 +97,13 @@ else
     echo -e "  ${GREEN}✓ WAR built successfully${NC}"
 fi
 
-# Step 3: Start containers with Let's Encrypt
-echo -e "${YELLOW}[3/5] Starting containers with Let's Encrypt...${NC}"
+# Step 3: Start containers with Let's Encrypt (and optionally analyzer stack)
+echo -e "${YELLOW}[3/5] Starting containers...${NC}"
+if [ "$ANALYZER" = true ]; then
+    echo -e "  ${YELLOW}→ Including analyzer stack (ASTM bridge, simulator, virtual serial)${NC}"
+fi
 export LETSENCRYPT_DOMAIN
-docker compose -f dev.docker-compose.yml -f docker-compose.letsencrypt.yml up -d
+docker compose $COMPOSE_FILES up -d
 echo -e "  ${GREEN}✓ Containers started${NC}"
 
 # Step 4: Wait for webapp
@@ -123,9 +138,13 @@ else
     echo -e "  Loading storage fixtures..."
     ./src/test/resources/load-test-fixtures.sh --no-verify
 
-    # Analyzer fixtures
+    # Analyzer fixtures (Feature 011 when --analyzer, otherwise default)
     echo -e "  Loading analyzer fixtures..."
-    ./src/test/resources/load-analyzer-test-data.sh --reset --no-verify
+    if [ "$ANALYZER" = true ]; then
+        ./src/test/resources/load-analyzer-test-data.sh --dataset-011 --reset --no-verify
+    else
+        ./src/test/resources/load-analyzer-test-data.sh --reset --no-verify
+    fi
 
     echo -e "  ${GREEN}✓ All fixtures loaded${NC}"
 fi
@@ -153,4 +172,4 @@ fi
 
 # Show service status
 echo ""
-docker compose -f dev.docker-compose.yml ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || docker compose -f dev.docker-compose.yml ps
+docker compose $COMPOSE_FILES ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || docker compose $COMPOSE_FILES ps

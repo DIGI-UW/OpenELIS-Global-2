@@ -7,6 +7,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -251,5 +254,107 @@ public class AnalyzerConfigurationServiceTest {
         assertTrue(configurationService.validateStatusTransition(AnalyzerStatus.ERROR_PENDING, AnalyzerStatus.ACTIVE));
         assertTrue(configurationService.validateStatusTransition(AnalyzerStatus.ACTIVE, AnalyzerStatus.OFFLINE));
         assertTrue(configurationService.validateStatusTransition(AnalyzerStatus.OFFLINE, AnalyzerStatus.ACTIVE));
+    }
+
+    // === findByIdentifierPatternMatch Tests (GenericASTM/GenericHL7 plugin
+    // selection) ===
+
+    @Test
+    public void testFindByIdentifierPatternMatch_NullIdentifier_ReturnsEmpty() {
+        assertEquals(Optional.empty(), configurationService.findByIdentifierPatternMatch(null));
+    }
+
+    @Test
+    public void testFindByIdentifierPatternMatch_EmptyIdentifier_ReturnsEmpty() {
+        assertEquals(Optional.empty(), configurationService.findByIdentifierPatternMatch(""));
+        assertEquals(Optional.empty(), configurationService.findByIdentifierPatternMatch("   "));
+    }
+
+    @Test
+    public void testFindByIdentifierPatternMatch_NoCandidates_ReturnsEmpty() {
+        when(analyzerConfigurationDAO.findGenericPluginConfigsWithPatterns()).thenReturn(Collections.emptyList());
+
+        assertEquals(Optional.empty(), configurationService.findByIdentifierPatternMatch("MINDRAY^BA-88A^1.0"));
+    }
+
+    @Test
+    public void testFindByIdentifierPatternMatch_SubstringMatch_ReturnsConfig() {
+        AnalyzerConfiguration config = new AnalyzerConfiguration();
+        config.setId("CONFIG-2006");
+        config.setIdentifierPattern("MINDRAY.*BA-88A|BA88A");
+        config.setGenericPlugin(true);
+        config.setPreferGenericPlugin(true);
+        config.setAnalyzer(testAnalyzer);
+        when(analyzerConfigurationDAO.findGenericPluginConfigsWithPatterns())
+                .thenReturn(Collections.singletonList(config));
+
+        Optional<AnalyzerConfiguration> result = configurationService
+                .findByIdentifierPatternMatch("MINDRAY^BA-88A^1.0");
+
+        assertTrue("Pattern uses .find() so substring should match", result.isPresent());
+        assertEquals("CONFIG-2006", result.get().getId());
+        assertTrue("prefer_generic_plugin is returned for plugin-order override", result.get().isPreferGenericPlugin());
+    }
+
+    @Test
+    public void testFindByIdentifierPatternMatch_NoMatch_ReturnsEmpty() {
+        AnalyzerConfiguration config = new AnalyzerConfiguration();
+        config.setId("CONFIG-2006");
+        config.setIdentifierPattern("MINDRAY.*BA-88A");
+        config.setGenericPlugin(true);
+        when(analyzerConfigurationDAO.findGenericPluginConfigsWithPatterns())
+                .thenReturn(Collections.singletonList(config));
+
+        assertEquals(Optional.empty(), configurationService.findByIdentifierPatternMatch("UNKNOWN^MODEL^1.0"));
+    }
+
+    @Test
+    public void testFindByIdentifierPatternMatch_InvalidRegex_SkipsConfigAndReturnsEmpty() {
+        AnalyzerConfiguration config = new AnalyzerConfiguration();
+        config.setId("CONFIG-BAD");
+        config.setIdentifierPattern("[invalid(regex");
+        config.setGenericPlugin(true);
+        when(analyzerConfigurationDAO.findGenericPluginConfigsWithPatterns())
+                .thenReturn(Collections.singletonList(config));
+
+        Optional<AnalyzerConfiguration> result = configurationService
+                .findByIdentifierPatternMatch("MINDRAY^BA-88A^1.0");
+
+        assertFalse("Invalid regex should be skipped, no throw", result.isPresent());
+    }
+
+    @Test
+    public void testFindByIdentifierPatternMatch_FirstMatchWins() {
+        AnalyzerConfiguration config1 = new AnalyzerConfiguration();
+        config1.setId("CONFIG-FIRST");
+        config1.setIdentifierPattern("MINDRAY");
+        config1.setGenericPlugin(true);
+        config1.setAnalyzer(testAnalyzer);
+        AnalyzerConfiguration config2 = new AnalyzerConfiguration();
+        config2.setId("CONFIG-SECOND");
+        config2.setIdentifierPattern("BA-88A");
+        config2.setGenericPlugin(true);
+        List<AnalyzerConfiguration> list = new ArrayList<>();
+        list.add(config1);
+        list.add(config2);
+        when(analyzerConfigurationDAO.findGenericPluginConfigsWithPatterns()).thenReturn(list);
+
+        Optional<AnalyzerConfiguration> result = configurationService
+                .findByIdentifierPatternMatch("MINDRAY^BA-88A^1.0");
+
+        assertTrue(result.isPresent());
+        assertEquals("CONFIG-FIRST", result.get().getId());
+    }
+
+    @Test
+    public void testFindByIdentifierPatternMatch_ConfigWithNullPattern_Skipped() {
+        AnalyzerConfiguration config = new AnalyzerConfiguration();
+        config.setId("CONFIG-NULL-PATTERN");
+        config.setIdentifierPattern(null);
+        config.setGenericPlugin(true);
+        when(analyzerConfigurationDAO.findGenericPluginConfigsWithPatterns())
+                .thenReturn(Collections.singletonList(config));
+
+        assertEquals(Optional.empty(), configurationService.findByIdentifierPatternMatch("MINDRAY^BA-88A^1.0"));
     }
 }

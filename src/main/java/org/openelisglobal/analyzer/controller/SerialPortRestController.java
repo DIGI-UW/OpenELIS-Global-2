@@ -289,6 +289,72 @@ public class SerialPortRestController extends BaseRestController {
         }
     }
 
+    /**
+     * POST /rest/analyzer/serial-port/configurations/{id}/read-once Trigger a
+     * one-time read from the serial port
+     * 
+     * This endpoint is primarily for automated testing of RS232 analyzers. It reads
+     * available data from the serial port, processes it through the analyzer
+     * plugin, and returns the result.
+     * 
+     * @param id The serial port configuration ID
+     * @return Response with success status, lines read, and any errors
+     */
+    @PostMapping("/configurations/{id}/read-once")
+    public ResponseEntity<Map<String, Object>> readOnce(@PathVariable String id) {
+        try {
+            Optional<SerialPortConfiguration> configOpt = serialPortService.getById(id);
+            if (configOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(createErrorResponse("Serial port configuration not found: " + id));
+            }
+
+            SerialPortConfiguration config = configOpt.get();
+            Integer analyzerId = config.getAnalyzerId();
+
+            if (analyzerId == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(createErrorResponse("Analyzer ID not configured for serial port: " + id));
+            }
+
+            // Create SerialAnalyzerReader instance
+            org.openelisglobal.analyzerimport.analyzerreaders.SerialAnalyzerReader reader = new org.openelisglobal.analyzerimport.analyzerreaders.SerialAnalyzerReader(
+                    analyzerId);
+
+            // Read from serial port
+            boolean readSuccess = reader.readFromSerialPort();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("configurationId", id);
+            response.put("analyzerId", analyzerId);
+            response.put("readSuccess", readSuccess);
+
+            if (readSuccess) {
+                // Process the data
+                boolean processSuccess = reader.processData("1"); // System user ID
+                response.put("processSuccess", processSuccess);
+                response.put("message", "Data read and processed successfully");
+
+                if (reader.hasResponse()) {
+                    response.put("analyzerResponse", reader.getResponse());
+                }
+            } else {
+                response.put("processSuccess", false);
+                response.put("message", "Failed to read from serial port");
+                if (reader.getError() != null) {
+                    response.put("error", reader.getError());
+                }
+            }
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("Error reading from serial port: " + id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(createErrorResponse("Error reading from serial port: " + e.getMessage()));
+        }
+    }
+
     private Map<String, Object> createErrorResponse(String message) {
         Map<String, Object> error = new HashMap<>();
         error.put("error", message);

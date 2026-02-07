@@ -21,28 +21,25 @@ import java.util.List;
 import java.util.Optional;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.openelisglobal.analyzer.service.AnalyzerConfigurationService;
 import org.openelisglobal.analyzer.service.HL7MessageService;
-import org.openelisglobal.analyzer.service.MappingApplicationService;
-import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.PluginAnalyzerService;
+import org.openelisglobal.plugin.AnalyzerImporterPlugin;
 import org.openelisglobal.spring.util.SpringContext;
 
 /**
  * AnalyzerReader for HL7 v2.x ORU^R01 result messages.
  *
  * <p>
- * Task Reference: T008 (M1) – extends AnalyzerReader, uses HAPI PipeParser via
- * HL7MessageService. Parses ORU^R01, identifies analyzer from MSH, delegates to
- * HL7AnalyzerLineInserter (optionally wrapped with
- * MappingAwareHL7AnalyzerLineInserter).
+ * HL7 handling is plugin-only (e.g. GenericHL7). Parses message with
+ * HL7MessageService for validation and segment lines, then delegates to the
+ * matching plugin's inserter. No built-in/legacy HL7 inserter fallback.
  */
 public class HL7AnalyzerReader extends AnalyzerReader {
 
     private List<String> lines;
     private String error;
-    private String sourceIp;
-    private String bridgeAnalyzerId;
 
     @Override
     public boolean readStream(InputStream stream) {
@@ -75,129 +72,75 @@ public class HL7AnalyzerReader extends AnalyzerReader {
             error = "No HL7 message loaded";
             return false;
         }
-        Optional<Analyzer> analyzerOpt = identifyAnalyzerFromMessage();
-        if (!analyzerOpt.isPresent()) {
-            error = "Unable to identify analyzer from HL7 MSH (sending application/facility)";
-            LogEvent.logError(getClass().getSimpleName(), "insertAnalyzerData", error);
-            return false;
+
+        PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
+        List<AnalyzerImporterPlugin> plugins = choosePluginOrder(pluginService);
+
+        boolean pluginMatched = false;
+        for (AnalyzerImporterPlugin plugin : plugins) {
+            try {
+                if (plugin.isTargetAnalyzer(lines)) {
+                    pluginMatched = true;
+                    AnalyzerLineInserter inserter = plugin.getAnalyzerLineInserter();
+                    if (inserter != null) {
+                        boolean success = inserter.insert(lines, systemUserId);
+                        if (!success) {
+                            error = inserter.getError();
+                            LogEvent.logError(getClass().getSimpleName(), "insertAnalyzerData", error);
+                        }
+                        return success;
+                    }
+                }
+            } catch (RuntimeException e) {
+                pluginMatched = true;
+                error = "Plugin " + plugin.getClass().getSimpleName() + " matched but failed: " + e.getMessage();
+                LogEvent.logError(error, e);
+            }
         }
-        Analyzer analyzer = analyzerOpt.get();
-        AnalyzerLineInserter inserter = new HL7AnalyzerLineInserter(analyzer);
-        AnalyzerLineInserter finalInserter = wrapInserterIfMappingsExist(inserter, analyzer);
-        boolean success = finalInserter.insert(lines, systemUserId);
-        if (!success) {
-            error = finalInserter.getError();
-            LogEvent.logError(getClass().getSimpleName(), "insertAnalyzerData", error);
+
+        if (!pluginMatched) {
+            error = "No HL7 plugin matched this message (e.g. configure GenericHL7 with matching identifier pattern)";
         }
-        return success;
+        LogEvent.logError(getClass().getSimpleName(), "insertAnalyzerData", error);
+        return false;
+    }
+
+    private List<AnalyzerImporterPlugin> choosePluginOrder(PluginAnalyzerService pluginService) {
+        String msh3 = parseMsh3(lines);
+        if (msh3 == null || msh3.trim().isEmpty()) {
+            return pluginService.getAnalyzerPlugins();
+        }
+        AnalyzerConfigurationService configService = SpringContext.getBean(AnalyzerConfigurationService.class);
+        if (configService == null) {
+            return pluginService.getAnalyzerPlugins();
+        }
+        Optional<org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration> config = configService
+                .findByIdentifierPatternMatch(msh3.trim());
+        if (config.isPresent() && config.get().isPreferGenericPlugin()) {
+            return pluginService.getAnalyzerPluginsWithGenericFirst();
+        }
+        return pluginService.getAnalyzerPlugins();
+    }
+
+    /** HL7 MSH segment field 3 (sending application). Same as GenericHL7. */
+    private String parseMsh3(List<String> lines) {
+        if (lines == null) {
+            return null;
+        }
+        for (String line : lines) {
+            if (line != null && line.startsWith("MSH|")) {
+                String[] fields = line.split("\\|");
+                if (fields.length > 2 && !StringUtils.isBlank(fields[2])) {
+                    return fields[2].trim();
+                }
+                break;
+            }
+        }
+        return null;
     }
 
     @Override
     public String getError() {
         return error;
-    }
-
-    /**
-     * Sets the source IP address from the bridge (via X-Source-Analyzer-IP header).
-     * Used for fallback analyzer identification and audit logging.
-     *
-     * @param sourceIp the source IP address
-     */
-    public void setSourceIp(String sourceIp) {
-        this.sourceIp = sourceIp;
-    }
-
-    /**
-     * Sets the analyzer ID pre-identified by the bridge (via X-Analyzer-Id header).
-     * Used as a hint for analyzer identification.
-     *
-     * @param bridgeAnalyzerId the analyzer ID from the bridge
-     */
-    public void setBridgeAnalyzerId(String bridgeAnalyzerId) {
-        this.bridgeAnalyzerId = bridgeAnalyzerId;
-    }
-
-    private AnalyzerLineInserter wrapInserterIfMappingsExist(AnalyzerLineInserter originalInserter, Analyzer analyzer) {
-        try {
-            MappingApplicationService mappingSvc = SpringContext.getBean(MappingApplicationService.class);
-            if (mappingSvc != null && mappingSvc.hasActiveMappings(analyzer.getId())) {
-                return new MappingAwareHL7AnalyzerLineInserter(originalInserter, analyzer);
-            }
-        } catch (Exception e) {
-            LogEvent.logError("Error checking HL7 mappings, using plain inserter: " + e.getMessage(), e);
-        }
-        return originalInserter;
-    }
-
-    private Optional<Analyzer> identifyAnalyzerFromMessage() {
-        if (lines == null || lines.isEmpty()) {
-            return Optional.empty();
-        }
-
-        org.openelisglobal.analyzer.service.AnalyzerConfigurationService configService = SpringContext
-                .getBean(org.openelisglobal.analyzer.service.AnalyzerConfigurationService.class);
-
-        // Strategy 1: Try bridge-provided analyzer ID first
-        if (StringUtils.isNotBlank(bridgeAnalyzerId)) {
-            LogEvent.logTrace("HL7AnalyzerReader", "identifyAnalyzerFromMessage",
-                    "Trying bridge analyzer ID: " + bridgeAnalyzerId);
-            Optional<AnalyzerConfiguration> config = configService.getByAnalyzerName(bridgeAnalyzerId.trim());
-            if (config.isPresent() && config.get().getAnalyzer() != null) {
-                LogEvent.logInfo("HL7AnalyzerReader", "identifyAnalyzerFromMessage",
-                        "Identified analyzer from bridge ID: " + bridgeAnalyzerId);
-                return Optional.of(config.get().getAnalyzer());
-            }
-        }
-
-        // Strategy 2: Extract from MSH segment (HL7 standard way)
-        try {
-            HL7MessageService svc = SpringContext.getBean(HL7MessageService.class);
-            String raw = String.join("\r", lines);
-            HL7MessageService.MshInfo msh = svc.extractMshInfo(raw);
-            String app = msh.getSendingApplication();
-            String fac = msh.getSendingFacility();
-
-            if (StringUtils.isNotBlank(app) || StringUtils.isNotBlank(fac)) {
-                // Try sending application first
-                String name = StringUtils.isNotBlank(app) ? app : fac;
-                LogEvent.logTrace("HL7AnalyzerReader", "identifyAnalyzerFromMessage", "Trying MSH sender: " + name);
-                Optional<AnalyzerConfiguration> config = configService.getByAnalyzerName(name.trim());
-                if (config.isPresent() && config.get().getAnalyzer() != null) {
-                    LogEvent.logInfo("HL7AnalyzerReader", "identifyAnalyzerFromMessage",
-                            "Identified analyzer from MSH: " + name);
-                    return Optional.of(config.get().getAnalyzer());
-                }
-
-                // Try combined application + facility
-                if (StringUtils.isNotBlank(app) && StringUtils.isNotBlank(fac)) {
-                    String combined = (app + " " + fac).trim();
-                    LogEvent.logTrace("HL7AnalyzerReader", "identifyAnalyzerFromMessage",
-                            "Trying combined MSH: " + combined);
-                    config = configService.getByAnalyzerName(combined);
-                    if (config.isPresent() && config.get().getAnalyzer() != null) {
-                        LogEvent.logInfo("HL7AnalyzerReader", "identifyAnalyzerFromMessage",
-                                "Identified analyzer from combined MSH: " + combined);
-                        return Optional.of(config.get().getAnalyzer());
-                    }
-                }
-            }
-        } catch (Exception e) {
-            LogEvent.logError("Error extracting MSH info: " + e.getMessage(), e);
-        }
-
-        // Strategy 3: Try source IP as fallback
-        if (StringUtils.isNotBlank(sourceIp)) {
-            LogEvent.logTrace("HL7AnalyzerReader", "identifyAnalyzerFromMessage", "Trying source IP: " + sourceIp);
-            Optional<AnalyzerConfiguration> config = configService.getByAnalyzerName(sourceIp.trim());
-            if (config.isPresent() && config.get().getAnalyzer() != null) {
-                LogEvent.logInfo("HL7AnalyzerReader", "identifyAnalyzerFromMessage",
-                        "Identified analyzer from source IP: " + sourceIp);
-                return Optional.of(config.get().getAnalyzer());
-            }
-        }
-
-        LogEvent.logWarn("HL7AnalyzerReader", "identifyAnalyzerFromMessage",
-                "Failed to identify analyzer using all strategies (bridge ID, MSH, source IP)");
-        return Optional.empty();
     }
 }

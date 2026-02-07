@@ -63,9 +63,6 @@ before("Setup test analyzer", () => {
     if (response.status === 201 && response.body?.id) {
       testAnalyzerId = response.body.id;
       cy.log(`Created analyzer with ID: ${testAnalyzerId}`);
-    } else if (response.status === 409) {
-      // Analyzer already exists - we'll fetch it in the VERIFY step below
-      cy.log(`Analyzer already exists (409) - will use existing one`);
     } else if (response.status !== 201) {
       throw new Error(
         `POST create analyzer failed: ${response.status} - ${JSON.stringify(response.body)}`,
@@ -254,10 +251,8 @@ describe.skip("Analyzer Configuration - User Story 1", function () {
 
   /**
    * Test: Create test code to OpenELIS test mapping
-   * TODO: Page load event doesn't fire in CI even after 3min - investigate root cause
-   * See: https://github.com/DIGI-UW/OpenELIS-Global-2/issues/TBD
    */
-  it.skip("should create test code to OpenELIS test mapping", function () {
+  it("should create test code to OpenELIS test mapping", function () {
     cy.then(() => {
       const id = testAnalyzerId;
       if (!id || id === "NO_ID") {
@@ -266,12 +261,10 @@ describe.skip("Analyzer Configuration - User Story 1", function () {
       }
 
       // Navigate directly to mappings page
-      // Use longer timeout and wait for element (not page load event)
       cy.visit(`/analyzers/${id}/mappings`, {
         auth: Cypress.getBasicAuth(),
         timeout: 180000, // 3 minutes for CI
       });
-      // Wait for the element to be visible (page is functional even if load event hasn't fired)
       cy.get('[data-testid="field-mapping"]', { timeout: 30000 }).should(
         "be.visible",
       );
@@ -293,9 +286,8 @@ describe.skip("Analyzer Configuration - User Story 1", function () {
 
   /**
    * Test: Create unit mapping with conversion factor
-   * TODO: Fix page load timeout - same issue as "should create test code to OpenELIS test mapping"
    */
-  it.skip("should create unit mapping with conversion factor", function () {
+  it("should create unit mapping with conversion factor", function () {
     cy.then(() => {
       const id = testAnalyzerId;
       if (!id || id === "NO_ID") {
@@ -305,7 +297,7 @@ describe.skip("Analyzer Configuration - User Story 1", function () {
 
       cy.visit(`/analyzers/${id}/mappings`, {
         auth: Cypress.getBasicAuth(),
-        timeout: 180000, // 3 min for CI - page load event doesn't fire consistently
+        timeout: 180000, // 3 min for CI
       });
       cy.get('[data-testid="field-mapping"]', { timeout: 30000 }).should(
         "be.visible",
@@ -327,9 +319,8 @@ describe.skip("Analyzer Configuration - User Story 1", function () {
 
   /**
    * Test: Create qualitative value mapping
-   * TODO: Fix page load timeout - same issue as other mappings tests
    */
-  it.skip("should create qualitative value mapping", function () {
+  it("should create qualitative value mapping", function () {
     cy.then(() => {
       const id = testAnalyzerId;
       if (!id || id === "NO_ID") {
@@ -339,7 +330,7 @@ describe.skip("Analyzer Configuration - User Story 1", function () {
 
       cy.visit(`/analyzers/${id}/mappings`, {
         auth: Cypress.getBasicAuth(),
-        timeout: 180000, // 3 min for CI - page load event doesn't fire consistently
+        timeout: 180000, // 3 min for CI
       });
       cy.get('[data-testid="field-mapping"]', { timeout: 30000 }).should(
         "be.visible",
@@ -403,9 +394,8 @@ describe.skip("Analyzer Configuration - User Story 1", function () {
 
   /**
    * Test: Display validation dashboard for analyzer
-   * TODO: Fix page load timeout - same issue as other mappings tests
    */
-  it.skip("should display validation dashboard for analyzer in progress", function () {
+  it("should display validation dashboard for analyzer in progress", function () {
     cy.then(() => {
       const id = testAnalyzerId;
       if (!id || id === "NO_ID") {

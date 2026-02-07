@@ -69,6 +69,12 @@ public class AnalyzerConfiguration extends BaseObject<String> {
     @Column(name = "is_generic_plugin", nullable = false)
     private boolean genericPlugin = false;
 
+    /**
+     * When true, generic plugin is tried before legacy plugins for this analyzer.
+     */
+    @Column(name = "prefer_generic_plugin", nullable = false)
+    private boolean preferGenericPlugin = false;
+
     @Column(name = "last_activated_date")
     @Temporal(TemporalType.TIMESTAMP)
     private Date lastActivatedDate;
@@ -152,6 +158,14 @@ public class AnalyzerConfiguration extends BaseObject<String> {
 
     public void setGenericPlugin(boolean genericPlugin) {
         this.genericPlugin = genericPlugin;
+    }
+
+    public boolean isPreferGenericPlugin() {
+        return preferGenericPlugin;
+    }
+
+    public void setPreferGenericPlugin(boolean preferGenericPlugin) {
+        this.preferGenericPlugin = preferGenericPlugin;
     }
 
     public Date getLastActivatedDate() {

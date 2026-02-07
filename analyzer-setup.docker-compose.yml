@@ -53,6 +53,31 @@ services:
       - "com.openelis.purpose=testing"
 
   # ============================================================================
+  # Virtual Serial Ports (for RS232 analyzer testing without physical hardware)
+  # Creates virtual serial port pairs using socat
+  # ============================================================================
+  virtual-serial:
+    image: alpine/socat
+    container_name: openelis-virtual-serial
+    command: |
+      sh -c "
+      socat -d -d pty,raw,echo=0,link=/serial/ttyVUSB0 pty,raw,echo=0,link=/serial/ttyVUSB0-peer &
+      socat -d -d pty,raw,echo=0,link=/serial/ttyVUSB1 pty,raw,echo=0,link=/serial/ttyVUSB1-peer &
+      socat -d -d pty,raw,echo=0,link=/serial/ttyVUSB2 pty,raw,echo=0,link=/serial/ttyVUSB2-peer &
+      socat -d -d pty,raw,echo=0,link=/serial/ttyVUSB3 pty,raw,echo=0,link=/serial/ttyVUSB3-peer &
+      socat -d -d pty,raw,echo=0,link=/serial/ttyVUSB4 pty,raw,echo=0,link=/serial/ttyVUSB4-peer &
+      wait
+      "
+    volumes:
+      - serial-vol:/serial
+    networks:
+      default:
+    restart: unless-stopped
+    labels:
+      - "com.openelis.service=virtual-serial"
+      - "com.openelis.purpose=testing"
+
+  # ============================================================================
   # ASTM HTTP Bridge
   # Bridges HTTP requests from OpenELIS to ASTM protocol for analyzers
   # ============================================================================
@@ -91,10 +116,22 @@ services:
       - "com.openelis.service=astm-http-bridge"
       - "com.openelis.purpose=testing"
 
+  # ============================================================================
+  # OpenELIS Override - Mount virtual serial ports
+  # ============================================================================
+  oe.openelis.org:
+    volumes:
+      - serial-vol:/dev/serial
+
 # Network - uses same network as dev.docker-compose.yml
 networks:
   default:
     name: openelis-global-2_default
+
+# Volumes
+volumes:
+  serial-vol:
+    driver: local
 
 
 
