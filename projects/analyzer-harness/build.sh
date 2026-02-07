@@ -62,7 +62,7 @@ else
 fi
 
 if [ "$SKIP_IMAGES" != true ]; then
-  echo "[2/2] Building harness Docker images (astm-simulator, astm-http-bridge)..."
+  echo "[2/2] Building harness Docker images (astm-simulator, openelis-analyzer-bridge)..."
   cd "$HARNESS_DIR"
   docker compose -f "$COMPOSE_DEV" -f "$COMPOSE_ANALYZER" build
   echo "  ✓ Images built"

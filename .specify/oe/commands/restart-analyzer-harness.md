@@ -135,7 +135,7 @@ This starts:
 - fhir (HAPI FHIR server)
 - frontend (React dev server with hot reload)
 - proxy (nginx with Let's Encrypt support)
-- astm-http-bridge (ASTM→HTTP bridge on 12001)
+- openelis-analyzer-bridge (ASTM→HTTP bridge on 12001)
 - astm-simulator (Mock analyzer on 5000)
 - virtual-serial (Virtual serial ports /dev/serial/ttyVUSB0-4)
 
@@ -196,12 +196,12 @@ Report: "Loaded fixtures (foundational + storage + analyzers)"
 ### 7) Verify analyzer infrastructure (checkpoint #7)
 
 ```bash
-docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "astm-http-bridge|astm-simulator|virtual-serial"
+docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "openelis-analyzer-bridge|astm-simulator|virtual-serial"
 ```
 
 Expected containers:
 
-- `analyzer-harness-astm-http-bridge-1` → Up
+- `analyzer-harness-openelis-analyzer-bridge-1` → Up
 - `analyzer-harness-astm-simulator-1` → Up (healthy)
 - `analyzer-harness-virtual-serial-1` → Up
 
@@ -224,7 +224,7 @@ Print summary:
   Defaults: 11 templates at /data/analyzer-defaults
 
   Analyzer Infrastructure:
-    - ASTM Bridge: astm-http-bridge:12001
+    - ASTM Bridge: openelis-analyzer-bridge:12001
     - ASTM Simulator: 172.20.1.100:5000 (healthy)
     - Serial Ports: /dev/serial/ttyVUSB0-4
 

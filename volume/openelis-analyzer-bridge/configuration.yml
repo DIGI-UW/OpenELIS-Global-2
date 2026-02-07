@@ -1,5 +1,5 @@
-# ASTM-HTTP Bridge Configuration
-# Reference: https://github.com/DIGI-UW/astm-http-bridge
+# OpenELIS Analyzer Bridge Configuration
+# Reference: https://github.com/DIGI-UW/openelis-analyzer-bridge
 # Feature: 011-madagascar-analyzer-integration
 
 openelis:

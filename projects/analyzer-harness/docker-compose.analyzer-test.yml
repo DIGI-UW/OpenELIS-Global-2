@@ -23,16 +23,16 @@ services:
       retries: 3
       start_period: 10s
 
-  astm-http-bridge:
+  openelis-analyzer-bridge:
     build:
-      context: ../../tools/astm-http-bridge
+      context: ../../tools/openelis-analyzer-bridge
       dockerfile: Dockerfile
-    image: itechuw/astm-http-bridge:latest
+    image: itechuw/openelis-analyzer-bridge:latest
     ports:
       - "8442:8443" # HTTPS API port
       - "12000:12001" # ASTM listen port
     volumes:
-      - ./volume/astm-bridge/configuration.yml:/app/configuration.yml:ro
+      - ./volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - LOGGING_LEVEL_ORG_ITECH=INFO

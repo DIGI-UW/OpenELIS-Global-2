@@ -36,7 +36,7 @@ if [ ! -d "$WATCH_DIR" ]; then
 fi
 
 # Navigate to simulator directory
-cd "$SCRIPT_DIR/../tools/astm-mock-server"
+cd "$SCRIPT_DIR/../tools/analyzer-mock-server"
 
 # Generate test file
 echo "Generating test file..."
