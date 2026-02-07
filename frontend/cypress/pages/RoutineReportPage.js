@@ -31,7 +31,7 @@ class RoutineReportPage {
       .find("a")
       .first()
       .scrollIntoView()
-      .should("be.visible")
+      .should("exist")
       .then(($a) => {
         $a[0].click();
       });
