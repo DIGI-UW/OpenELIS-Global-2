@@ -30,7 +30,7 @@ class RoutineReportPage {
     cy.get(selector, { timeout: 15000 })
       .find("a")
       .first()
-      .scrollIntoView({ behavior: "smooth" })
+      .scrollIntoView()
       .should("be.visible")
       .then(($a) => {
         $a[0].click();
@@ -110,7 +110,7 @@ class RoutineReportPage {
 
   visitRoutineReports() {
     cy.get("[data-cy='sidenav-button-menu_reports_routine']")
-      .scrollIntoView({ behavior: "smooth" })
+      .scrollIntoView()
       .should("be.visible")
       .click();
   }
