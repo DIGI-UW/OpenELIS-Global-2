@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useContext } from "react";
 import {
   Grid,
   Column,
@@ -29,6 +29,8 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import { NotificationContext } from "../../../layout/Layout";
+import { AlertDialog, NotificationKinds } from "../../../common/CustomNotification";
 
 /**
  * SampleTransferTab - Sample Transfer Queue management
@@ -38,11 +40,13 @@ import {
 function SampleTransferTab() {
   const intl = useIntl();
 
+  // Notification context
+  const { notificationVisible, setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+
   // Data state
   const [transferItems, setTransferItems] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState("PENDING");
@@ -60,8 +64,21 @@ function SampleTransferTab() {
   const [rejectReason, setRejectReason] = useState("");
   const [itemsToReject, setItemsToReject] = useState([]);
 
-  // Selection state (managed by DataTable)
-  const [selectedRows, setSelectedRows] = useState([]);
+  // Selection is now managed by DataTable directly
+
+  // Notification helper function
+  const notify = useCallback(
+    ({ kind = NotificationKinds.info, title, subtitle, message }) => {
+      setNotificationVisible(true);
+      addNotification({
+        kind,
+        title,
+        subtitle,
+        message,
+      });
+    },
+    [addNotification, setNotificationVisible],
+  );
 
   const biosafetyLevels = [
     { id: "BSL_1", text: "BSL-1" },
@@ -106,7 +123,6 @@ function SampleTransferTab() {
    */
   const loadTransferData = useCallback(async () => {
     setLoading(true);
-    setError(null);
 
     try {
       // Build endpoint based on filters
@@ -137,40 +153,50 @@ function SampleTransferTab() {
           labSet.add(request.sourceLab);
 
           // Fetch full request with items
-          await new Promise((resolve) => {
+          await new Promise((resolve, reject) => {
             getFromOpenElisServer(
               `/rest/biorepository/transfer/${request.id}`,
               (fullRequest) => {
-                if (fullRequest && fullRequest.items) {
-                  for (const item of fullRequest.items) {
-                    // Apply source lab filter if set
-                    if (
-                      sourceLabFilter &&
-                      request.sourceLab !== sourceLabFilter
-                    ) {
-                      continue;
-                    }
-                    // For pending filter, only show pending items
-                    if (
-                      statusFilter === "PENDING" &&
-                      item.status !== "PENDING"
-                    ) {
-                      continue;
-                    }
+                try {
+                  if (fullRequest && fullRequest.items) {
+                    for (const item of fullRequest.items) {
+                      // Apply source lab filter if set
+                      if (
+                        sourceLabFilter &&
+                        request.sourceLab !== sourceLabFilter
+                      ) {
+                        continue;
+                      }
+                      // For pending filter, only show pending items
+                      if (
+                        statusFilter === "PENDING" &&
+                        item?.status !== "PENDING"
+                      ) {
+                        continue;
+                      }
 
-                    allItems.push({
-                      ...item,
-                      requestId: request.id,
-                      sourceLab: request.sourceLab,
-                      requestNotes: request.requestNotes,
-                      requestedTimestamp: request.requestedTimestamp,
-                      requestedByName: request.requestedByName,
-                    });
+                      // Ensure item has required properties
+                      if (item && item.id) {
+                        allItems.push({
+                          ...item,
+                          requestId: request.id,
+                          sourceLab: request.sourceLab,
+                          requestNotes: request.requestNotes,
+                          requestedTimestamp: request.requestedTimestamp,
+                          requestedByName: request.requestedByName,
+                          status: item.status || "PENDING", // Default to PENDING if no status
+                        });
+                      }
+                    }
                   }
+                  // Always resolve to continue processing other requests
+                  resolve();
+                } catch (error) {
+                  // Handle errors but still resolve to continue with other requests
+                  console.error("Error processing transfer request:", error);
+                  resolve();
                 }
-                resolve();
               },
-              () => resolve(), // Resolve on error to continue
             );
           });
         }
@@ -182,10 +208,20 @@ function SampleTransferTab() {
         setLoading(false);
       });
     } catch (err) {
-      setError(err.message || "Failed to load transfer data");
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "biorepository.transfer.error",
+          defaultMessage: "Error",
+        }),
+        subtitle: err.message || intl.formatMessage({
+          id: "biorepository.transfer.loadError",
+          defaultMessage: "Failed to load transfer data",
+        }),
+      });
       setLoading(false);
     }
-  }, [statusFilter, sourceLabFilter]);
+  }, [statusFilter, sourceLabFilter, intl, notify]);
 
   // Load data on mount and when filters change
   useEffect(() => {
@@ -214,104 +250,138 @@ function SampleTransferTab() {
   /**
    * Open reject modal for selected items
    */
-  const handleRejectSelectedClick = useCallback(() => {
-    const items = transferItems.filter((item) =>
-      selectedRows.includes(item.id.toString()),
-    );
-    setItemsToReject(items);
-    setRejectReason("");
-    setRejectModalOpen(true);
-  }, [selectedRows, transferItems]);
+  const handleRejectSelectedClick = useCallback(
+    (dtSelectedRows) => {
+      if (!dtSelectedRows || dtSelectedRows.length === 0) return;
+
+      const selectedRowIds = dtSelectedRows.map((row) => row.id);
+      const items = transferItems.filter((item) =>
+        selectedRowIds.includes(item.id.toString()),
+      );
+      setItemsToReject(items);
+      setRejectReason("");
+      setRejectModalOpen(true);
+    },
+    [transferItems],
+  );
 
   /**
    * Execute rejection with reason
    */
   const executeReject = useCallback(async () => {
     if (!rejectReason.trim()) {
-      setError(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "biorepository.transfer.error",
+          defaultMessage: "Error",
+        }),
+        subtitle: intl.formatMessage({
           id: "biorepository.transfer.rejectReasonRequired",
           defaultMessage: "Rejection reason is required",
         }),
-      );
+      });
       return;
     }
 
     setLoading(true);
-    setError(null);
-    setSuccess(null);
     setRejectModalOpen(false);
 
     let successCount = 0;
     let errorCount = 0;
 
-    for (const item of itemsToReject) {
-      try {
-        const response = await postToOpenElisServerJsonResponse(
+    const rejectPromises = itemsToReject.map((item) => {
+      return new Promise((resolve) => {
+        postToOpenElisServerJsonResponse(
           `/rest/biorepository/transfer/item/${item.id}/reject`,
           JSON.stringify({ reason: rejectReason }),
+          (response) => {
+            if (response && response.error) {
+              resolve({ success: false, item, response });
+            } else {
+              resolve({ success: true, item, response });
+            }
+          },
         );
+      });
+    });
 
-        if (response.error) {
-          errorCount++;
-        } else {
-          successCount++;
-        }
-      } catch (err) {
+    // Wait for all rejections to complete
+    const results = await Promise.all(rejectPromises);
+
+    // Count successes and errors
+    for (const result of results) {
+      if (result.success) {
+        successCount++;
+      } else {
         errorCount++;
       }
     }
 
     if (errorCount > 0) {
-      setError(
-        intl.formatMessage(
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "biorepository.transfer.error",
+          defaultMessage: "Error",
+        }),
+        subtitle: intl.formatMessage(
           {
             id: "biorepository.transfer.rejectPartialError",
             defaultMessage: "{errorCount} item(s) failed to reject",
           },
           { errorCount },
         ),
-      );
+      });
     }
 
     if (successCount > 0) {
-      setSuccess(
-        intl.formatMessage(
+      notify({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({
+          id: "biorepository.transfer.success",
+          defaultMessage: "Success",
+        }),
+        subtitle: intl.formatMessage(
           {
             id: "biorepository.transfer.rejectSuccess",
             defaultMessage: "{count} item(s) rejected successfully",
           },
           { count: successCount },
         ),
-      );
+      });
     }
 
     setItemsToReject([]);
     setRejectReason("");
     loadTransferData();
     setLoading(false);
-  }, [itemsToReject, rejectReason, intl, loadTransferData]);
+  }, [itemsToReject, rejectReason, intl, loadTransferData, notify]);
 
   /**
    * Open accept modal for selected items
    */
-  const handleAcceptSelectedClick = useCallback(() => {
-    const items = transferItems.filter((item) =>
-      selectedRows.includes(item.id.toString()),
-    );
-    setItemsToAccept(items);
-    setAcceptBsl("BSL_1");
-    setAcceptEthics("");
-    setAcceptModalOpen(true);
-  }, [selectedRows, transferItems]);
+  const handleAcceptSelectedClick = useCallback(
+    (dtSelectedRows) => {
+      if (!dtSelectedRows || dtSelectedRows.length === 0) return;
+
+      const selectedRowIds = dtSelectedRows.map((row) => row.id);
+      const items = transferItems.filter((item) =>
+        selectedRowIds.includes(item.id.toString()),
+      );
+      setItemsToAccept(items);
+      setAcceptBsl("BSL_1");
+      setAcceptEthics("");
+      setAcceptModalOpen(true);
+    },
+    [transferItems],
+  );
 
   /**
    * Execute acceptance with form data from modal
    */
   const executeAccept = useCallback(async () => {
     setLoading(true);
-    setError(null);
-    setSuccess(null);
     setAcceptModalOpen(false);
 
     let successCount = 0;
@@ -322,62 +392,86 @@ function SampleTransferTab() {
       ethicsApprovalRef: acceptEthics.trim() || null,
     };
 
-    for (const item of itemsToAccept) {
-      try {
-        const response = await postToOpenElisServerJsonResponse(
+    // Process accepts with Promise wrapper for async/await support
+    const acceptPromises = itemsToAccept.map((item) => {
+      return new Promise((resolve) => {
+        postToOpenElisServerJsonResponse(
           `/rest/biorepository/transfer/item/${item.id}/accept`,
           JSON.stringify(metadata),
+          (response) => {
+            if (response && response.error) {
+              resolve({ success: false, item, response });
+            } else {
+              resolve({ success: true, item, response });
+            }
+          },
         );
+      });
+    });
 
-        if (response.error) {
-          errorCount++;
-        } else {
-          successCount++;
-        }
-      } catch (err) {
+    // Wait for all accepts to complete
+    const results = await Promise.all(acceptPromises);
+
+    // Count successes and errors
+    for (const result of results) {
+      if (result.success) {
+        successCount++;
+      } else {
         errorCount++;
       }
     }
 
     if (errorCount > 0) {
-      setError(
-        intl.formatMessage(
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "biorepository.transfer.error",
+          defaultMessage: "Error",
+        }),
+        subtitle: intl.formatMessage(
           {
             id: "biorepository.transfer.acceptPartialError",
             defaultMessage: "{errorCount} item(s) failed to accept",
           },
           { errorCount },
         ),
-      );
+      });
     }
 
     if (successCount > 0) {
-      setSuccess(
-        intl.formatMessage(
+      notify({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({
+          id: "biorepository.transfer.success",
+          defaultMessage: "Success",
+        }),
+        subtitle: intl.formatMessage(
           {
             id: "biorepository.transfer.acceptBulkSuccess",
             defaultMessage: "{count} item(s) accepted successfully",
           },
           { count: successCount },
         ),
-      );
+      });
     }
 
     setItemsToAccept([]);
-    setSelectedRows([]);
     loadTransferData();
     setLoading(false);
-  }, [itemsToAccept, acceptBsl, acceptEthics, intl, loadTransferData]);
+  }, [itemsToAccept, acceptBsl, acceptEthics, intl, loadTransferData, notify]);
 
   // Prepare table rows
   const tableRows = transferItems.map((item) => ({
-    id: item.id.toString(),
+    id: item?.id?.toString() || "unknown",
     sampleId:
-      item.externalId || item.accessionNumber || `Item-${item.sampleItemId}`,
-    sampleType: item.sampleType || "-",
-    sourceLab: item.sourceLab,
-    status: item.status,
-    requestId: item.requestId,
+      item?.externalId ||
+      item?.accessionNumber ||
+      `Item-${item?.sampleItemId}` ||
+      "Unknown",
+    sampleType: item?.sampleType || "-",
+    sourceLab: item?.sourceLab || "Unknown",
+    status: item?.status || "UNKNOWN",
+    requestId: item?.requestId,
   }));
 
   const tableHeaders = [
@@ -412,7 +506,7 @@ function SampleTransferTab() {
   ];
 
   const pendingCount = transferItems.filter(
-    (i) => i.status === "PENDING",
+    (i) => i?.status === "PENDING",
   ).length;
 
   return (
@@ -463,6 +557,10 @@ function SampleTransferTab() {
                 id: "biorepository.transfer.filter.status",
                 defaultMessage: "Status",
               })}
+              label={intl.formatMessage({
+                id: "biorepository.transfer.filter.statusLabel",
+                defaultMessage: "Select status",
+              })}
               items={statusFilters}
               itemToString={(item) => (item ? item.text : "")}
               selectedItem={statusFilters.find((s) => s.id === statusFilter)}
@@ -477,6 +575,10 @@ function SampleTransferTab() {
               titleText={intl.formatMessage({
                 id: "biorepository.transfer.filter.sourceLab",
                 defaultMessage: "Source Lab",
+              })}
+              label={intl.formatMessage({
+                id: "biorepository.transfer.filter.sourceLabLabel",
+                defaultMessage: "Select source lab",
               })}
               items={[
                 {
@@ -515,33 +617,8 @@ function SampleTransferTab() {
             </Tag>
           </div>
 
-          {/* Notifications */}
-          {error && (
-            <InlineNotification
-              kind="error"
-              title={intl.formatMessage({
-                id: "biorepository.transfer.error",
-                defaultMessage: "Error",
-              })}
-              subtitle={error}
-              lowContrast
-              onCloseButtonClick={() => setError(null)}
-              style={{ marginBottom: "1rem" }}
-            />
-          )}
-          {success && (
-            <InlineNotification
-              kind="success"
-              title={intl.formatMessage({
-                id: "biorepository.transfer.success",
-                defaultMessage: "Success",
-              })}
-              subtitle={success}
-              lowContrast
-              onCloseButtonClick={() => setSuccess(null)}
-              style={{ marginBottom: "1rem" }}
-            />
-          )}
+          {/* Toast notifications via centralized system */}
+          {notificationVisible === true ? <AlertDialog /> : ""}
 
           {loading && <Loading withOverlay description="Loading..." />}
 
@@ -575,18 +652,7 @@ function SampleTransferTab() {
                 getSelectionProps,
                 selectedRows: dtSelectedRows,
               }) => {
-                // Sync selection state
-                if (
-                  dtSelectedRows &&
-                  dtSelectedRows.length !== selectedRows.length
-                ) {
-                  const newSelected = dtSelectedRows.map((r) => r.id);
-                  if (
-                    JSON.stringify(newSelected) !== JSON.stringify(selectedRows)
-                  ) {
-                    setTimeout(() => setSelectedRows(newSelected), 0);
-                  }
-                }
+                // Use DataTable's built-in selectedRows directly instead of syncing to external state
 
                 return (
                   <TableContainer>
@@ -604,14 +670,22 @@ function SampleTransferTab() {
                             <FormattedMessage
                               id="biorepository.transfer.selected"
                               defaultMessage="Selected: {count}"
-                              values={{ count: selectedRows.length }}
+                              values={{
+                                count: dtSelectedRows
+                                  ? dtSelectedRows.length
+                                  : 0,
+                              }}
                             />
                           </span>
                           <Button
                             kind="primary"
                             size="sm"
-                            onClick={handleAcceptSelectedClick}
-                            disabled={selectedRows.length === 0}
+                            onClick={() =>
+                              handleAcceptSelectedClick(dtSelectedRows)
+                            }
+                            disabled={
+                              !dtSelectedRows || dtSelectedRows.length === 0
+                            }
                           >
                             <FormattedMessage
                               id="biorepository.transfer.acceptSelected"
@@ -621,8 +695,12 @@ function SampleTransferTab() {
                           <Button
                             kind="danger"
                             size="sm"
-                            onClick={handleRejectSelectedClick}
-                            disabled={selectedRows.length === 0}
+                            onClick={() =>
+                              handleRejectSelectedClick(dtSelectedRows)
+                            }
+                            disabled={
+                              !dtSelectedRows || dtSelectedRows.length === 0
+                            }
                           >
                             <FormattedMessage
                               id="biorepository.transfer.rejectSelected"
@@ -696,12 +774,12 @@ function SampleTransferTab() {
                                       ) : (
                                         <Tag
                                           type={
-                                            item.status === "ACCEPTED"
+                                            item?.status === "ACCEPTED"
                                               ? "green"
                                               : "red"
                                           }
                                         >
-                                          {item.status}
+                                          {item?.status || "UNKNOWN"}
                                         </Tag>
                                       )}
                                     </TableCell>
@@ -811,6 +889,10 @@ function SampleTransferTab() {
             titleText={intl.formatMessage({
               id: "biorepository.transfer.acceptModal.bslLabel",
               defaultMessage: "Biosafety Level *",
+            })}
+            label={intl.formatMessage({
+              id: "biorepository.transfer.acceptModal.bslSelectLabel",
+              defaultMessage: "Select biosafety level",
             })}
             items={biosafetyLevels}
             itemToString={(item) => (item ? item.text : "")}

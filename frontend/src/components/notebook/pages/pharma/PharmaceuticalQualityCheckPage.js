@@ -1739,7 +1739,7 @@ function PharmaceuticalQualityCheckPage({
               <Column lg={8} md={4} sm={4}>
                 <div className="qc-result-display">
                   {bulkApplyValues.qcResult === "Pass" && (
-                    <Tag type="green" size="lg">
+                    <Tag type="green" size="md">
                       <FormattedMessage
                         id="notebook.pharma.qc.result.pass"
                         defaultMessage="PASS - Proceed to Processing"
@@ -1747,7 +1747,7 @@ function PharmaceuticalQualityCheckPage({
                     </Tag>
                   )}
                   {bulkApplyValues.qcResult === "Fail" && (
-                    <Tag type="red" size="lg">
+                    <Tag type="red" size="md">
                       <FormattedMessage
                         id="notebook.pharma.qc.result.fail"
                         defaultMessage="FAIL - Reject Sample"
@@ -1755,7 +1755,7 @@ function PharmaceuticalQualityCheckPage({
                     </Tag>
                   )}
                   {!bulkApplyValues.qcResult && (
-                    <Tag type="gray" size="lg">
+                    <Tag type="gray" size="md">
                       <FormattedMessage
                         id="notebook.pharma.qc.result.pending"
                         defaultMessage="Complete checklist above"

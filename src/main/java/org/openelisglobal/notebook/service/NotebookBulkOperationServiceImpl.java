@@ -1292,11 +1292,30 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                 Map<String, Object> data = nps.getData() != null ? nps.getData() : new HashMap<>();
 
                 values.add("\"" + accessionNumber + "\"");
-                values.add("\"" + getStringValue(data, "sampleType") + "\"");
-                values.add("\"" + getStringValue(data, "collectionDate") + "\"");
-                values.add("\"" + getStringValue(data, "validationStatus") + "\"");
-                values.add("\"" + getStringValue(data, "testResults") + "\"");
+
+                // Extract sample_type (check nested testExecution first, then flat field)
+                String sampleType = getNestedStringValue(data, "testExecution", "sampleType");
+                if (sampleType.isEmpty()) {
+                    sampleType = getStringValueWithFallback(data, "sampleType", "sample_type");
+                }
+                values.add("\"" + sampleType + "\"");
+
+                // Extract collection_date (from SampleItem via sampleItemId)
+                String collectionDate = getCollectionDateForSample(nps.getSampleItemId());
+                values.add("\"" + collectionDate + "\"");
+
+                // Extract validation_status (check QA approval or validation field)
+                String validationStatus = getStringValueWithFallback(data, "validationStatus", "validation_status", "validation");
+                values.add("\"" + validationStatus + "\"");
+
+                // Extract test_results (aggregate from quantificationResults array)
+                String testResults = extractTestResults(data);
+                values.add("\"" + testResults + "\"");
+
+                // Extract interpretation
                 values.add("\"" + getStringValue(data, "interpretation") + "\"");
+
+                // Extract notes
                 values.add("\"" + getStringValue(data, "notes") + "\"");
 
                 if (instrumentName != null && !instrumentName.isEmpty()) {
@@ -1480,6 +1499,115 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
             return "";
         }
         return value.toString().replace("\"", "'").replace(",", ";");
+    }
+
+    /**
+     * Get string value from data map, trying multiple possible key variations.
+     * Useful when field names might be in camelCase, snake_case, or other formats.
+     *
+     * @param data The data map
+     * @param keys List of possible key names to try in order
+     * @return The string value if found, empty string otherwise
+     */
+    private String getStringValueWithFallback(Map<String, Object> data, String... keys) {
+        for (String key : keys) {
+            Object value = data.get(key);
+            if (value != null) {
+                return value.toString().replace("\"", "'").replace(",", ";");
+            }
+        }
+        return "";
+    }
+
+    /**
+     * Get string value from nested object in data map.
+     * E.g., getNestedStringValue(data, "testExecution", "sampleType") extracts data.testExecution.sampleType
+     *
+     * @param data The data map
+     * @param parentKey The parent object key
+     * @param childKey The child field key
+     * @return The string value if found, empty string otherwise
+     */
+    @SuppressWarnings("unchecked")
+    private String getNestedStringValue(Map<String, Object> data, String parentKey, String childKey) {
+        Object parent = data.get(parentKey);
+        if (parent instanceof Map) {
+            Object value = ((Map<String, Object>) parent).get(childKey);
+            if (value != null) {
+                return value.toString().replace("\"", "'").replace(",", ";");
+            }
+        }
+        return "";
+    }
+
+    /**
+     * Extract test results from quantificationResults array or other result fields.
+     * Aggregates multiple results into a single string.
+     *
+     * @param data The sample data map
+     * @return Aggregated test results or empty string
+     */
+    @SuppressWarnings("unchecked")
+    private String extractTestResults(Map<String, Object> data) {
+        // First check for flat testResult field (from CSV import)
+        String flatResult = getStringValueWithFallback(data, "testResult", "test_result", "testResults");
+        if (!flatResult.isEmpty()) {
+            return flatResult;
+        }
+
+        // Try to extract from quantificationResults array
+        Object quantResults = data.get("quantificationResults");
+        if (quantResults instanceof java.util.List) {
+            StringBuilder results = new StringBuilder();
+            java.util.List<?> resultsList = (java.util.List<?>) quantResults;
+            for (Object item : resultsList) {
+                if (item instanceof Map) {
+                    Map<String, Object> resultMap = (Map<String, Object>) item;
+                    Object concentration = resultMap.get("concentration");
+                    Object measuredValue = resultMap.get("measuredValue");
+                    Object sampleId = resultMap.get("sampleId");
+
+                    if (concentration != null || measuredValue != null) {
+                        if (results.length() > 0) {
+                            results.append("; ");
+                        }
+                        if (sampleId != null) {
+                            results.append(sampleId).append(": ");
+                        }
+                        results.append(concentration != null ? concentration : measuredValue);
+                    }
+                }
+            }
+            if (results.length() > 0) {
+                return results.toString();
+            }
+        }
+
+        return "";
+    }
+
+    /**
+     * Get collection date for a sample from the SampleItem entity.
+     *
+     * @param sampleItemId The sample item ID
+     * @return Collection date as string, or empty if not found
+     */
+    private String getCollectionDateForSample(String sampleItemId) {
+        if (sampleItemId == null || sampleItemId.isEmpty()) {
+            return "";
+        }
+
+        try {
+            SampleItem sampleItem = sampleItemService.get(sampleItemId);
+            if (sampleItem != null && sampleItem.getCollectionDate() != null) {
+                return new java.text.SimpleDateFormat("yyyy-MM-dd").format(sampleItem.getCollectionDate());
+            }
+        } catch (Exception e) {
+            LogEvent.logDebug(this.getClass().getName(), "getCollectionDateForSample",
+                    "Could not retrieve collection date for sample " + sampleItemId + ": " + e.getMessage());
+        }
+
+        return "";
     }
 
     @Override
