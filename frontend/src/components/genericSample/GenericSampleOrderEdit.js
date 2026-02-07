@@ -394,7 +394,8 @@ export default function GenericSampleOrderEdit({
                       style={{
                         display: "flex",
                         alignItems: "flex-end",
-                        height: "100%",
+                        minHeight: "4.5rem",
+                        paddingTop: "0.5rem",
                       }}
                     >
                       <Button type="submit" disabled={searching}>
