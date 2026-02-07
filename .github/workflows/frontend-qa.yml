@@ -171,8 +171,8 @@ jobs:
         run: npx cypress run --browser chrome --headless
         working-directory: frontend
         env:
-          E2E_FAIL_FAST: "false"  # Temporarily disabled to see all failures at once
-          CYPRESS_FAIL_FAST_ENABLED: "false"  # Direct override for cypress-fail-fast plugin
+          E2E_FAIL_FAST: "true"  # Stop on first spec failure to save CI time
+          CYPRESS_FAIL_FAST_ENABLED: "true"  # Direct override for cypress-fail-fast plugin
           CYPRESS_BASE_URL: https://localhost
           LC_ALL: en_US.UTF-8  # Fix locale so date formats are deterministic (MM/DD/YYYY)
           LANG: en_US.UTF-8
