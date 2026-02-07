@@ -91,9 +91,20 @@ class StudyReportPage {
       .click();
   }
 
+  /**
+   * Expand the full parent hierarchy (Reports → Study) so that
+   * Study-specific child elements are rendered in the DOM.
+   * Carbon's SideNavMenu only renders children when expanded.
+   */
+  ensureStudyMenuReady() {
+    this.ensureSidenavMenuExpanded("#menu_reports");
+    this.ensureSidenavMenuExpanded("#menu_reports_study");
+  }
+
   // --- Parent menu expanders (SideNavMenu toggles) ---
 
   selectPatientStatusReport() {
+    this.ensureStudyMenuReady();
     this.ensureSidenavMenuExpanded("#menu_reports_patients");
   }
 
@@ -172,73 +183,49 @@ class StudyReportPage {
   }
 
   visitAuditTrailReport() {
+    this.ensureStudyMenuReady();
     this.clickNavLink("#menu_reports_auditTrail\\.study");
   }
 
   visitWhonetPage() {
+    this.ensureSidenavMenuExpanded("#menu_reports");
     this.clickNavLink("#menu_reports_whonet_export");
   }
 
-  // --- NC Reports (use data-cy leaf selectors) ---
+  // --- NC Reports ---
 
   selectNCReports() {
-    cy.get("[data-cy='menu_reports_nonconformity_study']")
-      .scrollIntoView({ behavior: "smooth" })
-      .find("a")
-      .first()
-      .should("be.visible")
-      .then(($a) => {
-        $a[0].click();
-      });
+    this.ensureStudyMenuReady();
+    this.ensureSidenavMenuExpanded("#menu_reports_nonconformity\\.study");
   }
 
   selectNCReportsByDate() {
-    cy.get("[data-cy='menu_reports_nonconformity_date_study']")
-      .find("a")
-      .first()
-      .then(($a) => {
-        $a[0].click();
-      });
+    this.clickNavLink("[data-cy='menu_reports_nonconformity_date_study']");
   }
 
   selectNCReportsByUnitAndReason() {
-    cy.get("[data-cy='menu_reports_nonconformity_section_study']")
-      .find("a")
-      .first()
-      .then(($a) => {
-        $a[0].click();
-      });
+    this.clickNavLink("[data-cy='menu_reports_nonconformity_section_study']");
   }
 
   selectNCReportsByLabNo() {
-    cy.get("[data-cy='menu_reports_nonconformity_Labno']")
-      .find("a")
-      .first()
-      .then(($a) => {
-        $a[0].click();
-      });
+    this.clickNavLink("[data-cy='menu_reports_nonconformity_Labno']");
   }
 
   selectNCReportsByNotification() {
-    cy.get("[data-cy='menu_reports_nonconformity_notification_study']")
-      .find("a")
-      .first()
-      .then(($a) => {
-        $a[0].click();
-      });
+    this.clickNavLink(
+      "[data-cy='menu_reports_nonconformity_notification_study']",
+    );
   }
 
   selectNCFollowUp() {
-    cy.get("[data-cy='menu_reports_followupRequired_ByLocation_study']")
-      .find("a")
-      .first()
-      .then(($a) => {
-        $a[0].click();
-      });
+    this.clickNavLink(
+      "[data-cy='menu_reports_followupRequired_ByLocation_study']",
+    );
   }
 
   selectExportByDate() {
-    this.clickNavLink("#menu_reports_export");
+    this.ensureStudyMenuReady();
+    this.ensureSidenavMenuExpanded("#menu_reports_export");
   }
 
   selectGeneralReport() {
