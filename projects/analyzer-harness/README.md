@@ -101,7 +101,7 @@ This harness uses a local `./volume/` directory for:
 - HL7 analyzers are treated as **push-based** in OpenELIS; “Test Connection”
   will instruct you to validate by pushing an HL7 message to OpenELIS instead of
   attempting an outbound socket connection.
-- ASTM TCP analyzers should target `astm-http-bridge:12001` (fixtures updated
-  accordingly).
+- ASTM TCP analyzers should target `openelis-analyzer-bridge:12001` (fixtures
+  updated accordingly).
 - RS232 analyzers use virtual ports under `/dev/serial/ttyVUSB0-4` (created by
   `virtual-serial` service).

@@ -288,15 +288,15 @@ work can proceed without waiting for M0.
 
 **IMPORTANT**: This feature involves TWO separate tools with different purposes:
 
-| Tool                     | Location                      | Language              | Purpose                         | When Used              | Who Uses It                          |
-| ------------------------ | ----------------------------- | --------------------- | ------------------------------- | ---------------------- | ------------------------------------ |
-| **astm-http-bridge**     | `tools/astm-http-bridge/`     | Java 21 + Spring Boot | **PRODUCTION** protocol adapter | Deployed with OpenELIS | Physical analyzers in labs           |
-| **analyzer-mock-server** | `tools/analyzer-mock-server/` | Python 3              | **TESTING** simulator           | Development/CI         | Developers without physical hardware |
+| Tool                         | Location                          | Language              | Purpose                         | When Used              | Who Uses It                          |
+| ---------------------------- | --------------------------------- | --------------------- | ------------------------------- | ---------------------- | ------------------------------------ |
+| **openelis-analyzer-bridge** | `tools/openelis-analyzer-bridge/` | Java 21 + Spring Boot | **PRODUCTION** protocol adapter | Deployed with OpenELIS | Physical analyzers in labs           |
+| **analyzer-mock-server**     | `tools/analyzer-mock-server/`     | Python 3              | **TESTING** simulator           | Development/CI         | Developers without physical hardware |
 
-### astm-http-bridge (Production Adapter) - EXTENDED FOR RS232
+### openelis-analyzer-bridge (Production Adapter) - EXTENDED FOR RS232
 
 ```
-Physical Analyzer ←→ [astm-http-bridge] ←→ OpenELIS
+Physical Analyzer ←→ [openelis-analyzer-bridge] ←→ OpenELIS
      (ASTM/RS232)       (translator)        (HTTP)
 ```
 
@@ -346,8 +346,9 @@ New adapters (M1, M3) extend the existing `AnalyzerReader` hierarchy:
 └── FileAnalyzerReader     # NEW (M3): Directory watching + CSV
 ```
 
-**Note**: RS232 is handled by the **extended astm-http-bridge** on the lab PC,
-not by a new reader in OpenELIS core. The bridge translates RS232→ASTM→HTTP.
+**Note**: RS232 is handled by the **extended openelis-analyzer-bridge** on the
+lab PC, not by a new reader in OpenELIS core. The bridge translates
+RS232→ASTM→HTTP.
 
 ---
 
@@ -402,7 +403,7 @@ src/main/java/org/openelisglobal/
 │       └── FileAnalyzerReader.java           # NEW: File import handler
 
 # ASTM-HTTP Bridge Extension (RS232 support)
-tools/astm-http-bridge/
+tools/openelis-analyzer-bridge/
 ├── src/main/java/.../
 │   ├── serial/                               # NEW: RS232 support
 │   │   ├── SerialPortListener.java           # NEW: jSerialComm integration
@@ -574,7 +575,7 @@ building new infrastructure.
 
 **Deliverables**:
 
-- `SerialPortListener.java` in astm-http-bridge
+- `SerialPortListener.java` in openelis-analyzer-bridge
 - `SerialPortConfiguration.java` for port settings
 - `SerialToAstmTranslator.java` for protocol conversion
 - Virtual serial port testing infrastructure (socat)

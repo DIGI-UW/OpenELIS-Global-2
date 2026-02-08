@@ -53,13 +53,14 @@ Pentra 60)
 
 ### In Parent Directory
 
-- [VERIFICATION-CHECKLIST.md](../VERIFICATION-CHECKLIST.md) - Field verification
-  guide for deployment team
-- [CHANGELOG-2026-02-02.md](../CHANGELOG-2026-02-02.md) - Architecture
-  remediation changelog
-- [VERIFICATION-GUIDE.md](../VERIFICATION-GUIDE.md) - General verification
-  procedures
-- [GENERIC-TEST-RECIPE.md](../GENERIC-TEST-RECIPE.md) - Generic testing guide
+- [VERIFICATION-CHECKLIST.md](../templates/VERIFICATION-CHECKLIST.md) - Field
+  verification guide for deployment team
+- [CHANGELOG-2026-02-02.md](../milestones/CHANGELOG-2026-02-02.md) -
+  Architecture remediation changelog
+- [VERIFICATION-GUIDE.md](../research/VERIFICATION-GUIDE.md) - General
+  verification procedures
+- [GENERIC-TEST-RECIPE.md](../templates/GENERIC-TEST-RECIPE.md) - Generic
+  testing guide
 
 ### In milestones/ Directory
 
@@ -123,8 +124,8 @@ For each plan, create:
 
 - [plugins/analyzers/GenericHL7/ARCHITECTURE.md](../../../plugins/analyzers/GenericHL7/ARCHITECTURE.md) -
   GenericHL7 plugin spec
-- [analyzer-defaults/README.md](../../../analyzer-defaults/README.md) - Default
-  config templates guide
+- [analyzer-defaults/README.md](../../../projects/analyzer-harness/analyzer-defaults/README.md) -
+  Default config templates guide
 
 **Test Infrastructure:**
 

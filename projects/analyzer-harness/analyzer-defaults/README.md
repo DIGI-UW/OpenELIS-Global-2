@@ -162,11 +162,11 @@ legacy fallback.
 
 ## Related Documentation
 
-- [GenericASTM Plugin README](../plugins/analyzers/GenericASTM/README.md)
-- [GenericHL7 Architecture](../plugins/analyzers/GenericHL7/ARCHITECTURE.md)
+- [GenericASTM Plugin README](../../../plugins/analyzers/GenericASTM/README.md)
+- [GenericHL7 Architecture](../../../plugins/analyzers/GenericHL7/ARCHITECTURE.md)
   (M19 - implementation pending)
-- [Feature 011 Spec](../specs/011-madagascar-analyzer-integration/spec.md)
-- [Supported Analyzers Contract](../specs/011-madagascar-analyzer-integration/contracts/supported-analyzers.md)
+- [Feature 011 Spec](../../../specs/011-madagascar-analyzer-integration/spec.md)
+- [Supported Analyzers Contract](../../../specs/011-madagascar-analyzer-integration/contracts/supported-analyzers.md)
 
 ---
 

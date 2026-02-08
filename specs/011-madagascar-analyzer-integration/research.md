@@ -302,88 +302,13 @@ Response: { "status": "file_generated", "path": "/import/results_001.csv" }
 
 ### New Tables
 
-```sql
--- Instrument metadata extension
-CREATE TABLE instrument_metadata (
-    id VARCHAR(36) PRIMARY KEY,
-    analyzer_id INT NOT NULL REFERENCES analyzer(id),
-    installation_date DATE,
-    warranty_expiration DATE,
-    software_version VARCHAR(50),
-    calibration_due_date DATE,
-    service_status VARCHAR(20),
-    notes TEXT,
-    fhir_uuid UUID NOT NULL UNIQUE,
-    sys_user_id INT NOT NULL,
-    lastupdated TIMESTAMP DEFAULT NOW()
-);
+See [data-model.md](data-model.md) for complete schema definitions (Liquibase
+changesets, entity relationships, validation rules).
 
--- Order export tracking
-CREATE TABLE order_export (
-    id VARCHAR(36) PRIMARY KEY,
-    sample_id INT NOT NULL REFERENCES sample(id),
-    analyzer_id INT NOT NULL REFERENCES analyzer(id),
-    status VARCHAR(20) NOT NULL,  -- PENDING, SENT, ACKNOWLEDGED, RESULTS_RECEIVED, FAILED, EXPIRED
-    message_type VARCHAR(10),      -- ASTM, HL7
-    message_content TEXT,
-    sent_timestamp TIMESTAMP,
-    acknowledged_timestamp TIMESTAMP,
-    results_received_timestamp TIMESTAMP,
-    retry_count INT DEFAULT 0,
-    error_message TEXT,
-    fhir_uuid UUID NOT NULL UNIQUE,
-    sys_user_id INT NOT NULL,
-    lastupdated TIMESTAMP DEFAULT NOW()
-);
-
--- RS232 configuration
-CREATE TABLE serial_port_configuration (
-    id VARCHAR(36) PRIMARY KEY,
-    analyzer_id INT NOT NULL REFERENCES analyzer(id),
-    port_name VARCHAR(50) NOT NULL,
-    baud_rate INT DEFAULT 9600,
-    data_bits INT DEFAULT 8,
-    stop_bits VARCHAR(10) DEFAULT 'ONE',
-    parity VARCHAR(10) DEFAULT 'NONE',
-    flow_control VARCHAR(20) DEFAULT 'NONE',
-    active BOOLEAN DEFAULT true,
-    fhir_uuid UUID NOT NULL UNIQUE,
-    sys_user_id INT NOT NULL,
-    lastupdated TIMESTAMP DEFAULT NOW()
-);
-
--- File import configuration
-CREATE TABLE file_import_configuration (
-    id VARCHAR(36) PRIMARY KEY,
-    analyzer_id INT NOT NULL REFERENCES analyzer(id),
-    import_directory VARCHAR(255) NOT NULL,
-    file_pattern VARCHAR(100) DEFAULT '*.csv',
-    archive_directory VARCHAR(255),
-    error_directory VARCHAR(255),
-    column_mappings JSONB,       -- {"Sample_ID": "sampleId", "Result": "result"}
-    delimiter VARCHAR(10) DEFAULT ',',
-    has_header BOOLEAN DEFAULT true,
-    active BOOLEAN DEFAULT true,
-    fhir_uuid UUID NOT NULL UNIQUE,
-    sys_user_id INT NOT NULL,
-    lastupdated TIMESTAMP DEFAULT NOW()
-);
-
--- Instrument location history
-CREATE TABLE instrument_location_history (
-    id VARCHAR(36) PRIMARY KEY,
-    instrument_metadata_id VARCHAR(36) NOT NULL REFERENCES instrument_metadata(id),
-    organization_id INT REFERENCES organization(id),
-    room_detail VARCHAR(100),
-    effective_from DATE NOT NULL,
-    effective_to DATE,
-    moved_by_user_id INT,
-    notes TEXT,
-    fhir_uuid UUID NOT NULL UNIQUE,
-    sys_user_id INT NOT NULL,
-    lastupdated TIMESTAMP DEFAULT NOW()
-);
-```
+Key tables: `instrument_metadata` (M16), `order_export` (M15),
+`serial_port_configuration` (M2), `file_import_configuration` (M3),
+`instrument_location_history` (M16). All use UUID PKs and FHIR UUIDs per
+Constitution IV.
 
 ---
 
@@ -752,22 +677,11 @@ type.
 }
 ```
 
-### Template File Inventory (12 Analyzers)
+### Template File Inventory
 
-| Template File                  | Analyzer               | Protocol   | Milestone |
-| ------------------------------ | ---------------------- | ---------- | --------- |
-| `mindray_bc5380.json`          | Mindray BC-5380/BC2000 | HL7        | M4        |
-| `mindray_bs360e.json`          | Mindray BS-360E        | HL7        | M4        |
-| `mindray_ba88a.json`           | Mindray BA-88A         | RS232/ASTM | M4        |
-| `sysmex_xn.json`               | Sysmex XN Series       | HL7        | M4        |
-| `genexpert.json`               | GeneXpert              | ASTM       | M4        |
-| `abbott_architect_hl7.json`    | Abbott Architect       | HL7        | M4        |
-| `abbott_architect_serial.json` | Abbott Architect       | RS232      | M16       |
-| `stago_start4.json`            | Stago STart 4          | ASTM/HL7   | M4        |
-| `horiba_pentra60.json`         | Horiba Pentra 60       | RS232/ASTM | M4        |
-| `horiba_micros60.json`         | Horiba Micros 60       | RS232/ASTM | M4        |
-| `quantstudio7.json`            | QuantStudio 7 Flex     | File/CSV   | M4        |
-| `hain_fluorocycler.json`       | Hain FluoroCycler XT   | File/CSV   | M4        |
+See [contracts/supported-analyzers.md](contracts/supported-analyzers.md) for the
+authoritative analyzer inventory (13 Madagascar analyzers, fixture IDs
+2000-2012) and protocol details.
 
 ---
 
@@ -1015,14 +929,14 @@ public class MyAnalyzer implements AnalyzerImporterPlugin {
 
 **CRITICAL**: Two separate tools exist with different purposes:
 
-| Tool                     | Purpose                                                           | Language |
-| ------------------------ | ----------------------------------------------------------------- | -------- |
-| **astm-http-bridge**     | Production ASTM adapter (between physical analyzers and OpenELIS) | Java     |
-| **analyzer-mock-server** | Testing simulator (simulates analyzers for development/CI)        | Python   |
+| Tool                         | Purpose                                                           | Language |
+| ---------------------------- | ----------------------------------------------------------------- | -------- |
+| **openelis-analyzer-bridge** | Production ASTM adapter (between physical analyzers and OpenELIS) | Java     |
+| **analyzer-mock-server**     | Testing simulator (simulates analyzers for development/CI)        | Python   |
 
 Feature 011 expands **analyzer-mock-server** to support multiple protocols (HL7,
-RS232, File) for comprehensive testing. The production **astm-http-bridge**
-remains unchanged.
+RS232, File) for comprehensive testing. The production
+**openelis-analyzer-bridge** remains unchanged.
 
 ---
 

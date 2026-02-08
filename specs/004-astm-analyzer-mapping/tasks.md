@@ -101,8 +101,8 @@ SiteInformation (`clinlims.site_information`) keys.
       `src/main/resources/liquibase/analyzer/004-010-add-query-timeout-config.xml` -
       Insert configuration entries into `clinlims.site_information` (keys
       limited to 32 chars): `analyzer.bridge.url` (default value:
-      "http://astm-http-bridge:8443", description: "ASTM-HTTP Bridge service
-      URL"), `analyzer.query.timeout` (default: "5", description: "Query
+      "http://openelis-analyzer-bridge:8443", description: "ASTM-HTTP Bridge
+      service URL"), `analyzer.query.timeout` (default: "5", description: "Query
       analyzer timeout in minutes"), `analyzer.query.rate.limit` (default: "1",
       description: "Max queries per analyzer per min"), `analyzer.max.fields`
       (default: "500", description: "Max fields returned per query") - Rollback:
@@ -142,9 +142,10 @@ SiteInformation (`clinlims.site_information`) keys.
       `analyzer.lifecycle.stage.maintenance`), Validation Rules
       (`analyzer.validation.rule.type.regex`,
       `analyzer.validation.rule.expression`, `analyzer.validation.rule.test`)
-- [x] T011a [P] Update `dev.docker-compose.yml` to include `astm-http-bridge`
-      and `analyzer-mock-server` services - Add service definition for
-      `astm-http-bridge` using latest image from `tools/astm-http-bridge` (mount
+- [x] T011a [P] Update `dev.docker-compose.yml` to include
+      `openelis-analyzer-bridge` and `analyzer-mock-server` services - Add
+      service definition for `openelis-analyzer-bridge` using latest image from
+      `tools/openelis-analyzer-bridge` (mount
       `volume/astm-bridge/configuration.yml` for configuration) - Add service
       definition for `analyzer-mock-server` using Dockerfile from
       `tools/analyzer-mock-server` (expose port 5000 for analyzer simulation) -
@@ -1696,25 +1697,25 @@ retrieving available data fields from analyzers
       `src/main/java/org/openelisglobal/analyzer/service/AnalyzerQueryServiceImpl.java`
       with @Service and @Transactional annotations - **HTTP POST to ASTM-HTTP
       Bridge** (NOT direct TCP connection): Read Bridge URL from SiteInformation
-      key `analyzer.bridge.url` (default: "http://astm-http-bridge:8443"),
-      construct HTTP POST request with query parameters
-      `forwardAddress={analyzerIP}` and `forwardPort={analyzerPort}`, body
-      contains ASTM query message, parse Bridge HTTP response (ASTM content in
-      response body) - Use RestTemplate or WebClient for HTTP communication -
-      Background job pattern: return job ID immediately, poll status endpoint
-      per FR-002 - Read query timeout from SiteInformation key
-      `analyzer.query.timeout` (default: 5 minutes if missing or invalid) per
-      FR-002 specification - Use SiteInformationService to lookup timeout value,
-      fallback to 5 minutes if key is missing or contains invalid value
-      (non-numeric, negative, or zero) **VERIFICATION CHECKLIST** (must pass all
-      before marking complete): - [x] Implementation reads Bridge URL from
-      `analyzer.bridge.url` SiteInformation - [x] Constructs HTTP POST to Bridge
-      with `forwardAddress` and `forwardPort` query parameters from
-      AnalyzerConfiguration - [x] Sends ASTM query message as HTTP request
-      body - [x] Receives and parses Bridge HTTP response (ASTM content in
-      response body) - [x] Extracts field identifiers from R (Result) records
-      per FR-002 requirement - [x] Parses field metadata: fieldName, astmRef,
-      fieldType, unit (handles R-record format:
+      key `analyzer.bridge.url` (default:
+      "http://openelis-analyzer-bridge:8443"), construct HTTP POST request with
+      query parameters `forwardAddress={analyzerIP}` and
+      `forwardPort={analyzerPort}`, body contains ASTM query message, parse
+      Bridge HTTP response (ASTM content in response body) - Use RestTemplate or
+      WebClient for HTTP communication - Background job pattern: return job ID
+      immediately, poll status endpoint per FR-002 - Read query timeout from
+      SiteInformation key `analyzer.query.timeout` (default: 5 minutes if
+      missing or invalid) per FR-002 specification - Use SiteInformationService
+      to lookup timeout value, fallback to 5 minutes if key is missing or
+      contains invalid value (non-numeric, negative, or zero) **VERIFICATION
+      CHECKLIST** (must pass all before marking complete): - [x] Implementation
+      reads Bridge URL from `analyzer.bridge.url` SiteInformation - [x]
+      Constructs HTTP POST to Bridge with `forwardAddress` and `forwardPort`
+      query parameters from AnalyzerConfiguration - [x] Sends ASTM query message
+      as HTTP request body - [x] Receives and parses Bridge HTTP response (ASTM
+      content in response body) - [x] Extracts field identifiers from R (Result)
+      records per FR-002 requirement - [x] Parses field metadata: fieldName,
+      astmRef, fieldType, unit (handles R-record format:
       `R|seq|astm_ref|field_name||unit|||field_type`) - [x] Robust parsing
       handles units with special characters (e.g., `10^3/μL`) and composite
       delimiters per research.md Section 14 - [x] Field type validation against
@@ -1736,7 +1737,7 @@ retrieving available data fields from analyzers
       Location:
       `src/main/resources/liquibase/analyzer/004-010-add-query-timeout-config.xml` -
       Insert into `clinlims.site_information` keys including:
-      `analyzer.bridge.url` (default `http://astm-http-bridge:8443`) and
+      `analyzer.bridge.url` (default `http://openelis-analyzer-bridge:8443`) and
       `analyzer.query.timeout` (default `5`). These ensure the configuration
       keys exist for query analyzer behavior per FR-002.
 - [x] T106 Add query endpoints in AnalyzerRestController: POST

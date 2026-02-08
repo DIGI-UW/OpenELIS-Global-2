@@ -1,6 +1,6 @@
 # M8: Integration, Testing & Deployment — LLM Implementation Prompt
 
-> Run from: `tools/astm-http-bridge/` (bridge submodule root)  
+> Run from: `tools/openelis-analyzer-bridge/` (bridge submodule root)  
 > Branch: `feat/universal-bridge-integration` (create from `develop` **after M7
 > is merged**)  
 > Depends on: M7 merged (bridge PR:
@@ -160,7 +160,7 @@ CI is green**.
 
 ## Verification Commands
 
-From `tools/astm-http-bridge/`:
+From `tools/openelis-analyzer-bridge/`:
 
 ```bash
 mvn clean test

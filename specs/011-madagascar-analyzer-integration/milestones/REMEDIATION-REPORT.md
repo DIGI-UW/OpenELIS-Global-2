@@ -339,8 +339,8 @@ files):
 - Test executes in <5 seconds without database
 - Complies with Constitution Principle V.4 (v1.2.0)
 
-**See**: [CONSTITUTION-COMPLIANCE.md](CONSTITUTION-COMPLIANCE.md) for full
-verification details.
+**See**: [CONSTITUTION-COMPLIANCE.md](../checklists/CONSTITUTION-COMPLIANCE.md)
+for full verification details.
 
 ---
 

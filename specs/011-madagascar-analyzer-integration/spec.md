@@ -835,20 +835,8 @@ Priority assignment based on Romain's internal deployment list (Session
 - **P2**: Analyzers NOT on Romain's list or file-based - contract required but
   lower deployment urgency
 
-| #   | Analyzer             | Protocol   | Connectivity   | Plugin Status          | Romain Priority | Priority |
-| --- | -------------------- | ---------- | -------------- | ---------------------- | --------------- | -------- |
-| 1   | Cepheid GeneXpert    | ASTM/HL7   | Ethernet       | ✅ Exists (3 variants) | High            | P1       |
-| 2   | Horiba Micros 60     | ASTM/RS232 | RS232          | ❌ Build new           | High            | P1       |
-| 3   | QuantStudio 7 Flex   | File-based | Ethernet/Local | ⚠️ Adapt QuantStudio3  | High            | P1       |
-| 4   | Mindray BC-5380      | HL7        | Ethernet       | ✅ Mindray plugin      | High            | P1       |
-| 5   | Mindray BA-88A       | RS232      | RS232          | ✅ Mindray plugin      | High            | P1       |
-| 6   | Horiba Pentra 60     | ASTM/RS232 | RS232          | ❌ Build new           | High            | P1       |
-| 7   | Abbott Architect     | HL7/RS232  | RS232/Ethernet | ❌ Build new           | High            | P1       |
-| 8   | Hain FluoroCycler XT | File-based | Local          | ❌ Build new           | High            | P1       |
-| 9   | Mindray BS-360E      | HL7        | Ethernet       | ✅ Mindray plugin      | High            | P1       |
-| 10  | Stago STart 4        | ASTM/HL7   | RS232/Ethernet | ❌ Build new           | Moderate        | P1-M     |
-| 11  | Mindray BC2000       | HL7        | Ethernet       | ✅ Mindray plugin      | Not on list     | P2       |
-| 12  | Sysmex XN Series     | HL7        | Ethernet       | ✅ SysmexXN-L plugin   | Not on list     | P2       |
+See FR-006 § Analyzer/Protocol/Simulator Coverage Matrix above for the full
+12-analyzer table with protocol, adapter, simulator, and plugin details.
 
 ### P3 Stretch Goals (If Time Permits After Contract Requirements)
 
@@ -908,7 +896,7 @@ complete:
 - **Feature 004 Specification**: `specs/004-astm-analyzer-mapping/spec.md`
 - **Existing Plugins**:
   https://github.com/DIGI-UW/openelisglobal-plugins/tree/develop/analyzers
-- **ASTM-HTTP Bridge**: https://github.com/DIGI-UW/astm-http-bridge
+- **ASTM-HTTP Bridge**: https://github.com/DIGI-UW/openelis-analyzer-bridge
 - **Analyzer Mock Server** (Multi-Protocol Analyzer Simulator):
   https://github.com/DIGI-UW/analyzer-mock-server - Supports ASTM, HL7 v2.x,
   RS232 simulation, and file-based result generation for analyzer testing

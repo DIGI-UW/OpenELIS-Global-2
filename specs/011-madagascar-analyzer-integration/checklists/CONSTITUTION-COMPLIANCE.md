@@ -300,7 +300,7 @@ requirements:
 ### References
 
 - **Pre-implementation Analysis**:
-  [pre-implementation-analysis.md](pre-implementation-analysis.md) (formerly
+  [pre-implementation-analysis.md](../research/pre-implementation-analysis.md) (formerly
   specification-analysis-report.md)
 - **Hibernate Mapping Analysis**:
   [research/hibernate-mapping-analysis.md](research/hibernate-mapping-analysis.md)

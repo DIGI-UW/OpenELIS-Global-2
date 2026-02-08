@@ -32,8 +32,8 @@
   - Bridge accessible at `172.20.1.101:5001` from within Docker network
   - Bridge TCP listener port: `5001` (exposed on host)
   - For production setup, see the
-    [astm-http-bridge github](https://github.com/DIGI-UW/astm-http-bridge) for
-    configuration details
+    [openelis-analyzer-bridge github](https://github.com/DIGI-UW/openelis-analyzer-bridge)
+    for configuration details
 
 ### Configuring OE
 

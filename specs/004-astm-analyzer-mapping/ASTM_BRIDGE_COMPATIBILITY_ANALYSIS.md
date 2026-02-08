@@ -4,18 +4,19 @@
 **Feature**: 004-astm-analyzer-mapping  
 **Analyzed Components**:
 
-- `tools/astm-http-bridge` (v2.3.5) - DIGI-UW/astm-http-bridge submodule
+- `tools/openelis-analyzer-bridge` (v2.3.5) - DIGI-UW/openelis-analyzer-bridge
+  submodule
 - `tools/analyzer-mock-server` - Python mock analyzer server
 
 ---
 
 ## Executive Summary
 
-After thorough analysis of both the **astm-http-bridge** submodule and the
-**analyzer-mock-server**, this report provides a detailed assessment of their
-bi-directional communication capabilities and specification coverage.
+After thorough analysis of both the **openelis-analyzer-bridge** submodule and
+the **analyzer-mock-server**, this report provides a detailed assessment of
+their bi-directional communication capabilities and specification coverage.
 
-**Conclusion**: The `astm-http-bridge` **CAN support bi-directional
+**Conclusion**: The `openelis-analyzer-bridge` **CAN support bi-directional
 communication** with the `analyzer-mock-server` for all workflows required by
 the 004-astm-analyzer-mapping feature.
 
@@ -25,7 +26,7 @@ the 004-astm-analyzer-mapping feature.
 
 ### 1.1 Core Architecture
 
-The `astm-http-bridge` (v2.3.5) is a Spring Boot 3.3.0 application that
+The `openelis-analyzer-bridge` (v2.3.5) is a Spring Boot 3.3.0 application that
 provides:
 
 **Bi-Directional Translation:**
@@ -121,7 +122,7 @@ The `analyzer-mock-server` implements **full CLSI LIS1-A compliance**:
 
 ### 3.1 Compatibility Matrix
 
-| Workflow                      | analyzer-mock-server        | astm-http-bridge                   | Compatible?    |
+| Workflow                      | analyzer-mock-server        | openelis-analyzer-bridge           | Compatible?    |
 | ----------------------------- | --------------------------- | ---------------------------------- | -------------- |
 | Analyzer → OpenELIS (results) | ✅ Sends frames             | ✅ Receives, forwards to HTTP      | ✅ **YES**     |
 | OpenELIS → Analyzer (query)   | ✅ Receives query, responds | ✅ Forwards HTTP → ASTM            | ✅ **YES**     |
@@ -166,8 +167,8 @@ contention pattern per CLSI LIS1-A 8.3.5):
 3. Client becomes receiver, ACKs
 4. Server sends field list
 
-The `astm-http-bridge` handles this via `handleLineContention()` method in
-`DefaultForwardingHTTPToASTMHandler.java`:
+The `openelis-analyzer-bridge` handles this via `handleLineContention()` method
+in `DefaultForwardingHTTPToASTMHandler.java`:
 
 ```java
 private HTTPHandlerResponse handleLineContention(Communicator communicator, Socket socket, ASTMMessage message) {
@@ -272,7 +273,7 @@ private HTTPHandlerResponse handleLineContention(Communicator communicator, Sock
 1. **Create Bridge Configuration Template**:
 
    ```yaml
-   # tools/astm-http-bridge/configuration.yml (example)
+   # tools/openelis-analyzer-bridge/configuration.yml (example)
    org.itech.ahb:
      listen-astm-server:
        port: 12001
@@ -305,8 +306,8 @@ Add to `dev.docker-compose.yml`:
 
 ```yaml
 services:
-  astm-http-bridge:
-    image: itechuw/astm-http-bridge:latest
+  openelis-analyzer-bridge:
+    image: itechuw/openelis-analyzer-bridge:latest
     ports:
       - "12001:12001" # ASTM LIS1-A
       - "8442:8443" # HTTP API
@@ -320,8 +321,8 @@ services:
 
 ## 7. Conclusion
 
-**The `astm-http-bridge` CAN support bi-directional communication with the
-`analyzer-mock-server`** for all workflows required by the
+**The `openelis-analyzer-bridge` CAN support bi-directional communication with
+the `analyzer-mock-server`** for all workflows required by the
 004-astm-analyzer-mapping feature:
 
 | Workflow                                                     | Support Status  |
@@ -339,7 +340,7 @@ production robustness.
 
 ## References
 
-- [ASTM-HTTP-Bridge Repository](https://github.com/DIGI-UW/astm-http-bridge)
+- [ASTM-HTTP-Bridge Repository](https://github.com/DIGI-UW/openelis-analyzer-bridge)
 - [Mock Server README](../../tools/analyzer-mock-server/README.md)
 - [Communication Pathway Documentation](../../tools/analyzer-mock-server/COMMUNICATION_PATHWAY.md)
 - [Feature Specification](./spec.md)

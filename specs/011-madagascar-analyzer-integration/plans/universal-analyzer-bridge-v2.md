@@ -112,10 +112,10 @@ MLLP/Serial/File/ASTM/HTTP → MessageNormalizer → HttpForwardingRouter → Op
 
 ### Repos & Remaining Work
 
-| Repository                    | Purpose                            | Remaining        |
-| ----------------------------- | ---------------------------------- | ---------------- |
-| `DIGI-UW/astm-http-bridge`    | Protocol bridge (Java Spring Boot) | M7, M8, R-BRIDGE |
-| `I-TECH-UW/OpenELIS-Global-2` | Main OpenELIS application          | M9, R-OPENELIS   |
+| Repository                         | Purpose                            | Remaining        |
+| ---------------------------------- | ---------------------------------- | ---------------- |
+| `DIGI-UW/openelis-analyzer-bridge` | Protocol bridge (Java Spring Boot) | M7, M8, R-BRIDGE |
+| `I-TECH-UW/OpenELIS-Global-2`      | Main OpenELIS application          | M9, R-OPENELIS   |
 
 ### Branch Naming
 
@@ -130,7 +130,7 @@ MLLP/Serial/File/ASTM/HTTP → MessageNormalizer → HttpForwardingRouter → Op
 ### PR Dependency Chain (Remaining Only)
 
 ```
-BRIDGE REPO (DIGI-UW/astm-http-bridge):
+BRIDGE REPO (DIGI-UW/openelis-analyzer-bridge):
 
           Current: develop @ 5a9b12b (M1-M6 merged)
                               |
@@ -168,7 +168,7 @@ OPENELIS REPO (I-TECH-UW/OpenELIS-Global-2):
 
 ### M7: Message Normalizer — Unify All Routing (4 days)
 
-**Repo**: `DIGI-UW/astm-http-bridge` | **Branch**:
+**Repo**: `DIGI-UW/openelis-analyzer-bridge` | **Branch**:
 `feat/universal-bridge-normalizer` **Depends on**: M1-M6 (done)
 
 **Target**: All 5 listeners route through
@@ -238,8 +238,8 @@ dispatch and is unaffected.
 
 ### M7.1: Bridge Authentication & Security (2 days)
 
-**Repo**: `DIGI-UW/astm-http-bridge` | **Branch**: `feat/bridge-authentication`
-**Depends on**: M7 merged (PR #11)
+**Repo**: `DIGI-UW/openelis-analyzer-bridge` | **Branch**:
+`feat/bridge-authentication` **Depends on**: M7 merged (PR #11)
 
 **Context**: Copilot review of PR #11 identified a critical security gap — the
 `/input` HTTP endpoint in `AnalyzerInputController` has no authentication
@@ -305,7 +305,7 @@ filter (OE doesn't have this pattern)
 
 ### M8: Integration, Testing & Deployment (4 days)
 
-**Repo**: `DIGI-UW/astm-http-bridge` | **Branch**:
+**Repo**: `DIGI-UW/openelis-analyzer-bridge` | **Branch**:
 `feat/universal-bridge-integration` **Depends on**: M7 merged
 
 | Task | Type   | Description                                                                                                                       | File(s)                                       |
@@ -334,7 +334,7 @@ filter (OE doesn't have this pattern)
 
 | Task | Type   | Description                                                                                                                                                                                                 | Target File                                        |
 | ---- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| T26  | UPDATE | Update submodule reference to bridge v3.0.0                                                                                                                                                                 | `tools/astm-http-bridge`                           |
+| T26  | UPDATE | Update submodule reference to bridge v3.0.0                                                                                                                                                                 | `tools/openelis-analyzer-bridge`                   |
 | T27  | UPDATE | Add "Protocol vs Transport Architecture" section with transport matrix table                                                                                                                                | `specs/011-.../research.md`                        |
 | T28  | UPDATE | Document MLLP architecture decision and bridge requirement for HL7                                                                                                                                          | `specs/011-.../research.md`                        |
 | T29  | UPDATE | Add "Universal Bridge Integration" cross-reference section                                                                                                                                                  | `specs/004-.../research.md`                        |
@@ -481,7 +481,7 @@ plugins via `isTargetAnalyzer()`.
 
 ```bash
 # In bridge repo
-cd tools/astm-http-bridge/
+cd tools/openelis-analyzer-bridge/
 mvn clean test  # All unit + integration tests pass
 
 # Verify unified routing (T11 test):

@@ -29,129 +29,11 @@ implementation tasks.
 
 ---
 
-## Parallel Workstreams Overview
+## Workstreams & Dependencies
 
-Per clarification session (2026-01-28), the implementation follows **5 parallel
-workstreams** that **ALL START TOGETHER** in Week 1:
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                   PARALLEL WORKSTREAMS (ALL START WEEK 1)                    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  [P] Workstream A: ASTM Setup Validation                                    │
-│  ────────────────────────────────────────────────────────────────────────   │
-│  M0 → Validate existing ASTM mock setup (only blocks M7)                    │
-│                                                                             │
-│  [P] Workstream B: HL7 Adapter + Plugins                                    │
-│  ────────────────────────────────────────────────────────────────────────   │
-│  M1 → M5 → M12 → M14 (HL7 adapter, then Mindray/Abbott/Sysmex)             │
-│                                                                             │
-│  [P] Workstream C: RS232 via ASTM-HTTP Bridge + Plugins                     │
-│  ────────────────────────────────────────────────────────────────────────   │
-│  M2 → M6 → M9 → M10 → M11 (Bridge extension, then Horiba/Stago)            │
-│                                                                             │
-│  [P] Workstream D: File Adapter + Plugins                                   │
-│  ────────────────────────────────────────────────────────────────────────   │
-│  M3 → M8 → M13 (File adapter, then QuantStudio/Hain)                       │
-│  M7: GeneXpert Multi requires M0 + M1 + M3 (all 3 protocol variants)       │
-│                                                                             │
-│  [P] Workstream E: Simulator Development                                    │
-│  ────────────────────────────────────────────────────────────────────────   │
-│  M4 → M17 (Multi-protocol simulator base → Advanced features)               │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-KEY: [P] = Parallel - M0, M1, M2, M3, M4 all start in Week 1 with no
-dependencies between them. M0 only blocks M7 (GeneXpert ASTM variant).
-```
-
----
-
-## Milestone Dependency Graph
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    WEEK 1: FOUNDATION (ALL PARALLEL)                         │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
-│  │[P] M0: ASTM  │  │[P] M1: HL7   │  │[P] M2: RS232 │  │[P] M3: File  │    │
-│  │ Validate(2d) │  │ Adapter (3d) │  │ Bridge (3d)  │  │ Adapter (2d) │    │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘    │
-│         │                 │                 │                 │             │
-│         │                 │                 │                 │             │
-│  ┌──────────────┐         │                 │                 │             │
-│  │[P] M4: Simul │         │                 │                 │             │
-│  │  Base (3d)   │         │                 │                 │             │
-│  └──────┬───────┘         │                 │                 │             │
-└─────────┼─────────────────┼─────────────────┼─────────────────┼─────────────┘
-          │                 │                 │                 │
-          │                 ▼                 ▼                 ▼
-          │          ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-          │          │ M5: Mindray  │  │ M6: Mindray  │  │ M8: QS7 (2d) │
-          │          │  HL7 (2d)    │  │ Serial (1d)  │  │ M13: Hain    │
-          │          └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
-          │                 │                 │                 │
-          │                 │                 ▼                 │
-          │                 │          ┌──────────────┐         │
-          │                 │          │[P] M9-M11    │         │
-          │                 │          │ Horiba/Stago │         │
-          │                 │          └──────┬───────┘         │
-          │                 │                 │                 │
-          │                 ▼                 │                 │
-          │          ┌──────────────┐         │                 │
-          │          │[P] M12       │         │                 │
-          │          │ Abbott HL7   │         │                 │
-          │          └──────┬───────┘         │                 │
-          │                 │                 │                 │
-          │   ┌─────────────┴─────────────────┴─────────────────┘
-          │   │
-          │   │   M0 + M1 + M3 required for M7
-          │   │         │
-          │   │         ▼
-          │   │  ┌──────────────┐
-          └───┼──│ M7: GeneXpert│ ← Only milestone blocked by M0
-              │  │  Multi (2d)  │
-              │  └──────┬───────┘
-              │         │
-              ▼         ▼
-       ┌──────────────┐ │
-       │ M14: P2 Val  │ │
-       │    (1d)      │ │
-       └──────┬───────┘ │
-              │         │
-              └────┬────┘
-                   ▼
-            ┌──────────────┐
-            │ M15: Order   │
-            │ Export (3d)  │
-            └──────┬───────┘
-                   │
-                   ▼
-            ┌──────────────┐         ┌──────────────┐
-            │ M16: Metadata│         │ M17: Simul   │
-            │  Form (2d)   │         │  Adv (2d)    │
-            └──────┬───────┘         └──────┬───────┘
-                   │                        │
-                   └────────────┬───────────┘
-                                ▼
-                       ┌──────────────┐
-                       │ M18: E2E Val │
-                       │    (3d)      │
-                       └──────────────┘
-```
-
-**Key Clarification**: M0 only blocks M7 (GeneXpert ASTM variant). All other
-milestones can proceed without waiting for M0.
-
-**Parallel Opportunities**:
-
-- **Week 1**: M0, M1, M2, M3, M4 ALL START IN PARALLEL (no dependencies)
-- **Week 1-2**: M5, M6, M8, M9-M13 start once their adapter (M1/M2/M3) completes
-- **Week 2**: M7 starts after M0 + M1 + M3 (GeneXpert needs all 3 protocols)
-- **Week 3-4**: M14, M15, M17 can proceed in parallel
-- **Week 4-5**: M16 after M15; M18 after all complete
+> See **plan.md** for full parallel workstream diagram and milestone dependency
+> graph. Summary: 5 workstreams (A: ASTM, B: HL7, C: RS232, D: File, E:
+> Simulator) starting in parallel. M0 only blocks M7.
 
 ---
 
@@ -319,36 +201,36 @@ passthrough complexity.
 - [x] T039 [M2] Create branch
       `feat/011-madagascar-analyzer-integration-m2-rs232-bridge` from
       `demo/madagascar`
-- [x] T040 [M2] Add jSerialComm dependency to `tools/astm-http-bridge/pom.xml`
-      (com.fazecast:jSerialComm:2.10.4)
+- [x] T040 [M2] Add jSerialComm dependency to
+      `tools/openelis-analyzer-bridge/pom.xml` (com.fazecast:jSerialComm:2.10.4)
 
 ### Tests for M2 (MANDATORY - Write FIRST)
 
 - [x] T041 [P] [M2] Unit test for SerialPortListener in
-      `tools/astm-http-bridge/src/test/java/serial/SerialPortListenerTest.java`
+      `tools/openelis-analyzer-bridge/src/test/java/serial/SerialPortListenerTest.java`
 - [x] T042 [P] [M2] Unit test for SerialToAstmTranslator in
-      `tools/astm-http-bridge/src/test/java/serial/SerialToAstmTranslatorTest.java`
+      `tools/openelis-analyzer-bridge/src/test/java/serial/SerialToAstmTranslatorTest.java`
 - [x] T043 [P] [M2] Integration test with virtual serial port (socat) in
-      `tools/astm-http-bridge/src/test/java/serial/VirtualSerialIntegrationTest.java`
+      `tools/openelis-analyzer-bridge/src/test/java/serial/VirtualSerialIntegrationTest.java`
 - [x] T044 [P] [M2] Create test serial data fixtures in
-      `tools/astm-http-bridge/src/test/resources/serial-test-data/`
+      `tools/openelis-analyzer-bridge/src/test/resources/serial-test-data/`
 
-### Implementation for M2 (in astm-http-bridge)
+### Implementation for M2 (in openelis-analyzer-bridge)
 
 - [x] T045 [M2] Create SerialPortListener in
-      `tools/astm-http-bridge/src/main/java/.../serial/SerialPortListener.java`
+      `tools/openelis-analyzer-bridge/src/main/java/.../serial/SerialPortListener.java`
       (jSerialComm integration)
 - [x] T046 [M2] Create SerialPortConfiguration in
-      `tools/astm-http-bridge/src/main/java/.../serial/SerialPortConfiguration.java`
+      `tools/openelis-analyzer-bridge/src/main/java/.../serial/SerialPortConfiguration.java`
 - [x] T047 [M2] Create SerialToAstmTranslator in
-      `tools/astm-http-bridge/src/main/java/.../serial/SerialToAstmTranslator.java`
+      `tools/openelis-analyzer-bridge/src/main/java/.../serial/SerialToAstmTranslator.java`
       (RS232→ASTM frame conversion)
 - [x] T048 [M2] Add serial port configuration to application.yml
 - [x] T049 [M2] Implement connection status tracking with event callbacks
 - [x] T050 [M2] Implement graceful handling of cable disconnection
 - [x] T051 [M2] Add health check endpoint for serial port status
 - [x] T052 [M2] Document bridge deployment with USB-serial adapter in
-      `tools/astm-http-bridge/docs/RS232_SETUP.md`
+      `tools/openelis-analyzer-bridge/docs/RS232_SETUP.md`
 
 ### OpenELIS Configuration UI for M2
 
@@ -490,8 +372,8 @@ milestone implementation, enabling developers to test M1-M3 adapters and M5-M13
 plugins without physical hardware.
 
 **IMPORTANT**: This expands the **Python analyzer-mock-server** (testing
-simulator), NOT the Java astm-http-bridge (production adapter). See plan.md Tool
-Architecture section for distinction.
+simulator), NOT the Java openelis-analyzer-bridge (production adapter). See
+plan.md Tool Architecture section for distinction.
 
 **Acceptance Criteria**:
 
@@ -650,6 +532,8 @@ changes; main-repo PR holds integration tests and HL7 adapter work.
 
 ---
 
+<!-- M6 PR #2675 merged 2026-02-03 (SHA: cb24fd5ed) - Mindray BA-88A RS232 integration test and fixture - Tasks T134-T142 completed -->
+
 ## M6: Mindray Serial Plugin Validation (1 day)
 
 **Branch**: `feat/011-madagascar-analyzer-integration-m6-mindray-serial`
@@ -666,28 +550,28 @@ changes; main-repo PR holds integration tests and HL7 adapter work.
 
 ### Setup for M6
 
-- [ ] T134 [M6] Create branch
+- [x] T134 [M6] Create branch
       `feat/011-madagascar-analyzer-integration-m6-mindray-serial` from
       `demo/madagascar`
 
 ### Tests for M6 (MANDATORY)
 
-- [ ] T135 [M6] Integration test for Mindray BA-88A RS232 in
+- [x] T135 [M6] Integration test for Mindray BA-88A RS232 in
       `src/test/java/org/openelisglobal/analyzer/mindray/MindrayBA88AIntegrationTest.java`
-- [ ] T136 [M6] Create ASTM test fixtures for BA-88A in
+- [x] T136 [M6] Create ASTM test fixtures for BA-88A in
       `src/test/resources/testdata/astm/mindray-ba88a-result.txt`
 
 ### Implementation for M6
 
-- [ ] T137 [M6] Configure RS232 parameters for BA-88A in bridge
-- [ ] T138 [M6] Verify existing Mindray plugin handles BA-88A format
-- [ ] T139 [M6] Validate field mappings for BA-88A
-- [ ] T140 [M6] Document BA-88A RS232 configuration
+- [x] T137 [M6] Configure RS232 parameters for BA-88A in bridge
+- [x] T138 [M6] Verify existing Mindray plugin handles BA-88A format
+- [x] T139 [M6] Validate field mappings for BA-88A
+- [x] T140 [M6] Document BA-88A RS232 configuration
 
 ### Finalization for M6
 
-- [ ] T141 [M6] Verify integration tests pass
-- [ ] T142 [M6] Create PR
+- [x] T141 [M6] Verify integration tests pass
+- [x] T142 [M6] Create PR
       `feat/011-madagascar-analyzer-integration-m6-mindray-serial` →
       `demo/madagascar`
 
@@ -742,6 +626,8 @@ Stories**: US-6 **Depends On**: M0, M1, M3 **Workstream**: A, B, D
 
 ---
 
+<!-- M8 PR #2676 merged 2026-02-03 (SHA: 32d81b072) - QuantStudio 7 Flex analyzer plugin integration - Tasks T155-T164 completed -->
+
 ## M8: QuantStudio 7 Flex Adaptation (2 days)
 
 **Branch**: `feat/011-madagascar-analyzer-integration-m8-quantstudio` **Goal**:
@@ -752,35 +638,35 @@ Adapt QuantStudio3 plugin for QuantStudio 7 Flex **User Stories**: US-4, US-6
 
 ### Setup for M8
 
-- [ ] T155 [M8] Create branch
+- [x] T155 [M8] Create branch
       `feat/011-madagascar-analyzer-integration-m8-quantstudio` from
       `demo/madagascar`
-- [ ] T155a [M8] Check if QuantStudio plugin exists in `plugins/analyzers/`
+- [x] T155a [M8] Check if QuantStudio plugin exists in `plugins/analyzers/`
       submodule; if not, create new plugin for QuantStudio 7 Flex
-- [ ] T155b [M8] Build and verify QuantStudio plugin loads
+- [x] T155b [M8] Build and verify QuantStudio plugin loads
 
 ### Tests for M8 (MANDATORY)
 
-- [ ] T156 [M8] Integration test for QuantStudio 7 Flex in
+- [x] T156 [M8] Integration test for QuantStudio 7 Flex in
       `src/test/java/org/openelisglobal/analyzer/quantstudio/QuantStudio7FlexIntegrationTest.java`
-- [ ] T157 [M8] Create CSV test fixture for QuantStudio 7 Flex format in
+- [x] T157 [M8] Create CSV test fixture for QuantStudio 7 Flex format in
       `src/test/resources/testdata/files/quantstudio7-flex-results.csv`
-- [ ] T158 [M8] Backward compatibility test for QuantStudio 3 in
+- [x] T158 [M8] Backward compatibility test for QuantStudio 3 in
       `src/test/java/org/openelisglobal/analyzer/quantstudio/QuantStudio3BackwardCompatTest.java`
 
 ### Implementation for M8
 
-- [ ] T159 [M8] Analyze QuantStudio 7 Flex CSV format differences from
+- [x] T159 [M8] Analyze QuantStudio 7 Flex CSV format differences from
       QuantStudio 3
-- [ ] T160 [M8] Modify QuantStudio plugin or create FileImportConfiguration for
+- [x] T160 [M8] Modify QuantStudio plugin or create FileImportConfiguration for
       column differences
-- [ ] T161 [M8] Ensure backward compatibility with QuantStudio 3
-- [ ] T162 [M8] Document QuantStudio adaptation
+- [x] T161 [M8] Ensure backward compatibility with QuantStudio 3
+- [x] T162 [M8] Document QuantStudio adaptation
 
 ### Finalization for M8
 
-- [ ] T163 [M8] Verify all integration tests pass
-- [ ] T164 [M8] Create PR
+- [x] T163 [M8] Verify all integration tests pass
+- [x] T164 [M8] Create PR
       `feat/011-madagascar-analyzer-integration-m8-quantstudio` →
       `demo/madagascar`
 
@@ -973,7 +859,7 @@ On**: M3 (File) **Workstream**: D (File)
 
 ### Setup for M13
 
-- [ ] T205 [M13] Create branch
+- [x] T205 [M13] Create branch
       `feat/011-madagascar-analyzer-integration-m13-fluorocycler` from
       `demo/madagascar`
 
@@ -1533,8 +1419,27 @@ external JARs in this submodule** per `docs/analyzer.md`.
 
 ---
 
-**Tasks Generated**: 2026-01-27 | **Updated**: 2026-01-28 (M0 scope
-clarification: ASTM mock validation only, M0-M4 parallel, plugin tasks
-distributed to milestones) **Total Tasks**: ~304 **Test Tasks**: 66 (22%) **Task
-ID Range**: T001-T314 (with T0##a/b additions) **Milestones**: 19 (M0-M18)
-**Parallel Milestones**: M0-M4 (all), M9-M13 **Contract Deadline**: 2026-02-28
+**Tasks Generated**: 2026-01-27 | **Updated**: 2026-02-07 (completion
+annotations for M6, M8; traceability for additional merged PRs) **Total Tasks**:
+~304 **Test Tasks**: 66 (22%) **Task ID Range**: T001-T314 (with T0##a/b
+additions) **Milestones**: 19 (M0-M18) **Parallel Milestones**: M0-M4 (all),
+M9-M13 **Contract Deadline**: 2026-02-28
+
+---
+
+## PR Traceability Log
+
+Merged PRs into `demo/madagascar` not covered by inline milestone annotations:
+
+| PR                                                              | Title                                                                           | Merged     | Scope                |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---------- | -------------------- |
+| [#2683](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/2683) | feat(011): Add Madagascar analyzer dashboard fixtures and test infrastructure   | 2026-02-07 | Fixtures, test infra |
+| [#2694](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/2694) | Sidenav revamp: analyzer workflow focus                                         | 2026-02-04 | UI/UX                |
+| [#2714](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/2714) | M4: File Watcher + CSV Analyzer Support                                         | 2026-02-06 | M4 supplement        |
+| [#2718](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/2718) | feat(analyzer): Enhance HL7 endpoint with Universal Bridge header support (M2b) | 2026-02-06 | M2 supplement        |
+| [#2726](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/2726) | feat: M7 Message Normalizer — unified routing pipeline                          | 2026-02-06 | Bridge M7            |
+| [#2731](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/2731) | feat: M8 Observability milestone for analyzer bridge                            | 2026-02-07 | Bridge M8            |
+| [#2732](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/2732) | test(011): Migrate analyzer E2E tests to Playwright                             | 2026-02-07 | E2E tests            |
+
+**Submodule rename**: `tools/astm-http-bridge` →
+`tools/openelis-analyzer-bridge` (commit b71bdbfc6 on `demo/madagascar`)

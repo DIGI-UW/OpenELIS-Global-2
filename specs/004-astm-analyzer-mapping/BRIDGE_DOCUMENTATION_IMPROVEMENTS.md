@@ -9,7 +9,7 @@ bi-directional workflow
 
 ## Current Documentation Gaps
 
-### 1. Bridge README (`tools/astm-http-bridge/README`)
+### 1. Bridge README (`tools/openelis-analyzer-bridge/README`)
 
 **Current State**: Minimal - only basic docker commands  
 **Missing**:
@@ -46,8 +46,8 @@ properties
 
 ### 1. Enhanced Bridge README
 
-**File**: `tools/astm-http-bridge/README.md` (create new, replace existing
-README)
+**File**: `tools/openelis-analyzer-bridge/README.md` (create new, replace
+existing README)
 
 **Content Structure**:
 
@@ -199,7 +199,7 @@ OpenELIS.
 docker compose -f dev.docker-compose.yml up -d
 
 # View logs
-docker logs -f astm-http-bridge
+docker logs -f openelis-analyzer-bridge
 
 # Check health
 curl http://localhost:8442/actuator/health
@@ -207,8 +207,9 @@ curl http://localhost:8442/actuator/health
 
 ### Production
 
-See [Bridge GitHub Repository](https://github.com/DIGI-UW/astm-http-bridge) for
-production deployment instructions.
+See
+[Bridge GitHub Repository](https://github.com/DIGI-UW/openelis-analyzer-bridge)
+for production deployment instructions.
 
 ## Troubleshooting
 
@@ -217,7 +218,7 @@ production deployment instructions.
 1. **Check bridge is running**: `docker ps | grep astm-bridge`
 2. **Check port mapping**: Verify host port 12000 maps to container port 12001
 3. **Check firewall**: Ensure port 12000 is accessible from analyzer network
-4. **Check logs**: `docker logs astm-http-bridge`
+4. **Check logs**: `docker logs openelis-analyzer-bridge`
 
 ### Messages Not Reaching OpenELIS
 
@@ -282,7 +283,7 @@ astm:
 
 ```yaml
 # ASTM-HTTP Bridge Configuration
-# Reference: https://github.com/DIGI-UW/astm-http-bridge
+# Reference: https://github.com/DIGI-UW/openelis-analyzer-bridge
 
 org:
   itech:
@@ -375,7 +376,7 @@ OpenELIS, not the bridge.
 
 ### 4. Configuration Examples
 
-**File**: `tools/astm-http-bridge/configuration-examples/`
+**File**: `tools/openelis-analyzer-bridge/configuration-examples/`
 
 Create example configuration files:
 
@@ -385,7 +386,7 @@ Create example configuration files:
 
 ### 5. Architecture Diagram
 
-**File**: `tools/astm-http-bridge/docs/architecture.md`
+**File**: `tools/openelis-analyzer-bridge/docs/architecture.md`
 
 Create visual diagrams showing:
 - Multi-analyzer flow (multiple analyzers → bridge → OpenELIS)
@@ -397,7 +398,7 @@ Create visual diagrams showing:
 
 ## Implementation Tasks
 
-1. **TXXX**: Create enhanced README.md in bridge repository (`tools/astm-http-bridge/README.md`)
+1. **TXXX**: Create enhanced README.md in bridge repository (`tools/openelis-analyzer-bridge/README.md`)
    - Architecture overview (multi-analyzer, bi-directional)
    - Configuration property structure with correct property names
    - Multi-analyzer setup instructions
@@ -417,7 +418,7 @@ Create visual diagrams showing:
    - Bi-directional query flow explanation
    - Source IP header explanation (once bridge update is implemented)
 
-4. **TXXX**: Create configuration examples directory (`tools/astm-http-bridge/configuration-examples/`)
+4. **TXXX**: Create configuration examples directory (`tools/openelis-analyzer-bridge/configuration-examples/`)
    - `configuration-dev.yml.example` - Development setup
    - `configuration-prod.yml.example` - Production setup
    - `configuration-multi-analyzer.yml.example` - Multi-analyzer setup
