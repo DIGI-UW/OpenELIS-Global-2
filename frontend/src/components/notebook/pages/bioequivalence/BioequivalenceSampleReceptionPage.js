@@ -73,17 +73,6 @@ function BioequivalenceSampleReceptionPage({
   const canImportSamples = canRegisterData(pagePermissionLevel);
   const canEditMetadata = canSaveData(pagePermissionLevel);
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Sample Reception & Registration"
-        reason="This page requires specific bioequivalence laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   // Core state following established patterns
   const [isLoading, setIsLoading] = useState(false);
   const [samples, setSamples] = useState([]);
@@ -362,6 +351,17 @@ function BioequivalenceSampleReceptionPage({
   useEffect(() => {
     loadPageSamples();
   }, [loadPageSamples]);
+
+  // Check page access - show access denied if user lacks required roles
+  if (!canAccessPage) {
+    return (
+      <AccessDeniedMessage
+        page="Sample Reception & Registration"
+        reason="This page requires specific bioequivalence laboratory roles to access."
+        requiredRoles={allowedRoles}
+      />
+    );
+  }
 
   return (
     <div className="bioequivalence-page">

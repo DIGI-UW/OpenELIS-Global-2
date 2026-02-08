@@ -41,7 +41,8 @@ import "./BioanalyticalPages.css";
  */
 function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
   const intl = useIntl();
-  const { setNotificationVisible, addNotification } = useContext(NotificationContext);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
   const { hasAnyRole } = usePermissions();
 
   const notify = useCallback(
@@ -69,16 +70,6 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
   const pagePermissionLevel = getPagePermissionLevel("Storage & Archiving");
   const canApproveStorage = canApproveData(pagePermissionLevel);
   const canModifyStorage = canModify(pagePermissionLevel);
-
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Sample Storage & Archival"
-        reason="This page requires specific bioanalytical laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
 
   const [isLoading, setIsLoading] = useState(false);
   const [storageSamples, setStorageSamples] = useState([]);
@@ -1134,9 +1125,10 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
 
   // Helper function to get actionable samples (not transferred or disposed)
   const getActionableSamples = useCallback(() => {
-    return storageSamples.filter((sample) =>
-      sample.status !== "DISPOSED" &&
-      sample.status !== "BIOREPOSITORY_TRANSFER"
+    return storageSamples.filter(
+      (sample) =>
+        sample.status !== "DISPOSED" &&
+        sample.status !== "BIOREPOSITORY_TRANSFER",
     );
   }, [storageSamples]);
 
@@ -1145,23 +1137,29 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     if (selectedSamples.size === 0) return false;
     const actionableSamples = getActionableSamples();
     const selectedIds = Array.from(selectedSamples);
-    return selectedIds.some(id => actionableSamples.find(sample => sample.id === id));
+    return selectedIds.some((id) =>
+      actionableSamples.find((sample) => sample.id === id),
+    );
   }, [selectedSamples, getActionableSamples]);
 
   // Helper to get counts of selected sample statuses
   const selectedSampleStatuses = useMemo(() => {
     const selectedIds = Array.from(selectedSamples);
-    const transferredCount = selectedIds.filter(id => {
-      const sample = storageSamples.find(s => s.id === id);
+    const transferredCount = selectedIds.filter((id) => {
+      const sample = storageSamples.find((s) => s.id === id);
       return sample && sample.status === "BIOREPOSITORY_TRANSFER";
     }).length;
-    const disposedCount = selectedIds.filter(id => {
-      const sample = storageSamples.find(s => s.id === id);
+    const disposedCount = selectedIds.filter((id) => {
+      const sample = storageSamples.find((s) => s.id === id);
       return sample && sample.status === "DISPOSED";
     }).length;
-    const actionableCount = selectedIds.filter(id => {
-      const sample = storageSamples.find(s => s.id === id);
-      return sample && sample.status !== "BIOREPOSITORY_TRANSFER" && sample.status !== "DISPOSED";
+    const actionableCount = selectedIds.filter((id) => {
+      const sample = storageSamples.find((s) => s.id === id);
+      return (
+        sample &&
+        sample.status !== "BIOREPOSITORY_TRANSFER" &&
+        sample.status !== "DISPOSED"
+      );
     }).length;
 
     return { transferredCount, disposedCount, actionableCount };
@@ -1200,6 +1198,16 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     [],
   );
 
+  if (!canAccessPage) {
+    return (
+      <AccessDeniedMessage
+        page="Sample Storage & Archival"
+        reason="This page requires specific bioanalytical laboratory roles to access."
+        requiredRoles={allowedRoles}
+      />
+    );
+  }
+
   return (
     <div className="bioanalytical-page">
       <div className="page-instructions">
@@ -1216,7 +1224,6 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
           />
         </p>
       </div>
-
 
       <div style={{ paddingTop: "1.5rem" }}>
         <Grid>
@@ -1254,8 +1261,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                           defaultMessage="Total Samples:"
                         />
                       </strong>{" "}
-                      {storageSamples.length}
-                      {" "}
+                      {storageSamples.length}{" "}
                       <span style={{ color: "#525252" }}>
                         (
                         <FormattedMessage
@@ -1263,7 +1269,11 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                           defaultMessage="{actionable} actionable, {transferred} transferred"
                           values={{
                             actionable: getActionableSamples().length,
-                            transferred: storageSamples.filter(s => s.status === "BIOREPOSITORY_TRANSFER" || s.status === "DISPOSED").length
+                            transferred: storageSamples.filter(
+                              (s) =>
+                                s.status === "BIOREPOSITORY_TRANSFER" ||
+                                s.status === "DISPOSED",
+                            ).length,
                           }}
                         />
                         )
@@ -1277,7 +1287,9 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                             values={{ count: selectedSamples.size }}
                           />
                           {!hasActionableSelectedSamples && (
-                            <span style={{ color: "#fa4d56", marginLeft: "0.5rem" }}>
+                            <span
+                              style={{ color: "#fa4d56", marginLeft: "0.5rem" }}
+                            >
                               (already processed)
                             </span>
                           )}
@@ -1304,23 +1316,28 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                           selectedSamples.size === 0
                             ? "Select samples to transfer to biorepository"
                             : !hasActionableSelectedSamples
-                            ? "Selected samples have already been transferred or disposed"
-                            : "Transfer selected samples to biorepository for long-term storage"
+                              ? "Selected samples have already been transferred or disposed"
+                              : "Transfer selected samples to biorepository for long-term storage"
                         }
                       >
-                        {selectedSampleStatuses.transferredCount > 0 && selectedSampleStatuses.actionableCount === 0 ? (
+                        {selectedSampleStatuses.transferredCount > 0 &&
+                        selectedSampleStatuses.actionableCount === 0 ? (
                           <FormattedMessage
                             id="notebook.bioanalytical.storage.samplesAlreadyTransferred"
                             defaultMessage="{count} samples already transferred"
-                            values={{ count: selectedSampleStatuses.transferredCount }}
+                            values={{
+                              count: selectedSampleStatuses.transferredCount,
+                            }}
                           />
                         ) : selectedSampleStatuses.transferredCount > 0 ? (
                           <FormattedMessage
                             id="notebook.bioanalytical.storage.transferRemaining"
                             defaultMessage="Transfer {actionable} remaining ({transferred} already transferred)"
                             values={{
-                              actionable: selectedSampleStatuses.actionableCount,
-                              transferred: selectedSampleStatuses.transferredCount
+                              actionable:
+                                selectedSampleStatuses.actionableCount,
+                              transferred:
+                                selectedSampleStatuses.transferredCount,
                             }}
                           />
                         ) : (
@@ -1334,10 +1351,13 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                         kind="secondary"
                         onClick={() => setRetentionStorageModalOpen(true)}
                         disabled={
-                          isLoading || !(canModifyStorage || canApproveStorage) || !hasActionableSelectedSamples
+                          isLoading ||
+                          !(canModifyStorage || canApproveStorage) ||
+                          !hasActionableSelectedSamples
                         }
                         title={
-                          !hasActionableSelectedSamples && selectedSamples.size > 0
+                          !hasActionableSelectedSamples &&
+                          selectedSamples.size > 0
                             ? "Selected samples have already been transferred or disposed"
                             : "Place selected samples in retention storage"
                         }
@@ -1350,9 +1370,14 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                       <Button
                         kind="danger--tertiary"
                         onClick={() => setDisposalModalOpen(true)}
-                        disabled={isLoading || !canApproveStorage || !hasActionableSelectedSamples}
+                        disabled={
+                          isLoading ||
+                          !canApproveStorage ||
+                          !hasActionableSelectedSamples
+                        }
                         title={
-                          !hasActionableSelectedSamples && selectedSamples.size > 0
+                          !hasActionableSelectedSamples &&
+                          selectedSamples.size > 0
                             ? "Selected samples have already been transferred or disposed"
                             : "Schedule selected samples for disposal"
                         }
@@ -1374,9 +1399,11 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                       // Only allow selection of samples that haven't been transferred or disposed
                       const selectableSamples = ids.filter((id) => {
                         const sample = storageSamples.find((s) => s.id === id);
-                        return sample &&
-                               sample.status !== "DISPOSED" &&
-                               sample.status !== "BIOREPOSITORY_TRANSFER";
+                        return (
+                          sample &&
+                          sample.status !== "DISPOSED" &&
+                          sample.status !== "BIOREPOSITORY_TRANSFER"
+                        );
                       });
                       setSelectedSamples(new Set(selectableSamples));
                     }}
@@ -2164,7 +2191,9 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                 itemToString={(item) => (item ? item.text : "")}
                 selectedItem={
                   storageTemperature
-                    ? temperatureOptions.find((item) => item.id === storageTemperature)
+                    ? temperatureOptions.find(
+                        (item) => item.id === storageTemperature,
+                      )
                     : null
                 }
                 onChange={({ selectedItem }) => {

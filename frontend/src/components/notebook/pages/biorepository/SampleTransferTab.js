@@ -30,7 +30,10 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../../../common/CustomNotification";
+import {
+  AlertDialog,
+  NotificationKinds,
+} from "../../../common/CustomNotification";
 
 /**
  * SampleTransferTab - Sample Transfer Queue management
@@ -214,10 +217,12 @@ function SampleTransferTab() {
           id: "biorepository.transfer.error",
           defaultMessage: "Error",
         }),
-        subtitle: err.message || intl.formatMessage({
-          id: "biorepository.transfer.loadError",
-          defaultMessage: "Failed to load transfer data",
-        }),
+        subtitle:
+          err.message ||
+          intl.formatMessage({
+            id: "biorepository.transfer.loadError",
+            defaultMessage: "Failed to load transfer data",
+          }),
       });
       setLoading(false);
     }

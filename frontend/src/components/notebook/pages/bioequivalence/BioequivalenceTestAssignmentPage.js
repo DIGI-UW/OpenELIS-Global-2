@@ -241,17 +241,6 @@ function BioequivalenceTestAssignmentPage({
     });
   }
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Test Assignment & Preparation"
-        reason="This page requires specific bioequivalence laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   // Loading and data states
   const [isLoading, setIsLoading] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
@@ -1056,6 +1045,17 @@ function BioequivalenceTestAssignmentPage({
     notify,
     onProgressUpdate,
   ]);
+
+  // Check page access - show access denied if user lacks required roles
+  if (!canAccessPage) {
+    return (
+      <AccessDeniedMessage
+        page="Test Assignment & Preparation"
+        reason="This page requires specific bioequivalence laboratory roles to access."
+        requiredRoles={allowedRoles}
+      />
+    );
+  }
 
   return (
     <div className="bioequivalence-page">
