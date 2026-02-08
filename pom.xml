@@ -868,8 +868,8 @@
                                 <exclude>bin/**</exclude>
                                 <exclude>tmp/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
-                                <exclude>tools/astm-http-bridge/**</exclude>
-                                <exclude>tools/astm-mock-server/**</exclude>
+                                <exclude>tools/openelis-analyzer-bridge/**</exclude>
+                                <exclude>tools/analyzer-mock-server/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                             </excludes>
@@ -888,8 +888,8 @@
                                 <exclude>.cursor/**</exclude>
                                 <exclude>.claude/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
-                                <exclude>tools/astm-http-bridge/**</exclude>
-                                <exclude>tools/astm-mock-server/**</exclude>
+                                <exclude>tools/openelis-analyzer-bridge/**</exclude>
+                                <exclude>tools/analyzer-mock-server/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                                 <exclude>frontend/**</exclude>
