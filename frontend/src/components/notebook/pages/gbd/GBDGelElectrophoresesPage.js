@@ -29,7 +29,6 @@ import {
   postToOpenElisServer,
   postToOpenElisServerJsonResponse,
   getFromOpenElisServer,
-  postToOpenElisServerFormDataJsonResponse,
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
 import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
@@ -358,7 +357,7 @@ export const GBDGelElectrophoresesPage = ({
       const formData = new FormData();
       formData.append("file", file);
 
-      postToOpenElisServerFormDataJsonResponse(
+      postToOpenElisServerJsonResponse(
         `/rest/notebook/bulk/page/${pageData.id}/samples/upload-gel-image`,
         formData,
         (response) => {
@@ -368,7 +367,6 @@ export const GBDGelElectrophoresesPage = ({
             const filePath = response.filePath || response.fileName;
             setGelImageFilePath(filePath);
 
-            // Show success notification
             notify({
               kind: NotificationKinds.success,
               title: intl.formatMessage({
