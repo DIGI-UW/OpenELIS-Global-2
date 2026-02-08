@@ -40,7 +40,7 @@ docker compose logs -f oe.openelis.org | grep "Started"
 - OpenELIS webapp (`oe.openelis.org`) at `https://localhost`
 - PostgreSQL database (`openelisglobal-database`)
 - ASTM mock server (`astm-simulator`) at `172.20.1.100:5000`
-- ASTM-HTTP bridge (`astm-http-bridge`) at `172.20.1.101:12001`
+- ASTM-HTTP bridge (`openelis-analyzer-bridge`) at `172.20.1.101:12001`
 - Virtual serial ports (`virtual-serial`) at `/dev/serial/ttyVUSB0-4`
 
 ---
@@ -388,10 +388,10 @@ docker compose -f dev.docker-compose.yml -f analyzer-setup.docker-compose.yml up
 
 ```bash
 # Check bridge status
-docker ps | grep astm-http-bridge
+docker ps | grep openelis-analyzer-bridge
 
 # Check bridge logs for errors
-docker compose logs astm-http-bridge
+docker compose logs openelis-analyzer-bridge
 
 # Verify bridge can reach mock server
 docker exec openelis-astm-bridge ping -c 3 172.20.1.100
@@ -401,7 +401,7 @@ docker exec openelis-astm-bridge ping -c 3 172.20.1.100
 
 ```bash
 # Rebuild and restart bridge
-docker compose -f dev.docker-compose.yml -f analyzer-setup.docker-compose.yml up -d --no-deps --force-recreate astm-http-bridge
+docker compose -f dev.docker-compose.yml -f analyzer-setup.docker-compose.yml up -d --no-deps --force-recreate openelis-analyzer-bridge
 ```
 
 ---
@@ -651,8 +651,8 @@ Generic test is successful when ALL of the following pass:
   template to fixture mapping
 - [Mock Server README](../../tools/analyzer-mock-server/README.md) - Mock server
   usage guide
-- [ASTM Bridge README](../../tools/astm-http-bridge/README.md) - Bridge setup
-  and configuration
+- [ASTM Bridge README](../../tools/openelis-analyzer-bridge/README.md) - Bridge
+  setup and configuration
 
 ---
 

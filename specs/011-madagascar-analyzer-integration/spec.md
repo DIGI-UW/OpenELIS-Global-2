@@ -908,7 +908,7 @@ complete:
 - **Feature 004 Specification**: `specs/004-astm-analyzer-mapping/spec.md`
 - **Existing Plugins**:
   https://github.com/DIGI-UW/openelisglobal-plugins/tree/develop/analyzers
-- **ASTM-HTTP Bridge**: https://github.com/DIGI-UW/astm-http-bridge
+- **ASTM-HTTP Bridge**: https://github.com/DIGI-UW/openelis-analyzer-bridge
 - **Analyzer Mock Server** (Multi-Protocol Analyzer Simulator):
   https://github.com/DIGI-UW/analyzer-mock-server - Supports ASTM, HL7 v2.x,
   RS232 simulation, and file-based result generation for analyzer testing

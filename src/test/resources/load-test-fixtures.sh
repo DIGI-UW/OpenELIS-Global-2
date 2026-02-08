@@ -93,6 +93,18 @@ if [ $? -ne 0 ]; then
     echo "ERROR: Failed to generate SQL from XML"
     exit 1
 fi
+
+# Generate analyzer E2E SQL from DBUnit XML (Feature 011, IDs 2000-2012)
+ANALYZER_E2E_XML="$SCRIPT_DIR/testdata/madagascar-analyzer-test-data.xml"
+ANALYZER_E2E_SQL="$SCRIPT_DIR/testdata/analyzer-e2e.generated.sql"
+if [ -f "$ANALYZER_E2E_XML" ]; then
+    echo "Generating analyzer E2E SQL from DBUnit XML..."
+    python3 "$XML_TO_SQL_SCRIPT" "$ANALYZER_E2E_XML" "$ANALYZER_E2E_SQL" \
+        --on-conflict-do-nothing
+    if [ $? -ne 0 ]; then
+        echo "WARNING: Failed to generate analyzer E2E SQL (non-fatal)"
+    fi
+fi
 echo ""
 
 # Reset database if requested
@@ -328,10 +340,10 @@ if [ "$USE_DOCKER" = true ]; then
     fi
 
     # Load unified analyzer fixtures (IDs 2000-2012) from canonical SQL
-    ANALYZER_E2E_SQL="$SCRIPT_DIR/testdata/analyzer-e2e.generated.sql"
     if [ -f "$ANALYZER_E2E_SQL" ]; then
         echo "Loading analyzer fixtures (analyzer-e2e.generated.sql)..."
-        if load_sql "$ANALYZER_E2E_SQL" "$USE_DOCKER" "$DB_USER" "$DB_NAME" "$DB_HOST" "$DB_PORT"; then
+        docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims < "$ANALYZER_E2E_SQL"
+        if [ $? -eq 0 ]; then
             echo "✅ Analyzer fixtures loaded (12 analyzers 2000-2012)"
         else
             echo "⚠️  WARNING: Analyzer fixture loading failed (non-fatal; manually load if needed: $ANALYZER_E2E_SQL)"
@@ -419,6 +431,18 @@ else
         echo ""
     else
         echo "⚠️  WARNING: analyzer-test-data.sql not found; skipping analyzer fixtures"
+        echo ""
+    fi
+
+    # Load unified analyzer fixtures (IDs 2000-2012) from canonical SQL
+    if [ -f "$ANALYZER_E2E_SQL" ]; then
+        echo "Loading analyzer fixtures (analyzer-e2e.generated.sql)..."
+        psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -f "$ANALYZER_E2E_SQL"
+        if [ $? -eq 0 ]; then
+            echo "✅ Analyzer fixtures loaded (12 analyzers 2000-2012)"
+        else
+            echo "⚠️  WARNING: Analyzer fixture loading failed (non-fatal)"
+        fi
         echo ""
     fi
 

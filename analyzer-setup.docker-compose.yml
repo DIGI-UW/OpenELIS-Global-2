@@ -83,7 +83,7 @@ services:
   # ============================================================================
   openelis-analyzer-bridge:
     image: itechuw/openelis-analyzer-bridge:latest
-    container_name: openelis-astm-bridge
+    container_name: openelis-analyzer-bridge
     ports:
       - "8442:8443"   # HTTPS API port
       - "12000:12001" # ASTM listen port

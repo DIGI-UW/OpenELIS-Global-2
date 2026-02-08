@@ -1,8 +1,8 @@
 # Universal Analyzer Bridge Implementation Plan
 
-**Goal**: Extend `tools/astm-http-bridge` to become a Universal Analyzer Bridge
-that handles ALL analyzer communication, forwarding normalized messages to
-OpenELIS via HTTP.
+**Goal**: Extend `tools/openelis-analyzer-bridge` to become a Universal Analyzer
+Bridge that handles ALL analyzer communication, forwarding normalized messages
+to OpenELIS via HTTP.
 
 **Core Principle**: OpenELIS receives ONE standard HTTP format regardless of how
 the analyzer sent data.
@@ -13,10 +13,10 @@ the analyzer sent data.
 
 ### Two Separate Repositories (Updated: Hybrid Approach)
 
-| Repository                                                                  | Purpose                            | Milestones                           |
-| --------------------------------------------------------------------------- | ---------------------------------- | ------------------------------------ |
-| **[DIGI-UW/astm-http-bridge](https://github.com/DIGI-UW/astm-http-bridge)** | Protocol bridge (Java Spring Boot) | **M1-M8** (listeners, routing)       |
-| **[OpenELIS-Global-2](https://github.com/I-TECH-UW/OpenELIS-Global-2)**     | Main OpenELIS application          | **M2, M4, M9** (new endpoints, docs) |
+| Repository                                                                                  | Purpose                            | Milestones                           |
+| ------------------------------------------------------------------------------------------- | ---------------------------------- | ------------------------------------ |
+| **[DIGI-UW/openelis-analyzer-bridge](https://github.com/DIGI-UW/openelis-analyzer-bridge)** | Protocol bridge (Java Spring Boot) | **M1-M8** (listeners, routing)       |
+| **[OpenELIS-Global-2](https://github.com/I-TECH-UW/OpenELIS-Global-2)**                     | Main OpenELIS application          | **M2, M4, M9** (new endpoints, docs) |
 
 ### Branch Naming Convention
 
@@ -35,7 +35,7 @@ the analyzer sent data.
 ### PR Dependency Chain
 
 ```
-BRIDGE REPO (DIGI-UW/astm-http-bridge):
+BRIDGE REPO (DIGI-UW/openelis-analyzer-bridge):
 ┌──────────────────────────────────────────────────────────────┐
 │ PR #1: M1 → main                                             │
 │   feat/universal-bridge-foundation → main                    │
@@ -79,21 +79,21 @@ OPENELIS REPO (I-TECH-UW/OpenELIS-Global-2):
 ### Critical Rules
 
 1. **M1-M8 = Bridge Repo ONLY** - ALL Java code changes go to
-   `DIGI-UW/astm-http-bridge`
+   `DIGI-UW/openelis-analyzer-bridge`
 2. **M9 = OpenELIS Repo ONLY** - Documentation updates to spec files
 3. **No OpenELIS code changes** - Bridge handles ALL protocol/transport logic
-4. **Submodule update** - After M8 merges, update `tools/astm-http-bridge`
-   submodule in OpenELIS to v2.0.0
+4. **Submodule update** - After M8 merges, update
+   `tools/openelis-analyzer-bridge` submodule in OpenELIS to v2.0.0
 
 ### Working with the Bridge Submodule
 
 **You can work directly in the submodule!**
-`OpenELIS-Global-2/tools/astm-http-bridge/` is a full git repository.
+`OpenELIS-Global-2/tools/openelis-analyzer-bridge/` is a full git repository.
 
 ```bash
 # For M1-M8 (Bridge work) - work directly in submodule:
-cd OpenELIS-Global-2/tools/astm-http-bridge/
-git remote -v  # Should show: https://github.com/DIGI-UW/astm-http-bridge.git
+cd OpenELIS-Global-2/tools/openelis-analyzer-bridge/
+git remote -v  # Should show: https://github.com/DIGI-UW/openelis-analyzer-bridge.git
 
 # For M9 (OpenELIS docs) - work in parent repo:
 cd OpenELIS-Global-2/
@@ -104,11 +104,11 @@ git remote -v  # Should show: https://github.com/I-TECH-UW/OpenELIS-Global-2.git
 
 ```bash
 # After PR #1 (M1) merges to bridge repo:
-cd OpenELIS-Global-2/tools/astm-http-bridge/
+cd OpenELIS-Global-2/tools/openelis-analyzer-bridge/
 git pull origin main  # Pull latest bridge changes
 
 cd ../../  # Back to OpenELIS-Global-2/
-git add tools/astm-http-bridge  # Update submodule reference
+git add tools/openelis-analyzer-bridge  # Update submodule reference
 git commit -m "Update bridge submodule after M1 merge"
 git push origin your-branch
 
@@ -122,7 +122,7 @@ git push origin your-branch
 ```
 ┌───────────────────────────────────────────────────────────────────────────────┐
 │                UNIVERSAL ANALYZER BRIDGE (Single Java Process)                │
-│                     tools/astm-http-bridge (extended)                         │
+│                     tools/openelis-analyzer-bridge (extended)                         │
 ├───────────────────────────────────────────────────────────────────────────────┤
 │                                                                               │
 │  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐      │
@@ -319,7 +319,7 @@ endpoint later
 
 **Repository Summary**:
 
-- **M1-M8**: `DIGI-UW/astm-http-bridge` (8 milestones, ALL code)
+- **M1-M8**: `DIGI-UW/openelis-analyzer-bridge` (8 milestones, ALL code)
 - **M9**: `I-TECH-UW/OpenELIS-Global-2` (1 milestone, docs only)
 
 ---
@@ -328,7 +328,7 @@ endpoint later
 
 ### M1: Foundation (Days 1-2) — BLOCKING
 
-**Repository**: `DIGI-UW/astm-http-bridge` **Branch**:
+**Repository**: `DIGI-UW/openelis-analyzer-bridge` **Branch**:
 `feat/universal-bridge-foundation` **Worktree**: main (blocking - must complete
 first)
 
@@ -362,7 +362,7 @@ public static Protocol detect(String message) {
 
 #### M2a: Bridge - MLLP Listener
 
-**Repository**: `DIGI-UW/astm-http-bridge` **Branch**:
+**Repository**: `DIGI-UW/openelis-analyzer-bridge` **Branch**:
 `feat/universal-bridge-mllp` **Worktree**: bridge-worktree-a **Depends on**: M1
 
 | Task | Description                                     | File                         |
@@ -433,7 +433,7 @@ public class AnalyzerHL7Controller {
 
 ### M3: Serial Listener (Days 3-6) — BRIDGE ONLY
 
-**Repository**: `DIGI-UW/astm-http-bridge` **Branch**:
+**Repository**: `DIGI-UW/openelis-analyzer-bridge` **Branch**:
 `feat/universal-bridge-serial` **Worktree**: bridge-worktree-b **Depends on**:
 M1
 
@@ -459,7 +459,7 @@ M1
 
 #### M4a: Bridge - File Watcher
 
-**Repository**: `DIGI-UW/astm-http-bridge` **Branch**:
+**Repository**: `DIGI-UW/openelis-analyzer-bridge` **Branch**:
 `feat/universal-bridge-file` **Worktree**: bridge-worktree-c **Depends on**: M1
 
 | Task | Description                                       | File                                |
@@ -510,7 +510,7 @@ public class AnalyzerCSVController {
 
 ### M5: HTTP Input Listener (Days 7-8) — BRIDGE ONLY
 
-**Repository**: `DIGI-UW/astm-http-bridge` **Branch**:
+**Repository**: `DIGI-UW/openelis-analyzer-bridge` **Branch**:
 `feat/universal-bridge-http-input` **Worktree**: bridge-worktree-d **Depends
 on**: M2 OR M3 (needs normalizer interface pattern)
 
@@ -526,7 +526,7 @@ on**: M2 OR M3 (needs normalizer interface pattern)
 
 ### M6: ASTM Enhancements (Days 3-4) — WORKTREE E
 
-**Repository**: `DIGI-UW/astm-http-bridge` **Branch**:
+**Repository**: `DIGI-UW/openelis-analyzer-bridge` **Branch**:
 `feat/universal-bridge-astm-enhance` **Worktree**: worktree-e (parallel with M2,
 M3, M4) **Depends on**: M1
 
@@ -541,7 +541,7 @@ M3, M4) **Depends on**: M1
 
 ### M7: Message Normalizer (Days 9-11) — INTEGRATION
 
-**Repository**: `DIGI-UW/astm-http-bridge` **Branch**:
+**Repository**: `DIGI-UW/openelis-analyzer-bridge` **Branch**:
 `feat/universal-bridge-normalizer` **Worktree**: main (integration work after
 all listeners complete) **Depends on**: M2, M3, M4, M5, M6
 
@@ -562,7 +562,7 @@ all listeners complete) **Depends on**: M2, M3, M4, M5, M6
 
 ### M8: Integration & Deployment (Days 12-15)
 
-**Repository**: `DIGI-UW/astm-http-bridge` **Branch**:
+**Repository**: `DIGI-UW/openelis-analyzer-bridge` **Branch**:
 `feat/universal-bridge-integration` **Worktree**: main (final bridge repo work)
 **Depends on**: M7
 
@@ -655,7 +655,7 @@ that handles ALL analyzer transports, not just ASTM/TCP.
 ## Configuration Schema
 
 ```yaml
-# tools/astm-http-bridge/application.yml
+# tools/openelis-analyzer-bridge/application.yml
 bridge:
   # OpenELIS connection (output)
   openelis:
@@ -785,7 +785,7 @@ main (or develop)
 
 ```bash
 # Work directly in the submodule
-cd OpenELIS-Global-2/tools/astm-http-bridge/
+cd OpenELIS-Global-2/tools/openelis-analyzer-bridge/
 
 # Create M1 branch and complete foundation work
 git checkout -b feat/universal-bridge-foundation
@@ -812,7 +812,7 @@ cd ../bridge-worktree-b     # Work on M3 (Serial)
 
 ### PR Strategy (Repository-Specific)
 
-**Bridge Repo PRs** (`DIGI-UW/astm-http-bridge`):
+**Bridge Repo PRs** (`DIGI-UW/openelis-analyzer-bridge`):
 
 ```
 PR #1: feat/universal-bridge-foundation → main (M1)
@@ -844,7 +844,7 @@ PR #8: feat/universal-bridge-integration → main (M8)
 **OpenELIS Repo PRs** (`I-TECH-UW/OpenELIS-Global-2`):
 
 ```
-PR #9: Update tools/astm-http-bridge submodule to v2.0.0
+PR #9: Update tools/openelis-analyzer-bridge submodule to v2.0.0
   (after bridge PR #8 merges and is tagged)
 
 PR #10: docs/universal-bridge-spec-alignment → develop (M9)
@@ -859,15 +859,15 @@ the new commit:
 
 ```bash
 # 1. Pull latest bridge changes in the submodule
-cd OpenELIS-Global-2/tools/astm-http-bridge/
+cd OpenELIS-Global-2/tools/openelis-analyzer-bridge/
 git checkout main
 git pull origin main
 
 # 2. Go to parent repo and commit the submodule reference update
 cd ../../  # Back to OpenELIS-Global-2/
-git status  # Will show: modified: tools/astm-http-bridge (new commits)
+git status  # Will show: modified: tools/openelis-analyzer-bridge (new commits)
 
-git add tools/astm-http-bridge
+git add tools/openelis-analyzer-bridge
 git commit -m "Update bridge submodule: <describe what merged>"
 # Example: "Update bridge submodule: Add MLLP listener (M2)"
 
@@ -925,7 +925,7 @@ starting M9.
 
 ```bash
 # Build
-cd tools/astm-http-bridge && mvn clean install -DskipTests
+cd tools/openelis-analyzer-bridge && mvn clean install -DskipTests
 
 # Run
 java -jar target/astm-http-app.jar

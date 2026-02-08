@@ -32,7 +32,7 @@ services:
       - "8442:8443" # HTTPS API port
       - "12000:12001" # ASTM listen port
     volumes:
-      - ./volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
+      - ../../volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - LOGGING_LEVEL_ORG_ITECH=INFO

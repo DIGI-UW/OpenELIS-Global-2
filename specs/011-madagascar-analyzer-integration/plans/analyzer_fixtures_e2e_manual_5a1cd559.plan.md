@@ -133,7 +133,7 @@ This already:
 
 - Stops stack, removes volumes (`--full-reset`)
 - Starts `docker-compose.dev.yml` + `docker-compose.analyzer-test.yml`:
-  - ASTM-HTTP bridge (`astm-http-bridge:12001`)
+  - ASTM-HTTP bridge (`openelis-analyzer-bridge:12001`)
   - ASTM simulator (`172.20.1.100:5000`)
   - Virtual serial ports (`/dev/serial/ttyVUSB0-4`)
 - Waits for webapp
@@ -170,7 +170,7 @@ templates.
 #### 6. Verify analyzer infrastructure
 
 ```bash
-docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "astm-http-bridge|astm-simulator|virtual-serial"
+docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "openelis-analyzer-bridge|astm-simulator|virtual-serial"
 ```
 
 ### Phase 2: Unify analyzer fixtures into one SQL artifact (manual + E2E/CI)
@@ -298,7 +298,7 @@ command can load one authoritative analyzer fixture SQL artifact.
 
 **Analyzer infrastructure** (docker-compose.analyzer-test.yml):
 
-- ASTM bridge at `astm-http-bridge:12001` (for TCP ASTM analyzers)
+- ASTM bridge at `openelis-analyzer-bridge:12001` (for TCP ASTM analyzers)
 - ASTM simulator at `172.20.1.100:5000` (for fixture CONFIG-001)
 - Virtual serial `/dev/serial/ttyVUSB0-4` (for RS232 analyzers like BA-88A,
   Pentra 60)

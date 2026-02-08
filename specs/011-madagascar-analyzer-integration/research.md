@@ -1015,14 +1015,14 @@ public class MyAnalyzer implements AnalyzerImporterPlugin {
 
 **CRITICAL**: Two separate tools exist with different purposes:
 
-| Tool                     | Purpose                                                           | Language |
-| ------------------------ | ----------------------------------------------------------------- | -------- |
-| **astm-http-bridge**     | Production ASTM adapter (between physical analyzers and OpenELIS) | Java     |
-| **analyzer-mock-server** | Testing simulator (simulates analyzers for development/CI)        | Python   |
+| Tool                         | Purpose                                                           | Language |
+| ---------------------------- | ----------------------------------------------------------------- | -------- |
+| **openelis-analyzer-bridge** | Production ASTM adapter (between physical analyzers and OpenELIS) | Java     |
+| **analyzer-mock-server**     | Testing simulator (simulates analyzers for development/CI)        | Python   |
 
 Feature 011 expands **analyzer-mock-server** to support multiple protocols (HL7,
-RS232, File) for comprehensive testing. The production **astm-http-bridge**
-remains unchanged.
+RS232, File) for comprehensive testing. The production
+**openelis-analyzer-bridge** remains unchanged.
 
 ---
 

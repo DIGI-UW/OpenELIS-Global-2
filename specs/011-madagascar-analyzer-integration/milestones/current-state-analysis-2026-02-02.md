@@ -216,7 +216,7 @@ need validation testing to confirm integration.
 **M2: RS232 Bridge**
 
 - ✅ SerialPortConfiguration entity + DAO + Service + Controller
-- ✅ astm-http-bridge extended with jSerialComm
+- ✅ openelis-analyzer-bridge extended with jSerialComm
 - ✅ SerialPortListener, SerialToAstmTranslator created
 - ✅ Liquibase changeset 011-001
 - ✅ Frontend SerialConfiguration component
@@ -314,7 +314,7 @@ tested.
 | ---------------- | ----------- | --------------------------------------------------------- |
 | **ASTM**         | ✅ COMPLETE | ASTMAnalyzerReader (Feature 004), astm_handler.py         |
 | **HL7 v2.x**     | ✅ COMPLETE | HL7AnalyzerReader.java, HL7MessageService, hl7_handler.py |
-| **RS232 Serial** | ✅ COMPLETE | astm-http-bridge extended, serial_handler.py              |
+| **RS232 Serial** | ✅ COMPLETE | openelis-analyzer-bridge extended, serial_handler.py      |
 | **File-Based**   | ✅ COMPLETE | FileAnalyzerReader.java, file_handler.py                  |
 
 All 4 contract-required protocols are fully implemented and tested.
