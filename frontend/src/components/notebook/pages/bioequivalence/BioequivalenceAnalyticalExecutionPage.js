@@ -124,17 +124,6 @@ function BioequivalenceAnalyticalExecutionPage({
     });
   }
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Analytical Test Execution"
-        reason="This page requires specific bioequivalence laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   // ============================================================================
   // CORE STATE
   // ============================================================================
@@ -1212,6 +1201,17 @@ function BioequivalenceAnalyticalExecutionPage({
       setSelectedSampleIds(sampleTableRows.map((row) => row.id));
     }
   }, [allSelected, sampleTableRows]);
+
+  // Check page access - show access denied if user lacks required roles
+  if (!canAccessPage) {
+    return (
+      <AccessDeniedMessage
+        page="Analytical Test Execution"
+        reason="This page requires specific bioequivalence laboratory roles to access."
+        requiredRoles={allowedRoles}
+      />
+    );
+  }
 
   // ============================================================================
   // LOADING STATE

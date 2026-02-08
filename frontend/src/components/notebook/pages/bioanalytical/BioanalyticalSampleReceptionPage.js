@@ -12,7 +12,7 @@ import {
   Select,
   SelectItem,
   DatePicker,
-  DatePickerInput
+  DatePickerInput,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
@@ -89,17 +89,6 @@ function BioanalyticalSampleReceptionPage({
   const canImportSamples = canRegisterData(pagePermissionLevel);
   const canEditMetadata = canSaveData(pagePermissionLevel);
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Sample Reception & Registration"
-        reason="This page requires specific bioanalytical laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   // Core state following established patterns
   const [isLoading, setIsLoading] = useState(false);
   const [samples, setSamples] = useState([]);
@@ -110,7 +99,8 @@ function BioanalyticalSampleReceptionPage({
   const [isBulkApplyModalOpen, setIsBulkApplyModalOpen] = useState(false);
 
   // QC Verification modal state
-  const [isQCVerificationModalOpen, setIsQCVerificationModalOpen] = useState(false);
+  const [isQCVerificationModalOpen, setIsQCVerificationModalOpen] =
+    useState(false);
   const [qcVerificationData, setQcVerificationData] = useState({
     volumeAdequate: false,
     containerIntegrity: false,
@@ -135,9 +125,9 @@ function BioanalyticalSampleReceptionPage({
         controlBatch: "",
         expiryDate: "",
         storageCondition: "",
-        supplier: ""
-      }
-    }
+        supplier: "",
+      },
+    },
   });
 
   // Progress tracking
@@ -322,9 +312,9 @@ function BioanalyticalSampleReceptionPage({
           controlBatch: "",
           expiryDate: "",
           storageCondition: "",
-          supplier: ""
-        }
-      }
+          supplier: "",
+        },
+      },
     });
 
     setIsQCVerificationModalOpen(true);
@@ -332,7 +322,8 @@ function BioanalyticalSampleReceptionPage({
 
   // Handle QC Verification submission
   const handleQCVerificationSubmit = useCallback(async () => {
-    const hasRealPageId = pageData?.id && !String(pageData.id).startsWith("default-");
+    const hasRealPageId =
+      pageData?.id && !String(pageData.id).startsWith("default-");
 
     if (!hasRealPageId) {
       addNotification({
@@ -367,7 +358,9 @@ function BioanalyticalSampleReceptionPage({
         chainOfCustody: Boolean(qcVerificationData.chainOfCustody),
         comments: String(qcVerificationData.comments || ""),
         measuredVolume: String(qcVerificationData.measuredVolume || ""),
-        measuredTemperature: String(qcVerificationData.measuredTemperature || ""),
+        measuredTemperature: String(
+          qcVerificationData.measuredTemperature || "",
+        ),
         qcPerformed: true,
         qcDate: new Date().toISOString(),
         passedChecks,
@@ -378,19 +371,38 @@ function BioanalyticalSampleReceptionPage({
       // Control Sample Classification
       sampleClassification: {
         type: String(controlSampleData.sampleClassification.type),
-        isControlSample: Boolean(controlSampleData.sampleClassification.isControlSample),
-        controlType: String(controlSampleData.sampleClassification.controlType || ""),
-        controlCategory: String(controlSampleData.sampleClassification.controlCategory || ""),
-        expectedResult: String(controlSampleData.sampleClassification.expectedResult || ""),
-        controlSource: String(controlSampleData.sampleClassification.controlSource || ""),
+        isControlSample: Boolean(
+          controlSampleData.sampleClassification.isControlSample,
+        ),
+        controlType: String(
+          controlSampleData.sampleClassification.controlType || "",
+        ),
+        controlCategory: String(
+          controlSampleData.sampleClassification.controlCategory || "",
+        ),
+        expectedResult: String(
+          controlSampleData.sampleClassification.expectedResult || "",
+        ),
+        controlSource: String(
+          controlSampleData.sampleClassification.controlSource || "",
+        ),
         batchInfo: {
-          controlBatch: String(controlSampleData.sampleClassification.batchInfo.controlBatch || ""),
-          expiryDate: String(controlSampleData.sampleClassification.batchInfo.expiryDate || ""),
-          storageCondition: String(controlSampleData.sampleClassification.batchInfo.storageCondition || ""),
-          supplier: String(controlSampleData.sampleClassification.batchInfo.supplier || "")
+          controlBatch: String(
+            controlSampleData.sampleClassification.batchInfo.controlBatch || "",
+          ),
+          expiryDate: String(
+            controlSampleData.sampleClassification.batchInfo.expiryDate || "",
+          ),
+          storageCondition: String(
+            controlSampleData.sampleClassification.batchInfo.storageCondition ||
+              "",
+          ),
+          supplier: String(
+            controlSampleData.sampleClassification.batchInfo.supplier || "",
+          ),
         },
         classificationDate: new Date().toISOString(),
-        classificationBy: "current_user" // In real implementation, get from user context
+        classificationBy: "current_user", // In real implementation, get from user context
       },
     };
 
@@ -416,7 +428,9 @@ function BioanalyticalSampleReceptionPage({
           const failedSamples = selectedSampleIds.length - passedSamples;
 
           addNotification({
-            kind: qcPassed ? NotificationKinds.success : NotificationKinds.warning,
+            kind: qcPassed
+              ? NotificationKinds.success
+              : NotificationKinds.warning,
             title: "QC Verification Complete",
             message: `${selectedSampleIds.length} sample(s) processed. ${passedSamples} passed, ${failedSamples} failed QC.`,
           });
@@ -437,7 +451,13 @@ function BioanalyticalSampleReceptionPage({
         }
       },
     );
-  }, [selectedSampleIds, pageData?.id, qcVerificationData, addNotification, onProgressUpdate]);
+  }, [
+    selectedSampleIds,
+    pageData?.id,
+    qcVerificationData,
+    addNotification,
+    onProgressUpdate,
+  ]);
 
   // Render QC Status for sample grid
   const renderQCStatus = useCallback((value, sample) => {
@@ -448,12 +468,20 @@ function BioanalyticalSampleReceptionPage({
     console.log("renderQCStatus - sample:", sample);
     console.log("renderQCStatus - sampleData:", sampleData);
     console.log("renderQCStatus - sampleData.data:", sampleData?.data);
-    console.log("renderQCStatus - sampleData.receptionQC:", sampleData?.receptionQC);
-    console.log("renderQCStatus - sampleData.data.receptionQC:", sampleData?.data?.receptionQC);
+    console.log(
+      "renderQCStatus - sampleData.receptionQC:",
+      sampleData?.receptionQC,
+    );
+    console.log(
+      "renderQCStatus - sampleData.data.receptionQC:",
+      sampleData?.data?.receptionQC,
+    );
 
     // Safety check for undefined sample
-    if (!sampleData || typeof sampleData !== 'object') {
-      console.log("renderQCStatus - returning QC Pending due to invalid sampleData");
+    if (!sampleData || typeof sampleData !== "object") {
+      console.log(
+        "renderQCStatus - returning QC Pending due to invalid sampleData",
+      );
       return (
         <Tag type="gray" size="sm" title="QC not yet performed">
           QC Pending
@@ -468,7 +496,9 @@ function BioanalyticalSampleReceptionPage({
     console.log("renderQCStatus - qc:", qc);
 
     if (!qc || !qc.qcPerformed) {
-      console.log("renderQCStatus - returning QC Pending due to no QC data or qcPerformed=false");
+      console.log(
+        "renderQCStatus - returning QC Pending due to no QC data or qcPerformed=false",
+      );
       return (
         <Tag type="gray" size="sm" title="QC not yet performed">
           QC Pending
@@ -507,7 +537,7 @@ function BioanalyticalSampleReceptionPage({
     const sampleData = sample || value;
 
     // Safety check for undefined sample
-    if (!sampleData || typeof sampleData !== 'object') {
+    if (!sampleData || typeof sampleData !== "object") {
       return (
         <Tag type="gray" size="sm" title="No classification">
           Study Sample
@@ -530,15 +560,35 @@ function BioanalyticalSampleReceptionPage({
     const getControlTypeDisplay = () => {
       switch (classification.type) {
         case "POSITIVE_CONTROL":
-          return { type: "green", text: "Positive Ctrl", title: `Positive Control - ${classification.controlType || 'Generic'}` };
+          return {
+            type: "green",
+            text: "Positive Ctrl",
+            title: `Positive Control - ${classification.controlType || "Generic"}`,
+          };
         case "NEGATIVE_CONTROL":
-          return { type: "red", text: "Negative Ctrl", title: `Negative Control - ${classification.controlType || 'Generic'}` };
+          return {
+            type: "red",
+            text: "Negative Ctrl",
+            title: `Negative Control - ${classification.controlType || "Generic"}`,
+          };
         case "QC_SAMPLE":
-          return { type: "blue", text: "QC Sample", title: `QC Sample - ${classification.controlType || 'Generic'}` };
+          return {
+            type: "blue",
+            text: "QC Sample",
+            title: `QC Sample - ${classification.controlType || "Generic"}`,
+          };
         case "BLANK":
-          return { type: "purple", text: "Blank", title: `Blank Control - ${classification.controlType || 'Generic'}` };
+          return {
+            type: "purple",
+            text: "Blank",
+            title: `Blank Control - ${classification.controlType || "Generic"}`,
+          };
         default:
-          return { type: "cyan", text: "Control", title: `Control Sample - ${classification.type}` };
+          return {
+            type: "cyan",
+            text: "Control",
+            title: `Control Sample - ${classification.type}`,
+          };
       }
     };
 
@@ -674,6 +724,17 @@ function BioanalyticalSampleReceptionPage({
   useEffect(() => {
     loadPageSamples();
   }, [loadPageSamples]);
+
+  // Check page access - show access denied if user lacks required roles
+  if (!canAccessPage) {
+    return (
+      <AccessDeniedMessage
+        page="Sample Reception & Registration"
+        reason="This page requires specific bioanalytical laboratory roles to access."
+        requiredRoles={allowedRoles}
+      />
+    );
+  }
 
   return (
     <div className="bioanalytical-page">
@@ -826,16 +887,20 @@ function BioanalyticalSampleReceptionPage({
                   size="sm"
                   renderIcon={Chemistry}
                   onClick={handleQCVerificationModalOpen}
-                  disabled={selectedSampleIds.length === 0 || !canSaveData(pagePermissionLevel)}
+                  disabled={
+                    selectedSampleIds.length === 0 ||
+                    !canSaveData(pagePermissionLevel)
+                  }
                   title={
                     selectedSampleIds.length === 0
                       ? "Select samples to perform QC verification"
                       : !canSaveData(pagePermissionLevel)
-                      ? intl.formatMessage({
-                          id: "notebook.bioanalytical.stage1.insufficientPermissionsQC",
-                          defaultMessage: "Insufficient permissions for QC verification",
-                        })
-                      : `Perform QC verification on ${selectedSampleIds.length} selected sample(s)`
+                        ? intl.formatMessage({
+                            id: "notebook.bioanalytical.stage1.insufficientPermissionsQC",
+                            defaultMessage:
+                              "Insufficient permissions for QC verification",
+                          })
+                        : `Perform QC verification on ${selectedSampleIds.length} selected sample(s)`
                   }
                 >
                   <FormattedMessage
@@ -1703,13 +1768,19 @@ function BioanalyticalSampleReceptionPage({
       >
         <div className="qc-verification-form">
           <p style={{ marginBottom: "1rem", color: "#6f6f6f" }}>
-            Complete quality control verification for the selected samples.
-            All criteria must pass for QC approval.
+            Complete quality control verification for the selected samples. All
+            criteria must pass for QC approval.
           </p>
 
           {/* QC Checklist */}
           <div style={{ marginBottom: "1.5rem" }}>
-            <h5 style={{ marginBottom: "1rem", fontSize: "1rem", fontWeight: "500" }}>
+            <h5
+              style={{
+                marginBottom: "1rem",
+                fontSize: "1rem",
+                fontWeight: "500",
+              }}
+            >
               Reception QC Criteria:
             </h5>
 
@@ -1719,7 +1790,10 @@ function BioanalyticalSampleReceptionPage({
                 labelText="Volume Adequate (≥2.0mL for bioanalysis)"
                 checked={qcVerificationData.volumeAdequate}
                 onChange={(checked, { name, id }) =>
-                  setQcVerificationData(prev => ({ ...prev, volumeAdequate: checked }))
+                  setQcVerificationData((prev) => ({
+                    ...prev,
+                    volumeAdequate: checked,
+                  }))
                 }
                 disabled={isLoading}
               />
@@ -1729,7 +1803,10 @@ function BioanalyticalSampleReceptionPage({
                 labelText="Container integrity acceptable (no cracks, leaks, contamination)"
                 checked={qcVerificationData.containerIntegrity}
                 onChange={(checked, { name, id }) =>
-                  setQcVerificationData(prev => ({ ...prev, containerIntegrity: checked }))
+                  setQcVerificationData((prev) => ({
+                    ...prev,
+                    containerIntegrity: checked,
+                  }))
                 }
                 disabled={isLoading}
               />
@@ -1739,7 +1816,10 @@ function BioanalyticalSampleReceptionPage({
                 labelText="Temperature maintained during transport (2-8°C)"
                 checked={qcVerificationData.temperatureOK}
                 onChange={(checked, { name, id }) =>
-                  setQcVerificationData(prev => ({ ...prev, temperatureOK: checked }))
+                  setQcVerificationData((prev) => ({
+                    ...prev,
+                    temperatureOK: checked,
+                  }))
                 }
                 disabled={isLoading}
               />
@@ -1749,7 +1829,10 @@ function BioanalyticalSampleReceptionPage({
                 labelText="Sample labeling complete and legible"
                 checked={qcVerificationData.labelingComplete}
                 onChange={(checked, { name, id }) =>
-                  setQcVerificationData(prev => ({ ...prev, labelingComplete: checked }))
+                  setQcVerificationData((prev) => ({
+                    ...prev,
+                    labelingComplete: checked,
+                  }))
                 }
                 disabled={isLoading}
               />
@@ -1759,7 +1842,10 @@ function BioanalyticalSampleReceptionPage({
                 labelText="Chain of custody documentation complete"
                 checked={qcVerificationData.chainOfCustody}
                 onChange={(checked, { name, id }) =>
-                  setQcVerificationData(prev => ({ ...prev, chainOfCustody: checked }))
+                  setQcVerificationData((prev) => ({
+                    ...prev,
+                    chainOfCustody: checked,
+                  }))
                 }
                 disabled={isLoading}
               />
@@ -1768,18 +1854,33 @@ function BioanalyticalSampleReceptionPage({
 
           {/* Optional Measurements */}
           <div style={{ marginBottom: "1.5rem" }}>
-            <h6 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", color: "#6f6f6f" }}>
+            <h6
+              style={{
+                marginBottom: "0.75rem",
+                fontSize: "0.875rem",
+                color: "#6f6f6f",
+              }}
+            >
               Optional Measurements:
             </h6>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "1rem",
+              }}
+            >
               <NumberInput
                 id="measured-volume"
                 label="Measured Volume (mL)"
                 placeholder="e.g., 2.5"
                 value={qcVerificationData.measuredVolume}
                 onChange={(e, { value }) =>
-                  setQcVerificationData(prev => ({ ...prev, measuredVolume: value }))
+                  setQcVerificationData((prev) => ({
+                    ...prev,
+                    measuredVolume: value,
+                  }))
                 }
                 min={0}
                 step={0.1}
@@ -1792,7 +1893,10 @@ function BioanalyticalSampleReceptionPage({
                 placeholder="e.g., 4.2"
                 value={qcVerificationData.measuredTemperature}
                 onChange={(e, { value }) =>
-                  setQcVerificationData(prev => ({ ...prev, measuredTemperature: value }))
+                  setQcVerificationData((prev) => ({
+                    ...prev,
+                    measuredTemperature: value,
+                  }))
                 }
                 min={-20}
                 max={50}
@@ -1810,7 +1914,10 @@ function BioanalyticalSampleReceptionPage({
               placeholder="Enter any QC observations, deviations, or corrective actions taken..."
               value={qcVerificationData.comments}
               onChange={(e) =>
-                setQcVerificationData(prev => ({ ...prev, comments: e.target.value }))
+                setQcVerificationData((prev) => ({
+                  ...prev,
+                  comments: e.target.value,
+                }))
               }
               disabled={isLoading}
               rows={3}
@@ -1818,8 +1925,20 @@ function BioanalyticalSampleReceptionPage({
           </div>
 
           {/* Control Sample Classification */}
-          <div style={{ marginBottom: "1.5rem", borderTop: "1px solid #e0e0e0", paddingTop: "1.5rem" }}>
-            <h5 style={{ marginBottom: "1rem", fontSize: "1rem", fontWeight: "500" }}>
+          <div
+            style={{
+              marginBottom: "1.5rem",
+              borderTop: "1px solid #e0e0e0",
+              paddingTop: "1.5rem",
+            }}
+          >
+            <h5
+              style={{
+                marginBottom: "1rem",
+                fontSize: "1rem",
+                fontWeight: "500",
+              }}
+            >
               Control Sample Classification:
             </h5>
 
@@ -1832,17 +1951,25 @@ function BioanalyticalSampleReceptionPage({
                 onChange={(e) => {
                   const newType = e.target.value;
                   const isControlSample = newType !== "STUDY_SAMPLE";
-                  setControlSampleData(prev => ({
+                  setControlSampleData((prev) => ({
                     ...prev,
                     sampleClassification: {
                       ...prev.sampleClassification,
                       type: newType,
                       isControlSample: isControlSample,
-                      controlType: isControlSample ? (prev.sampleClassification.controlType || "") : "",
-                      controlCategory: isControlSample ? (prev.sampleClassification.controlCategory || "") : "",
-                      expectedResult: isControlSample ? (prev.sampleClassification.expectedResult || "") : "",
-                      controlSource: isControlSample ? (prev.sampleClassification.controlSource || "") : ""
-                    }
+                      controlType: isControlSample
+                        ? prev.sampleClassification.controlType || ""
+                        : "",
+                      controlCategory: isControlSample
+                        ? prev.sampleClassification.controlCategory || ""
+                        : "",
+                      expectedResult: isControlSample
+                        ? prev.sampleClassification.expectedResult || ""
+                        : "",
+                      controlSource: isControlSample
+                        ? prev.sampleClassification.controlSource || ""
+                        : "",
+                    },
                   }));
                 }}
                 disabled={isLoading}
@@ -1858,18 +1985,25 @@ function BioanalyticalSampleReceptionPage({
             {/* Control Sample Details - Only show if control sample is selected */}
             {controlSampleData.sampleClassification.isControlSample && (
               <>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "1rem",
+                    marginBottom: "1rem",
+                  }}
+                >
                   <Select
                     id="control-type"
                     labelText="Control Type"
                     value={controlSampleData.sampleClassification.controlType}
                     onChange={(e) =>
-                      setControlSampleData(prev => ({
+                      setControlSampleData((prev) => ({
                         ...prev,
                         sampleClassification: {
                           ...prev.sampleClassification,
-                          controlType: e.target.value
-                        }
+                          controlType: e.target.value,
+                        },
                       }))
                     }
                     disabled={isLoading}
@@ -1886,44 +2020,62 @@ function BioanalyticalSampleReceptionPage({
                   <Select
                     id="control-category"
                     labelText="Control Category"
-                    value={controlSampleData.sampleClassification.controlCategory}
+                    value={
+                      controlSampleData.sampleClassification.controlCategory
+                    }
                     onChange={(e) =>
-                      setControlSampleData(prev => ({
+                      setControlSampleData((prev) => ({
                         ...prev,
                         sampleClassification: {
                           ...prev.sampleClassification,
-                          controlCategory: e.target.value
-                        }
+                          controlCategory: e.target.value,
+                        },
                       }))
                     }
                     disabled={isLoading}
                   >
                     <SelectItem value="" text="Select category..." />
-                    <SelectItem value="SYSTEM_SUITABILITY" text="System Suitability" />
-                    <SelectItem value="METHOD_VALIDATION" text="Method Validation" />
+                    <SelectItem
+                      value="SYSTEM_SUITABILITY"
+                      text="System Suitability"
+                    />
+                    <SelectItem
+                      value="METHOD_VALIDATION"
+                      text="Method Validation"
+                    />
                     <SelectItem value="RUN_ACCEPTANCE" text="Run Acceptance" />
                     <SelectItem value="MATRIX_EFFECT" text="Matrix Effect" />
                   </Select>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "1rem",
+                    marginBottom: "1rem",
+                  }}
+                >
                   <Select
                     id="control-source"
                     labelText="Control Source"
                     value={controlSampleData.sampleClassification.controlSource}
                     onChange={(e) =>
-                      setControlSampleData(prev => ({
+                      setControlSampleData((prev) => ({
                         ...prev,
                         sampleClassification: {
                           ...prev.sampleClassification,
-                          controlSource: e.target.value
-                        }
+                          controlSource: e.target.value,
+                        },
                       }))
                     }
                     disabled={isLoading}
                   >
                     <SelectItem value="" text="Select source..." />
-                    <SelectItem value="REFERENCE_STANDARD" text="Reference Standard" />
+                    <SelectItem
+                      value="REFERENCE_STANDARD"
+                      text="Reference Standard"
+                    />
                     <SelectItem value="SPIKED_MATRIX" text="Spiked Matrix" />
                     <SelectItem value="BLANK_MATRIX" text="Blank Matrix" />
                   </Select>
@@ -1932,14 +2084,16 @@ function BioanalyticalSampleReceptionPage({
                     id="expected-result"
                     labelText="Expected Result"
                     placeholder="e.g., 100 ng/mL ± 15%"
-                    value={controlSampleData.sampleClassification.expectedResult}
+                    value={
+                      controlSampleData.sampleClassification.expectedResult
+                    }
                     onChange={(e) =>
-                      setControlSampleData(prev => ({
+                      setControlSampleData((prev) => ({
                         ...prev,
                         sampleClassification: {
                           ...prev.sampleClassification,
-                          expectedResult: e.target.value
-                        }
+                          expectedResult: e.target.value,
+                        },
                       }))
                     }
                     disabled={isLoading}
@@ -1948,27 +2102,50 @@ function BioanalyticalSampleReceptionPage({
                 </div>
 
                 {/* Control Batch Information */}
-                <div style={{ marginBottom: "1rem", padding: "1rem", backgroundColor: "#f4f4f4", borderRadius: "4px" }}>
-                  <h6 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "500" }}>
+                <div
+                  style={{
+                    marginBottom: "1rem",
+                    padding: "1rem",
+                    backgroundColor: "#f4f4f4",
+                    borderRadius: "4px",
+                  }}
+                >
+                  <h6
+                    style={{
+                      marginBottom: "0.75rem",
+                      fontSize: "0.875rem",
+                      fontWeight: "500",
+                    }}
+                  >
                     Control Batch Information:
                   </h6>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "1rem",
+                      marginBottom: "1rem",
+                    }}
+                  >
                     <TextArea
                       id="control-batch"
                       labelText="Control Batch/Lot"
                       placeholder="e.g., CTL-2025-001"
-                      value={controlSampleData.sampleClassification.batchInfo.controlBatch}
+                      value={
+                        controlSampleData.sampleClassification.batchInfo
+                          .controlBatch
+                      }
                       onChange={(e) =>
-                        setControlSampleData(prev => ({
+                        setControlSampleData((prev) => ({
                           ...prev,
                           sampleClassification: {
                             ...prev.sampleClassification,
                             batchInfo: {
                               ...prev.sampleClassification.batchInfo,
-                              controlBatch: e.target.value
-                            }
-                          }
+                              controlBatch: e.target.value,
+                            },
+                          },
                         }))
                       }
                       disabled={isLoading}
@@ -1979,17 +2156,20 @@ function BioanalyticalSampleReceptionPage({
                       id="control-supplier"
                       labelText="Supplier"
                       placeholder="e.g., Sigma-Aldrich"
-                      value={controlSampleData.sampleClassification.batchInfo.supplier}
+                      value={
+                        controlSampleData.sampleClassification.batchInfo
+                          .supplier
+                      }
                       onChange={(e) =>
-                        setControlSampleData(prev => ({
+                        setControlSampleData((prev) => ({
                           ...prev,
                           sampleClassification: {
                             ...prev.sampleClassification,
                             batchInfo: {
                               ...prev.sampleClassification.batchInfo,
-                              supplier: e.target.value
-                            }
-                          }
+                              supplier: e.target.value,
+                            },
+                          },
                         }))
                       }
                       disabled={isLoading}
@@ -1997,20 +2177,31 @@ function BioanalyticalSampleReceptionPage({
                     />
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "1rem",
+                    }}
+                  >
                     <DatePicker
                       datePickerType="single"
-                      value={controlSampleData.sampleClassification.batchInfo.expiryDate}
+                      value={
+                        controlSampleData.sampleClassification.batchInfo
+                          .expiryDate
+                      }
                       onChange={([date]) =>
-                        setControlSampleData(prev => ({
+                        setControlSampleData((prev) => ({
                           ...prev,
                           sampleClassification: {
                             ...prev.sampleClassification,
                             batchInfo: {
                               ...prev.sampleClassification.batchInfo,
-                              expiryDate: date ? date.toISOString().split('T')[0] : ""
-                            }
-                          }
+                              expiryDate: date
+                                ? date.toISOString().split("T")[0]
+                                : "",
+                            },
+                          },
                         }))
                       }
                       disabled={isLoading}
@@ -2025,26 +2216,35 @@ function BioanalyticalSampleReceptionPage({
                     <Select
                       id="storage-condition"
                       labelText="Storage Condition"
-                      value={controlSampleData.sampleClassification.batchInfo.storageCondition}
+                      value={
+                        controlSampleData.sampleClassification.batchInfo
+                          .storageCondition
+                      }
                       onChange={(e) =>
-                        setControlSampleData(prev => ({
+                        setControlSampleData((prev) => ({
                           ...prev,
                           sampleClassification: {
                             ...prev.sampleClassification,
                             batchInfo: {
                               ...prev.sampleClassification.batchInfo,
-                              storageCondition: e.target.value
-                            }
-                          }
+                              storageCondition: e.target.value,
+                            },
+                          },
                         }))
                       }
                       disabled={isLoading}
                     >
                       <SelectItem value="" text="Select storage..." />
-                      <SelectItem value="-80°C" text="-80°C (Ultra-low freezer)" />
+                      <SelectItem
+                        value="-80°C"
+                        text="-80°C (Ultra-low freezer)"
+                      />
                       <SelectItem value="-20°C" text="-20°C (Freezer)" />
                       <SelectItem value="2-8°C" text="2-8°C (Refrigerator)" />
-                      <SelectItem value="15-25°C" text="15-25°C (Room temperature)" />
+                      <SelectItem
+                        value="15-25°C"
+                        text="15-25°C (Room temperature)"
+                      />
                       <SelectItem value="DESICCATED" text="Desiccated" />
                     </Select>
                   </div>
@@ -2054,31 +2254,39 @@ function BioanalyticalSampleReceptionPage({
           </div>
 
           {/* QC Status Preview */}
-          <div style={{
-            padding: "0.75rem",
-            backgroundColor: (() => {
-              const allPassed = [
-                qcVerificationData.volumeAdequate,
-                qcVerificationData.containerIntegrity,
-                qcVerificationData.temperatureOK,
-                qcVerificationData.labelingComplete,
-                qcVerificationData.chainOfCustody,
-              ].every(Boolean);
-              return allPassed ? "#e7f6ed" : "#ffeae6";
-            })(),
-            borderRadius: "4px",
-            border: (() => {
-              const allPassed = [
-                qcVerificationData.volumeAdequate,
-                qcVerificationData.containerIntegrity,
-                qcVerificationData.temperatureOK,
-                qcVerificationData.labelingComplete,
-                qcVerificationData.chainOfCustody,
-              ].every(Boolean);
-              return allPassed ? "1px solid #198038" : "1px solid #da1e28";
-            })(),
-          }}>
-            <div style={{ fontSize: "0.875rem", fontWeight: "500", marginBottom: "0.25rem" }}>
+          <div
+            style={{
+              padding: "0.75rem",
+              backgroundColor: (() => {
+                const allPassed = [
+                  qcVerificationData.volumeAdequate,
+                  qcVerificationData.containerIntegrity,
+                  qcVerificationData.temperatureOK,
+                  qcVerificationData.labelingComplete,
+                  qcVerificationData.chainOfCustody,
+                ].every(Boolean);
+                return allPassed ? "#e7f6ed" : "#ffeae6";
+              })(),
+              borderRadius: "4px",
+              border: (() => {
+                const allPassed = [
+                  qcVerificationData.volumeAdequate,
+                  qcVerificationData.containerIntegrity,
+                  qcVerificationData.temperatureOK,
+                  qcVerificationData.labelingComplete,
+                  qcVerificationData.chainOfCustody,
+                ].every(Boolean);
+                return allPassed ? "1px solid #198038" : "1px solid #da1e28";
+              })(),
+            }}
+          >
+            <div
+              style={{
+                fontSize: "0.875rem",
+                fontWeight: "500",
+                marginBottom: "0.25rem",
+              }}
+            >
               QC Status Preview:
             </div>
             <div style={{ fontSize: "0.875rem" }}>
@@ -2094,9 +2302,9 @@ function BioanalyticalSampleReceptionPage({
                 const total = checks.length;
                 const allPassed = checks.every(Boolean);
 
-                return allPassed ?
-                  `✅ QC PASS - All ${total} criteria met` :
-                  `❌ QC FAIL - ${passed}/${total} criteria met`;
+                return allPassed
+                  ? `✅ QC PASS - All ${total} criteria met`
+                  : `❌ QC FAIL - ${passed}/${total} criteria met`;
               })()}
             </div>
           </div>

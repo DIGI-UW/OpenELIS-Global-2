@@ -1,11 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Tabs, TabList, Tab, TabPanels, TabPanel } from "@carbon/react";
-import {
-  Bacteria,
-  Microscope,
-  Chemistry,
-  Medication,
-} from "@carbon/react/icons";
+import { Add, Microscope, Chemistry, Medication } from "@carbon/react/icons";
 import { FormattedMessage } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import CultureResultsPanel from "./panels/CultureResultsPanel";
@@ -129,7 +124,7 @@ function TBTestExecutionPage({
         onChange={({ selectedIndex }) => setSelectedTabIndex(selectedIndex)}
       >
         <TabList aria-label="TB Test Types" contained>
-          <Tab renderIcon={Bacteria}>
+          <Tab renderIcon={Add}>
             <FormattedMessage
               id="notebook.page.tb.tab.culture"
               defaultMessage="Culture Results"

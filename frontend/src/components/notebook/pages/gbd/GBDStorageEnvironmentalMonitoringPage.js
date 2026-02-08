@@ -313,17 +313,6 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
     );
   };
 
-  // Check page access
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Storage & Environmental Monitoring"
-        reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   // Handlers for modals
   const handleOpenStorageModal = useCallback(() => {
     if (selectedSampleIds.length === 0) {
@@ -870,6 +859,17 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
     loadPageSamples,
     onProgressUpdate,
   ]);
+
+  // Check page access
+  if (!canAccessPage) {
+    return (
+      <AccessDeniedMessage
+        page="Storage & Environmental Monitoring"
+        reason="This page requires specific GBD laboratory roles to access."
+        requiredRoles={allowedRoles}
+      />
+    );
+  }
 
   return (
     <div className="gbd-storage-monitoring-page">

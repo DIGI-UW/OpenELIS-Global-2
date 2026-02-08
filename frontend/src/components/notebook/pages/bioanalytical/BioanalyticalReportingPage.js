@@ -121,7 +121,8 @@ function BioanalyticalReportingPage({
   onPageNavigation,
 }) {
   const intl = useIntl();
-  const { setNotificationVisible, addNotification } = useContext(NotificationContext);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
   const { hasAnyRole } = usePermissions();
 
   // Notification helper following the existing pattern
@@ -207,14 +208,22 @@ function BioanalyticalReportingPage({
     // Check for QC outcome records from the result's sample group
     if (result.samples && result.samples.length > 0) {
       const qcOutcomes = result.samples
-        .map(sample => sample.data?.qcOutcomeRecord?.overallOutcome)
-        .filter(outcome => outcome);
+        .map((sample) => sample.data?.qcOutcomeRecord?.overallOutcome)
+        .filter((outcome) => outcome);
 
       if (qcOutcomes.length > 0) {
-        const passedSamples = qcOutcomes.filter(outcome => outcome === "PASS").length;
-        const conditionalSamples = qcOutcomes.filter(outcome => outcome === "CONDITIONAL_PASS").length;
-        const failedSamples = qcOutcomes.filter(outcome => outcome === "FAIL").length;
-        const waiverSamples = qcOutcomes.filter(outcome => outcome === "WAIVER").length;
+        const passedSamples = qcOutcomes.filter(
+          (outcome) => outcome === "PASS",
+        ).length;
+        const conditionalSamples = qcOutcomes.filter(
+          (outcome) => outcome === "CONDITIONAL_PASS",
+        ).length;
+        const failedSamples = qcOutcomes.filter(
+          (outcome) => outcome === "FAIL",
+        ).length;
+        const waiverSamples = qcOutcomes.filter(
+          (outcome) => outcome === "WAIVER",
+        ).length;
 
         let tagType = "gray";
         let statusText = "";
@@ -246,10 +255,15 @@ function BioanalyticalReportingPage({
     }
 
     // Check for basic QC approval status
-    const qcApprovedCount = result.samples?.filter(s => s.data?.qcApproved).length || 0;
+    const qcApprovedCount =
+      result.samples?.filter((s) => s.data?.qcApproved).length || 0;
     if (qcApprovedCount > 0) {
       return (
-        <Tag type="green" size="sm" title={`${qcApprovedCount} samples QC approved`}>
+        <Tag
+          type="green"
+          size="sm"
+          title={`${qcApprovedCount} samples QC approved`}
+        >
           {qcApprovedCount} QC APPROVED
         </Tag>
       );
@@ -1504,7 +1518,9 @@ function BioanalyticalReportingPage({
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const projectSuffix = redcapData.projectId ? `_${redcapData.projectId}` : "";
+      const projectSuffix = redcapData.projectId
+        ? `_${redcapData.projectId}`
+        : "";
       link.download = `bioanalytical_redcap_${entryId}${projectSuffix}.csv`;
       document.body.appendChild(link);
       link.click();
@@ -1528,7 +1544,8 @@ function BioanalyticalReportingPage({
         message: intl.formatMessage(
           {
             id: "notebook.bioanalytical.reporting.redcapExportSuccess",
-            defaultMessage: "REDCap export completed successfully. {records} records exported.",
+            defaultMessage:
+              "REDCap export completed successfully. {records} records exported.",
           },
           { records: studyResults.length },
         ),
@@ -1654,8 +1671,11 @@ function BioanalyticalReportingPage({
         recipientName: selectedTarget.label,
         recipientEmail: recipientEmail || null,
         deliveryType: getDeliveryType(selectedTarget.id),
-        regulatoryBody: selectedTarget.id === "regulatory_affairs" ? "FDA" : null,
-        notes: deliveryNotes || `Bioanalytical results submitted via ${submissionFormat?.toUpperCase()} format. Total samples: ${studyResults.reduce((sum, result) => sum + result.dataPoints, 0)}`,
+        regulatoryBody:
+          selectedTarget.id === "regulatory_affairs" ? "FDA" : null,
+        notes:
+          deliveryNotes ||
+          `Bioanalytical results submitted via ${submissionFormat?.toUpperCase()} format. Total samples: ${studyResults.reduce((sum, result) => sum + result.dataPoints, 0)}`,
         exportFormat: submissionFormat,
         submissionData: submissionData,
       };
@@ -1905,201 +1925,118 @@ function BioanalyticalReportingPage({
                     ) : studyResults.length > 0 ? (
                       <>
                         <div style={{ marginTop: "1.5rem" }}>
-                        <Table>
-                          <TableHead>
-                            <TableRow>
-                              <TableHeader>
-                                <FormattedMessage
-                                  id="notebook.bioanalytical.reporting.testName"
-                                  defaultMessage="Test Name"
-                                />
-                              </TableHeader>
-                              <TableHeader>
-                                <FormattedMessage
-                                  id="notebook.bioanalytical.reporting.dataPoints"
-                                  defaultMessage="Data Points"
-                                />
-                              </TableHeader>
-                              <TableHeader>
-                                <FormattedMessage
-                                  id="notebook.bioanalytical.reporting.mean"
-                                  defaultMessage="Mean"
-                                />
-                              </TableHeader>
-                              <TableHeader>
-                                <FormattedMessage
-                                  id="notebook.bioanalytical.reporting.sd"
-                                  defaultMessage="Std Dev"
-                                />
-                              </TableHeader>
-                              <TableHeader>
-                                <FormattedMessage
-                                  id="notebook.bioanalytical.reporting.cv"
-                                  defaultMessage="CV %"
-                                />
-                              </TableHeader>
-                              <TableHeader>
-                                <FormattedMessage
-                                  id="notebook.bioanalytical.reporting.range"
-                                  defaultMessage="Min - Max"
-                                />
-                              </TableHeader>
-                              <TableHeader>
-                                <FormattedMessage
-                                  id="notebook.bioanalytical.reporting.qcStatus"
-                                  defaultMessage="QC Status"
-                                />
-                              </TableHeader>
-                              <TableHeader>
-                                <FormattedMessage
-                                  id="notebook.bioanalytical.reporting.status"
-                                  defaultMessage="Status"
-                                />
-                              </TableHeader>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {studyResults.map((result) => (
-                              <TableRow key={result.id}>
-                                <TableCell>{result.testName}</TableCell>
-                                <TableCell>{result.dataPoints}</TableCell>
-                                <TableCell>{result.mean}</TableCell>
-                                <TableCell>{result.sd}</TableCell>
-                                <TableCell>{result.cv}</TableCell>
-                                <TableCell style={{ fontSize: "0.875rem" }}>
-                                  {result.min} - {result.max}
-                                </TableCell>
-                                <TableCell>
-                                  {renderStage4QCStatus(result)}
-                                </TableCell>
-                                <TableCell>
-                                  <span
-                                    className="status-badge"
-                                    style={{
-                                      backgroundColor: "#24a148",
-                                      color: "white",
-                                      padding: "0.25rem 0.5rem",
-                                      borderRadius: "4px",
-                                      fontSize: "0.75rem",
-                                    }}
-                                  >
-                                    {result.regulatoryStatus}
-                                  </span>
-                                </TableCell>
+                          <Table>
+                            <TableHead>
+                              <TableRow>
+                                <TableHeader>
+                                  <FormattedMessage
+                                    id="notebook.bioanalytical.reporting.testName"
+                                    defaultMessage="Test Name"
+                                  />
+                                </TableHeader>
+                                <TableHeader>
+                                  <FormattedMessage
+                                    id="notebook.bioanalytical.reporting.dataPoints"
+                                    defaultMessage="Data Points"
+                                  />
+                                </TableHeader>
+                                <TableHeader>
+                                  <FormattedMessage
+                                    id="notebook.bioanalytical.reporting.mean"
+                                    defaultMessage="Mean"
+                                  />
+                                </TableHeader>
+                                <TableHeader>
+                                  <FormattedMessage
+                                    id="notebook.bioanalytical.reporting.sd"
+                                    defaultMessage="Std Dev"
+                                  />
+                                </TableHeader>
+                                <TableHeader>
+                                  <FormattedMessage
+                                    id="notebook.bioanalytical.reporting.cv"
+                                    defaultMessage="CV %"
+                                  />
+                                </TableHeader>
+                                <TableHeader>
+                                  <FormattedMessage
+                                    id="notebook.bioanalytical.reporting.range"
+                                    defaultMessage="Min - Max"
+                                  />
+                                </TableHeader>
+                                <TableHeader>
+                                  <FormattedMessage
+                                    id="notebook.bioanalytical.reporting.qcStatus"
+                                    defaultMessage="QC Status"
+                                  />
+                                </TableHeader>
+                                <TableHeader>
+                                  <FormattedMessage
+                                    id="notebook.bioanalytical.reporting.status"
+                                    defaultMessage="Status"
+                                  />
+                                </TableHeader>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                            </TableHead>
+                            <TableBody>
+                              {studyResults.map((result) => (
+                                <TableRow key={result.id}>
+                                  <TableCell>{result.testName}</TableCell>
+                                  <TableCell>{result.dataPoints}</TableCell>
+                                  <TableCell>{result.mean}</TableCell>
+                                  <TableCell>{result.sd}</TableCell>
+                                  <TableCell>{result.cv}</TableCell>
+                                  <TableCell style={{ fontSize: "0.875rem" }}>
+                                    {result.min} - {result.max}
+                                  </TableCell>
+                                  <TableCell>
+                                    {renderStage4QCStatus(result)}
+                                  </TableCell>
+                                  <TableCell>
+                                    <span
+                                      className="status-badge"
+                                      style={{
+                                        backgroundColor: "#24a148",
+                                        color: "white",
+                                        padding: "0.25rem 0.5rem",
+                                        borderRadius: "4px",
+                                        fontSize: "0.75rem",
+                                      }}
+                                    >
+                                      {result.regulatoryStatus}
+                                    </span>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
 
-                        {/* Calibration Data Section */}
-                        <div
-                          style={{
-                            marginTop: "1.5rem",
-                            padding: "1rem",
-                            backgroundColor: "#f4f4f4",
-                            borderRadius: "4px",
-                          }}
-                        >
-                          <h5 style={{ marginBottom: "1rem" }}>
-                            <FormattedMessage
-                              id="notebook.bioanalytical.reporting.calibrationData"
-                              defaultMessage="Calibration Data"
-                            />
-                          </h5>
+                          {/* Calibration Data Section */}
                           <div
                             style={{
-                              display: "grid",
-                              gridTemplateColumns:
-                                "repeat(auto-fit, minmax(200px, 1fr))",
-                              gap: "1rem",
+                              marginTop: "1.5rem",
+                              padding: "1rem",
+                              backgroundColor: "#f4f4f4",
+                              borderRadius: "4px",
                             }}
                           >
-                            {studyResults.map((result) => (
-                              <div
-                                key={result.id}
-                                style={{
-                                  padding: "0.75rem",
-                                  backgroundColor: "white",
-                                  borderRadius: "3px",
-                                  border: "1px solid #ddd",
-                                }}
-                              >
-                                <p
-                                  style={{
-                                    fontSize: "0.75rem",
-                                    fontWeight: "bold",
-                                    margin: "0 0 0.5rem 0",
-                                  }}
-                                >
-                                  {result.testName}
-                                </p>
-                                <p
-                                  style={{
-                                    fontSize: "0.75rem",
-                                    margin: "0.25rem 0",
-                                  }}
-                                >
-                                  <strong>r²:</strong>{" "}
-                                  {result.calibrationRSquared}
-                                </p>
-                                <p
-                                  style={{
-                                    fontSize: "0.75rem",
-                                    margin: "0.25rem 0",
-                                  }}
-                                >
-                                  <strong>Slope:</strong>{" "}
-                                  {result.calibrationSlope}
-                                </p>
-                                <p
-                                  style={{
-                                    fontSize: "0.75rem",
-                                    margin: "0.25rem 0",
-                                  }}
-                                >
-                                  <strong>Equation:</strong>{" "}
-                                  {result.calibrationEquation}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* QC Results Detail Section */}
-                        <div
-                          style={{
-                            marginTop: "1.5rem",
-                            padding: "1rem",
-                            backgroundColor: "#f4f4f4",
-                            borderRadius: "4px",
-                          }}
-                        >
-                          <h5 style={{ marginBottom: "1rem" }}>
-                            <FormattedMessage
-                              id="notebook.bioanalytical.reporting.qcResultsDetail"
-                              defaultMessage="QC Results Summary"
-                            />
-                          </h5>
-                          <div
-                            style={{
-                              display: "grid",
-                              gridTemplateColumns:
-                                "repeat(auto-fit, minmax(250px, 1fr))",
-                              gap: "1rem",
-                            }}
-                          >
-                            {studyResults.map((result) => {
-                              const qcSummary = result.allQcResults
-                                ? result.allQcResults.reduce((acc, qc) => {
-                                    const status = qc.status || "UNKNOWN";
-                                    acc[status] = (acc[status] || 0) + 1;
-                                    return acc;
-                                  }, {})
-                                : {};
-
-                              return (
+                            <h5 style={{ marginBottom: "1rem" }}>
+                              <FormattedMessage
+                                id="notebook.bioanalytical.reporting.calibrationData"
+                                defaultMessage="Calibration Data"
+                              />
+                            </h5>
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns:
+                                  "repeat(auto-fit, minmax(200px, 1fr))",
+                                gap: "1rem",
+                              }}
+                            >
+                              {studyResults.map((result) => (
                                 <div
-                                  key={`qc-${result.id}`}
+                                  key={result.id}
                                   style={{
                                     padding: "0.75rem",
                                     backgroundColor: "white",
@@ -2114,624 +2051,1072 @@ function BioanalyticalReportingPage({
                                       margin: "0 0 0.5rem 0",
                                     }}
                                   >
-                                    {result.testName} (QC Results)
+                                    {result.testName}
                                   </p>
-                                  {result.allQcResults &&
-                                  result.allQcResults.length > 0 ? (
-                                    <>
-                                      <p
-                                        style={{
-                                          fontSize: "0.75rem",
-                                          margin: "0.25rem 0",
-                                        }}
-                                      >
-                                        <strong>Total QC Runs:</strong>{" "}
-                                        {result.allQcResults.length}
-                                      </p>
-                                      {Object.entries(qcSummary).map(
-                                        ([status, count]) => (
-                                          <p
-                                            key={status}
-                                            style={{
-                                              fontSize: "0.75rem",
-                                              margin: "0.25rem 0",
-                                            }}
-                                          >
-                                            <strong>{status}:</strong> {count}
-                                          </p>
-                                        ),
-                                      )}
-                                    </>
-                                  ) : (
-                                    <p
-                                      style={{
-                                        fontSize: "0.75rem",
-                                        color: "#666",
-                                        margin: "0.25rem 0",
-                                      }}
-                                    >
-                                      No QC results available
-                                    </p>
-                                  )}
+                                  <p
+                                    style={{
+                                      fontSize: "0.75rem",
+                                      margin: "0.25rem 0",
+                                    }}
+                                  >
+                                    <strong>r²:</strong>{" "}
+                                    {result.calibrationRSquared}
+                                  </p>
+                                  <p
+                                    style={{
+                                      fontSize: "0.75rem",
+                                      margin: "0.25rem 0",
+                                    }}
+                                  >
+                                    <strong>Slope:</strong>{" "}
+                                    {result.calibrationSlope}
+                                  </p>
+                                  <p
+                                    style={{
+                                      fontSize: "0.75rem",
+                                      margin: "0.25rem 0",
+                                    }}
+                                  >
+                                    <strong>Equation:</strong>{" "}
+                                    {result.calibrationEquation}
+                                  </p>
                                 </div>
-                              );
-                            })}
+                              ))}
+                            </div>
                           </div>
-                        </div>
 
-                        <div
-                          style={{
-                            marginTop: "1.5rem",
-                            padding: "1rem",
-                            backgroundColor: "#e7f1f5",
-                            borderRadius: "4px",
-                            borderLeft: "4px solid #0043ce",
-                          }}
-                        >
-                          <p style={{ fontSize: "0.875rem", margin: 0 }}>
-                            <strong>
+                          {/* QC Results Detail Section */}
+                          <div
+                            style={{
+                              marginTop: "1.5rem",
+                              padding: "1rem",
+                              backgroundColor: "#f4f4f4",
+                              borderRadius: "4px",
+                            }}
+                          >
+                            <h5 style={{ marginBottom: "1rem" }}>
                               <FormattedMessage
-                                id="notebook.bioanalytical.reporting.complianceNote"
-                                defaultMessage="Regulatory Compliance Summary:"
+                                id="notebook.bioanalytical.reporting.qcResultsDetail"
+                                defaultMessage="QC Results Summary"
                               />
-                            </strong>
-                          </p>
-                          <p
-                            style={{
-                              fontSize: "0.875rem",
-                              color: "#161616",
-                              margin: "0.25rem 0 0 0",
-                            }}
-                          >
-                            ✓ All analytes meet FDA bioequivalence criteria (CV
-                            &lt; 20%, Mean accuracy 80-120%)
-                          </p>
-                          <p
-                            style={{
-                              fontSize: "0.875rem",
-                              color: "#161616",
-                              margin: "0.25rem 0 0 0",
-                            }}
-                          >
-                            ✓ Quality control parameters within specified limits
-                          </p>
-                          <p
-                            style={{
-                              fontSize: "0.875rem",
-                              color: "#161616",
-                              margin: "0.25rem 0 0 0",
-                            }}
-                          >
-                            ✓ Data integrity verified (no anomalies detected)
-                          </p>
-                        </div>
-
-                        {/* Westgard Rules QC Validation Section */}
-                        {bioequivalenceStats &&
-                          bioequivalenceStats.qcValidation && (
+                            </h5>
                             <div
                               style={{
-                                marginTop: "1.5rem",
-                                padding: "1rem",
-                                backgroundColor:
-                                  bioequivalenceStats.qcValidation
-                                    .westgardStatus === "PASS"
-                                    ? "#e7f1f5"
-                                    : bioequivalenceStats.qcValidation
-                                          .westgardStatus === "WARNING"
-                                      ? "#fff3cd"
-                                      : "#fdf2f2",
-                                borderRadius: "4px",
-                                borderLeft:
-                                  bioequivalenceStats.qcValidation
-                                    .westgardStatus === "PASS"
-                                    ? "4px solid #24a148"
-                                    : bioequivalenceStats.qcValidation
-                                          .westgardStatus === "WARNING"
-                                      ? "4px solid #f1c21b"
-                                      : "4px solid #da1e28",
+                                display: "grid",
+                                gridTemplateColumns:
+                                  "repeat(auto-fit, minmax(250px, 1fr))",
+                                gap: "1rem",
                               }}
                             >
-                              <p style={{ fontSize: "0.875rem", margin: 0 }}>
-                                <strong>
-                                  <FormattedMessage
-                                    id="notebook.bioanalytical.reporting.qcValidationTitle"
-                                    defaultMessage="QC Validation - Westgard Rules Analysis:"
-                                  />
-                                </strong>
-                              </p>
-                              <p
-                                style={{
-                                  fontSize: "0.875rem",
-                                  color: "#161616",
-                                  margin: "0.5rem 0 0.25rem 0",
-                                  fontWeight: "500",
-                                }}
-                              >
-                                Status:{" "}
-                                {
-                                  bioequivalenceStats.qcValidation
-                                    .westgardStatus
-                                }{" "}
-                                -{" "}
-                                {
-                                  bioequivalenceStats.qcValidation
-                                    .westgardRecommendation
-                                }
-                              </p>
-                              <p
-                                style={{
-                                  fontSize: "0.875rem",
-                                  color: "#161616",
-                                  margin: "0.25rem 0 0 0",
-                                }}
-                              >
-                                ✓ {bioequivalenceStats.qcValidation.rulesPassed}{" "}
-                                of{" "}
-                                {
-                                  bioequivalenceStats.qcValidation
-                                    .rulesEvaluated
-                                }{" "}
-                                Westgard rules passed
-                              </p>
-                              {bioequivalenceStats.qcValidation.rulesFailed >
-                                0 && (
-                                <p
-                                  style={{
-                                    fontSize: "0.875rem",
-                                    color: "#da1e28",
-                                    margin: "0.25rem 0 0 0",
-                                  }}
-                                >
-                                  ✗{" "}
-                                  {bioequivalenceStats.qcValidation.rulesFailed}{" "}
-                                  rule(s) failed validation
-                                </p>
-                              )}
+                              {studyResults.map((result) => {
+                                const qcSummary = result.allQcResults
+                                  ? result.allQcResults.reduce((acc, qc) => {
+                                      const status = qc.status || "UNKNOWN";
+                                      acc[status] = (acc[status] || 0) + 1;
+                                      return acc;
+                                    }, {})
+                                  : {};
 
-                              {/* Detailed Rule Results */}
-                              {bioequivalenceStats.qcValidation.ruleResults &&
-                                bioequivalenceStats.qcValidation.ruleResults
-                                  .length > 0 && (
-                                  <div style={{ marginTop: "1rem" }}>
+                                return (
+                                  <div
+                                    key={`qc-${result.id}`}
+                                    style={{
+                                      padding: "0.75rem",
+                                      backgroundColor: "white",
+                                      borderRadius: "3px",
+                                      border: "1px solid #ddd",
+                                    }}
+                                  >
                                     <p
                                       style={{
                                         fontSize: "0.75rem",
-                                        color: "#525252",
+                                        fontWeight: "bold",
                                         margin: "0 0 0.5rem 0",
                                       }}
                                     >
-                                      <strong>Rule-by-Rule Analysis:</strong>
+                                      {result.testName} (QC Results)
                                     </p>
-                                    <div
-                                      style={{
-                                        display: "grid",
-                                        gridTemplateColumns:
-                                          "repeat(auto-fit, minmax(250px, 1fr))",
-                                        gap: "0.5rem",
-                                      }}
-                                    >
-                                      {bioequivalenceStats.qcValidation.ruleResults.map(
-                                        (rule, index) => (
-                                          <div
-                                            key={index}
-                                            style={{
-                                              fontSize: "0.75rem",
-                                              padding: "0.25rem 0.5rem",
-                                              backgroundColor:
-                                                rule.status === "PASS"
-                                                  ? "#e7f1f5"
-                                                  : rule.status === "WARNING"
-                                                    ? "#fff3cd"
-                                                    : "#fdf2f2",
-                                              borderRadius: "3px",
-                                              border:
-                                                rule.status === "PASS"
-                                                  ? "1px solid #24a148"
-                                                  : rule.status === "WARNING"
-                                                    ? "1px solid #f1c21b"
-                                                    : "1px solid #da1e28",
-                                            }}
-                                          >
-                                            <strong>{rule.ruleCode}</strong>:{" "}
-                                            {rule.message}
-                                          </div>
-                                        ),
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-
-                              <p
-                                style={{
-                                  fontSize: "0.75rem",
-                                  color: "#525252",
-                                  margin: "1rem 0 0 0",
-                                  fontStyle: "italic",
-                                }}
-                              >
-                                Rules evaluated: 1:2s (Warning), 1:3s
-                                (Rejection), 2:2s (Consecutive), R:4s (Range),
-                                4:1s (Trend), 10:x (Systematic)
-                              </p>
-                            </div>
-                          )}
-                      </div>
-
-                      {/* Control Sample Performance Report */}
-                      <div
-                        style={{
-                          marginTop: "2rem",
-                          padding: "1.5rem",
-                          backgroundColor: "#e7f6ed",
-                          borderRadius: "4px",
-                          border: "1px solid #24a148",
-                        }}
-                      >
-                        <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
-                          <FormattedMessage
-                            id="notebook.bioanalytical.reporting.controlSampleReport"
-                            defaultMessage="Control Sample Performance Report"
-                          />
-                        </h5>
-
-                        {studyResults.length > 0 ? (
-                          <div>
-                            {/* Overall Control Summary */}
-                            <div
-                              style={{
-                                marginBottom: "1.5rem",
-                                padding: "1rem",
-                                backgroundColor: "white",
-                                borderRadius: "4px",
-                                border: "1px solid #d1d1d1",
-                              }}
-                            >
-                              <h6 style={{ marginBottom: "1rem", fontSize: "1rem", fontWeight: "500" }}>
-                                Study-wide Control Sample Summary:
-                              </h6>
-
-                              {(() => {
-                                // Aggregate control sample data across all study results
-                                let totalControlsAnalyzed = 0;
-                                let totalControlsPassed = 0;
-                                let controlsByType = {};
-                                let controlsByAssay = {};
-
-                                studyResults.forEach(result => {
-                                  if (result.samples) {
-                                    result.samples.forEach(sample => {
-                                      if (sample.data?.controlSampleResults) {
-                                        const controlResults = sample.data.controlSampleResults;
-                                        totalControlsAnalyzed += controlResults.length;
-
-                                        controlResults.forEach(controlResult => {
-                                          // Count passed controls
-                                          const accuracy = parseFloat(controlResult.accuracy || 0);
-                                          const controlType = controlResult.controlType || 'Unknown';
-                                          const assayMethod = sample.data?.analyticalMethod || 'Unknown';
-
-                                          // Determine if control passed based on type
-                                          let passed = false;
-                                          switch (controlType) {
-                                            case 'POSITIVE':
-                                            case 'QC_LOW':
-                                            case 'QC_MEDIUM':
-                                            case 'QC_HIGH':
-                                              passed = accuracy >= 85 && accuracy <= 115;
-                                              break;
-                                            case 'NEGATIVE':
-                                              passed = accuracy <= 5;
-                                              break;
-                                            case 'BLANK':
-                                              passed = accuracy <= 2;
-                                              break;
-                                            default:
-                                              passed = accuracy >= 80 && accuracy <= 120;
-                                          }
-
-                                          if (passed) totalControlsPassed++;
-
-                                          // Group by type
-                                          if (!controlsByType[controlType]) {
-                                            controlsByType[controlType] = { total: 0, passed: 0 };
-                                          }
-                                          controlsByType[controlType].total++;
-                                          if (passed) controlsByType[controlType].passed++;
-
-                                          // Group by assay
-                                          if (!controlsByAssay[assayMethod]) {
-                                            controlsByAssay[assayMethod] = { total: 0, passed: 0 };
-                                          }
-                                          controlsByAssay[assayMethod].total++;
-                                          if (passed) controlsByAssay[assayMethod].passed++;
-                                        });
-                                      }
-                                    });
-                                  }
-                                });
-
-                                const overallPassRate = totalControlsAnalyzed > 0
-                                  ? (totalControlsPassed / totalControlsAnalyzed) * 100
-                                  : 0;
-
-                                return (
-                                  <div>
-                                    {/* Overall Statistics */}
-                                    <div
-                                      style={{
-                                        display: "grid",
-                                        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                                        gap: "1rem",
-                                        marginBottom: "1.5rem",
-                                      }}
-                                    >
-                                      <div style={{ textAlign: "center", padding: "1rem", backgroundColor: "#f4f4f4", borderRadius: "4px" }}>
-                                        <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#24a148" }}>
-                                          {totalControlsAnalyzed}
-                                        </div>
-                                        <div style={{ fontSize: "0.875rem", color: "#525252" }}>
-                                          Total Controls Analyzed
-                                        </div>
-                                      </div>
-                                      <div style={{ textAlign: "center", padding: "1rem", backgroundColor: "#f4f4f4", borderRadius: "4px" }}>
-                                        <div style={{ fontSize: "2rem", fontWeight: "bold", color: overallPassRate >= 80 ? "#24a148" : overallPassRate >= 67 ? "#f1c21b" : "#da1e28" }}>
-                                          {overallPassRate.toFixed(1)}%
-                                        </div>
-                                        <div style={{ fontSize: "0.875rem", color: "#525252" }}>
-                                          Overall Pass Rate
-                                        </div>
-                                      </div>
-                                      <div style={{ textAlign: "center", padding: "1rem", backgroundColor: "#f4f4f4", borderRadius: "4px" }}>
-                                        <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#24a148" }}>
-                                          {totalControlsPassed}
-                                        </div>
-                                        <div style={{ fontSize: "0.875rem", color: "#525252" }}>
-                                          Controls Passed
-                                        </div>
-                                      </div>
-                                      <div style={{ textAlign: "center", padding: "1rem", backgroundColor: "#f4f4f4", borderRadius: "4px" }}>
-                                        <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#da1e28" }}>
-                                          {totalControlsAnalyzed - totalControlsPassed}
-                                        </div>
-                                        <div style={{ fontSize: "0.875rem", color: "#525252" }}>
-                                          Controls Failed
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {/* Control Performance by Type */}
-                                    {Object.keys(controlsByType).length > 0 && (
-                                      <div style={{ marginBottom: "1.5rem" }}>
-                                        <h6 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "500" }}>
-                                          Performance by Control Type:
-                                        </h6>
-                                        <div style={{ display: "grid", gap: "0.5rem" }}>
-                                          {Object.entries(controlsByType).map(([type, stats]) => (
-                                            <div
-                                              key={type}
+                                    {result.allQcResults &&
+                                    result.allQcResults.length > 0 ? (
+                                      <>
+                                        <p
+                                          style={{
+                                            fontSize: "0.75rem",
+                                            margin: "0.25rem 0",
+                                          }}
+                                        >
+                                          <strong>Total QC Runs:</strong>{" "}
+                                          {result.allQcResults.length}
+                                        </p>
+                                        {Object.entries(qcSummary).map(
+                                          ([status, count]) => (
+                                            <p
+                                              key={status}
                                               style={{
-                                                display: "flex",
-                                                justifyContent: "space-between",
-                                                alignItems: "center",
-                                                padding: "0.75rem",
-                                                backgroundColor: "#f9f9f9",
-                                                borderRadius: "4px",
-                                                border: "1px solid #e0e0e0",
+                                                fontSize: "0.75rem",
+                                                margin: "0.25rem 0",
                                               }}
                                             >
-                                              <div>
-                                                <span style={{ fontWeight: "500" }}>
-                                                  {type.replace(/_/g, " ")}
-                                                </span>
-                                                <span style={{ marginLeft: "1rem", color: "#525252", fontSize: "0.875rem" }}>
-                                                  {stats.passed}/{stats.total} passed ({((stats.passed / stats.total) * 100).toFixed(1)}%)
-                                                </span>
-                                              </div>
-                                              <Tag
-                                                type={
-                                                  (stats.passed / stats.total) >= 0.8 ? "green" :
-                                                  (stats.passed / stats.total) >= 0.67 ? "yellow" : "red"
-                                                }
-                                                size="sm"
-                                              >
-                                                {(stats.passed / stats.total) >= 0.8 ? "EXCELLENT" :
-                                                 (stats.passed / stats.total) >= 0.67 ? "ACCEPTABLE" : "NEEDS REVIEW"}
-                                              </Tag>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Control Performance by Assay Method */}
-                                    {Object.keys(controlsByAssay).length > 0 && (
-                                      <div>
-                                        <h6 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "500" }}>
-                                          Performance by Analytical Method:
-                                        </h6>
-                                        <div style={{ display: "grid", gap: "0.5rem" }}>
-                                          {Object.entries(controlsByAssay).map(([method, stats]) => (
-                                            <div
-                                              key={method}
-                                              style={{
-                                                display: "flex",
-                                                justifyContent: "space-between",
-                                                alignItems: "center",
-                                                padding: "0.75rem",
-                                                backgroundColor: "#f9f9f9",
-                                                borderRadius: "4px",
-                                                border: "1px solid #e0e0e0",
-                                              }}
-                                            >
-                                              <div>
-                                                <span style={{ fontWeight: "500" }}>
-                                                  {method}
-                                                </span>
-                                                <span style={{ marginLeft: "1rem", color: "#525252", fontSize: "0.875rem" }}>
-                                                  {stats.passed}/{stats.total} controls passed ({((stats.passed / stats.total) * 100).toFixed(1)}%)
-                                                </span>
-                                              </div>
-                                              <Tag
-                                                type={
-                                                  (stats.passed / stats.total) >= 0.8 ? "green" :
-                                                  (stats.passed / stats.total) >= 0.67 ? "yellow" : "red"
-                                                }
-                                                size="sm"
-                                              >
-                                                {(stats.passed / stats.total) >= 0.8 ? "COMPLIANT" :
-                                                 (stats.passed / stats.total) >= 0.67 ? "CONDITIONAL" : "NON-COMPLIANT"}
-                                              </Tag>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
+                                              <strong>{status}:</strong> {count}
+                                            </p>
+                                          ),
+                                        )}
+                                      </>
+                                    ) : (
+                                      <p
+                                        style={{
+                                          fontSize: "0.75rem",
+                                          color: "#666",
+                                          margin: "0.25rem 0",
+                                        }}
+                                      >
+                                        No QC results available
+                                      </p>
                                     )}
                                   </div>
                                 );
-                              })()}
+                              })}
                             </div>
+                          </div>
 
-                            {/* Control Requirements vs Actual */}
-                            <div
+                          <div
+                            style={{
+                              marginTop: "1.5rem",
+                              padding: "1rem",
+                              backgroundColor: "#e7f1f5",
+                              borderRadius: "4px",
+                              borderLeft: "4px solid #0043ce",
+                            }}
+                          >
+                            <p style={{ fontSize: "0.875rem", margin: 0 }}>
+                              <strong>
+                                <FormattedMessage
+                                  id="notebook.bioanalytical.reporting.complianceNote"
+                                  defaultMessage="Regulatory Compliance Summary:"
+                                />
+                              </strong>
+                            </p>
+                            <p
                               style={{
-                                marginBottom: "1.5rem",
-                                padding: "1rem",
-                                backgroundColor: "white",
-                                borderRadius: "4px",
-                                border: "1px solid #d1d1d1",
+                                fontSize: "0.875rem",
+                                color: "#161616",
+                                margin: "0.25rem 0 0 0",
                               }}
                             >
-                              <h6 style={{ marginBottom: "1rem", fontSize: "1rem", fontWeight: "500" }}>
-                                Control Requirements Compliance:
-                              </h6>
+                              ✓ All analytes meet FDA bioequivalence criteria
+                              (CV &lt; 20%, Mean accuracy 80-120%)
+                            </p>
+                            <p
+                              style={{
+                                fontSize: "0.875rem",
+                                color: "#161616",
+                                margin: "0.25rem 0 0 0",
+                              }}
+                            >
+                              ✓ Quality control parameters within specified
+                              limits
+                            </p>
+                            <p
+                              style={{
+                                fontSize: "0.875rem",
+                                color: "#161616",
+                                margin: "0.25rem 0 0 0",
+                              }}
+                            >
+                              ✓ Data integrity verified (no anomalies detected)
+                            </p>
+                          </div>
 
-                              <div style={{ fontSize: "0.875rem", color: "#525252", marginBottom: "1rem" }}>
-                                This section shows whether the study met the control sample requirements defined for each analytical method.
+                          {/* Westgard Rules QC Validation Section */}
+                          {bioequivalenceStats &&
+                            bioequivalenceStats.qcValidation && (
+                              <div
+                                style={{
+                                  marginTop: "1.5rem",
+                                  padding: "1rem",
+                                  backgroundColor:
+                                    bioequivalenceStats.qcValidation
+                                      .westgardStatus === "PASS"
+                                      ? "#e7f1f5"
+                                      : bioequivalenceStats.qcValidation
+                                            .westgardStatus === "WARNING"
+                                        ? "#fff3cd"
+                                        : "#fdf2f2",
+                                  borderRadius: "4px",
+                                  borderLeft:
+                                    bioequivalenceStats.qcValidation
+                                      .westgardStatus === "PASS"
+                                      ? "4px solid #24a148"
+                                      : bioequivalenceStats.qcValidation
+                                            .westgardStatus === "WARNING"
+                                        ? "4px solid #f1c21b"
+                                        : "4px solid #da1e28",
+                                }}
+                              >
+                                <p style={{ fontSize: "0.875rem", margin: 0 }}>
+                                  <strong>
+                                    <FormattedMessage
+                                      id="notebook.bioanalytical.reporting.qcValidationTitle"
+                                      defaultMessage="QC Validation - Westgard Rules Analysis:"
+                                    />
+                                  </strong>
+                                </p>
+                                <p
+                                  style={{
+                                    fontSize: "0.875rem",
+                                    color: "#161616",
+                                    margin: "0.5rem 0 0.25rem 0",
+                                    fontWeight: "500",
+                                  }}
+                                >
+                                  Status:{" "}
+                                  {
+                                    bioequivalenceStats.qcValidation
+                                      .westgardStatus
+                                  }{" "}
+                                  -{" "}
+                                  {
+                                    bioequivalenceStats.qcValidation
+                                      .westgardRecommendation
+                                  }
+                                </p>
+                                <p
+                                  style={{
+                                    fontSize: "0.875rem",
+                                    color: "#161616",
+                                    margin: "0.25rem 0 0 0",
+                                  }}
+                                >
+                                  ✓{" "}
+                                  {bioequivalenceStats.qcValidation.rulesPassed}{" "}
+                                  of{" "}
+                                  {
+                                    bioequivalenceStats.qcValidation
+                                      .rulesEvaluated
+                                  }{" "}
+                                  Westgard rules passed
+                                </p>
+                                {bioequivalenceStats.qcValidation.rulesFailed >
+                                  0 && (
+                                  <p
+                                    style={{
+                                      fontSize: "0.875rem",
+                                      color: "#da1e28",
+                                      margin: "0.25rem 0 0 0",
+                                    }}
+                                  >
+                                    ✗{" "}
+                                    {
+                                      bioequivalenceStats.qcValidation
+                                        .rulesFailed
+                                    }{" "}
+                                    rule(s) failed validation
+                                  </p>
+                                )}
+
+                                {/* Detailed Rule Results */}
+                                {bioequivalenceStats.qcValidation.ruleResults &&
+                                  bioequivalenceStats.qcValidation.ruleResults
+                                    .length > 0 && (
+                                    <div style={{ marginTop: "1rem" }}>
+                                      <p
+                                        style={{
+                                          fontSize: "0.75rem",
+                                          color: "#525252",
+                                          margin: "0 0 0.5rem 0",
+                                        }}
+                                      >
+                                        <strong>Rule-by-Rule Analysis:</strong>
+                                      </p>
+                                      <div
+                                        style={{
+                                          display: "grid",
+                                          gridTemplateColumns:
+                                            "repeat(auto-fit, minmax(250px, 1fr))",
+                                          gap: "0.5rem",
+                                        }}
+                                      >
+                                        {bioequivalenceStats.qcValidation.ruleResults.map(
+                                          (rule, index) => (
+                                            <div
+                                              key={index}
+                                              style={{
+                                                fontSize: "0.75rem",
+                                                padding: "0.25rem 0.5rem",
+                                                backgroundColor:
+                                                  rule.status === "PASS"
+                                                    ? "#e7f1f5"
+                                                    : rule.status === "WARNING"
+                                                      ? "#fff3cd"
+                                                      : "#fdf2f2",
+                                                borderRadius: "3px",
+                                                border:
+                                                  rule.status === "PASS"
+                                                    ? "1px solid #24a148"
+                                                    : rule.status === "WARNING"
+                                                      ? "1px solid #f1c21b"
+                                                      : "1px solid #da1e28",
+                                              }}
+                                            >
+                                              <strong>{rule.ruleCode}</strong>:{" "}
+                                              {rule.message}
+                                            </div>
+                                          ),
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                <p
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    color: "#525252",
+                                    margin: "1rem 0 0 0",
+                                    fontStyle: "italic",
+                                  }}
+                                >
+                                  Rules evaluated: 1:2s (Warning), 1:3s
+                                  (Rejection), 2:2s (Consecutive), R:4s (Range),
+                                  4:1s (Trend), 10:x (Systematic)
+                                </p>
                               </div>
+                            )}
+                        </div>
 
-                              {(() => {
-                                // Check control requirements compliance
-                                const methodRequirements = {
-                                  'HPLC_UV_VIS': [
-                                    { type: 'POSITIVE', count: 2, description: 'Reference standard solution' },
-                                    { type: 'NEGATIVE', count: 1, description: 'Solvent blank' },
-                                    { type: 'QC_LOW', count: 1, description: 'Low concentration QC' },
-                                    { type: 'QC_MEDIUM', count: 1, description: 'Medium concentration QC' },
-                                    { type: 'QC_HIGH', count: 1, description: 'High concentration QC' }
-                                  ],
-                                  'LC_MS_MS': [
-                                    { type: 'POSITIVE', count: 3, description: 'Calibration standards' },
-                                    { type: 'NEGATIVE', count: 2, description: 'Blank matrix' },
-                                    { type: 'QC_LOW', count: 2, description: 'QC Low' },
-                                    { type: 'QC_MEDIUM', count: 2, description: 'QC Medium' },
-                                    { type: 'QC_HIGH', count: 2, description: 'QC High' },
-                                    { type: 'BLANK', count: 1, description: 'Double blank' }
-                                  ]
-                                };
+                        {/* Control Sample Performance Report */}
+                        <div
+                          style={{
+                            marginTop: "2rem",
+                            padding: "1.5rem",
+                            backgroundColor: "#e7f6ed",
+                            borderRadius: "4px",
+                            border: "1px solid #24a148",
+                          }}
+                        >
+                          <h5
+                            style={{ marginBottom: "1rem", color: "#161616" }}
+                          >
+                            <FormattedMessage
+                              id="notebook.bioanalytical.reporting.controlSampleReport"
+                              defaultMessage="Control Sample Performance Report"
+                            />
+                          </h5>
 
-                                const methodsUsed = [...new Set(studyResults.flatMap(result =>
-                                  result.samples?.map(s => s.data?.analyticalMethod).filter(Boolean) || []
-                                ))];
+                          {studyResults.length > 0 ? (
+                            <div>
+                              {/* Overall Control Summary */}
+                              <div
+                                style={{
+                                  marginBottom: "1.5rem",
+                                  padding: "1rem",
+                                  backgroundColor: "white",
+                                  borderRadius: "4px",
+                                  border: "1px solid #d1d1d1",
+                                }}
+                              >
+                                <h6
+                                  style={{
+                                    marginBottom: "1rem",
+                                    fontSize: "1rem",
+                                    fontWeight: "500",
+                                  }}
+                                >
+                                  Study-wide Control Sample Summary:
+                                </h6>
 
-                                return (
-                                  <div style={{ display: "grid", gap: "1rem" }}>
-                                    {methodsUsed.map(method => {
-                                      const requirements = methodRequirements[method] || [];
-                                      if (requirements.length === 0) return null;
+                                {(() => {
+                                  // Aggregate control sample data across all study results
+                                  let totalControlsAnalyzed = 0;
+                                  let totalControlsPassed = 0;
+                                  let controlsByType = {};
+                                  let controlsByAssay = {};
 
-                                      return (
+                                  studyResults.forEach((result) => {
+                                    if (result.samples) {
+                                      result.samples.forEach((sample) => {
+                                        if (sample.data?.controlSampleResults) {
+                                          const controlResults =
+                                            sample.data.controlSampleResults;
+                                          totalControlsAnalyzed +=
+                                            controlResults.length;
+
+                                          controlResults.forEach(
+                                            (controlResult) => {
+                                              // Count passed controls
+                                              const accuracy = parseFloat(
+                                                controlResult.accuracy || 0,
+                                              );
+                                              const controlType =
+                                                controlResult.controlType ||
+                                                "Unknown";
+                                              const assayMethod =
+                                                sample.data?.analyticalMethod ||
+                                                "Unknown";
+
+                                              // Determine if control passed based on type
+                                              let passed = false;
+                                              switch (controlType) {
+                                                case "POSITIVE":
+                                                case "QC_LOW":
+                                                case "QC_MEDIUM":
+                                                case "QC_HIGH":
+                                                  passed =
+                                                    accuracy >= 85 &&
+                                                    accuracy <= 115;
+                                                  break;
+                                                case "NEGATIVE":
+                                                  passed = accuracy <= 5;
+                                                  break;
+                                                case "BLANK":
+                                                  passed = accuracy <= 2;
+                                                  break;
+                                                default:
+                                                  passed =
+                                                    accuracy >= 80 &&
+                                                    accuracy <= 120;
+                                              }
+
+                                              if (passed) totalControlsPassed++;
+
+                                              // Group by type
+                                              if (
+                                                !controlsByType[controlType]
+                                              ) {
+                                                controlsByType[controlType] = {
+                                                  total: 0,
+                                                  passed: 0,
+                                                };
+                                              }
+                                              controlsByType[controlType]
+                                                .total++;
+                                              if (passed)
+                                                controlsByType[controlType]
+                                                  .passed++;
+
+                                              // Group by assay
+                                              if (
+                                                !controlsByAssay[assayMethod]
+                                              ) {
+                                                controlsByAssay[assayMethod] = {
+                                                  total: 0,
+                                                  passed: 0,
+                                                };
+                                              }
+                                              controlsByAssay[assayMethod]
+                                                .total++;
+                                              if (passed)
+                                                controlsByAssay[assayMethod]
+                                                  .passed++;
+                                            },
+                                          );
+                                        }
+                                      });
+                                    }
+                                  });
+
+                                  const overallPassRate =
+                                    totalControlsAnalyzed > 0
+                                      ? (totalControlsPassed /
+                                          totalControlsAnalyzed) *
+                                        100
+                                      : 0;
+
+                                  return (
+                                    <div>
+                                      {/* Overall Statistics */}
+                                      <div
+                                        style={{
+                                          display: "grid",
+                                          gridTemplateColumns:
+                                            "repeat(auto-fit, minmax(200px, 1fr))",
+                                          gap: "1rem",
+                                          marginBottom: "1.5rem",
+                                        }}
+                                      >
                                         <div
-                                          key={method}
                                           style={{
+                                            textAlign: "center",
                                             padding: "1rem",
-                                            backgroundColor: "#f9f9f9",
+                                            backgroundColor: "#f4f4f4",
                                             borderRadius: "4px",
-                                            border: "1px solid #e0e0e0",
                                           }}
                                         >
-                                          <div style={{ fontWeight: "500", marginBottom: "0.75rem" }}>
-                                            {method}
+                                          <div
+                                            style={{
+                                              fontSize: "2rem",
+                                              fontWeight: "bold",
+                                              color: "#24a148",
+                                            }}
+                                          >
+                                            {totalControlsAnalyzed}
                                           </div>
-                                          <div style={{ display: "grid", gap: "0.5rem", fontSize: "0.875rem" }}>
-                                            {requirements.map((req, index) => {
-                                              // Count actual controls of this type for this method
-                                              let actualCount = 0;
-                                              studyResults.forEach(result => {
-                                                if (result.samples) {
-                                                  result.samples.forEach(sample => {
-                                                    if (sample.data?.analyticalMethod === method &&
-                                                        sample.data?.controlSampleResults) {
-                                                      actualCount += sample.data.controlSampleResults
-                                                        .filter(cr => cr.controlType === req.type).length;
-                                                    }
-                                                  });
-                                                }
-                                              });
+                                          <div
+                                            style={{
+                                              fontSize: "0.875rem",
+                                              color: "#525252",
+                                            }}
+                                          >
+                                            Total Controls Analyzed
+                                          </div>
+                                        </div>
+                                        <div
+                                          style={{
+                                            textAlign: "center",
+                                            padding: "1rem",
+                                            backgroundColor: "#f4f4f4",
+                                            borderRadius: "4px",
+                                          }}
+                                        >
+                                          <div
+                                            style={{
+                                              fontSize: "2rem",
+                                              fontWeight: "bold",
+                                              color:
+                                                overallPassRate >= 80
+                                                  ? "#24a148"
+                                                  : overallPassRate >= 67
+                                                    ? "#f1c21b"
+                                                    : "#da1e28",
+                                            }}
+                                          >
+                                            {overallPassRate.toFixed(1)}%
+                                          </div>
+                                          <div
+                                            style={{
+                                              fontSize: "0.875rem",
+                                              color: "#525252",
+                                            }}
+                                          >
+                                            Overall Pass Rate
+                                          </div>
+                                        </div>
+                                        <div
+                                          style={{
+                                            textAlign: "center",
+                                            padding: "1rem",
+                                            backgroundColor: "#f4f4f4",
+                                            borderRadius: "4px",
+                                          }}
+                                        >
+                                          <div
+                                            style={{
+                                              fontSize: "2rem",
+                                              fontWeight: "bold",
+                                              color: "#24a148",
+                                            }}
+                                          >
+                                            {totalControlsPassed}
+                                          </div>
+                                          <div
+                                            style={{
+                                              fontSize: "0.875rem",
+                                              color: "#525252",
+                                            }}
+                                          >
+                                            Controls Passed
+                                          </div>
+                                        </div>
+                                        <div
+                                          style={{
+                                            textAlign: "center",
+                                            padding: "1rem",
+                                            backgroundColor: "#f4f4f4",
+                                            borderRadius: "4px",
+                                          }}
+                                        >
+                                          <div
+                                            style={{
+                                              fontSize: "2rem",
+                                              fontWeight: "bold",
+                                              color: "#da1e28",
+                                            }}
+                                          >
+                                            {totalControlsAnalyzed -
+                                              totalControlsPassed}
+                                          </div>
+                                          <div
+                                            style={{
+                                              fontSize: "0.875rem",
+                                              color: "#525252",
+                                            }}
+                                          >
+                                            Controls Failed
+                                          </div>
+                                        </div>
+                                      </div>
 
-                                              const isMet = actualCount >= req.count;
-                                              return (
+                                      {/* Control Performance by Type */}
+                                      {Object.keys(controlsByType).length >
+                                        0 && (
+                                        <div style={{ marginBottom: "1.5rem" }}>
+                                          <h6
+                                            style={{
+                                              marginBottom: "0.75rem",
+                                              fontSize: "0.875rem",
+                                              fontWeight: "500",
+                                            }}
+                                          >
+                                            Performance by Control Type:
+                                          </h6>
+                                          <div
+                                            style={{
+                                              display: "grid",
+                                              gap: "0.5rem",
+                                            }}
+                                          >
+                                            {Object.entries(controlsByType).map(
+                                              ([type, stats]) => (
                                                 <div
-                                                  key={index}
+                                                  key={type}
                                                   style={{
                                                     display: "flex",
-                                                    justifyContent: "space-between",
+                                                    justifyContent:
+                                                      "space-between",
                                                     alignItems: "center",
-                                                    padding: "0.5rem",
-                                                    backgroundColor: "white",
+                                                    padding: "0.75rem",
+                                                    backgroundColor: "#f9f9f9",
                                                     borderRadius: "4px",
+                                                    border: "1px solid #e0e0e0",
                                                   }}
                                                 >
                                                   <div>
-                                                    <span style={{ fontWeight: "500" }}>
-                                                      {req.type.replace(/_/g, " ")}
+                                                    <span
+                                                      style={{
+                                                        fontWeight: "500",
+                                                      }}
+                                                    >
+                                                      {type.replace(/_/g, " ")}
                                                     </span>
-                                                    <span style={{ marginLeft: "0.5rem", color: "#525252" }}>
-                                                      - {req.description}
+                                                    <span
+                                                      style={{
+                                                        marginLeft: "1rem",
+                                                        color: "#525252",
+                                                        fontSize: "0.875rem",
+                                                      }}
+                                                    >
+                                                      {stats.passed}/
+                                                      {stats.total} passed (
+                                                      {(
+                                                        (stats.passed /
+                                                          stats.total) *
+                                                        100
+                                                      ).toFixed(1)}
+                                                      %)
                                                     </span>
                                                   </div>
-                                                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                                    <span style={{ fontSize: "0.875rem", color: "#525252" }}>
-                                                      {actualCount}/{req.count}
-                                                    </span>
-                                                    <Tag type={isMet ? "green" : "red"} size="sm">
-                                                      {isMet ? "✓ MET" : "✗ NOT MET"}
-                                                    </Tag>
-                                                  </div>
+                                                  <Tag
+                                                    type={
+                                                      stats.passed /
+                                                        stats.total >=
+                                                      0.8
+                                                        ? "green"
+                                                        : stats.passed /
+                                                              stats.total >=
+                                                            0.67
+                                                          ? "yellow"
+                                                          : "red"
+                                                    }
+                                                    size="sm"
+                                                  >
+                                                    {stats.passed /
+                                                      stats.total >=
+                                                    0.8
+                                                      ? "EXCELLENT"
+                                                      : stats.passed /
+                                                            stats.total >=
+                                                          0.67
+                                                        ? "ACCEPTABLE"
+                                                        : "NEEDS REVIEW"}
+                                                  </Tag>
                                                 </div>
-                                              );
-                                            })}
+                                              ),
+                                            )}
                                           </div>
                                         </div>
-                                      );
-                                    })}
-                                  </div>
-                                );
-                              })()}
+                                      )}
+
+                                      {/* Control Performance by Assay Method */}
+                                      {Object.keys(controlsByAssay).length >
+                                        0 && (
+                                        <div>
+                                          <h6
+                                            style={{
+                                              marginBottom: "0.75rem",
+                                              fontSize: "0.875rem",
+                                              fontWeight: "500",
+                                            }}
+                                          >
+                                            Performance by Analytical Method:
+                                          </h6>
+                                          <div
+                                            style={{
+                                              display: "grid",
+                                              gap: "0.5rem",
+                                            }}
+                                          >
+                                            {Object.entries(
+                                              controlsByAssay,
+                                            ).map(([method, stats]) => (
+                                              <div
+                                                key={method}
+                                                style={{
+                                                  display: "flex",
+                                                  justifyContent:
+                                                    "space-between",
+                                                  alignItems: "center",
+                                                  padding: "0.75rem",
+                                                  backgroundColor: "#f9f9f9",
+                                                  borderRadius: "4px",
+                                                  border: "1px solid #e0e0e0",
+                                                }}
+                                              >
+                                                <div>
+                                                  <span
+                                                    style={{
+                                                      fontWeight: "500",
+                                                    }}
+                                                  >
+                                                    {method}
+                                                  </span>
+                                                  <span
+                                                    style={{
+                                                      marginLeft: "1rem",
+                                                      color: "#525252",
+                                                      fontSize: "0.875rem",
+                                                    }}
+                                                  >
+                                                    {stats.passed}/{stats.total}{" "}
+                                                    controls passed (
+                                                    {(
+                                                      (stats.passed /
+                                                        stats.total) *
+                                                      100
+                                                    ).toFixed(1)}
+                                                    %)
+                                                  </span>
+                                                </div>
+                                                <Tag
+                                                  type={
+                                                    stats.passed /
+                                                      stats.total >=
+                                                    0.8
+                                                      ? "green"
+                                                      : stats.passed /
+                                                            stats.total >=
+                                                          0.67
+                                                        ? "yellow"
+                                                        : "red"
+                                                  }
+                                                  size="sm"
+                                                >
+                                                  {stats.passed / stats.total >=
+                                                  0.8
+                                                    ? "COMPLIANT"
+                                                    : stats.passed /
+                                                          stats.total >=
+                                                        0.67
+                                                      ? "CONDITIONAL"
+                                                      : "NON-COMPLIANT"}
+                                                </Tag>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+
+                              {/* Control Requirements vs Actual */}
+                              <div
+                                style={{
+                                  marginBottom: "1.5rem",
+                                  padding: "1rem",
+                                  backgroundColor: "white",
+                                  borderRadius: "4px",
+                                  border: "1px solid #d1d1d1",
+                                }}
+                              >
+                                <h6
+                                  style={{
+                                    marginBottom: "1rem",
+                                    fontSize: "1rem",
+                                    fontWeight: "500",
+                                  }}
+                                >
+                                  Control Requirements Compliance:
+                                </h6>
+
+                                <div
+                                  style={{
+                                    fontSize: "0.875rem",
+                                    color: "#525252",
+                                    marginBottom: "1rem",
+                                  }}
+                                >
+                                  This section shows whether the study met the
+                                  control sample requirements defined for each
+                                  analytical method.
+                                </div>
+
+                                {(() => {
+                                  // Check control requirements compliance
+                                  const methodRequirements = {
+                                    HPLC_UV_VIS: [
+                                      {
+                                        type: "POSITIVE",
+                                        count: 2,
+                                        description:
+                                          "Reference standard solution",
+                                      },
+                                      {
+                                        type: "NEGATIVE",
+                                        count: 1,
+                                        description: "Solvent blank",
+                                      },
+                                      {
+                                        type: "QC_LOW",
+                                        count: 1,
+                                        description: "Low concentration QC",
+                                      },
+                                      {
+                                        type: "QC_MEDIUM",
+                                        count: 1,
+                                        description: "Medium concentration QC",
+                                      },
+                                      {
+                                        type: "QC_HIGH",
+                                        count: 1,
+                                        description: "High concentration QC",
+                                      },
+                                    ],
+                                    LC_MS_MS: [
+                                      {
+                                        type: "POSITIVE",
+                                        count: 3,
+                                        description: "Calibration standards",
+                                      },
+                                      {
+                                        type: "NEGATIVE",
+                                        count: 2,
+                                        description: "Blank matrix",
+                                      },
+                                      {
+                                        type: "QC_LOW",
+                                        count: 2,
+                                        description: "QC Low",
+                                      },
+                                      {
+                                        type: "QC_MEDIUM",
+                                        count: 2,
+                                        description: "QC Medium",
+                                      },
+                                      {
+                                        type: "QC_HIGH",
+                                        count: 2,
+                                        description: "QC High",
+                                      },
+                                      {
+                                        type: "BLANK",
+                                        count: 1,
+                                        description: "Double blank",
+                                      },
+                                    ],
+                                  };
+
+                                  const methodsUsed = [
+                                    ...new Set(
+                                      studyResults.flatMap(
+                                        (result) =>
+                                          result.samples
+                                            ?.map(
+                                              (s) => s.data?.analyticalMethod,
+                                            )
+                                            .filter(Boolean) || [],
+                                      ),
+                                    ),
+                                  ];
+
+                                  return (
+                                    <div
+                                      style={{ display: "grid", gap: "1rem" }}
+                                    >
+                                      {methodsUsed.map((method) => {
+                                        const requirements =
+                                          methodRequirements[method] || [];
+                                        if (requirements.length === 0)
+                                          return null;
+
+                                        return (
+                                          <div
+                                            key={method}
+                                            style={{
+                                              padding: "1rem",
+                                              backgroundColor: "#f9f9f9",
+                                              borderRadius: "4px",
+                                              border: "1px solid #e0e0e0",
+                                            }}
+                                          >
+                                            <div
+                                              style={{
+                                                fontWeight: "500",
+                                                marginBottom: "0.75rem",
+                                              }}
+                                            >
+                                              {method}
+                                            </div>
+                                            <div
+                                              style={{
+                                                display: "grid",
+                                                gap: "0.5rem",
+                                                fontSize: "0.875rem",
+                                              }}
+                                            >
+                                              {requirements.map(
+                                                (req, index) => {
+                                                  // Count actual controls of this type for this method
+                                                  let actualCount = 0;
+                                                  studyResults.forEach(
+                                                    (result) => {
+                                                      if (result.samples) {
+                                                        result.samples.forEach(
+                                                          (sample) => {
+                                                            if (
+                                                              sample.data
+                                                                ?.analyticalMethod ===
+                                                                method &&
+                                                              sample.data
+                                                                ?.controlSampleResults
+                                                            ) {
+                                                              actualCount +=
+                                                                sample.data.controlSampleResults.filter(
+                                                                  (cr) =>
+                                                                    cr.controlType ===
+                                                                    req.type,
+                                                                ).length;
+                                                            }
+                                                          },
+                                                        );
+                                                      }
+                                                    },
+                                                  );
+
+                                                  const isMet =
+                                                    actualCount >= req.count;
+                                                  return (
+                                                    <div
+                                                      key={index}
+                                                      style={{
+                                                        display: "flex",
+                                                        justifyContent:
+                                                          "space-between",
+                                                        alignItems: "center",
+                                                        padding: "0.5rem",
+                                                        backgroundColor:
+                                                          "white",
+                                                        borderRadius: "4px",
+                                                      }}
+                                                    >
+                                                      <div>
+                                                        <span
+                                                          style={{
+                                                            fontWeight: "500",
+                                                          }}
+                                                        >
+                                                          {req.type.replace(
+                                                            /_/g,
+                                                            " ",
+                                                          )}
+                                                        </span>
+                                                        <span
+                                                          style={{
+                                                            marginLeft:
+                                                              "0.5rem",
+                                                            color: "#525252",
+                                                          }}
+                                                        >
+                                                          - {req.description}
+                                                        </span>
+                                                      </div>
+                                                      <div
+                                                        style={{
+                                                          display: "flex",
+                                                          alignItems: "center",
+                                                          gap: "0.5rem",
+                                                        }}
+                                                      >
+                                                        <span
+                                                          style={{
+                                                            fontSize:
+                                                              "0.875rem",
+                                                            color: "#525252",
+                                                          }}
+                                                        >
+                                                          {actualCount}/
+                                                          {req.count}
+                                                        </span>
+                                                        <Tag
+                                                          type={
+                                                            isMet
+                                                              ? "green"
+                                                              : "red"
+                                                          }
+                                                          size="sm"
+                                                        >
+                                                          {isMet
+                                                            ? "✓ MET"
+                                                            : "✗ NOT MET"}
+                                                        </Tag>
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                },
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <div
-                            style={{
-                              textAlign: "center",
-                              padding: "3rem 1rem",
-                              color: "#525252",
-                              backgroundColor: "white",
-                              borderRadius: "4px",
-                              border: "1px solid #e0e0e0",
-                            }}
-                          >
-                            <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🧪</div>
-                            <p style={{ marginBottom: "0.5rem", fontWeight: "500" }}>
-                              Control Sample Report Unavailable
-                            </p>
-                            <p style={{ fontSize: "0.875rem" }}>
-                              Control sample performance data will appear here once analytical execution is completed
-                              and study results are generated.
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                          ) : (
+                            <div
+                              style={{
+                                textAlign: "center",
+                                padding: "3rem 1rem",
+                                color: "#525252",
+                                backgroundColor: "white",
+                                borderRadius: "4px",
+                                border: "1px solid #e0e0e0",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontSize: "3rem",
+                                  marginBottom: "1rem",
+                                }}
+                              >
+                                🧪
+                              </div>
+                              <p
+                                style={{
+                                  marginBottom: "0.5rem",
+                                  fontWeight: "500",
+                                }}
+                              >
+                                Control Sample Report Unavailable
+                              </p>
+                              <p style={{ fontSize: "0.875rem" }}>
+                                Control sample performance data will appear here
+                                once analytical execution is completed and study
+                                results are generated.
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </>
                     ) : (
                       <div
@@ -3638,11 +4023,13 @@ function BioanalyticalReportingPage({
                         !qaApproved
                           ? intl.formatMessage({
                               id: "notebook.bioanalytical.reporting.qaRequiredHelp",
-                              defaultMessage: "QA approval required before submission",
+                              defaultMessage:
+                                "QA approval required before submission",
                             })
                           : intl.formatMessage({
                               id: "notebook.bioanalytical.reporting.selectTargetHelp",
-                              defaultMessage: "Choose the unit to receive your validated results",
+                              defaultMessage:
+                                "Choose the unit to receive your validated results",
                             })
                       }
                     >
@@ -3796,13 +4183,11 @@ function BioanalyticalReportingPage({
                           onChange={(e) => setSubmissionFormat(e.target.value)}
                           helperText={intl.formatMessage({
                             id: "notebook.bioanalytical.reporting.formatHelp",
-                            defaultMessage: "Choose the delivery format for your results",
+                            defaultMessage:
+                              "Choose the delivery format for your results",
                           })}
                         >
-                          <SelectItem
-                            value=""
-                            text="-- Choose format --"
-                          />
+                          <SelectItem value="" text="-- Choose format --" />
                           {submissionFormats.map((format) => (
                             <SelectItem
                               key={format.id}
@@ -3822,7 +4207,8 @@ function BioanalyticalReportingPage({
                           placeholder="contact@example.com"
                           helperText={intl.formatMessage({
                             id: "notebook.bioanalytical.reporting.emailHelp",
-                            defaultMessage: "Email address for delivery confirmation",
+                            defaultMessage:
+                              "Email address for delivery confirmation",
                           })}
                         />
                       </div>
@@ -3836,11 +4222,13 @@ function BioanalyticalReportingPage({
                         onChange={(e) => setDeliveryNotes(e.target.value)}
                         placeholder={intl.formatMessage({
                           id: "notebook.bioanalytical.reporting.notesPlaceholder",
-                          defaultMessage: "Additional instructions or metadata for the receiving unit...",
+                          defaultMessage:
+                            "Additional instructions or metadata for the receiving unit...",
                         })}
                         helperText={intl.formatMessage({
                           id: "notebook.bioanalytical.reporting.notesHelp",
-                          defaultMessage: "Optional notes about the submission (study protocol, special requirements, etc.)",
+                          defaultMessage:
+                            "Optional notes about the submission (study protocol, special requirements, etc.)",
                         })}
                         rows={3}
                       />
@@ -3926,17 +4314,19 @@ function BioanalyticalReportingPage({
                           !submissionFormat
                             ? intl.formatMessage({
                                 id: "notebook.bioanalytical.reporting.selectFormatFirst",
-                                defaultMessage: "Please select a submission format first",
+                                defaultMessage:
+                                  "Please select a submission format first",
                               })
                             : isLoading
-                            ? intl.formatMessage({
-                                id: "notebook.bioanalytical.reporting.submitting",
-                                defaultMessage: "Submitting results...",
-                              })
-                            : intl.formatMessage({
-                                id: "notebook.bioanalytical.reporting.submitReady",
-                                defaultMessage: "Submit validated results to requesting unit",
-                              })
+                              ? intl.formatMessage({
+                                  id: "notebook.bioanalytical.reporting.submitting",
+                                  defaultMessage: "Submitting results...",
+                                })
+                              : intl.formatMessage({
+                                  id: "notebook.bioanalytical.reporting.submitReady",
+                                  defaultMessage:
+                                    "Submit validated results to requesting unit",
+                                })
                         }
                       >
                         {isLoading ? (
@@ -4003,7 +4393,13 @@ function BioanalyticalReportingPage({
         size="md"
       >
         <div style={{ marginBottom: "1.5rem" }}>
-          <p style={{ fontSize: "0.875rem", color: "#525252", marginBottom: "1rem" }}>
+          <p
+            style={{
+              fontSize: "0.875rem",
+              color: "#525252",
+              marginBottom: "1rem",
+            }}
+          >
             <FormattedMessage
               id="notebook.bioanalytical.reporting.redcapModalDescription"
               defaultMessage="Configure REDCap export settings. The system will generate a CSV file compatible with REDCap data import containing bioanalytical study results and bioequivalence statistics."
@@ -4035,7 +4431,8 @@ function BioanalyticalReportingPage({
             })}
             helperText={intl.formatMessage({
               id: "notebook.bioanalytical.reporting.redcapRecordIdFieldHelp",
-              defaultMessage: "Primary key field name in REDCap (default: record_id)",
+              defaultMessage:
+                "Primary key field name in REDCap (default: record_id)",
             })}
             value={redcapData.recordIdField}
             onChange={(e) =>
@@ -4069,7 +4466,8 @@ function BioanalyticalReportingPage({
             })}
             helperText={intl.formatMessage({
               id: "notebook.bioanalytical.reporting.redcapInstrumentNameHelp",
-              defaultMessage: "REDCap instrument/form name for completion status",
+              defaultMessage:
+                "REDCap instrument/form name for completion status",
             })}
             value={redcapData.instrumentName}
             onChange={(e) =>
@@ -4094,7 +4492,13 @@ function BioanalyticalReportingPage({
                 />
               </strong>
             </p>
-            <ul style={{ fontSize: "0.875rem", marginTop: "0.5rem", color: "#525252" }}>
+            <ul
+              style={{
+                fontSize: "0.875rem",
+                marginTop: "0.5rem",
+                color: "#525252",
+              }}
+            >
               <li>
                 <FormattedMessage
                   id="notebook.bioanalytical.reporting.redcapDataSamples"
