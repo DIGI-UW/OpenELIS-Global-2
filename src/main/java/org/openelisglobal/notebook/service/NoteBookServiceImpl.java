@@ -1283,7 +1283,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         // Check for final storage pages by title
         if (title.contains("storage") || title.contains("inventory")) {
-            // Verify this is not bacteriology, traditional medicine, or pharmaceutical temporary storage by
+            // Verify this is not bacteriology, traditional medicine, or pharmaceutical
+            // temporary storage by
             // checking notebook type
             NoteBook notebook = page.getNotebook();
             if (notebook != null) {
@@ -1317,7 +1318,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                     }
                 }
                 // For pharmaceutical workflows, "Storage & Inventory Management" (order 5) is
-                // NOT a final storage page - samples should proceed to "Reporting & Performance Monitoring" (page 6)
+                // NOT a final storage page - samples should proceed to "Reporting & Performance
+                // Monitoring" (page 6)
                 if (notebookTitle.contains("pharmaceutical")) {
                     // In pharmaceutical workflows, order 5 storage page is not final
                     // Samples should proceed to the next page in the workflow
