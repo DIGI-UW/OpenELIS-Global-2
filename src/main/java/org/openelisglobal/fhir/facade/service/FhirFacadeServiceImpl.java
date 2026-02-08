@@ -2,18 +2,30 @@ package org.openelisglobal.fhir.facade.service;
 
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Date;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.CapabilityStatement;
+import org.hl7.fhir.r4.model.CapabilityStatement.CapabilityStatementKind;
+import org.hl7.fhir.r4.model.CapabilityStatement.CapabilityStatementRestComponent;
+import org.hl7.fhir.r4.model.CapabilityStatement.CapabilityStatementRestResourceComponent;
+import org.hl7.fhir.r4.model.CapabilityStatement.RestfulCapabilityMode;
+import org.hl7.fhir.r4.model.CapabilityStatement.TypeRestfulInteraction;
+import org.hl7.fhir.r4.model.CodeType;
+import org.hl7.fhir.r4.model.Enumerations.FHIRVersion;
+import org.hl7.fhir.r4.model.Enumerations.PublicationStatus;
 import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.OperationOutcome.IssueSeverity;
 import org.hl7.fhir.r4.model.OperationOutcome.IssueType;
 import org.hl7.fhir.r4.model.Resource;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
+import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceServiceImpl.FhirOperations;
 import org.openelisglobal.fhir.facade.FhirFacadeServlet;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -148,8 +160,7 @@ public class FhirFacadeServiceImpl implements FhirFacadeService {
                 return createOperationOutcome(IssueSeverity.ERROR, "Bundle type must be 'transaction' or 'batch'");
             }
 
-            Bundle result = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(
-                    new org.openelisglobal.dataexchange.fhir.service.FhirPersistanceServiceImpl.FhirOperations());
+            Bundle result = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(new FhirOperations());
 
             for (Bundle.BundleEntryComponent entry : bundle.getEntry()) {
                 Resource resource = entry.getResource();
@@ -174,34 +185,29 @@ public class FhirFacadeServiceImpl implements FhirFacadeService {
 
     @Override
     public String getCapabilityStatement() {
-        org.hl7.fhir.r4.model.CapabilityStatement cs = new org.hl7.fhir.r4.model.CapabilityStatement();
-        cs.setStatus(org.hl7.fhir.r4.model.Enumerations.PublicationStatus.ACTIVE);
-        cs.setKind(org.hl7.fhir.r4.model.CapabilityStatement.CapabilityStatementKind.INSTANCE);
-        cs.setFhirVersion(org.hl7.fhir.r4.model.Enumerations.FHIRVersion._4_0_1);
-        cs.setFormat(java.util.Arrays.asList(new org.hl7.fhir.r4.model.CodeType("application/fhir+json"),
-                new org.hl7.fhir.r4.model.CodeType("application/fhir+xml")));
-        cs.setDate(new java.util.Date());
+        CapabilityStatement cs = new CapabilityStatement();
+        cs.setStatus(PublicationStatus.ACTIVE);
+        cs.setKind(CapabilityStatementKind.INSTANCE);
+        cs.setFhirVersion(FHIRVersion._4_0_1);
+        cs.setFormat(Arrays.asList(new CodeType(FHIR_JSON), new CodeType("application/fhir+xml")));
+        cs.setDate(new Date());
 
-        org.hl7.fhir.r4.model.CapabilityStatement.CapabilityStatementSoftwareComponent software = cs.getSoftware();
-        software.setName("OpenELIS Global FHIR Facade");
-        software.setVersion("1.0.0");
+        cs.getSoftware().setName("OpenELIS Global FHIR Facade").setVersion("1.0.0");
 
-        org.hl7.fhir.r4.model.CapabilityStatement.CapabilityStatementRestComponent rest = cs.addRest();
-        rest.setMode(org.hl7.fhir.r4.model.CapabilityStatement.RestfulCapabilityMode.SERVER);
+        CapabilityStatementRestComponent rest = cs.addRest();
+        rest.setMode(RestfulCapabilityMode.SERVER);
 
         String[] resourceTypes = { "Patient", "Practitioner", "Organization", "Location", "Specimen", "Observation",
                 "DiagnosticReport", "ServiceRequest", "Task" };
 
         for (String resourceType : resourceTypes) {
-            org.hl7.fhir.r4.model.CapabilityStatement.CapabilityStatementRestResourceComponent resource = rest
-                    .addResource();
+            CapabilityStatementRestResourceComponent resource = rest.addResource();
             resource.setType(resourceType);
-            resource.addInteraction().setCode(org.hl7.fhir.r4.model.CapabilityStatement.TypeRestfulInteraction.READ);
-            resource.addInteraction()
-                    .setCode(org.hl7.fhir.r4.model.CapabilityStatement.TypeRestfulInteraction.SEARCHTYPE);
-            resource.addInteraction().setCode(org.hl7.fhir.r4.model.CapabilityStatement.TypeRestfulInteraction.CREATE);
-            resource.addInteraction().setCode(org.hl7.fhir.r4.model.CapabilityStatement.TypeRestfulInteraction.UPDATE);
-            resource.addInteraction().setCode(org.hl7.fhir.r4.model.CapabilityStatement.TypeRestfulInteraction.DELETE);
+            resource.addInteraction().setCode(TypeRestfulInteraction.READ);
+            resource.addInteraction().setCode(TypeRestfulInteraction.SEARCHTYPE);
+            resource.addInteraction().setCode(TypeRestfulInteraction.CREATE);
+            resource.addInteraction().setCode(TypeRestfulInteraction.UPDATE);
+            resource.addInteraction().setCode(TypeRestfulInteraction.DELETE);
         }
 
         lastResponseStatus = HttpStatus.OK.value();
