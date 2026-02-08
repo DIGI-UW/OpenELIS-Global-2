@@ -17,7 +17,6 @@ import Spinner from "../common/Sprinner";
 import { useIntl } from "react-intl";
 import { useContext, useEffect, useState } from "react";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog } from "../common/CustomNotification";
 import NoNotificationSVG from "./NoNotificationSVG";
 
 export default function SlideOverNotifications(props) {
@@ -245,7 +244,6 @@ export default function SlideOverNotifications(props) {
         margin: "0 auto",
       }}
     >
-      {notificationVisible === true ? <AlertDialog /> : ""}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         <br />
 
