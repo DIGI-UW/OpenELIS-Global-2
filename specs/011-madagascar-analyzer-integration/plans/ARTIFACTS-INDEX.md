@@ -18,21 +18,15 @@
 
 ---
 
-## Plans & Status Reports
+## Plans & Reference
 
 ### plans/ Directory (this directory)
 
-| Document                                                                                     | Date       | Status         |
-| -------------------------------------------------------------------------------------------- | ---------- | -------------- |
-| [architecture-remediation-2026-02-02.plan.md](architecture-remediation-2026-02-02.plan.md)   | 2026-02-02 | ✅ Implemented |
-| [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md)                                         | 2026-02-02 | ✅ Complete    |
-| [comprehensive-remediation-2026-02-03.plan.md](comprehensive-remediation-2026-02-03.plan.md) | 2026-02-03 | Superseded     |
-| [m9-m10-dashboard-plan.md](m9-m10-dashboard-plan.md)                                         | 2026-01-27 | ✅ Complete    |
-| [m19-m20-immediate-execution.plan.md](m19-m20-immediate-execution.plan.md)                   | 2026-02-03 | ✅ Complete    |
-| [astm-genericplugin-audit-2026-02-03.plan.md](astm-genericplugin-audit-2026-02-03.plan.md)   | 2026-02-03 | Reference      |
-| [astm-flows-audit-report.md](astm-flows-audit-report.md)                                     | 2026-02-03 | Reference      |
-| [m8-implementation-prompt.md](m8-implementation-prompt.md)                                   | 2026-02-03 | Reference      |
-| [universal-analyzer-bridge-v2.md](universal-analyzer-bridge-v2.md)                           | 2026-02-06 | ✅ Current     |
+| Document                                                           | Purpose                       |
+| ------------------------------------------------------------------ | ----------------------------- |
+| [ARTIFACTS-INDEX.md](ARTIFACTS-INDEX.md)                           | This navigation index         |
+| [universal-analyzer-bridge-v2.md](universal-analyzer-bridge-v2.md) | Bridge architecture reference |
+| [astm-flows-audit-report.md](astm-flows-audit-report.md)           | ASTM flow audit findings      |
 
 ---
 
@@ -53,7 +47,7 @@
 | Document                                                            | Purpose                        | For             |
 | ------------------------------------------------------------------- | ------------------------------ | --------------- |
 | [VERIFICATION-CHECKLIST.md](../templates/VERIFICATION-CHECKLIST.md) | Field verification procedures  | Deployment team |
-| [VERIFICATION-GUIDE.md](../research/VERIFICATION-GUIDE.md)          | General verification guide     | All             |
+| [VERIFICATION-GUIDE.md](../research/VERIFICATION-GUIDE.md)          | General verification guide     | Developers      |
 | [GENERIC-TEST-RECIPE.md](../templates/GENERIC-TEST-RECIPE.md)       | Generic analyzer testing steps | QA/Testing      |
 | [testing-matrix.md](../checklists/testing-matrix.md)                | Test coverage matrix           | All             |
 
@@ -63,15 +57,14 @@
 
 ### research/ Directory
 
-| Document                                                                                     | Purpose                           |
-| -------------------------------------------------------------------------------------------- | --------------------------------- |
-| [hibernate-mapping-analysis.md](../research/hibernate-mapping-analysis.md)                   | ORM mapping analysis              |
-| [xml-migration-scope.md](../research/xml-migration-scope.md)                                 | XML to annotation migration scope |
-| [xml-to-annotations-guide.md](../research/xml-to-annotations-guide.md)                       | Migration guide                   |
-| [hl7-analyzer-messaging-validation.md](../research/hl7-analyzer-messaging-validation.md)     | HL7 protocol validation           |
-| [pre-implementation-analysis.md](../research/pre-implementation-analysis.md)                 | Initial analysis                  |
-| [analyzer-plugin-architecture-report.md](../research/analyzer-plugin-architecture-report.md) | Plugin architecture analysis      |
-| [metadata-management-analysis-report.md](../research/metadata-management-analysis-report.md) | Metadata management analysis      |
+| Document                                                                                     | Purpose                               |
+| -------------------------------------------------------------------------------------------- | ------------------------------------- |
+| [analyzer-plugin-architecture-report.md](../research/analyzer-plugin-architecture-report.md) | Plugin architecture analysis          |
+| [hl7-analyzer-messaging-validation.md](../research/hl7-analyzer-messaging-validation.md)     | HL7 protocol validation (OBX-3 bug)   |
+| [pre-implementation-analysis.md](../research/pre-implementation-analysis.md)                 | Architecture decision record (D1, D2) |
+| [metadata-management-analysis-report.md](../research/metadata-management-analysis-report.md) | 6-tier metadata ownership model       |
+| [xml-hibernate-migration.md](../research/xml-hibernate-migration.md)                         | XML → JPA annotation migration guide  |
+| [VERIFICATION-GUIDE.md](../research/VERIFICATION-GUIDE.md)                                   | Developer verification procedures     |
 
 ---
 
@@ -87,40 +80,21 @@
 
 ---
 
-## Milestone Documentation
-
-### milestones/ Directory
-
-| Document                                                                                   | Milestone | Purpose                     |
-| ------------------------------------------------------------------------------------------ | --------- | --------------------------- |
-| [current-state-analysis-2026-02-02.md](../milestones/current-state-analysis-2026-02-02.md) | General   | Current state analysis      |
-| [IMPLEMENTATION-SUMMARY.md](../milestones/IMPLEMENTATION-SUMMARY.md)                       | General   | Implementation summary      |
-| [REMEDIATION-REPORT.md](../milestones/REMEDIATION-REPORT.md)                               | General   | Remediation report          |
-| [CHANGELOG-2026-02-02.md](../milestones/CHANGELOG-2026-02-02.md)                           | General   | Architecture changes        |
-| [analyzer-harness-setup-report.md](../milestones/analyzer-harness-setup-report.md)         | General   | Test harness setup          |
-| [m9-m10-manual-testing-guide.md](../milestones/m9-m10-manual-testing-guide.md)             | M9-M10    | Horiba testing guide        |
-| [m9-m10-testing-infrastructure.md](../milestones/m9-m10-testing-infrastructure.md)         | M9-M10    | Testing infrastructure      |
-| [m11-simulator-dashboard-analysis.md](../milestones/m11-simulator-dashboard-analysis.md)   | M11       | Stago simulator analysis    |
-| [m11-stago-implementation-analysis.md](../milestones/m11-stago-implementation-analysis.md) | M11       | Stago implementation        |
-| [m11-stago-testing/](../milestones/m11-stago-testing/)                                     | M11       | Stago testing documentation |
-
----
-
 ## External Artifacts
 
-### analyzer-defaults/ (Analyzer Harness)
+### Analyzer Harness
 
-**Location:** `/projects/analyzer-harness/analyzer-defaults/`
+**Location:** `projects/analyzer-harness/`
 
-**Contents:** 11 default configuration templates for GenericASTM and GenericHL7
-plugins
+| Document                                                                             | Purpose                          |
+| ------------------------------------------------------------------------------------ | -------------------------------- |
+| [README.md](../../../projects/analyzer-harness/README.md)                            | Harness overview and dev setup   |
+| [SETUP-REPORT.md](../../../projects/analyzer-harness/SETUP-REPORT.md)                | Architecture gaps & setup report |
+| [analyzer-defaults/](../../../projects/analyzer-harness/analyzer-defaults/README.md) | 11 default config templates      |
 
-**Index:**
-[analyzer-defaults/README.md](../../../projects/analyzer-harness/analyzer-defaults/README.md)
+### Test Fixtures
 
-### Test Fixtures (Test Resources)
-
-**Location:** `/src/test/resources/testdata/`
+**Location:** `src/test/resources/testdata/`
 
 | Fixture                             | IDs       | Analyzers | Purpose                           |
 | ----------------------------------- | --------- | --------- | --------------------------------- |
@@ -153,11 +127,13 @@ plugins
 ### For Architecture Review
 
 1. Read
-   [architecture-remediation-2026-02-02.plan.md](architecture-remediation-2026-02-02.plan.md)
-2. Review
-   [plugins/analyzers/GenericHL7/ARCHITECTURE.md](../../../../plugins/analyzers/GenericHL7/ARCHITECTURE.md)
+   [pre-implementation-analysis.md](../research/pre-implementation-analysis.md)
+   for decisions
+2. Review [universal-analyzer-bridge-v2.md](universal-analyzer-bridge-v2.md) for
+   bridge architecture
 3. Check
    [analyzer-defaults/README.md](../../../projects/analyzer-harness/analyzer-defaults/README.md)
+   for config templates
 
 ---
 

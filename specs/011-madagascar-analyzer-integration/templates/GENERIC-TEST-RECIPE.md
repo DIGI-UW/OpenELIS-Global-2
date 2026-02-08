@@ -643,16 +643,12 @@ Generic test is successful when ALL of the following pass:
 
 ## Related Documentation
 
-- [VERIFICATION-GUIDE.md](VERIFICATION-GUIDE.md) - Manual verification steps for
-  Feature 011
-- [supported-analyzers.md](contracts/supported-analyzers.md) - Authoritative
+- [VERIFICATION-GUIDE.md](../research/VERIFICATION-GUIDE.md) - Manual
+  verification steps for Feature 011
+- [supported-analyzers.md](../contracts/supported-analyzers.md) - Authoritative
   analyzer inventory
-- [template-fixture-mapping.md](contracts/template-fixture-mapping.md) - Mock
+- [template-fixture-mapping.md](../contracts/template-fixture-mapping.md) - Mock
   template to fixture mapping
-- [Mock Server README](../../tools/analyzer-mock-server/README.md) - Mock server
-  usage guide
-- [ASTM Bridge README](../../tools/openelis-analyzer-bridge/README.md) - Bridge
-  setup and configuration
 
 ---
 

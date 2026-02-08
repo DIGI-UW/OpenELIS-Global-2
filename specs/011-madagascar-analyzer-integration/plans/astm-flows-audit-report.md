@@ -1,7 +1,7 @@
 # ASTM Entry Points and Plugin Selection Audit Report
 
 **Date:** 2026-02-03  
-**Plan:** astm-genericplugin-audit-2026-02-03.plan.md  
+**Plan:** astm-genericplugin-audit-2026-02-03 (completed, archived)
 **Conclusion:** ASTM ingestion is plugin-only; no non-plugin fallback exists in
 main repo.
 
@@ -52,7 +52,7 @@ parses lines; plugin matching happens in `processData()` /
 
 ### Generic path (dashboard-configured)
 
-- **Condition:** `analyzer_configuration.generic_plugin = true` and
+- **Condition:** `analyzer_configuration.is_generic_plugin = true` and
   `identifier_pattern` is non-null.
 - **DAO:**
   [AnalyzerConfigurationDAOImpl.findGenericPluginConfigsWithPatterns()](../../../src/main/java/org/openelisglobal/analyzer/dao/AnalyzerConfigurationDAOImpl.java)
@@ -62,17 +62,18 @@ parses lines; plugin matching happens in `processData()` /
   compiles each config’s `identifier_pattern` as a Java regex and uses
   `matcher(identifier).find()` (substring match). First matching config is
   returned.
-- **ASTM identifier:** Extracted from ASTM H-segment **field 4** (0-based index
-  4 after `split("|")`), i.e. manufacturer^model^version (e.g.
-  `MINDRAY^BA-88A^1.0`). See GenericASTMAnalyzer.parseAnalyzerIdentifier().
+- **ASTM identifier:** Extracted from ASTM H-segment **H-5** (1-based field 5;
+  `fields[4]` after `line.split("|")`), i.e. manufacturer^model^version (e.g.
+  `H|^~\&|...|MINDRAY^BA-88A^1.0|...`). See
+  `GenericASTMAnalyzer.parseAnalyzerIdentifier()`.
 - **Result:** GenericASTM plugin’s `isTargetAnalyzer(lines)` returns true; it
   provides the inserter for that analyzer.
 
 ### Specific (legacy) plugin path
 
 - **Condition:** Either no `analyzer_configuration` row for that analyzer, or
-  `generic_plugin = false` (and the analyzer is matched by a dedicated plugin’s
-  hardcoded logic).
+  `is_generic_plugin = false` (and the analyzer is matched by a dedicated
+  plugin's hardcoded logic).
 - **Behavior:** A legacy plugin (e.g. HoribaPentra60) implements
   `isTargetAnalyzer(lines)` with fixed checks (e.g. "PENTRA60" in H-segment).
   Plugins are evaluated in registration order; first match wins.
@@ -90,8 +91,7 @@ parses lines; plugin matching happens in `processData()` /
 
 ## 4. References
 
-- Plan:
-  [astm-genericplugin-audit-2026-02-03.plan.md](./astm-genericplugin-audit-2026-02-03.plan.md)
+- Plan: astm-genericplugin-audit-2026-02-03 (completed, archived)
 - ASTM reader:
   [ASTMAnalyzerReader.java](../../../src/main/java/org/openelisglobal/analyzerimport/analyzerreaders/ASTMAnalyzerReader.java)
   — `setInserterResponder()` (lines 106–120)

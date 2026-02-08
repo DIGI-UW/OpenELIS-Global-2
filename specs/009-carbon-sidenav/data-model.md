@@ -34,7 +34,7 @@ interface MenuState {
   menu_nonconformity: MenuItem[]; // Non-conformity submenu (optional)
 }
 
-// Note: Panel states (notifications, user, search) are now managed in HeaderActions component
+// Note: Panel states (notifications, user, search) are managed in the Header component
 ```
 
 ### MenuItem Structure (from /rest/menu API)

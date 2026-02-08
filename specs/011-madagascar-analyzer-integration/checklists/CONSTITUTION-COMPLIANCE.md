@@ -302,10 +302,8 @@ requirements:
 - **Pre-implementation Analysis**:
   [pre-implementation-analysis.md](../research/pre-implementation-analysis.md)
   (formerly specification-analysis-report.md)
-- **Hibernate Mapping Analysis**:
-  [research/hibernate-mapping-analysis.md](research/hibernate-mapping-analysis.md)
-- **XML Migration Scope**:
-  [research/xml-migration-scope.md](research/xml-migration-scope.md)
+- **XML/Hibernate Migration Guide**:
+  [research/xml-hibernate-migration.md](../research/xml-hibernate-migration.md)
 - **Constitution**:
   [.specify/memory/constitution.md](../../.specify/memory/constitution.md)
 

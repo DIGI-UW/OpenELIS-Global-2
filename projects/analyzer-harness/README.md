@@ -83,10 +83,13 @@ present, else self-signed fallback.
 - UI: `https://localhost/`
 - Backend API: `https://localhost/api/`
 
-Login:
+Login (local-dev defaults only):
 
 - Username: `admin`
 - Password: `adminADMIN!`
+
+> **Security note:** These credentials are for isolated local development only.
+> Configure unique credentials for any shared or production deployment.
 
 ## Local volumes
 

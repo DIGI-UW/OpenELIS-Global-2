@@ -8,16 +8,16 @@ Analyzer Validation **Date**: 2026-02-02
 This document describes the integration of P2 priority analyzers for the
 Madagascar contract:
 
-| Analyzer         | Protocol         | Plugin            | Priority | Status    |
-| ---------------- | ---------------- | ----------------- | -------- | --------- |
-| Mindray BC2000   | HL7 over Network | Mindray plugin    | P2       | Validated |
-| Sysmex XN Series | HL7 over Network | SysmexXN-L plugin | P2       | Validated |
+| Analyzer         | Protocol                    | Plugin            | Priority | Status    |
+| ---------------- | --------------------------- | ----------------- | -------- | --------- |
+| Mindray BC2000   | HL7 v2.3.1 over TCP/IP      | Mindray plugin    | P2       | Validated |
+| Sysmex XN Series | ASTM (E1381-02) over TCP/IP | SysmexXN-L plugin | P2       | Validated |
 
 ## Mindray BC2000
 
 ### Protocol Details
 
-The Mindray BC2000 uses the same HL7 v2.5.1 protocol as the BC-5380:
+The Mindray BC2000 uses the same HL7 v2.3.1 protocol as the BC-5380:
 
 - **Message Type**: ORU^R01 (results), ORM^O01 (orders)
 - **Transport**: TCP/IP on port 2575 (default)
@@ -48,11 +48,11 @@ Common test codes:
 
 ### Protocol Details
 
-The Sysmex XN-L series uses HL7 v2.5.1:
+The Sysmex XN-L series uses ASTM E1381-02:
 
-- **Message Type**: ORU^R01 (results)
-- **Transport**: TCP/IP on port 2575 (default)
-- **Character Set**: ASCII/UTF-8
+- **Protocol**: ASTM LIS2-A2 (E1381-02)
+- **Transport**: TCP/IP (default port varies by site)
+- **Character Set**: ASCII
 
 ### Configuration
 

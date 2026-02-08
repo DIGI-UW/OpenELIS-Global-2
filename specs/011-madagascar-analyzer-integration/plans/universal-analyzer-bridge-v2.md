@@ -32,8 +32,8 @@
 
 - **Bridge repo branch**: create `feat/universal-bridge-integration` from
   `develop` _after_ M7 merges.
-- **Implementation prompt**: use `m8-implementation-prompt.md` in this same
-  folder.
+- **Implementation prompt**: archived (M8 complete, see bridge repo
+  `feat/universal-bridge-integration`).
 
 ---
 
@@ -568,8 +568,8 @@ R-OPENELIS, then M9 docs + submodule update.
 ## Appendix: Reference to Original Plan
 
 The following sections from the original plan (v1.0) remain valid and are NOT
-duplicated here. Refer to
-[universal-analyzer-bridge.md](universal-analyzer-bridge.md) for:
+duplicated here. Refer to `universal-analyzer-bridge.md` (v1.0, superseded by
+this document) for:
 
 | Section                                                    | Original Lines | Notes                                        |
 | ---------------------------------------------------------- | -------------- | -------------------------------------------- |
