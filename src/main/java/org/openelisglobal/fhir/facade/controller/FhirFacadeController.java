@@ -26,6 +26,12 @@ public class FhirFacadeController {
     @Autowired
     private FhirFacadeService fhirFacadeService;
 
+    @GetMapping(value = "/metadata", produces = { FHIR_JSON, MediaType.APPLICATION_JSON_VALUE })
+    public ResponseEntity<String> metadata() {
+        String body = fhirFacadeService.getCapabilityStatement();
+        return buildResponse(body);
+    }
+
     @GetMapping(value = "/{resourceType}", produces = { FHIR_JSON, MediaType.APPLICATION_JSON_VALUE })
     public ResponseEntity<String> search(@PathVariable String resourceType, @RequestHeader HttpHeaders headers,
             HttpServletRequest request) {
@@ -53,6 +59,13 @@ public class FhirFacadeController {
     public ResponseEntity<String> vread(@PathVariable String resourceType, @PathVariable String id,
             @PathVariable String vid, @RequestHeader HttpHeaders headers) {
         String body = fhirFacadeService.proxyGetRequest(resourceType + "/" + id + "/_history/" + vid, null, headers);
+        return buildResponse(body);
+    }
+
+    @PostMapping(value = "", produces = { FHIR_JSON, MediaType.APPLICATION_JSON_VALUE })
+    public ResponseEntity<String> transaction(HttpServletRequest request) throws IOException {
+        String requestBody = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        String body = fhirFacadeService.processTransactionBundle(requestBody);
         return buildResponse(body);
     }
 

@@ -137,6 +137,77 @@ public class FhirFacadeServiceImpl implements FhirFacadeService {
         }
     }
 
+    @Override
+    public String processTransactionBundle(String bundleJson) {
+        LogEvent.logInfo(this.getClass().getSimpleName(), "processTransactionBundle", "Processing transaction bundle");
+
+        try {
+            Bundle bundle = FhirFacadeServlet.getJsonParser().parseResource(Bundle.class, bundleJson);
+            if (bundle.getType() != Bundle.BundleType.TRANSACTION && bundle.getType() != Bundle.BundleType.BATCH) {
+                lastResponseStatus = HttpStatus.BAD_REQUEST.value();
+                return createOperationOutcome(IssueSeverity.ERROR, "Bundle type must be 'transaction' or 'batch'");
+            }
+
+            Bundle result = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(
+                    new org.openelisglobal.dataexchange.fhir.service.FhirPersistanceServiceImpl.FhirOperations());
+
+            for (Bundle.BundleEntryComponent entry : bundle.getEntry()) {
+                Resource resource = entry.getResource();
+                if (resource != null) {
+                    Bundle.HTTPVerb method = entry.getRequest().getMethod();
+                    if (method == Bundle.HTTPVerb.POST) {
+                        fhirPersistanceService.createFhirResourceInFhirStore(resource);
+                    } else if (method == Bundle.HTTPVerb.PUT) {
+                        fhirPersistanceService.updateFhirResourceInFhirStore(resource);
+                    }
+                }
+            }
+
+            lastResponseStatus = HttpStatus.OK.value();
+            return FhirFacadeServlet.getJsonParser().encodeResourceToString(result);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "processTransactionBundle", e.getMessage());
+            lastResponseStatus = HttpStatus.BAD_REQUEST.value();
+            return createOperationOutcome(IssueSeverity.ERROR, "Failed to process bundle: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public String getCapabilityStatement() {
+        org.hl7.fhir.r4.model.CapabilityStatement cs = new org.hl7.fhir.r4.model.CapabilityStatement();
+        cs.setStatus(org.hl7.fhir.r4.model.Enumerations.PublicationStatus.ACTIVE);
+        cs.setKind(org.hl7.fhir.r4.model.CapabilityStatement.CapabilityStatementKind.INSTANCE);
+        cs.setFhirVersion(org.hl7.fhir.r4.model.Enumerations.FHIRVersion._4_0_1);
+        cs.setFormat(java.util.Arrays.asList(new org.hl7.fhir.r4.model.CodeType("application/fhir+json"),
+                new org.hl7.fhir.r4.model.CodeType("application/fhir+xml")));
+        cs.setDate(new java.util.Date());
+
+        org.hl7.fhir.r4.model.CapabilityStatement.CapabilityStatementSoftwareComponent software = cs.getSoftware();
+        software.setName("OpenELIS Global FHIR Facade");
+        software.setVersion("1.0.0");
+
+        org.hl7.fhir.r4.model.CapabilityStatement.CapabilityStatementRestComponent rest = cs.addRest();
+        rest.setMode(org.hl7.fhir.r4.model.CapabilityStatement.RestfulCapabilityMode.SERVER);
+
+        String[] resourceTypes = { "Patient", "Practitioner", "Organization", "Location", "Specimen", "Observation",
+                "DiagnosticReport", "ServiceRequest", "Task" };
+
+        for (String resourceType : resourceTypes) {
+            org.hl7.fhir.r4.model.CapabilityStatement.CapabilityStatementRestResourceComponent resource = rest
+                    .addResource();
+            resource.setType(resourceType);
+            resource.addInteraction().setCode(org.hl7.fhir.r4.model.CapabilityStatement.TypeRestfulInteraction.READ);
+            resource.addInteraction()
+                    .setCode(org.hl7.fhir.r4.model.CapabilityStatement.TypeRestfulInteraction.SEARCHTYPE);
+            resource.addInteraction().setCode(org.hl7.fhir.r4.model.CapabilityStatement.TypeRestfulInteraction.CREATE);
+            resource.addInteraction().setCode(org.hl7.fhir.r4.model.CapabilityStatement.TypeRestfulInteraction.UPDATE);
+            resource.addInteraction().setCode(org.hl7.fhir.r4.model.CapabilityStatement.TypeRestfulInteraction.DELETE);
+        }
+
+        lastResponseStatus = HttpStatus.OK.value();
+        return FhirFacadeServlet.getJsonParser().encodeResourceToString(cs);
+    }
+
     private String buildTargetUrl(String path, String queryString) {
         String url = hapiServerUrl + "/" + path;
         if (queryString != null && !queryString.isEmpty()) {

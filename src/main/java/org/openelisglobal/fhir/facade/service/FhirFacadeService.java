@@ -12,5 +12,9 @@ public interface FhirFacadeService {
 
     String updateResource(String resourceType, String id, String body);
 
+    String processTransactionBundle(String bundleJson);
+
+    String getCapabilityStatement();
+
     int getLastResponseStatus();
 }
