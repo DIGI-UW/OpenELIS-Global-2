@@ -254,7 +254,7 @@ const PrePrint = () => {
             {" "}
             <br></br>
           </Column>
-          <Column lg={8} md={8} sm={4}>
+          <Column lg={8} md={8} sm={4} className="site-name-column">
             <AutoComplete
               name="siteName"
               id="siteName"
