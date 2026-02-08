@@ -3449,7 +3449,7 @@ const StorageDashboard = () => {
                             }
                           />
                         </Column>
-                        {(filterStatus || searchTerm) && (
+                        {(filterStatus || searchTerm.trim()) && (
                           <Column lg={4} md={4} sm={4}>
                             <Button
                               kind="secondary"
@@ -3703,7 +3703,7 @@ const StorageDashboard = () => {
                             />
                           </Column>
                         )}
-                        {(filterRoom || filterStatus || searchTerm) && (
+                        {(filterRoom || filterStatus || searchTerm.trim()) && (
                           <Column lg={4} md={4} sm={4}>
                             <Button
                               kind="secondary"
@@ -4029,7 +4029,10 @@ const StorageDashboard = () => {
                             />
                           </Column>
                         )}
-                        {(filterRoom || filterDevice || filterStatus || searchTerm) && (
+                        {(filterRoom ||
+                          filterDevice ||
+                          filterStatus ||
+                          (searchTerm && searchTerm.trim())) && (
                           <Column lg={4} md={4} sm={4}>
                             <Button
                               kind="secondary"
@@ -4356,7 +4359,10 @@ const StorageDashboard = () => {
                             />
                           </Column>
                         )}
-                        {(filterRoom || filterDevice || filterStatus || searchTerm) && (
+                        {(filterRoom ||
+                          filterDevice ||
+                          filterStatus ||
+                          (searchTerm && searchTerm.trim())) && (
                           <Column lg={4} md={4} sm={4}>
                             <Button
                               kind="secondary"

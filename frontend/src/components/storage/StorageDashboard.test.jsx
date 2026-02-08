@@ -444,23 +444,30 @@ describe("StorageDashboard Filter UI", () => {
 
     await screen.findByText(/Storage Management Dashboard/i);
 
-    // Set a filter - interact with the TextInput inside the dropdown
-    const locationFilters = screen.getAllByTestId("location-filter-dropdown");
-    const locationFilter = locationFilters[0];
-    const textInput = locationFilter.querySelector('input[type="text"]');
-    if (textInput) {
-      fireEvent.change(textInput, { target: { value: "1" } });
-    }
+    // Verify Clear button is NOT present initially
+    expect(screen.queryAllByText(/Clear Filters/i).length).toBe(0);
 
-    // Click Clear Filters button
+    // Activate dashboard-level search filter (makes Clear button appear)
+    const searchInput = screen.getByTestId("sample-search-input");
+    fireEvent.change(searchInput, { target: { value: "test search" } });
+
+    // Verify Clear button appears after search term is set
+    await waitFor(() => {
+      const clearButtons = screen.queryAllByText(/Clear Filters/i);
+      expect(clearButtons.length).toBeGreaterThan(0);
+    });
+
+    // Click the first Clear button
     const clearButtons = screen.getAllByText(/Clear Filters/i);
     fireEvent.click(clearButtons[0]);
 
-    // Verify filter is reset - wait for it to clear
-    const resetFilters = await screen.findAllByTestId(
-      "location-filter-dropdown",
-    );
-    expect(resetFilters.length).toBeGreaterThan(0);
+    // Verify filters are reset - Clear button should disappear
+    await waitFor(() => {
+      expect(screen.queryAllByText(/Clear Filters/i).length).toBe(0);
+    });
+
+    // Verify search input is cleared
+    expect(searchInput.value).toBe("");
   });
 
   /**
