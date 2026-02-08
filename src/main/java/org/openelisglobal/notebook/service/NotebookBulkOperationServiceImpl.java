@@ -1305,7 +1305,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                 values.add("\"" + collectionDate + "\"");
 
                 // Extract validation_status (check QA approval or validation field)
-                String validationStatus = getStringValueWithFallback(data, "validationStatus", "validation_status", "validation");
+                String validationStatus = getStringValueWithFallback(data, "validationStatus", "validation_status",
+                        "validation");
                 values.add("\"" + validationStatus + "\"");
 
                 // Extract test_results (aggregate from quantificationResults array)
@@ -1520,12 +1521,13 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
     }
 
     /**
-     * Get string value from nested object in data map.
-     * E.g., getNestedStringValue(data, "testExecution", "sampleType") extracts data.testExecution.sampleType
+     * Get string value from nested object in data map. E.g.,
+     * getNestedStringValue(data, "testExecution", "sampleType") extracts
+     * data.testExecution.sampleType
      *
-     * @param data The data map
+     * @param data      The data map
      * @param parentKey The parent object key
-     * @param childKey The child field key
+     * @param childKey  The child field key
      * @return The string value if found, empty string otherwise
      */
     @SuppressWarnings("unchecked")
