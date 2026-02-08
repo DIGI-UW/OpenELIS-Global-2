@@ -1334,7 +1334,8 @@ function PharmaceuticalReportingPage({
                         }}
                         onClick={handleViewQcHistory}
                         onMouseEnter={(e) => {
-                          e.target.style.backgroundColor = "var(--cds-layer-hover)";
+                          e.target.style.backgroundColor =
+                            "var(--cds-layer-hover)";
                         }}
                         onMouseLeave={(e) => {
                           e.target.style.backgroundColor = "transparent";
@@ -1367,7 +1368,8 @@ function PharmaceuticalReportingPage({
                         }}
                         onClick={() => setQcEditMode(true)}
                         onMouseEnter={(e) => {
-                          e.target.style.backgroundColor = "var(--cds-layer-hover)";
+                          e.target.style.backgroundColor =
+                            "var(--cds-layer-hover)";
                         }}
                         onMouseLeave={(e) => {
                           e.target.style.backgroundColor = "transparent";
@@ -1405,7 +1407,8 @@ function PharmaceuticalReportingPage({
                         onClick={!qcSaving ? handleCancelQcEdit : undefined}
                         onMouseEnter={(e) => {
                           if (!qcSaving) {
-                            e.target.style.backgroundColor = "var(--cds-layer-hover)";
+                            e.target.style.backgroundColor =
+                              "var(--cds-layer-hover)";
                           }
                         }}
                         onMouseLeave={(e) => {
@@ -1441,11 +1444,13 @@ function PharmaceuticalReportingPage({
                         onClick={!qcSaving ? handleSaveQcParams : undefined}
                         onMouseEnter={(e) => {
                           if (!qcSaving) {
-                            e.target.style.backgroundColor = "var(--cds-support-success-hover)";
+                            e.target.style.backgroundColor =
+                              "var(--cds-support-success-hover)";
                           }
                         }}
                         onMouseLeave={(e) => {
-                          e.target.style.backgroundColor = "var(--cds-support-success)";
+                          e.target.style.backgroundColor =
+                            "var(--cds-support-success)";
                         }}
                         title={intl.formatMessage({
                           id: "button.save",
@@ -1714,7 +1719,8 @@ function PharmaceuticalReportingPage({
                                     style={{
                                       display: "inline-flex",
                                       alignItems: "center",
-                                      backgroundColor: "var(--cds-tag-color-blue)",
+                                      backgroundColor:
+                                        "var(--cds-tag-color-blue)",
                                       color: "var(--cds-tag-text-blue)",
                                       padding: "0.125rem 0.25rem",
                                       borderRadius: "0.125rem",
@@ -1992,7 +1998,8 @@ function PharmaceuticalReportingPage({
                                   style={{
                                     display: "inline-flex",
                                     alignItems: "center",
-                                    backgroundColor: "var(--cds-tag-color-purple)",
+                                    backgroundColor:
+                                      "var(--cds-tag-color-purple)",
                                     color: "var(--cds-tag-text-purple)",
                                     padding: "0.125rem 0.25rem",
                                     borderRadius: "0.125rem",

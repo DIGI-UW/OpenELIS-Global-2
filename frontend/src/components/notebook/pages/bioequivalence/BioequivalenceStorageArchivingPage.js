@@ -61,17 +61,6 @@ function BioequivalenceStorageArchivingPage({ entryId, pageData }) {
   const canApproveStorage = canApproveData(pagePermissionLevel);
   const canModifyStorage = canModify(pagePermissionLevel);
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Sample Storage & Archival"
-        reason="This page requires specific bioequivalence laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   const [isLoading, setIsLoading] = useState(false);
   const [storageSamples, setStorageSamples] = useState([]);
   const [selectedSamples, setSelectedSamples] = useState(new Set());
@@ -1000,6 +989,17 @@ function BioequivalenceStorageArchivingPage({ entryId, pageData }) {
     ],
     [],
   );
+
+  // Check page access - show access denied if user lacks required roles
+  if (!canAccessPage) {
+    return (
+      <AccessDeniedMessage
+        page="Sample Storage & Archival"
+        reason="This page requires specific bioequivalence laboratory roles to access."
+        requiredRoles={allowedRoles}
+      />
+    );
+  }
 
   return (
     <div className="bioequivalence-page">

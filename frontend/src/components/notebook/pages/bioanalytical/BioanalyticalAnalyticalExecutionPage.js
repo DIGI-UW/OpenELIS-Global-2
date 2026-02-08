@@ -43,7 +43,10 @@ import { DocumentAdd, Upload } from "@carbon/react/icons";
 import { FormattedMessage } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
-import { postToOpenElisServerJsonResponse, postToOpenElisServer } from "../../../utils/Utils";
+import {
+  postToOpenElisServerJsonResponse,
+  postToOpenElisServer,
+} from "../../../utils/Utils";
 import { usePermissions } from "../../../../hooks/usePermissions";
 import { useBioanalyticalPermissions } from "../../../../hooks/useBioanalyticalPermissions";
 import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
@@ -133,17 +136,6 @@ function BioanalyticalAnalyticalExecutionPage({
     });
   }
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Analytical Test Execution"
-        reason="This page requires specific bioanalytical laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   // ============================================================================
   // CORE STATE
   // ============================================================================
@@ -180,13 +172,13 @@ function BioanalyticalAnalyticalExecutionPage({
       reviewedAt: "",
       decision: "",
       justification: "",
-      conditionalAcceptanceReason: ""
+      conditionalAcceptanceReason: "",
     },
     calibrationOutcome: {
       rSquaredOutcome: "",
       slopeOutcome: "",
       interceptOutcome: "",
-      overallCalibrationStatus: ""
+      overallCalibrationStatus: "",
     },
     controlSummary: {
       totalControls: 0,
@@ -194,20 +186,21 @@ function BioanalyticalAnalyticalExecutionPage({
       failedControls: 0,
       passRate: 0,
       meanAccuracy: 0,
-      cv: 0
+      cv: 0,
     },
     linkedDeviations: [],
     overrideApplied: false,
     overrideReason: "",
     overriddenBy: "",
-    statusHistory: []
+    statusHistory: [],
   });
 
   const [deviations, setDeviations] = useState([]);
 
   // Control Sample Results tracking
   const [controlSampleResults, setControlSampleResults] = useState([]);
-  const [controlSampleComplianceStatus, setControlSampleComplianceStatus] = useState(null);
+  const [controlSampleComplianceStatus, setControlSampleComplianceStatus] =
+    useState(null);
 
   // Calculate QC outcome based on current QC results
   const calculateQCOutcome = useCallback(() => {
@@ -220,13 +213,13 @@ function BioanalyticalAnalyticalExecutionPage({
           failedControls: 0,
           passRate: 0,
           meanAccuracy: 0,
-          cv: 0
-        }
+          cv: 0,
+        },
       };
     }
 
     const totalControls = qcResults.length;
-    const passedControls = qcResults.filter(qc => {
+    const passedControls = qcResults.filter((qc) => {
       const accuracy = parseFloat(qc.accuracy);
       return accuracy >= 85 && accuracy <= 115; // Standard bioanalytical acceptance range
     }).length;
@@ -234,20 +227,30 @@ function BioanalyticalAnalyticalExecutionPage({
     const passRate = (passedControls / totalControls) * 100;
 
     // Calculate mean accuracy and CV
-    const accuracyValues = qcResults.map(qc => parseFloat(qc.accuracy)).filter(acc => !isNaN(acc));
-    const meanAccuracy = accuracyValues.length > 0
-      ? accuracyValues.reduce((sum, acc) => sum + acc, 0) / accuracyValues.length
-      : 0;
+    const accuracyValues = qcResults
+      .map((qc) => parseFloat(qc.accuracy))
+      .filter((acc) => !isNaN(acc));
+    const meanAccuracy =
+      accuracyValues.length > 0
+        ? accuracyValues.reduce((sum, acc) => sum + acc, 0) /
+          accuracyValues.length
+        : 0;
 
-    const variance = accuracyValues.length > 1
-      ? accuracyValues.reduce((sum, acc) => sum + Math.pow(acc - meanAccuracy, 2), 0) / (accuracyValues.length - 1)
-      : 0;
+    const variance =
+      accuracyValues.length > 1
+        ? accuracyValues.reduce(
+            (sum, acc) => sum + Math.pow(acc - meanAccuracy, 2),
+            0,
+          ) /
+          (accuracyValues.length - 1)
+        : 0;
     const standardDeviation = Math.sqrt(variance);
     const cv = meanAccuracy > 0 ? (standardDeviation / meanAccuracy) * 100 : 0;
 
     // Determine overall outcome based on FDA bioanalytical guidance
     let overallOutcome = "";
-    if (passRate >= 67) { // At least 2/3 of QCs must pass
+    if (passRate >= 67) {
+      // At least 2/3 of QCs must pass
       if (passRate === 100) {
         overallOutcome = "PASS";
       } else if (passRate >= 80) {
@@ -267,8 +270,8 @@ function BioanalyticalAnalyticalExecutionPage({
         failedControls,
         passRate: parseFloat(passRate.toFixed(1)),
         meanAccuracy: parseFloat(meanAccuracy.toFixed(2)),
-        cv: parseFloat(cv.toFixed(2))
-      }
+        cv: parseFloat(cv.toFixed(2)),
+      },
     };
   }, [qcResults]);
 
@@ -279,7 +282,7 @@ function BioanalyticalAnalyticalExecutionPage({
         rSquaredOutcome: "",
         slopeOutcome: "",
         interceptOutcome: "",
-        overallCalibrationStatus: ""
+        overallCalibrationStatus: "",
       };
     }
 
@@ -288,18 +291,27 @@ function BioanalyticalAnalyticalExecutionPage({
     const slopeMax = parseFloat(acceptanceCriteria.slopeRange?.max) || 1.2;
     const interceptMax = parseFloat(acceptanceCriteria.interceptMax) || 20;
 
-    const rSquaredOutcome = calibrationData.rSquared >= rSquaredMin ? "PASS" : "FAIL";
-    const slopeOutcome = (calibrationData.slope >= slopeMin && calibrationData.slope <= slopeMax) ? "PASS" : "FAIL";
-    const interceptOutcome = Math.abs(calibrationData.intercept) <= interceptMax ? "PASS" : "FAIL";
+    const rSquaredOutcome =
+      calibrationData.rSquared >= rSquaredMin ? "PASS" : "FAIL";
+    const slopeOutcome =
+      calibrationData.slope >= slopeMin && calibrationData.slope <= slopeMax
+        ? "PASS"
+        : "FAIL";
+    const interceptOutcome =
+      Math.abs(calibrationData.intercept) <= interceptMax ? "PASS" : "FAIL";
 
-    const overallCalibrationStatus = (rSquaredOutcome === "PASS" && slopeOutcome === "PASS" && interceptOutcome === "PASS")
-      ? "PASS" : "FAIL";
+    const overallCalibrationStatus =
+      rSquaredOutcome === "PASS" &&
+      slopeOutcome === "PASS" &&
+      interceptOutcome === "PASS"
+        ? "PASS"
+        : "FAIL";
 
     return {
       rSquaredOutcome,
       slopeOutcome,
       interceptOutcome,
-      overallCalibrationStatus
+      overallCalibrationStatus,
     };
   }, [calibrationData, acceptanceCriteria]);
 
@@ -312,52 +324,61 @@ function BioanalyticalAnalyticalExecutionPage({
           totalControlsAnalyzed: 0,
           totalControlsPassed: 0,
           totalControlsFailed: 0,
-          complianceByType: {}
-        }
+          complianceByType: {},
+        },
       };
     }
 
     // Get current assigned samples to find control sample information
-    const controlSamples = assignedSamples.filter(sample =>
-      sample.sampleClassification?.isControlSample
+    const controlSamples = assignedSamples.filter(
+      (sample) => sample.sampleClassification?.isControlSample,
     );
 
     // Match control sample results with control sample metadata
-    const enhancedControlResults = controlSampleResults.map(result => {
-      const matchingControlSample = controlSamples.find(sample =>
-        sample.accessionNumber === result.sampleId ||
-        sample.id === result.sampleId
+    const enhancedControlResults = controlSampleResults.map((result) => {
+      const matchingControlSample = controlSamples.find(
+        (sample) =>
+          sample.accessionNumber === result.sampleId ||
+          sample.id === result.sampleId,
       );
 
       return {
         ...result,
-        controlType: matchingControlSample?.sampleClassification?.controlType || 'UNKNOWN',
-        controlCategory: matchingControlSample?.sampleClassification?.controlCategory || '',
-        expectedResult: matchingControlSample?.sampleClassification?.expectedResult || '',
-        isControlSample: !!matchingControlSample?.sampleClassification?.isControlSample
+        controlType:
+          matchingControlSample?.sampleClassification?.controlType || "UNKNOWN",
+        controlCategory:
+          matchingControlSample?.sampleClassification?.controlCategory || "",
+        expectedResult:
+          matchingControlSample?.sampleClassification?.expectedResult || "",
+        isControlSample:
+          !!matchingControlSample?.sampleClassification?.isControlSample,
       };
     });
 
     // Analyze performance by control type
     const complianceByType = {};
-    const controlTypes = [...new Set(enhancedControlResults.map(r => r.controlType))];
+    const controlTypes = [
+      ...new Set(enhancedControlResults.map((r) => r.controlType)),
+    ];
 
-    controlTypes.forEach(type => {
-      const typeResults = enhancedControlResults.filter(r => r.controlType === type);
-      const passedTypeControls = typeResults.filter(r => {
+    controlTypes.forEach((type) => {
+      const typeResults = enhancedControlResults.filter(
+        (r) => r.controlType === type,
+      );
+      const passedTypeControls = typeResults.filter((r) => {
         const accuracy = parseFloat(r.accuracy || r.result || 0);
 
         // Different acceptance criteria based on control type
         switch (type) {
-          case 'POSITIVE':
+          case "POSITIVE":
             return accuracy >= 85 && accuracy <= 115; // ±15% for positive controls
-          case 'NEGATIVE':
+          case "NEGATIVE":
             return accuracy <= 5; // Negative controls should be <5% of LLOQ
-          case 'QC_LOW':
-          case 'QC_MEDIUM':
-          case 'QC_HIGH':
+          case "QC_LOW":
+          case "QC_MEDIUM":
+          case "QC_HIGH":
             return accuracy >= 85 && accuracy <= 115; // Standard QC range
-          case 'BLANK':
+          case "BLANK":
             return accuracy <= 2; // Blanks should be <2% response
           default:
             return accuracy >= 80 && accuracy <= 120; // Generic range
@@ -368,15 +389,24 @@ function BioanalyticalAnalyticalExecutionPage({
         total: typeResults.length,
         passed: passedTypeControls.length,
         failed: typeResults.length - passedTypeControls.length,
-        passRate: typeResults.length > 0 ? (passedTypeControls.length / typeResults.length) * 100 : 0,
-        results: typeResults
+        passRate:
+          typeResults.length > 0
+            ? (passedTypeControls.length / typeResults.length) * 100
+            : 0,
+        results: typeResults,
       };
     });
 
     const totalControlsAnalyzed = enhancedControlResults.length;
-    const totalControlsPassed = Object.values(complianceByType).reduce((sum, type) => sum + type.passed, 0);
+    const totalControlsPassed = Object.values(complianceByType).reduce(
+      (sum, type) => sum + type.passed,
+      0,
+    );
     const totalControlsFailed = totalControlsAnalyzed - totalControlsPassed;
-    const overallPassRate = totalControlsAnalyzed > 0 ? (totalControlsPassed / totalControlsAnalyzed) * 100 : 0;
+    const overallPassRate =
+      totalControlsAnalyzed > 0
+        ? (totalControlsPassed / totalControlsAnalyzed) * 100
+        : 0;
 
     // Determine overall compliance status
     let complianceStatus = "COMPLIANT";
@@ -393,8 +423,8 @@ function BioanalyticalAnalyticalExecutionPage({
         totalControlsPassed,
         totalControlsFailed,
         overallPassRate,
-        complianceByType
-      }
+        complianceByType,
+      },
     };
   }, [controlSampleResults, assignedSamples]);
 
@@ -403,17 +433,21 @@ function BioanalyticalAnalyticalExecutionPage({
     const qcOutcome = calculateQCOutcome();
     const calibrationOutcome = calculateCalibrationOutcome();
 
-    setQcOutcomeRecord(prev => ({
+    setQcOutcomeRecord((prev) => ({
       ...prev,
       overallOutcome: qcOutcome.overallOutcome,
       controlSummary: qcOutcome.controlSummary,
-      calibrationOutcome: calibrationOutcome
+      calibrationOutcome: calibrationOutcome,
     }));
   }, [calculateQCOutcome, calculateCalibrationOutcome]);
 
   // Save QC outcome record when it changes (for persistence across tab navigation)
   useEffect(() => {
-    if (!pageData?.id || !qcOutcomeRecord.overallOutcome || selectedSampleIds.length === 0) {
+    if (
+      !pageData?.id ||
+      !qcOutcomeRecord.overallOutcome ||
+      selectedSampleIds.length === 0
+    ) {
       return; // Only save when we have essential data
     }
 
@@ -446,7 +480,7 @@ function BioanalyticalAnalyticalExecutionPage({
             } else {
               console.warn("Failed to auto-save QC Outcome Record");
             }
-          }
+          },
         );
       } catch (error) {
         console.error("Error auto-saving QC Outcome Record:", error);
@@ -460,62 +494,79 @@ function BioanalyticalAnalyticalExecutionPage({
 
   // Process QC results to identify and extract control sample results
   useEffect(() => {
-    if (!qcResults || qcResults.length === 0 || !assignedSamples || assignedSamples.length === 0) {
+    if (
+      !qcResults ||
+      qcResults.length === 0 ||
+      !assignedSamples ||
+      assignedSamples.length === 0
+    ) {
       setControlSampleResults([]);
       return;
     }
 
     // Extract control sample results from QC results by matching sample identifiers
     const identifiedControlResults = qcResults
-      .map(qcResult => {
+      .map((qcResult) => {
         // Try to match QC result with a control sample
-        const matchingControlSample = assignedSamples.find(sample => {
+        const matchingControlSample = assignedSamples.find((sample) => {
           // Match by sample ID, accession number, or control level name
           return (
             sample.id === qcResult.sampleId ||
             sample.accessionNumber === qcResult.sampleId ||
             sample.accessionNumber === qcResult.controlLevel ||
             (sample.sampleClassification?.isControlSample &&
-             qcResult.controlLevel?.toLowerCase().includes(sample.sampleClassification.controlType?.toLowerCase()))
+              qcResult.controlLevel
+                ?.toLowerCase()
+                .includes(
+                  sample.sampleClassification.controlType?.toLowerCase(),
+                ))
           );
         });
 
         if (matchingControlSample?.sampleClassification?.isControlSample) {
           return {
             ...qcResult,
-            sampleId: qcResult.sampleId || qcResult.controlLevel || matchingControlSample.accessionNumber,
+            sampleId:
+              qcResult.sampleId ||
+              qcResult.controlLevel ||
+              matchingControlSample.accessionNumber,
             controlType: matchingControlSample.sampleClassification.controlType,
-            controlCategory: matchingControlSample.sampleClassification.controlCategory,
-            expectedResult: matchingControlSample.sampleClassification.expectedResult,
+            controlCategory:
+              matchingControlSample.sampleClassification.controlCategory,
+            expectedResult:
+              matchingControlSample.sampleClassification.expectedResult,
             isControlSample: true,
-            matchedSample: matchingControlSample
+            matchedSample: matchingControlSample,
           };
         }
 
         // Also check if this QC result is for a known control level pattern
         const controlLevelPatterns = {
-          'low': 'QC_LOW',
-          'medium': 'QC_MEDIUM',
-          'high': 'QC_HIGH',
-          'positive': 'POSITIVE',
-          'negative': 'NEGATIVE',
-          'blank': 'BLANK'
+          low: "QC_LOW",
+          medium: "QC_MEDIUM",
+          high: "QC_HIGH",
+          positive: "POSITIVE",
+          negative: "NEGATIVE",
+          blank: "BLANK",
         };
 
-        const controlLevel = qcResult.controlLevel?.toLowerCase() || '';
-        const matchedPattern = Object.keys(controlLevelPatterns).find(pattern =>
-          controlLevel.includes(pattern)
+        const controlLevel = qcResult.controlLevel?.toLowerCase() || "";
+        const matchedPattern = Object.keys(controlLevelPatterns).find(
+          (pattern) => controlLevel.includes(pattern),
         );
 
         if (matchedPattern) {
           return {
             ...qcResult,
-            sampleId: qcResult.sampleId || qcResult.controlLevel || `Control-${controlLevelPatterns[matchedPattern]}`,
+            sampleId:
+              qcResult.sampleId ||
+              qcResult.controlLevel ||
+              `Control-${controlLevelPatterns[matchedPattern]}`,
             controlType: controlLevelPatterns[matchedPattern],
-            controlCategory: 'RUN_ACCEPTANCE',
-            expectedResult: qcResult.expectedValue || 'As per method',
+            controlCategory: "RUN_ACCEPTANCE",
+            expectedResult: qcResult.expectedValue || "As per method",
             isControlSample: true,
-            matchedSample: null // No specific sample match, but is a control
+            matchedSample: null, // No specific sample match, but is a control
           };
         }
 
@@ -541,11 +592,16 @@ function BioanalyticalAnalyticalExecutionPage({
 
       const getTagType = () => {
         switch (outcome) {
-          case "PASS": return "green";
-          case "CONDITIONAL_PASS": return "yellow";
-          case "FAIL": return "red";
-          case "WAIVER": return "blue";
-          default: return "gray";
+          case "PASS":
+            return "green";
+          case "CONDITIONAL_PASS":
+            return "yellow";
+          case "FAIL":
+            return "red";
+          case "WAIVER":
+            return "blue";
+          default:
+            return "gray";
         }
       };
 
@@ -555,7 +611,8 @@ function BioanalyticalAnalyticalExecutionPage({
           size="sm"
           title={`QC ${outcome} - ${controlSummary.passedControls || 0}/${controlSummary.totalControls || 0} controls passed`}
         >
-          QC {outcome} ({controlSummary.passedControls || 0}/{controlSummary.totalControls || 0})
+          QC {outcome} ({controlSummary.passedControls || 0}/
+          {controlSummary.totalControls || 0})
         </Tag>
       );
     }
@@ -579,7 +636,8 @@ function BioanalyticalAnalyticalExecutionPage({
             size="sm"
             title={`Reception QC ${receptionQC.overallStatus} - ${receptionQC.passedChecks}/${receptionQC.totalChecks} checks`}
           >
-            RECEPTION {receptionQC.overallStatus} ({receptionQC.passedChecks}/{receptionQC.totalChecks})
+            RECEPTION {receptionQC.overallStatus} ({receptionQC.passedChecks}/
+            {receptionQC.totalChecks})
           </Tag>
         );
       }
@@ -689,7 +747,9 @@ function BioanalyticalAnalyticalExecutionPage({
             setControlSampleResults(qcData.controlSampleResults);
           }
           if (qcData.controlSampleComplianceStatus) {
-            setControlSampleComplianceStatus(qcData.controlSampleComplianceStatus);
+            setControlSampleComplianceStatus(
+              qcData.controlSampleComplianceStatus,
+            );
           }
 
           if (qcData.uploadedFiles) {
@@ -1292,16 +1352,21 @@ function BioanalyticalAnalyticalExecutionPage({
       notify({
         kind: NotificationKinds.warning,
         title: "QC Outcome Required",
-        message: "Please select a QC outcome decision (PASS, CONDITIONAL PASS, FAIL, or WAIVER) before completing execution.",
+        message:
+          "Please select a QC outcome decision (PASS, CONDITIONAL PASS, FAIL, or WAIVER) before completing execution.",
       });
       return;
     }
 
-    if (qcOutcomeRecord.overallOutcome === "WAIVER" && !qcOutcomeRecord.decisionDetails.justification) {
+    if (
+      qcOutcomeRecord.overallOutcome === "WAIVER" &&
+      !qcOutcomeRecord.decisionDetails.justification
+    ) {
       notify({
         kind: NotificationKinds.warning,
         title: "Waiver Justification Required",
-        message: "Please provide justification for waiver approval before completing execution.",
+        message:
+          "Please provide justification for waiver approval before completing execution.",
       });
       return;
     }
@@ -1355,16 +1420,16 @@ function BioanalyticalAnalyticalExecutionPage({
           recordedBy: executionData.analystId,
           stage: 3,
           qcType: "ANALYTICAL_EXECUTION_QC",
-          linkedDeviations: deviations.map(dev => dev.id).filter(Boolean),
+          linkedDeviations: deviations.map((dev) => dev.id).filter(Boolean),
           statusHistory: [
             ...qcOutcomeRecord.statusHistory,
             {
               status: qcOutcomeRecord.overallOutcome,
               changedAt: new Date().toISOString(),
               changedBy: executionData.analystId,
-              reason: "QC evaluation completed during Stage 3 execution"
-            }
-          ]
+              reason: "QC evaluation completed during Stage 3 execution",
+            },
+          ],
         },
 
         // Control Sample Performance Tracking
@@ -1699,6 +1764,17 @@ function BioanalyticalAnalyticalExecutionPage({
       setSelectedSampleIds(sampleTableRows.map((row) => row.id));
     }
   }, [allSelected, sampleTableRows]);
+
+  // Check page access - show access denied if user lacks required roles
+  if (!canAccessPage) {
+    return (
+      <AccessDeniedMessage
+        page="Analytical Test Execution"
+        reason="This page requires specific bioanalytical laboratory roles to access."
+        requiredRoles={allowedRoles}
+      />
+    );
+  }
 
   // ============================================================================
   // LOADING STATE
@@ -2488,64 +2564,124 @@ function BioanalyticalAnalyticalExecutionPage({
                               <strong style={{ fontSize: "1rem" }}>
                                 Overall Control Compliance:
                               </strong>
-                              <div style={{ fontSize: "0.875rem", color: "#525252", marginTop: "0.25rem" }}>
-                                {controlSampleComplianceStatus.summary.totalControlsPassed}/
-                                {controlSampleComplianceStatus.summary.totalControlsAnalyzed} controls passed
-                                ({controlSampleComplianceStatus.summary.overallPassRate?.toFixed(1)}%)
+                              <div
+                                style={{
+                                  fontSize: "0.875rem",
+                                  color: "#525252",
+                                  marginTop: "0.25rem",
+                                }}
+                              >
+                                {
+                                  controlSampleComplianceStatus.summary
+                                    .totalControlsPassed
+                                }
+                                /
+                                {
+                                  controlSampleComplianceStatus.summary
+                                    .totalControlsAnalyzed
+                                }{" "}
+                                controls passed (
+                                {controlSampleComplianceStatus.summary.overallPassRate?.toFixed(
+                                  1,
+                                )}
+                                %)
                               </div>
                             </div>
                             <Tag
                               type={
-                                controlSampleComplianceStatus.complianceStatus === "COMPLIANT" ? "green" :
-                                controlSampleComplianceStatus.complianceStatus === "CONDITIONAL" ? "yellow" : "red"
+                                controlSampleComplianceStatus.complianceStatus ===
+                                "COMPLIANT"
+                                  ? "green"
+                                  : controlSampleComplianceStatus.complianceStatus ===
+                                      "CONDITIONAL"
+                                    ? "yellow"
+                                    : "red"
                               }
                               size="lg"
                             >
-                              {controlSampleComplianceStatus.complianceStatus === "COMPLIANT" ? "✓ COMPLIANT" :
-                               controlSampleComplianceStatus.complianceStatus === "CONDITIONAL" ? "⚠ CONDITIONAL" :
-                               controlSampleComplianceStatus.complianceStatus === "NON_COMPLIANT" ? "✗ NON-COMPLIANT" :
-                               "NO DATA"}
+                              {controlSampleComplianceStatus.complianceStatus ===
+                              "COMPLIANT"
+                                ? "✓ COMPLIANT"
+                                : controlSampleComplianceStatus.complianceStatus ===
+                                    "CONDITIONAL"
+                                  ? "⚠ CONDITIONAL"
+                                  : controlSampleComplianceStatus.complianceStatus ===
+                                      "NON_COMPLIANT"
+                                    ? "✗ NON-COMPLIANT"
+                                    : "NO DATA"}
                             </Tag>
                           </div>
 
                           {/* Control Type Breakdown */}
-                          {Object.keys(controlSampleComplianceStatus.summary.complianceByType).length > 0 && (
+                          {Object.keys(
+                            controlSampleComplianceStatus.summary
+                              .complianceByType,
+                          ).length > 0 && (
                             <div style={{ marginBottom: "1rem" }}>
-                              <h6 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "500" }}>
+                              <h6
+                                style={{
+                                  marginBottom: "0.75rem",
+                                  fontSize: "0.875rem",
+                                  fontWeight: "500",
+                                }}
+                              >
                                 Performance by Control Type:
                               </h6>
                               <div style={{ display: "grid", gap: "0.5rem" }}>
-                                {Object.entries(controlSampleComplianceStatus.summary.complianceByType).map(
-                                  ([controlType, stats]) => (
-                                    <div
-                                      key={controlType}
-                                      style={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "center",
-                                        padding: "0.5rem",
-                                        backgroundColor: "white",
-                                        borderRadius: "4px",
-                                        border: "1px solid #e0e0e0",
-                                      }}
-                                    >
-                                      <div>
-                                        <span style={{ fontWeight: "500", fontSize: "0.875rem" }}>
-                                          {controlType.replace(/_/g, " ")}
-                                        </span>
-                                        <span style={{ marginLeft: "0.5rem", fontSize: "0.75rem", color: "#525252" }}>
-                                          ({stats.passed}/{stats.total} passed, {stats.passRate.toFixed(1)}%)
-                                        </span>
-                                      </div>
-                                      <Tag
-                                        type={stats.passRate >= 80 ? "green" : stats.passRate >= 67 ? "yellow" : "red"}
-                                        size="sm"
+                                {Object.entries(
+                                  controlSampleComplianceStatus.summary
+                                    .complianceByType,
+                                ).map(([controlType, stats]) => (
+                                  <div
+                                    key={controlType}
+                                    style={{
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                      padding: "0.5rem",
+                                      backgroundColor: "white",
+                                      borderRadius: "4px",
+                                      border: "1px solid #e0e0e0",
+                                    }}
+                                  >
+                                    <div>
+                                      <span
+                                        style={{
+                                          fontWeight: "500",
+                                          fontSize: "0.875rem",
+                                        }}
                                       >
-                                        {stats.passRate >= 80 ? "PASS" : stats.passRate >= 67 ? "CONDITIONAL" : "FAIL"}
-                                      </Tag>
+                                        {controlType.replace(/_/g, " ")}
+                                      </span>
+                                      <span
+                                        style={{
+                                          marginLeft: "0.5rem",
+                                          fontSize: "0.75rem",
+                                          color: "#525252",
+                                        }}
+                                      >
+                                        ({stats.passed}/{stats.total} passed,{" "}
+                                        {stats.passRate.toFixed(1)}%)
+                                      </span>
                                     </div>
-                                  )
-                                )}
+                                    <Tag
+                                      type={
+                                        stats.passRate >= 80
+                                          ? "green"
+                                          : stats.passRate >= 67
+                                            ? "yellow"
+                                            : "red"
+                                      }
+                                      size="sm"
+                                    >
+                                      {stats.passRate >= 80
+                                        ? "PASS"
+                                        : stats.passRate >= 67
+                                          ? "CONDITIONAL"
+                                          : "FAIL"}
+                                    </Tag>
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           )}
@@ -2553,7 +2689,13 @@ function BioanalyticalAnalyticalExecutionPage({
                           {/* Control Sample Details Table */}
                           {controlSampleResults.length > 0 && (
                             <div>
-                              <h6 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "500" }}>
+                              <h6
+                                style={{
+                                  marginBottom: "0.75rem",
+                                  fontSize: "0.875rem",
+                                  fontWeight: "500",
+                                }}
+                              >
                                 Individual Control Sample Results:
                               </h6>
                               <table
@@ -2567,92 +2709,199 @@ function BioanalyticalAnalyticalExecutionPage({
                               >
                                 <thead style={{ backgroundColor: "#f4f4f4" }}>
                                   <tr>
-                                    <th style={{ padding: "0.75rem", textAlign: "left", borderBottom: "1px solid #e0e0e0" }}>
+                                    <th
+                                      style={{
+                                        padding: "0.75rem",
+                                        textAlign: "left",
+                                        borderBottom: "1px solid #e0e0e0",
+                                      }}
+                                    >
                                       Sample ID
                                     </th>
-                                    <th style={{ padding: "0.75rem", textAlign: "center", borderBottom: "1px solid #e0e0e0" }}>
+                                    <th
+                                      style={{
+                                        padding: "0.75rem",
+                                        textAlign: "center",
+                                        borderBottom: "1px solid #e0e0e0",
+                                      }}
+                                    >
                                       Control Type
                                     </th>
-                                    <th style={{ padding: "0.75rem", textAlign: "center", borderBottom: "1px solid #e0e0e0" }}>
+                                    <th
+                                      style={{
+                                        padding: "0.75rem",
+                                        textAlign: "center",
+                                        borderBottom: "1px solid #e0e0e0",
+                                      }}
+                                    >
                                       Expected
                                     </th>
-                                    <th style={{ padding: "0.75rem", textAlign: "center", borderBottom: "1px solid #e0e0e0" }}>
+                                    <th
+                                      style={{
+                                        padding: "0.75rem",
+                                        textAlign: "center",
+                                        borderBottom: "1px solid #e0e0e0",
+                                      }}
+                                    >
                                       Measured
                                     </th>
-                                    <th style={{ padding: "0.75rem", textAlign: "center", borderBottom: "1px solid #e0e0e0" }}>
+                                    <th
+                                      style={{
+                                        padding: "0.75rem",
+                                        textAlign: "center",
+                                        borderBottom: "1px solid #e0e0e0",
+                                      }}
+                                    >
                                       Accuracy (%)
                                     </th>
-                                    <th style={{ padding: "0.75rem", textAlign: "center", borderBottom: "1px solid #e0e0e0" }}>
+                                    <th
+                                      style={{
+                                        padding: "0.75rem",
+                                        textAlign: "center",
+                                        borderBottom: "1px solid #e0e0e0",
+                                      }}
+                                    >
                                       Status
                                     </th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {controlSampleResults.map((result, index) => {
-                                    const accuracy = parseFloat(result.accuracy || result.result || 0);
+                                    const accuracy = parseFloat(
+                                      result.accuracy || result.result || 0,
+                                    );
                                     const isAcceptable = (() => {
-                                      const matchingControl = assignedSamples.find(s =>
-                                        (s.accessionNumber === result.sampleId || s.id === result.sampleId) &&
-                                        s.sampleClassification?.isControlSample
-                                      );
-                                      const controlType = matchingControl?.sampleClassification?.controlType || 'UNKNOWN';
+                                      const matchingControl =
+                                        assignedSamples.find(
+                                          (s) =>
+                                            (s.accessionNumber ===
+                                              result.sampleId ||
+                                              s.id === result.sampleId) &&
+                                            s.sampleClassification
+                                              ?.isControlSample,
+                                        );
+                                      const controlType =
+                                        matchingControl?.sampleClassification
+                                          ?.controlType || "UNKNOWN";
 
                                       switch (controlType) {
-                                        case 'POSITIVE':
-                                        case 'QC_LOW':
-                                        case 'QC_MEDIUM':
-                                        case 'QC_HIGH':
-                                          return accuracy >= 85 && accuracy <= 115;
-                                        case 'NEGATIVE':
+                                        case "POSITIVE":
+                                        case "QC_LOW":
+                                        case "QC_MEDIUM":
+                                        case "QC_HIGH":
+                                          return (
+                                            accuracy >= 85 && accuracy <= 115
+                                          );
+                                        case "NEGATIVE":
                                           return accuracy <= 5;
-                                        case 'BLANK':
+                                        case "BLANK":
                                           return accuracy <= 2;
                                         default:
-                                          return accuracy >= 80 && accuracy <= 120;
+                                          return (
+                                            accuracy >= 80 && accuracy <= 120
+                                          );
                                       }
                                     })();
 
-                                    const matchingControl = assignedSamples.find(s =>
-                                      (s.accessionNumber === result.sampleId || s.id === result.sampleId) &&
-                                      s.sampleClassification?.isControlSample
-                                    );
+                                    const matchingControl =
+                                      assignedSamples.find(
+                                        (s) =>
+                                          (s.accessionNumber ===
+                                            result.sampleId ||
+                                            s.id === result.sampleId) &&
+                                          s.sampleClassification
+                                            ?.isControlSample,
+                                      );
 
                                     return (
-                                      <tr key={index} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                                        <td style={{ padding: "0.75rem", fontWeight: "500" }}>
+                                      <tr
+                                        key={index}
+                                        style={{
+                                          borderBottom: "1px solid #f0f0f0",
+                                        }}
+                                      >
+                                        <td
+                                          style={{
+                                            padding: "0.75rem",
+                                            fontWeight: "500",
+                                          }}
+                                        >
                                           {result.sampleId}
                                         </td>
-                                        <td style={{ padding: "0.75rem", textAlign: "center" }}>
+                                        <td
+                                          style={{
+                                            padding: "0.75rem",
+                                            textAlign: "center",
+                                          }}
+                                        >
                                           <Tag
                                             type={
-                                              matchingControl?.sampleClassification?.controlType?.includes('QC') ? 'blue' :
-                                              matchingControl?.sampleClassification?.controlType === 'POSITIVE' ? 'green' :
-                                              matchingControl?.sampleClassification?.controlType === 'NEGATIVE' ? 'red' : 'purple'
+                                              matchingControl?.sampleClassification?.controlType?.includes(
+                                                "QC",
+                                              )
+                                                ? "blue"
+                                                : matchingControl
+                                                      ?.sampleClassification
+                                                      ?.controlType ===
+                                                    "POSITIVE"
+                                                  ? "green"
+                                                  : matchingControl
+                                                        ?.sampleClassification
+                                                        ?.controlType ===
+                                                      "NEGATIVE"
+                                                    ? "red"
+                                                    : "purple"
                                             }
                                             size="sm"
                                           >
-                                            {matchingControl?.sampleClassification?.controlType?.replace(/_/g, ' ') || 'Unknown'}
+                                            {matchingControl?.sampleClassification?.controlType?.replace(
+                                              /_/g,
+                                              " ",
+                                            ) || "Unknown"}
                                           </Tag>
                                         </td>
-                                        <td style={{ padding: "0.75rem", textAlign: "center" }}>
-                                          {matchingControl?.sampleClassification?.expectedResult || 'N/A'}
-                                        </td>
-                                        <td style={{ padding: "0.75rem", textAlign: "center", fontWeight: "500" }}>
-                                          {result.measuredValue || result.result || 'N/A'}
+                                        <td
+                                          style={{
+                                            padding: "0.75rem",
+                                            textAlign: "center",
+                                          }}
+                                        >
+                                          {matchingControl?.sampleClassification
+                                            ?.expectedResult || "N/A"}
                                         </td>
                                         <td
                                           style={{
                                             padding: "0.75rem",
                                             textAlign: "center",
                                             fontWeight: "500",
-                                            color: isAcceptable ? "#24a148" : "#da1e28",
+                                          }}
+                                        >
+                                          {result.measuredValue ||
+                                            result.result ||
+                                            "N/A"}
+                                        </td>
+                                        <td
+                                          style={{
+                                            padding: "0.75rem",
+                                            textAlign: "center",
+                                            fontWeight: "500",
+                                            color: isAcceptable
+                                              ? "#24a148"
+                                              : "#da1e28",
                                           }}
                                         >
                                           {accuracy.toFixed(1)}%
                                         </td>
-                                        <td style={{ padding: "0.75rem", textAlign: "center" }}>
+                                        <td
+                                          style={{
+                                            padding: "0.75rem",
+                                            textAlign: "center",
+                                          }}
+                                        >
                                           <Tag
-                                            type={isAcceptable ? "green" : "red"}
+                                            type={
+                                              isAcceptable ? "green" : "red"
+                                            }
                                             size="sm"
                                           >
                                             {isAcceptable ? "PASS" : "FAIL"}
@@ -2677,14 +2926,25 @@ function BioanalyticalAnalyticalExecutionPage({
                             border: "1px solid #e0e0e0",
                           }}
                         >
-                          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🧪</div>
-                          <p style={{ marginBottom: "0.5rem", fontWeight: "500" }}>
+                          <div
+                            style={{ fontSize: "3rem", marginBottom: "1rem" }}
+                          >
+                            🧪
+                          </div>
+                          <p
+                            style={{
+                              marginBottom: "0.5rem",
+                              fontWeight: "500",
+                            }}
+                          >
                             Control Sample Analysis Pending
                           </p>
                           <p style={{ fontSize: "0.875rem" }}>
-                            Control sample results will be analyzed once QC data is processed.
+                            Control sample results will be analyzed once QC data
+                            is processed.
                             <br />
-                            Upload and process analytical files to view control sample performance.
+                            Upload and process analytical files to view control
+                            sample performance.
                           </p>
                         </div>
                       )}
@@ -2708,7 +2968,8 @@ function BioanalyticalAnalyticalExecutionPage({
                       <div
                         style={{
                           display: "grid",
-                          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                          gridTemplateColumns:
+                            "repeat(auto-fit, minmax(150px, 1fr))",
                           gap: "1rem",
                           marginBottom: "1rem",
                           padding: "0.75rem",
@@ -2718,43 +2979,57 @@ function BioanalyticalAnalyticalExecutionPage({
                         }}
                       >
                         <div>
-                          <strong>Control Results:</strong><br />
-                          {qcOutcomeRecord.controlSummary.passedControls}/{qcOutcomeRecord.controlSummary.totalControls} passed
+                          <strong>Control Results:</strong>
+                          <br />
+                          {qcOutcomeRecord.controlSummary.passedControls}/
+                          {qcOutcomeRecord.controlSummary.totalControls} passed
                           ({qcOutcomeRecord.controlSummary.passRate}%)
                         </div>
                         <div>
-                          <strong>Mean Accuracy:</strong><br />
+                          <strong>Mean Accuracy:</strong>
+                          <br />
                           {qcOutcomeRecord.controlSummary.meanAccuracy}%
                         </div>
                         <div>
-                          <strong>CV:</strong><br />
+                          <strong>CV:</strong>
+                          <br />
                           {qcOutcomeRecord.controlSummary.cv}%
                         </div>
                         <div>
-                          <strong>Calibration:</strong><br />
+                          <strong>Calibration:</strong>
+                          <br />
                           <Tag
-                            type={qcOutcomeRecord.calibrationOutcome.overallCalibrationStatus === "PASS" ? "green" : "red"}
+                            type={
+                              qcOutcomeRecord.calibrationOutcome
+                                .overallCalibrationStatus === "PASS"
+                                ? "green"
+                                : "red"
+                            }
                             size="sm"
                           >
-                            {qcOutcomeRecord.calibrationOutcome.overallCalibrationStatus || "Pending"}
+                            {qcOutcomeRecord.calibrationOutcome
+                              .overallCalibrationStatus || "Pending"}
                           </Tag>
                         </div>
                       </div>
 
                       {/* QC Outcome Selection */}
-                      <FormGroup legendText="QC Outcome Decision" style={{ marginBottom: "1rem" }}>
+                      <FormGroup
+                        legendText="QC Outcome Decision"
+                        style={{ marginBottom: "1rem" }}
+                      >
                         <RadioButtonGroup
                           name="qc-outcome"
                           value={qcOutcomeRecord.overallOutcome}
                           onChange={(value) =>
-                            setQcOutcomeRecord(prev => ({
+                            setQcOutcomeRecord((prev) => ({
                               ...prev,
                               overallOutcome: value,
                               decisionDetails: {
                                 ...prev.decisionDetails,
                                 reviewer: "current-user", // Should come from session
-                                reviewedAt: new Date().toISOString()
-                              }
+                                reviewedAt: new Date().toISOString(),
+                              },
                             }))
                           }
                         >
@@ -2791,29 +3066,35 @@ function BioanalyticalAnalyticalExecutionPage({
                             labelText={
                               qcOutcomeRecord.overallOutcome === "WAIVER"
                                 ? "Waiver Justification (Required)"
-                                : qcOutcomeRecord.overallOutcome === "CONDITIONAL_PASS"
-                                ? "Conditional Acceptance Reason"
-                                : "Failure Investigation & Action Plan"
+                                : qcOutcomeRecord.overallOutcome ===
+                                    "CONDITIONAL_PASS"
+                                  ? "Conditional Acceptance Reason"
+                                  : "Failure Investigation & Action Plan"
                             }
                             placeholder={
                               qcOutcomeRecord.overallOutcome === "WAIVER"
                                 ? "Provide detailed justification for waiver approval..."
-                                : qcOutcomeRecord.overallOutcome === "CONDITIONAL_PASS"
-                                ? "Explain why results are acceptable despite minor deviations..."
-                                : "Document root cause analysis and corrective actions planned..."
+                                : qcOutcomeRecord.overallOutcome ===
+                                    "CONDITIONAL_PASS"
+                                  ? "Explain why results are acceptable despite minor deviations..."
+                                  : "Document root cause analysis and corrective actions planned..."
                             }
-                            value={qcOutcomeRecord.decisionDetails.justification}
+                            value={
+                              qcOutcomeRecord.decisionDetails.justification
+                            }
                             onChange={(e) =>
-                              setQcOutcomeRecord(prev => ({
+                              setQcOutcomeRecord((prev) => ({
                                 ...prev,
                                 decisionDetails: {
                                   ...prev.decisionDetails,
-                                  justification: e.target.value
-                                }
+                                  justification: e.target.value,
+                                },
                               }))
                             }
                             rows={3}
-                            required={qcOutcomeRecord.overallOutcome === "WAIVER"}
+                            required={
+                              qcOutcomeRecord.overallOutcome === "WAIVER"
+                            }
                           />
                         </div>
                       )}
@@ -2826,34 +3107,62 @@ function BioanalyticalAnalyticalExecutionPage({
                             labelText="Override Reason Code"
                             value={qcOutcomeRecord.overrideReason}
                             onChange={(e) =>
-                              setQcOutcomeRecord(prev => ({
+                              setQcOutcomeRecord((prev) => ({
                                 ...prev,
                                 overrideReason: e.target.value,
                                 overrideApplied: true,
-                                overriddenBy: "current-user" // Should come from session
+                                overriddenBy: "current-user", // Should come from session
                               }))
                             }
                           >
                             <SelectItem value="" text="Select reason..." />
-                            <SelectItem value="DOCUMENTED_SOP_VARIANCE" text="Documented SOP Variance" />
-                            <SelectItem value="EQUIPMENT_LIMITATION" text="Equipment Limitation" />
-                            <SelectItem value="SAMPLE_MATRIX_INTERFERENCE" text="Sample Matrix Interference" />
-                            <SelectItem value="REGULATORY_PRECEDENT" text="Regulatory Precedent" />
-                            <SelectItem value="SCIENTIFIC_JUSTIFICATION" text="Scientific Justification" />
-                            <SelectItem value="CLIENT_SPECIFICATION" text="Client Specification Override" />
+                            <SelectItem
+                              value="DOCUMENTED_SOP_VARIANCE"
+                              text="Documented SOP Variance"
+                            />
+                            <SelectItem
+                              value="EQUIPMENT_LIMITATION"
+                              text="Equipment Limitation"
+                            />
+                            <SelectItem
+                              value="SAMPLE_MATRIX_INTERFERENCE"
+                              text="Sample Matrix Interference"
+                            />
+                            <SelectItem
+                              value="REGULATORY_PRECEDENT"
+                              text="Regulatory Precedent"
+                            />
+                            <SelectItem
+                              value="SCIENTIFIC_JUSTIFICATION"
+                              text="Scientific Justification"
+                            />
+                            <SelectItem
+                              value="CLIENT_SPECIFICATION"
+                              text="Client Specification Override"
+                            />
                           </Select>
                         </div>
                       )}
 
                       {/* Link to deviations if any failures */}
-                      {qcOutcomeRecord.overallOutcome === "FAIL" && deviations.length > 0 && (
-                        <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "#fff3e0", borderRadius: "4px" }}>
-                          <p style={{ fontSize: "0.875rem", margin: "0" }}>
-                            <strong>Linked Deviations:</strong> {deviations.length} deviation(s) recorded in the Deviations tab.
-                            These will be automatically linked to this QC outcome record.
-                          </p>
-                        </div>
-                      )}
+                      {qcOutcomeRecord.overallOutcome === "FAIL" &&
+                        deviations.length > 0 && (
+                          <div
+                            style={{
+                              marginTop: "1rem",
+                              padding: "0.75rem",
+                              backgroundColor: "#fff3e0",
+                              borderRadius: "4px",
+                            }}
+                          >
+                            <p style={{ fontSize: "0.875rem", margin: "0" }}>
+                              <strong>Linked Deviations:</strong>{" "}
+                              {deviations.length} deviation(s) recorded in the
+                              Deviations tab. These will be automatically linked
+                              to this QC outcome record.
+                            </p>
+                          </div>
+                        )}
 
                       {/* QC Decision Status Preview */}
                       <div
@@ -2861,27 +3170,44 @@ function BioanalyticalAnalyticalExecutionPage({
                           marginTop: "1rem",
                           padding: "0.75rem",
                           backgroundColor:
-                            qcOutcomeRecord.overallOutcome === "PASS" ? "#e7f6ed" :
-                            qcOutcomeRecord.overallOutcome === "CONDITIONAL_PASS" ? "#fff3e0" :
-                            qcOutcomeRecord.overallOutcome === "FAIL" ? "#ffeae6" :
-                            qcOutcomeRecord.overallOutcome === "WAIVER" ? "#e5f3ff" : "#f4f4f4",
+                            qcOutcomeRecord.overallOutcome === "PASS"
+                              ? "#e7f6ed"
+                              : qcOutcomeRecord.overallOutcome ===
+                                  "CONDITIONAL_PASS"
+                                ? "#fff3e0"
+                                : qcOutcomeRecord.overallOutcome === "FAIL"
+                                  ? "#ffeae6"
+                                  : qcOutcomeRecord.overallOutcome === "WAIVER"
+                                    ? "#e5f3ff"
+                                    : "#f4f4f4",
                           borderRadius: "4px",
                           border: `1px solid ${
-                            qcOutcomeRecord.overallOutcome === "PASS" ? "#198038" :
-                            qcOutcomeRecord.overallOutcome === "CONDITIONAL_PASS" ? "#f1c21b" :
-                            qcOutcomeRecord.overallOutcome === "FAIL" ? "#da1e28" :
-                            qcOutcomeRecord.overallOutcome === "WAIVER" ? "#0f62fe" : "#e0e0e0"
+                            qcOutcomeRecord.overallOutcome === "PASS"
+                              ? "#198038"
+                              : qcOutcomeRecord.overallOutcome ===
+                                  "CONDITIONAL_PASS"
+                                ? "#f1c21b"
+                                : qcOutcomeRecord.overallOutcome === "FAIL"
+                                  ? "#da1e28"
+                                  : qcOutcomeRecord.overallOutcome === "WAIVER"
+                                    ? "#0f62fe"
+                                    : "#e0e0e0"
                           }`,
                         }}
                       >
-                        <div style={{ fontSize: "0.875rem", fontWeight: "500", marginBottom: "0.25rem" }}>
+                        <div
+                          style={{
+                            fontSize: "0.875rem",
+                            fontWeight: "500",
+                            marginBottom: "0.25rem",
+                          }}
+                        >
                           QC Decision Summary:
                         </div>
                         <div style={{ fontSize: "0.875rem" }}>
                           {qcOutcomeRecord.overallOutcome
                             ? `Outcome: ${qcOutcomeRecord.overallOutcome} | ${qcOutcomeRecord.controlSummary.passedControls}/${qcOutcomeRecord.controlSummary.totalControls} controls passed | Calibration: ${qcOutcomeRecord.calibrationOutcome.overallCalibrationStatus}`
-                            : "Please select a QC outcome decision above"
-                          }
+                            : "Please select a QC outcome decision above"}
                         </div>
                       </div>
                     </div>
@@ -2892,8 +3218,11 @@ function BioanalyticalAnalyticalExecutionPage({
                       labelText="I have completed the QC outcome evaluation and approve the final decision for release"
                       checked={qcApproved}
                       onChange={(event, { checked }) => setQcApproved(checked)}
-                      disabled={!qcOutcomeRecord.overallOutcome ||
-                        (qcOutcomeRecord.overallOutcome === "WAIVER" && !qcOutcomeRecord.decisionDetails.justification)}
+                      disabled={
+                        !qcOutcomeRecord.overallOutcome ||
+                        (qcOutcomeRecord.overallOutcome === "WAIVER" &&
+                          !qcOutcomeRecord.decisionDetails.justification)
+                      }
                       style={{ marginTop: "1rem" }}
                     />
                   </div>
@@ -3195,17 +3524,22 @@ function BioanalyticalAnalyticalExecutionPage({
                       <span
                         style={{
                           fontSize: "1rem",
-                          color: qcOutcomeRecord.overallOutcome ? "#198038" : "#da1e28",
+                          color: qcOutcomeRecord.overallOutcome
+                            ? "#198038"
+                            : "#da1e28",
                         }}
                       >
                         {qcOutcomeRecord.overallOutcome ? "✓" : "✗"}
                       </span>
                       <span
                         style={{
-                          color: qcOutcomeRecord.overallOutcome ? "#161616" : "#6f6f6f",
+                          color: qcOutcomeRecord.overallOutcome
+                            ? "#161616"
+                            : "#6f6f6f",
                         }}
                       >
-                        QC outcome decision selected ({qcOutcomeRecord.overallOutcome || "Pending"})
+                        QC outcome decision selected (
+                        {qcOutcomeRecord.overallOutcome || "Pending"})
                       </span>
                     </div>
 
@@ -3222,14 +3556,20 @@ function BioanalyticalAnalyticalExecutionPage({
                         <span
                           style={{
                             fontSize: "1rem",
-                            color: qcOutcomeRecord.decisionDetails.justification ? "#198038" : "#da1e28",
+                            color: qcOutcomeRecord.decisionDetails.justification
+                              ? "#198038"
+                              : "#da1e28",
                           }}
                         >
-                          {qcOutcomeRecord.decisionDetails.justification ? "✓" : "✗"}
+                          {qcOutcomeRecord.decisionDetails.justification
+                            ? "✓"
+                            : "✗"}
                         </span>
                         <span
                           style={{
-                            color: qcOutcomeRecord.decisionDetails.justification ? "#161616" : "#6f6f6f",
+                            color: qcOutcomeRecord.decisionDetails.justification
+                              ? "#161616"
+                              : "#6f6f6f",
                           }}
                         >
                           Waiver justification provided

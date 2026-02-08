@@ -27,7 +27,6 @@ export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
     });
 };
 
-
 export const postToOpenElisServer = (
   endPoint,
   payLoad,
@@ -57,7 +56,6 @@ export const postToOpenElisServer = (
       callback(undefined, extraParams);
     });
 };
-
 
 export const postToOpenElisServerFullResponse = (
   endPoint,
