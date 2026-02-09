@@ -2,9 +2,8 @@ name: OpenELIS Frontend QA framework workflow
 
 on:
   pull_request:
-     branches: [develop]
   workflow_dispatch:
-  workflow_call: 
+  workflow_call:
 
 env:
   DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-frontend
@@ -39,36 +38,26 @@ jobs:
           file: ./frontend/Dockerfile.prod
           push: false
 
-  build-and-run-qa-tests:
+  static-checks:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v2
-        with:
-          repository: ${{github.repository}}
-          submodules: recursive
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
         working-directory: frontend
-
-      - name: Install React scripts
-        run: npm install react-scripts@5.0.1 -g
-        working-directory: frontend
-
-      - name: Install Google Chrome
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
 
       - name: Check Format
         run: npx prettier ./ --check
-        working-directory: frontend  
+        working-directory: frontend
 
       - name: Run Frontend Unit Tests (Jest)
         run: npm test -- --watchAll=false --coverage=false
@@ -76,14 +65,54 @@ jobs:
         env:
           CI: true
 
+  e2e-cypress:
+    needs: static-checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v4
+        with:
+          repository: ${{github.repository}}
+          submodules: recursive
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Install Google Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Prepare .env from template
+        run: cp .env.example .env
+
       - name: Build OpenELIS Images and Run containers
         run: docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
 
-      - name: Run Frontend QA Workflow (Headless Chrome)
+      - name: Load test fixtures into database
+        run: |
+          docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims --set=ON_ERROR_STOP=on < src/test/resources/e2e-foundational-data.sql
+
+      - name: Run Cypress E2E Tests (Headless Chrome)
         run: npx cypress run --browser chrome --headless
         working-directory: frontend
+        env:
+          E2E_FAIL_FAST: "true"
+          CYPRESS_FAIL_FAST_ENABLED: "true"
+          CYPRESS_BASE_URL: https://localhost
+          LC_ALL: en_US.UTF-8
+          LANG: en_US.UTF-8
+          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ secrets.TEST_PASS || 'adminADMIN!' }}
 
-      # Upload Cypress screenshots on failure for debugging
       - name: Upload Cypress screenshots on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -106,4 +135,22 @@ jobs:
         with:
         # Only show last 100 lines of each
           tail: "100"
-          
+
+  # Fan-in job: name must match the branch-protection required check.
+  build-and-run-qa-tests:
+    if: always()
+    needs: [static-checks, build-prod-frontend-image, e2e-cypress]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check sub-job results
+        run: |
+          if [[ "${{ needs.static-checks.result }}" != "success" ]] ||
+             [[ "${{ needs.build-prod-frontend-image.result }}" != "success" ]] ||
+             [[ "${{ needs.e2e-cypress.result }}" != "success" ]]; then
+            echo "One or more sub-jobs failed:"
+            echo "  static-checks: ${{ needs.static-checks.result }}"
+            echo "  build-prod-frontend-image: ${{ needs.build-prod-frontend-image.result }}"
+            echo "  e2e-cypress: ${{ needs.e2e-cypress.result }}"
+            exit 1
+          fi
+          echo "All sub-jobs passed."
