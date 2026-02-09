@@ -80,7 +80,21 @@ class HomePage {
   }
 
   closeNavigationMenu() {
-    cy.get(this.selectors.menuButton).click();
+    cy.get(this.selectors.menuButton)
+      .then(($btn) => {
+        const ariaLabel = $btn.attr("aria-label");
+
+        // Only click if the current state indicates the menu is open.
+        if (ariaLabel && ariaLabel.toLowerCase().includes("close")) {
+          cy.wrap($btn).click();
+        }
+      })
+      .should(($btn) => {
+        const ariaLabel = $btn.attr("aria-label");
+        if (ariaLabel) {
+          expect(ariaLabel.toLowerCase()).not.to.include("close");
+        }
+      });
   }
 
   // Order Entry related functions
