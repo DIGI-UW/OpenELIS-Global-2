@@ -88,7 +88,8 @@ fi
 
 # Generate SQL from DBUnit XML (on-demand, never committed)
 echo "Generating SQL from DBUnit XML..."
-python3 "$XML_TO_SQL_SCRIPT" "$STORAGE_XML" "$STORAGE_SQL"
+python3 "$XML_TO_SQL_SCRIPT" "$STORAGE_XML" "$STORAGE_SQL" \
+    --on-conflict-do-nothing
 if [ $? -ne 0 ]; then
     echo "ERROR: Failed to generate SQL from XML"
     exit 1
