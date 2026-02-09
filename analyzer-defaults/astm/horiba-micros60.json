@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0",
+  "analyzer_name": "Horiba ABX Micros 60",
+  "manufacturer": "Horiba ABX",
+  "category": "HEMATOLOGY",
+  "protocol": "ASTM",
+  "protocol_version": "LIS2-A2",
+  "identifier_pattern": "ABX.*MICROS.*60|MICROS.*60",
+  "transport": "RS-232 Serial",
+  "default_baud_rate": 9600,
+  "default_test_mappings": [
+    {
+      "analyzer_code": "WBC",
+      "test_name": "White Blood Cells",
+      "loinc": "6690-2",
+      "unit": "10^3/uL"
+    },
+    {
+      "analyzer_code": "RBC",
+      "test_name": "Red Blood Cells",
+      "loinc": "789-8",
+      "unit": "10^6/uL"
+    },
+    {
+      "analyzer_code": "HGB",
+      "test_name": "Hemoglobin",
+      "loinc": "718-7",
+      "unit": "g/dL"
+    },
+    {
+      "analyzer_code": "HCT",
+      "test_name": "Hematocrit",
+      "loinc": "4544-3",
+      "unit": "%"
+    },
+    {
+      "analyzer_code": "PLT",
+      "test_name": "Platelet Count",
+      "loinc": "777-3",
+      "unit": "10^3/uL"
+    },
+    {
+      "analyzer_code": "LYMPH",
+      "test_name": "Lymphocytes",
+      "loinc": "736-9",
+      "unit": "%"
+    },
+    {
+      "analyzer_code": "MID",
+      "test_name": "Mid Cells",
+      "loinc": "35058-2",
+      "unit": "%"
+    },
+    {
+      "analyzer_code": "GRAN",
+      "test_name": "Granulocytes",
+      "loinc": "19023-1",
+      "unit": "%"
+    }
+  ],
+  "notes": "Requires USB-to-serial adapter + ASTM-HTTP Bridge for RS232→TCP conversion. 16 fields total (3-part differential)."
+}
