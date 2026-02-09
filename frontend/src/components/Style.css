@@ -823,6 +823,51 @@ nav.cds--side-nav
   ) !important;
 }
 
+/* Neutralise active styles on the <li> wrapper itself (Carbon may paint it) */
+li.cds--side-nav__item.cds--side-nav__item--active {
+  background-color: transparent !important;
+}
+
+/* Cover expanded submenu case (existing rules only handle aria-expanded="false") */
+.cds--side-nav__item--active .cds--side-nav__submenu[aria-expanded="true"] {
+  background-color: transparent !important;
+}
+
+.cds--side-nav__item--active
+  .cds--side-nav__submenu[aria-expanded="true"]::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* Suppress title bold/color flash when hasActiveChild toggles */
+.cds--side-nav__item--active .cds--side-nav__submenu-title {
+  font-weight: inherit !important;
+  color: inherit !important;
+}
+
+/* Suppress icon fill change on active parent */
+.cds--side-nav__item--active .cds--side-nav__icon > svg {
+  fill: inherit !important;
+}
+
+/* Micro-transition: suppress 1-frame flash when Carbon toggles active classes.
+ * 50ms is imperceptible but forces the browser to interpolate from the current
+ * (transparent) value instead of snapping to Carbon's default grey for one paint.
+ * IMPORTANT: ::before elements must NOT transition — they are Carbon's left
+ * indicator bar and must snap instantly (grey→blue transition looks wrong). */
+nav.cds--side-nav .cds--side-nav__submenu,
+nav.cds--side-nav .cds--side-nav__link,
+nav.cds--side-nav .cds--side-nav__item {
+  transition:
+    background-color 50ms ease,
+    color 50ms ease !important;
+}
+
+nav.cds--side-nav .cds--side-nav__submenu::before,
+nav.cds--side-nav .cds--side-nav__link::before {
+  transition: none !important;
+}
+
 .cds--side-nav__navigation {
   overflow-y: visible !important;
   max-height: none !important;
