@@ -18,9 +18,8 @@ import {
   InventoryManagementAPI,
   StorageLocationAPI,
 } from "./InventoryService";
-import StorageLocationModal from "./StorageLocationModal";
 
-const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
+const LotEntryModal = ({ open, onClose, onSave, onAddLocation, lot = null }) => {
   const intl = useIntl();
   const isEdit = !!lot;
 
@@ -42,7 +41,6 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const [locationModalOpen, setLocationModalOpen] = useState(false);
 
   const qcStatusOptions = [
     { id: "PENDING", text: "Pending" },
@@ -115,7 +113,6 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   };
 
   const handleLocationCreated = (newLocation) => {
-    setLocationModalOpen(false);
     fetchLocations();
     handleChange("storageLocation", newLocation);
   };
@@ -225,7 +222,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
                 : null
             }
             onChange={({ selectedItem }) =>
-              handleChange("inventoryItem", selectedItem.item)
+              selectedItem && handleChange("inventoryItem", selectedItem.item)
             }
             required
             disabled={isEdit}
@@ -291,7 +288,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
                 kind="ghost"
                 size="sm"
                 renderIcon={Add}
-                onClick={() => setLocationModalOpen(true)}
+                onClick={onAddLocation}
               >
                 <FormattedMessage id="storage.location.add.button" />
               </Button>
@@ -307,6 +304,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
                   : null
               }
               onChange={({ selectedItem }) =>
+                selectedItem &&
                 handleChange("storageLocation", selectedItem.location)
               }
               required
@@ -323,7 +321,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
               (s) => s.id === formData.qcStatus,
             )}
             onChange={({ selectedItem }) =>
-              handleChange("qcStatus", selectedItem.id)
+              selectedItem && handleChange("qcStatus", selectedItem.id)
             }
           />
 
@@ -335,7 +333,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={statusOptions.find((s) => s.id === formData.status)}
             onChange={({ selectedItem }) =>
-              handleChange("status", selectedItem.id)
+              selectedItem && handleChange("status", selectedItem.id)
             }
           />
 
@@ -349,12 +347,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         </Stack>
       </Modal>
 
-      {/* Storage Location Creation Modal */}
-      <StorageLocationModal
-        open={locationModalOpen}
-        onClose={() => setLocationModalOpen(false)}
-        onSave={handleLocationCreated}
-      />
+
     </>
   );
 };

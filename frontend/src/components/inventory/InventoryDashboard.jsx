@@ -27,6 +27,7 @@ import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { InventoryItemAPI, InventoryLotAPI } from "./InventoryService";
 import LotEntryModal from "./LotEntryModal";
+import StorageLocationModal from "./StorageLocationModal";
 import RecordUsageModal from "./RecordUsageModal";
 import LotAdjustmentModal from "./LotAdjustmentModal";
 import DisposeLotModal from "./DisposeLotModal";
@@ -70,6 +71,7 @@ const InventoryDashboard = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
+  const [activeModal, setActiveModal] = useState(null);
   const [lotModalOpen, setLotModalOpen] = useState(false);
   const [usageModalOpen, setUsageModalOpen] = useState(false);
   const [adjustmentModalOpen, setAdjustmentModalOpen] = useState(false);
@@ -312,6 +314,7 @@ const InventoryDashboard = () => {
   });
 
   const handleLotSaved = () => {
+    setActiveModal(null);
     setLotModalOpen(false);
     setSelectedLot(null);
     fetchLots();
@@ -319,6 +322,16 @@ const InventoryDashboard = () => {
       kind: NotificationKinds.success,
       title: intl.formatMessage({ id: "notification.success" }),
       message: intl.formatMessage({ id: "lot.save.success" }),
+    });
+  };
+
+  const handleLocationCreated = (location) => {
+    setActiveModal(null);
+    fetchLots();
+    notify({
+      kind: NotificationKinds.success,
+      title: intl.formatMessage({ id: "notification.success" }),
+      message: "Storage location created successfully",
     });
   };
 
@@ -614,7 +627,30 @@ const InventoryDashboard = () => {
       </DataTable>
 
       {/* Lot Entry Modal */}
-      {lotModalOpen && (
+      {activeModal === "LOT" && (
+        <LotEntryModal
+          open
+          onClose={() => setActiveModal(null)}
+          onSave={handleLotSaved}
+          onAddLocation={() => setActiveModal("LOCATION")}
+          lot={selectedLot}
+        />
+      )}
+
+      {/* Storage Location Modal */}
+      {activeModal === "LOCATION" && (
+        <StorageLocationModal
+          open
+          onClose={() => setActiveModal("LOT")}
+          onSave={(location) => {
+            handleLocationCreated(location);
+            setActiveModal("LOT");
+          }}
+        />
+      )}
+
+      {/* Legacy modal support - will be removed */}
+      {lotModalOpen && activeModal === null && (
         <LotEntryModal
           open={lotModalOpen}
           onClose={() => {
@@ -622,6 +658,7 @@ const InventoryDashboard = () => {
             setSelectedLot(null);
           }}
           onSave={handleLotSaved}
+          onAddLocation={() => setActiveModal("LOCATION")}
           lot={selectedLot}
         />
       )}

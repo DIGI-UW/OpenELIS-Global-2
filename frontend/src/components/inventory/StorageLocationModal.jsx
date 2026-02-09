@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Modal,
   TextInput,
@@ -7,7 +7,7 @@ import {
   NumberInput,
   Stack,
 } from "@carbon/react";
-import { FormattedMessage, useIntl } from "react-intl";
+import { useIntl } from "react-intl";
 import { StorageLocationAPI } from "./InventoryService";
 
 const StorageLocationModal = ({ open, onClose, onSave }) => {
@@ -84,7 +84,7 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
           ? parseFloat(formData.temperatureMax)
           : null,
         parentLocation: formData.parentLocation,
-        isActive: true, // Boolean, not "Y"
+        isActive: true,
       };
 
       const newLocation = await StorageLocationAPI.create(payload);
@@ -102,7 +102,10 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
       onSave(newLocation);
     } catch (err) {
       console.error("Error creating storage location:", err);
-      setError(err.message || "Error creating storage location");
+      setError(
+        err.message ||
+          "Error creating storage location. Please check the console for details.",
+      );
     } finally {
       setSaving(false);
     }
@@ -129,9 +132,16 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
       onRequestSubmit={handleSubmit}
       modalHeading={intl.formatMessage({
         id: "storage.location.add.title",
+        defaultMessage: "Add Storage Location",
       })}
-      primaryButtonText={intl.formatMessage({ id: "button.save" })}
-      secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
+      primaryButtonText={intl.formatMessage({
+        id: "button.save",
+        defaultMessage: "Save",
+      })}
+      secondaryButtonText={intl.formatMessage({
+        id: "button.cancel",
+        defaultMessage: "Cancel",
+      })}
       primaryButtonDisabled={saving}
       size="md"
     >
@@ -140,7 +150,10 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
           id="name"
           labelText={
             <>
-              {intl.formatMessage({ id: "storage.location.name" })}
+              {intl.formatMessage({
+                id: "storage.location.name",
+                defaultMessage: "Location Name",
+              })}
               <span style={{ color: "#da1e28" }}> *</span>
             </>
           }
@@ -152,7 +165,10 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
 
         <TextInput
           id="locationCode"
-          labelText={intl.formatMessage({ id: "storage.location.code" })}
+          labelText={intl.formatMessage({
+            id: "storage.location.code",
+            defaultMessage: "Location Code",
+          })}
           placeholder="e.g., ROOM-001 (optional)"
           value={formData.locationCode}
           onChange={(e) => handleChange("locationCode", e.target.value)}
@@ -162,7 +178,10 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
           id="locationType"
           titleText={
             <>
-              {intl.formatMessage({ id: "storage.location.type" })}
+              {intl.formatMessage({
+                id: "storage.location.type",
+                defaultMessage: "Location Type",
+              })}
               <span style={{ color: "#da1e28" }}> *</span>
             </>
           }
@@ -186,9 +205,12 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
         >
           <NumberInput
             id="temperatureMin"
-            label={intl.formatMessage({ id: "storage.location.tempMin" })}
+            label={intl.formatMessage({
+              id: "storage.location.tempMin",
+              defaultMessage: "Min Temperature",
+            })}
             value={formData.temperatureMin}
-            onChange={(e) => handleChange("temperatureMin", e.target.value)}
+            onChange={(e, { value }) => handleChange("temperatureMin", value)}
             min={-200}
             max={200}
             placeholder="-80"
@@ -197,9 +219,12 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
           />
           <NumberInput
             id="temperatureMax"
-            label={intl.formatMessage({ id: "storage.location.tempMax" })}
+            label={intl.formatMessage({
+              id: "storage.location.tempMax",
+              defaultMessage: "Max Temperature",
+            })}
             value={formData.temperatureMax}
-            onChange={(e) => handleChange("temperatureMax", e.target.value)}
+            onChange={(e, { value }) => handleChange("temperatureMax", value)}
             min={-200}
             max={200}
             placeholder="-20"
@@ -212,6 +237,7 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
           id="description"
           labelText={intl.formatMessage({
             id: "storage.location.description",
+            defaultMessage: "Description",
           })}
           placeholder="Optional description or notes"
           value={formData.description}
