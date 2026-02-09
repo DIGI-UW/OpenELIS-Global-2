@@ -13,6 +13,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import org.openelisglobal.analyzer.util.NetworkValidationUtil;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
@@ -178,6 +179,9 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
 
             if (ipAddress == null || port == null) {
                 throw new LIMSRuntimeException("Analyzer IP address or port not configured");
+            }
+            if (NetworkValidationUtil.isBlockedAddress(ipAddress)) {
+                throw new LIMSRuntimeException("Connection to this address is not permitted");
             }
 
             addLog(status, String.format("Connecting to analyzer at %s:%d", ipAddress, port));

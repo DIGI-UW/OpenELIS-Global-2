@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -13,6 +14,7 @@ import org.openelisglobal.analyzer.valueholder.CustomFieldType;
 import org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.login.dao.UserModuleService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +46,9 @@ public class CustomFieldTypeRestController extends BaseRestController {
 
     @Autowired
     private ValidationRuleConfigurationService validationRuleConfigurationService;
+
+    @Autowired
+    private UserModuleService userModuleService;
 
     /**
      * GET /rest/analyzer/custom-field-types Retrieve all custom field types
@@ -213,12 +218,13 @@ public class CustomFieldTypeRestController extends BaseRestController {
      */
     @PostMapping("/{id}/validation-rules")
     public ResponseEntity<Map<String, Object>> createValidationRule(@PathVariable String id,
-            @Valid @RequestBody ValidationRuleConfigurationForm form) {
+            @Valid @RequestBody ValidationRuleConfigurationForm form, HttpServletRequest request) {
         try {
-            // TODO: Add authorization check for System Administrator role
-            // if (!isSystemAdministrator()) {
-            // return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            // }
+            if (!userModuleService.isUserAdmin(request)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Administrator access required");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+            }
 
             // Verify custom field type exists
             CustomFieldType customFieldType = customFieldTypeService.get(id);
@@ -254,12 +260,14 @@ public class CustomFieldTypeRestController extends BaseRestController {
      */
     @PutMapping("/{id}/validation-rules/{ruleId}")
     public ResponseEntity<Map<String, Object>> updateValidationRule(@PathVariable String id,
-            @PathVariable String ruleId, @Valid @RequestBody ValidationRuleConfigurationForm form) {
+            @PathVariable String ruleId, @Valid @RequestBody ValidationRuleConfigurationForm form,
+            HttpServletRequest request) {
         try {
-            // TODO: Add authorization check for System Administrator role
-            // if (!isSystemAdministrator()) {
-            // return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            // }
+            if (!userModuleService.isUserAdmin(request)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Administrator access required");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+            }
 
             // Verify custom field type exists
             CustomFieldType customFieldType = customFieldTypeService.get(id);
@@ -302,12 +310,13 @@ public class CustomFieldTypeRestController extends BaseRestController {
      */
     @DeleteMapping("/{id}/validation-rules/{ruleId}")
     public ResponseEntity<Map<String, Object>> deleteValidationRule(@PathVariable String id,
-            @PathVariable String ruleId) {
+            @PathVariable String ruleId, HttpServletRequest request) {
         try {
-            // TODO: Add authorization check for System Administrator role
-            // if (!isSystemAdministrator()) {
-            // return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            // }
+            if (!userModuleService.isUserAdmin(request)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Administrator access required");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+            }
 
             // Verify custom field type exists
             CustomFieldType customFieldType = customFieldTypeService.get(id);
