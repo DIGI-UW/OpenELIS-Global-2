@@ -649,7 +649,6 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
 
     @Transactional(readOnly = true)
     public Test getTestByNormalizedDescription(String description) {
-        // Get all tests and do the matching in Java since REGEXP_REPLACE is not universally supported
         String normalizedDescription = normalizeDescription(description);
         String sql = "From Test t";
         try {
@@ -657,8 +656,8 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
             List<Test> tests = query.getResultList();
 
             for (Test test : tests) {
-                if (test.getDescription() != null &&
-                    normalizeDescription(test.getDescription()).equals(normalizedDescription)) {
+                if (test.getDescription() != null
+                        && normalizeDescription(test.getDescription()).equals(normalizedDescription)) {
                     return test;
                 }
             }
@@ -825,7 +824,8 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         if (description == null) {
             return "";
         }
-        // Remove all non-alphanumeric characters (spaces, hyphens, etc.) and preserve case
+        // Remove all non-alphanumeric characters (spaces, hyphens, etc.) and preserve
+        // case
         return description.replaceAll("[^a-zA-Z0-9]", "");
     }
 }

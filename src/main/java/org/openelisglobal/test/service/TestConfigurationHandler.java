@@ -219,7 +219,8 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
             return null;
         }
 
-        // Check if test already exists using normalized matching (case-sensitive, ignores special characters)
+        // Check if test already exists using normalized matching (case-sensitive,
+        // ignores special characters)
         Test existingTest = testService.getTestByNormalizedDescription(testName);
 
         Test test;
