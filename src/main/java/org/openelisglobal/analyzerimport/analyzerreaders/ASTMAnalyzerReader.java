@@ -21,6 +21,12 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import org.openelisglobal.analyzer.service.AnalyzerConfigurationService;
+import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.service.MappingApplicationService;
+import org.openelisglobal.analyzer.service.MappingAwareAnalyzerLineInserter;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.plugin.AnalyzerImporterPlugin;
@@ -35,6 +41,7 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     private String error;
     private boolean hasResponse = false;
     private String responseBody;
+    private String clientIpAddress;
 
     @Override
     public boolean readStream(InputStream stream) {
@@ -63,22 +70,33 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
             return false;
         }
 
-        if (!lines.isEmpty()) {
-            setInserterResponder();
-            if (inserter == null) {
-                error = "Unable to understand which analyzer sent the message";
-                return false;
-            }
-            return true;
-        } else {
+        if (lines.isEmpty()) {
             error = "Empty message";
             return false;
         }
+        return true;
+    }
+
+    /**
+     * Resolve plugin/inserter/responder from message lines. Call before processData
+     * or insertAnalyzerData so that "no plugin matched" is reported at process time
+     * (HL7-aligned).
+     */
+    private void ensureInserterResponder() {
+        if (plugin != null) {
+            return;
+        }
+        setInserterResponder();
     }
 
     public boolean processData(String currentUserId) {
-        // it is assumed that all requests are either requests for information
-        // or analyzer results to be entered
+        error = null;
+        ensureInserterResponder();
+        if (plugin == null) {
+            error = "No ASTM plugin matched this message (e.g. configure GenericASTM with matching identifier pattern)";
+            LogEvent.logError(getClass().getSimpleName(), "processData", error);
+            return false;
+        }
         if (plugin.isAnalyzerResult(lines)) {
             return insertAnalyzerData(currentUserId);
         } else {
@@ -97,7 +115,9 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     }
 
     private void setInserterResponder() {
-        for (AnalyzerImporterPlugin plugin : SpringContext.getBean(PluginAnalyzerService.class).getAnalyzerPlugins()) {
+        PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
+        List<AnalyzerImporterPlugin> plugins = choosePluginOrder(pluginService);
+        for (AnalyzerImporterPlugin plugin : plugins) {
             if (plugin.isTargetAnalyzer(lines)) {
                 try {
                     this.plugin = plugin;
@@ -111,9 +131,51 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
         }
     }
 
+    /**
+     * When a config matches the message and has prefer_generic_plugin=true, try
+     * generic plugins first so admin can switch from legacy to generic without
+     * removing the legacy JAR.
+     */
+    private List<AnalyzerImporterPlugin> choosePluginOrder(PluginAnalyzerService pluginService) {
+        String identifier = parseIdentifierFromAstmHeader();
+        if (identifier == null || identifier.trim().isEmpty()) {
+            return pluginService.getAnalyzerPlugins();
+        }
+        AnalyzerConfigurationService configService = SpringContext.getBean(AnalyzerConfigurationService.class);
+        if (configService == null) {
+            return pluginService.getAnalyzerPlugins();
+        }
+        Optional<org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration> config = configService
+                .findByIdentifierPatternMatch(identifier.trim());
+        if (config.isPresent() && config.get().isPreferGenericPlugin()) {
+            return pluginService.getAnalyzerPluginsWithGenericFirst();
+        }
+        return pluginService.getAnalyzerPlugins();
+    }
+
+    /**
+     * ASTM H-segment field 4 (manufacturer^model^version). Same as
+     * GenericASTM.parseAnalyzerIdentifier.
+     */
+    private String parseIdentifierFromAstmHeader() {
+        if (lines == null || lines.isEmpty()) {
+            return null;
+        }
+        for (String line : lines) {
+            if (line != null && line.startsWith("H|")) {
+                String[] fields = line.split("\\|");
+                if (fields.length > 4 && fields[4] != null && !fields[4].trim().isEmpty()) {
+                    return fields[4].trim();
+                }
+                break;
+            }
+        }
+        return null;
+    }
+
     private String buildResponseForQuery() {
         if (responder == null) {
-            error = "Unable to understand which analyzer sent the query or plugin doesn't support responding";
+            error = "No ASTM plugin matched this message or plugin doesn't support responding (e.g. configure GenericASTM with matching identifier pattern)";
             LogEvent.logError(this.getClass().getSimpleName(), "buildResponseForQuery", error);
             return "";
         } else {
@@ -124,18 +186,170 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
 
     @Override
     public boolean insertAnalyzerData(String systemUserId) {
+        ensureInserterResponder();
         if (inserter == null) {
-            error = "Unable to understand which analyzer sent the file";
-            LogEvent.logError(this.getClass().getSimpleName(), "buildResponseForQuery", error);
+            error = "No ASTM plugin matched this message (e.g. configure GenericASTM with matching identifier pattern)";
+            LogEvent.logError(this.getClass().getSimpleName(), "insertAnalyzerData", error);
             return false;
         } else {
-            boolean success = inserter.insert(lines, systemUserId);
+            // Check if analyzer has active mappings and wrap inserter if needed
+            // Task Reference: T180
+            AnalyzerLineInserter finalInserter = wrapInserterIfMappingsExist(inserter);
+
+            boolean success = finalInserter.insert(lines, systemUserId);
             if (!success) {
-                error = inserter.getError();
-                LogEvent.logError(this.getClass().getSimpleName(), "buildResponseForQuery", error);
+                error = finalInserter.getError();
+                LogEvent.logError(this.getClass().getSimpleName(), "insertAnalyzerData", error);
             }
             return success;
         }
+    }
+
+    /**
+     * Wrap inserter with MappingAwareAnalyzerLineInserter if analyzer has active
+     * mappings
+     * 
+     * Task Reference: T180
+     * 
+     * Per research.md Section 7: Conditional wrapping logic - Check if analyzer has
+     * active mappings before wrapping - If analyzer has active mappings: Wrap
+     * plugin inserter with MappingAwareAnalyzerLineInserter - If analyzer has no
+     * mappings: Use original plugin inserter directly (backward compatibility)
+     * 
+     * @param originalInserter The original plugin inserter
+     * @return Wrapped inserter if mappings exist, original inserter otherwise
+     */
+    private AnalyzerLineInserter wrapInserterIfMappingsExist(AnalyzerLineInserter originalInserter) {
+        try {
+            // Try to identify analyzer from message
+            Optional<Analyzer> analyzer = identifyAnalyzerFromMessage();
+
+            if (!analyzer.isPresent()) {
+                // Cannot identify analyzer - use original inserter (backward compatibility)
+                return originalInserter;
+            }
+
+            // Check if analyzer has active mappings
+            MappingApplicationService mappingApplicationService = SpringContext
+                    .getBean(MappingApplicationService.class);
+            if (mappingApplicationService != null
+                    && mappingApplicationService.hasActiveMappings(analyzer.get().getId())) {
+                // Analyzer has active mappings - wrap inserter
+                return new MappingAwareAnalyzerLineInserter(originalInserter, analyzer.get());
+            }
+
+            // No mappings configured - use original inserter (backward compatibility)
+            return originalInserter;
+
+        } catch (Exception e) {
+            // Error identifying analyzer or checking mappings - use original inserter
+            LogEvent.logError("Error checking mappings, using original inserter: " + e.getMessage(), e);
+            return originalInserter;
+        }
+    }
+
+    /**
+     * Set client IP address for analyzer identification
+     * 
+     * @param ip The client IP address
+     */
+    public void setClientIpAddress(String ip) {
+        this.clientIpAddress = ip;
+    }
+
+    /**
+     * Identify analyzer from ASTM message
+     * 
+     * Attempts to identify the analyzer by: 1. Parsing ASTM header (H segment) for
+     * analyzer identification 2. Looking up AnalyzerConfiguration by IP address (if
+     * available) 3. Matching by analyzer name from plugin
+     * 
+     * @return Optional Analyzer if identified, empty otherwise
+     */
+    private Optional<Analyzer> identifyAnalyzerFromMessage() {
+        try {
+            if (lines == null || lines.isEmpty()) {
+                return Optional.empty();
+            }
+
+            AnalyzerConfigurationService configService = SpringContext.getBean(AnalyzerConfigurationService.class);
+            AnalyzerService analyzerService = SpringContext.getBean(AnalyzerService.class);
+
+            if (configService == null || analyzerService == null) {
+                LogEvent.logDebug(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
+                        "Services not available for analyzer identification");
+                return Optional.empty();
+            }
+
+            // Strategy 1: Parse ASTM H-segment for manufacturer/model
+            String analyzerName = parseAnalyzerNameFromHeader();
+            if (analyzerName != null && !analyzerName.trim().isEmpty()) {
+                Optional<org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration> config = configService
+                        .getByAnalyzerName(analyzerName.trim());
+                if (config.isPresent() && config.get().getAnalyzer() != null) {
+                    LogEvent.logDebug(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
+                            "Identified analyzer from header: " + analyzerName);
+                    return Optional.of(config.get().getAnalyzer());
+                }
+            }
+
+            // Strategy 2: Client IP address (for direct HTTP push)
+            if (clientIpAddress != null && !clientIpAddress.trim().isEmpty()) {
+                Optional<org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration> config = configService
+                        .getByIpAddress(clientIpAddress.trim());
+                if (config.isPresent() && config.get().getAnalyzer() != null) {
+                    LogEvent.logDebug(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
+                            "Identified analyzer from IP address: " + clientIpAddress);
+                    return Optional.of(config.get().getAnalyzer());
+                }
+            }
+
+            // Strategy 3: Plugin fallback not available
+            // Note: AnalyzerImporterPlugin interface doesn't provide getAnalyzerName()
+            // method
+            // Identification relies on Strategies 1 (ASTM header) and 2 (IP address)
+            // If both fail, analyzer cannot be identified from message alone
+
+            return Optional.empty();
+
+        } catch (Exception e) {
+            LogEvent.logError("Error identifying analyzer: " + e.getMessage(), e);
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Parse analyzer name from ASTM H-segment header
+     * 
+     * Format: H|\\^&|||MANUFACTURER^MODEL^VERSION|...
+     * 
+     * @return Analyzer name as "MANUFACTURER MODEL" or null if not found
+     */
+    private String parseAnalyzerNameFromHeader() {
+        if (lines == null || lines.isEmpty()) {
+            return null;
+        }
+
+        for (String line : lines) {
+            if (line != null && line.startsWith("H|")) {
+                String[] segments = line.split("\\|");
+                if (segments.length >= 5 && segments[4] != null) {
+                    String manufacturerModel = segments[4].trim();
+                    if (!manufacturerModel.isEmpty()) {
+                        String[] parts = manufacturerModel.split("\\^");
+                        if (parts.length >= 2) {
+                            // Return "MANUFACTURER MODEL"
+                            return parts[0].trim() + " " + parts[1].trim();
+                        } else if (parts.length == 1) {
+                            // Only manufacturer provided
+                            return parts[0].trim();
+                        }
+                    }
+                }
+                break;
+            }
+        }
+        return null;
     }
 
     @Override

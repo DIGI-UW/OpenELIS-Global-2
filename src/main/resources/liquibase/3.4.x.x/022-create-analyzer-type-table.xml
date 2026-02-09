@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- AnalyzerType Table -->
+    <!-- Separates plugin capability definition from physical analyzer instances -->
+    <!-- Enables 1:N relationship: one type can have multiple analyzer instances -->
+    <changeSet id="011-001-create-analyzer-type-table" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="analyzer_type"/>
+            </not>
+        </preConditions>
+        <comment>Creating analyzer_type table to define plugin capabilities separately from analyzer instances</comment>
+        <createTable tableName="analyzer_type">
+            <column name="id" type="NUMERIC(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="protocol" type="VARCHAR(30)" defaultValue="ASTM">
+                <constraints nullable="false"/>
+            </column>
+            <column name="plugin_class_name" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="identifier_pattern" type="VARCHAR(500)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="is_generic_plugin" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <rollback>
+            <dropTable tableName="analyzer_type"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Create sequence for analyzer_type ID generation -->
+    <changeSet id="011-002-create-analyzer-type-sequence" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="analyzer_type_seq"/>
+            </not>
+        </preConditions>
+        <createSequence sequenceName="analyzer_type_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="analyzer_type_seq"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Add analyzer_type_id foreign key to analyzer table -->
+    <changeSet id="011-003-add-analyzer-type-fk-to-analyzer" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="analyzer" columnName="analyzer_type_id"/>
+            </not>
+        </preConditions>
+        <comment>Adding analyzer_type_id FK to analyzer table for type-instance relationship</comment>
+        <addColumn tableName="analyzer">
+            <column name="analyzer_type_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"
+                    foreignKeyName="fk_analyzer_analyzer_type"
+                    references="analyzer_type(id)"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="analyzer" columnName="analyzer_type_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

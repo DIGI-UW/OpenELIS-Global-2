@@ -21,6 +21,9 @@ import java.util.List;
  * Service for HL7 v2.x message parsing and generation.
  *
  * <p>
+ * Task Reference: T009 (M1 HL7 Adapter)
+ *
+ * <p>
  * Parses ORU^R01 result messages and generates ORM^O01 order messages for
  * analyzer integration.
  */
