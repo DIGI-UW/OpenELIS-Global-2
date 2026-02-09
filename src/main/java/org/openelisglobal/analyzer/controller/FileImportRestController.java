@@ -1,5 +1,9 @@
 package org.openelisglobal.analyzer.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +15,7 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,8 +30,34 @@ public class FileImportRestController extends BaseRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(FileImportRestController.class);
 
+    @Value("${file.import.base.directory:/data/analyzer-imports}")
+    private String baseImportDir;
+
     @Autowired
     private FileImportService fileImportService;
+
+    /**
+     * Validates that a directory path is within the configured base import
+     * directory. Uses NIO Path.startsWith() which correctly handles path component
+     * boundaries (unlike String.startsWith which is vulnerable to sibling directory
+     * attacks).
+     *
+     * @param path The directory path to validate (null/empty returns true —
+     *             optional field)
+     * @return true if the path is within the base directory, false otherwise
+     */
+    private boolean isPathWithinBase(String path) {
+        if (path == null || path.trim().isEmpty()) {
+            return true;
+        }
+        try {
+            Path basePath = Paths.get(baseImportDir).normalize().toAbsolutePath();
+            Path targetPath = Paths.get(path).normalize().toAbsolutePath();
+            return targetPath.startsWith(basePath);
+        } catch (InvalidPathException e) {
+            return false;
+        }
+    }
 
     /**
      * GET /rest/analyzer/file-import/configurations Retrieve all file import
@@ -90,7 +121,8 @@ public class FileImportRestController extends BaseRestController {
      * configuration
      */
     @PostMapping("/configurations")
-    public ResponseEntity<Map<String, Object>> createConfiguration(@RequestBody FileImportConfiguration configuration) {
+    public ResponseEntity<Map<String, Object>> createConfiguration(@RequestBody FileImportConfiguration configuration,
+            HttpServletRequest request) {
         try {
             // Validation
             if (configuration.getAnalyzerId() == null) {
@@ -104,6 +136,15 @@ public class FileImportRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
 
+            // Validate directory paths are within base import directory
+            if (!isPathWithinBase(configuration.getImportDirectory())
+                    || !isPathWithinBase(configuration.getArchiveDirectory())
+                    || !isPathWithinBase(configuration.getErrorDirectory())) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Directory paths must be within " + baseImportDir);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
             // Check for duplicate analyzer ID
             Optional<FileImportConfiguration> existing = fileImportService
                     .getByAnalyzerId(configuration.getAnalyzerId());
@@ -114,7 +155,7 @@ public class FileImportRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
 
-            configuration.setSysUserId("1"); // Default system user (should come from security context)
+            configuration.setSysUserId(getSysUserId(request));
             String id = fileImportService.insert(configuration);
 
             Map<String, Object> response = new HashMap<>();
@@ -135,11 +176,20 @@ public class FileImportRestController extends BaseRestController {
      */
     @PutMapping("/configurations/{id}")
     public ResponseEntity<Map<String, Object>> updateConfiguration(@PathVariable String id,
-            @RequestBody FileImportConfiguration configuration) {
+            @RequestBody FileImportConfiguration configuration, HttpServletRequest request) {
         try {
             FileImportConfiguration existing = fileImportService.get(id);
             if (existing == null) {
                 return ResponseEntity.notFound().build();
+            }
+
+            // Validate directory paths are within base import directory
+            if (!isPathWithinBase(configuration.getImportDirectory())
+                    || !isPathWithinBase(configuration.getArchiveDirectory())
+                    || !isPathWithinBase(configuration.getErrorDirectory())) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Directory paths must be within " + baseImportDir);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
 
             // Update fields
@@ -151,7 +201,7 @@ public class FileImportRestController extends BaseRestController {
             existing.setDelimiter(configuration.getDelimiter());
             existing.setHasHeader(configuration.getHasHeader());
             existing.setActive(configuration.getActive());
-            existing.setSysUserId("1"); // Default system user (should come from security context)
+            existing.setSysUserId(getSysUserId(request));
 
             fileImportService.update(existing);
 
@@ -171,14 +221,15 @@ public class FileImportRestController extends BaseRestController {
      * configuration
      */
     @DeleteMapping("/configurations/{id}")
-    public ResponseEntity<Map<String, Object>> deleteConfiguration(@PathVariable String id) {
+    public ResponseEntity<Map<String, Object>> deleteConfiguration(@PathVariable String id,
+            HttpServletRequest request) {
         try {
             FileImportConfiguration configuration = fileImportService.get(id);
             if (configuration == null) {
                 return ResponseEntity.notFound().build();
             }
 
-            fileImportService.delete(id, "1"); // Default system user (should come from security context)
+            fileImportService.delete(id, getSysUserId(request));
 
             Map<String, Object> response = new HashMap<>();
             response.put("message", "File import configuration deleted successfully");

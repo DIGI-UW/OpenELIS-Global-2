@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -17,6 +18,7 @@ import org.openelisglobal.analyzer.service.AnalyzerFieldService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.FileImportService;
 import org.openelisglobal.analyzer.service.SerialPortService;
+import org.openelisglobal.analyzer.util.NetworkValidationUtil;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
@@ -111,12 +113,18 @@ public class AnalyzerRestController extends BaseRestController {
      * POST /rest/analyzer/analyzers Create new analyzer with configuration
      */
     @PostMapping("/analyzers")
-    public ResponseEntity<Map<String, Object>> createAnalyzer(@RequestBody AnalyzerForm form) {
+    public ResponseEntity<Map<String, Object>> createAnalyzer(@RequestBody AnalyzerForm form,
+            HttpServletRequest request) {
         try {
             // Manual validation for optional fields
             if (form.getIpAddress() != null && !form.getIpAddress().matches("^(\\d{1,3}\\.){3}\\d{1,3}$")) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("error", "Invalid IPv4 address format");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+            if (form.getIpAddress() != null && NetworkValidationUtil.isBlockedAddress(form.getIpAddress())) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Connection to this address is not permitted");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
             if (form.getPort() != null && (form.getPort() < 1 || form.getPort() > 65535)) {
@@ -148,7 +156,7 @@ public class AnalyzerRestController extends BaseRestController {
             Analyzer analyzer = new Analyzer();
             analyzer.setName(form.getName());
             analyzer.setType(form.getAnalyzerType());
-            analyzer.setSysUserId("1"); // Default system user (should come from security context)
+            analyzer.setSysUserId(getSysUserId(request));
 
             String analyzerId = analyzerService.insert(analyzer);
 
@@ -186,7 +194,7 @@ public class AnalyzerRestController extends BaseRestController {
                     logger.warn("Invalid status value: " + status + ", defaulting to SETUP");
                     config.setStatus(AnalyzerConfiguration.AnalyzerStatus.SETUP);
                 }
-                config.setSysUserId("1");
+                config.setSysUserId(getSysUserId(request));
                 analyzerConfigurationService.insert(config);
             } catch (LIMSRuntimeException e) {
                 // If configuration creation fails, log but don't fail the analyzer creation
@@ -329,7 +337,8 @@ public class AnalyzerRestController extends BaseRestController {
      * PUT /rest/analyzer/analyzers/{id} Update analyzer
      */
     @PutMapping("/analyzers/{id}")
-    public ResponseEntity<Map<String, Object>> updateAnalyzer(@PathVariable String id, @RequestBody AnalyzerForm form) {
+    public ResponseEntity<Map<String, Object>> updateAnalyzer(@PathVariable String id, @RequestBody AnalyzerForm form,
+            HttpServletRequest request) {
         try {
             Analyzer analyzer = analyzerService.get(id);
             if (analyzer == null) {
@@ -342,6 +351,11 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getIpAddress() != null && !form.getIpAddress().matches("^(\\d{1,3}\\.){3}\\d{1,3}$")) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("error", "Invalid IPv4 address format");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+            if (form.getIpAddress() != null && NetworkValidationUtil.isBlockedAddress(form.getIpAddress())) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Connection to this address is not permitted");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
             if (form.getPort() != null && (form.getPort() < 1 || form.getPort() > 65535)) {
@@ -425,7 +439,7 @@ public class AnalyzerRestController extends BaseRestController {
                 } else {
                     config.setStatus(AnalyzerConfiguration.AnalyzerStatus.SETUP);
                 }
-                config.setSysUserId("1");
+                config.setSysUserId(getSysUserId(request));
                 analyzerConfigurationService.insert(config);
             }
 
@@ -599,6 +613,12 @@ public class AnalyzerRestController extends BaseRestController {
     private Map<String, Object> testTcpConnection(String ipAddress, Integer port) {
         Map<String, Object> response = new HashMap<>();
         Socket socket = null;
+
+        if (NetworkValidationUtil.isBlockedAddress(ipAddress)) {
+            response.put("success", false);
+            response.put("message", "Connection to this address is not permitted");
+            return response;
+        }
 
         try {
             // Attempt TCP connection with 5 second timeout
@@ -948,7 +968,8 @@ public class AnalyzerRestController extends BaseRestController {
             String canonicalPath = templateFile.getCanonicalPath();
             String baseDirCanonical = baseDir.getCanonicalPath();
 
-            if (!canonicalPath.startsWith(baseDirCanonical)) {
+            if (!canonicalPath.startsWith(baseDirCanonical + java.io.File.separator)
+                    && !canonicalPath.equals(baseDirCanonical)) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("error", "Invalid path: template must be within defaults directory");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);

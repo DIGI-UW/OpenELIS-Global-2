@@ -27,6 +27,7 @@ import org.openelisglobal.analyzer.dao.FileImportConfigurationDAO;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Unit tests for FileImportService implementation
@@ -59,6 +60,8 @@ public class FileImportServiceTest {
     public void setUp() throws IOException {
         // Create temporary directory for testing
         tempDir = Files.createTempDirectory("file-import-test");
+        // Inject baseImportDir for defense-in-depth path validation
+        ReflectionTestUtils.setField(fileImportService, "baseImportDir", tempDir.toString());
         testFile = tempDir.resolve("test-file.csv");
         Files.createFile(testFile);
         Files.write(testFile, "Sample_ID,Test_Code,Result\n12345-001,HB,12.5".getBytes());
