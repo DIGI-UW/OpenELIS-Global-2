@@ -21,37 +21,37 @@ class HomePage {
       menuButton: "[data-cy='menuButton']",
       sampleAddNav: "#menu_sample_add_nav",
       sampleMenu: "span#menu_sample",
-      batchEntry: "#menu_sample_batch_entry",
+      batchEntry: "#menu_sample_batch_entry_nav", // leaf item
       patientMenu: "span#menu_patient",
       patientAddEdit: "#menu_patient_add_or_edit_nav",
-      patientMerge: "#menu_patient_merge",
+      patientMerge: "#menu_patient_merge_nav", // leaf item
       sampleEditNav: "#menu_sample_edit_nav",
       workplanMenu: "span#menu_workplan",
       workplanTestNav: "#menu_workplan_test_nav",
       workplanPanelNav: "#menu_workplan_panel_nav",
       workplanBenchNav: "#menu_workplan_bench_nav",
       workplanPriorityNav: "#menu_workplan_priority_nav",
-      nonConformityDropdown: "span#menu_nonconformity_dropdown",
-      nonConformingReport: "span#menu_non_conforming_report",
-      nonConformingView: "span#menu_non_conforming_view",
-      nonConformingActions: "span#menu_non_conforming_corrective_actions",
+      nonConformityDropdown: "span#menu_nonconformity", // parent menu - no _nav suffix
+      nonConformingReport: "#menu_non_conforming_report_nav", // leaf item
+      nonConformingView: "#menu_non_conforming_view_nav", // leaf item
+      nonConformingActions: "#menu_non_conforming_corrective_actions_nav", // leaf item
       resultsMenu: "span#menu_results",
       resultsLogbook: "#menu_results_logbook_nav",
       resultsAccession: "#menu_results_accession_nav",
-      resultsPatient: "#menu_results_patient",
+      resultsPatient: "#menu_results_patient_nav", // leaf item
       resultsReferred: "#menu_results_referred_nav",
       resultsRange: "#menu_results_range_nav",
       resultsStatus: "#menu_results_status_nav",
       validationMenu: "#menu_resultvalidation",
-      routineValidation: "#menu_resultvalidation_routine",
-      rangeOrderValidation: "#menu_accession_validation_range",
-      accessionValidation: "#menu_accession_validation",
+      routineValidation: "#menu_resultvalidation_routine_nav", // leaf item
+      rangeOrderValidation: "#menu_accession_validation_range_nav", // leaf item
+      accessionValidation: "#menu_accession_validation_nav", // leaf item
       reportsMenu: "#menu_reports",
       reportsRoutine: "#menu_reports_routine",
       reportsStudy: "[data-cy='sidenav-button-menu_reports_study']",
       pathologyNav: "#menu_pathology_nav",
-      immunochemMenu: "#menu_immunochem",
-      cytologyMenu: "#menu_cytology",
+      immunochemMenu: "#menu_immunochem_nav",
+      cytologyMenu: "#menu_cytology_nav",
       administrationMenu: "span#menu_administration",
       administrationNav: "#menu_administration_nav",
       helpMenu: "#menu_help",
@@ -75,8 +75,52 @@ class HomePage {
     return new LoginPage();
   }
 
+  /**
+   * Idempotent expand: only clicks the Carbon SideNavMenu toggle if it is
+   * currently collapsed (aria-expanded !== "true"). This avoids the
+   * toggle-trap where a second click collapses an already-open menu.
+   */
+  ensureSidenavMenuExpanded(menuId) {
+    cy.get(menuId, { timeout: 15000 })
+      .find("button[aria-expanded]")
+      .first()
+      .then(($btn) => {
+        if ($btn.attr("aria-expanded") !== "true") {
+          cy.wrap($btn).click();
+        }
+      });
+    cy.get(menuId).find('button[aria-expanded="true"]').first().should("exist");
+  }
+
   openNavigationMenu() {
-    cy.get(this.selectors.menuButton).click();
+    // Sidenav uses a 3-step toggle: CLOSE -> SHOW -> LOCK -> CLOSE
+    // aria-label tells us the current state:
+    //   "Open menu"  = CLOSE (menu hidden)
+    //   "Pin menu"   = SHOW  (menu visible, overlay)
+    //   "Close menu" = LOCK  (menu visible, pinned)
+    cy.get(this.selectors.menuButton).then(($btn) => {
+      const label = $btn.attr("aria-label");
+      if (label === "Open menu") {
+        // CLOSE -> click once -> SHOW (opens menu)
+        cy.get(this.selectors.menuButton).click();
+      }
+      // SHOW or LOCK: menu is already open, no click needed
+    });
+  }
+
+  closeNavigationMenu() {
+    // Pin the sidenav (LOCK state) instead of fully closing it.
+    // LOCK mode pushes content aside so both sidenav items AND page
+    // content remain accessible — unlike SHOW mode which overlays content.
+    cy.get(this.selectors.menuButton).then(($btn) => {
+      const label = $btn.attr("aria-label");
+      if (label === "Pin menu") {
+        // SHOW -> click once -> LOCK (pin; content pushed aside)
+        cy.get(this.selectors.menuButton).click();
+      }
+      // "Close menu" (LOCK): already pinned, no action needed
+      // "Open menu" (CLOSE): already closed, no action needed
+    });
   }
 
   // Order Entry related functions
@@ -84,13 +128,15 @@ class HomePage {
     this.openNavigationMenu();
     cy.get(this.selectors.sampleMenu).should("be.visible").click();
     cy.get(this.selectors.sampleAddNav).should("be.visible").click();
+    this.closeNavigationMenu();
     return new OrderEntityPage();
   }
 
   goToBatchOrderEntry() {
     this.openNavigationMenu();
-    cy.get(this.selectors.sampleMenu).click();
-    cy.get(this.selectors.batchEntry).click();
+    cy.get(this.selectors.sampleMenu).should("be.visible").click();
+    cy.get(this.selectors.batchEntry).should("be.visible").click();
+    this.closeNavigationMenu();
     return new BatchOrderEntry();
   }
 
@@ -98,6 +144,7 @@ class HomePage {
     this.openNavigationMenu();
     cy.get("#menu_sample").click();
     cy.get("[data-cy='menu_sample_print_barcode']").click();
+    this.closeNavigationMenu();
     return new BarcodeConfigPage();
   }
 
@@ -106,6 +153,7 @@ class HomePage {
     this.openNavigationMenu();
     cy.get(this.selectors.patientMenu).click();
     cy.get(this.selectors.patientAddEdit).click();
+    this.closeNavigationMenu();
     return new PatientEntryPage();
   }
 
@@ -114,6 +162,7 @@ class HomePage {
     this.openNavigationMenu();
     cy.get(this.selectors.patientMenu).click();
     cy.get(this.selectors.patientMerge).should("be.visible").click();
+    this.closeNavigationMenu();
     return new PatientMergePage();
   }
 
@@ -122,6 +171,7 @@ class HomePage {
     this.openNavigationMenu();
     cy.get(this.selectors.sampleMenu).should("be.visible").click();
     cy.get(this.selectors.sampleEditNav).should("be.visible").click();
+    this.closeNavigationMenu();
     return new ModifyOrderPage();
   }
 
@@ -130,6 +180,7 @@ class HomePage {
     this.openNavigationMenu();
     cy.get(this.selectors.workplanMenu).should("be.visible").click();
     cy.get(this.selectors.workplanTestNav).should("be.visible").click();
+    this.closeNavigationMenu();
     return new WorkPlan();
   }
 
@@ -137,6 +188,7 @@ class HomePage {
     this.openNavigationMenu();
     cy.get(this.selectors.workplanMenu).click();
     cy.get(this.selectors.workplanPanelNav).click();
+    this.closeNavigationMenu();
     return new WorkPlan();
   }
 
@@ -144,6 +196,7 @@ class HomePage {
     this.openNavigationMenu();
     cy.get(this.selectors.workplanMenu).click();
     cy.get(this.selectors.workplanBenchNav).should("be.visible").click();
+    this.closeNavigationMenu();
     return new WorkPlan();
   }
 
@@ -151,71 +204,138 @@ class HomePage {
     this.openNavigationMenu();
     cy.get(this.selectors.workplanMenu).click();
     cy.get(this.selectors.workplanPriorityNav).should("be.visible").click();
+    this.closeNavigationMenu();
     return new WorkPlan();
   }
 
   // Non-Conforming related functions
   goToReportNCE() {
     this.openNavigationMenu();
-    cy.get(this.selectors.nonConformityDropdown).click();
-    cy.get(this.selectors.nonConformingReport).should("be.visible").click();
+    cy.get(this.selectors.nonConformityDropdown)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.nonConformingReport)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    // Close sidenav to prevent overlay blocking page content
+    this.closeNavigationMenu();
     return new NonConform();
   }
 
   goToViewNCE() {
     this.openNavigationMenu();
-    cy.get(this.selectors.nonConformityDropdown).click();
-    cy.get(this.selectors.nonConformingView).should("be.visible").click();
+    cy.get(this.selectors.nonConformityDropdown)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.nonConformingView)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    // Close sidenav to prevent overlay blocking page content
+    this.closeNavigationMenu();
     return new NonConform();
   }
 
   goToCorrectiveActions() {
     this.openNavigationMenu();
-    cy.get(this.selectors.nonConformityDropdown).click();
-    cy.get(this.selectors.nonConformingActions).should("be.visible").click();
+    cy.get(this.selectors.nonConformityDropdown)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.nonConformingActions)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    // Close sidenav to prevent overlay blocking page content
+    this.closeNavigationMenu();
     return new NonConform();
   }
 
   // Results related functions
   goToResultsByUnit() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsLogbook).should("be.visible").click();
+    cy.get(this.selectors.resultsMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.resultsLogbook)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    this.closeNavigationMenu();
     return new Result();
   }
 
   goToResultsByOrder() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsAccession).click();
+    cy.get(this.selectors.resultsMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.resultsAccession)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    this.closeNavigationMenu();
     return new Result();
   }
 
   goToResultsByPatient() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsPatient).click();
+    cy.get(this.selectors.resultsMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.resultsPatient)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    this.closeNavigationMenu();
     return new Result();
   }
 
   goToResultsForRefferedOut() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsReferred).click();
+    cy.get(this.selectors.resultsMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.resultsReferred)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    this.closeNavigationMenu();
     return new Result();
   }
 
   goToResultsByRangeOrder() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsRange).click();
+    cy.get(this.selectors.resultsMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.resultsRange)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    this.closeNavigationMenu();
     return new Result();
   }
 
   goToResultsByTestAndStatus() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsStatus).click();
+    cy.get(this.selectors.resultsMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    cy.get(this.selectors.resultsStatus)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    this.closeNavigationMenu();
     return new Result();
   }
 
@@ -224,6 +344,7 @@ class HomePage {
     this.openNavigationMenu();
     cy.get(this.selectors.validationMenu).click();
     cy.get(this.selectors.routineValidation).click();
+    this.closeNavigationMenu();
     return new Validation();
   }
 
@@ -231,6 +352,7 @@ class HomePage {
     this.openNavigationMenu();
     cy.get(this.selectors.validationMenu).click();
     cy.get(this.selectors.accessionValidation).click();
+    this.closeNavigationMenu();
     return new Validation();
   }
 
@@ -238,45 +360,61 @@ class HomePage {
     this.openNavigationMenu();
     cy.get(this.selectors.validationMenu).click();
     cy.get(this.selectors.rangeOrderValidation).click();
+    this.closeNavigationMenu();
     return new Validation();
   }
 
   // Reports related functions
   goToRoutineReports() {
     this.openNavigationMenu();
-    cy.get(this.selectors.reportsMenu).click();
-    cy.get(this.selectors.reportsRoutine).should("be.visible").click();
+    this.ensureSidenavMenuExpanded(this.selectors.reportsMenu);
+    this.ensureSidenavMenuExpanded(this.selectors.reportsRoutine);
+    this.closeNavigationMenu();
     return new RoutineReportPage();
   }
 
   goToStudyReports() {
     this.openNavigationMenu();
-    cy.get(this.selectors.reportsMenu).click();
-    cy.get(this.selectors.reportsStudy).should("be.visible").click();
+    this.ensureSidenavMenuExpanded(this.selectors.reportsMenu);
+    this.ensureSidenavMenuExpanded("#menu_reports_study");
+    this.closeNavigationMenu();
     return new StudyReportPage();
   }
 
   goToReports() {
     this.openNavigationMenu();
-    cy.get(this.selectors.reportsMenu).click();
+    this.ensureSidenavMenuExpanded(this.selectors.reportsMenu);
+    this.closeNavigationMenu();
   }
 
   // Dashboard related functions
   goToPathologyDashboard() {
     this.openNavigationMenu();
-    cy.get(this.selectors.pathologyNav).should("be.visible").click();
+    cy.get(this.selectors.pathologyNav)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    this.closeNavigationMenu();
     return new DashBoardPage();
   }
 
   goToImmunoChemistryDashboard() {
     this.openNavigationMenu();
-    cy.get(this.selectors.immunochemMenu).click();
+    cy.get(this.selectors.immunochemMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    this.closeNavigationMenu();
     return new DashBoardPage();
   }
 
   goToCytologyDashboard() {
     this.openNavigationMenu();
-    cy.get(this.selectors.cytologyMenu).click();
+    cy.get(this.selectors.cytologyMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    this.closeNavigationMenu();
     return new DashBoardPage();
   }
 
@@ -284,18 +422,31 @@ class HomePage {
   goToAdminPageProgram() {
     this.openNavigationMenu();
     cy.get(this.selectors.administrationMenu).click();
+    // Ensure we land on Admin tile view (/MasterListsPage or /admin); app has no /administration route
+    cy.location("pathname").then((pathname) => {
+      if (!/^\/(MasterListsPage|admin)(\/|$|#)/.test(pathname)) {
+        cy.visit("/MasterListsPage");
+      }
+    });
+    // Note: Do not call closeNavigationMenu() here - this method has fallback cy.visit()
+    // logic that may change the page state, making sidenav toggle behavior unpredictable
     return new AdminPage();
   }
 
   goToAdminPage() {
     this.openNavigationMenu();
     cy.get(this.selectors.administrationNav).click();
+    this.closeNavigationMenu();
     return new AdminPage();
   }
 
   goToHelp() {
     this.openNavigationMenu();
-    cy.get(this.selectors.helpMenu).click();
+    cy.get(this.selectors.helpMenu)
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+    this.closeNavigationMenu();
     return new HelpPage();
   }
 

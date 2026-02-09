@@ -1,0 +1,39 @@
+# ASTM LIS2-A2 Sample: Horiba ABX Pentra 60 CBC
+# Purpose: Test Horiba Pentra 60 plugin ASTM parsing (Feature 011, M9)
+# Reference: specs/011-madagascar-analyzer-integration/research.md Section 12
+#
+# Analyzer: Horiba ABX Pentra 60 C+ (5-Part Differential Hematology)
+# Protocol: ASTM LIS2-A2 over RS232
+# Parameters: 26 (CBC + 5-DIFF)
+#
+# Segments:
+#   H - Header Record: ABX^PENTRA60 identification
+#   P - Patient Record: Patient demographics
+#   O - Order Record: Test order information
+#   R - Result Record: Hematology results with values and units
+#   L - Message Terminator
+
+H|\^&|||ABX^PENTRA60^V2.0|||||||LIS2-A2|20260128080000
+P|1||PAT-2026-001|Rakoto^Jean^A||M|19850315
+O|1|SAMPLE-2026-0001^LAB|CBC^Complete Blood Count||20260128075500
+R|1|^^^WBC|5.8|10^3/uL|4.0-10.0|N||F|20260128080100
+R|2|^^^RBC|4.92|10^6/uL|4.0-5.5|N||F|20260128080100
+R|3|^^^HGB|14.8|g/dL|12.0-17.5|N||F|20260128080100
+R|4|^^^HCT|43.2|%|36-54|N||F|20260128080100
+R|5|^^^MCV|87.8|fL|80-100|N||F|20260128080100
+R|6|^^^MCH|30.1|pg|27-33|N||F|20260128080100
+R|7|^^^MCHC|34.3|g/dL|32-36|N||F|20260128080100
+R|8|^^^PLT|245|10^3/uL|150-400|N||F|20260128080100
+R|9|^^^RDW|13.2|%|11.5-14.5|N||F|20260128080100
+R|10|^^^MPV|9.1|fL|7.5-11.5|N||F|20260128080100
+R|11|^^^LYM%|32.5|%|20-40|N||F|20260128080100
+R|12|^^^LYM#|1.89|10^3/uL|1.0-4.0|N||F|20260128080100
+R|13|^^^MON%|6.2|%|2-8|N||F|20260128080100
+R|14|^^^MON#|0.36|10^3/uL|0.2-0.8|N||F|20260128080100
+R|15|^^^NEU%|58.1|%|40-70|N||F|20260128080100
+R|16|^^^NEU#|3.37|10^3/uL|2.0-7.0|N||F|20260128080100
+R|17|^^^EOS%|2.5|%|1-4|N||F|20260128080100
+R|18|^^^EOS#|0.15|10^3/uL|0.05-0.5|N||F|20260128080100
+R|19|^^^BAS%|0.7|%|0-1|N||F|20260128080100
+R|20|^^^BAS#|0.04|10^3/uL|0-0.1|N||F|20260128080100
+L|1|N

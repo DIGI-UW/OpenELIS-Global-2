@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="3.4-001-create-analyzer-configuration-table" author="demo-madagascar-analyzer">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="analyzer_configuration"/>
+            </not>
+        </preConditions>
+        <comment>Creating analyzer_configuration table to extend Analyzer with connection settings</comment>
+        <createTable tableName="analyzer_configuration">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="NUMERIC(10,0)">
+                <constraints nullable="false" unique="true"
+                    foreignKeyName="fk_analyzer_config_analyzer"
+                    references="analyzer(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="ip_address" type="VARCHAR(15)"/>
+            <column name="port" type="INTEGER"/>
+            <column name="protocol_version" type="VARCHAR(20)" defaultValue="ASTM LIS2-A2">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_unit_ids" type="TEXT"/>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <rollback>
+            <dropTable tableName="analyzer_configuration"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,110 @@
+# Docker Compose Override for Analyzer Mock Server Testing
+#
+# Purpose: Enable analyzer testing with mock analyzer server (supports ASTM, HL7, etc.)
+# Reference: specs/004-astm-analyzer-mapping/plan.md
+#
+# Usage:
+#   docker compose -f dev.docker-compose.yml -f docker-compose.analyzer-test.yml up -d
+#
+# This adds an ASTM mock server container that simulates a laboratory analyzer
+# for testing the OpenELIS analyzer field mapping feature.
+
+services:
+  # ASTM LIS2-A2 Mock Server
+  # Simulates analyzer for connection testing and field queries
+  astm-simulator:
+    build:
+      context: ./tools/analyzer-mock-server
+      dockerfile: Dockerfile
+    container_name: openelis-astm-simulator
+    ports:
+      - "5000:5000"  # ASTM protocol port
+    volumes:
+      # Mount files for faster iteration without rebuilding
+      - ./tools/analyzer-mock-server/server.py:/app/server.py:ro
+      - ./tools/analyzer-mock-server/fields.json:/app/fields.json:ro
+    environment:
+      - ASTM_PORT=5000
+      - ANALYZER_TYPE=HEMATOLOGY
+      - RESPONSE_DELAY_MS=100
+    networks:
+      default:
+        ipv4_address: 172.20.1.100  # Static IP for reliable analyzer configuration
+    # Note: Static IP ensures analyzer_configuration.ip_address doesn't change on restart
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 5000)); s.close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    labels:
+      - "com.openelis.service=astm-simulator"
+      - "com.openelis.purpose=testing"
+
+  # Second mock analyzer - Chemistry type
+  # For testing multiple analyzer scenarios
+  astm-simulator-chemistry:
+    build:
+      context: ./tools/analyzer-mock-server
+      dockerfile: Dockerfile
+    container_name: openelis-astm-chemistry
+    ports:
+      - "5001:5000"
+    environment:
+      - ASTM_PORT=5000
+      - ANALYZER_TYPE=CHEMISTRY
+      - RESPONSE_DELAY_MS=50
+    networks:
+      - default
+    profiles:
+      - multi-analyzer  # Only starts with: docker compose --profile multi-analyzer up
+    restart: unless-stopped
+    labels:
+      - "com.openelis.service=astm-simulator-chemistry"
+      - "com.openelis.purpose=testing"
+
+  # Third mock analyzer - Immunology type
+  astm-simulator-immunology:
+    build:
+      context: ./tools/analyzer-mock-server
+      dockerfile: Dockerfile
+    container_name: openelis-astm-immunology
+    ports:
+      - "5002:5000"
+    environment:
+      - ASTM_PORT=5000
+      - ANALYZER_TYPE=IMMUNOLOGY
+      - RESPONSE_DELAY_MS=150
+    networks:
+      - default
+    profiles:
+      - multi-analyzer
+    restart: unless-stopped
+    labels:
+      - "com.openelis.service=astm-simulator-immunology"
+      - "com.openelis.purpose=testing"
+
+# Network configuration - MUST use the same network as dev.docker-compose.yml
+# 
+# IMPORTANT: This file MUST be used with dev.docker-compose.yml to ensure both
+# containers are on the same network:
+#   docker compose -f dev.docker-compose.yml -f docker-compose.analyzer-test.yml up -d
+#
+# Network Details:
+#   - Network name: openelis-global-2_default (defined in dev.docker-compose.yml)
+#   - Subnet: 172.20.1.0/24
+#   - Static IPs:
+#     * webapp (oe.openelis.org): 172.20.1.121 (in dev.docker-compose.yml)
+#     * astm-simulator: 172.20.1.100 (defined in astm-simulator service above)
+#
+# When both compose files are used together, the 'default' network definitions merge.
+# The astm-simulator containers will be accessible from the OpenELIS container
+# via their container names (e.g., openelis-astm-simulator:5000) or static IP (172.20.1.100)
+
+networks:
+  default:
+    name: openelis-global-2_default  # MUST match network name in dev.docker-compose.yml
+    # Network definition merges with dev.docker-compose.yml's network configuration
+    # Both files must reference the same network name to ensure containers can communicate
+

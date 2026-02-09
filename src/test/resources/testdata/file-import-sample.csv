@@ -1,0 +1,4 @@
+Sample_ID,Test_Code,Result,Units,Date,Time
+12345-001,HB,12.5,g/dL,2026-01-23,10:30:00
+12345-002,WBC,7500,cells/μL,2026-01-23,10:35:00
+12345-003,RBC,4.5,million/μL,2026-01-23,10:40:00

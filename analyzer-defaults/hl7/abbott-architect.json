@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "analyzer_name": "Abbott Architect",
+  "manufacturer": "Abbott",
+  "category": "IMMUNOLOGY",
+  "protocol": "HL7",
+  "protocol_version": "2.5.1",
+  "identifier_pattern": "ABBOTT|ARCHITECT",
+  "transport": "RS-232 Serial (primary) or TCP/IP via middleware",
+  "default_port": 5000,
+  "msh3_pattern": "ARCHITECT|ABBOTT",
+  "default_test_mappings": [
+    {
+      "obx_identifier": "HIV",
+      "test_name": "HIV Antigen/Antibody",
+      "loinc": "75622-1",
+      "unit": ""
+    },
+    {
+      "obx_identifier": "HBsAg",
+      "test_name": "Hepatitis B Surface Antigen",
+      "loinc": "5196-1",
+      "unit": ""
+    },
+    {
+      "obx_identifier": "HCV",
+      "test_name": "Hepatitis C Antibody",
+      "loinc": "16128-1",
+      "unit": ""
+    },
+    {
+      "obx_identifier": "TSH",
+      "test_name": "Thyroid Stimulating Hormone",
+      "loinc": "3016-3",
+      "unit": "mIU/L"
+    },
+    {
+      "obx_identifier": "FERR",
+      "test_name": "Ferritin",
+      "loinc": "2276-4",
+      "unit": "ng/mL"
+    }
+  ],
+  "notes": "⚠️ RESEARCH CORRECTION: Per Abbott documentation, RS-232 Serial is the primary interface. TCP/IP may require Abbott AlinIQ middleware in production. VERIFY with deployment team which transport is available. For RS-232, use ASTM-HTTP Bridge. MSH-3 sending application = 'ARCHITECT' or 'ABBOTT'. Requires MLLP framing for TCP/IP mode.",
+  "verification_required": true
+}
