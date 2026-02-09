@@ -20,12 +20,12 @@ class OrganizationManagementPage {
   }
 
   addOrgName() {
-    cy.get(this.selectors.orgName).should("be.visible").type("CAMES MAN");
+    cy.get(this.selectors.orgName).should("be.visible").type("TEST-ORG-E2E");
     cy.wait(200);
   }
 
   addInstituteName() {
-    cy.get(this.selectors.orgName).should("be.visible").type("CEDRES");
+    cy.get(this.selectors.orgName).should("be.visible").type("TEST-LAB-E2E");
     cy.wait(200);
   }
 
@@ -55,7 +55,9 @@ class OrganizationManagementPage {
   }
 
   addParentOrg() {
-    cy.get(this.selectors.parentOrgName).should("be.visible").type("CAMESM AN");
+    cy.get(this.selectors.parentOrgName)
+      .should("be.visible")
+      .type("TEST-ORG-E2E");
     cy.wait(200);
   }
 
@@ -77,7 +79,7 @@ class OrganizationManagementPage {
       .clear({ force: true });
 
     // Re-query again before typing
-    cy.get(`input${this.selectors.orgSearchBar}`).type("CAMES MAN", {
+    cy.get(`input${this.selectors.orgSearchBar}`).type("TEST-ORG-E2E", {
       force: true,
     });
     cy.wait(200);
@@ -96,7 +98,7 @@ class OrganizationManagementPage {
       .clear({ force: true });
 
     // Re-query again before typing
-    cy.get(`input${this.selectors.orgSearchBar}`).type("CEDRES", {
+    cy.get(`input${this.selectors.orgSearchBar}`).type("TEST-LAB-E2E", {
       force: true,
     });
     cy.wait(200);
@@ -104,12 +106,14 @@ class OrganizationManagementPage {
 
   confirmOrganization() {
     cy.get(this.selectors.orgTableRow)
-      .contains("CAMES MAN")
+      .contains("TEST-ORG-E2E")
       .should("be.visible");
   }
 
   confirmInstitute() {
-    cy.get(this.selectors.orgTableRow).contains("CEDRES").should("be.visible");
+    cy.get(this.selectors.orgTableRow)
+      .contains("TEST-LAB-E2E")
+      .should("be.visible");
   }
 }
 
