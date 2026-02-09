@@ -32,4 +32,12 @@ public interface AnalyzerImporterPlugin extends APlugin {
     default AnalyzerResponder getAnalyzerResponder() {
         return null;
     }
+
+    /**
+     * True for GenericASTM/GenericHL7; used with prefer_generic_plugin to try
+     * generic plugin first when both legacy and generic could match.
+     */
+    default boolean isGenericPlugin() {
+        return false;
+    }
 }

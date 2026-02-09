@@ -743,6 +743,23 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
                 <version>3.3.1</version>
+                <configuration>
+                    <!-- Produce classes jar for plugins to depend on -->
+                    <attachClasses>true</attachClasses>
+                </configuration>
+            </plugin>
+            <!-- Produce test-jar for plugins to use test infrastructure -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
