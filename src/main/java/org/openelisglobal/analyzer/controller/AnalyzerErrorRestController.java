@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -170,10 +171,12 @@ public class AnalyzerErrorRestController extends BaseRestController {
      * Acknowledge error
      */
     @PostMapping("/errors/{id}/acknowledge")
-    public ResponseEntity<Map<String, Object>> acknowledgeError(@PathVariable String id,
-            @RequestParam(required = false) String userId) {
+    public ResponseEntity<Map<String, Object>> acknowledgeError(@PathVariable String id, HttpServletRequest request) {
         try {
-            String actualUserId = userId != null ? userId : "SYSTEM"; // TODO: Get from security context
+            String actualUserId = getSysUserId(request);
+            if (actualUserId == null || actualUserId.trim().isEmpty()) {
+                actualUserId = "SYSTEM";
+            }
             analyzerErrorService.acknowledgeError(id, actualUserId);
 
             Map<String, Object> response = new HashMap<>();
@@ -233,13 +236,15 @@ public class AnalyzerErrorRestController extends BaseRestController {
      * Acknowledge multiple errors in batch
      */
     @PostMapping("/errors/batch-acknowledge")
-    public ResponseEntity<Map<String, Object>> batchAcknowledgeErrors(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<Map<String, Object>> batchAcknowledgeErrors(@RequestBody Map<String, Object> request,
+            HttpServletRequest httpRequest) {
         try {
             @SuppressWarnings("unchecked")
             List<String> errorIds = (List<String>) request.get("errorIds");
-            String userId = request.containsKey("userId") ? (String) request.get("userId") : "SYSTEM"; // TODO: Get from
-                                                                                                       // security
-                                                                                                       // context
+            String userId = getSysUserId(httpRequest);
+            if (userId == null || userId.trim().isEmpty()) {
+                userId = "SYSTEM";
+            }
 
             if (errorIds == null || errorIds.isEmpty()) {
                 Map<String, Object> error = new HashMap<>();

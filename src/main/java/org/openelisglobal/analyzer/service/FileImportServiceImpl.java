@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
@@ -19,6 +20,7 @@ import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfiguration, String>
         implements FileImportService {
+
+    @Value("${file.import.base.directory:/data/analyzer-imports}")
+    private String baseImportDir;
 
     @Autowired
     private FileImportConfigurationDAO fileImportConfigurationDAO;
@@ -102,6 +107,21 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             }
 
             Path archiveDir = Paths.get(configuration.getArchiveDirectory());
+
+            // Defense-in-depth: verify archive path is within base import directory
+            try {
+                Path basePath = Paths.get(baseImportDir).normalize().toAbsolutePath();
+                if (!archiveDir.normalize().toAbsolutePath().startsWith(basePath)) {
+                    LogEvent.logError(this.getClass().getSimpleName(), "archiveFile",
+                            "Archive directory outside allowed base: " + configuration.getArchiveDirectory());
+                    return false;
+                }
+            } catch (InvalidPathException e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "archiveFile",
+                        "Invalid archive directory path: " + configuration.getArchiveDirectory());
+                return false;
+            }
+
             if (!Files.exists(archiveDir)) {
                 Files.createDirectories(archiveDir);
             }
@@ -128,6 +148,21 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             }
 
             Path errorDir = Paths.get(configuration.getErrorDirectory());
+
+            // Defense-in-depth: verify error path is within base import directory
+            try {
+                Path basePath = Paths.get(baseImportDir).normalize().toAbsolutePath();
+                if (!errorDir.normalize().toAbsolutePath().startsWith(basePath)) {
+                    LogEvent.logError(this.getClass().getSimpleName(), "moveToErrorDirectory",
+                            "Error directory outside allowed base: " + configuration.getErrorDirectory());
+                    return false;
+                }
+            } catch (InvalidPathException e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "moveToErrorDirectory",
+                        "Invalid error directory path: " + configuration.getErrorDirectory());
+                return false;
+            }
+
             if (!Files.exists(errorDir)) {
                 Files.createDirectories(errorDir);
             }

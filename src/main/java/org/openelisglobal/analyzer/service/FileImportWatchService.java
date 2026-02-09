@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -32,6 +33,9 @@ public class FileImportWatchService {
 
     @Value("${file.import.poll.interval:60000}")
     private long pollIntervalMillis;
+
+    @Value("${file.import.base.directory:/data/analyzer-imports}")
+    private String baseImportDir;
 
     /**
      * Polls all active import directories for new files. Runs at configured
@@ -69,6 +73,21 @@ public class FileImportWatchService {
     private void scanDirectory(FileImportConfiguration config) {
         try {
             Path importDir = Paths.get(config.getImportDirectory());
+
+            // Defense-in-depth: verify path is within base import directory
+            try {
+                Path basePath = Paths.get(baseImportDir).normalize().toAbsolutePath();
+                if (!importDir.normalize().toAbsolutePath().startsWith(basePath)) {
+                    LogEvent.logError(this.getClass().getSimpleName(), "scanDirectory",
+                            "Import directory outside allowed base: " + config.getImportDirectory());
+                    return;
+                }
+            } catch (InvalidPathException e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "scanDirectory",
+                        "Invalid import directory path: " + config.getImportDirectory());
+                return;
+            }
+
             if (!Files.exists(importDir) || !Files.isDirectory(importDir)) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "scanDirectory",
                         "Import directory does not exist or is not a directory: " + config.getImportDirectory());
