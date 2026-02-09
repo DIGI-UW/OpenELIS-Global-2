@@ -657,7 +657,7 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
 
             for (Test test : tests) {
                 if (test.getDescription() != null
-                        && normalizeDescription(test.getDescription()).equals(normalizedDescription)) {
+                        && normalizeDescription(test.getDescription()).equalsIgnoreCase(normalizedDescription)) {
                     return test;
                 }
             }
@@ -824,8 +824,8 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         if (description == null) {
             return "";
         }
-        // Remove all non-alphanumeric characters (spaces, hyphens, etc.) and preserve
-        // case
-        return description.replaceAll("[^a-zA-Z0-9]", "");
+        // First remove content in parentheses (e.g., "(Plasma)", "(Sérum)")
+        // Then remove all non-alphanumeric characters (spaces, hyphens, etc.)
+        return description.replaceAll("\\([^)]*\\)", "").replaceAll("[^a-zA-Z0-9]", "");
     }
 }
