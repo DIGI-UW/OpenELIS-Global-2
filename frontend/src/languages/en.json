@@ -3043,5 +3043,6 @@
   "serial.config.validation.portName.required": "Port name is required",
   "serial.config.validation.baudRate.invalid": "Baud rate must be between 9600 and 115200",
   "serial.config.validation.dataBits.invalid": "Data bits must be 7 or 8",
-  "serial.config.form.legend": "Serial Port Settings"
+  "serial.config.form.legend": "Serial Port Settings",
+  "accept.action.button": "INTENTIONAL DUPLICATE FOR CI TEST — DELETE ME"
 }
