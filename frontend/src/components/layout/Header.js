@@ -44,10 +44,18 @@ import {
 import SlideOverNotifications from "../notifications/SlideOverNotifications";
 import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
 import SearchBar from "./search/searchBar";
+import { getBranding } from "../utils/BrandingUtils";
+import config from "../../config.json";
+
 function OEHeader(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
   const { userSessionDetails, logout } = useContext(UserSessionDetailsContext);
+<<<<<<< darkmode-2
   const { toggleTheme, isDarkMode } = useContext(ThemePreferenceContext);
+=======
+  const [headerLogoUrl, setHeaderLogoUrl] = useState(null);
+  const [logoVersion, setLogoVersion] = useState(0); // Version counter for cache-busting
+>>>>>>> develop
 
   const userSwitchRef = createRef();
   const headerPanelRef = createRef();
@@ -85,6 +93,41 @@ function OEHeader(props) {
           handleMenuItems("menu", res);
         })
       : console.log("User not authenticated, not getting menu");
+  }, [userSessionDetails.authenticated]);
+
+  // Load branding configuration for header logo
+  // Colors are handled by App.js
+  const loadHeaderLogo = () => {
+    getBranding((response) => {
+      if (response && response.headerLogoUrl) {
+        setHeaderLogoUrl(response.headerLogoUrl);
+        setLogoVersion((prev) => prev + 1);
+      }
+    });
+  };
+
+  // Load header logo on initial mount (for login page)
+  useEffect(() => {
+    loadHeaderLogo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Reload header logo when authentication status changes
+  useEffect(() => {
+    if (userSessionDetails.authenticated) {
+      loadHeaderLogo();
+    }
+  }, [userSessionDetails.authenticated]);
+
+  // Listen for branding update events to refresh logo
+  useEffect(() => {
+    const handleBrandingUpdate = () => {
+      loadHeaderLogo();
+    };
+    window.addEventListener("branding-updated", handleBrandingUpdate);
+    return () => {
+      window.removeEventListener("branding-updated", handleBrandingUpdate);
+    };
   }, [userSessionDetails.authenticated]);
 
   const panelSwitchLabel = () => {
@@ -176,13 +219,24 @@ function OEHeader(props) {
   };
 
   const logo = () => {
+    // Use custom header logo if available, otherwise use default
+    // Add cache-busting parameter to prevent stale logo display after upload
+    const logoSrc = headerLogoUrl
+      ? `${config.serverBaseUrl}${headerLogoUrl}?v=${logoVersion}`
+      : `../images/openelis_logo.png`;
+
     return (
       <>
         <picture>
           <img
             className="logo"
-            src={`../images/openelis_logo.png`}
+            src={logoSrc}
             alt="logo"
+            style={{ objectFit: "contain", maxHeight: "71px" }}
+            onError={(e) => {
+              // Fallback to default logo if custom logo fails to load
+              e.target.src = `../images/openelis_logo.png`;
+            }}
           />
         </picture>
       </>
@@ -494,6 +548,7 @@ function OEHeader(props) {
                           ) : (
                             <Close size={20} />
                           )}
+<<<<<<< darkmode-2
                           {unReadNotifications?.length > 0 && (
                             <span
                               style={{
@@ -535,6 +590,80 @@ function OEHeader(props) {
                       handlePanelToggle(switchCollapsed ? "user" : "")
                     }
                     ref={userSwitchRef}
+=======
+                        </HeaderGlobalAction>
+                        <HeaderGlobalAction
+                          id="notification-Icon"
+                          aria-label="Notifications"
+                          onClick={() =>
+                            handlePanelToggle(
+                              notificationsOpen ? "" : "notifications",
+                            )
+                          }
+                        >
+                          <div
+                            style={{
+                              position: "relative",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              height: "100%",
+                            }}
+                          >
+                            {!notificationsOpen ? (
+                              <Notification size={20} />
+                            ) : (
+                              <Close size={20} />
+                            )}
+                            {unReadNotifications?.length > 0 && (
+                              <span
+                                style={{
+                                  position: "absolute",
+                                  top: "-5px",
+                                  right: "-5px",
+                                  backgroundColor: "red",
+                                  color: "white",
+                                  borderRadius: "50%",
+                                  width: "22px",
+                                  height: "22px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: "12px",
+                                  animation: "pulse 5s infinite",
+                                  opacity: 1,
+                                  transition:
+                                    "background-color 0.3s ease-in-out",
+                                }}
+                              >
+                                {unReadNotifications.length}
+                              </span>
+                            )}
+                          </div>
+                        </HeaderGlobalAction>
+                      </>
+                    )}
+                    <HeaderGlobalAction
+                      id="user-Icon"
+                      aria-label={panelSwitchLabel()}
+                      onClick={() =>
+                        handlePanelToggle(switchCollapsed ? "user" : "")
+                      }
+                      ref={userSwitchRef}
+                    >
+                      {panelSwitchIcon()}
+                    </HeaderGlobalAction>
+                    <HelpMenu
+                      helpOpen={helpOpen}
+                      handlePanelToggle={handlePanelToggle}
+                    />
+                  </HeaderGlobalBar>
+                  <HeaderPanel
+                    aria-label="Header Panel"
+                    expanded={!switchCollapsed}
+                    className="headerPanel"
+                    ref={headerPanelRef}
+>>>>>>> develop
                   >
                     {panelSwitchIcon()}
                   </HeaderGlobalAction>

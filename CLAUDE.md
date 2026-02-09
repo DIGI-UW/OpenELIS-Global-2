@@ -26,29 +26,15 @@ When working on this project, follow this documentation order:
 
 This project uses **GitHub SpecKit** for Specification-Driven Development (SDD).
 
-### Available Slash Commands
+**Setup:** Run `python scripts/install-speckit-commands.py` to install slash
+commands.
 
-- `/speckit.specify` - Create/update feature specification from description
-- `/speckit.clarify` - Identify underspecified areas (max 5 clarification
-  questions)
-- `/speckit.plan` - Generate implementation plan with constitution check and
-  research
-- `/speckit.tasks` - Generate actionable, dependency-ordered tasks.md
-- `/speckit.implement` - Execute implementation plan (process tasks.md)
-- `/speckit.analyze` - Cross-artifact consistency analysis
-- `/speckit.constitution` - Create/update project constitution
-- `/speckit.checklist` - Generate custom quality validation checklist
+**Full documentation:** See [AGENTS.md](AGENTS.md) § "GitHub SpecKit
+Integration" for:
 
-### Standard Workflow
-
-1. `/speckit.specify "Feature description"` → Creates
-   `specs/{###-feature-name}/spec.md`
-2. `/speckit.clarify` → Resolves ambiguities (max 3 rounds recommended)
-3. `/speckit.plan` → Creates `plan.md` with architecture, research, constitution
-   check
-4. `/speckit.tasks` → Creates `tasks.md` with dependency-ordered task breakdown
-5. `/speckit.implement` → Executes tasks using TDD workflow
-6. `/speckit.analyze` → Validates consistency across spec/plan/tasks
+- Available commands (`/speckit.specify`, `/speckit.plan`, etc.)
+- Standard workflow
+- Command installation options
 
 ---
 
