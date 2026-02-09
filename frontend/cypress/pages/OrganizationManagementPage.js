@@ -1,3 +1,6 @@
+const TEST_ORG_NAME = TEST_ORG_NAME;
+const TEST_LAB_NAME = TEST_LAB_NAME;
+
 class OrganizationManagementPage {
   constructor() {
     this.selectors = {
@@ -20,12 +23,12 @@ class OrganizationManagementPage {
   }
 
   addOrgName() {
-    cy.get(this.selectors.orgName).should("be.visible").type("TEST-ORG-E2E");
+    cy.get(this.selectors.orgName).should("be.visible").type(TEST_ORG_NAME);
     cy.wait(200);
   }
 
   addInstituteName() {
-    cy.get(this.selectors.orgName).should("be.visible").type("TEST-LAB-E2E");
+    cy.get(this.selectors.orgName).should("be.visible").type(TEST_LAB_NAME);
     cy.wait(200);
   }
 
@@ -57,7 +60,7 @@ class OrganizationManagementPage {
   addParentOrg() {
     cy.get(this.selectors.parentOrgName)
       .should("be.visible")
-      .type("TEST-ORG-E2E");
+      .type(TEST_ORG_NAME);
     cy.wait(200);
   }
 
@@ -79,7 +82,7 @@ class OrganizationManagementPage {
       .clear({ force: true });
 
     // Re-query again before typing
-    cy.get(`input${this.selectors.orgSearchBar}`).type("TEST-ORG-E2E", {
+    cy.get(`input${this.selectors.orgSearchBar}`).type(TEST_ORG_NAME, {
       force: true,
     });
     cy.wait(200);
@@ -98,7 +101,7 @@ class OrganizationManagementPage {
       .clear({ force: true });
 
     // Re-query again before typing
-    cy.get(`input${this.selectors.orgSearchBar}`).type("TEST-LAB-E2E", {
+    cy.get(`input${this.selectors.orgSearchBar}`).type(TEST_LAB_NAME, {
       force: true,
     });
     cy.wait(200);
@@ -106,13 +109,13 @@ class OrganizationManagementPage {
 
   confirmOrganization() {
     cy.get(this.selectors.orgTableRow)
-      .contains("TEST-ORG-E2E")
+      .contains(TEST_ORG_NAME)
       .should("be.visible");
   }
 
   confirmInstitute() {
     cy.get(this.selectors.orgTableRow)
-      .contains("TEST-LAB-E2E")
+      .contains(TEST_LAB_NAME)
       .should("be.visible");
   }
 }
