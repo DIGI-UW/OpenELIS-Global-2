@@ -107,11 +107,40 @@ Report:
 - Count of hotspot files
 - The list of hotspot file paths (grouped by extension/area if helpful)
 
-Important: Call out any “special” hotspots (examples):
+Important: Call out any "special" hotspots (examples):
 
 - Lockfiles (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`)
 - Localization JSON (`frontend/src/languages/*.json`)
 - Submodule pointer changes (e.g., `plugins` as a submodule)
+
+#### Pre-rebase i18n duplicate key scan (MANDATORY)
+
+Before rebasing, **always** scan all localization JSON files (whether or not
+they appear as hotspots) for pre-existing duplicate keys:
+
+```python
+python3 -c "
+import json, collections, sys
+errors = False
+for f in ['frontend/src/languages/en.json', 'frontend/src/languages/fr.json']:
+    try:
+        pairs = json.loads(open(f).read(), object_pairs_hook=lambda p: p)
+        dupes = {k: c for k, c in collections.Counter(k for k,v in pairs).items() if c > 1}
+        if dupes:
+            print(f'{f}: {len(dupes)} duplicate keys found!')
+            errors = True
+        else:
+            print(f'{f}: clean')
+    except FileNotFoundError:
+        pass
+sys.exit(1 if errors else 0)
+"
+```
+
+If duplicates are found, **report them to the user and ask whether to
+deduplicate before or after the rebase**. Do NOT silently proceed — duplicate
+keys in JSON cause CI failures (the `i18n-check` workflow rejects them) and can
+mask data loss when `JSON.parse` silently takes the last value for each key.
 
 ### 4) Answer session (resolve ambiguities up-front)
 
@@ -176,6 +205,48 @@ Always run these:
 - `git status`
 - `git log -n 10 --oneline --decorate`
 - `git range-diff <FORK_SHA>..<backup-branch> <BASE_SHA>..HEAD`
+
+#### Post-rebase i18n duplicate key check (MANDATORY)
+
+After the rebase completes (even if there were no conflicts on i18n files),
+**always** re-run the duplicate key scan on all localization JSON files:
+
+```python
+python3 -c "
+import json, collections, sys
+errors = False
+for f in ['frontend/src/languages/en.json', 'frontend/src/languages/fr.json']:
+    try:
+        pairs = json.loads(open(f).read(), object_pairs_hook=lambda p: p)
+        dupes = {k: c for k, c in collections.Counter(k for k,v in pairs).items() if c > 1}
+        if dupes:
+            print(f'{f}: {len(dupes)} duplicate keys!')
+            for k, c in sorted(dupes.items())[:10]:
+                print(f'  {k} ({c}x)')
+            if len(dupes) > 10:
+                print(f'  ... and {len(dupes) - 10} more')
+            errors = True
+        else:
+            print(f'{f}: clean ({len(pairs)} unique keys)')
+    except FileNotFoundError:
+        pass
+sys.exit(1 if errors else 0)
+"
+```
+
+If duplicates are found:
+
+1. Report the count and sample keys to the user
+2. Offer to auto-deduplicate (keep last occurrence per key, which matches
+   `JSON.parse` behavior — so no functional change)
+3. The dedup fix should be included in the rebased commit (amend) rather than as
+   a separate commit, since the duplicates are a merge artifact
+
+**Why this matters:** Git's text-based merge can cleanly auto-merge two sets of
+additions to a JSON file, producing valid JSON with duplicate keys. The merge
+succeeds with no conflicts, but the result has silent duplicates that break CI
+(`i18n-check` workflow) and can cause subtle bugs where the "wrong" translation
+wins depending on key order.
 
 Then run validation level:
 
