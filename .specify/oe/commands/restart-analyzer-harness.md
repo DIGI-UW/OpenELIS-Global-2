@@ -43,14 +43,23 @@ Interpret arguments best-effort. Support these patterns:
 
 ### 0) Preflight (gather facts, no changes yet)
 
-Set `REPO_ROOT=$(git rev-parse --show-toplevel)` and use `$REPO_ROOT` for all paths below (never hardcode `/home/ubuntu/OpenELIS-Global-2`).
+Set `REPO_ROOT=$(git rev-parse --show-toplevel)` and use `$REPO_ROOT` for all
+paths below (never hardcode `/home/ubuntu/OpenELIS-Global-2`).
 
 Run these and summarize the results:
 
 - `git rev-parse --show-toplevel` (verify project root → REPO_ROOT)
-- **Detect harness directory**: `$REPO_ROOT/projects/analyzer-harness/` (must exist)
-- **Submodule check**: `git submodule status tools/analyzer-mock-server tools/openelis-analyzer-bridge` — if any show as uninitialized (leading `-`), run `git submodule update --init tools/analyzer-mock-server tools/openelis-analyzer-bridge plugins` before building/starting.
-- **Bootstrap check**: `test -f $REPO_ROOT/projects/analyzer-harness/volume/database/database.env` — if missing, run `$REPO_ROOT/projects/analyzer-harness/bootstrap.sh` (or run reset-env.sh which calls it).
+- **Detect harness directory**: `$REPO_ROOT/projects/analyzer-harness/` (must
+  exist)
+- **Submodule check**:
+  `git submodule status tools/analyzer-mock-server tools/openelis-analyzer-bridge`
+  — if any show as uninitialized (leading `-`), run
+  `git submodule update --init tools/analyzer-mock-server tools/openelis-analyzer-bridge plugins`
+  before building/starting.
+- **Bootstrap check**:
+  `test -f $REPO_ROOT/projects/analyzer-harness/volume/database/database.env` —
+  if missing, run `$REPO_ROOT/projects/analyzer-harness/bootstrap.sh` (or run
+  reset-env.sh which calls it).
 - **Check if root stack running**:
   `docker ps --filter name=openelisglobal- --format {{.Names}}`
   - If root stack is running, **warn** that port conflicts may occur (root uses
@@ -118,7 +127,9 @@ Report: "Stopped harness stack (volumes: [preserved|removed])"
 
 ### 3) Bootstrap harness volume (checkpoint #3)
 
-Run the idempotent bootstrap script so harness `volume/` exists and is populated from root volume with hostname-safe config (nginx, DB, FHIR). If harness volume is already present, this is a no-op.
+Run the idempotent bootstrap script so harness `volume/` exists and is populated
+from root volume with hostname-safe config (nginx, DB, FHIR). If harness volume
+is already present, this is a no-op.
 
 ```bash
 $REPO_ROOT/projects/analyzer-harness/bootstrap.sh
@@ -153,7 +164,9 @@ Report: "Started harness stack (8 services)"
 
 ### 5) Wait for webapp (checkpoint #5)
 
-Poll `https://localhost/` with curl until it responds (max 120 seconds). If the proxy is down or not ready, fall back to checking `https://localhost:8443/` (oe backend directly):
+Poll `https://localhost/` with curl until it responds (max 120 seconds). If the
+proxy is down or not ready, fall back to checking `https://localhost:8443/` (oe
+backend directly):
 
 ```bash
 MAX_WAIT=120
@@ -258,12 +271,18 @@ Where:
 
 ## Important Notes
 
-- **Submodule initialization**: Before first run (or after fresh clone), run `git submodule update --init tools/analyzer-mock-server tools/openelis-analyzer-bridge plugins` so harness can build and start. The bootstrap script does this automatically.
-- **Harness uses port 15432** (same as root dev; stop root first to avoid conflict).
-- **Frontend hot-reloads**: Changes to `frontend/src/` are picked up automatically (mounted into container).
+- **Submodule initialization**: Before first run (or after fresh clone), run
+  `git submodule update --init tools/analyzer-mock-server tools/openelis-analyzer-bridge plugins`
+  so harness can build and start. The bootstrap script does this automatically.
+- **Harness uses port 15432** (same as root dev; stop root first to avoid
+  conflict).
+- **Frontend hot-reloads**: Changes to `frontend/src/` are picked up
+  automatically (mounted into container).
 - **Backend requires rebuild**: Changes to Java code require `--build` flag.
-- **Root stack conflict**: If root dev stack is running on 80/443/15432, harness will fail. Stop root first.
-- **Let's Encrypt certs**: Shared with root stack via `volume/letsencrypt/` (generate once, use everywhere).
+- **Root stack conflict**: If root dev stack is running on 80/443/15432, harness
+  will fail. Stop root first.
+- **Let's Encrypt certs**: Shared with root stack via `volume/letsencrypt/`
+  (generate once, use everywhere).
 
 ## Example Executions
 
@@ -289,14 +308,16 @@ Where:
 - Analyzer fixtures: `src/test/resources/testdata/analyzer-e2e.generated.sql`
   (canonical)
 - Build script: `projects/analyzer-harness/build.sh` (WAR + harness images)
-- Reset script: `projects/analyzer-harness/reset-env.sh` (implements this workflow)
-- Bootstrap script: `projects/analyzer-harness/bootstrap.sh` (idempotent volume + submodule setup)
+- Reset script: `projects/analyzer-harness/reset-env.sh` (implements this
+  workflow)
+- Bootstrap script: `projects/analyzer-harness/bootstrap.sh` (idempotent
+  volume + submodule setup)
 
 ## Troubleshooting
 
-| Issue | Symptom | Fix |
-|-------|---------|-----|
-| **Socat "exactly 2 addresses required"** | `virtual-serial` container keeps restarting | Fixed in harness: `virtual-serial` uses `entrypoint: ["/bin/sh", "-c"]` so `command` is run by shell, not passed to socat. Ensure you have the updated `docker-compose.analyzer-test.yml`. |
-| **Uninitialized submodules** | Docker build fails (e.g. analyzer-mock-server or openelis-analyzer-bridge context empty) | Run `git submodule update --init tools/analyzer-mock-server tools/openelis-analyzer-bridge plugins` from repo root. Bootstrap script does this. |
-| **Missing harness volume** | Compose fails on missing files (e.g. `volume/database/database.env`, `volume/properties/common.properties`) | Run `projects/analyzer-harness/bootstrap.sh`; it copies/adapts from root `volume/` and creates placeholders. `reset-env.sh` calls it automatically. |
-| **Nginx hostname mismatch** | Proxy starts but frontend/API routes fail (e.g. 502 or wrong host) | Harness uses Docker service names `frontend` and `oe`. Bootstrap generates `volume/nginx/nginx.conf` from root with `frontend.openelis.org`→`frontend`, `oe.openelis.org`→`oe`. Re-run bootstrap to regenerate. |
+| Issue                                    | Symptom                                                                                                     | Fix                                                                                                                                                                                                             |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Socat "exactly 2 addresses required"** | `virtual-serial` container keeps restarting                                                                 | Fixed in harness: `virtual-serial` uses `entrypoint: ["/bin/sh", "-c"]` so `command` is run by shell, not passed to socat. Ensure you have the updated `docker-compose.analyzer-test.yml`.                      |
+| **Uninitialized submodules**             | Docker build fails (e.g. analyzer-mock-server or openelis-analyzer-bridge context empty)                    | Run `git submodule update --init tools/analyzer-mock-server tools/openelis-analyzer-bridge plugins` from repo root. Bootstrap script does this.                                                                 |
+| **Missing harness volume**               | Compose fails on missing files (e.g. `volume/database/database.env`, `volume/properties/common.properties`) | Run `projects/analyzer-harness/bootstrap.sh`; it copies/adapts from root `volume/` and creates placeholders. `reset-env.sh` calls it automatically.                                                             |
+| **Nginx hostname mismatch**              | Proxy starts but frontend/API routes fail (e.g. 502 or wrong host)                                          | Harness uses Docker service names `frontend` and `oe`. Bootstrap generates `volume/nginx/nginx.conf` from root with `frontend.openelis.org`→`frontend`, `oe.openelis.org`→`oe`. Re-run bootstrap to regenerate. |
