@@ -647,6 +647,29 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         return null;
     }
 
+    @Transactional(readOnly = true)
+    public Test getTestByNormalizedDescription(String description) {
+        // Get all tests and do the matching in Java since REGEXP_REPLACE is not universally supported
+        String normalizedDescription = normalizeDescription(description);
+        String sql = "From Test t";
+        try {
+            Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
+            List<Test> tests = query.getResultList();
+
+            for (Test test : tests) {
+                if (test.getDescription() != null &&
+                    normalizeDescription(test.getDescription()).equals(normalizedDescription)) {
+                    return test;
+                }
+            }
+            return null;
+        } catch (HibernateException e) {
+            handleException(e, "getTestByNormalizedDescription");
+        }
+
+        return null;
+    }
+
     @Override
     @Transactional(readOnly = true)
     public Test getTestByGUID(String guid) {
@@ -796,5 +819,13 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         }
 
         return null;
+    }
+
+    private String normalizeDescription(String description) {
+        if (description == null) {
+            return "";
+        }
+        // Remove all non-alphanumeric characters (spaces, hyphens, etc.) and preserve case
+        return description.replaceAll("[^a-zA-Z0-9]", "");
     }
 }

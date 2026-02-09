@@ -523,6 +523,12 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
 
     @Override
     @Transactional(readOnly = true)
+    public Test getTestByNormalizedDescription(String description) {
+        return getBaseObjectDAO().getTestByNormalizedDescription(description);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Test> getTestsByLoincCode(String loincCode) {
         return getBaseObjectDAO().getTestsByLoincCode(loincCode);
     }
