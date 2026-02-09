@@ -79,6 +79,10 @@ class HomePage {
     cy.get(this.selectors.menuButton).click();
   }
 
+  closeNavigationMenu() {
+    cy.get(this.selectors.menuButton).click();
+  }
+
   // Order Entry related functions
   goToOrderPage() {
     this.openNavigationMenu();
@@ -284,12 +288,14 @@ class HomePage {
   goToAdminPageProgram() {
     this.openNavigationMenu();
     cy.get(this.selectors.administrationMenu).click();
+    this.closeNavigationMenu();
     return new AdminPage();
   }
 
   goToAdminPage() {
     this.openNavigationMenu();
     cy.get(this.selectors.administrationNav).click();
+    this.closeNavigationMenu();
     return new AdminPage();
   }
 
