@@ -111,11 +111,7 @@ COPY install/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chown tomcat_admin:tomcat /docker-entrypoint.sh; \
     chmod 770 /docker-entrypoint.sh;
 
-RUN mkdir -p /var/lib/lucene_index; \
-    chown -R tomcat_admin:tomcat /var/lib/lucene_index; \
-    chmod -R 770 /var/lib/lucene_index;
-
 COPY ./tomcat/oe_server.xml /usr/local/tomcat/conf/server.xml    
-USER tomcat_admin
+USER root
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]

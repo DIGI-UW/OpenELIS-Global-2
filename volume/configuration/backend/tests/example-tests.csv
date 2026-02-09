@@ -1,18 +1,100 @@
 testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure,englishName,frenchName
+# ============================================================================
+# HEMATOLOGY - Basic Tests
+# ============================================================================
 Complete Blood Count,Hematology,Whole Blood,58410-2,Y,Y,1,,Complete Blood Count,Numération Formule Sanguine
 Hemoglobin,Hematology,Whole Blood|Serum,718-7,Y,Y,2,g/dL,Hemoglobin,Hémoglobine
 Hematocrit,Hematology,Whole Blood,20570-8,Y,Y,3,%,Hematocrit,Hématocrite
 White Blood Cell Count,Hematology,Whole Blood,6690-2,Y,Y,4,10*3/uL,White Blood Cell Count,Numération des Globules Blancs
 Platelet Count,Hematology,Whole Blood,777-3,Y,Y,5,10*3/uL,Platelet Count,Numération Plaquettaire
-Glucose,Biochemistry,Serum|Plasma|Whole Blood,2345-7,Y,Y,10,mg/dL,Glucose,Glucose
-Blood Urea Nitrogen,Biochemistry,Serum|Plasma,3094-0,Y,Y,11,mg/dL,Blood Urea Nitrogen,Azote Uréique Sanguin
-Creatinine,Biochemistry,Serum|Plasma,2160-0,Y,Y,12,mg/dL,Creatinine,Créatinine
-Total Cholesterol,Biochemistry,Serum|Plasma,2093-3,Y,Y,13,mg/dL,Total Cholesterol,Cholestérol Total
-Triglycerides,Biochemistry,Serum|Plasma,2571-8,Y,Y,14,mg/dL,Triglycerides,Triglycérides
-ALT,Biochemistry,Serum,1742-6,Y,Y,15,U/L,Alanine Aminotransferase,Alanine Aminotransférase
-AST,Biochemistry,Serum,1920-8,Y,Y,16,U/L,Aspartate Aminotransferase,Aspartate Aminotransférase
-HIV Rapid Test,Serology,Whole Blood|Serum|Plasma,68961-2,Y,Y,20,,HIV Rapid Test,Test Rapide VIH
-Hepatitis B Surface Antigen,Serology,Serum|Plasma,5195-3,Y,Y,21,,Hepatitis B Surface Antigen,Antigène de Surface Hépatite B
-Hepatitis C Antibody,Serology,Serum|Plasma,16128-1,Y,Y,22,,Hepatitis C Antibody,Anticorps Hépatite C
-Malaria Rapid Test,Parasitology,Whole Blood,51587-4,Y,Y,30,,Malaria Rapid Test,Test Rapide Paludisme
-Urinalysis 2,Urinalysis,Urine,24356-8,Y,Y,40,,Urinalysis,Analyse Urinaire
+# Indonesian Hematology Tests
+Hemoglobin Bld,Hematology,Whole Blood,718-7,Y,Y,6,g/dL,Hemoglobin (Bld) [Mass/Vol],Hémoglobine
+Hematocrit Auto,Hematology,Whole Blood,4544-3,Y,Y,7,%,Hematocrit Auto (Bld) [Volume fraction],Hématocrite Auto
+RBC Auto,Hematology,Whole Blood,789-8,Y,Y,8,10*6/uL,RBC Auto (Bld) [#/Vol],GR Auto
+MCV Auto,Hematology,Whole Blood,787-2,Y,N,9,fL,MCV Auto (RBC) [Entitic mean vol],VGM Auto
+MCH Auto,Hematology,Whole Blood,785-6,Y,N,10,pg,MCH Auto (RBC) [Entitic mass],TCMH Auto
+# French Hematology/CBC Tests
+WBC Count,Hematology,Whole Blood,,Y,Y,11,mille/mm3,White Blood Cells Count (WBC),Numération des globules blancs
+RBC Count,Hematology,Whole Blood,,Y,Y,12,million/mm3,Red Blood Cells Count (RBC),Numération des globules rouges
+MCV,Hematology,Whole Blood,,Y,Y,13,fl,Medium corpuscular volume,Volume Globulaire Moyen
+TCMH,Hematology,Whole Blood,,Y,Y,14,pg,TMCH,Teneur Corpusculaire Moyenne en Hémoglobine
+CCMH,Hematology,Whole Blood,,Y,Y,15,%,CMCH,Concentration Corpusculaire Moyenne en Hémoglobine
+Platelets,Hematology,Whole Blood,,Y,Y,16,mille/mm3,Platelets,Plaquette
+Neutrophils Percent,Hematology,Whole Blood,,Y,Y,17,%,Neutrophils (%),Polynucléaires Neutrophiles (%)
+Neutrophils Abs,Hematology,Whole Blood,,Y,Y,18,/mm3,Neutrophils,Polynucléaires Neutrophiles (Abs)
+Eosinophils Percent,Hematology,Whole Blood,,Y,Y,19,%,Eosinophils (%),Polynucléaires Eosinophiles (%)
+Eosinophils Abs,Hematology,Whole Blood,,Y,Y,20,/mm3,Eosinophils,Polynucléaires Eosinophiles (Abs)
+Basophils Percent,Hematology,Whole Blood,,Y,Y,21,%,Basophils (%),Polynucléaires basophiles (%)
+Basophils Abs,Hematology,Whole Blood,,Y,Y,22,/mm3,Basophils,Polynucléaires basophiles (Abs)
+Lymphocytes Percent,Hematology,Whole Blood,,Y,Y,23,%,Lymphocytes (%),Lymphocytes (%)
+Lymphocytes Abs,Hematology,Whole Blood,,Y,Y,24,/mm3,Lymphocytes (Abs),Lymphocytes (Abs)
+Monocytes Percent,Hematology,Whole Blood,,Y,Y,25,%,Monocytes (%),Monocytes (%)
+Monocytes Abs,Hematology,Whole Blood,,Y,Y,26,/mm3,Monocytes (Abs),Monocytes (Abs)
+# ============================================================================
+# BIOCHEMISTRY
+# ============================================================================
+Glucose,Biochemistry,Serum|Plasma|Whole Blood,2345-7,Y,Y,30,mg/dL,Glucose,Glucose
+Blood Urea Nitrogen,Biochemistry,Serum|Plasma,3094-0,Y,Y,31,mg/dL,Blood Urea Nitrogen,Azote Uréique Sanguin
+Creatinine,Biochemistry,Serum|Plasma,2160-0,Y,Y,32,mg/dL,Creatinine,Créatinine
+Total Cholesterol,Biochemistry,Serum|Plasma,2093-3,Y,Y,33,mg/dL,Total Cholesterol,Cholestérol Total
+Triglycerides,Biochemistry,Serum|Plasma,2571-8,Y,Y,34,mg/dL,Triglycerides,Triglycérides
+ALT,Biochemistry,Serum,1742-6,Y,Y,35,U/L,Alanine Aminotransferase,Alanine Aminotransférase
+AST,Biochemistry,Serum,1920-8,Y,Y,36,U/L,Aspartate Aminotransferase,Aspartate Aminotransférase
+# French Biochemistry Tests
+GPT ALAT,Biochemistry,Serum,,Y,Y,37,UI/L,GPT/ALAT,Transaminases GPT (37°C)
+GOT ASAT,Biochemistry,Serum,,Y,Y,38,UI/L,GOT/ASAT,Transaminases GOT (37°C)
+Amylase,Biochemistry,Serum,,Y,Y,39,UI/L,Amylase,Amylase
+Albumin Urine,Biochemistry,Urine,,Y,Y,40,g/l,Albumin,Albumine recherche miction
+HDL Cholesterol,Biochemistry,Serum,,Y,Y,41,g/l,HDL cholesterol,Cholestérol HDL
+Beta HCG Urine,Biochemistry,Urine,,Y,Y,42,g/l,Beta HCG,Prolans (BHCG) urines de 24 h
+Urine Pregnancy Test,Biochemistry,Urine,,Y,Y,43,,Urine pregnancy test,Test urinaire de grossesse
+Proteinuria Dipstick,Biochemistry,Urine,,Y,Y,44,,Proteinuria dipstick,Protéinurie sur bandelette
+# ============================================================================
+# SEROLOGY - HIV and Hepatitis Tests
+# ============================================================================
+HIV Rapid Test,Serology,Whole Blood|Serum|Plasma,68961-2,Y,Y,50,,HIV Rapid Test,Test Rapide VIH
+Hepatitis B Surface Antigen,Serology,Serum|Plasma,5195-3,Y,Y,51,,Hepatitis B Surface Antigen,Antigène de Surface Hépatite B
+Hepatitis C Antibody,Serology,Serum|Plasma,16128-1,Y,Y,52,,Hepatitis C Antibody,Anticorps Hépatite C
+# French HIV Rapid Tests
+Determine,Serology,Plasma|Serum|Whole Blood,,Y,Y,53,,Determine,Determine
+Bioline,Serology,Plasma|Serum|Whole Blood,,Y,Y,54,,Bioline,Bioline
+Stat PaK,Serology,Plasma|Serum|Whole Blood,,Y,Y,55,,Stat PaK,Stat PaK
+Genie II,Serology,Serum|Plasma,,Y,Y,56,,Genie II,Genie II
+Genie II 10,Serology,Serum|Plasma,,Y,Y,57,,Genie II 1/10,Genie II 1/10
+Genie II 100,Serology,Serum|Plasma,,Y,Y,58,,Genie II 1/100,Genie II 1/100
+Vironstika,Serology,Serum,,Y,Y,59,,Vironstika,Vironstika
+Murex,Serology,Serum,,Y,Y,60,,Murex,Murex
+Integral,Serology,Serum,,Y,Y,61,,Integral,Integral
+Western blot 1,Serology,Serum,,Y,Y,62,,Western blot 1,Western blot 1
+Western blot 2,Serology,Serum,,Y,Y,63,,Western blot 2,Western blot 2
+p24Ag,Serology,Serum,,Y,Y,64,,p24Ag,p24Ag
+DNA PCR,Serology,Serum,,Y,Y,65,,DNA PCR,DNA PCR
+HBsAg,Serology,Serum,,Y,Y,66,,HBsAg (Hepatitis B surface antigen),HBs AG (antigén australia)
+# ============================================================================
+# HEMATO-IMMUNOLOGY - CD4 and Viral Load
+# ============================================================================
+CD4 Absolute,Hemato-Immunology,Whole Blood,,Y,Y,70,mm3,CD4 Absolute count (mm3),Dénombrement des lymphocytes CD4 (mm3)
+CD4 Percent,Hemato-Immunology,Whole Blood,,Y,Y,71,%,CD4 percent (%),Dénombrement des lymphocytes CD4 (%)
+Viral Load,Hemato-Immunology,Whole Blood,,Y,Y,72,copies/ml,Viral load,Mesure de la charge virale
+# ============================================================================
+# MICROBIOLOGY - AFB, Gram Stain, Wet Prep
+# ============================================================================
+AFB Smear Sputum,Microbiology,Sputum,11477-7,Y,Y,80,,Microscopic observation Acid fast stain Nom (Sput),Examen Microscopique Coloration Ziehl (Crachat)
+AFB Smear Skin,Microbiology,Skin,94543-6,Y,N,81,,Microscopic observation Acid fast stain Nom (Skin),Examen Microscopique Coloration Ziehl (Peau)
+Gram Stain Genital,Microbiology,Genital Specimen,48712-4,Y,Y,82,,Microscopic observation Gram stain Nom (Genital specimen),Coloration Gram (Prélèvement Génital)
+Trichomonas Wet Prep,Microbiology,Genital Specimen,6565-6,Y,Y,83,,T. vaginalis Wet prep Ql (Genital specimen),T. vaginalis Préparation Humide
+Candida KOH Prep,Microbiology,Vaginal Fluid,14356-0,Y,Y,84,,Microscopic observation KOH prep Nom (Vag fld),Examen KOH (Liquide Vaginal)
+# ============================================================================
+# PARASITOLOGY
+# ============================================================================
+Malaria Rapid Test,Parasitology,Whole Blood,51587-4,Y,Y,90,,Malaria Rapid Test,Test Rapide Paludisme
+Malaria Microscopy,Parasitology,Whole Blood,32700-7,Y,Y,91,,Malaria Microscopy,Microscopie Paludisme
+# ============================================================================
+# URINALYSIS
+# ============================================================================
+Urinalysis,Urinalysis,Urine,24356-8,Y,Y,100,,Urinalysis,Analyse Urinaire
+Urine Appearance,Urinalysis,Urine,5767-9,Y,Y,101,,Urine Appearance,Aspect Urinaire
+# ============================================================================
+# PATHOLOGY
+# ============================================================================
+Pathology Report,Pathology,Tissue,,,Y,Y,110,,Pathology Report,Rapport Pathologie
