@@ -1,3 +1,43 @@
+/* ── Global mobile-safe reset ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+/*
+ * Carbon CSS Grid mobile fix
+ *
+ * Carbon's <Grid> uses CSS Grid with column sizing that creates
+ * an implicit min-width of ~520px, preventing the layout from
+ * shrinking on narrow mobile viewports. This override forces
+ * grid columns to use simple fractions so they can shrink freely.
+ */
+@media screen and (max-width: 672px) {
+  .cds--css-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    padding-inline: 1rem !important;
+  }
+
+  .cds--css-grid-column {
+    min-width: 0 !important;
+  }
+
+  /* Ensure all sm-span-4 columns fill the full row */
+  [class*="cds--sm:col-span-4"],
+  [class*="cds--sm\:col-span-4"] {
+    grid-column: span 4 !important;
+  }
+}
+
 body {
   margin: 0;
   font-family:
@@ -162,10 +202,12 @@ code {
 }
 
 @keyframes pulse {
+
   0%,
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }

@@ -132,7 +132,7 @@ button {
 
 .columnBoundary {
   margin: 2%;
-  width: 120%;
+  width: 100%;
 }
 
 .inlineDiv {
@@ -342,7 +342,8 @@ button {
 
 .selectSampleType {
   --cds-text-primary: black;
-  width: 200px;
+  width: 100%;
+  max-width: 200px;
   --cds-text-secondary: black;
   margin-bottom: 20px;
 }
@@ -382,7 +383,7 @@ button {
 }
 
 .cds--date-picker__input {
-  max-width: 200px;
+  max-width: 100%;
 }
 
 .hidden {
