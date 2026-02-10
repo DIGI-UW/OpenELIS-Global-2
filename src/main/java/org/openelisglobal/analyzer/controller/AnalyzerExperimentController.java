@@ -83,19 +83,11 @@ public class AnalyzerExperimentController extends BaseController {
                                     testService.get(e.getTestId()).getLocalizedTestName().getLocalizedValue(),
                                     testService.get(e.getTestId()).getLoinc()))
                             .collect(Collectors.toList()));
-            // analyzerTests.put(analyzer.getId(),
-            // analyzerMappingService.getAllForAnalyzer(analyzer.getId()).stream()
-            // .map(e -> new LabelValuePair(e.getAnalyzerTestName(),
-            // e.getTestId()))
-            // .collect(Collectors.toList()));
 
         }
         form.setAnalyzers(analyzerLabels);
         form.setAnalyzersTests(analyzersTests);
         form.setAnalyzersWellInfo(analyzersWellInfo);
-        // form.setTests(analyzerService.getAllMatching("hasSetupPage",
-        // true).stream().map(e ->
-        // e.))
         form.setPreviousRuns(analyzerExperimentService.getAllOrdered("lastupdated", true).stream()
                 .map(e -> new LabelValuePair(e.getName(), e.getId().toString())).collect(Collectors.toList()));
         return findForward(FWD_SUCCESS, form);

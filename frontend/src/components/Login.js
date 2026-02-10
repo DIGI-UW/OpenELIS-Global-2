@@ -196,7 +196,6 @@ function Login(props) {
             type="button"
             renderIcon={HardwareSecurityModule}
             onClick={() => {
-              console.log(url);
               window.location.href = config.serverBaseUrl + "/" + url.value;
             }}
           >

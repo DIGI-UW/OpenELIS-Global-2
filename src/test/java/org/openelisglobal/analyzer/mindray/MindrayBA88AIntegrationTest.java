@@ -5,7 +5,7 @@
  *
  * <p>The BA-88A is a semi-automatic biochemistry analyzer that communicates via RS232
  * serial protocol using ASTM LIS2-A2 format. Unlike BC-5380 and BS-360E which use HL7,
- * the BA-88A requires ASTM parsing through the astm-http-bridge.
+ * the BA-88A requires ASTM parsing through the openelis-analyzer-bridge.
  *
  * <p>RS232 Configuration:
  * <ul>
@@ -95,7 +95,7 @@ public class MindrayBA88AIntegrationTest extends BaseWebContextSensitiveTest {
                 Collections.emptyList());
 
         // Create RS232 serial port configuration via JDBC
-        // This simulates what the astm-http-bridge configuration would store
+        // This simulates what the openelis-analyzer-bridge configuration would store
         // Note: serial_port_configuration.analyzer_id references analyzer.id (numeric)
         jdbcTemplate.update("INSERT INTO clinlims.serial_port_configuration "
                 + "(id, analyzer_id, port_name, baud_rate, data_bits, stop_bits, parity, flow_control, active, fhir_uuid) "
