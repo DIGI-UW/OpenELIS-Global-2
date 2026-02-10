@@ -69,6 +69,9 @@ volume/lucene/*
 # These are generated on-the-fly during test runs from authoritative XML sources
 src/test/resources/testdata/*.generated.sql
 
+# Docker volume artifacts (created by dev/CI containers, never commit)
+projects/*/volume/
+
 .dev-docs/
 
 # Playwright test artifacts (generated, not source)
