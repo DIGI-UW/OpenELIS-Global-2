@@ -59,11 +59,17 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
 
   // Get error type label
   const errorTypeKey = `analyzer.errorDashboard.errorType.${errorType.toLowerCase()}`;
-  const errorTypeLabel = intl.formatMessage({ id: errorTypeKey }, errorType);
+  const errorTypeLabel = intl.formatMessage({
+    id: errorTypeKey,
+    defaultMessage: errorType,
+  });
 
   // Get severity label
   const severityKey = `analyzer.errorDashboard.severity.${severity.toLowerCase()}`;
-  const severityLabel = intl.formatMessage({ id: severityKey }, severity);
+  const severityLabel = intl.formatMessage({
+    id: severityKey,
+    defaultMessage: severity,
+  });
 
   // Analyzer logs (placeholder - will be populated from API)
   const analyzerLogs = error.analyzerLogs || [];

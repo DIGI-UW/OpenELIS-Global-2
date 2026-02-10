@@ -18,7 +18,6 @@ import {
   Column,
   Tile,
   Button,
-  DataTable,
   TableContainer,
   Table,
   TableHead,
@@ -36,7 +35,6 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../components/utils/Utils";
-import config from "../../../config.json";
 import "./ValidationDashboard.css";
 
 const ValidationDashboard = ({ analyzerId, status }) => {
@@ -82,7 +80,7 @@ const ValidationDashboard = ({ analyzerId, status }) => {
 
     // Trigger validation for all mappings
     // This would call a validation endpoint that tests all configured mappings
-    const endpoint = `${config.serverBaseUrl}/rest/analyzer/analyzers/${analyzerId}/validate-all-mappings`;
+    const endpoint = `/rest/analyzer/analyzers/${analyzerId}/validate-all-mappings`;
 
     postToOpenElisServerJsonResponse(endpoint, JSON.stringify({}), (data) => {
       if (data && !data.error) {
@@ -100,9 +98,7 @@ const ValidationDashboard = ({ analyzerId, status }) => {
   };
 
   const handleViewTestHistory = () => {
-    // TODO: Implement test history modal
-    // This would load historical test execution results
-    console.log("Test history feature not yet implemented");
+    // TODO: Implement test history modal — not yet available
   };
 
   if (loading) {
@@ -307,6 +303,7 @@ const ValidationDashboard = ({ analyzerId, status }) => {
             <Button
               kind="secondary"
               onClick={handleViewTestHistory}
+              disabled
               data-testid="view-test-history-button"
             >
               <FormattedMessage id="validation.view.test.history" />
