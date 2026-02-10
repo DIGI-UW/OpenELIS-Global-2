@@ -152,16 +152,29 @@ jobs:
       - name: Prepare .env from template
         run: cp .env.example .env
 
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          df -h
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver: docker-container
-          driver-opts: |
-            image=moby/buildkit:latest
-            network=host
 
-      - name: Build OpenELIS Images and Run containers
-        run: docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
+      - name: Build OpenELIS images (cached)
+        uses: docker/bake-action@v4
+        with:
+          files: build.docker-compose.yml
+          load: true
+          set: |
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+
+      - name: Start containers
+        run: docker compose -f build.docker-compose.yml up -d --wait --wait-timeout 600
 
       - name: Load test fixtures into database
         run: |
