@@ -7,6 +7,8 @@
 
 #local use files
 liqubase.properties
+id_file
+.env
 
 # IDE files #
 .idea/
@@ -67,6 +69,14 @@ volume/lucene/*
 # These are generated on-the-fly during test runs from authoritative XML sources
 src/test/resources/testdata/*.generated.sql
 
+.dev-docs/
+
+# Playwright test artifacts (generated, not source)
+**/playwright-report/
+**/playwright/.cache/
+**/playwright/.auth/
+**/test-results/
+# Note: frontend/playwright/ test sources are tracked (not ignored)
 # Catalyst dev files
 projects/catalyst/.env
 projects/catalyst/logs/
@@ -75,3 +85,9 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+*.bak
+
+cypress-screenshots/
+cypress-videos/
+# Vendor documentation (too large for git - 100MB+ PDFs)
+specs/*/research/AnalyzerDocs/
