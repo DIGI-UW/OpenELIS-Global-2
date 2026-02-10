@@ -397,7 +397,7 @@ export default function App() {
                       require("./components/genericSample/GenericSampleOrder").default;
                     return <GenericSampleOrder />;
                   }}
-                  role={Roles.RECEPTION}
+                  role=""
                 />
                 <SecureRoute
                   path="/GenericSample/Edit"
@@ -407,7 +407,7 @@ export default function App() {
                       require("./components/genericSample/GenericSampleOrderEdit").default;
                     return <GenericSampleOrderEdit />;
                   }}
-                  role={Roles.RECEPTION}
+                  role=""
                 />
                 <SecureRoute
                   path="/GenericSample/Import"
@@ -417,7 +417,7 @@ export default function App() {
                       require("./components/genericSample/GenericSampleOrderImport").default;
                     return <GenericSampleOrderImport />;
                   }}
-                  role={Roles.RECEPTION}
+                  role=""
                 />
                 <SecureRoute
                   path="/FreezerMonitoring"
