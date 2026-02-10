@@ -31,16 +31,16 @@ import org.springframework.stereotype.Component;
  * testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure,englishName,frenchName
  * Glucose,Biochemistry,Serum,2345-7,Y,Y,1,mg/dL,Glucose,Glucose
  * Hemoglobin,Hematology,Whole Blood,718-7,Y,Y,2,g/dL,Hemoglobin,Hémoglobine HIV
- * Rapid Test,Serology,Plasma|Serum|Whole Blood,68961-2,Y,Y,3,,HIV Rapid Test,Test Rapide VIH
+ * Rapid Test,Serology,Plasma|Serum|Whole Blood,68961-2,Y,Y,3,,HIV Rapid
+ * Test,Test Rapide VIH
  * <p>
- * Sample Type Handling:
- * - When multiple sample types are specified (separated by |), separate tests are created for each sample type
- * - Test names are suffixed with the sample type: "TestName(SampleType)" (no space)
- * - Example: "Rapid Test,Serology,Plasma|Serum|Whole Blood" creates:
- *   * "Rapid Test(Plasma)" with sample type Plasma
- *   * "Rapid Test(Serum)" with sample type Serum
- *   * "Rapid Test(Whole Blood)" with sample type Whole Blood
- * - Each test has only one sample type mapping
+ * Sample Type Handling: - When multiple sample types are specified (separated
+ * by |), separate tests are created for each sample type - Test names are
+ * suffixed with the sample type: "TestName(SampleType)" (no space) - Example:
+ * "Rapid Test,Serology,Plasma|Serum|Whole Blood" creates: * "Rapid
+ * Test(Plasma)" with sample type Plasma * "Rapid Test(Serum)" with sample type
+ * Serum * "Rapid Test(Whole Blood)" with sample type Whole Blood - Each test
+ * has only one sample type mapping
  * <p>
  * Notes: - First line is the header (required) - testName and testSection are
  * required fields - sampleType is optional but recommended (can specify
@@ -241,25 +241,33 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
                 TypeOfSample sampleType = findSampleType(sampleTypeName);
                 if (sampleType == null) {
-                    LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine", "Sample type '"
-                            + sampleTypeName + "' not found for test in line " + lineNumber + " of " + fileName
-                            + ". Skipping this sample type.");
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
+                            "Sample type '" + sampleTypeName + "' not found for test in line " + lineNumber + " of "
+                                    + fileName + ". Skipping this sample type.");
                     continue;
                 }
 
-                String testNameWithSampleType = baseTestName + "(" + sampleTypeName + ")"; //to match the buildAugmentedTestName(Test test){} method in TestServiceImpl
-                // Use normalized matching to find existing tests that should be overridden (e.g., "Stat-Pak(Plasma)" matches "Stat PaK(Plasma)")
+                String testNameWithSampleType = baseTestName + "(" + sampleTypeName + ")"; // to match the
+                                                                                           // buildAugmentedTestName(Test
+                                                                                           // test){} method in
+                                                                                           // TestServiceImpl
+                // Use normalized matching to find existing tests that should be overridden
+                // (e.g., "Stat-Pak(Plasma)" matches "Stat PaK(Plasma)")
                 Test existingTest = testService.getTestByNormalizedDescription(testNameWithSampleType);
 
                 Test test;
                 if (existingTest != null) {
-                    test = updateTest(existingTest, values, testNameWithSampleType, testSection, loincIndex, isActiveIndex,
-                            isOrderableIndex, sortOrderIndex, unitOfMeasureIndex, englishNameIndex, frenchNameIndex, defaultSortOrder);
-                    LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine", "Updated existing test: " + testNameWithSampleType);
+                    test = updateTest(existingTest, values, testNameWithSampleType, testSection, loincIndex,
+                            isActiveIndex, isOrderableIndex, sortOrderIndex, unitOfMeasureIndex, englishNameIndex,
+                            frenchNameIndex, defaultSortOrder);
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
+                            "Updated existing test: " + testNameWithSampleType);
                 } else {
                     test = createTest(values, testNameWithSampleType, testSection, loincIndex, isActiveIndex,
-                            isOrderableIndex, sortOrderIndex, unitOfMeasureIndex, englishNameIndex, frenchNameIndex, defaultSortOrder);
-                    LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine", "Created new test: " + testNameWithSampleType);
+                            isOrderableIndex, sortOrderIndex, unitOfMeasureIndex, englishNameIndex, frenchNameIndex,
+                            defaultSortOrder);
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
+                            "Created new test: " + testNameWithSampleType);
                 }
 
                 if (test != null) {
@@ -275,12 +283,15 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
             Test test;
             if (existingTest != null) {
                 test = updateTest(existingTest, values, baseTestName, testSection, loincIndex, isActiveIndex,
-                        isOrderableIndex, sortOrderIndex, unitOfMeasureIndex, englishNameIndex, frenchNameIndex, defaultSortOrder);
-                LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine", "Updated existing test: " + baseTestName);
+                        isOrderableIndex, sortOrderIndex, unitOfMeasureIndex, englishNameIndex, frenchNameIndex,
+                        defaultSortOrder);
+                LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
+                        "Updated existing test: " + baseTestName);
             } else {
-                test = createTest(values, baseTestName, testSection, loincIndex, isActiveIndex,
-                        isOrderableIndex, sortOrderIndex, unitOfMeasureIndex, englishNameIndex, frenchNameIndex, defaultSortOrder);
-                LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine", "Created new test: " + baseTestName);
+                test = createTest(values, baseTestName, testSection, loincIndex, isActiveIndex, isOrderableIndex,
+                        sortOrderIndex, unitOfMeasureIndex, englishNameIndex, frenchNameIndex, defaultSortOrder);
+                LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
+                        "Created new test: " + baseTestName);
             }
 
             return test;
@@ -511,8 +522,9 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
             mapping.setTypeOfSampleId(sampleType.getId());
             mapping.setSysUserId("1");
             typeOfSampleTestService.insert(mapping);
-            LogEvent.logDebug(this.getClass().getSimpleName(), "createSingleSampleTypeMapping", "Created mapping: test '"
-                    + test.getDescription() + "' -> sample type '" + sampleType.getLocalizedName() + "'");
+            LogEvent.logDebug(this.getClass().getSimpleName(), "createSingleSampleTypeMapping",
+                    "Created mapping: test '" + test.getDescription() + "' -> sample type '"
+                            + sampleType.getLocalizedName() + "'");
         }
     }
 

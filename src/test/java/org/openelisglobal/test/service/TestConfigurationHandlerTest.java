@@ -114,20 +114,17 @@ public class TestConfigurationHandlerTest {
     }
 
     /**
-     * Test to document the new behavior: multiple sample types should result in separate tests
-     * Note: This test documents the expected behavior but doesn't test the full implementation
-     * since it would require Spring context and database services.
+     * Test to document the new behavior: multiple sample types should result in
+     * separate tests Note: This test documents the expected behavior but doesn't
+     * test the full implementation since it would require Spring context and
+     * database services.
      */
     @Test
     public void testMultipleSampleTypesLogic_DocumentedBehavior() {
         // This test documents the expected behavior for future reference
         String baseTestName = "Stat PaK";
         String sampleTypes = "Plasma|Serum|Whole Blood";
-        String[] expectedTestNames = {
-            "Stat PaK(Plasma)",
-            "Stat PaK(Serum)",
-            "Stat PaK(Whole Blood)"
-        };
+        String[] expectedTestNames = { "Stat PaK(Plasma)", "Stat PaK(Serum)", "Stat PaK(Whole Blood)" };
 
         String[] sampleTypeArray = sampleTypes.split("\\|");
         List<String> generatedTestNames = new ArrayList<>();
@@ -141,8 +138,7 @@ public class TestConfigurationHandlerTest {
 
         assertEquals("Should generate 3 test names", 3, generatedTestNames.size());
         for (String expectedName : expectedTestNames) {
-            assertTrue("Should contain test name: " + expectedName,
-                      generatedTestNames.contains(expectedName));
+            assertTrue("Should contain test name: " + expectedName, generatedTestNames.contains(expectedName));
         }
     }
 

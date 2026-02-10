@@ -107,7 +107,8 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                 String currentChecksum = calculateChecksum(inputStream);
                 inputStream.close();
 
-                // Check if this file has been loaded with the same checksum (unless force reload is enabled)
+                // Check if this file has been loaded with the same checksum (unless force
+                // reload is enabled)
                 String storedChecksum = checksums.getProperty(fileName);
                 if (!forceReload && currentChecksum.equals(storedChecksum)) {
                     LogEvent.logInfo(this.getClass().getSimpleName(), "loadDomainConfiguration",
@@ -144,7 +145,8 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                         String fileName = file.getName();
                         String currentChecksum = calculateChecksum(new FileInputStream(file));
 
-                        // Check if this file has been loaded with the same checksum (unless force reload is enabled)
+                        // Check if this file has been loaded with the same checksum (unless force
+                        // reload is enabled)
                         String storedChecksum = checksums.getProperty(fileName);
                         if (!forceReload && currentChecksum.equals(storedChecksum)) {
                             LogEvent.logInfo(this.getClass().getSimpleName(), "loadDomainConfiguration", domainName

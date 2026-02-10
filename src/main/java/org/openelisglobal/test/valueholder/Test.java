@@ -219,9 +219,8 @@ public class Test extends EnumValueItemImpl {
     }
 
     /**
-     * Normalized description for efficient fuzzy matching.
-     * Removes parentheses and non-alphanumeric characters.
-     * Automatically maintained by database trigger.
+     * Normalized description for efficient fuzzy matching. Removes parentheses and
+     * non-alphanumeric characters. Automatically maintained by database trigger.
      *
      * @return the normalized description
      */

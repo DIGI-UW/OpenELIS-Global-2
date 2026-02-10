@@ -657,8 +657,7 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
 
         try {
             String hql = "FROM Test t WHERE LOWER(t.normalizedDescription) = :normalizedDescription";
-            Query<Test> query = entityManager.unwrap(Session.class)
-                    .createQuery(hql, Test.class)
+            Query<Test> query = entityManager.unwrap(Session.class).createQuery(hql, Test.class)
                     .setParameter("normalizedDescription", normalizedDescription.toLowerCase());
 
             return query.uniqueResult();
@@ -848,8 +847,6 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         }
         // Remove accents and diacritics, then remove non-alphanumeric, then lowercase
         return java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD)
-                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
-                .replaceAll("[^a-zA-Z0-9]", "")
-                .toLowerCase();
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "").replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
     }
 }

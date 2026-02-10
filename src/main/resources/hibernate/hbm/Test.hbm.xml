@@ -63,7 +63,8 @@
             <column name="DESCRIPTION" length="60" not-null="true"
                 unique="true" />
         </property>
-        <property name="normalizedDescription" type="java.lang.String">
+        <property name="normalizedDescription"
+            type="java.lang.String">
             <column name="NORMALIZED_DESCRIPTION" length="255" />
         </property>
         <property name="loinc" type="java.lang.String">
