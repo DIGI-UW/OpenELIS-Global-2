@@ -1733,25 +1733,38 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     }
 
     @Override
-    public Provider transformToProvider(Practitioner practitioner) {
+    public Provider transformToProviderForUpdate(Practitioner practitioner) {
         String idPart = practitioner.getIdPart();
         Provider provider = providerService.getProviderByFhirId(UUID.fromString(idPart));
-        System.out.println(">>>>>>>>>>>>>>>>>" + idPart);
         provider.setActive(practitioner.getActive());
         provider.setFhirUuid(UUID.fromString(practitioner.getIdElement().getIdPart()));
 
         Person person = personService.getPersonByLastName(provider.getPerson().getLastName());
         addHumanNameToPerson(practitioner.getNameFirstRep(), person);
         addTelecomToPerson(practitioner.getTelecom(), person);
+        person.setSysUserId("1");
         Person savedPerson = personService.save(person);
 
         provider.setPerson(savedPerson);
 
-        System.out.println(">>>>>>>>>>>>>>>>>" + idPart);
-        System.out.println(">>>>>>>>>>>>>>>>>" + provider.getPerson().getFirstName());
-        System.out.println(">>>>>>>>>>>>>>>>>" + provider.getFhirUuidAsString());
-        System.out.println(">>>>>>>>>>>>>>>>>" + provider.getActive());
+        return provider;
+    }
 
+    @Override
+    public Provider transformToProviderForPersistance(Practitioner practitioner) {
+
+        Person person = new Person();
+        addHumanNameToPerson(practitioner.getNameFirstRep(), person);
+        addTelecomToPerson(practitioner.getTelecom(), person);
+        person.setSysUserId("1");
+
+        Person savedPerson = personService.save(person);
+
+        Provider provider = new Provider();
+        provider.setActive(practitioner.getActive());
+        provider.setFhirUuid(UUID.randomUUID());
+
+        provider.setPerson(savedPerson);
         return provider;
     }
 

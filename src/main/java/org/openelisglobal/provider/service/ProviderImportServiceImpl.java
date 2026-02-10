@@ -80,7 +80,7 @@ public class ProviderImportServiceImpl implements ProviderImportService {
                     org.hl7.fhir.r4.model.Practitioner fhirPractitioner = (org.hl7.fhir.r4.model.Practitioner) entry
                             .getResource();
                     try {
-                        Provider provider = fhirTransformService.transformToProvider(fhirPractitioner);
+                        Provider provider = fhirTransformService.transformToProviderForUpdate(fhirPractitioner);
                         if (providerService.getProviderByFhirId(provider.getFhirUuid()) == null
                                 || !providerService.getProviderByFhirId(provider.getFhirUuid()).isDesynchronized()) {
                             providerService.insertOrUpdateProviderByFhirUuid(provider.getFhirUuid(), provider);

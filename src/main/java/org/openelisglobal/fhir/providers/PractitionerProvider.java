@@ -45,19 +45,14 @@ public class PractitionerProvider implements IResourceProvider {
     @Create
     public MethodOutcome create(@ResourceParam Practitioner practitioner) throws FhirLocalPersistingException {
 
-        // Persist domain object
-        Provider provider = fhirTransformService.transformToProvider(practitioner);
+        Provider provider = fhirTransformService.transformToProviderForPersistance(practitioner);
+
         providerService.insert(provider);
 
-        // Ensure FHIR ID exists
-        if (!practitioner.hasId()) {
-            practitioner.setId(new IdType("Practitioner", provider.getFhirUuidAsString()));
-        }
+        practitioner.setId(new IdType("Practitioner", provider.getFhirUuidAsString()));
 
-        // Persist FHIR resource
         fhirPersistenceService.updateFhirResourceInFhirStore(practitioner);
 
-        // ✅ REQUIRED MethodOutcome
         MethodOutcome outcome = new MethodOutcome();
         outcome.setId(practitioner.getIdElement());
         outcome.setResource(practitioner);
@@ -70,25 +65,19 @@ public class PractitionerProvider implements IResourceProvider {
     @Update
     public MethodOutcome update(@IdParam IdType theId, @ResourceParam Practitioner practitioner)
             throws FhirLocalPersistingException {
-
-        // Ensure ID consistency
         practitioner.setId(theId);
 
-        // Persist locally
-        Provider provider = fhirTransformService.transformToProvider(practitioner);
+        Provider provider = fhirTransformService.transformToProviderForUpdate(practitioner);
         providerService.save(provider);
-
-        // Persist to FHIR store
         fhirPersistenceService.updateFhirResourceInFhirStore(practitioner);
 
-        // ✅ REQUIRED MethodOutcome fields
         MethodOutcome outcome = new MethodOutcome();
         outcome.setId(practitioner.getIdElement());
         outcome.setResource(practitioner);
-        outcome.setCreated(false); // REQUIRED for UPDATE
-        outcome.setResponseStatusCode(200); // REQUIRED
+        outcome.setCreated(false);
+        outcome.setResponseStatusCode(200);
 
-        return outcome; // ❗ MUST return THIS object
+        return outcome;
     }
 
 }

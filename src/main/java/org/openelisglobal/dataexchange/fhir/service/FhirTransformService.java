@@ -70,7 +70,9 @@ public interface FhirTransformService {
 
     Practitioner transformProviderToPractitioner(Provider provider);
 
-    Provider transformToProvider(Practitioner practitioner);
+    Provider transformToProviderForUpdate(Practitioner practitioner);
+
+    Provider transformToProviderForPersistance(Practitioner practitioner);
 
     PatientSearchResults transformToOpenElisPatientSearchResults(org.hl7.fhir.r4.model.Patient externalPatient);
 

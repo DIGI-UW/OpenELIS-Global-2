@@ -559,7 +559,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
             Provider provider = providerService
                     .getProviderByFhirId(UUID.fromString(remotePractitionerForTask.getIdElement().getIdPart()));
             if (provider == null || !providerService.getProviderByFhirId(provider.getFhirUuid()).isDesynchronized()) {
-                provider = fhirTransformService.transformToProvider(remotePractitionerForTask);
+                provider = fhirTransformService.transformToProviderForUpdate(remotePractitionerForTask);
                 providerService.insertOrUpdateProviderByFhirUuid(provider.getFhirUuid(), provider);
             }
         }
