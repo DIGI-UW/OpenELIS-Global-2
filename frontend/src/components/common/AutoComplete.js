@@ -137,7 +137,10 @@ function AutoComplete(props) {
     <div
       style={{
         position: "relative",
-        marginBottom: showSuggestions && userInput ? "3rem" : "0",
+        marginBottom:
+          showSuggestions && userInput && !filteredSuggestions.length
+            ? "3rem"
+            : "0",
       }}
     >
       <TextInput
