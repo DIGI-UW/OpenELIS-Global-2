@@ -254,21 +254,20 @@ const PrePrint = () => {
             {" "}
             <br></br>
           </Column>
-          <Column lg={8} md={8} sm={4} className="site-name-column">
-            <AutoComplete
-              name="siteName"
-              id="siteName"
-              allowFreeText={false}
-              value={facilityId}
-              onSelect={(id) => setFacilityId(id)}
-              label={
-                <>
-                  <FormattedMessage id="order.search.site.name" />{" "}
-                </>
-              }
-              style={{ width: "!important 100%" }}
-              suggestions={siteNames.length > 0 ? siteNames : []}
-            />
+          <Column lg={8} md={8} sm={4}>
+            <div style={{ marginBottom: "2rem" }}>
+              <AutoComplete
+                size="lg"
+                onChange={(id) => setFacilityId(id)}
+                label={
+                  <>
+                    <FormattedMessage id="label.barcode.sitename" />
+                  </>
+                }
+                style={{ width: "100%" }}
+                suggestions={siteNames.length > 0 ? siteNames : []}
+              />
+            </div>
           </Column>
         </Grid>
       </div>
