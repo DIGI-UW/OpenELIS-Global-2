@@ -1,6 +1,6 @@
 # Mindray BA-88A Biochemistry Analyzer ASTM LIS2-A2 Test Fixture
 # Feature: 011-madagascar-analyzer-integration, Milestone: M6
-# Protocol: ASTM LIS2-A2 over RS232 (via astm-http-bridge)
+# Protocol: ASTM LIS2-A2 over RS232 (via openelis-analyzer-bridge)
 # Analyzer: Mindray BA-88A Semi-automatic Biochemistry Analyzer
 #
 # This fixture simulates a typical biochemistry result message from the BA-88A.
