@@ -8,6 +8,7 @@ import org.openelisglobal.login.valueholder.LoginUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -39,6 +40,9 @@ public class CustomUserDetailsService implements UserDetailsService {
     // for sso and form login methods
     private List<GrantedAuthority> getGrantedAuthorities(LoginUser user) {
         List<GrantedAuthority> authorities = new ArrayList<>();
+        if (IActionConstants.YES.equalsIgnoreCase(user.getIsAdmin())) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        }
         return authorities;
     }
 }

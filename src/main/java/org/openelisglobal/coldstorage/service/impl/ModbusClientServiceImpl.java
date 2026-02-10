@@ -17,6 +17,7 @@ import java.util.Optional;
 import org.openelisglobal.coldstorage.config.FreezerMonitoringProperties;
 import org.openelisglobal.coldstorage.service.ModbusClientService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
+import org.openelisglobal.common.util.NetworkValidationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -56,6 +57,10 @@ public class ModbusClientServiceImpl implements ModbusClientService {
     }
 
     private ReadingResult readTcp(Freezer freezer) throws Exception {
+        if (NetworkValidationUtil.isBlockedAddress(freezer.getHost())) {
+            throw new IllegalArgumentException("Connection to this address is not permitted: " + freezer.getHost());
+        }
+
         NettyTcpClientTransport transport = NettyTcpClientTransport.create(cfg -> {
             cfg.setHostname(freezer.getHost());
             cfg.setPort(freezer.getPort());
