@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <report_definition id="REP-001" name="Test Report 1"
+        description="Test report definition" category="Patient"
+        definition_json='{"type":"patient","fields":["id","name"]}'
+        created_by="admin" created_date="2025-01-01 10:00:00"
+        last_updated="2025-01-01 10:00:00" is_active="true" />
+
+    <report_definition id="REP-002" name="Test Report 2"
+        description="Another test report" category="Sample"
+        definition_json='{"type":"sample","fields":["accession","date"]}'
+        created_by="admin" created_date="2025-01-02 10:00:00"
+        last_updated="2025-01-02 10:00:00" is_active="true" />
+
+    <report_definition id="REP-003"
+        name="Inactive Report" description="Inactive test report"
+        category="Result"
+        definition_json='{"type":"result","fields":["test","value"]}'
+        created_by="admin" created_date="2025-01-03 10:00:00"
+        last_updated="2025-01-03 10:00:00" is_active="false" />
+</dataset>

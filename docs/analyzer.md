@@ -139,6 +139,52 @@ There are four configurable values in the file:
 
 'my $stagingDir2 = "Y:";`
 
+## Generic plugin configuration (identifier_pattern)
+
+For dashboard-configured analyzers using the GenericASTM or GenericHL7 plugin,
+the system matches incoming messages using
+`analyzer_configuration.identifier_pattern` (required when `is_generic_plugin`
+is true).
+
+**ASTM:** The string matched is the ASTM H-segment **field 4**
+(manufacturer^model^version), e.g. `MINDRAY^BA-88A^1.0`. The pattern is applied
+as a Java regex using `Pattern.compile(pattern).matcher(identifier).find()`
+(substring match).
+
+**HL7:** The string matched is typically MSH-3 (sending application).
+
+**Examples:**
+
+- `MINDRAY.*BA-88A|BA88A` — matches Mindray BA-88A (ASTM H-segment field 4).
+- `MINDRAY` — matches any Mindray sender (HL7 MSH-3).
+
+**Validation:** When saving an analyzer configuration with
+`is_generic_plugin=true`, the server requires a non-empty `identifier_pattern`
+that compiles as a valid Java regex. Invalid or empty patterns are rejected with
+a clear error.
+
+### Prefer generic plugin (`prefer_generic_plugin`)
+
+Plugin order is fixed at registration time: legacy plugins are typically
+registered before GenericASTM/GenericHL7, so the **first plugin whose
+`isTargetAnalyzer(lines)` returns true** is used. If both a legacy plugin and
+GenericASTM (or GenericHL7) could match the same message, the legacy plugin wins
+unless you remove the legacy JAR or change registration order.
+
+To switch an analyzer from a legacy plugin to the generic plugin without
+removing the legacy JAR, set **`prefer_generic_plugin=true`** for that
+analyzer’s configuration. When the system resolves the plugin for an incoming
+message:
+
+1. It derives the message identifier (ASTM H-segment field 4 or HL7 MSH-3).
+2. It looks up `analyzer_configuration` by identifier pattern match.
+3. If a matching config has `prefer_generic_plugin=true`, it tries generic
+   plugins (GenericASTM or GenericHL7) first, then legacy plugins.
+4. Otherwise it uses the default order (legacy first).
+
+So for that analyzer, GenericASTM/GenericHL7 is used even if a legacy plugin
+would also match. Other analyzers are unaffected.
+
 ## Troubleshooting
 
 Perl and curl give good error messages so most problems in the script will be

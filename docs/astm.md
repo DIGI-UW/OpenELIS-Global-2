@@ -24,15 +24,16 @@
     [here](https://github.com/openelisglobal/openelisglobal-plugins)
   - To compile a jar, you will need to run maven clean install in the project
     directory (will require a jar version of OE to be specified in the pom.xml)
-- Create a config file for the ASTM-HTTP bridge
-  - An example is given in the
-    [astm-http-bridge github](https://github.com/CalebSLane/astm-http-bridge/wiki/Configuring-the-project).
-    Details about what configuration options do are also included.
-- Create a docker-compose file (or add to OE’s docker-compose)
-  - An example is given in the
-    [astm-http-bridge github](https://github.com/CalebSLane/astm-http-bridge/wiki/Configuring-the-project).
-    Details about parameters are also included.
-  - Run `sudo docker compose up -d` wherever this service was added
+- **ASTM-HTTP Bridge (Development Setup)**
+  - The bridge is now integrated into the standard development environment
+  - Bridge starts automatically with
+    `docker compose -f dev.docker-compose.yml up -d`
+  - Configuration file location: `volume/astm-bridge/configuration.yml`
+  - Bridge accessible at `172.20.1.101:5001` from within Docker network
+  - Bridge TCP listener port: `5001` (exposed on host)
+  - For production setup, see the
+    [openelis-analyzer-bridge github](https://github.com/DIGI-UW/openelis-analyzer-bridge)
+    for configuration details
 
 ### Configuring OE
 
