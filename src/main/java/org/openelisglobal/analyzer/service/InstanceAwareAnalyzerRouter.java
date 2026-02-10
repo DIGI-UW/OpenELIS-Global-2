@@ -29,19 +29,18 @@ import org.springframework.transaction.annotation.Transactional;
  * Routes incoming analyzer data to the correct Analyzer instance.
  *
  * <p>
- * This service implements a multi-stage routing strategy:
+ * This service implements a 2-stage routing strategy:
  *
  * <ol>
  * <li><b>IP-based routing</b>: Match by source IP address to specific instance
- * <li><b>Pattern-based routing</b>: Match identifier against AnalyzerType
- * patterns
- * <li><b>Legacy fallback</b>: Use existing plugin's isTargetAnalyzer() method
+ * <li><b>Plugin routing</b>: Iterate all plugins and call isTargetAnalyzer()
  * </ol>
  *
  * <p>
- * This enables multiple physical analyzers of the same type (e.g., two Horiba
- * Micros 60 devices in different labs) while maintaining backward compatibility
- * with legacy plugins.
+ * Generic plugins (GenericASTM, GenericHL7) handle their own DB-driven pattern
+ * matching inside isTargetAnalyzer() by querying analyzer_configuration. Legacy
+ * plugins use hardcoded identification logic. The router is a thin orchestrator
+ * that adds IP-based routing before the standard plugin iteration.
  */
 @Service
 public class InstanceAwareAnalyzerRouter {
@@ -137,15 +136,8 @@ public class InstanceAwareAnalyzerRouter {
             return result;
         }
 
-        // Stage 2: Try pattern-based routing
-        result = routeByPattern(context);
-        if (result.isSuccessful()) {
-            return result;
-        }
-
-        // Stage 3: Legacy plugin fallback
-        result = routeByLegacyPlugin(context);
-        return result;
+        // Stage 2: Plugin routing (handles both generic and legacy plugins)
+        return routeByPlugin(context);
     }
 
     /**
@@ -176,54 +168,28 @@ public class InstanceAwareAnalyzerRouter {
     }
 
     /**
-     * Stage 2: Route by identifier pattern matching.
+     * Stage 2: Route by plugin's isTargetAnalyzer() method.
+     *
+     * <p>
+     * Iterates all registered plugins (both generic and legacy). Generic plugins
+     * handle their own DB-driven pattern matching internally. Legacy plugins use
+     * hardcoded identification logic.
      */
-    private RouteResult routeByPattern(RouteContext context) {
-        if (context.getIdentifier() == null || context.getIdentifier().isEmpty()) {
-            return new RouteResult(null, null, null, "PATTERN_NO_MATCH");
-        }
-
-        // Find analyzer type matching the identifier pattern
-        Optional<AnalyzerType> typeOpt = analyzerTypeService.findMatchingType(context.getIdentifier());
-
-        if (typeOpt.isPresent()) {
-            AnalyzerType type = typeOpt.get();
-            // Get the first active instance of this type
-            List<Analyzer> instances = type.getInstances();
-            Analyzer matchedAnalyzer = instances.stream().filter(Analyzer::isActive).findFirst().orElse(null);
-
-            if (matchedAnalyzer != null) {
-                AnalyzerImporterPlugin plugin = pluginAnalyzerService.getPluginByAnalyzerId(matchedAnalyzer.getId());
-                if (plugin != null) {
-                    LogEvent.logDebug(this.getClass().getSimpleName(), "routeByPattern", "Routed by pattern '"
-                            + type.getIdentifierPattern() + "' to analyzer: " + matchedAnalyzer.getName());
-                    return new RouteResult(matchedAnalyzer, type, plugin, "PATTERN_MATCH");
-                }
-            }
-        }
-
-        return new RouteResult(null, null, null, "PATTERN_NO_MATCH");
-    }
-
-    /**
-     * Stage 3: Legacy plugin fallback using isTargetAnalyzer().
-     */
-    private RouteResult routeByLegacyPlugin(RouteContext context) {
+    private RouteResult routeByPlugin(RouteContext context) {
         List<AnalyzerImporterPlugin> plugins = pluginAnalyzerService.getAnalyzerPlugins();
 
         for (AnalyzerImporterPlugin plugin : plugins) {
             try {
                 if (plugin.isTargetAnalyzer(context.getLines())) {
-                    // Find the analyzer associated with this plugin
                     Analyzer analyzer = findAnalyzerForPlugin(plugin);
                     if (analyzer != null) {
-                        LogEvent.logDebug(this.getClass().getSimpleName(), "routeByLegacyPlugin",
-                                "Routed by legacy plugin to analyzer: " + analyzer.getName());
-                        return new RouteResult(analyzer, analyzer.getAnalyzerType(), plugin, "LEGACY_PLUGIN_MATCH");
+                        LogEvent.logDebug(this.getClass().getSimpleName(), "routeByPlugin",
+                                "Routed by plugin to analyzer: " + analyzer.getName());
+                        return new RouteResult(analyzer, analyzer.getAnalyzerType(), plugin, "PLUGIN_MATCH");
                     }
                 }
             } catch (Exception e) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "routeByLegacyPlugin",
+                LogEvent.logWarn(this.getClass().getSimpleName(), "routeByPlugin",
                         "Error checking plugin: " + e.getMessage());
             }
         }
