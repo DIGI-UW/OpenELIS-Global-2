@@ -2800,7 +2800,6 @@
   "qc.comments.add": "Ajouter un commentaire",
   "qc.comments.placeholder": "Entrer un commentaire CQ...",
   "qc.comments.empty": "Aucun commentaire",
-  "import.failedCount": "Failed",
   "analyzer.action.add": "Ajouter un analyseur",
   "analyzer.action.copyMappings": "Copier les mappages",
   "analyzer.action.delete": "Supprimer",
