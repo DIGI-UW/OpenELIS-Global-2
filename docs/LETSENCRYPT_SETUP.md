@@ -38,7 +38,9 @@ exist, falling back to self-signed certificates if not found.
 - **LETSENCRYPT_EMAIL** (required for cert generation): Email address for Let's
   Encrypt notifications and account recovery
 - **LETSENCRYPT_DOMAIN** (optional): Domain name for the certificate. Defaults
-  to `storage.openelis-global.org`
+  to `storage.openelis-global.org`. Use `analyzers.openelis-global.org` for the
+  analyzer harness; the harness mounts the same `./volume/letsencrypt` so certs
+  generated here are used automatically.
 - **LETSENCRYPT_STAGING** (optional): Set to `"true"` to use Let's Encrypt
   staging environment for testing. Defaults to `false`
 
