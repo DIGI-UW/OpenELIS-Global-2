@@ -74,27 +74,27 @@
   min-width: 150px;
 }
 
-/* Fix date picker overlap in Reports filter section */
-.cds--date-picker--range {
+/* Scoped date picker styling for inventory reports only */
+.orderLegendBody .cds--date-picker--range {
   display: flex;
-  gap: 1rem;
+  gap: var(--cds-spacing-05, 1rem);
   flex-wrap: wrap;
 }
 
-.cds--date-picker--range .cds--date-picker-container {
+.orderLegendBody .cds--date-picker--range .cds--date-picker-container {
   flex: 1;
   min-width: 200px;
   margin-right: 0;
 }
 
-/* Ensure proper spacing on smaller screens */
-@media (max-width: 672px) {
-  .cds--date-picker--range {
+/* Responsive layout for smaller screens */
+@media (max-width: 42rem) {
+  .orderLegendBody .cds--date-picker--range {
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--cds-spacing-04, 0.75rem);
   }
 
-  .cds--date-picker--range .cds--date-picker-container {
+  .orderLegendBody .cds--date-picker--range .cds--date-picker-container {
     width: 100%;
     min-width: unset;
   }
