@@ -1,16 +1,18 @@
 # Implementation Plan: Catalyst - LLM-Powered Lab Data Assistant
 
-**Branch**: `spec/OGC-070-catalyst-assistant` | **Date**: 2026-01-27 (Updated
-post-clarification) | **Spec**: [spec.md](./spec.md) **Jira**:
+**Branch**: `spec/OGC-070-catalyst-assistant` | **Date**: 2026-01-29 (Updated
+post-methodology alignment) | **Spec**: [spec.md](./spec.md) **Jira**:
 [OGC-70](https://uwdigi.atlassian.net/browse/OGC-70)
 
 ## Summary
 
 Catalyst enables lab managers to query OpenELIS data using natural language. The
 system converts plain-language questions into SQL queries, executes them against
-a read-only database connection, and displays results. **To ensure privacy, any
-cloud LLM calls receive only schema metadata, and never any patient, clinical,
-PHI data.**
+a read-only database connection, and displays results. **MVP operates in
+CloudSafe mode: LLM context contains only schema metadata (table names, columns,
+relationships), never patient data or PHI. This applies to all cloud/external
+providers.** LocalPHI mode (Phase 2) will enable local LLMs to access patient
+data via MCP tools with strict guardrails.
 
 **Primary Goal**: Rapid MVP prototype (2-3 sprints) that validates the
 chat→SQL→results flow with **standards-based multi-agent architecture** (A2A
@@ -34,8 +36,8 @@ Based on spec clarification session, the following decisions were made:
 
 1. **FR-009 Row Estimation**: Deferred entirely to M2 (not M0/M1) - implement
    only when Java backend has read-only DB access for cleaner UX
-2. **NFR-001 Default Models**: Llama 3.1 8B as default Orchestrator (fallback:
-   Gemma 2 9B); CodeLlama 13B for SQLGen in Tier A
+2. **NFR-001 Default Models**: Primary: Gemma 2 9B; Fallback: Llama 3.1 8B;
+   CodeLlama 13B for SQLGen in Tier A
 3. **NFR-001 Tier B Evaluation**: Deferred to post-MVP - M0.2 sign-off does not
    require 40GB+ GPU hardware
 4. **FR-018 PHI Detection**: Uses regex/keyword matching with configurable
@@ -45,6 +47,26 @@ Based on spec clarification session, the following decisions were made:
    research, with full metadata for professional validation tooling
 6. **FR-014 UI Examples**: Polished examples deferred to post-MVP; MVP may use
    placeholder examples
+
+### Key Clarifications (2026-01-29 Session)
+
+Based on medgemma methodology alignment plan and spec refinement:
+
+1. **LocalPHI Mode**: MedGemma-style workflow (manifest→plan→fetch→filter→
+   synthesize) deferred to Phase 2. MVP focuses on CloudSafe (schema-only)
+   workflow only. LocalPHI requires full security hardening before patient data
+   use.
+2. **Security Implementation Scope**: M5 architectural components (interfaces,
+   extension points, configuration flags) are in place for MVP, but
+   implementation is rudimentary/placeholder. Full hardened implementation split
+   to Phase 2 Security Hardening milestone (required before patient data use).
+3. **Model Selection Update**: Gemma 2 9B elevated to primary Orchestrator
+   choice (Llama 3.1 8B as fallback) based on MedGemma analysis showing superior
+   RAG/reading comprehension performance for healthcare navigation tasks.
+4. **Future Architecture Direction**: CDC→flat JSON data layer added to future
+   phases for analytics/AI scale. Addresses FHIR verbosity tax (8x token cost)
+   and provides denormalized read model for LLM consumption. See
+   `plans/medgemma-methodology-alignment.md` for architecture details.
 
 ## Technical Context
 
@@ -74,10 +96,12 @@ Based on spec clarification session, the following decisions were made:
 
 **Local Model Selection Protocol** (per research.md Section 13):
 
-- **Tier A (RTX 4070 Super, 12GB) - MVP Scope**: Orchestrator = **Default: Llama
-  3.1 8B** (fallback: Gemma 2 9B) (Q4_K_M); SQLGen = CodeLlama 13B (Q4_K_M)
-- **Tier B (Server GPU, 40GB+) - Post-MVP**: Same Orchestrator models; SQLGen =
-  CodeLlama 34B or Llama 3.1 70B (deferred until appropriate hardware available)
+- **Tier A (RTX 4070 Super, 12GB) - MVP Scope**: Orchestrator = **Primary: Gemma
+  2 9B** (fallback: Llama 3.1 8B) (Q4_K_M) - superior RAG/reading comprehension
+  per MedGemma analysis; SQLGen = CodeLlama 13B (Q4_K_M)
+- **Tier B (Server GPU, 40GB+) - Post-MVP**: Same Orchestrator models (Gemma 2
+  9B primary); SQLGen = CodeLlama 34B or Llama 3.1 70B (deferred until
+  appropriate hardware available)
 - **Evaluation**: Use balanced scorecard (research.md Section 15) with 26+
   comprehensive, toolkit-compatible golden queries (ragas, promptfoo, langfuse
   format)
@@ -154,7 +178,7 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 | [P] M2 | m2-backend-core         | Java OpenELIS integration, SQL execution        | US1 (partial), US2, US3 | Unit tests + ORM + guardrails (Sec 17)              | M0.2             |
 | [P] M3 | m3-frontend-chat        | Carbon chat sidebar, i18n, basic UI             | US1 (partial)           | Jest tests pass, renders correctly                  | -                |
 | M4     | m4-integration          | Wire agents + backend + frontend, basic E2E     | US1, US4                | Integration + basic E2E test pass                   | M0.2, M1, M2, M3 |
-| M5     | m5-security             | Security features (PHI detection, RBAC, tokens) | US2                     | Security unit + integration tests                   | M4               |
+| M5     | m5-security-framework   | Security Framework (architecture, placeholders) | US2                     | Framework components in place, basic tests pass     | M4               |
 
 **Note**: M0 represents the foundational POC milestones (M0.0 → M0.1 → M0.2)
 that validate the A2A + MCP architecture before full feature implementation.
@@ -270,7 +294,7 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 
 ---
 
-#### M0.1: Provider Switching (Estimate: 1 day)
+#### M0.1: Provider Switching (Estimate: 0.5 days)
 
 **Goal**: Prove same agent works with local AND cloud providers
 
@@ -301,10 +325,10 @@ projects/catalyst/catalyst-agents/
 
 ```bash
 # Test with LM Studio (local)
-LLM_PROVIDER=lmstudio pytest tests/test_provider_switching.py
+CATALYST_LLM_PROVIDER=lmstudio pytest tests/test_provider_switching.py
 
 # Test with Gemini (cloud)
-LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
+CATALYST_LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
 ```
 
 ---
@@ -324,8 +348,8 @@ LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
 - NO PHI detection (defer to M5)
 - NO confirmation tokens (defer to M5)
 - **Model selection validation**: Run 26+ comprehensive, toolkit-compatible
-  golden queries against candidate Tier A models (Default: Llama 3.1 8B for
-  Orchestrator, CodeLlama 13B for SQLGen; evaluate fallback: Gemma 2 9B)
+  golden queries against candidate Tier A models (Primary: Gemma 2 9B for
+  Orchestrator, CodeLlama 13B for SQLGen; fallback: Llama 3.1 8B)
 - **Trajectory validation tests**: Verify Router → SchemaAgent → SQLGenAgent
   delegation order per research.md Section 14.2
 - Document model comparison results using balanced scorecard template
@@ -508,30 +532,28 @@ frontend/src/languages/fr.json             # Add catalyst.* keys
 
 ---
 
-#### M5: Security Features (Estimate: 2-3 days)
+#### M5: Security Framework (Estimate: 2-3 days)
 
-**Goal**: Implement and thoroughly test security features with independent unit
-tests before integration
+**Goal**: Establish security architecture with placeholder implementations. Full
+hardening deferred to Phase 2 (before patient data use).
 
 **Scope**:
 
-- **Role-based endpoint access control (FR-021)**: Restrict
-  `/rest/catalyst/query` to users with `Global Administrator` or `Reports` roles
-  using `UserRoleService.userInRole()`. Return 403 Forbidden for unauthorized
-  users.
-- **PHI detection in RouterAgent (FR-018)**: Detect likely PHI/identifiers in
-  user queries using **regex/keyword matching** for common patterns (MRN
-  formats, DOB patterns, "patient name", accession numbers). **PHI detection is
-  configurable** - deployments using only local LLM providers may disable this
-  safeguard via configuration.
-- **Provider routing for PHI-flagged queries**: Route to local provider or block
-  if PHI detected and cloud provider configured (when PHI detection enabled)
-- **Confirmation token generation and validation (FR-016)**: Generate and
-  validate confirmation tokens for SQL execution
-- **Add security fields to CatalystQuery entity**: `phi_gated`,
-  `confirmation_token` fields
-- **Security Testing**: Independent unit tests for PHI detection logic, RBAC
-  enforcement, and token validation before E2E integration tests
+- **Security Architecture Components** (interfaces, extension points,
+  configuration flags):
+  - RBAC interface for endpoint access control (FR-021)
+  - PHI detection interface in RouterAgent (FR-018) with basic regex patterns
+  - Provider routing hook for PHI-flagged queries
+  - Confirmation token generation/validation interface (FR-016)
+  - Security fields in CatalystQuery entity: `phi_gated`, `confirmation_token`
+- **Placeholder Implementation** (MVP):
+  - RBAC check method exists but may be permissive
+  - PHI detection patterns are basic (not comprehensive)
+  - Token validation is minimal
+  - **CRITICAL**: Full hardened implementation required in Phase 2 Security
+    Hardening milestone before ANY patient data use
+- **Framework Testing**: Unit tests verify interfaces work, not security
+  strength
 
 **Files to Create/Modify (M5)**:
 
@@ -600,7 +622,7 @@ graph TD
     M1 --> M4["M4: Integration<br/>2-3 days"]
     M2 --> M4
     M3 --> M4
-    M4 --> M5["M5: Security Features<br/>2-3 days"]
+    M4 --> M5["M5: Security Framework<br/>2-3 days"]
 
     subgraph parallel ["Parallel Development"]
         M1
@@ -621,17 +643,30 @@ graph TD
 - **M2 PR**: `feat/OGC-070-catalyst-assistant-m2-backend-core` → `develop`
 - **M3 PR**: `feat/OGC-070-catalyst-assistant-m3-frontend-chat` → `develop`
 - **M4 PR**: `feat/OGC-070-catalyst-assistant-m4-integration` → `develop`
-- **M5 PR**: `feat/OGC-070-catalyst-assistant-m5-security` → `develop`
+- **M5 PR**: `feat/OGC-070-catalyst-assistant-m5-security-framework` → `develop`
 
 **Estimated Total**: ~16-19 days (3-4 sprints) for working MVP with A2A + MCP
 architecture (includes security milestone)
 
 ### Future Phases (Post-MVP)
 
-| Phase   | Scope                                               | Prerequisite  |
-| ------- | --------------------------------------------------- | ------------- |
-| Phase 2 | Row-level RBAC integration, per-user data filtering | MVP validated |
-| Phase 3 | Report storage, scheduling, dashboards              | MVP validated |
+| Phase   | Scope                                                                      | Prerequisite  |
+| ------- | -------------------------------------------------------------------------- | ------------- |
+| Phase 2 | Security Hardening, LocalPHI Mode, Row-level RBAC, per-user data filtering | MVP validated |
+| Phase 3 | Report storage, scheduling, dashboards                                     | Phase 2       |
+
+**Phase 2 Key Milestones**:
+
+- **Security Hardening** (MANDATORY before patient data): Full implementation of
+  PHI detection, RBAC enforcement, confirmation tokens with comprehensive
+  testing and security audit. Replaces M5 placeholder components with hardened
+  implementations.
+- **LocalPHI Mode** (MedGemma-style): Enables local LLMs to access patient/row
+  data via MCP tools using manifest→plan→fetch→filter→synthesize workflow. Cloud
+  providers hard-blocked. Requires Security Hardening completion. See
+  `plans/medgemma-methodology-alignment.md` for architecture.
+- **Row-level RBAC Integration**: Per-user/facility data filtering integrated
+  with OpenELIS permission system.
 
 **Independent Future Work** (can proceed in parallel with Phase 2/3):
 
@@ -657,6 +692,13 @@ architecture (includes security milestone)
   traversal).
 - **Query Refinement & Suggestions**: Natural language query refinement
   suggestions, multi-step analytical query support, query history learning.
+- **CDC → Flat JSON Data Layer**: For analytics/AI at scale, implement Change
+  Data Capture pipeline to denormalized flat/semantic JSON read model. Addresses
+  FHIR verbosity tax (8x token cost) and provides optimized data structure for
+  LLM consumption. Architecture: PostgreSQL → CDC (Debezium/Hibernate Listeners)
+  → Flattener → Elasticsearch/VectorDB → AI/Analytics. See
+  `plans/medgemma-methodology-alignment.md` and
+  `artifacts/cdc-flat-architecture.md` for details.
 
 **Note**: Basic A2A multi-agent team (Router + Schema + SQLGen) is now in MVP
 scope. Advanced orchestration patterns, dynamic agent discovery, and external
@@ -1224,6 +1266,33 @@ determines whether to route to the multi-agent team (RouterAgent) or directly to
 a single CatalystAgent. When in single-agent mode, the CatalystAgent performs
 all tasks internally without delegating to SchemaAgent or SQLGenAgent.
 
+## Terminology
+
+Key terms used throughout this plan:
+
+- **CloudSafe mode**: The default operating mode for MVP where LLM context
+  contains **only schema metadata** (table names, column names, data types,
+  relationships) and user query text. No patient data, test results, or PHI is
+  sent to the LLM. Cloud providers (e.g., Gemini) are permitted in this mode
+  because no sensitive data is exposed.
+
+- **LocalPHI mode**: A future operating mode (Phase 2) based on MedGemma EHR
+  Navigator patterns where local LLMs may access **patient/row data via MCP
+  tools** using a manifest→plan→fetch→filter→synthesize workflow. Cloud
+  providers are **hard-blocked**; only local/on-premises LLMs (e.g., LM Studio,
+  Ollama) are permitted. Requires full security hardening (Phase 2 Security
+  Hardening milestone) before use. See `plans/medgemma-methodology-alignment.md`
+  for architecture.
+
+- **MCP (Model Context Protocol)**: Standardized protocol for LLM tool access.
+  Used by Catalyst agents (SchemaAgent, SQLGenAgent) to retrieve schema metadata
+  and validate SQL via the standalone Python MCP server. Enables clean
+  separation between AI logic and data access.
+
+- **A2A (Agent2Agent)**: Protocol for multi-agent coordination. Catalyst uses
+  A2A for Router→Schema→SQLGen agent delegation. Enables agent discovery via
+  Agent Cards, task delegation, and message lifecycle management.
+
 ## References
 
 - **Spec**: [specs/OGC-070-catalyst-assistant/spec.md](./spec.md)
@@ -1234,6 +1303,10 @@ all tasks internally without delegating to SchemaAgent or SQLGenAgent.
   [.specify/memory/constitution.md](../../.specify/memory/constitution.md)
 - **Testing Roadmap**:
   [.specify/guides/testing-roadmap.md](../../.specify/guides/testing-roadmap.md)
+- **Methodology Alignment Plan**:
+  [plans/medgemma-methodology-alignment.md](./plans/medgemma-methodology-alignment.md) -
+  Architecture research for LocalPHI mode, CDC/flat data layer, and MedGemma
+  patterns
 - **Jira Issue**: [OGC-70](https://uwdigi.atlassian.net/browse/OGC-70)
 
 ### External References

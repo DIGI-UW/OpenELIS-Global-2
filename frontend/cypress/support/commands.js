@@ -7,22 +7,51 @@
 // commands please read more here:
 // https://on.cypress.io/custom-commands
 // ***********************************************
-//
-//
-// -- This is a parent command --
-// Cypress.Commands.add('login', (email, password) => { ... })
-//
-//
-// -- This is a child command --
-// Cypress.Commands.add('drag', { prevSubject: 'element'}, (subject, options) => { ... })
-//
-//
-// -- This is a dual command --
-// Cypress.Commands.add('dismiss', { prevSubject: 'optional'}, (subject, options) => { ... })
-//
-//
-// -- This will overwrite an existing command --
-// Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
+
+/**
+ * Login command with session caching for faster tests
+ * Uses cy.session() to cache login state across tests
+ * Usage: cy.login("admin", "password")
+ */
+Cypress.Commands.add("login", (username, password) => {
+  cy.session(
+    [username, password],
+    () => {
+      cy.visit("/login");
+      cy.get("#loginName", { timeout: 10000 })
+        .should("be.visible")
+        .type(username);
+      cy.get("#password").should("be.visible").type(password);
+      cy.get("[data-cy='loginButton']").should("be.visible").click();
+      // Wait for successful login - should redirect away from login page
+      cy.url({ timeout: 15000 }).should("not.include", "/login");
+    },
+    {
+      validate: () => {
+        // Validate session is still active
+        cy.request({
+          url: "/api/OpenELIS-Global/session",
+          failOnStatusCode: false,
+        }).then((response) => {
+          expect(response.status).to.eq(200);
+          expect(response.body.authenticated).to.be.true;
+        });
+      },
+    },
+  );
+});
+
+/**
+ * Logout command
+ * Usage: cy.logout()
+ */
+Cypress.Commands.add("logout", () => {
+  cy.get("#user-Icon", { timeout: 10000 })
+    .should("exist")
+    .click({ force: true });
+  cy.get("[data-cy='logOut']").should("exist").click({ force: true });
+  cy.get("#loginName", { timeout: 30000 }).should("be.visible");
+});
 
 Cypress.Commands.add("getElement", (selector) => {
   cy.wait(100)

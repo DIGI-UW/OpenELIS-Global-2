@@ -37,14 +37,16 @@ area.
 # 1. Copy env template
 cp projects/catalyst/env.recommended projects/catalyst/.env
 
-# 2. Install Python deps (per component)
-cd projects/catalyst/catalyst-gateway && uv sync && cd ../..
-cd projects/catalyst/catalyst-agents && uv sync && cd ../..
-cd projects/catalyst/catalyst-mcp && uv sync && cd ../..
+# 2. Install Python deps (per component, --extra dev includes honcho/ruff/mypy)
+cd projects/catalyst/catalyst-gateway && uv sync --extra dev && cd ..
+cd catalyst-agents && uv sync --extra dev && cd ..
+cd catalyst-mcp && uv sync --extra dev && cd ..
 
-# 3. Start services
-cd projects/catalyst
-cd catalyst-gateway && uv run honcho -f ../Procfile.dev start
+# 3. Create logs directory
+mkdir -p logs
+
+# 4. Start all services (run from projects/catalyst/)
+./catalyst-agents/.venv/bin/honcho -f Procfile.dev start
 ```
 
 ### Smoke tests (M0.0)

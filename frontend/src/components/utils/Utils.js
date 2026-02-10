@@ -278,6 +278,28 @@ export const putToOpenElisServer = (endPoint, payLoad, callback) => {
     });
 };
 
+export const putToOpenElisServerFullResponse = (
+  endPoint,
+  payLoad,
+  callback,
+  extraParams,
+) => {
+  fetch(config.serverBaseUrl + endPoint, {
+    //includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+    },
+    body: payLoad,
+  })
+    .then((response) => callback(response, extraParams))
+    .catch((error) => {
+      console.error(error);
+    });
+};
+
 export const deleteFromOpenElisServer = (endPoint, callback) => {
   fetch(config.serverBaseUrl + endPoint, {
     // includes the browser sessionId in the Header for Authentication on the backend server
