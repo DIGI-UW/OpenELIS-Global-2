@@ -3260,7 +3260,8 @@ const StorageDashboard = () => {
                         {(locationFilter ||
                           filterRoom ||
                           filterDevice ||
-                          filterStatus) && (
+                          filterStatus ||
+                          searchTerm.trim()) && (
                           <Column lg={2} md={2} sm={4}>
                             <Button
                               kind="secondary"
@@ -3271,6 +3272,7 @@ const StorageDashboard = () => {
                                 setFilterRoom("");
                                 setFilterDevice("");
                                 setFilterStatus("");
+                                setSearchTerm("");
                               }}
                             >
                               <FormattedMessage
@@ -3453,6 +3455,7 @@ const StorageDashboard = () => {
                           <Column lg={4} md={4} sm={4}>
                             <Button
                               kind="secondary"
+                              data-testid="clear-filters-button"
                               onClick={() => {
                                 setFilterStatus("");
                                 setSearchTerm("");
@@ -3707,6 +3710,7 @@ const StorageDashboard = () => {
                           <Column lg={4} md={4} sm={4}>
                             <Button
                               kind="secondary"
+                              data-testid="clear-filters-button"
                               onClick={() => {
                                 setFilterRoom("");
                                 setFilterStatus("");
@@ -4032,10 +4036,11 @@ const StorageDashboard = () => {
                         {(filterRoom ||
                           filterDevice ||
                           filterStatus ||
-                          (searchTerm && searchTerm.trim())) && (
+                          searchTerm.trim()) && (
                           <Column lg={4} md={4} sm={4}>
                             <Button
                               kind="secondary"
+                              data-testid="clear-filters-button"
                               onClick={() => {
                                 setFilterRoom("");
                                 setFilterDevice("");
@@ -4362,10 +4367,11 @@ const StorageDashboard = () => {
                         {(filterRoom ||
                           filterDevice ||
                           filterStatus ||
-                          (searchTerm && searchTerm.trim())) && (
+                          searchTerm.trim()) && (
                           <Column lg={4} md={4} sm={4}>
                             <Button
                               kind="secondary"
+                              data-testid="clear-filters-button"
                               onClick={() => {
                                 setFilterRoom("");
                                 setFilterDevice("");
