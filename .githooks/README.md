@@ -7,14 +7,16 @@ prevent CI failures (format + Catalyst Python lint).
 
 ### Setup (One-Time)
 
-Run once per clone so commits use these hooks:
+Run once per clone (or worktree) so commits use these hooks:
 
 ```bash
 ./.githooks/setup.sh
 ```
 
-Or manually: `git config core.hooksPath .githooks` (omit `--global` for
-repo-only).
+Or manually: `git config core.hooksPath .githooks`
+
+**Cursor IDE:** Worktrees created via Cursor automatically run this setup via
+`.cursor/worktrees.json`.
 
 ### What It Does
 
