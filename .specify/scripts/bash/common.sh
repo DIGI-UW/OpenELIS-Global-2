@@ -88,10 +88,10 @@ check_feature_branch() {
     #
     # Pattern matches:
     # 1. NNN- at start or after / (legacy)
-    # 2. OGC-NNN- or similar Jira prefix after / (new)
+    # 2. JIRA-NNN- or similar Jira prefix after / (new) - allow lowercase/uppercase prefixes
     # 3. spec/, feat/, fix/, hotfix/ prefixes with issue ID
     if [[ "$branch" =~ (^|/)[0-9]{3}- ]] || \
-       [[ "$branch" =~ ^(spec|feat|fix|hotfix)/[A-Z]+-[0-9]+- ]] || \
+       [[ "$branch" =~ ^(spec|feat|fix|hotfix)/[A-Za-z]+-[0-9]+- ]] || \
        [[ "$branch" =~ ^(spec|feat|fix|hotfix)/[0-9]{3}- ]]; then
         return 0
     fi
@@ -106,7 +106,8 @@ check_feature_branch() {
     echo "  Principle IX format (Jira: OGC-###, GitHub: ###):" >&2
     echo "    - spec/OGC-009-sidenav or spec/009-sidenav" >&2
     echo "    - feat/OGC-009-sidenav" >&2
-    echo "    - feat/OGC-009-sidenav/m1-core (milestone)" >&2
+    echo "    - feat/OGC-009-sidenav-m1-core (milestone, dash style)" >&2
+    echo "    - feat/OGC-009-sidenav/m1-core (milestone, path style)" >&2
     echo "    - hotfix/OGC-123-fix-login" >&2
     echo "    - fix/OGC-456-null-check" >&2
     return 1
@@ -125,27 +126,44 @@ find_feature_dir_by_prefix() {
     local branch_name="$2"
     local specs_dir="$repo_root/specs"
     local prefix=""
+    local feature_suffix=""
 
-    # Extract numeric prefix from branch
+    # Extract numeric prefix AND feature suffix from branch
     # Priority order for pattern matching:
     #
-    # 1. Principle IX Jira format: spec/OGC-009-sidenav, feat/OGC-009-sidenav/m1-core
-    #    Extract "009" from "OGC-009"
-    if [[ "$branch_name" =~ ^(spec|feat|fix|hotfix)/[A-Z]+-([0-9]+)- ]]; then
+    # 1. Mixed Jira + spec-number format: feat/ogc-232-009-sidenav-...
+    #    Prefer the 3-digit spec number (009) so we resolve to specs/009-*
+    if [[ "$branch_name" =~ ^(spec|feat|fix|hotfix)/[A-Za-z]+-[0-9]+-([0-9]{3})-([^/]+) ]]; then
         prefix="${BASH_REMATCH[2]}"
+        feature_suffix="${BASH_REMATCH[3]}"
+    # 2. Principle IX Jira format: spec/OGC-009-sidenav, feat/OGC-009-sidenav/m1-core
+    #    Extract "009" from "OGC-009" and "sidenav" as suffix
+    elif [[ "$branch_name" =~ ^(spec|feat|fix|hotfix)/[A-Za-z]+-([0-9]+)-([^/]+) ]]; then
+        prefix="${BASH_REMATCH[2]}"
+        feature_suffix="${BASH_REMATCH[3]}"
         # Pad to 3 digits if needed (009, not 9)
         prefix=$(printf "%03d" "$((10#$prefix))")
     # 2. Principle IX GitHub format: spec/009-sidenav, feat/009-sidenav/m1-core
-    elif [[ "$branch_name" =~ ^(spec|feat|fix|hotfix)/([0-9]{3})- ]]; then
+    elif [[ "$branch_name" =~ ^(spec|feat|fix|hotfix)/([0-9]{3})-([^/]+) ]]; then
         prefix="${BASH_REMATCH[2]}"
+        feature_suffix="${BASH_REMATCH[3]}"
     # 3. Legacy format: 004-whatever, fix/004-whatever
-    elif [[ "$branch_name" =~ (^|/)([0-9]{3})- ]]; then
+    elif [[ "$branch_name" =~ (^|/)([0-9]{3})-([^/]+) ]]; then
         prefix="${BASH_REMATCH[2]}"
+        feature_suffix="${BASH_REMATCH[3]}"
     fi
 
     # If no prefix found, fall back to exact match
     if [[ -z "$prefix" ]]; then
         echo "$specs_dir/$branch_name"
+        return
+    fi
+
+    # First, try exact match with the full feature name from branch
+    # e.g., branch "spec/150-madagascar-analyzer-integration" → look for "150-madagascar-analyzer-integration"
+    local exact_match="$specs_dir/$prefix-$feature_suffix"
+    if [[ -d "$exact_match" ]]; then
+        echo "$exact_match"
         return
     fi
 
@@ -168,10 +186,29 @@ find_feature_dir_by_prefix() {
         # Exactly one match - perfect!
         echo "$specs_dir/${matches[0]}"
     else
-        # Multiple matches - this shouldn't happen with proper naming convention
-        echo "ERROR: Multiple spec directories found with prefix '$prefix': ${matches[*]}" >&2
-        echo "Please ensure only one spec directory exists per numeric prefix." >&2
-        echo "$specs_dir/$branch_name"  # Return something to avoid breaking the script
+        # Multiple matches - try to find the best match based on feature suffix
+        local best_match=""
+        for match in "${matches[@]}"; do
+            if [[ "$match" == "$prefix-$feature_suffix"* ]]; then
+                best_match="$match"
+                break
+            fi
+        done
+
+        if [[ -n "$best_match" ]]; then
+            echo "$specs_dir/$best_match"
+        else
+            # No good match - warn but return first numeric match (prefer non-OGC prefix)
+            echo "WARNING: Multiple spec directories found with prefix '$prefix': ${matches[*]}" >&2
+            echo "Using first match. Consider renaming directories to avoid conflicts." >&2
+            for match in "${matches[@]}"; do
+                if [[ "$match" =~ ^$prefix- ]]; then
+                    echo "$specs_dir/$match"
+                    return
+                fi
+            done
+            echo "$specs_dir/${matches[0]}"
+        fi
     fi
 }
 

@@ -2,9 +2,8 @@ name: OpenELIS Frontend QA framework workflow
 
 on:
   pull_request:
-     branches: [develop]
   workflow_dispatch:
-  workflow_call: 
+  workflow_call:
 
 env:
   DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-frontend
@@ -39,36 +38,26 @@ jobs:
           file: ./frontend/Dockerfile.prod
           push: false
 
-  build-and-run-qa-tests:
+  static-checks:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v2
-        with:
-          repository: ${{github.repository}}
-          submodules: recursive
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
         working-directory: frontend
-
-      - name: Install React scripts
-        run: npm install react-scripts@5.0.1 -g
-        working-directory: frontend
-
-      - name: Install Google Chrome
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
 
       - name: Check Format
         run: npx prettier ./ --check
-        working-directory: frontend  
+        working-directory: frontend
 
       - name: Run Frontend Unit Tests (Jest)
         run: npm test -- --watchAll=false --coverage=false
@@ -76,19 +65,155 @@ jobs:
         env:
           CI: true
 
-      - name: Build OpenELIS Images and Run containers
-        run: docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
+  e2e-cypress:
+    needs: static-checks
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: core
+            specs: >-
+              cypress/e2e/login.cy.js,
+              cypress/e2e/home.cy.js,
+              cypress/e2e/AdminE2E/organizationManagement.cy.js,
+              cypress/e2e/AdminE2E/providerManagement.cy.js,
+              cypress/e2e/patientEntry.cy.js,
+              cypress/e2e/orderEntity.cy.js,
+              cypress/e2e/modifyOrder.cy.js,
+              cypress/e2e/batchOrderEntry.cy.js,
+              cypress/e2e/workplan.cy.js,
+              cypress/e2e/result.cy.js,
+              cypress/e2e/validation.cy.js,
+              cypress/e2e/nonConform.cy.js,
+              cypress/e2e/dashboard.cy.js,
+              cypress/e2e/report.cy.js,
+              cypress/e2e/AdminE2E/barcode.cy.js
+          - shard: storage
+            specs: >-
+              cypress/e2e/storageAssignment.cy.js,
+              cypress/e2e/storageBoxCRUD.cy.js,
+              cypress/e2e/storageBoxCRUD-integration.cy.js,
+              cypress/e2e/storageDashboard.cy.js,
+              cypress/e2e/storageDashboardMetrics.cy.js,
+              cypress/e2e/storageDisposal.cy.js,
+              cypress/e2e/storageFilters.cy.js,
+              cypress/e2e/storageLocationCRUD.cy.js,
+              cypress/e2e/storageLocationCRUD-integration.cy.js,
+              cypress/e2e/storageLocationCRUD-smoke.cy.js,
+              cypress/e2e/storageLocationExpandableRows.cy.js,
+              cypress/e2e/storageSamplesTable.cy.js,
+              cypress/e2e/storageSearch.cy.js,
+              cypress/e2e/storageViewStorage.cy.js
+          # Catch-all: specs computed dynamically (see "Compute catch-all specs" step)
+          - shard: independent
+            specs: ""
+    steps:
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v4
+        with:
+          repository: ${{github.repository}}
+          submodules: recursive
 
-      - name: Run Frontend QA Workflow (Headless Chrome)
-        run: npx cypress run --browser chrome --headless
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
         working-directory: frontend
 
-      # Upload Cypress screenshots on failure for debugging
-      - name: Upload Cypress screenshots on failure
-        if: failure()
+      - name: Install Google Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Prepare .env from template
+        run: cp .env.example .env
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          df -h
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build OpenELIS images (cached)
+        uses: docker/bake-action@v5
+        with:
+          files: build.docker-compose.yml
+          load: true
+          set: |
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+
+      - name: Start containers
+        run: docker compose -f build.docker-compose.yml up -d --wait --wait-timeout 600
+
+      - name: Load test fixtures into database
+        run: |
+          docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims --set=ON_ERROR_STOP=on < src/test/resources/e2e-foundational-data.sql
+
+      - name: Compute catch-all specs for independent shard
+        if: matrix.shard == 'independent'
+        id: catchall
+        working-directory: frontend
+        run: |
+          # Extract specs assigned to other shards from the workflow YAML.
+          # Uses grep/sed instead of PyYAML to avoid non-stdlib dependency.
+          ASSIGNED=$(grep -E '^\s+cypress/e2e/' ../.github/workflows/frontend-qa.yml \
+            | sed 's/^[[:space:]]*//' | sed 's/,$//' | sort -u)
+
+          # Find all spec files on disk
+          ALL=$(find cypress/e2e -name '*.cy.js' -type f | sort)
+
+          # Compute remaining = ALL - ASSIGNED
+          REMAINING=""
+          while IFS= read -r spec; do
+            echo "$ASSIGNED" | grep -qxF "$spec" || REMAINING="${REMAINING:+$REMAINING,}$spec"
+          done <<< "$ALL"
+
+          echo "specs=$REMAINING" >> "$GITHUB_OUTPUT"
+
+          # Log for debugging
+          TOTAL=$(echo "$ALL" | wc -l)
+          ASSIGNED_COUNT=$(echo "$ASSIGNED" | wc -l)
+          REMAINING_COUNT=$(echo "$REMAINING" | tr ',' '\n' | wc -l)
+          echo "Catch-all: $REMAINING_COUNT specs (of $TOTAL total, $ASSIGNED_COUNT assigned to other shards)"
+          echo "$REMAINING" | tr ',' '\n' | sed 's/^/  /'
+
+      - name: Run Cypress E2E Tests — ${{ matrix.shard }}
+        run: |
+          if [ "${{ matrix.shard }}" = "independent" ]; then
+            SPECS="${{ steps.catchall.outputs.specs }}"
+          else
+            SPECS="${{ matrix.specs }}"
+          fi
+          echo "Running specs: $SPECS"
+          npx cypress run --browser chrome --headless --spec "$SPECS"
+        working-directory: frontend
+        env:
+          E2E_FAIL_FAST: "true"
+          CYPRESS_FAIL_FAST_ENABLED: "true"
+          CYPRESS_BASE_URL: https://localhost
+          LC_ALL: en_US.UTF-8
+          LANG: en_US.UTF-8
+          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ secrets.TEST_PASS || 'adminADMIN!' }}
+
+      - name: Upload Cypress screenshots (${{ matrix.shard }})
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cypress-screenshots
+          name: cypress-screenshots-${{ matrix.shard }}
           path: frontend/cypress/screenshots/**/*.png
           if-no-files-found: ignore
 
@@ -97,8 +222,17 @@ jobs:
       #   if: failure()
       #   uses: actions/upload-artifact@v4
       #   with:
-      #     name: cypress-videos
+      #     name: cypress-videos-${{ matrix.shard }}
       #     path: frontend/cypress/videos/**/*.mp4
+
+      - name: Dump backend logs (${{ matrix.shard }})
+        if: always()
+        run: |
+          echo "=== OpenELIS Backend Logs (last 500 lines) ==="
+          docker compose -f build.docker-compose.yml logs --tail=500 oe.openelis.org 2>&1 || true
+          echo ""
+          echo "=== Database Logs (last 200 lines) ==="
+          docker compose -f build.docker-compose.yml logs --tail=200 db.openelis.org 2>&1 || true
 
       - name: Dump docker logs on failure
         if: failure()
@@ -106,4 +240,22 @@ jobs:
         with:
         # Only show last 100 lines of each
           tail: "100"
-          
+
+  # Fan-in job: name must match the branch-protection required check.
+  build-and-run-qa-tests:
+    if: always()
+    needs: [static-checks, build-prod-frontend-image, e2e-cypress]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check sub-job results
+        run: |
+          if [[ "${{ needs.static-checks.result }}" != "success" ]] ||
+             [[ "${{ needs.build-prod-frontend-image.result }}" != "success" ]] ||
+             [[ "${{ needs.e2e-cypress.result }}" != "success" ]]; then
+            echo "One or more sub-jobs failed:"
+            echo "  static-checks: ${{ needs.static-checks.result }}"
+            echo "  build-prod-frontend-image: ${{ needs.build-prod-frontend-image.result }}"
+            echo "  e2e-cypress: ${{ needs.e2e-cypress.result }}"
+            exit 1
+          fi
+          echo "All sub-jobs passed."
