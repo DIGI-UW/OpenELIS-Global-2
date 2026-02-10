@@ -38,9 +38,6 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
 WORKDIR /build
 
 COPY ./pom.xml /build/pom.xml
-RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn dependency:go-offline 
-
 ARG SKIP_SPOTLESS="false"
 COPY ./src /build/src
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
