@@ -25,6 +25,7 @@ SH_FILES=$(echo "$STAGED_FILES" | grep '\.sh$' || true)
 XML_FILES=$(echo "$STAGED_FILES" | grep '\.xml$' || true)
 GITIGNORE_FILES=$(echo "$STAGED_FILES" | grep '^\.gitignore$' || true)
 POM_FILES=$(echo "$STAGED_FILES" | grep 'pom\.xml$' || true)
+
 if [ -n "$JAVA_FILES" ] || [ -n "$MD_FILES" ] || [ -n "$SH_FILES" ] || [ -n "$XML_FILES" ] || [ -n "$GITIGNORE_FILES" ] || [ -n "$POM_FILES" ]; then
     echo "  → Formatting Spotless-managed files (java/md/sh/xml/gitignore/pom)..."
     # Spotless applies to entire project, but we only re-stage modified files
