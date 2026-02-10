@@ -179,7 +179,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.INCLUDE, DispatcherType.ERROR)
                         .permitAll().anyRequest().permitAll())
-                // disable csrf as it is not needed for open pages
+                // SECURITY TODO: CSRF disabled for open pages. Session-authenticated
+                // REST APIs are vulnerable to cross-site request forgery. Enabling
+                // requires frontend CSRF token integration. Tracked in PR #2782.
                 .csrf(csrf -> csrf.disable())
                 .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
         return http.build();
