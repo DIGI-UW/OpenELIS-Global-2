@@ -100,6 +100,14 @@ public class SamplePatientUpdateData {
     private ProgramSample programSample;
     private QuestionnaireResponse programQuestionnaireResponse;
 
+    private boolean eqaSample;
+    private String eqaProgramId;
+    private String eqaProviderOrganizationId;
+    private String eqaProviderSampleId;
+    private String eqaParticipantId;
+    private String eqaDeadline;
+    private String eqaPriority;
+
     private boolean customNotificationLogic;
     private List<String> patientEmailNotificationTestIds;
     private List<String> patientSMSNotificationTestIds;
@@ -666,5 +674,61 @@ public class SamplePatientUpdateData {
 
     public void setProgramQuestionnaireResponse(QuestionnaireResponse programQuestionnaireResponse) {
         this.programQuestionnaireResponse = programQuestionnaireResponse;
+    }
+
+    public boolean isEqaSample() {
+        return eqaSample;
+    }
+
+    public void setEqaSample(boolean eqaSample) {
+        this.eqaSample = eqaSample;
+    }
+
+    public String getEqaProgramId() {
+        return eqaProgramId;
+    }
+
+    public void setEqaProgramId(String eqaProgramId) {
+        this.eqaProgramId = eqaProgramId;
+    }
+
+    public String getEqaProviderOrganizationId() {
+        return eqaProviderOrganizationId;
+    }
+
+    public void setEqaProviderOrganizationId(String eqaProviderOrganizationId) {
+        this.eqaProviderOrganizationId = eqaProviderOrganizationId;
+    }
+
+    public String getEqaProviderSampleId() {
+        return eqaProviderSampleId;
+    }
+
+    public void setEqaProviderSampleId(String eqaProviderSampleId) {
+        this.eqaProviderSampleId = eqaProviderSampleId;
+    }
+
+    public String getEqaParticipantId() {
+        return eqaParticipantId;
+    }
+
+    public void setEqaParticipantId(String eqaParticipantId) {
+        this.eqaParticipantId = eqaParticipantId;
+    }
+
+    public String getEqaDeadline() {
+        return eqaDeadline;
+    }
+
+    public void setEqaDeadline(String eqaDeadline) {
+        this.eqaDeadline = eqaDeadline;
+    }
+
+    public String getEqaPriority() {
+        return eqaPriority;
+    }
+
+    public void setEqaPriority(String eqaPriority) {
+        this.eqaPriority = eqaPriority;
     }
 }

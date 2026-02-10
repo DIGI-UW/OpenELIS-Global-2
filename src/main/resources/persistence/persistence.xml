@@ -69,6 +69,18 @@
         <!-- Generic Reporting Framework entities (reporting-framework) -->
         <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
 
+        <!-- External Quality Assurance entities (005-eqa-module) -->
+        <class>org.openelisglobal.eqa.valueholder.EQAProgram</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAProgramTest</class>
+        <class>org.openelisglobal.eqa.valueholder.EQADistribution</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAResult</class>
+        <class>org.openelisglobal.eqa.valueholder.SampleEQA</class>
+
+        <!-- Quality Control / Internal Control entities (005-eqa-module QC/IC) -->
+        <class>org.openelisglobal.qc.valueholder.QCRuleConfig</class>
+        <class>org.openelisglobal.qc.valueholder.QCFrequencyConfig</class>
+        <class>org.openelisglobal.qc.valueholder.QCSignature</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />

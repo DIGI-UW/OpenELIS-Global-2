@@ -24,5 +24,30 @@ public enum AlertType {
     /**
      * Other or custom alert types
      */
-    OTHER
+    OTHER,
+
+    /**
+     * EQA sample approaching or past deadline
+     */
+    EQA_DEADLINE,
+
+    /**
+     * Any sample nearing expiration date
+     */
+    SAMPLE_EXPIRATION,
+
+    /**
+     * STAT order approaching target time
+     */
+    STAT_UPCOMING,
+
+    /**
+     * STAT order exceeded target time
+     */
+    STAT_OVERDUE,
+
+    /**
+     * Critical alert unacknowledged for more than 4 hours
+     */
+    CRITICAL_UNACKNOWLEDGED
 }

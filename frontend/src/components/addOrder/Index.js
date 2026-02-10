@@ -10,6 +10,7 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
+import EQASampleEntry from "../eqa/EQASampleEntry";
 import { FormattedMessage, useIntl } from "react-intl";
 import OrderEntryValidationSchema from "../formModel/validationSchema/OrderEntryValidationSchema";
 import config from "../../config.json";
@@ -771,12 +772,18 @@ const Index = () => {
             )}
 
             {page === patientInfoPageNumber && (
-              <PatientInfo
-                orderFormValues={orderFormValues}
-                setOrderFormValues={setOrderFormValues}
-                error={elementError}
-                setPhoneValidation={setPhoneValidation}
-              />
+              <>
+                <EQASampleEntry
+                  orderFormValues={orderFormValues}
+                  setOrderFormValues={setOrderFormValues}
+                />
+                <PatientInfo
+                  orderFormValues={orderFormValues}
+                  setOrderFormValues={setOrderFormValues}
+                  error={elementError}
+                  setPhoneValidation={setPhoneValidation}
+                />
+              </>
             )}
             {page === programPageNumber && (
               <OrderEntryAdditionalQuestions

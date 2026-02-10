@@ -1,6 +1,7 @@
 package org.openelisglobal.sample.service;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +23,9 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
+import org.openelisglobal.eqa.service.SampleEQAService;
+import org.openelisglobal.eqa.valueholder.EQAPriority;
+import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
@@ -109,6 +113,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private ImmunohistochemistrySampleService immunohistochemistrySampleService;
     @Autowired
     private ProgramSampleService programSampleService;
+    @Autowired
+    private SampleEQAService sampleEQAService;
 
     @Transactional
     @Override
@@ -127,6 +133,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
         persistProviderData(updateData);
         persistSampleData(updateData);
+        if (updateData.isEqaSample()) {
+            persistSampleEQAData(updateData);
+        }
         persistRequesterData(updateData);
         if (useInitialSampleCondition) {
             persistInitialSampleConditions(updateData);
@@ -268,6 +277,28 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         if (updateData.getElectronicOrder() != null) {
             electronicOrderService.update(updateData.getElectronicOrder());
         }
+    }
+
+    private void persistSampleEQAData(SamplePatientUpdateData updateData) {
+        SampleEQA sampleEQA = new SampleEQA();
+        sampleEQA.setSampleId(Long.parseLong(updateData.getSample().getId()));
+        sampleEQA.setIsEqaSample(true);
+        sampleEQA.setSysUserId(updateData.getCurrentUserId());
+
+        if (!GenericValidator.isBlankOrNull(updateData.getEqaProviderOrganizationId())) {
+            sampleEQA.setEqaProviderOrganizationId(Long.parseLong(updateData.getEqaProviderOrganizationId()));
+        }
+        sampleEQA.setEqaProviderSampleId(updateData.getEqaProviderSampleId());
+        sampleEQA.setEqaParticipantId(updateData.getEqaParticipantId());
+
+        if (!GenericValidator.isBlankOrNull(updateData.getEqaDeadline())) {
+            sampleEQA.setEqaDeadline(Timestamp.valueOf(updateData.getEqaDeadline() + " 23:59:59"));
+        }
+        if (!GenericValidator.isBlankOrNull(updateData.getEqaPriority())) {
+            sampleEQA.setEqaPriority(EQAPriority.valueOf(updateData.getEqaPriority()));
+        }
+
+        sampleEQAService.insert(sampleEQA);
     }
 
     /*

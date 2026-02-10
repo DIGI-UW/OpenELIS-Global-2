@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- QC Rule Configuration -->
+  <changeSet id="eqa-005-01" author="eqa-module">
+    <createSequence sequenceName="qc_rule_config_seq" startValue="1" incrementBy="1"/>
+
+    <createTable tableName="qc_rule_config">
+      <column name="id" type="BIGINT" defaultValueSequenceNext="qc_rule_config_seq">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="rule_code" type="VARCHAR(50)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="test_type_id" type="BIGINT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+        <constraints nullable="false"/>
+      </column>
+      <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+
+    <addUniqueConstraint tableName="qc_rule_config"
+        columnNames="rule_code,test_type_id"
+        constraintName="uk_qc_rule_config_rule_test"/>
+
+    <createIndex tableName="qc_rule_config" indexName="idx_qc_rule_config_test_type">
+      <column name="test_type_id"/>
+    </createIndex>
+  </changeSet>
+
+  <!-- QC Frequency Configuration -->
+  <changeSet id="eqa-005-02" author="eqa-module">
+    <createSequence sequenceName="qc_frequency_config_seq" startValue="1" incrementBy="1"/>
+
+    <createTable tableName="qc_frequency_config">
+      <column name="id" type="BIGINT" defaultValueSequenceNext="qc_frequency_config_seq">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="instrument_id" type="BIGINT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="frequency_type" type="VARCHAR(30)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="frequency_value" type="INT"/>
+      <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+
+    <addUniqueConstraint tableName="qc_frequency_config"
+        columnNames="instrument_id"
+        constraintName="uk_qc_frequency_config_instrument"/>
+
+    <createIndex tableName="qc_frequency_config" indexName="idx_qc_frequency_config_instrument">
+      <column name="instrument_id"/>
+    </createIndex>
+  </changeSet>
+
+  <!-- QC Electronic Signatures -->
+  <changeSet id="eqa-005-03" author="eqa-module">
+    <createSequence sequenceName="qc_signature_seq" startValue="1" incrementBy="1"/>
+
+    <createTable tableName="qc_signature">
+      <column name="id" type="BIGINT" defaultValueSequenceNext="qc_signature_seq">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="report_id" type="BIGINT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="user_id" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="signed_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+        <constraints nullable="false"/>
+      </column>
+      <column name="ip_address" type="VARCHAR(45)"/>
+      <column name="comment" type="TEXT"/>
+      <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+
+    <createIndex tableName="qc_signature" indexName="idx_qc_signature_report">
+      <column name="report_id"/>
+    </createIndex>
+
+    <createIndex tableName="qc_signature" indexName="idx_qc_signature_user">
+      <column name="user_id"/>
+    </createIndex>
+  </changeSet>
+
+</databaseChangeLog>

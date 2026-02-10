@@ -48,4 +48,16 @@
 
   <!-- Site Branding / White Labeling (001-site-branding) -->
   <include relativeToChangelogFile="true" file="028-create-site-branding-table.xml"/>
+
+  <!-- External Quality Assurance (005-eqa-module) -->
+  <include relativeToChangelogFile="true" file="eqa-001-create-eqa-program-tables.xml"/>
+  <include relativeToChangelogFile="true" file="eqa-002-create-eqa-distribution-tables.xml"/>
+  <include relativeToChangelogFile="true" file="eqa-003-create-sample-eqa-table.xml"/>
+  <include relativeToChangelogFile="true" file="eqa-004-create-eqa-result-table.xml"/>
+
+  <!-- EQA Result audit trail columns (T116) -->
+  <include relativeToChangelogFile="true" file="eqa-006-add-result-audit-columns.xml"/>
+
+  <!-- Quality Control / Internal Control (005-eqa-module QC/IC) -->
+  <include relativeToChangelogFile="true" file="eqa-005-create-qc-tables.xml"/>
 </databaseChangeLog>

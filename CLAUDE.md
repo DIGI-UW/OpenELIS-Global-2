@@ -125,3 +125,13 @@ npm run cy:run
 ---
 
 **Last Updated:** 2025-11-09 **Constitution Version:** 1.7.0
+
+## Active Technologies
+
+- Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript) (005-eqa-module)
+- PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
+  (005-eqa-module)
+
+## Recent Changes
+
+- 005-eqa-module: Added Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript)

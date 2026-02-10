@@ -270,6 +270,15 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         updateData.setProviderEmailNotificationTestIds(form.getProviderEmailNotificationTestIds());
         updateData.setProviderSMSNotificationTestIds(form.getProviderSMSNotificationTestIds());
         updateData.setCustomNotificationLogic(form.getCustomNotificationLogic());
+        if (sampleOrder.getIsEQASample()) {
+            updateData.setEqaSample(true);
+            updateData.setEqaProgramId(sampleOrder.getEqaProgramId());
+            updateData.setEqaProviderOrganizationId(sampleOrder.getEqaProviderOrganizationId());
+            updateData.setEqaProviderSampleId(sampleOrder.getEqaProviderSampleId());
+            updateData.setEqaParticipantId(sampleOrder.getEqaParticipantId());
+            updateData.setEqaDeadline(sampleOrder.getEqaDeadline());
+            updateData.setEqaPriority(sampleOrder.getEqaPriority());
+        }
         if (Boolean.valueOf(ConfigurationProperties.getInstance().getPropertyValue(Property.CONTACT_TRACING))) {
             setContactTracingInfo(updateData, sampleOrder);
         }
