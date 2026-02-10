@@ -103,7 +103,10 @@ describe("Dictionary Menu", function () {
       cy.reload();
       cy.wait(2000);
       dictMenu.searchByDictionaryEntry(usersData[0].dictionaryEntry);
-      dictMenu.validateFirstDictionaryColumnContent("isActive", usersData[0].yes);
+      dictMenu.validateFirstDictionaryColumnContent(
+        "isActive",
+        usersData[0].yes,
+      );
     });
   });
 
