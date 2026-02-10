@@ -11,11 +11,11 @@ handoffs:
     agent: speckit.checklist
     prompt: Create a checklist for the following domain...
 scripts:
-  sh: scripts/bash/setup-plan.sh --json
-  ps: scripts/powershell/setup-plan.ps1 -Json
+  sh: .specify/scripts/bash/setup-plan.sh --json
+  ps: .specify/scripts/powershell/setup-plan.ps1 -Json
 agent_scripts:
-  sh: scripts/bash/update-agent-context.sh __AGENT__
-  ps: scripts/powershell/update-agent-context.ps1 -AgentType __AGENT__
+  sh: .specify/scripts/bash/update-agent-context.sh __AGENT__
+  ps: .specify/scripts/powershell/update-agent-context.ps1 -AgentType __AGENT__
 ---
 
 ## User Input
@@ -32,8 +32,8 @@ You **MUST** consider the user input before proceeding (if not empty).
    IMPL_PLAN, SPECS_DIR, BRANCH. For single quotes in args like "I'm Groot", use
    escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
-2. **Load context**: Read FEATURE_SPEC and `/memory/constitution.md`. Load
-   IMPL_PLAN template (already copied).
+2. **Load context**: Read FEATURE_SPEC and `/.specify/memory/constitution.md`.
+   Load IMPL_PLAN template (already copied).
 
 3. **Execute plan workflow**: Follow the structure in IMPL_PLAN template to:
 

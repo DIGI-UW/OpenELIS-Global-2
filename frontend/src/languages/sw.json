@@ -543,6 +543,7 @@
   "genericSample.order.generateLabNo": "Generate Lab Number",
   "genericSample.order.labNo.placeholder": "Click 'Generate Lab Number' to create",
   "genericSample.order.success.details": "Sample Details",
+  "genericSample.order.success.message": "Agizo la sampuli limeundwa kwa mafanikio na nambari ya ufikiaji: {accessionNumber}",
   "genericSample.order.title": "Receive Sample",
   "header.ID": "ID",
   "header.assign": "Assign",
