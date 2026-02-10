@@ -2615,5 +2615,8 @@
   "import.success": "Import Successful",
   "import.failed": "Import Failed",
   "import.created": "Created",
-  "import.failedCount": "Failed"
+  "import.failedCount": "Failed",
+  "reports.export.pdf": "PDF",
+  "reports.export.excel": "Excel (.xlsx)",
+  "reports.export.csv": "CSV"
 }
