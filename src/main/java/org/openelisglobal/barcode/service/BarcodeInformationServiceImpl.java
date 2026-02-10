@@ -25,12 +25,17 @@ public class BarcodeInformationServiceImpl implements BarcodeInformationService 
         updateSiteInfo("heightSlideLabels", Float.toString(form.getHeightSlideLabels()), "text", sysUserId);
         updateSiteInfo("widthSlideLabels", Float.toString(form.getWidthSlideLabels()), "text", sysUserId);
 
-        updateSiteInfo("numMaxOrderLabels", Integer.toString(form.getNumMaxOrderLabels()), "text", sysUserId);
-        updateSiteInfo("numMaxSpecimenLabels", Integer.toString(form.getNumMaxSpecimenLabels()), "text", sysUserId);
+        // Validate and sanitize numeric values - replace negative values with defaults
+        int numMaxOrderLabels = form.getNumMaxOrderLabels() < 0 ? 10 : form.getNumMaxOrderLabels();
+        int numMaxSpecimenLabels = form.getNumMaxSpecimenLabels() < 0 ? 1 : form.getNumMaxSpecimenLabels();
+        int numDefaultOrderLabels = form.getNumDefaultOrderLabels() < 0 ? 1 : form.getNumDefaultOrderLabels();
+        int numDefaultSpecimenLabels = form.getNumDefaultSpecimenLabels() < 0 ? 1 : form.getNumDefaultSpecimenLabels();
 
-        updateSiteInfo("numDefaultOrderLabels", Integer.toString(form.getNumDefaultOrderLabels()), "text", sysUserId);
-        updateSiteInfo("numDefaultSpecimenLabels", Integer.toString(form.getNumDefaultSpecimenLabels()), "text",
-                sysUserId);
+        updateSiteInfo("numMaxOrderLabels", Integer.toString(numMaxOrderLabels), "text", sysUserId);
+        updateSiteInfo("numMaxSpecimenLabels", Integer.toString(numMaxSpecimenLabels), "text", sysUserId);
+
+        updateSiteInfo("numDefaultOrderLabels", Integer.toString(numDefaultOrderLabels), "text", sysUserId);
+        updateSiteInfo("numDefaultSpecimenLabels", Integer.toString(numDefaultSpecimenLabels), "text", sysUserId);
 
         updateSiteInfo("collectionDateCheck", Boolean.toString(form.getCollectionDateCheck()), "boolean", sysUserId);
         updateSiteInfo("collectedByCheck", Boolean.toString(form.getCollectedByCheck()), "boolean", sysUserId);

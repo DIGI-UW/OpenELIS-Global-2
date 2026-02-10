@@ -145,12 +145,30 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
 
     @Test
     public void saveBarcodeConfiguration_ShouldStoreDefault_WhenNegativeNumberProvided() throws Exception {
+        // First, set a known state to ensure test isolation
+        BarcodeConfigurationForm initialForm = new BarcodeConfigurationForm();
+        initialForm.setNumMaxOrderLabels(50);
+        initialForm.setNumMaxSpecimenLabels(50);
+        initialForm.setPrePrintDontUseAltAccession(true);
+        
+        String initialJson = new ObjectMapper().writeValueAsString(initialForm);
+        mockMvc.perform(post("/rest/BarcodeConfiguration")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(initialJson))
+                .andExpect(status().isFound());
+
+        // Now test the negative value override
         BarcodeConfigurationForm form = new BarcodeConfigurationForm();
         form.setNumMaxOrderLabels(-1);
+        form.setNumMaxSpecimenLabels(50);
+        form.setPrePrintDontUseAltAccession(true);
 
-        mockMvc.perform(post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON)
-                .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isOk());
+        mockMvc.perform(post("/rest/BarcodeConfiguration")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(form)))
+                .andExpect(status().isFound());
 
+        // Verify the saved value is the default (10), not the negative value
         BarcodeConfigurationForm saved = new ObjectMapper().readValue(
                 mockMvc.perform(get("/rest/BarcodeConfiguration")).andReturn().getResponse().getContentAsString(),
                 BarcodeConfigurationForm.class);
