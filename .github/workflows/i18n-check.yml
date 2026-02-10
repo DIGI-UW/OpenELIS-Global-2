@@ -1,0 +1,29 @@
+name: i18n Quality Check
+
+on:
+  pull_request:
+    paths:
+      - "frontend/src/languages/**"
+
+jobs:
+  check-duplicate-keys:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for duplicate i18n keys
+        run: |
+          python3 -c "
+          import json, sys, glob
+          errors = []
+          for f in sorted(glob.glob('frontend/src/languages/*.json')):
+              pairs = json.loads(open(f).read(), object_pairs_hook=lambda p: p)
+              seen = set()
+              dupes = [k for k, v in pairs if k in seen or seen.add(k)]
+              if dupes:
+                  errors.append(f'{f}: {len(dupes)} duplicate keys (first: {dupes[0]})')
+          if errors:
+              for e in errors: print(f'::error::{e}')
+              sys.exit(1)
+          print('All i18n files OK — no duplicate keys')
+          "

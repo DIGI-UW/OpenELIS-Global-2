@@ -87,14 +87,25 @@ CYPRESS_SKIP_FIXTURES=true npm run cy:run -- --spec "cypress/e2e/storage*.cy.js"
 
 ## What Gets Loaded
 
-### E2E Test Data
+### 1. Foundational Data
 
-- 3 Test Patients (John E2E-Smith, Jane E2E-Jones, Bob E2E-Williams)
-- 10 Test Samples (E2E-001 through E2E-010)
-- 20+ Test Sample Items
-- 15+ Storage Assignments
-- 5 Test Analyses (orders for E2E sample items)
-- 2 Test Results (for finalized analyses)
+- Providers, Organizations (e2e-foundational-data.sql)
+
+### 2. Analyzer E2E Fixtures
+
+- **analyzer-test-data.sql** – Analyzers 1000–1004, configurations, fields,
+  mappings, errors (same as CI frontend-qa).
+- **011 Madagascar set** (Docker + Maven only) – When
+  `load-analyzer-test-data.sh` is available and Maven is on PATH, the script
+  runs `--dataset-011` to load analyzers 2000–2012
+  (madagascar-analyzer-test-data.xml). If this step fails, run manually:
+  `./src/test/resources/load-analyzer-test-data.sh --dataset-011`.
+
+### 3. Storage + E2E Test Data
+
+- Storage hierarchy (rooms, devices, shelves, racks, boxes) + 3 Test Patients,
+  10 Test Samples, 20+ Sample Items, 15+ Storage Assignments, 5 Analyses, 2
+  Results (from storage-e2e.xml → generated SQL).
 
 ## Verification
 
