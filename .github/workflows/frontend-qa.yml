@@ -113,8 +113,8 @@ jobs:
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS || 'adminADMIN!' }}
 
-      - name: Upload Cypress screenshots on failure
-        if: failure()
+      - name: Upload Cypress screenshots (always)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cypress-screenshots
@@ -128,6 +128,15 @@ jobs:
       #   with:
       #     name: cypress-videos
       #     path: frontend/cypress/videos/**/*.mp4
+
+      - name: Dump backend logs (always)
+        if: always()
+        run: |
+          echo "=== OpenELIS Backend Logs (last 500 lines) ==="
+          docker compose -f build.docker-compose.yml logs --tail=500 oe.openelis.org 2>&1 || true
+          echo ""
+          echo "=== Database Logs (last 200 lines) ==="
+          docker compose -f build.docker-compose.yml logs --tail=200 db.openelis.org 2>&1 || true
 
       - name: Dump docker logs on failure
         if: failure()
