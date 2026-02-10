@@ -32,6 +32,9 @@ public class ConfigurationInitializationService implements ApplicationListener<C
     @Value("${org.openelisglobal.configuration.autocreate:true}")
     private boolean autocreateOn;
 
+    @Value("${org.openelisglobal.configuration.forcereload:true}")
+    private boolean forceReload;
+
     @Autowired(required = false)
     private List<DomainConfigurationHandler> domainHandlers;
 
@@ -51,6 +54,11 @@ public class ConfigurationInitializationService implements ApplicationListener<C
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "onApplicationEvent",
                 "Starting configuration initialization from " + configurationBaseDir + "...");
+
+        if (forceReload) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "onApplicationEvent",
+                    "Force reload is ENABLED. All configurations will be reloaded regardless of checksums.");
+        }
 
         try {
             // Sort handlers by load order to ensure dependencies are loaded first
@@ -99,9 +107,9 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                 String currentChecksum = calculateChecksum(inputStream);
                 inputStream.close();
 
-                // Check if this file has been loaded with the same checksum
+                // Check if this file has been loaded with the same checksum (unless force reload is enabled)
                 String storedChecksum = checksums.getProperty(fileName);
-                if (currentChecksum.equals(storedChecksum)) {
+                if (!forceReload && currentChecksum.equals(storedChecksum)) {
                     LogEvent.logInfo(this.getClass().getSimpleName(), "loadDomainConfiguration",
                             domainName + " configuration " + fileName + " unchanged (checksum matches). Skipping.");
                     continue;
@@ -136,9 +144,9 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                         String fileName = file.getName();
                         String currentChecksum = calculateChecksum(new FileInputStream(file));
 
-                        // Check if this file has been loaded with the same checksum
+                        // Check if this file has been loaded with the same checksum (unless force reload is enabled)
                         String storedChecksum = checksums.getProperty(fileName);
-                        if (currentChecksum.equals(storedChecksum)) {
+                        if (!forceReload && currentChecksum.equals(storedChecksum)) {
                             LogEvent.logInfo(this.getClass().getSimpleName(), "loadDomainConfiguration", domainName
                                     + " configuration " + fileName + " unchanged (checksum matches). Skipping.");
                             continue;

@@ -649,24 +649,23 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
 
     @Transactional(readOnly = true)
     public Test getTestByNormalizedDescription(String description) {
-        String normalizedDescription = normalizeDescription(description);
-        String sql = "From Test t";
-        try {
-            Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
-            List<Test> tests = query.getResultList();
-
-            for (Test test : tests) {
-                if (test.getDescription() != null
-                        && normalizeDescription(test.getDescription()).equalsIgnoreCase(normalizedDescription)) {
-                    return test;
-                }
-            }
+        if (description == null) {
             return null;
-        } catch (HibernateException e) {
-            handleException(e, "getTestByNormalizedDescription");
         }
 
-        return null;
+        String normalizedDescription = normalizeDescription(description);
+
+        try {
+            String hql = "FROM Test t WHERE LOWER(t.normalizedDescription) = :normalizedDescription";
+            Query<Test> query = entityManager.unwrap(Session.class)
+                    .createQuery(hql, Test.class)
+                    .setParameter("normalizedDescription", normalizedDescription.toLowerCase());
+
+            return query.uniqueResult();
+        } catch (HibernateException e) {
+            handleException(e, "getTestByNormalizedDescription");
+            return null;
+        }
     }
 
     @Override
@@ -824,8 +823,33 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         if (description == null) {
             return "";
         }
-        // First remove content in parentheses (e.g., "(Plasma)", "(Sérum)")
-        // Then remove all non-alphanumeric characters (spaces, hyphens, etc.)
-        return description.replaceAll("\\([^)]*\\)", "").replaceAll("[^a-zA-Z0-9]", "");
+
+        String normalized;
+        String sampleType = "";
+
+        if (description.contains("(") && description.contains(")")) {
+            int startParen = description.indexOf("(");
+            int endParen = description.indexOf(")");
+
+            sampleType = description.substring(startParen + 1, endParen);
+            sampleType = normalizeText(sampleType);
+            normalized = description.substring(0, startParen);
+        } else {
+            normalized = description;
+        }
+
+        normalized = normalizeText(normalized);
+        return normalized + sampleType;
+    }
+
+    private String normalizeText(String text) {
+        if (text == null) {
+            return "";
+        }
+        // Remove accents and diacritics, then remove non-alphanumeric, then lowercase
+        return java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+                .replaceAll("[^a-zA-Z0-9]", "")
+                .toLowerCase();
     }
 }

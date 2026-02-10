@@ -63,6 +63,8 @@ public class Test extends EnumValueItemImpl {
 
     private String description;
 
+    private String normalizedDescription;
+
     private String loinc;
 
     private String stickerRequiredFlag;
@@ -214,6 +216,24 @@ public class Test extends EnumValueItemImpl {
      */
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    /**
+     * Normalized description for efficient fuzzy matching.
+     * Removes parentheses and non-alphanumeric characters.
+     * Automatically maintained by database trigger.
+     *
+     * @return the normalized description
+     */
+    public String getNormalizedDescription() {
+        return normalizedDescription;
+    }
+
+    /**
+     * @param normalizedDescription the normalized description
+     */
+    public void setNormalizedDescription(String normalizedDescription) {
+        this.normalizedDescription = normalizedDescription;
     }
 
     @Override
