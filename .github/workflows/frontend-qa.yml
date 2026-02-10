@@ -105,27 +105,9 @@ jobs:
               cypress/e2e/storageSamplesTable.cy.js,
               cypress/e2e/storageSearch.cy.js,
               cypress/e2e/storageViewStorage.cy.js
+          # Catch-all: specs computed dynamically (see "Compute catch-all specs" step)
           - shard: independent
-            specs: >-
-              cypress/e2e/AdminE2E/testManagement.cy.js,
-              cypress/e2e/AdminE2E/userManagement.cy.js,
-              cypress/e2e/AdminE2E/dictionaryMenu.cy.js,
-              cypress/e2e/AdminE2E/programEntry.cy.js,
-              cypress/e2e/AdminE2E/generalConfigurations.cy.js,
-              cypress/e2e/AdminE2E/notifyUser.cy.js,
-              cypress/e2e/AdminE2E/reflexTestsManagement.cy.js,
-              cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js,
-              cypress/e2e/AdminE2E/batchTestReassignmentandCancelation.cy.js,
-              cypress/e2e/AdminE2E/resultReportingConfig.cy.js,
-              cypress/e2e/labNumberManagement.cy.js,
-              cypress/e2e/AdminE2E/MenuConfig/billingMenuConfig.cy.js,
-              cypress/e2e/AdminE2E/MenuConfig/globalMenuConfig.cy.js,
-              cypress/e2e/AdminE2E/MenuConfig/nonConformMenuConfig.cy.js,
-              cypress/e2e/AdminE2E/MenuConfig/patientMenuConfig.cy.js,
-              cypress/e2e/AdminE2E/MenuConfig/studyMenuConfig.cy.js,
-              cypress/e2e/help.cy.js,
-              cypress/e2e/siteBranding.cy.js,
-              cypress/e2e/patientMerge.cy.js
+            specs: ""
     steps:
       - name: Checkout OpenELIS-Global2
         uses: actions/checkout@v4
@@ -180,8 +162,51 @@ jobs:
         run: |
           docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims --set=ON_ERROR_STOP=on < src/test/resources/e2e-foundational-data.sql
 
+      - name: Compute catch-all specs for independent shard
+        if: matrix.shard == 'independent'
+        id: catchall
+        working-directory: frontend
+        run: |
+          python3 << 'PYEOF'
+          import yaml, glob, os
+
+          with open('../.github/workflows/frontend-qa.yml') as f:
+              wf = yaml.safe_load(f)
+
+          assigned = set()
+          for entry in wf['jobs']['e2e-cypress']['strategy']['matrix']['include']:
+              specs = entry.get('specs', '')
+              if not specs:
+                  continue
+              for s in specs.split(','):
+                  s = s.strip()
+                  if s:
+                      assigned.add(s)
+
+          all_specs = set(
+              f for f in glob.glob('cypress/e2e/**/*.cy.js', recursive=True)
+          )
+
+          remaining = sorted(all_specs - assigned)
+          specs_str = ','.join(remaining)
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write(f'specs={specs_str}\n')
+
+          print(f'Catch-all: {len(remaining)} specs (of {len(all_specs)} total, {len(assigned)} assigned to other shards)')
+          for s in remaining:
+              print(f'  {s}')
+          PYEOF
+
       - name: Run Cypress E2E Tests — ${{ matrix.shard }}
-        run: npx cypress run --browser chrome --headless --spec "${{ matrix.specs }}"
+        run: |
+          if [ "${{ matrix.shard }}" = "independent" ]; then
+            SPECS="${{ steps.catchall.outputs.specs }}"
+          else
+            SPECS="${{ matrix.specs }}"
+          fi
+          echo "Running specs: $SPECS"
+          npx cypress run --browser chrome --headless --spec "$SPECS"
         working-directory: frontend
         env:
           E2E_FAIL_FAST: "true"
