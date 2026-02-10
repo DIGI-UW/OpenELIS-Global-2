@@ -52,6 +52,7 @@ li.clickableUserDetails:hover {
   --cds-text-primary: black;
   --cds-text-secondary: black;
 }
+
 .inputText {
   width: 100%;
 }
@@ -116,10 +117,12 @@ button {
   border: 0.5px solid #295785;
   border-radius: 5px;
 }
+
 .ruleBody {
   margin: 2%;
   padding: 0.5%;
 }
+
 .gridBoundary,
 .columnBoundary.section {
   padding: 1%;
@@ -141,6 +144,7 @@ button {
   margin-bottom: 3%;
   margin-left: 1%;
 }
+
 .section {
   border: 0.5px solid green;
   border-radius: 3px;
@@ -159,7 +163,7 @@ button {
   font-size: 10px;
 }
 
-.inlineDivBlock > div {
+.inlineDivBlock>div {
   display: inline-block;
   margin-right: 1rem;
 }
@@ -167,12 +171,14 @@ button {
 .inlineChildDiv {
   margin-left: 1%;
 }
+
 .middleAlign,
 .middleAlignVertical,
 .bottomAlign {
   height: 100%;
   display: flex;
 }
+
 .middleAlign {
   align-items: center;
   justify-content: center;
@@ -182,9 +188,11 @@ button {
   display: flex;
   justify-content: center;
 }
+
 .middleAlignVertical {
   align-items: center;
 }
+
 .bottomAlign {
   align-items: flex-end;
 }
@@ -203,11 +211,13 @@ button {
   margin-left: 1%;
   margin-right: 0%;
 }
+
 .searchLabNumber,
 .sampleInfo {
   margin-left: 0%;
   margin-right: 0%;
 }
+
 .searchLabNumber {
   width: 50%;
 }
@@ -227,11 +237,13 @@ button {
   margin-right: 5%;
   width: 100%;
 }
+
 .institute {
   margin-left: 5%;
   margin-right: 5%;
   width: 100%;
 }
+
 .inputText,
 .inputSelect,
 .inputSelect2,
@@ -239,6 +251,7 @@ button {
   --cds-text-primary: black;
   --cds-text-secondary: black;
 }
+
 .inputText,
 .inputSelect {
   width: 100%;
@@ -248,6 +261,7 @@ button {
 .inputSelect2 {
   width: 380px;
 }
+
 .inputText2,
 .inputSelect2 {
   padding-left: 1%;
@@ -333,11 +347,14 @@ button {
 .requiredFieldIndicator {
   color: red;
 }
+
 .toastDisplay {
-  position: fixed; /*or fixed*/
+  position: fixed;
+  /*or fixed*/
   top: 47px;
   right: 0px;
-  z-index: 9100; /* Must be higher than Carbon modals (9000) to appear on top */
+  z-index: 9100;
+  /* Must be higher than Carbon modals (9000) to appear on top */
 }
 
 .selectSampleType {
@@ -374,9 +391,11 @@ button {
 .first-row {
   max-width: 500px;
 }
+
 .searchResultsBtn {
   margin: 10px !important;
 }
+
 .advancedSearchResultsBtn {
   margin: 10px !important;
 }
@@ -465,16 +484,16 @@ button {
   background-color: var(--cds-background, #295785);
 }
 
-.reduced-padding-nav-menu-item > a.cds--side-nav__link {
+.reduced-padding-nav-menu-item>a.cds--side-nav__link {
   padding-left: 1rem !important;
 }
 
-.top-level-menu-item > a {
+.top-level-menu-item>a {
   pointer-events: auto !important;
   text-decoration: none !important;
 }
 
-.top-level-menu-item > a:hover {
+.top-level-menu-item>a:hover {
   background-color: var(--cds-background-hover, #072655);
 }
 
@@ -486,9 +505,11 @@ button {
   .banner h5 {
     font-size: 1.8vw;
   }
+
   .banner p {
     font-size: 1.4vw;
   }
+
   .formInlineDiv {
     grid-template-columns: 1fr;
   }
@@ -531,5 +552,44 @@ button {
 @media screen and (max-width: 375px) {
   .headerPanel {
     width: 14rem;
+  }
+}
+
+/* Patient Search / New Patient buttons - responsive */
+@media screen and (max-width: 672px) {
+  .patient-action-button {
+    width: 100%;
+    max-width: none;
+    margin-bottom: 1rem;
+  }
+
+  #external_search {
+    max-width: 80%;
+  }
+
+  .searchResultsBtn,
+  .advancedSearchResultsBtn {
+    width: 100%;
+    max-width: none;
+    margin-bottom: 0.5rem !important;
+  }
+}
+
+/* Force buttons to stack on very small devices (Galaxy S8+ = 360px) */
+@media screen and (max-width: 426px) {
+  .orderLegendBody .cds--sm\:col-span-2 {
+    grid-column: span 4;
+    margin-bottom: 0.5rem;
+  }
+
+  .patient-tab-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .patient-action-button {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }

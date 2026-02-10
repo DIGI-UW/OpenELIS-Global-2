@@ -54,29 +54,31 @@ function PatientManagement() {
       <br></br>
       <div className="orderLegendBody">
         <Grid>
-          <Column lg={4} md={3} sm={2}>
-            <Button
-              id="searchPatient"
-              kind={searchPatientTab.kind}
-              onClick={handleSearchPatientTab}
-            >
-              <FormattedMessage
-                id="search.patient.label"
-                defaultMessage="Search for Patient"
-              />
-            </Button>
-          </Column>
-          <Column lg={4} md={3} sm={2}>
-            <Button
-              id="newPatient"
-              kind={newPatientTab.kind}
-              onClick={handleNewPatientTab}
-            >
-              <FormattedMessage
-                id="new.patient.label"
-                defaultMessage="New Patient"
-              />
-            </Button>
+          <Column lg={16} md={8} sm={4}>
+            <div className="patient-tab-buttons">
+              <Button
+                id="searchPatient"
+                kind={searchPatientTab.kind}
+                onClick={handleSearchPatientTab}
+                className="patient-action-button"
+              >
+                <FormattedMessage
+                  id="search.patient.label"
+                  defaultMessage="Search for Patient"
+                />
+              </Button>
+              <Button
+                id="newPatient"
+                kind={newPatientTab.kind}
+                onClick={handleNewPatientTab}
+                className="patient-action-button"
+              >
+                <FormattedMessage
+                  id="new.patient.label"
+                  defaultMessage="New Patient"
+                />
+              </Button>
+            </div>
           </Column>
 
           {searchPatientTab.active && (

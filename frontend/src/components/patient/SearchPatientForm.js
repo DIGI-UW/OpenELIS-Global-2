@@ -467,18 +467,19 @@ function SearchPatientForm(props) {
                 {" "}
                 <br />{" "}
               </Column>
-              <Column lg={4} md={4} sm={2}>
+              <Column lg={4} md={4} sm={4}>
                 <Button
                   id="local_search"
                   kind="tertiary"
                   type="submit"
                   data-cy="searchPatientButton"
+                  className="patient-action-button"
                   onClick={() => setFieldValue("suppressExternalSearch", true)}
                 >
                   <FormattedMessage id="label.button.search" />
                 </Button>
               </Column>
-              <Column lg={4} md={4} sm={2}>
+              <Column lg={4} md={4} sm={4}>
                 <Button
                   id="external_search"
                   type="submit"
@@ -486,6 +487,7 @@ function SearchPatientForm(props) {
                     configurationProperties.UseExternalPatientInfo === "false"
                   }
                   kind="tertiary"
+                  className="patient-action-button"
                   onClick={() => setFieldValue("suppressExternalSearch", false)}
                 >
                   <FormattedMessage
@@ -495,7 +497,7 @@ function SearchPatientForm(props) {
                 </Button>
               </Column>
               {configurationProperties.ENABLE_CLIENT_REGISTRY === "true" && (
-                <Column lg={4} md={4} sm={2}>
+                <Column lg={4} md={4} sm={4}>
                   <Toggle
                     labelText="Client Registry Search"
                     labelA="false"
