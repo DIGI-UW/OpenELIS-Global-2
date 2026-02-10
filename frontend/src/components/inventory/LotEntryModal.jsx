@@ -19,7 +19,13 @@ import {
   StorageLocationAPI,
 } from "./InventoryService";
 
-const LotEntryModal = ({ open, onClose, onSave, onAddLocation, lot = null }) => {
+const LotEntryModal = ({
+  open,
+  onClose,
+  onSave,
+  onAddLocation,
+  lot = null,
+}) => {
   const intl = useIntl();
   const isEdit = !!lot;
 
@@ -40,7 +46,6 @@ const LotEntryModal = ({ open, onClose, onSave, onAddLocation, lot = null }) => 
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-
 
   const qcStatusOptions = [
     { id: "PENDING", text: "Pending" },
@@ -346,8 +351,6 @@ const LotEntryModal = ({ open, onClose, onSave, onAddLocation, lot = null }) => 
           />
         </Stack>
       </Modal>
-
-
     </>
   );
 };
