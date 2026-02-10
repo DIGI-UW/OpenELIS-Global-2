@@ -27,7 +27,7 @@
         <postgresql.version>42.7.2</postgresql.version>
         <log4j.version>2.17.1</log4j.version>
         <springframework.version>6.2.11</springframework.version>
-        <springsecurity.version>6.0.4</springsecurity.version>
+        <springsecurity.version>6.2.7</springsecurity.version>
         <testContainersVersion>1.19.8</testContainersVersion>
     </properties>
     <dependencies>
