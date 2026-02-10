@@ -48,6 +48,7 @@ import {
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { useIntl } from "react-intl";
 import AddDeviceModal from "./shared/AddDeviceModal";
 
 const COLUMNS = [
@@ -137,6 +138,7 @@ function statusTag(status, isEdited = false) {
 }
 
 export default function CorrectiveActions() {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -270,8 +272,8 @@ export default function CorrectiveActions() {
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: "Failed to load corrective actions. Please try again.",
+        title: intl.formatMessage({ id: "error.title" }),
+        subtitle: intl.formatMessage({ id: "coldStorage.error.loadActions" }),
       });
     } finally {
       setLoading(false);
@@ -307,8 +309,8 @@ export default function CorrectiveActions() {
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: "Failed to load device list. Please try again later.",
+        title: intl.formatMessage({ id: "error.title" }),
+        subtitle: intl.formatMessage({ id: "coldStorage.error.loadDevices" }),
       });
     }
   };
@@ -321,8 +323,8 @@ export default function CorrectiveActions() {
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: "Failed to load user list. Please try again later.",
+        title: intl.formatMessage({ id: "error.title" }),
+        subtitle: intl.formatMessage({ id: "coldStorage.error.loadUsers" }),
       });
     }
   };
@@ -495,16 +497,18 @@ export default function CorrectiveActions() {
 
       notify({
         kind: NotificationKinds.success,
-        title: "Success",
-        subtitle: "Corrective action updated successfully",
+        title: intl.formatMessage({ id: "notification.success" }),
+        subtitle: intl.formatMessage({
+          id: "coldStorage.action.updateSuccess",
+        }),
       });
 
       loadCorrectiveActions();
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: "Failed to update corrective action. Please try again.",
+        title: intl.formatMessage({ id: "error.title" }),
+        subtitle: intl.formatMessage({ id: "coldStorage.error.updateAction" }),
       });
     } finally {
       setSubmitting(false);
@@ -515,8 +519,10 @@ export default function CorrectiveActions() {
     if (!selectedAction || !retractionReason.trim()) {
       notify({
         kind: NotificationKinds.error,
-        title: "Validation Error",
-        subtitle: "Please provide a reason for retraction",
+        title: intl.formatMessage({ id: "coldStorage.validation.error" }),
+        subtitle: intl.formatMessage({
+          id: "coldStorage.validation.retractionReason",
+        }),
       });
       return;
     }
@@ -532,16 +538,20 @@ export default function CorrectiveActions() {
 
       notify({
         kind: NotificationKinds.success,
-        title: "Success",
-        subtitle: "Corrective action retracted successfully",
+        title: intl.formatMessage({ id: "notification.success" }),
+        subtitle: intl.formatMessage({
+          id: "coldStorage.action.retractSuccess",
+        }),
       });
 
       loadCorrectiveActions();
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: "Failed to retract corrective action. Please try again.",
+        title: intl.formatMessage({ id: "error.title" }),
+        subtitle: intl.formatMessage({
+          id: "coldStorage.error.retractAction",
+        }),
       });
     } finally {
       setSubmitting(false);
@@ -552,8 +562,10 @@ export default function CorrectiveActions() {
     if (!formData.roomId || formData.roomId === "") {
       notify({
         kind: NotificationKinds.error,
-        title: "Validation Error",
-        subtitle: "Please select a room/location for the device",
+        title: intl.formatMessage({ id: "coldStorage.validation.error" }),
+        subtitle: intl.formatMessage({
+          id: "coldStorage.validation.selectRoom",
+        }),
       });
       return;
     }
@@ -594,16 +606,19 @@ export default function CorrectiveActions() {
 
       notify({
         kind: NotificationKinds.success,
-        title: "Device Created",
-        subtitle: `Device "${formData.name}" has been created successfully`,
+        title: intl.formatMessage({ id: "coldStorage.device.created" }),
+        subtitle: intl.formatMessage(
+          { id: "coldStorage.device.createdSuccess" },
+          { name: formData.name },
+        ),
       });
 
       loadDevices();
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: "Failed to create device. Please try again later.",
+        title: intl.formatMessage({ id: "error.title" }),
+        subtitle: intl.formatMessage({ id: "coldStorage.error.createDevice" }),
       });
     }
   };
@@ -626,16 +641,18 @@ export default function CorrectiveActions() {
 
       notify({
         kind: NotificationKinds.success,
-        title: "Success",
-        subtitle: "Room created successfully",
+        title: intl.formatMessage({ id: "notification.success" }),
+        subtitle: intl.formatMessage({ id: "coldStorage.room.created" }),
       });
 
       loadLocations();
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: `Failed to create room: ${err.message}`,
+        title: intl.formatMessage({ id: "error.title" }),
+        subtitle:
+          intl.formatMessage({ id: "coldStorage.error.createRoom" }) +
+          err.message,
       });
     }
   };
@@ -650,11 +667,15 @@ export default function CorrectiveActions() {
     try {
       const freezerId = form.device?.id;
       if (!freezerId) {
-        throw new Error("Please select a device");
+        throw new Error(
+          intl.formatMessage({ id: "coldStorage.validation.selectDevice" }),
+        );
       }
 
       if (!form.actionType) {
-        throw new Error("Please select an action type");
+        throw new Error(
+          intl.formatMessage({ id: "coldStorage.validation.selectActionType" }),
+        );
       }
 
       await createCorrectiveAction(
@@ -669,16 +690,18 @@ export default function CorrectiveActions() {
 
       notify({
         kind: NotificationKinds.success,
-        title: "Success",
-        subtitle: "Corrective action created successfully",
+        title: intl.formatMessage({ id: "notification.success" }),
+        subtitle: intl.formatMessage({
+          id: "coldStorage.action.createSuccess",
+        }),
       });
 
       loadCorrectiveActions();
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: "Failed to create corrective action. Please try again.",
+        title: intl.formatMessage({ id: "error.title" }),
+        subtitle: intl.formatMessage({ id: "coldStorage.error.createAction" }),
       });
     } finally {
       setSubmitting(false);
