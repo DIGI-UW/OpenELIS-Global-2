@@ -131,8 +131,8 @@
 }
 
 .orderLegendBody .cds--data-table-container {
-  max-width: 100%;
   overflow-x: auto;
+  max-width: 100%;
 }
 
 @media (max-width: 1312px) {
