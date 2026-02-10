@@ -68,6 +68,64 @@ jobs:
   e2e-cypress:
     needs: static-checks
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: core
+            specs: >-
+              cypress/e2e/login.cy.js,
+              cypress/e2e/home.cy.js,
+              cypress/e2e/AdminE2E/organizationManagement.cy.js,
+              cypress/e2e/AdminE2E/providerManagement.cy.js,
+              cypress/e2e/patientEntry.cy.js,
+              cypress/e2e/orderEntity.cy.js,
+              cypress/e2e/modifyOrder.cy.js,
+              cypress/e2e/batchOrderEntry.cy.js,
+              cypress/e2e/workplan.cy.js,
+              cypress/e2e/result.cy.js,
+              cypress/e2e/validation.cy.js,
+              cypress/e2e/nonConform.cy.js,
+              cypress/e2e/dashboard.cy.js,
+              cypress/e2e/report.cy.js,
+              cypress/e2e/AdminE2E/barcode.cy.js
+          - shard: storage
+            specs: >-
+              cypress/e2e/storageAssignment.cy.js,
+              cypress/e2e/storageBoxCRUD.cy.js,
+              cypress/e2e/storageBoxCRUD-integration.cy.js,
+              cypress/e2e/storageDashboard.cy.js,
+              cypress/e2e/storageDashboardMetrics.cy.js,
+              cypress/e2e/storageDisposal.cy.js,
+              cypress/e2e/storageFilters.cy.js,
+              cypress/e2e/storageLocationCRUD.cy.js,
+              cypress/e2e/storageLocationCRUD-integration.cy.js,
+              cypress/e2e/storageLocationCRUD-smoke.cy.js,
+              cypress/e2e/storageLocationExpandableRows.cy.js,
+              cypress/e2e/storageSamplesTable.cy.js,
+              cypress/e2e/storageSearch.cy.js,
+              cypress/e2e/storageViewStorage.cy.js
+          - shard: independent
+            specs: >-
+              cypress/e2e/AdminE2E/testManagement.cy.js,
+              cypress/e2e/AdminE2E/userManagement.cy.js,
+              cypress/e2e/AdminE2E/dictionaryMenu.cy.js,
+              cypress/e2e/AdminE2E/programEntry.cy.js,
+              cypress/e2e/AdminE2E/generalConfigurations.cy.js,
+              cypress/e2e/AdminE2E/notifyUser.cy.js,
+              cypress/e2e/AdminE2E/reflexTestsManagement.cy.js,
+              cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js,
+              cypress/e2e/AdminE2E/batchTestReassignmentandCancelation.cy.js,
+              cypress/e2e/AdminE2E/resultReportingConfig.cy.js,
+              cypress/e2e/labNumberManagement.cy.js,
+              cypress/e2e/AdminE2E/MenuConfig/billingMenuConfig.cy.js,
+              cypress/e2e/AdminE2E/MenuConfig/globalMenuConfig.cy.js,
+              cypress/e2e/AdminE2E/MenuConfig/nonConformMenuConfig.cy.js,
+              cypress/e2e/AdminE2E/MenuConfig/patientMenuConfig.cy.js,
+              cypress/e2e/AdminE2E/MenuConfig/studyMenuConfig.cy.js,
+              cypress/e2e/help.cy.js,
+              cypress/e2e/siteBranding.cy.js,
+              cypress/e2e/patientMerge.cy.js
     steps:
       - name: Checkout OpenELIS-Global2
         uses: actions/checkout@v4
@@ -94,6 +152,14 @@ jobs:
       - name: Prepare .env from template
         run: cp .env.example .env
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
+
       - name: Build OpenELIS Images and Run containers
         run: docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
 
@@ -101,8 +167,8 @@ jobs:
         run: |
           docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims --set=ON_ERROR_STOP=on < src/test/resources/e2e-foundational-data.sql
 
-      - name: Run Cypress E2E Tests (Headless Chrome)
-        run: npx cypress run --browser chrome --headless
+      - name: Run Cypress E2E Tests — ${{ matrix.shard }}
+        run: npx cypress run --browser chrome --headless --spec "${{ matrix.specs }}"
         working-directory: frontend
         env:
           E2E_FAIL_FAST: "true"
@@ -113,11 +179,11 @@ jobs:
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS || 'adminADMIN!' }}
 
-      - name: Upload Cypress screenshots on failure
-        if: failure()
+      - name: Upload Cypress screenshots (${{ matrix.shard }})
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cypress-screenshots
+          name: cypress-screenshots-${{ matrix.shard }}
           path: frontend/cypress/screenshots/**/*.png
           if-no-files-found: ignore
 
@@ -126,8 +192,17 @@ jobs:
       #   if: failure()
       #   uses: actions/upload-artifact@v4
       #   with:
-      #     name: cypress-videos
+      #     name: cypress-videos-${{ matrix.shard }}
       #     path: frontend/cypress/videos/**/*.mp4
+
+      - name: Dump backend logs (${{ matrix.shard }})
+        if: always()
+        run: |
+          echo "=== OpenELIS Backend Logs (last 500 lines) ==="
+          docker compose -f build.docker-compose.yml logs --tail=500 oe.openelis.org 2>&1 || true
+          echo ""
+          echo "=== Database Logs (last 200 lines) ==="
+          docker compose -f build.docker-compose.yml logs --tail=200 db.openelis.org 2>&1 || true
 
       - name: Dump docker logs on failure
         if: failure()
