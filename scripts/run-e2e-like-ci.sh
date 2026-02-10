@@ -63,8 +63,14 @@ echo ""
 echo -e "${YELLOW}[4/5] Checking frontend dependencies...${NC}"
 cd frontend
 if [ ! -d "node_modules" ]; then
-  echo "  Installing dependencies..."
-  npm install > /dev/null 2>&1
+  echo "  Installing dependencies with npm ci (lockfile-faithful, like CI)..."
+  if [ -f "package-lock.json" ]; then
+    npm ci > /dev/null 2>&1
+  else
+    echo -e "${RED}ERROR: package-lock.json not found in ./frontend${NC}"
+    echo "  Run 'npm install' once and commit the lockfile, then re-run this script."
+    exit 1
+  fi
 fi
 echo -e "${GREEN}✓ Dependencies ready${NC}"
 echo ""
@@ -74,10 +80,11 @@ echo -e "${YELLOW}[5/5] Running Cypress E2E tests...${NC}"
 echo "  Command: npx cypress run --browser chrome --headless $@"
 echo ""
 
-# Ensure ELECTRON_RUN_AS_NODE doesn't break Cypress
+# Ensure ELECTRON_RUN_AS_NODE doesn't break Cypress (same workaround as npm cy:* scripts)
 unset ELECTRON_RUN_AS_NODE
 
-# Run Cypress with any additional args passed to script
+# Run Cypress directly (not via npm cy:* scripts) to match the CI workflow command
+# and allow arbitrary $@ forwarding without conflicting with script-embedded flags.
 if npx cypress run --browser chrome --headless "$@"; then
   echo ""
   echo -e "${GREEN}========================================${NC}"

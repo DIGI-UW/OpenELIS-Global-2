@@ -167,36 +167,28 @@ jobs:
         id: catchall
         working-directory: frontend
         run: |
-          python3 << 'PYEOF'
-          import yaml, glob, os
+          # Extract specs assigned to other shards from the workflow YAML.
+          # Uses grep/sed instead of PyYAML to avoid non-stdlib dependency.
+          ASSIGNED=$(grep -E '^\s+cypress/e2e/' ../.github/workflows/frontend-qa.yml \
+            | sed 's/^[[:space:]]*//' | sed 's/,$//' | sort -u)
 
-          with open('../.github/workflows/frontend-qa.yml') as f:
-              wf = yaml.safe_load(f)
+          # Find all spec files on disk
+          ALL=$(find cypress/e2e -name '*.cy.js' -type f | sort)
 
-          assigned = set()
-          for entry in wf['jobs']['e2e-cypress']['strategy']['matrix']['include']:
-              specs = entry.get('specs', '')
-              if not specs:
-                  continue
-              for s in specs.split(','):
-                  s = s.strip()
-                  if s:
-                      assigned.add(s)
+          # Compute remaining = ALL - ASSIGNED
+          REMAINING=""
+          while IFS= read -r spec; do
+            echo "$ASSIGNED" | grep -qxF "$spec" || REMAINING="${REMAINING:+$REMAINING,}$spec"
+          done <<< "$ALL"
 
-          all_specs = set(
-              f for f in glob.glob('cypress/e2e/**/*.cy.js', recursive=True)
-          )
+          echo "specs=$REMAINING" >> "$GITHUB_OUTPUT"
 
-          remaining = sorted(all_specs - assigned)
-          specs_str = ','.join(remaining)
-
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
-              out.write(f'specs={specs_str}\n')
-
-          print(f'Catch-all: {len(remaining)} specs (of {len(all_specs)} total, {len(assigned)} assigned to other shards)')
-          for s in remaining:
-              print(f'  {s}')
-          PYEOF
+          # Log for debugging
+          TOTAL=$(echo "$ALL" | wc -l)
+          ASSIGNED_COUNT=$(echo "$ASSIGNED" | wc -l)
+          REMAINING_COUNT=$(echo "$REMAINING" | tr ',' '\n' | wc -l)
+          echo "Catch-all: $REMAINING_COUNT specs (of $TOTAL total, $ASSIGNED_COUNT assigned to other shards)"
+          echo "$REMAINING" | tr ',' '\n' | sed 's/^/  /'
 
       - name: Run Cypress E2E Tests — ${{ matrix.shard }}
         run: |
