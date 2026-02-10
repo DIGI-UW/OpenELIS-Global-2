@@ -65,6 +65,18 @@ see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
 
 ### For Running OpenELIS Global2 from Source Code
 
+#### Environment variables (docker compose from source)
+
+Docker Compose loads a `.env` file from the project root for variable
+substitution (e.g. `OE_DB_PASSWORD`, `SSL_KEYSTORE_PATH`). The `.env` file is
+gitignored and must not be committed. For local runs, copy the template and
+customize:
+
+    cp .env.example .env
+
+CI copies `.env.example` to `.env` before running docker compose so the same
+template is used.
+
 #### Running OpenELIS Global2 using docker compose With published docker images on dockerhub
 
     docker compose up -d
@@ -204,13 +216,7 @@ This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
 Spec-Driven Development (SDD). AI coding agents can use slash commands to create
 specifications, plans, and tasks.
 
-**Setup SpecKit Commands (cross-platform, Python 3.7+):**
-
-```bash
-python scripts/install-speckit-commands.py
-```
-
-**Available Commands** (after installation):
+**Available Commands:**
 
 - `/speckit.specify` - Create feature specification
 - `/speckit.plan` - Generate implementation plan
@@ -220,8 +226,7 @@ python scripts/install-speckit-commands.py
 
 **Reference Documentation:**
 
-- **AGENTS.md** - Comprehensive guide for AI coding agents (includes full setup
-  options)
+- **AGENTS.md** - Comprehensive guide for AI coding agents
 - **Constitution**: `.specify/memory/constitution.md` - Governance principles
 - **Feature Example**: `specs/001-sample-storage/` - Complete SDD example
 

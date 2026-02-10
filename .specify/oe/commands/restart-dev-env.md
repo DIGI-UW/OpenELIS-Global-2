@@ -54,15 +54,20 @@ Run these and summarize the results:
   set -a; [ -f .env ] && . ./.env; set +a
   ```
   Then `LETSENCRYPT_DOMAIN` and `LETSENCRYPT_EMAIL` from .env are available for
-  the rest of the workflow.
+  the rest of the workflow. **If .env is missing**, both vars are unset; DOMAIN
+  then uses the default below (same as `scripts/reset-dev-env.sh`).
 - `git status --porcelain` (warn if uncommitted changes)
-- Check `LETSENCRYPT_DOMAIN` env var (default: `localhost`)
-- Check `LETSENCRYPT_EMAIL` env var (required for cert generation)
+- Check `LETSENCRYPT_DOMAIN` env var (default: `analyzers.openelis-global.org`
+  when unset, so hosted dev envs get the right domain even without .env)
+- Check `LETSENCRYPT_EMAIL` env var (required for Let's Encrypt cert generation)
 
 Determine:
 
-- **DOMAIN**: From env var (after loading .env) or `localhost`
-- **NEEDS_LETSENCRYPT**: true if domain is not `localhost` AND email is set
+- **DOMAIN**: From `LETSENCRYPT_DOMAIN` (after loading .env) or default
+  `analyzers.openelis-global.org` when unset (use `localhost` only if .env
+  explicitly sets `LETSENCRYPT_DOMAIN=localhost`)
+- **NEEDS_LETSENCRYPT**: true if domain is not `localhost` AND
+  `LETSENCRYPT_EMAIL` is set
 - **FULL_RESET**: true if `--full-reset` flag present
 - **SKIP_BUILD**: true if `--skip-build` flag present
 - **SKIP_FIXTURES**: true if `--skip-fixtures` flag present
@@ -231,3 +236,30 @@ docker compose -f dev.docker-compose.yml ps --format "table {{.Name}}\t{{.Status
 - If any containers failed: Show relevant logs
 - If fixtures failed: Suggest manual reload command
 - If Let's Encrypt failed: Suggest checking DNS and email config
+
+---
+
+## Troubleshooting: Why wasn't Let's Encrypt started?
+
+Let's Encrypt runs only when **DOMAIN** is not `localhost` and
+**LETSENCRYPT_EMAIL** is set. Common causes it was skipped:
+
+1. **No `.env` file**  
+   `.env` is not committed (see `.gitignore`). If it's missing, the workflow
+   loads no vars; DOMAIN defaults to `analyzers.openelis-global.org` (so the
+   domain is correct for hosted dev), but **LETSENCRYPT_EMAIL** stays unset, so
+   cert generation is skipped.  
+   **Fix:** Create `.env` from `.env.example`, set
+   `LETSENCRYPT_DOMAIN=analyzers.openelis-global.org` and
+   `LETSENCRYPT_EMAIL=your-email@example.com`, then run `/restart-dev-env`
+   again.
+
+2. **DOMAIN is `localhost`**  
+   If `.env` explicitly sets `LETSENCRYPT_DOMAIN=localhost`, the workflow treats
+   this as local dev and skips Let's Encrypt.  
+   **Fix:** Set `LETSENCRYPT_DOMAIN=analyzers.openelis-global.org` (or your real
+   domain) in `.env` for hosted/analyzer dev.
+
+3. **LETSENCRYPT_EMAIL unset**  
+   Cert generation requires an email for Let's Encrypt notifications.  
+   **Fix:** Set `LETSENCRYPT_EMAIL` in `.env` and re-run the restart.

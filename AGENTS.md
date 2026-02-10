@@ -175,7 +175,8 @@ mvn clean install -DskipTests
 
 **Testing:**
 
-- **Cypress 12.17.3** (E2E tests)
+- **Cypress 12.17.3** (E2E tests - existing)
+- **Playwright 1.57.0** (E2E tests - recommended for new tests)
 - **Jest + React Testing Library** (unit tests)
 
 **Code Quality:**
@@ -478,7 +479,9 @@ delay feedback. Milestone-based delivery enables manageable code reviews.
 # Clone repository with submodules
 git clone https://github.com/DIGI-UW/OpenELIS-Global-2.git
 cd OpenELIS-Global-2
-git submodule update --init --recursive
+
+# Run workspace setup (initializes submodules, hooks, .env)
+bash scripts/setup-workspace.sh
 
 # Verify Java version
 java -version  # Must be Java 21
@@ -1390,18 +1393,46 @@ common patterns and cheat sheets.
 [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
 for E2E testing requirements.
 
+**CRITICAL - Environment Note:**
+
+In Claude Code CLI environment (and some CI environments),
+`ELECTRON_RUN_AS_NODE=1` is set, which breaks Cypress. All `npm run cy:*`
+scripts include `unset ELECTRON_RUN_AS_NODE` to work around this. **ALWAYS use
+the npm scripts.**
+
 **Execution Strategy (Constitution V.5):**
 
-- **Development:** Run INDIVIDUAL test files (max 5-10 test cases)
-- **CI/CD:** Run full suite
+1. **During Development:** Run individual tests for fast feedback
+2. **Before Pushing (MANDATORY):** Run full suite with fail-fast
+3. **In CI/CD:** Automatic via GitHub Actions
+
+**Available npm Scripts (use these, NOT direct cypress commands):**
 
 ```bash
-# Development (CORRECT - run individual test)
-npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
+# Run specific test file
+npm run cy:spec "cypress/e2e/home.cy.js"
 
-# CI/CD only (NOT during development)
+# Run all admin tests
+npm run cy:admin
+
+# Run all analyzer tests
+npm run cy:analyzer
+
+# Run full suite (development)
 npm run cy:run
+
+# Run full suite with fail-fast (stops on first failure) - USE BEFORE PUSHING
+npm run cy:failfast
+
+# Run specific test with fail-fast
+npm run cy:failfast:spec "cypress/e2e/AdminE2E/organizationManagement.cy.js"
+
+# Open Cypress UI (interactive mode)
+npm run cy:open
 ```
+
+**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
+This wastes 60+ minutes of CI time.
 
 **Configuration (`cypress.config.js`):**
 
@@ -1683,24 +1714,37 @@ import { Grid, Column } from "@carbon/react"; // ✅ CORRECT
 </Grid>;
 ```
 
-### Running Full E2E Suite During Development
+### Running Full E2E Suite During Development (Without Pre-Push Validation)
 
-**Symptom:** Slow feedback (>15 minutes), difficult debugging
+**Symptom:** CI failures that could have been caught locally, wasted CI time
 
-**Cause:** Running all E2E tests instead of individual test files
+**Cause:** Running only individual tests during development, then pushing
+without validating the full suite
 
-**Wrong:**
-
-```bash
-npm run cy:run  # Runs ALL tests (60+ test cases)
-```
-
-**Correct:**
+**Wrong Workflow:**
 
 ```bash
-# Run individual test file (5-10 test cases)
-npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
+# 1. Run individual test (passes)
+npm run cy:spec "cypress/e2e/home.cy.js"
+# 2. Push without running full suite
+git push  # CI fails 60 minutes later
 ```
+
+**Correct Workflow:**
+
+```bash
+# 1. Run individual tests during development
+npm run cy:spec "cypress/e2e/home.cy.js"
+
+# 2. BEFORE PUSHING: Run full suite with fail-fast (MANDATORY)
+npm run cy:failfast
+
+# 3. Only push if full suite passes
+git push
+```
+
+**Note:** In Claude Code CLI environment, `ELECTRON_RUN_AS_NODE=1` breaks
+Cypress. Always use `npm run cy:*` scripts, NOT direct `npx cypress` commands.
 
 ### javax.persistence vs jakarta.persistence
 
@@ -1899,8 +1943,12 @@ mvn spotless:apply && cd frontend && npm run format && cd ..
 mvn clean install -DskipTests -Dmaven.test.skip=true
 docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
 
-# Run individual E2E test (development)
-npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"
+# E2E tests - ALWAYS use npm scripts (unset ELECTRON_RUN_AS_NODE is required)
+npm run cy:spec "cypress/e2e/{feature}.cy.js"  # Individual test (development)
+npm run cy:admin                                # All admin tests
+npm run cy:analyzer                             # All analyzer tests
+npm run cy:failfast                             # Full suite with fail-fast (BEFORE PUSHING)
+npm run cy:failfast:spec "cypress/e2e/..."      # Specific test with fail-fast
 
 # Verify Java version
 java -version  # Must be 21.x.x
@@ -1926,10 +1974,11 @@ sdk env        # SDKMAN auto-switch
 - ✅ React Intl for ALL strings (NO hardcoded text)
 - ✅ Liquibase for ALL schema changes
 - ✅ Format before commit (spotless + prettier)
-- ✅ Individual E2E tests during dev (NOT full suite)
+- ✅ E2E: Use npm scripts (NOT direct cypress commands)
+- ✅ E2E: Run `npm run cy:failfast` BEFORE pushing
 
 ---
 
-**Last Updated:** 2025-12-04 **Constitution Version:** 1.8.0 **Maintained By:**
+**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

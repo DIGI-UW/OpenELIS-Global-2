@@ -65,7 +65,12 @@
     "check-format": "prettier ./ --check",
     "cy:quick": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000",
     "cy:single": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000 --spec",
-    "cy:debug": "ELECTRON_ENABLE_LOGGING=1 cypress run --browser electron --config video=false,defaultCommandTimeout=10000"
+    "cy:debug": "ELECTRON_ENABLE_LOGGING=1 cypress run --browser electron --config video=false,defaultCommandTimeout=10000",
+    "cy:spec": "unset ELECTRON_RUN_AS_NODE && npx cypress run --browser chrome --headless --spec",
+    "cy:admin": "unset ELECTRON_RUN_AS_NODE && npx cypress run --browser chrome --headless --spec 'cypress/e2e/AdminE2E/**/*.cy.js'",
+    "cy:analyzer": "unset ELECTRON_RUN_AS_NODE && npx cypress run --browser chrome --headless --spec 'cypress/e2e/AnalyzerE2E/**/*.cy.js'",
+    "cy:failfast": "unset ELECTRON_RUN_AS_NODE && CYPRESS_FAIL_FAST_ENABLED=true npx cypress run --browser chrome --headless",
+    "cy:failfast:spec": "unset ELECTRON_RUN_AS_NODE && CYPRESS_FAIL_FAST_ENABLED=true npx cypress run --browser chrome --headless --spec"
   },
   "jest": {
     "transformIgnorePatterns": [

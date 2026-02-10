@@ -79,6 +79,7 @@ services:
 
   fhir.openelis.org:
     container_name: external-fhir-api
+    image: external-fhir-api.build
     build:
       context: .
       dockerfile: ./fhir/Dockerfile
@@ -126,6 +127,7 @@ services:
 
 
   proxy:
+    image: openelisglobal-proxy.build
     build:
       context: ./nginx-proxy
       dockerfile: ./Dockerfile
