@@ -105,6 +105,18 @@ class DictionaryMenuPage {
     cy.get(`[data-cy="cell-${columnKey}-${rowId}"]`).should("contain", value);
   }
 
+  getFirstDictionaryRowId() {
+    return cy.get('[data-cy^="cell-dictEntry-"]').first().invoke('attr', 'data-cy').then((dataCy) => {
+      return dataCy.split('-')[2];
+    });
+  }
+
+  validateFirstDictionaryColumnContent(columnKey, value) {
+    this.getFirstDictionaryRowId().then((rowId) => {
+      this.validateColumnContent(columnKey, rowId, value);
+    });
+  }
+
   checkFirstDict() {
     cy.get(this.selectors.checkBox).first().click();
   }
