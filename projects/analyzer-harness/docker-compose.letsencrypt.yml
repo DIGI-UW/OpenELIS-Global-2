@@ -1,7 +1,7 @@
-# Let's Encrypt override for analyzer harness (analyzers.openelis-global.org).
+# Let's Encrypt override for analyzer harness (e.g. madagascar.openelis-global.org).
 # Uses the repo's volume/letsencrypt so valid certs (from docs/LETSENCRYPT_SETUP.md)
-# are shared. Must list all proxy volumes here (override replaces, not merges).
-# Generate certs from repo root: LETSENCRYPT_DOMAIN=analyzers.openelis-global.org ./scripts/generate-letsencrypt-certs.sh
+# are shared. Set LETSENCRYPT_DOMAIN and LETSENCRYPT_EMAIL in .env; /restart-analyzer-harness
+# runs generate-letsencrypt-certs.sh automatically when env is set.
 
 services:
   proxy:
@@ -13,5 +13,5 @@ services:
       - ../../volume/letsencrypt:/etc/letsencrypt:ro
       - ../../nginx-proxy/docker-entrypoint.sh:/docker-entrypoint.sh:ro
     environment:
-      - LETSENCRYPT_DOMAIN=${LETSENCRYPT_DOMAIN:-analyzers.openelis-global.org}
+      - LETSENCRYPT_DOMAIN=${LETSENCRYPT_DOMAIN:-madagascar.openelis-global.org}
     entrypoint: ["/bin/sh", "/docker-entrypoint.sh"]
