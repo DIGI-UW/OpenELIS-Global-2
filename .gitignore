@@ -48,6 +48,7 @@ volume/logs/*
 volume/ocl/*
 volume/odoo/*
 .specify/temp/
+.specify/audit-reports/*.md
 volume/branding/*
 volume/lucene/*
 
