@@ -14,31 +14,31 @@
   "default_test_mappings": [
     {
       "obx_identifier": "HIV",
-      "test_name": "HIV Antigen/Antibody",
+      "test_name_hint": "HIV Antigen/Antibody",
       "loinc": "75622-1",
       "unit": ""
     },
     {
       "obx_identifier": "HBsAg",
-      "test_name": "Hepatitis B Surface Antigen",
+      "test_name_hint": "Hepatitis B Surface Antigen",
       "loinc": "5196-1",
       "unit": ""
     },
     {
       "obx_identifier": "HCV",
-      "test_name": "Hepatitis C Antibody",
+      "test_name_hint": "Hepatitis C Antibody",
       "loinc": "16128-1",
       "unit": ""
     },
     {
       "obx_identifier": "TSH",
-      "test_name": "Thyroid Stimulating Hormone",
+      "test_name_hint": "Thyroid Stimulating Hormone",
       "loinc": "3016-3",
       "unit": "mIU/L"
     },
     {
       "obx_identifier": "FERR",
-      "test_name": "Ferritin",
+      "test_name_hint": "Ferritin",
       "loinc": "2276-4",
       "unit": "ng/mL"
     }

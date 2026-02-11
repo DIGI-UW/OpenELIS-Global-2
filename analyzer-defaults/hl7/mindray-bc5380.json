@@ -13,79 +13,79 @@
   "default_test_mappings": [
     {
       "obx_identifier": "WBC",
-      "test_name": "White Blood Cells",
+      "test_name_hint": "White Blood Cells",
       "loinc": "6690-2",
       "unit": "10^3/uL"
     },
     {
       "obx_identifier": "RBC",
-      "test_name": "Red Blood Cells",
+      "test_name_hint": "Red Blood Cells",
       "loinc": "789-8",
       "unit": "10^6/uL"
     },
     {
       "obx_identifier": "HGB",
-      "test_name": "Hemoglobin",
+      "test_name_hint": "Hemoglobin",
       "loinc": "718-7",
       "unit": "g/dL"
     },
     {
       "obx_identifier": "HCT",
-      "test_name": "Hematocrit",
+      "test_name_hint": "Hematocrit",
       "loinc": "4544-3",
       "unit": "%"
     },
     {
       "obx_identifier": "MCV",
-      "test_name": "Mean Corpuscular Volume",
+      "test_name_hint": "Mean Corpuscular Volume",
       "loinc": "787-2",
       "unit": "fL"
     },
     {
       "obx_identifier": "MCH",
-      "test_name": "Mean Corpuscular Hemoglobin",
+      "test_name_hint": "Mean Corpuscular Hemoglobin",
       "loinc": "785-6",
       "unit": "pg"
     },
     {
       "obx_identifier": "MCHC",
-      "test_name": "Mean Corpuscular Hemoglobin Concentration",
+      "test_name_hint": "Mean Corpuscular Hemoglobin Concentration",
       "loinc": "786-4",
       "unit": "g/dL"
     },
     {
       "obx_identifier": "PLT",
-      "test_name": "Platelet Count",
+      "test_name_hint": "Platelet Count",
       "loinc": "777-3",
       "unit": "10^3/uL"
     },
     {
       "obx_identifier": "NEUT",
-      "test_name": "Neutrophils",
+      "test_name_hint": "Neutrophils",
       "loinc": "751-8",
       "unit": "%"
     },
     {
       "obx_identifier": "LYMPH",
-      "test_name": "Lymphocytes",
+      "test_name_hint": "Lymphocytes",
       "loinc": "736-9",
       "unit": "%"
     },
     {
       "obx_identifier": "MONO",
-      "test_name": "Monocytes",
+      "test_name_hint": "Monocytes",
       "loinc": "742-7",
       "unit": "%"
     },
     {
       "obx_identifier": "EOS",
-      "test_name": "Eosinophils",
+      "test_name_hint": "Eosinophils",
       "loinc": "711-2",
       "unit": "%"
     },
     {
       "obx_identifier": "BASO",
-      "test_name": "Basophils",
+      "test_name_hint": "Basophils",
       "loinc": "704-7",
       "unit": "%"
     }

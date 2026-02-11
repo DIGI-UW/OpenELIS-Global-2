@@ -65,13 +65,13 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     test_mappings: [
       {
         analyzer_code: "WBC",
-        test_name: "White Blood Cells",
+        test_name_hint: "White Blood Cells",
         loinc: "6690-2",
         unit: "10^3/uL",
       },
       {
         analyzer_code: "RBC",
-        test_name: "Red Blood Cells",
+        test_name_hint: "Red Blood Cells",
         loinc: "789-8",
         unit: "10^6/uL",
       },
@@ -91,7 +91,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     test_mappings: [
       {
         analyzer_code: "GLU",
-        test_name: "Glucose",
+        test_name_hint: "Glucose",
         loinc: "2345-7",
         unit: "mg/dL",
       },
