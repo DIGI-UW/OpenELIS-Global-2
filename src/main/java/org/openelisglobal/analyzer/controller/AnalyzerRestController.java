@@ -84,12 +84,12 @@ public class AnalyzerRestController extends BaseRestController {
      * configurations.
      */
     @GetMapping("/analyzers")
-    public ResponseEntity<?> getAnalyzers(@RequestParam(required = false) String status,
+    public ResponseEntity<Map<String, Object>> getAnalyzers(@RequestParam(required = false) String status,
             @RequestParam(required = false) String search) {
         try {
             List<Analyzer> analyzers = analyzerService.getAll();
             Set<String> loadedPlugins = getLoadedPluginClassNames();
-            List<Map<String, Object>> response = new ArrayList<>();
+            List<Map<String, Object>> analyzerList = new ArrayList<>();
 
             for (Analyzer analyzer : analyzers) {
                 Map<String, Object> analyzerMap = analyzerToMap(analyzer, loadedPlugins);
@@ -116,13 +116,16 @@ public class AnalyzerRestController extends BaseRestController {
                     }
                 }
 
-                response.add(analyzerMap);
+                analyzerList.add(analyzerMap);
             }
 
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("analyzers", analyzerList);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error retrieving analyzers", e);
             Map<String, Object> error = new LinkedHashMap<>();
+            error.put("analyzers", new ArrayList<>());
             error.put("error", "Error retrieving analyzers");
             if (e.getMessage() != null && !e.getMessage().isEmpty()) {
                 error.put("message", e.getMessage());
@@ -882,7 +885,8 @@ public class AnalyzerRestController extends BaseRestController {
      * </ul>
      */
     @GetMapping("/defaults/{protocol}/{name}")
-    public ResponseEntity<?> getDefaultConfig(@PathVariable String protocol, @PathVariable String name) {
+    public ResponseEntity<Map<String, Object>> getDefaultConfig(@PathVariable String protocol,
+            @PathVariable String name) {
         try {
             // Validate protocol (allowlist, case-insensitive)
             if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")) {

@@ -46,9 +46,9 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
   useEffect(() => {
     if (open) {
       getAnalyzers({}, (data) => {
-        if (Array.isArray(data)) {
-          setAvailableAnalyzers(data);
-        }
+        const list =
+          data && Array.isArray(data.analyzers) ? data.analyzers : [];
+        setAvailableAnalyzers(list);
       });
     }
   }, [open]);

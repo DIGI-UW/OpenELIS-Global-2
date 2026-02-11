@@ -148,11 +148,10 @@ describe("AnalyzersList", () => {
       createMockAnalyzer({ id: "2", name: "Chemistry Analyzer 1" }),
     ];
 
-    // Mock getAnalyzers to call callback immediately with data
+    // Mock getAnalyzers to call callback immediately with envelope
     getAnalyzers.mockImplementation((filters, callback) => {
-      // Call callback synchronously - React will process state update
       act(() => {
-        callback(mockAnalyzers);
+        callback({ analyzers: mockAnalyzers });
       });
     });
 
@@ -207,16 +206,15 @@ describe("AnalyzersList", () => {
     // Mock getAnalyzers to filter based on search parameter
     getAnalyzers.mockImplementation((filters, callback) => {
       if (filters && filters.search) {
-        // Filter by search query
         const filtered = allAnalyzers.filter((analyzer) =>
           analyzer.name.toLowerCase().includes(filters.search.toLowerCase()),
         );
         act(() => {
-          callback(filtered);
+          callback({ analyzers: filtered });
         });
       } else {
         act(() => {
-          callback(allAnalyzers);
+          callback({ analyzers: allAnalyzers });
         });
       }
     });
@@ -257,7 +255,7 @@ describe("AnalyzersList", () => {
     // Arrange: Setup API mocks
     getAnalyzers.mockImplementation((filters, callback) => {
       act(() => {
-        callback([]);
+        callback({ analyzers: [] });
       });
     });
 
@@ -306,7 +304,7 @@ describe("AnalyzersList", () => {
 
     getAnalyzers.mockImplementation((filters, callback) => {
       act(() => {
-        callback(mockAnalyzers);
+        callback({ analyzers: mockAnalyzers });
       });
     });
 
@@ -362,11 +360,11 @@ describe("AnalyzersList", () => {
           (analyzer) => analyzer.status === filters.status,
         );
         act(() => {
-          callback(filtered);
+          callback({ analyzers: filtered });
         });
       } else {
         act(() => {
-          callback(allAnalyzers);
+          callback({ analyzers: allAnalyzers });
         });
       }
     });
