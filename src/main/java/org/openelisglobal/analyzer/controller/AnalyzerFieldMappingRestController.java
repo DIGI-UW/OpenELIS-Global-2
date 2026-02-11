@@ -351,6 +351,12 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
                         .body(AnalyzerControllerHelper.wrapError("ASTM message exceeds maximum size of 10KB"));
             }
 
+            // Null/empty message check
+            if (form.getAstmMessage() == null || form.getAstmMessage().trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(AnalyzerControllerHelper.wrapError("ASTM message is required"));
+            }
+
             if (analyzerMappingPreviewService == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(AnalyzerControllerHelper.wrapError("Mapping preview feature not available"));

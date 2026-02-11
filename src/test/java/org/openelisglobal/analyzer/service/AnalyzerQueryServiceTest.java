@@ -3,27 +3,45 @@ package org.openelisglobal.analyzer.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 import java.util.Map;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Unit tests for AnalyzerQueryService implementation
- * 
+ *
  * Task Reference: T102 Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerQueryServiceTest {
+
+    @Mock
+    private AnalyzerConfigurationService analyzerConfigurationService;
 
     private AnalyzerQueryServiceImpl analyzerQueryService;
 
     @Before
     public void setUp() {
         analyzerQueryService = new AnalyzerQueryServiceImpl();
+        ReflectionTestUtils.setField(analyzerQueryService, "analyzerConfigurationService",
+                analyzerConfigurationService);
+
+        // Default: return a valid TCP-capable config so startQuery passes validation
+        AnalyzerConfiguration config = new AnalyzerConfiguration();
+        config.setProtocolVersion("LIS2-A2");
+        config.setIpAddress("192.168.1.100");
+        config.setPort(5000);
+        when(analyzerConfigurationService.getByAnalyzerId(anyString())).thenReturn(Optional.of(config));
     }
 
     @Test

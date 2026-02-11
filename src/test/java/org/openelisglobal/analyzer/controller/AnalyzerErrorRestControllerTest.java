@@ -170,11 +170,11 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
                 "H|\\^&|||...\nP|1||...\nO|1||...\nR|1|^^^GLUCOSE|123|mg/dL|N");
 
         // Act & Assert
-        // Note: Reprocessing will fail if mappings don't exist, but endpoint should
-        // still return response
+        // Reprocessing will fail if mappings don't exist — endpoint now returns 422
+        // (not a contradictory 200 with success:false)
         mockMvc.perform(post("/rest/analyzer/errors/" + errorId + "/reprocess").contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").exists());
+                .accept(MediaType.APPLICATION_JSON)).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error").exists());
     }
 
     /**

@@ -142,8 +142,9 @@ public class AnalyzerErrorServiceTest {
 
     /**
      * Test: Get errors by filters Task Reference: T081
-     * 
-     * Verifies that getErrorsByFilters() returns filtered list of errors.
+     *
+     * Verifies that getErrorsByFilters() delegates to DAO's findByFilters() with
+     * the correct parameters.
      */
     @Test
     public void testGetErrorsByFilters_WithFilters_ReturnsFilteredList() {
@@ -151,7 +152,9 @@ public class AnalyzerErrorServiceTest {
         List<AnalyzerError> filteredErrors = new ArrayList<>();
         filteredErrors.add(testError);
 
-        when(analyzerErrorDAO.findByStatus("UNACKNOWLEDGED")).thenReturn(filteredErrors);
+        // Service now delegates to DAO.findByFilters() with all filter params
+        when(analyzerErrorDAO.findByFilters(null, AnalyzerError.ErrorType.MAPPING, AnalyzerError.Severity.ERROR,
+                AnalyzerError.ErrorStatus.UNACKNOWLEDGED, null, null)).thenReturn(filteredErrors);
 
         // Act
         List<AnalyzerError> result = analyzerErrorService.getErrorsByFilters(null, // analyzerId

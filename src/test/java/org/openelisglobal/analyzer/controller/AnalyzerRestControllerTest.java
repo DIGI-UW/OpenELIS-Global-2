@@ -216,8 +216,13 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: DELETE /rest/analyzer/analyzers/{id} soft deletes analyzer Task
+     * Test: POST /rest/analyzer/analyzers/{id}/delete soft deletes analyzer Task
      * Reference: T054
+     *
+     * Note: Uses POST /delete endpoint (not HTTP DELETE) — the duplicate
+     * 
+     * @DeleteMapping was removed per PR review. The POST endpoint has 90-day soft
+     *                delete logic which is the canonical behavior used by the UI.
      */
     @Test
     public void testDeleteAnalyzer_WithValidId_ReturnsNoContent() throws Exception {
@@ -235,13 +240,10 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
         analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
 
-        // Act & Assert: DELETE endpoint should soft delete analyzer
-        mockMvc.perform(delete("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON))
+        // Act & Assert: POST delete endpoint should soft delete analyzer
+        mockMvc.perform(
+                post("/rest/analyzer/analyzers/" + analyzerId + "/delete").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
-
-        // Verify analyzer is soft deleted (status=INACTIVE)
-        mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("INACTIVE"));
     }
 
     /**

@@ -71,10 +71,11 @@ public class AnalyzerDefaultsRestControllerTest extends BaseWebContextSensitiveT
     @Test
     public void testGetDefaultConfig_ValidTemplate_ReturnsJson() throws Exception {
         // Act & Assert: Load BC2000 default config
+        // Schema v2: $schema is a URL, protocol is an object {name, version}
         mockMvc.perform(get("/rest/analyzer/defaults/hl7/mindray-bc2000").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.schema_version").value("1.0"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.$schema").exists())
                 .andExpect(jsonPath("$.analyzer_name").value("Mindray BC2000"))
-                .andExpect(jsonPath("$.protocol").value("HL7"))
+                .andExpect(jsonPath("$.protocol.name").value("HL7"))
                 .andExpect(jsonPath("$.identifier_pattern").value("MINDRAY.*BC.?2000"))
                 .andExpect(jsonPath("$.default_test_mappings").isArray());
     }

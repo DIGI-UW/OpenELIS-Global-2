@@ -327,6 +327,11 @@ public class AnalyzerRestController extends BaseRestController {
             }
             Map<String, Object> response = analyzerToMap(analyzer);
             return ResponseEntity.ok(response);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            // Hibernate may throw instead of returning null for missing IDs
+            Map<String, Object> error = new LinkedHashMap<>();
+            error.put("error", "Analyzer not found: " + id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
         } catch (Exception e) {
             logger.error("Error retrieving analyzer", e);
             Map<String, Object> error = new LinkedHashMap<>();
