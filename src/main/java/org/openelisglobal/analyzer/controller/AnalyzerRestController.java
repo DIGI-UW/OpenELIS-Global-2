@@ -28,6 +28,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
+import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
@@ -154,6 +155,10 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getPort() != null && (form.getPort() < 1 || form.getPort() > 65535)) {
                 validationErrors.add("Port must be between 1 and 65535");
             }
+            if (form.getProtocolVersion() != null && ProtocolVersion.fromValue(form.getProtocolVersion()) == null) {
+                validationErrors.add("Invalid protocol version: " + form.getProtocolVersion()
+                        + ". Valid values: ASTM_LIS2_A2, HL7_V2_3_1, HL7_V2_5");
+            }
             if (!validationErrors.isEmpty()) {
                 Map<String, Object> error = AnalyzerControllerHelper.wrapError(String.join("; ", validationErrors));
                 error.put("validationErrors", validationErrors);
@@ -174,7 +179,8 @@ public class AnalyzerRestController extends BaseRestController {
             analyzer.setType(form.getAnalyzerType());
             analyzer.setIpAddress(form.getIpAddress());
             analyzer.setPort(form.getPort());
-            analyzer.setProtocolVersion(form.getProtocolVersion() != null ? form.getProtocolVersion() : "ASTM LIS2-A2");
+            ProtocolVersion pv = ProtocolVersion.fromValue(form.getProtocolVersion());
+            analyzer.setProtocolVersion(pv != null ? pv : ProtocolVersion.ASTM_LIS2_A2);
             analyzer.setTestUnitIds(form.getTestUnitIds() != null ? form.getTestUnitIds() : new ArrayList<>());
             if (form.getIdentifierPattern() != null) {
                 analyzer.setIdentifierPattern(form.getIdentifierPattern());
@@ -232,33 +238,33 @@ public class AnalyzerRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
 
-            String protocol = analyzer.getProtocolVersion();
-
-            // Protocol-aware connection testing
+            // Transport-first routing: check config entities, then use message
+            // format for handshake selection. Transport (FILE, RS232, TCP) is
+            // orthogonal to message format (ASTM, HL7).
             Map<String, Object> response;
-            if (protocol != null && protocol.toUpperCase().startsWith("HL7")) {
-                response = testHl7Connection(analyzer);
-            } else if (protocol != null && (protocol.toUpperCase().startsWith("ASTM")
-                    || protocol.toUpperCase().contains("E1381") || protocol.toUpperCase().contains("LIS2"))) {
-                response = testAstmTcpConnection(analyzer);
-            } else if (protocol != null && protocol.toUpperCase().contains("FILE")) {
+            Integer analyzerIdInt = Integer.valueOf(id);
+            if (fileImportService.getByAnalyzerId(analyzerIdInt).isPresent()) {
                 response = testFileConfiguration(analyzer);
-            } else if (protocol != null && protocol.toUpperCase().contains("RS232")) {
+            } else if (serialPortService.getByAnalyzerId(analyzerIdInt).isPresent()) {
                 response = testSerialConfiguration(id);
-            } else {
-                // Fallback: try TCP connection if IP/port available
-                if (analyzer.getIpAddress() != null && analyzer.getPort() != null) {
-                    response = testTcpConnection(analyzer.getIpAddress(), analyzer.getPort());
+            } else if (analyzer.getIpAddress() != null && analyzer.getPort() != null) {
+                // Use message format to pick the right handshake
+                ProtocolVersion pv = analyzer.getProtocolVersion();
+                if (pv != null && pv.isHl7()) {
+                    response = testHl7Connection(analyzer);
                 } else {
-                    response = new LinkedHashMap<>();
-                    response.put("success", false);
-                    response.put("message", "Unknown protocol or missing connection details: " + protocol);
+                    response = testAstmTcpConnection(analyzer);
                 }
+            } else {
+                response = new LinkedHashMap<>();
+                response.put("success", false);
+                response.put("message", "No transport configured (missing IP/port, file import, or serial config)");
             }
 
             response.put("analyzerId", id);
             response.put("analyzerName", analyzer.getName());
-            response.put("protocol", protocol);
+            response.put("protocol",
+                    analyzer.getProtocolVersion() != null ? analyzer.getProtocolVersion().name() : null);
             if (analyzer.getIpAddress() != null) {
                 response.put("ipAddress", analyzer.getIpAddress());
             }
@@ -377,7 +383,14 @@ public class AnalyzerRestController extends BaseRestController {
                 analyzer.setPort(form.getPort());
             }
             if (form.getProtocolVersion() != null) {
-                analyzer.setProtocolVersion(form.getProtocolVersion());
+                ProtocolVersion updatedPv = ProtocolVersion.fromValue(form.getProtocolVersion());
+                if (updatedPv == null) {
+                    Map<String, Object> error = new LinkedHashMap<>();
+                    error.put("error", "Invalid protocol version: " + form.getProtocolVersion()
+                            + ". Valid values: ASTM_LIS2_A2, HL7_V2_3_1, HL7_V2_5");
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                }
+                analyzer.setProtocolVersion(updatedPv);
             }
             if (form.getTestUnitIds() != null) {
                 analyzer.setTestUnitIds(form.getTestUnitIds());
@@ -502,7 +515,7 @@ public class AnalyzerRestController extends BaseRestController {
         // Configuration fields (stored directly on Analyzer in 2-table model)
         map.put("ipAddress", analyzer.getIpAddress());
         map.put("port", analyzer.getPort());
-        map.put("protocolVersion", analyzer.getProtocolVersion());
+        map.put("protocolVersion", analyzer.getProtocolVersion() != null ? analyzer.getProtocolVersion().name() : null);
         map.put("testUnitIds", analyzer.getTestUnitIds());
         map.put("identifierPattern", analyzer.getIdentifierPattern());
 

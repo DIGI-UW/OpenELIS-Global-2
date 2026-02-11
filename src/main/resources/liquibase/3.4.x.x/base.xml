@@ -13,4 +13,5 @@
   <include relativeToChangelogFile="true" file="005-create-support-tables.xml"/>
   <include relativeToChangelogFile="true" file="006-create-indexes.xml"/>
   <include relativeToChangelogFile="true" file="007-insert-seed-data.xml"/>
+  <include relativeToChangelogFile="true" file="008-normalize-protocol-version-enum.xml"/>
 </databaseChangeLog>
