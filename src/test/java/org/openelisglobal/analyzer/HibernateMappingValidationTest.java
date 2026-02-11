@@ -15,7 +15,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
@@ -57,7 +56,7 @@ public class HibernateMappingValidationTest {
         configuration.addAnnotatedClass(AnalyzerResults.class); // Migrated in Phase 2B
         configuration.addAnnotatedClass(AnalyzerTestMapping.class); // Migrated in Phase 2C
         configuration.addAnnotatedClass(AnalyzerFieldMapping.class); // Migrated in Phase 3
-        configuration.addAnnotatedClass(AnalyzerConfiguration.class);
+        // AnalyzerConfiguration removed: merged into Analyzer entity
         configuration.addAnnotatedClass(AnalyzerError.class);
         configuration.addAnnotatedClass(CustomFieldType.class);
         configuration.addAnnotatedClass(FileImportConfiguration.class);
@@ -93,8 +92,7 @@ public class HibernateMappingValidationTest {
         // Verify each entity is registered in Hibernate metamodel
         assertNotNull("Analyzer should be registered", sessionFactory.getMetamodel().entity(Analyzer.class)); // Phase 1
         assertNotNull("AnalyzerType should be registered", sessionFactory.getMetamodel().entity(AnalyzerType.class));
-        assertNotNull("AnalyzerConfiguration should be registered",
-                sessionFactory.getMetamodel().entity(AnalyzerConfiguration.class));
+        // AnalyzerConfiguration removed: merged into Analyzer entity
         assertNotNull("AnalyzerField should be registered", sessionFactory.getMetamodel().entity(AnalyzerField.class));
         assertNotNull("AnalyzerResults should be registered",
                 sessionFactory.getMetamodel().entity(AnalyzerResults.class)); // Phase 2B
@@ -125,10 +123,10 @@ public class HibernateMappingValidationTest {
      */
     @Test
     public void testAnalyzerEntitiesHaveNoGetterConflicts() {
-        Class<?>[] entities = { Analyzer.class, AnalyzerType.class, AnalyzerConfiguration.class, AnalyzerField.class,
-                AnalyzerResults.class, AnalyzerTestMapping.class, AnalyzerFieldMapping.class,
-                QualitativeResultMapping.class, UnitMapping.class, AnalyzerError.class, CustomFieldType.class,
-                ValidationRuleConfiguration.class, SerialPortConfiguration.class, FileImportConfiguration.class };
+        Class<?>[] entities = { Analyzer.class, AnalyzerType.class, AnalyzerField.class, AnalyzerResults.class,
+                AnalyzerTestMapping.class, AnalyzerFieldMapping.class, QualitativeResultMapping.class,
+                UnitMapping.class, AnalyzerError.class, CustomFieldType.class, ValidationRuleConfiguration.class,
+                SerialPortConfiguration.class, FileImportConfiguration.class };
 
         for (Class<?> entityClass : entities) {
             // Check each entity independently for getter conflicts

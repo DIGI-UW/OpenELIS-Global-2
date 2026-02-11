@@ -3,7 +3,8 @@ package org.openelisglobal.analyzer.service;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -32,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AnalyzerLifecycleScheduler {
 
     @Autowired
-    private AnalyzerConfigurationService analyzerConfigurationService;
+    private AnalyzerService analyzerService;
 
     // Metrics tracking (T153b)
     private int successCount = 0;
@@ -59,31 +60,30 @@ public class AnalyzerLifecycleScheduler {
         List<String> failedAnalyzerIds = new java.util.ArrayList<>();
 
         try {
-            // Get all analyzer configurations in ACTIVE stage
-            List<AnalyzerConfiguration> configurations = analyzerConfigurationService.getAllWithAnalyzers();
+            // Get all analyzers in ACTIVE stage
+            List<Analyzer> analyzers = analyzerService.getAll();
 
             Date sevenDaysAgo = getDateSevenDaysAgo();
 
-            for (AnalyzerConfiguration config : configurations) {
-                if (config.getStatus() == AnalyzerConfiguration.AnalyzerStatus.ACTIVE
-                        && config.getLastActivatedDate() != null
-                        && config.getLastActivatedDate().before(sevenDaysAgo)) {
+            for (Analyzer analyzer : analyzers) {
+                if (analyzer.getStatus() == AnalyzerStatus.ACTIVE && analyzer.getLastActivatedDate() != null
+                        && analyzer.getLastActivatedDate().before(sevenDaysAgo)) {
                     try {
                         // Transition to OFFLINE (maintenance mode)
-                        config.setStatus(AnalyzerConfiguration.AnalyzerStatus.OFFLINE);
-                        config.setLastupdatedFields();
-                        analyzerConfigurationService.update(config);
+                        analyzer.setStatus(AnalyzerStatus.OFFLINE);
+                        analyzer.setLastupdatedFields();
+                        analyzerService.update(analyzer);
 
                         transitionedCount++;
                         successCount++;
 
                         LogEvent.logInfo(this.getClass().getSimpleName(), "transitionToMaintenance",
-                                "Transitioned analyzer " + config.getAnalyzer().getId() + " to OFFLINE stage");
+                                "Transitioned analyzer " + analyzer.getId() + " to OFFLINE stage");
                     } catch (Exception e) {
                         // Log error but continue processing other analyzers (T153b requirement)
                         failedCount++;
                         failureCount++;
-                        String analyzerId = config.getAnalyzer() != null ? config.getAnalyzer().getId() : "unknown";
+                        String analyzerId = analyzer.getId() != null ? analyzer.getId() : "unknown";
                         failedAnalyzerIds.add(analyzerId);
 
                         LogEvent.logError(

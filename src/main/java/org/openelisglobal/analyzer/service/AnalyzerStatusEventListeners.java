@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.service;
 
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration.AnalyzerStatus;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
@@ -25,7 +26,7 @@ public class AnalyzerStatusEventListeners {
     private AnalyzerStatusTransitionService transitionService;
 
     @Autowired
-    private AnalyzerConfigurationService configurationService;
+    private AnalyzerService analyzerService;
 
     /**
      * Listener: First field mapping created for an analyzer Triggers: SETUP →
@@ -39,8 +40,8 @@ public class AnalyzerStatusEventListeners {
 
         try {
             // Only transition if analyzer is in SETUP status
-            var configOpt = configurationService.getByAnalyzerId(analyzerId);
-            if (configOpt.isPresent() && configOpt.get().getStatus() == AnalyzerStatus.SETUP) {
+            Analyzer analyzer = analyzerService.get(analyzerId);
+            if (analyzer != null && analyzer.getStatus() == AnalyzerStatus.SETUP) {
                 transitionService.transitionToValidation(analyzerId);
                 LogEvent.logInfo(this.getClass().getSimpleName(), "onMappingCreated",
                         "Triggered SETUP → VALIDATION transition for analyzer " + analyzerId);
@@ -63,8 +64,8 @@ public class AnalyzerStatusEventListeners {
 
         try {
             // Only transition if analyzer is in VALIDATION status
-            var configOpt = configurationService.getByAnalyzerId(analyzerId);
-            if (configOpt.isPresent() && configOpt.get().getStatus() == AnalyzerStatus.VALIDATION) {
+            Analyzer analyzer = analyzerService.get(analyzerId);
+            if (analyzer != null && analyzer.getStatus() == AnalyzerStatus.VALIDATION) {
                 transitionService.transitionToActive(analyzerId);
                 LogEvent.logInfo(this.getClass().getSimpleName(), "onAllMappingsActivated",
                         "Triggered VALIDATION → ACTIVE transition for analyzer " + analyzerId);
@@ -87,8 +88,8 @@ public class AnalyzerStatusEventListeners {
 
         try {
             // Only transition if analyzer is in ACTIVE status
-            var configOpt = configurationService.getByAnalyzerId(analyzerId);
-            if (configOpt.isPresent() && configOpt.get().getStatus() == AnalyzerStatus.ACTIVE) {
+            Analyzer analyzer = analyzerService.get(analyzerId);
+            if (analyzer != null && analyzer.getStatus() == AnalyzerStatus.ACTIVE) {
                 transitionService.transitionToErrorPending(analyzerId);
                 LogEvent.logInfo(this.getClass().getSimpleName(), "onUnacknowledgedErrorCreated",
                         "Triggered ACTIVE → ERROR_PENDING transition for analyzer " + analyzerId);
@@ -111,9 +112,9 @@ public class AnalyzerStatusEventListeners {
 
         try {
             // Only transition if analyzer is in ACTIVE or ERROR_PENDING status
-            var configOpt = configurationService.getByAnalyzerId(analyzerId);
-            if (configOpt.isPresent()) {
-                AnalyzerStatus status = configOpt.get().getStatus();
+            Analyzer analyzer = analyzerService.get(analyzerId);
+            if (analyzer != null) {
+                AnalyzerStatus status = analyzer.getStatus();
                 if (status == AnalyzerStatus.ACTIVE || status == AnalyzerStatus.ERROR_PENDING) {
                     transitionService.transitionToOffline(analyzerId);
                     LogEvent.logInfo(this.getClass().getSimpleName(), "onConnectionTestFailed",
@@ -138,8 +139,8 @@ public class AnalyzerStatusEventListeners {
 
         try {
             // Only transition if analyzer is in ERROR_PENDING status
-            var configOpt = configurationService.getByAnalyzerId(analyzerId);
-            if (configOpt.isPresent() && configOpt.get().getStatus() == AnalyzerStatus.ERROR_PENDING) {
+            Analyzer analyzer = analyzerService.get(analyzerId);
+            if (analyzer != null && analyzer.getStatus() == AnalyzerStatus.ERROR_PENDING) {
                 transitionService.transitionToActiveFromError(analyzerId);
                 LogEvent.logInfo(this.getClass().getSimpleName(), "onAllErrorsAcknowledged",
                         "Triggered ERROR_PENDING → ACTIVE transition for analyzer " + analyzerId);
@@ -162,8 +163,8 @@ public class AnalyzerStatusEventListeners {
 
         try {
             // Only transition if analyzer is in OFFLINE status
-            var configOpt = configurationService.getByAnalyzerId(analyzerId);
-            if (configOpt.isPresent() && configOpt.get().getStatus() == AnalyzerStatus.OFFLINE) {
+            Analyzer analyzer = analyzerService.get(analyzerId);
+            if (analyzer != null && analyzer.getStatus() == AnalyzerStatus.OFFLINE) {
                 transitionService.transitionToActiveFromOffline(analyzerId);
                 LogEvent.logInfo(this.getClass().getSimpleName(), "onConnectionTestSucceeded",
                         "Triggered OFFLINE → ACTIVE transition for analyzer " + analyzerId);

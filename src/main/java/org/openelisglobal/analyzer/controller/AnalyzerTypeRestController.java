@@ -23,6 +23,8 @@ import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.PluginAnalyzerService;
+import org.openelisglobal.plugin.AnalyzerImporterPlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +57,9 @@ public class AnalyzerTypeRestController extends BaseRestController {
 
     @Autowired
     private AnalyzerService analyzerService;
+
+    @Autowired
+    private PluginAnalyzerService pluginAnalyzerService;
 
     /**
      * GET /rest/analyzer-types Retrieve all analyzer types with optional filtering.
@@ -328,6 +333,7 @@ public class AnalyzerTypeRestController extends BaseRestController {
         map.put("identifierPattern", type.getIdentifierPattern());
         map.put("isGenericPlugin", type.isGenericPlugin());
         map.put("isActive", type.isActive());
+        map.put("pluginLoaded", isPluginLoaded(type.getPluginClassName()));
         map.put("instanceCount", type.getInstances().size());
 
         if (includeInstances) {
@@ -344,5 +350,20 @@ public class AnalyzerTypeRestController extends BaseRestController {
         }
 
         return map;
+    }
+
+    /**
+     * Check if a plugin JAR is currently loaded for the given class name.
+     */
+    private boolean isPluginLoaded(String pluginClassName) {
+        if (pluginClassName == null) {
+            return false;
+        }
+        for (AnalyzerImporterPlugin plugin : pluginAnalyzerService.getAnalyzerPlugins()) {
+            if (pluginClassName.equals(plugin.getClass().getName())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

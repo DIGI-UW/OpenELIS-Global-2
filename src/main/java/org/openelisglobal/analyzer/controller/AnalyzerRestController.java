@@ -16,18 +16,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
-import org.openelisglobal.analyzer.service.AnalyzerConfigurationService;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.service.FileImportService;
 import org.openelisglobal.analyzer.service.SerialPortService;
 import org.openelisglobal.analyzer.util.NetworkValidationUtil;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
+import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
+import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
 import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.PluginAnalyzerService;
+import org.openelisglobal.plugin.AnalyzerImporterPlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,8 +39,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST Controller for Analyzer management Handles CRUD operations for analyzers
- * and analyzer configurations
+ * REST Controller for Analyzer management. Handles CRUD operations for
+ * analyzers using the 2-table model (Analyzer + AnalyzerType).
  */
 @RestController
 @RequestMapping("/rest/analyzer")
@@ -47,9 +50,6 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private AnalyzerService analyzerService;
-
-    @Autowired
-    private AnalyzerConfigurationService analyzerConfigurationService;
 
     @Autowired
     private AnalyzerFieldService analyzerFieldService;
@@ -63,6 +63,12 @@ public class AnalyzerRestController extends BaseRestController {
     @Autowired
     private org.openelisglobal.analyzer.service.AnalyzerQueryService analyzerQueryService;
 
+    @Autowired
+    private PluginAnalyzerService pluginAnalyzerService;
+
+    @Autowired
+    private AnalyzerTypeService analyzerTypeService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /** ASTM LIS2-A2 Enquiry — initiates transmission. */
@@ -72,7 +78,7 @@ public class AnalyzerRestController extends BaseRestController {
     private static final byte ACK = 0x06;
 
     /**
-     * GET /rest/analyzer/analyzers Retrieve all analyzers with their configurations
+     * GET /rest/analyzer/analyzers Retrieve all analyzers with their configurations.
      */
     @GetMapping("/analyzers")
     public ResponseEntity<List<Map<String, Object>>> getAnalyzers(@RequestParam(required = false) String status,
@@ -113,13 +119,16 @@ public class AnalyzerRestController extends BaseRestController {
         } catch (Exception e) {
             logger.error("Error retrieving analyzers", e);
             Map<String, Object> error = new LinkedHashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ArrayList<>());
+            error.put("error", "Error retrieving analyzers");
+            if (e.getMessage() != null && !e.getMessage().isEmpty()) {
+                error.put("message", e.getMessage());
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of(error));
         }
     }
 
     /**
-     * POST /rest/analyzer/analyzers Create new analyzer with configuration
+     * POST /rest/analyzer/analyzers Create new analyzer.
      */
     @PostMapping("/analyzers")
     public ResponseEntity<Map<String, Object>> createAnalyzer(@RequestBody AnalyzerForm form,
@@ -156,54 +165,42 @@ public class AnalyzerRestController extends BaseRestController {
                 }
             }
 
-            // Create Analyzer entity
+            // Create Analyzer entity (2-table model: config fields on Analyzer directly)
             Analyzer analyzer = new Analyzer();
             analyzer.setName(form.getName());
             analyzer.setType(form.getAnalyzerType());
-            analyzer.setSysUserId(getSysUserId(request));
+            analyzer.setIpAddress(form.getIpAddress());
+            analyzer.setPort(form.getPort());
+            analyzer.setProtocolVersion(form.getProtocolVersion() != null ? form.getProtocolVersion() : "LIS2-A2");
+            analyzer.setTestUnitIds(form.getTestUnitIds() != null ? form.getTestUnitIds() : new ArrayList<>());
+            if (form.getIdentifierPattern() != null) {
+                analyzer.setIdentifierPattern(form.getIdentifierPattern());
+            }
 
+            // Link to plugin type (analyzer_type FK)
+            if (form.getPluginTypeId() != null && !form.getPluginTypeId().trim().isEmpty()) {
+                AnalyzerType pluginType = analyzerTypeService.get(form.getPluginTypeId());
+                if (pluginType != null) {
+                    analyzer.setAnalyzerType(pluginType);
+                }
+            }
+
+            // Set lifecycle status (SETUP → ACTIVE → INACTIVE → DELETED)
+            String statusStr = form.getStatus() != null ? form.getStatus() : "SETUP";
+            try {
+                analyzer.setStatus(AnalyzerStatus.valueOf(statusStr));
+            } catch (IllegalArgumentException e) {
+                logger.warn("Invalid status value: {}, defaulting to SETUP", statusStr);
+                analyzer.setStatus(AnalyzerStatus.SETUP);
+            }
+
+            analyzer.setSysUserId(getSysUserId(request));
             String analyzerId = analyzerService.insert(analyzer);
 
             // Retrieve created analyzer
             Analyzer createdAnalyzer = analyzerService.get(analyzerId);
             if (createdAnalyzer == null) {
                 throw new LIMSRuntimeException("Failed to retrieve created analyzer");
-            }
-
-            // Create AnalyzerConfiguration (tracks lifecycle: SETUP → ACTIVE → INACTIVE →
-            // DELETED)
-            // Always create configuration to store status, even if IP/Port not provided
-            try {
-                List<String> testUnitIds = form.getTestUnitIds() != null ? form.getTestUnitIds() : new ArrayList<>();
-                AnalyzerConfiguration config = new AnalyzerConfiguration();
-                config.setAnalyzer(createdAnalyzer);
-                config.setIpAddress(form.getIpAddress());
-                config.setPort(form.getPort());
-                config.setProtocolVersion(form.getProtocolVersion() != null ? form.getProtocolVersion() : "LIS2-A2");
-                config.setTestUnitIds(testUnitIds);
-                if (form.getIdentifierPattern() != null) {
-                    config.setIdentifierPattern(form.getIdentifierPattern());
-                }
-                if (form.getGenericPlugin() != null) {
-                    config.setGenericPlugin(form.getGenericPlugin());
-                }
-                if (form.getPreferGenericPlugin() != null) {
-                    config.setPreferGenericPlugin(form.getPreferGenericPlugin());
-                }
-                // Set status (use form status or default to SETUP)
-                String status = form.getStatus() != null ? form.getStatus() : "SETUP";
-                try {
-                    config.setStatus(AnalyzerConfiguration.AnalyzerStatus.valueOf(status));
-                } catch (IllegalArgumentException e) {
-                    logger.warn("Invalid status value: {}, defaulting to SETUP", status);
-                    config.setStatus(AnalyzerConfiguration.AnalyzerStatus.SETUP);
-                }
-                config.setSysUserId(getSysUserId(request));
-                analyzerConfigurationService.insert(config);
-            } catch (LIMSRuntimeException e) {
-                // If configuration creation fails, log but don't fail the analyzer creation
-                logger.warn("Failed to create analyzer configuration: {}", e.getMessage());
-                // Continue - analyzer is created, configuration can be added later
             }
 
             Map<String, Object> response = analyzerToMap(createdAnalyzer);
@@ -220,7 +217,7 @@ public class AnalyzerRestController extends BaseRestController {
 
     /**
      * POST /rest/analyzer/analyzers/{id}/test-connection Test TCP connection to
-     * analyzer
+     * analyzer.
      */
     @PostMapping("/analyzers/{id}/test-connection")
     public ResponseEntity<Map<String, Object>> testConnection(@PathVariable String id) {
@@ -231,32 +228,24 @@ public class AnalyzerRestController extends BaseRestController {
                 error.put("error", "Analyzer not found: " + id);
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
-            Optional<AnalyzerConfiguration> configOpt = analyzerConfigurationService.getByAnalyzerId(id);
 
-            if (!configOpt.isPresent()) {
-                Map<String, Object> error = new LinkedHashMap<>();
-                error.put("error", "Analyzer configuration not found");
-                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error);
-            }
-
-            AnalyzerConfiguration config = configOpt.get();
-            String protocol = config.getProtocolVersion();
+            String protocol = analyzer.getProtocolVersion();
 
             // Protocol-aware connection testing
             Map<String, Object> response;
             if (protocol != null && protocol.toUpperCase().startsWith("HL7")) {
-                response = testHl7Connection(config);
+                response = testHl7Connection(analyzer);
             } else if (protocol != null && (protocol.toUpperCase().startsWith("ASTM")
                     || protocol.toUpperCase().contains("E1381") || protocol.toUpperCase().contains("LIS2"))) {
-                response = testAstmTcpConnection(config);
+                response = testAstmTcpConnection(analyzer);
             } else if (protocol != null && protocol.toUpperCase().contains("FILE")) {
-                response = testFileConfiguration(config, analyzer);
+                response = testFileConfiguration(analyzer);
             } else if (protocol != null && protocol.toUpperCase().contains("RS232")) {
                 response = testSerialConfiguration(id);
             } else {
                 // Fallback: try TCP connection if IP/port available
-                if (config.getIpAddress() != null && config.getPort() != null) {
-                    response = testTcpConnection(config.getIpAddress(), config.getPort());
+                if (analyzer.getIpAddress() != null && analyzer.getPort() != null) {
+                    response = testTcpConnection(analyzer.getIpAddress(), analyzer.getPort());
                 } else {
                     response = new LinkedHashMap<>();
                     response.put("success", false);
@@ -267,11 +256,11 @@ public class AnalyzerRestController extends BaseRestController {
             response.put("analyzerId", id);
             response.put("analyzerName", analyzer.getName());
             response.put("protocol", protocol);
-            if (config.getIpAddress() != null) {
-                response.put("ipAddress", config.getIpAddress());
+            if (analyzer.getIpAddress() != null) {
+                response.put("ipAddress", analyzer.getIpAddress());
             }
-            if (config.getPort() != null) {
-                response.put("port", config.getPort());
+            if (analyzer.getPort() != null) {
+                response.put("port", analyzer.getPort());
             }
 
             // Always return 200 with success status in response body
@@ -286,7 +275,7 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/analyzers/{id}/fields Get all fields for an analyzer
+     * GET /rest/analyzer/analyzers/{id}/fields Get all fields for an analyzer.
      */
     @GetMapping("/analyzers/{id}/fields")
     public ResponseEntity<List<Map<String, Object>>> getFields(@PathVariable String id) {
@@ -314,7 +303,7 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/analyzers/{id} Retrieve analyzer by ID
+     * GET /rest/analyzer/analyzers/{id} Retrieve analyzer by ID.
      */
     @GetMapping("/analyzers/{id}")
     public ResponseEntity<Map<String, Object>> getAnalyzer(@PathVariable String id) {
@@ -341,7 +330,7 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * PUT /rest/analyzer/analyzers/{id} Update analyzer
+     * PUT /rest/analyzer/analyzers/{id} Update analyzer.
      */
     @PutMapping("/analyzers/{id}")
     public ResponseEntity<Map<String, Object>> updateAnalyzer(@PathVariable String id, @RequestBody AnalyzerForm form,
@@ -371,83 +360,46 @@ public class AnalyzerRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
 
-            // Update analyzer fields
+            // Update analyzer fields (2-table model: all fields on Analyzer directly)
             if (form.getName() != null && !form.getName().trim().isEmpty()) {
                 analyzer.setName(form.getName());
             }
             if (form.getAnalyzerType() != null && !form.getAnalyzerType().trim().isEmpty()) {
                 analyzer.setType(form.getAnalyzerType());
             }
-
-            analyzerService.update(analyzer);
-
-            // Update or create configuration
-            Optional<AnalyzerConfiguration> configOpt = analyzerConfigurationService.getByAnalyzerId(id);
-            AnalyzerConfiguration config;
-            if (configOpt.isPresent()) {
-                config = configOpt.get();
-                if (form.getIpAddress() != null) {
-                    config.setIpAddress(form.getIpAddress());
-                }
-                if (form.getPort() != null) {
-                    config.setPort(form.getPort());
-                }
-                if (form.getProtocolVersion() != null) {
-                    config.setProtocolVersion(form.getProtocolVersion());
-                }
-                if (form.getTestUnitIds() != null) {
-                    config.setTestUnitIds(form.getTestUnitIds());
-                }
-                if (form.getIdentifierPattern() != null) {
-                    config.setIdentifierPattern(form.getIdentifierPattern());
-                }
-                if (form.getGenericPlugin() != null) {
-                    config.setGenericPlugin(form.getGenericPlugin());
-                }
-                if (form.getPreferGenericPlugin() != null) {
-                    config.setPreferGenericPlugin(form.getPreferGenericPlugin());
-                }
-                // Update lifecycle status if provided (SETUP → ACTIVE → INACTIVE → DELETED)
-                if (form.getStatus() != null) {
-                    try {
-                        config.setStatus(AnalyzerConfiguration.AnalyzerStatus.valueOf(form.getStatus()));
-                    } catch (IllegalArgumentException e) {
-                        logger.warn("Invalid status value: {}, keeping existing status", form.getStatus());
-                    }
-                }
-                analyzerConfigurationService.update(config);
-            } else {
-                // Create new configuration if doesn't exist
-                List<String> testUnitIds = form.getTestUnitIds() != null ? form.getTestUnitIds() : new ArrayList<>();
-                config = new AnalyzerConfiguration();
-                config.setAnalyzer(analyzer);
-                config.setIpAddress(form.getIpAddress());
-                config.setPort(form.getPort());
-                config.setProtocolVersion(form.getProtocolVersion() != null ? form.getProtocolVersion() : "LIS2-A2");
-                config.setTestUnitIds(testUnitIds);
-                if (form.getIdentifierPattern() != null) {
-                    config.setIdentifierPattern(form.getIdentifierPattern());
-                }
-                if (form.getGenericPlugin() != null) {
-                    config.setGenericPlugin(form.getGenericPlugin());
-                }
-                if (form.getPreferGenericPlugin() != null) {
-                    config.setPreferGenericPlugin(form.getPreferGenericPlugin());
-                }
-                // Set status
-                if (form.getStatus() != null) {
-                    try {
-                        config.setStatus(AnalyzerConfiguration.AnalyzerStatus.valueOf(form.getStatus()));
-                    } catch (IllegalArgumentException e) {
-                        logger.warn("Invalid status value: {}, defaulting to SETUP", form.getStatus());
-                        config.setStatus(AnalyzerConfiguration.AnalyzerStatus.SETUP);
-                    }
-                } else {
-                    config.setStatus(AnalyzerConfiguration.AnalyzerStatus.SETUP);
-                }
-                config.setSysUserId(getSysUserId(request));
-                analyzerConfigurationService.insert(config);
+            if (form.getIpAddress() != null) {
+                analyzer.setIpAddress(form.getIpAddress());
             }
+            if (form.getPort() != null) {
+                analyzer.setPort(form.getPort());
+            }
+            if (form.getProtocolVersion() != null) {
+                analyzer.setProtocolVersion(form.getProtocolVersion());
+            }
+            if (form.getTestUnitIds() != null) {
+                analyzer.setTestUnitIds(form.getTestUnitIds());
+            }
+            if (form.getIdentifierPattern() != null) {
+                analyzer.setIdentifierPattern(form.getIdentifierPattern());
+            }
+            // Update plugin type link (analyzer_type FK)
+            if (form.getPluginTypeId() != null && !form.getPluginTypeId().trim().isEmpty()) {
+                AnalyzerType pluginType = analyzerTypeService.get(form.getPluginTypeId());
+                if (pluginType != null) {
+                    analyzer.setAnalyzerType(pluginType);
+                }
+            }
+            // Update lifecycle status if provided (SETUP → ACTIVE → INACTIVE → DELETED)
+            if (form.getStatus() != null) {
+                try {
+                    analyzer.setStatus(AnalyzerStatus.valueOf(form.getStatus()));
+                } catch (IllegalArgumentException e) {
+                    logger.warn("Invalid status value: {}, keeping existing status", form.getStatus());
+                }
+            }
+
+            analyzer.setSysUserId(getSysUserId(request));
+            analyzerService.update(analyzer);
 
             // Retrieve updated analyzer
             Analyzer updatedAnalyzer = analyzerService.get(id);
@@ -464,20 +416,45 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * POST /rest/analyzer/analyzers/{id}/delete Delete analyzer
-     * 
-     * Implements 90-day soft delete window per spec requirement: - If analyzer has
-     * recent results (within 90 days): soft delete (status = DELETED) - If analyzer
-     * has no recent results: hard delete (remove from database)
-     * 
+     * DELETE /rest/analyzer/analyzers/{id} Soft delete (deactivate) an analyzer.
+     */
+    @DeleteMapping("/analyzers/{id}")
+    public ResponseEntity<Void> softDeleteAnalyzer(@PathVariable String id) {
+        try {
+            Analyzer analyzer = analyzerService.get(id);
+            if (analyzer == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            analyzer.setStatus(AnalyzerStatus.INACTIVE);
+            analyzer.setActive(false);
+            analyzerService.update(analyzer);
+
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            logger.error("Error deleting analyzer: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * POST /rest/analyzer/analyzers/{id}/delete Delete analyzer.
+     *
+     * <p>
+     * Implements 90-day soft delete window per spec requirement:
+     * <ul>
+     * <li>If analyzer has recent results (within 90 days): soft delete (status =
+     * DELETED)</li>
+     * <li>If analyzer has no recent results: hard delete (remove from
+     * database)</li>
+     * </ul>
+     *
+     * <p>
      * Note: Uses POST instead of DELETE HTTP method due to Spring Security 6 CSRF
-     * protection blocking DELETE requests even with valid CSRF tokens and ignore
-     * matchers configured. POST works correctly with the same security
-     * configuration.
-     * 
+     * protection blocking DELETE requests even with valid CSRF tokens.
+     *
      * @param id Analyzer ID to delete
-     * @return 204 No Content on success, 404 if analyzer not found, 409 if cannot
-     *         delete (recent results), 500 on error
+     * @return 200 on success with deletion details, 404 if analyzer not found
      */
     @PostMapping("/analyzers/{id}/delete")
     public ResponseEntity<Map<String, Object>> deleteAnalyzerLegacy(@PathVariable String id) {
@@ -488,17 +465,13 @@ public class AnalyzerRestController extends BaseRestController {
             }
 
             // Check for recent results (within 90-day window)
-            boolean hasRecentResults = analyzerConfigurationService.hasRecentResults(id);
-
-            Optional<AnalyzerConfiguration> configOpt = analyzerConfigurationService.getByAnalyzerId(id);
+            boolean hasRecentResults = analyzerService.hasRecentResults(id);
 
             if (hasRecentResults) {
                 // Soft delete: set status to DELETED (90-day window)
-                if (configOpt.isPresent()) {
-                    AnalyzerConfiguration config = configOpt.get();
-                    config.setStatus(AnalyzerConfiguration.AnalyzerStatus.DELETED);
-                    analyzerConfigurationService.update(config);
-                }
+                analyzer.setStatus(AnalyzerStatus.DELETED);
+                analyzer.setActive(false);
+                analyzerService.update(analyzer);
 
                 Map<String, Object> response = new LinkedHashMap<>();
                 response.put("message", "Analyzer soft-deleted (has recent results within 90-day window)");
@@ -506,9 +479,6 @@ public class AnalyzerRestController extends BaseRestController {
                 return ResponseEntity.ok(response);
             } else {
                 // Hard delete: remove from database (no recent results)
-                if (configOpt.isPresent()) {
-                    analyzerConfigurationService.delete(configOpt.get());
-                }
                 analyzerService.delete(analyzer);
 
                 Map<String, Object> response = new LinkedHashMap<>();
@@ -527,7 +497,8 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * Convert Analyzer entity to Map for JSON response
+     * Convert Analyzer entity to Map for JSON response. Reads all configuration
+     * fields directly from the Analyzer entity (2-table model).
      */
     private Map<String, Object> analyzerToMap(Analyzer analyzer) {
         Map<String, Object> map = new LinkedHashMap<>();
@@ -537,32 +508,34 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("description", analyzer.getDescription());
         map.put("location", analyzer.getLocation());
 
-        // Add configuration if exists (catch exceptions to avoid breaking response)
-        try {
-            Optional<AnalyzerConfiguration> configOpt = analyzerConfigurationService.getByAnalyzerId(analyzer.getId());
-            if (configOpt.isPresent()) {
-                AnalyzerConfiguration config = configOpt.get();
-                map.put("ipAddress", config.getIpAddress());
-                map.put("port", config.getPort());
-                map.put("protocolVersion", config.getProtocolVersion());
-                map.put("testUnitIds", config.getTestUnitIds());
-                map.put("identifierPattern", config.getIdentifierPattern());
-                map.put("genericPlugin", config.isGenericPlugin());
-                map.put("preferGenericPlugin", config.isPreferGenericPlugin());
-                // Include lifecycle status (SETUP → ACTIVE → INACTIVE → DELETED)
-                if (config.getStatus() != null) {
-                    map.put("status", config.getStatus().toString());
-                } else {
-                    map.put("status", "SETUP");
-                }
-            } else {
-                // No configuration exists, default status to SETUP
-                map.put("status", "SETUP");
-            }
-        } catch (Exception e) {
-            // Configuration not found or error - just don't include it in response
-            logger.debug("Could not load analyzer configuration for analyzer {}: {}", analyzer.getId(), e.getMessage());
-            // Default status to SETUP if configuration cannot be loaded
+        // Plugin loaded check
+        boolean pluginLoaded;
+        if (analyzer.getAnalyzerType() != null) {
+            pluginLoaded = isPluginLoaded(analyzer.getAnalyzerType().getPluginClassName());
+        } else {
+            pluginLoaded = pluginAnalyzerService.getPluginByAnalyzerId(analyzer.getId()) != null;
+        }
+        map.put("pluginLoaded", pluginLoaded);
+
+        // Configuration fields (stored directly on Analyzer in 2-table model)
+        map.put("ipAddress", analyzer.getIpAddress());
+        map.put("port", analyzer.getPort());
+        map.put("protocolVersion", analyzer.getProtocolVersion());
+        map.put("testUnitIds", analyzer.getTestUnitIds());
+        map.put("identifierPattern", analyzer.getIdentifierPattern());
+
+        // Derive plugin type info from analyzer_type FK
+        boolean isGeneric = analyzer.getAnalyzerType() != null && analyzer.getAnalyzerType().isGenericPlugin();
+        map.put("genericPlugin", isGeneric);
+        if (analyzer.getAnalyzerType() != null) {
+            map.put("pluginTypeId", analyzer.getAnalyzerType().getId());
+            map.put("pluginTypeName", analyzer.getAnalyzerType().getName());
+        }
+
+        // Lifecycle status (SETUP → ACTIVE → INACTIVE → DELETED)
+        if (analyzer.getStatus() != null) {
+            map.put("status", analyzer.getStatus().toString());
+        } else {
             map.put("status", "SETUP");
         }
 
@@ -570,8 +543,23 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * Test TCP connection to analyzer with ASTM handshake (ENQ/ACK)
-     * 
+     * Check if a plugin JAR is currently loaded for the given class name.
+     */
+    private boolean isPluginLoaded(String pluginClassName) {
+        if (pluginClassName == null) {
+            return false;
+        }
+        for (AnalyzerImporterPlugin plugin : pluginAnalyzerService.getAnalyzerPlugins()) {
+            if (pluginClassName.equals(plugin.getClass().getName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Test TCP connection to analyzer with ASTM handshake (ENQ/ACK).
+     *
      * @param ipAddress IP address of the analyzer
      * @param port      Port number of the analyzer
      * @return Map with success status, message, and connection details
@@ -649,14 +637,15 @@ public class AnalyzerRestController extends BaseRestController {
     /**
      * Test HL7 analyzer connection.
      *
+     * <p>
      * In OpenELIS, HL7 analyzers are typically push-based (results are posted to
-     * OpenELIS), so there is no reliable outbound \"connection test\" from OpenELIS
-     * to the analyzer. This returns success when the analyzer is configured.
+     * OpenELIS), so there is no reliable outbound "connection test" from OpenELIS to
+     * the analyzer. This returns success when the analyzer is configured.
      *
-     * @param config Analyzer configuration (protocol metadata)
+     * @param analyzer Analyzer entity
      * @return Map with success status and message
      */
-    private Map<String, Object> testHl7Connection(AnalyzerConfiguration config) {
+    private Map<String, Object> testHl7Connection(Analyzer analyzer) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
         response.put("message", "HL7 analyzers are push-based; validate by sending an HL7 message to OpenELIS");
@@ -667,11 +656,11 @@ public class AnalyzerRestController extends BaseRestController {
      * Test ASTM analyzer connection over TCP/IP. ASTM requires ENQ/ACK handshake
      * for connection validation.
      *
-     * @param config Analyzer configuration with IP/port
+     * @param analyzer Analyzer entity with IP/port
      * @return Map with success status and message
      */
-    private Map<String, Object> testAstmTcpConnection(AnalyzerConfiguration config) {
-        if (config.getIpAddress() == null || config.getPort() == null) {
+    private Map<String, Object> testAstmTcpConnection(Analyzer analyzer) {
+        if (analyzer.getIpAddress() == null || analyzer.getPort() == null) {
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", false);
             response.put("message", "ASTM configuration incomplete - missing IP address or port");
@@ -679,20 +668,19 @@ public class AnalyzerRestController extends BaseRestController {
         }
 
         // Use existing testTcpConnection which implements ASTM ENQ/ACK
-        Map<String, Object> response = testTcpConnection(config.getIpAddress(), config.getPort());
+        Map<String, Object> response = testTcpConnection(analyzer.getIpAddress(), analyzer.getPort());
         response.put("connectionType", "ASTM");
         return response;
     }
 
     /**
-     * Test FILE analyzer configuration Verifies that the file import directory
-     * exists and is accessible
-     * 
-     * @param config   Analyzer configuration
+     * Test FILE analyzer configuration. Verifies that the file import directory
+     * exists and is accessible.
+     *
      * @param analyzer Analyzer entity
      * @return Map with success status and message
      */
-    private Map<String, Object> testFileConfiguration(AnalyzerConfiguration config, Analyzer analyzer) {
+    private Map<String, Object> testFileConfiguration(Analyzer analyzer) {
         Map<String, Object> response = new LinkedHashMap<>();
 
         try {
@@ -715,7 +703,7 @@ public class AnalyzerRestController extends BaseRestController {
                 return response;
             }
 
-            // Verify directory exists
+            // Verify directory exists (using java.nio.file.Path API)
             Path directory = Path.of(importDir);
             if (Files.exists(directory) && Files.isDirectory(directory) && Files.isReadable(directory)) {
                 response.put("success", true);
@@ -801,7 +789,7 @@ public class AnalyzerRestController extends BaseRestController {
 
     /**
      * POST /rest/analyzer/analyzers/{id}/query Start an asynchronous query job for
-     * an analyzer
+     * an analyzer.
      */
     @PostMapping("/analyzers/{id}/query")
     public ResponseEntity<Map<String, Object>> queryAnalyzer(@PathVariable String id) {
@@ -825,7 +813,7 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/analyzers/{id}/query/{jobId}/status Get query job status
+     * GET /rest/analyzer/analyzers/{id}/query/{jobId}/status Get query job status.
      */
     @GetMapping("/analyzers/{id}/query/{jobId}/status")
     public ResponseEntity<Map<String, Object>> getQueryStatus(@PathVariable String id, @PathVariable String jobId) {
@@ -850,11 +838,8 @@ public class AnalyzerRestController extends BaseRestController {
      * from filesystem.
      *
      * <p>
-     * Returns minimal metadata for each template: - id (e.g., "astm/mindray-ba88a")
-     * - protocol ("ASTM" or "HL7") - analyzer_name (from JSON)
-     *
-     * <p>
-     * Task Reference: T215 (M20) - Create REST endpoint for listing defaults
+     * Returns minimal metadata for each template: id (e.g., "astm/mindray-ba88a"),
+     * protocol ("ASTM" or "HL7"), analyzer_name (from JSON).
      */
     @GetMapping("/defaults")
     public ResponseEntity<?> getDefaults() {
@@ -910,7 +895,7 @@ public class AnalyzerRestController extends BaseRestController {
     @GetMapping("/defaults/{protocol}/{name}")
     public ResponseEntity<?> getDefaultConfig(@PathVariable String protocol, @PathVariable String name) {
         try {
-            // Validate protocol (allowlist)
+            // Validate protocol (allowlist, case-insensitive)
             if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")) {
                 Map<String, Object> error = new LinkedHashMap<>();
                 error.put("error", "Invalid protocol: must be 'astm' or 'hl7'");

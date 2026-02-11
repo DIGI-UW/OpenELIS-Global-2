@@ -34,9 +34,6 @@ public class AnalyzerMappingCopyServiceTest {
     @Mock
     private AnalyzerFieldDAO analyzerFieldDAO;
 
-    @Mock
-    private AnalyzerConfigurationService analyzerConfigurationService;
-
     private AnalyzerMappingCopyServiceImpl analyzerMappingCopyService;
 
     private Analyzer sourceAnalyzer;

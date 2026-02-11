@@ -27,8 +27,6 @@ Interpret arguments best-effort. Support these patterns:
 - `/restart-analyzer-harness --skip-fixtures` → Skip loading test fixtures
 - `/restart-analyzer-harness --build` → Build WAR before restarting (for code
   changes)
-- `/restart-analyzer-harness --skip-letsencrypt` → Do not run Let's Encrypt
-  setup even when LETSENCRYPT_DOMAIN and LETSENCRYPT_EMAIL are set
 - Combine flags as needed: `/restart-analyzer-harness --full-reset --build`
 
 ## Safety Rules (non-negotiable)
@@ -71,17 +69,16 @@ Run these and summarize the results:
   set -a; [ -f .env ] && . ./.env; set +a
   ```
 - `git status --porcelain` (warn if uncommitted changes)
-- Check `LETSENCRYPT_DOMAIN` and `LETSENCRYPT_EMAIL` (used for optional Let's
-  Encrypt setup; e.g. `madagascar.openelis-global.org`)
+- Check `LETSENCRYPT_DOMAIN` env var (harness default:
+  `analyzers.openelis-global.org`)
 
 Determine:
 
 - **DOMAIN**: From `LETSENCRYPT_DOMAIN` (after loading .env) or default
-  `madagascar.openelis-global.org`
+  `analyzers.openelis-global.org`
 - **FULL_RESET**: true if `--full-reset` flag present
 - **SKIP_FIXTURES**: true if `--skip-fixtures` flag present
 - **DO_BUILD**: true if `--build` flag present
-- **SKIP_LETSENCRYPT**: true if `--skip-letsencrypt` flag present
 
 Report the detected configuration before proceeding.
 
@@ -197,36 +194,6 @@ fi
 
 Report: "Webapp ready at https://localhost/" (or note if only 8443 responded).
 
-### 5b) Let's Encrypt setup (checkpoint #5b) — when env is set
-
-**Run only if** `LETSENCRYPT_DOMAIN` and `LETSENCRYPT_EMAIL` are set (e.g. from
-.env) **and** `--skip-letsencrypt` was **not** passed.
-
-This obtains or renews Let's Encrypt certificates for the subdomain (e.g.
-`madagascar.openelis-global.org`) so the proxy serves valid HTTPS. Certs are
-written to repo root `volume/letsencrypt/` (proxy bind-mounts it).
-
-1. From repo root, ensure .env is loaded (already done in preflight). From
-   harness directory run the cert script:
-
-   ```bash
-   cd $REPO_ROOT/projects/analyzer-harness
-   # LETSENCRYPT_DOMAIN and LETSENCRYPT_EMAIL from .env or environment
-   ./scripts/generate-letsencrypt-certs.sh
-   ```
-
-2. If the script exits 0, restart the proxy so nginx picks up the certs:
-
-   ```bash
-   docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml -f docker-compose.letsencrypt.yml restart proxy
-   ```
-
-3. If the script fails (e.g. DNS not pointing to host, port 80 not reachable),
-   **warn** and continue; the proxy keeps using self-signed certs.
-
-Report: "Let's Encrypt: [cert obtained / renewed / skipped (env not set) /
-failed (warn)]"
-
 ### 6) Load fixtures (checkpoint #6)
 
 **Skip if `--skip-fixtures` was passed.**
@@ -292,17 +259,15 @@ Print summary:
     [list all harness containers with status]
 
   Let's Encrypt: [CERT_STATUS]
-    [If using self-signed and domain is a subdomain:]
-    Set in .env: LETSENCRYPT_DOMAIN=[DOMAIN] LETSENCRYPT_EMAIL=your@email
-    Then re-run /restart-analyzer-harness to auto-setup, or run:
-    cd projects/analyzer-harness && ./scripts/generate-letsencrypt-certs.sh && docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml -f docker-compose.letsencrypt.yml restart proxy
+    [If domain is not localhost and certs missing:]
+    Generate certs: LETSENCRYPT_DOMAIN=[DOMAIN] ./scripts/generate-letsencrypt-certs.sh
 ```
 
 Where:
 
-- `[DOMAIN]` is e.g. `madagascar.openelis-global.org` or value from .env
-- `[CERT_STATUS]` is "Valid cert for [DOMAIN]" or "Using self-signed (set
-  LETSENCRYPT_DOMAIN + LETSENCRYPT_EMAIL in .env to auto-setup)"
+- `[DOMAIN]` is `analyzers.openelis-global.org` or value from .env
+- `[CERT_STATUS]` is "Valid cert found" or "Using self-signed (generate cert if
+  needed)"
 
 ## Important Notes
 

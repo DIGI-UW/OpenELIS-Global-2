@@ -2,14 +2,12 @@ package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.*;
 
-import java.util.Optional;
 import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -18,13 +16,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Integration tests for AnalyzerFieldMappingService update workflow
- * 
+ *
  * Task Reference: T071 Test Coverage Goal: >80%
- * 
+ *
  * These tests verify: - Mapping updates preserve historical data (existing
  * results unchanged) - Activation workflow applies changes to new messages only
  * - Draft/active state transitions work correctly with database
- * 
+ *
  * Uses BaseWebContextSensitiveTest for full Spring context and database
  * integration.
  */
@@ -35,9 +33,6 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
 
     @Autowired
     private AnalyzerFieldService analyzerFieldService;
-
-    @Autowired
-    private AnalyzerConfigurationService analyzerConfigurationService;
 
     @Autowired
     private AnalyzerService analyzerService;
@@ -56,22 +51,16 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
         jdbcTemplate = new JdbcTemplate(dataSource);
         // Clean up any leftover test data first
         cleanTestData();
-        // Create test analyzer
+        // Create test analyzer with configuration fields set directly
         testAnalyzer = new Analyzer();
         testAnalyzer.setName("TEST-INTEGRATION-ANALYZER");
         testAnalyzer.setActive(false); // Start inactive
+        testAnalyzer.setIpAddress("192.168.1.100");
+        testAnalyzer.setPort(8080);
+        testAnalyzer.setProtocolVersion("ASTM LIS2-A2");
         testAnalyzer.setSysUserId("1");
         String analyzerId = analyzerService.insert(testAnalyzer);
         testAnalyzer.setId(analyzerId);
-
-        // Create analyzer configuration
-        AnalyzerConfiguration config = new AnalyzerConfiguration();
-        config.setAnalyzer(testAnalyzer);
-        config.setIpAddress("192.168.1.100");
-        config.setPort(8080);
-        config.setProtocolVersion("ASTM LIS2-A2");
-        config.setSysUserId("1");
-        analyzerConfigurationService.insert(config);
 
         // Create test analyzer field
         testField = new AnalyzerField();
@@ -113,8 +102,6 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
                     "DELETE FROM analyzer_field_mapping WHERE analyzer_field_id IN (SELECT id FROM analyzer_field WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = 'TEST-INTEGRATION-ANALYZER'))");
             jdbcTemplate.update(
                     "DELETE FROM analyzer_field WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = 'TEST-INTEGRATION-ANALYZER')");
-            jdbcTemplate.update(
-                    "DELETE FROM analyzer_configuration WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = 'TEST-INTEGRATION-ANALYZER')");
             jdbcTemplate.update("DELETE FROM analyzer WHERE name = 'TEST-INTEGRATION-ANALYZER'");
 
             // Reset analyzer sequence to avoid ID conflicts (find max ID and set sequence
@@ -143,9 +130,6 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
             }
             if (testAnalyzer != null && testAnalyzer.getId() != null) {
                 try {
-                    // Delete configuration first (foreign key constraint)
-                    jdbcTemplate.update("DELETE FROM analyzer_configuration WHERE analyzer_id = ?",
-                            Integer.parseInt(testAnalyzer.getId()));
                     jdbcTemplate.update("DELETE FROM analyzer WHERE id = ?", Integer.parseInt(testAnalyzer.getId()));
                 } catch (Exception e) {
                     // Ignore - may already be deleted
@@ -159,7 +143,7 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
     /**
      * Test: Update mapping with existing results preserves historical data Task
      * Reference: T071
-     * 
+     *
      * When a mapping is updated, existing results should remain unchanged. Only new
      * messages should use the updated mapping.
      */
@@ -200,7 +184,7 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
     /**
      * Test: Activate mapping with confirmation applies to new messages Task
      * Reference: T071
-     * 
+     *
      * When a draft mapping is activated with confirmation, it should become active
      * and apply to new messages only (existing results unchanged).
      */
@@ -233,20 +217,14 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
     /**
      * Test: Update active mapping on active analyzer requires confirmation Task
      * Reference: T071
-     * 
+     *
      * When analyzer is active and mapping is active, updates require confirmation.
      */
     @Test(expected = LIMSRuntimeException.class)
     public void testUpdateMapping_ActiveAnalyzerActiveMapping_RequiresConfirmation() {
-        // Arrange: Set analyzer configuration status to ACTIVE
-        Optional<AnalyzerConfiguration> configOpt = analyzerConfigurationService.getByAnalyzerId(testAnalyzer.getId());
-        if (configOpt.isPresent()) {
-            AnalyzerConfiguration config = configOpt.get();
-            config.setStatus(AnalyzerConfiguration.AnalyzerStatus.ACTIVE);
-            config.setSysUserId("1");
-            analyzerConfigurationService.update(config);
-        }
-
+        // Arrange: Set analyzer status to ACTIVE and enable it (single update to
+        // avoid OptimisticLockException from stale @Version)
+        testAnalyzer.setStatus(org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus.ACTIVE);
         testAnalyzer.setActive(true);
         testAnalyzer.setSysUserId("1");
         analyzerService.update(testAnalyzer);

@@ -34,6 +34,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     protocolVersion: "ASTM_E1394",
     testUnitIds: [],
     status: "SETUP",
+    identifierPattern: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -106,6 +107,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         protocolVersion: analyzer.protocolVersion || "ASTM_E1394",
         testUnitIds: analyzer.testUnitIds || [],
         status: analyzer.status || "SETUP",
+        identifierPattern: analyzer.identifierPattern || "",
       });
     } else {
       setFormData({
@@ -117,6 +119,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         protocolVersion: "ASTM_E1394",
         testUnitIds: [],
         status: "SETUP",
+        identifierPattern: "",
       });
     }
     setErrors({});
@@ -150,7 +153,9 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
       getAnalyzerTypes({ active: true }, (data) => {
         setLoadingPluginTypes(false);
         if (Array.isArray(data) && data.length > 0) {
-          setPluginTypes(data);
+          // Only show types whose plugin JAR is currently loaded
+          const loadedTypes = data.filter((t) => t.pluginLoaded !== false);
+          setPluginTypes(loadedTypes.length > 0 ? loadedTypes : data);
         } else {
           // Fallback to hardcoded list if API returns empty
           console.warn(
@@ -161,6 +166,12 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
       });
     }
   }, [open]);
+
+  // Derive whether the selected plugin type is a generic (DB-configurable) plugin
+  const selectedPluginType = pluginTypes.find(
+    (t) => t.id === formData.pluginTypeId,
+  );
+  const isGenericPlugin = selectedPluginType?.isGenericPlugin === true;
 
   // Load default configs when in create mode (M20)
   useEffect(() => {
@@ -451,7 +462,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
               })}
             />
 
-            {!isEditMode && (
+            {!isEditMode && isGenericPlugin && (
               <Dropdown
                 id="analyzer-default-config"
                 data-testid="analyzer-form-default-config-dropdown"
@@ -472,6 +483,30 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
                 disabled={loadingDefaults}
                 helperText={intl.formatMessage({
                   id: "analyzer.form.loadDefaultConfig.helperText",
+                })}
+              />
+            )}
+
+            {isGenericPlugin && (
+              <TextInput
+                id="analyzer-identifier-pattern"
+                data-testid="analyzer-form-identifier-pattern-input"
+                labelText={intl.formatMessage({
+                  id: "analyzer.form.identifierPattern",
+                  defaultMessage: "Identifier Pattern",
+                })}
+                placeholder={intl.formatMessage({
+                  id: "analyzer.form.identifierPattern.placeholder",
+                  defaultMessage: "e.g., ^ABX\\^PENTRA.*",
+                })}
+                value={formData.identifierPattern}
+                onChange={(e) =>
+                  handleFieldChange("identifierPattern", e.target.value)
+                }
+                helperText={intl.formatMessage({
+                  id: "analyzer.form.identifierPattern.helperText",
+                  defaultMessage:
+                    "Regex pattern to match incoming message identifiers for routing",
                 })}
               />
             )}

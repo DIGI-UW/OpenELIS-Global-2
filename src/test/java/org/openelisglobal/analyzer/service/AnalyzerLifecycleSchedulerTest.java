@@ -18,18 +18,18 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
+import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 
 /**
  * Unit tests for AnalyzerLifecycleScheduler
- * 
+ *
  * Task Reference: T153a, T153b
  */
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerLifecycleSchedulerTest {
 
     @Mock
-    private AnalyzerConfigurationService analyzerConfigurationService;
+    private AnalyzerService analyzerService;
 
     @InjectMocks
     private AnalyzerLifecycleScheduler scheduler;
@@ -37,9 +37,6 @@ public class AnalyzerLifecycleSchedulerTest {
     private Analyzer testAnalyzer1;
     private Analyzer testAnalyzer2;
     private Analyzer testAnalyzer3;
-    private AnalyzerConfiguration config1;
-    private AnalyzerConfiguration config2;
-    private AnalyzerConfiguration config3;
 
     @Before
     public void setUp() {
@@ -47,33 +44,20 @@ public class AnalyzerLifecycleSchedulerTest {
         testAnalyzer1 = new Analyzer();
         testAnalyzer1.setId("ANALYZER-001");
         testAnalyzer1.setName("Test Analyzer 1");
+        testAnalyzer1.setStatus(AnalyzerStatus.ACTIVE);
+        testAnalyzer1.setLastActivatedDate(getDateDaysAgo(8));
 
         testAnalyzer2 = new Analyzer();
         testAnalyzer2.setId("ANALYZER-002");
         testAnalyzer2.setName("Test Analyzer 2");
+        testAnalyzer2.setStatus(AnalyzerStatus.ACTIVE);
+        testAnalyzer2.setLastActivatedDate(getDateDaysAgo(5));
 
         testAnalyzer3 = new Analyzer();
         testAnalyzer3.setId("ANALYZER-003");
         testAnalyzer3.setName("Test Analyzer 3");
-
-        // Setup configurations
-        config1 = new AnalyzerConfiguration();
-        config1.setId("CONFIG-001");
-        config1.setAnalyzer(testAnalyzer1);
-        config1.setStatus(AnalyzerConfiguration.AnalyzerStatus.ACTIVE);
-        config1.setLastActivatedDate(getDateDaysAgo(8)); // 8 days ago - should transition
-
-        config2 = new AnalyzerConfiguration();
-        config2.setId("CONFIG-002");
-        config2.setAnalyzer(testAnalyzer2);
-        config2.setStatus(AnalyzerConfiguration.AnalyzerStatus.ACTIVE);
-        config2.setLastActivatedDate(getDateDaysAgo(5)); // 5 days ago - should NOT transition
-
-        config3 = new AnalyzerConfiguration();
-        config3.setId("CONFIG-003");
-        config3.setAnalyzer(testAnalyzer3);
-        config3.setStatus(AnalyzerConfiguration.AnalyzerStatus.VALIDATION); // Not GO_LIVE
-        config3.setLastActivatedDate(getDateDaysAgo(10)); // Should not transition (wrong stage)
+        testAnalyzer3.setStatus(AnalyzerStatus.VALIDATION);
+        testAnalyzer3.setLastActivatedDate(getDateDaysAgo(10));
     }
 
     /**
@@ -83,20 +67,18 @@ public class AnalyzerLifecycleSchedulerTest {
     @Test
     public void testTransitionToMaintenance_After7Days_UpdatesStage() {
         // Arrange
-        List<AnalyzerConfiguration> configurations = new ArrayList<>();
-        configurations.add(config1);
+        List<Analyzer> analyzers = new ArrayList<>();
+        analyzers.add(testAnalyzer1);
 
-        when(analyzerConfigurationService.getAllWithAnalyzers()).thenReturn(configurations);
-        when(analyzerConfigurationService.update(any(AnalyzerConfiguration.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(analyzerService.getAll()).thenReturn(analyzers);
+        when(analyzerService.update(any(Analyzer.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
         scheduler.transitionToMaintenance();
 
         // Assert
-        verify(analyzerConfigurationService, times(1)).update(config1);
-        assertEquals("Configuration should be in MAINTENANCE stage", AnalyzerConfiguration.AnalyzerStatus.OFFLINE,
-                config1.getStatus());
+        verify(analyzerService, times(1)).update(testAnalyzer1);
+        assertEquals("Analyzer should be in OFFLINE status", AnalyzerStatus.OFFLINE, testAnalyzer1.getStatus());
     }
 
     /**
@@ -106,18 +88,17 @@ public class AnalyzerLifecycleSchedulerTest {
     @Test
     public void testTransitionToMaintenance_Before7Days_NoUpdate() {
         // Arrange
-        List<AnalyzerConfiguration> configurations = new ArrayList<>();
-        configurations.add(config2);
+        List<Analyzer> analyzers = new ArrayList<>();
+        analyzers.add(testAnalyzer2);
 
-        when(analyzerConfigurationService.getAllWithAnalyzers()).thenReturn(configurations);
+        when(analyzerService.getAll()).thenReturn(analyzers);
 
         // Act
         scheduler.transitionToMaintenance();
 
         // Assert
-        verify(analyzerConfigurationService, never()).update(any(AnalyzerConfiguration.class));
-        assertEquals("Configuration should remain in GO_LIVE stage", AnalyzerConfiguration.AnalyzerStatus.ACTIVE,
-                config2.getStatus());
+        verify(analyzerService, never()).update(any(Analyzer.class));
+        assertEquals("Analyzer should remain in ACTIVE status", AnalyzerStatus.ACTIVE, testAnalyzer2.getStatus());
     }
 
     /**
@@ -127,35 +108,31 @@ public class AnalyzerLifecycleSchedulerTest {
     @Test
     public void testTransitionToMaintenance_WithMultipleAnalyzers_UpdatesAll() {
         // Arrange
-        AnalyzerConfiguration config4 = new AnalyzerConfiguration();
-        config4.setId("CONFIG-004");
-        config4.setAnalyzer(testAnalyzer3);
-        config4.setStatus(AnalyzerConfiguration.AnalyzerStatus.ACTIVE);
-        config4.setLastActivatedDate(getDateDaysAgo(9)); // 9 days ago - should transition
+        Analyzer testAnalyzer4 = new Analyzer();
+        testAnalyzer4.setId("ANALYZER-004");
+        testAnalyzer4.setName("Test Analyzer 4");
+        testAnalyzer4.setStatus(AnalyzerStatus.ACTIVE);
+        testAnalyzer4.setLastActivatedDate(getDateDaysAgo(9)); // 9 days ago - should transition
 
-        List<AnalyzerConfiguration> configurations = new ArrayList<>();
-        configurations.add(config1); // 8 days ago - should transition
-        configurations.add(config2); // 5 days ago - should NOT transition
-        configurations.add(config3); // Wrong stage - should NOT transition
-        configurations.add(config4); // 9 days ago - should transition
+        List<Analyzer> analyzers = new ArrayList<>();
+        analyzers.add(testAnalyzer1); // 8 days ago - should transition
+        analyzers.add(testAnalyzer2); // 5 days ago - should NOT transition
+        analyzers.add(testAnalyzer3); // Wrong status - should NOT transition
+        analyzers.add(testAnalyzer4); // 9 days ago - should transition
 
-        when(analyzerConfigurationService.getAllWithAnalyzers()).thenReturn(configurations);
-        when(analyzerConfigurationService.update(any(AnalyzerConfiguration.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(analyzerService.getAll()).thenReturn(analyzers);
+        when(analyzerService.update(any(Analyzer.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
         scheduler.transitionToMaintenance();
 
         // Assert
-        verify(analyzerConfigurationService, times(2)).update(any(AnalyzerConfiguration.class));
-        assertEquals("Config1 should be in MAINTENANCE stage", AnalyzerConfiguration.AnalyzerStatus.OFFLINE,
-                config1.getStatus());
-        assertEquals("Config2 should remain in GO_LIVE stage", AnalyzerConfiguration.AnalyzerStatus.ACTIVE,
-                config2.getStatus());
-        assertEquals("Config3 should remain in VALIDATION stage", AnalyzerConfiguration.AnalyzerStatus.VALIDATION,
-                config3.getStatus());
-        assertEquals("Config4 should be in MAINTENANCE stage", AnalyzerConfiguration.AnalyzerStatus.OFFLINE,
-                config4.getStatus());
+        verify(analyzerService, times(2)).update(any(Analyzer.class));
+        assertEquals("Analyzer1 should be in OFFLINE status", AnalyzerStatus.OFFLINE, testAnalyzer1.getStatus());
+        assertEquals("Analyzer2 should remain in ACTIVE status", AnalyzerStatus.ACTIVE, testAnalyzer2.getStatus());
+        assertEquals("Analyzer3 should remain in VALIDATION status", AnalyzerStatus.VALIDATION,
+                testAnalyzer3.getStatus());
+        assertEquals("Analyzer4 should be in OFFLINE status", AnalyzerStatus.OFFLINE, testAnalyzer4.getStatus());
     }
 
     /**
@@ -165,30 +142,30 @@ public class AnalyzerLifecycleSchedulerTest {
     @Test
     public void testTransitionFailure_LogsErrorAndContinuesProcessing() {
         // Arrange
-        AnalyzerConfiguration config4 = new AnalyzerConfiguration();
-        config4.setId("CONFIG-004");
-        config4.setAnalyzer(testAnalyzer3);
-        config4.setStatus(AnalyzerConfiguration.AnalyzerStatus.ACTIVE);
-        config4.setLastActivatedDate(getDateDaysAgo(9)); // 9 days ago - should transition
+        Analyzer testAnalyzer4 = new Analyzer();
+        testAnalyzer4.setId("ANALYZER-004");
+        testAnalyzer4.setName("Test Analyzer 4");
+        testAnalyzer4.setStatus(AnalyzerStatus.ACTIVE);
+        testAnalyzer4.setLastActivatedDate(getDateDaysAgo(9)); // 9 days ago - should transition
 
-        List<AnalyzerConfiguration> configurations = new ArrayList<>();
-        configurations.add(config1); // Will fail update
-        configurations.add(config4); // Should succeed
+        List<Analyzer> analyzers = new ArrayList<>();
+        analyzers.add(testAnalyzer1); // Will fail update
+        analyzers.add(testAnalyzer4); // Should succeed
 
-        when(analyzerConfigurationService.getAllWithAnalyzers()).thenReturn(configurations);
-        when(analyzerConfigurationService.update(config1)).thenThrow(new RuntimeException("Database error"));
-        when(analyzerConfigurationService.update(config4)).thenAnswer(invocation -> invocation.getArgument(0));
+        when(analyzerService.getAll()).thenReturn(analyzers);
+        when(analyzerService.update(testAnalyzer1)).thenThrow(new RuntimeException("Database error"));
+        when(analyzerService.update(testAnalyzer4)).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
         scheduler.transitionToMaintenance();
 
         // Assert
-        // Both should be attempted, but only config4 should succeed
-        verify(analyzerConfigurationService, times(1)).update(config1);
-        verify(analyzerConfigurationService, times(1)).update(config4);
-        // Config4 should still be updated despite config1 failure
-        assertEquals("Config4 should be in OFFLINE stage despite config1 failure",
-                AnalyzerConfiguration.AnalyzerStatus.OFFLINE, config4.getStatus());
+        // Both should be attempted, but only testAnalyzer4 should succeed
+        verify(analyzerService, times(1)).update(testAnalyzer1);
+        verify(analyzerService, times(1)).update(testAnalyzer4);
+        // testAnalyzer4 should still be updated despite testAnalyzer1 failure
+        assertEquals("Analyzer4 should be in OFFLINE status despite Analyzer1 failure", AnalyzerStatus.OFFLINE,
+                testAnalyzer4.getStatus());
     }
 
     /**

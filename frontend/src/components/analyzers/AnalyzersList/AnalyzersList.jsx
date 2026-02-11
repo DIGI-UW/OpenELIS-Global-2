@@ -48,6 +48,7 @@ const AnalyzersList = () => {
     total: 0,
     active: 0,
     inactive: 0,
+    pluginWarnings: 0,
   });
   const [analyzerFormOpen, setAnalyzerFormOpen] = useState(false);
   const [selectedAnalyzer, setSelectedAnalyzer] = useState(null);
@@ -77,15 +78,19 @@ const AnalyzersList = () => {
         const inactiveCount = data.filter(
           (a) => a.status === "INACTIVE",
         ).length;
+        const pluginWarningCount = data.filter(
+          (a) => a.pluginLoaded === false,
+        ).length;
         setStats({
           total: data.length,
           active: activeCount,
           inactive: inactiveCount,
+          pluginWarnings: pluginWarningCount,
         });
       } else {
         setAnalyzers([]);
         setFilteredAnalyzers([]);
-        setStats({ total: 0, active: 0, inactive: 0 });
+        setStats({ total: 0, active: 0, inactive: 0, pluginWarnings: 0 });
       }
       setLoading(false);
     });
@@ -270,7 +275,7 @@ const AnalyzersList = () => {
 
       {/* Statistics Cards */}
       <Grid className="analyzers-list-stats" data-testid="analyzers-list-stats">
-        <Column lg={5} md={4} sm={4}>
+        <Column lg={4} md={2} sm={2}>
           <Tile data-testid="stat-total">
             <div className="stat-label">
               {intl.formatMessage({ id: "analyzer.stat.total" })}
@@ -278,7 +283,7 @@ const AnalyzersList = () => {
             <div className="stat-value">{stats.total}</div>
           </Tile>
         </Column>
-        <Column lg={6} md={4} sm={4}>
+        <Column lg={4} md={2} sm={2}>
           <Tile data-testid="stat-active">
             <div className="stat-label">
               {intl.formatMessage({ id: "analyzer.stat.active" })}
@@ -286,7 +291,7 @@ const AnalyzersList = () => {
             <div className="stat-value">{stats.active}</div>
           </Tile>
         </Column>
-        <Column lg={5} md={4} sm={4}>
+        <Column lg={4} md={2} sm={2}>
           <Tile data-testid="stat-inactive">
             <div className="stat-label">
               {intl.formatMessage({ id: "analyzer.stat.inactive" })}
@@ -294,6 +299,18 @@ const AnalyzersList = () => {
             <div className="stat-value">{stats.inactive}</div>
           </Tile>
         </Column>
+        {stats.pluginWarnings > 0 && (
+          <Column lg={4} md={2} sm={2}>
+            <Tile data-testid="stat-plugin-warnings">
+              <div className="stat-label">
+                {intl.formatMessage({ id: "analyzer.stat.pluginWarnings" })}
+              </div>
+              <div className="stat-value stat-value--warning">
+                {stats.pluginWarnings}
+              </div>
+            </Tile>
+          </Column>
+        )}
       </Grid>
 
       {/* Search and Filters */}
@@ -451,6 +468,22 @@ const AnalyzersList = () => {
 
                             if (headerKey === "name") {
                               testId = `analyzer-name-${row.id}`;
+                              if (analyzer?.pluginLoaded === false) {
+                                cellContent = (
+                                  <span>
+                                    {cell.value}{" "}
+                                    <Tag
+                                      type="red"
+                                      size="sm"
+                                      data-testid={`plugin-warning-${row.id}`}
+                                    >
+                                      {intl.formatMessage({
+                                        id: "analyzer.plugin.missing",
+                                      })}
+                                    </Tag>
+                                  </span>
+                                );
+                              }
                             } else if (headerKey === "type") {
                               testId = `analyzer-type-${row.id}`;
                             } else if (headerKey === "connection") {

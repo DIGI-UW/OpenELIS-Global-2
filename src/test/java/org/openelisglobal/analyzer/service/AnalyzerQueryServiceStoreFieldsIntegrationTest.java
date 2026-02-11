@@ -80,7 +80,6 @@ public class AnalyzerQueryServiceStoreFieldsIntegrationTest extends BaseWebConte
             }
             // Delete test analyzer
             if (testAnalyzer != null && testAnalyzer.getId() != null) {
-                jdbcTemplate.update("DELETE FROM analyzer_configuration WHERE analyzer_id = ?", testAnalyzer.getId());
                 jdbcTemplate.update("DELETE FROM analyzer WHERE id = ?", testAnalyzer.getId());
             }
         } catch (Exception e) {

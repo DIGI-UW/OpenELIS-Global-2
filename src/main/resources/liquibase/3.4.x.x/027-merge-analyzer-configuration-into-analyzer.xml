@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Merge analyzer_configuration into analyzer table -->
+    <!-- The analyzer_configuration table was a 1:1 bolt-on extension to avoid
+         modifying the legacy analyzer table. This migration folds configuration
+         columns directly into analyzer, simplifying the data model to 2 tables:
+         analyzer_type (plugin capability) and analyzer (device + config). -->
+
+    <!-- Step 1: Widen analyzer.name from VARCHAR(20) to VARCHAR(100) -->
+    <changeSet id="011-027-01-widen-analyzer-name" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="analyzer" columnName="name"/>
+        </preConditions>
+        <comment>Widen analyzer.name to support longer user-created names</comment>
+        <modifyDataType tableName="analyzer" columnName="name" newDataType="VARCHAR(100)"/>
+        <rollback>
+            <modifyDataType tableName="analyzer" columnName="name" newDataType="VARCHAR(20)"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Step 2: Add configuration columns to analyzer table -->
+    <changeSet id="011-027-02-add-config-columns-to-analyzer" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="analyzer" columnName="ip_address"/>
+            </not>
+        </preConditions>
+        <comment>Add operational config columns (from analyzer_configuration) to analyzer</comment>
+        <addColumn tableName="analyzer">
+            <column name="ip_address" type="VARCHAR(15)"/>
+            <column name="port" type="INTEGER"/>
+            <column name="protocol_version" type="VARCHAR(20)" defaultValue="ASTM LIS2-A2"/>
+            <column name="test_unit_ids" type="TEXT"/>
+            <column name="status" type="VARCHAR(20)" defaultValue="SETUP"/>
+            <column name="identifier_pattern" type="VARCHAR(255)"/>
+            <column name="last_activated_date" type="TIMESTAMP"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="analyzer" columnName="ip_address"/>
+            <dropColumn tableName="analyzer" columnName="port"/>
+            <dropColumn tableName="analyzer" columnName="protocol_version"/>
+            <dropColumn tableName="analyzer" columnName="test_unit_ids"/>
+            <dropColumn tableName="analyzer" columnName="status"/>
+            <dropColumn tableName="analyzer" columnName="identifier_pattern"/>
+            <dropColumn tableName="analyzer" columnName="last_activated_date"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Step 3: Migrate data from analyzer_configuration to analyzer -->
+    <changeSet id="011-027-03-migrate-configuration-data" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analyzer_configuration"/>
+            <columnExists tableName="analyzer" columnName="ip_address"/>
+        </preConditions>
+        <comment>Copy configuration data from analyzer_configuration into analyzer rows</comment>
+        <sql>
+            UPDATE clinlims.analyzer a
+            SET ip_address = ac.ip_address,
+                port = ac.port,
+                protocol_version = ac.protocol_version,
+                test_unit_ids = ac.test_unit_ids,
+                status = ac.status,
+                identifier_pattern = ac.identifier_pattern,
+                last_activated_date = ac.last_activated_date
+            FROM clinlims.analyzer_configuration ac
+            WHERE ac.analyzer_id = a.id
+        </sql>
+        <rollback>
+            <!-- Data rollback: copy back from analyzer to recreated analyzer_configuration -->
+            <!-- This is handled by the table recreation in step 5 rollback -->
+        </rollback>
+    </changeSet>
+
+    <!-- Step 4: Drop the foreign key constraint from analyzer_configuration -->
+    <changeSet id="011-027-04-drop-config-fk" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <foreignKeyConstraintExists foreignKeyName="fk_analyzer_config_analyzer"/>
+        </preConditions>
+        <comment>Drop FK before dropping analyzer_configuration table</comment>
+        <dropForeignKeyConstraint baseTableName="analyzer_configuration"
+            constraintName="fk_analyzer_config_analyzer"/>
+        <rollback>
+            <addForeignKeyConstraint baseTableName="analyzer_configuration"
+                baseColumnNames="analyzer_id"
+                constraintName="fk_analyzer_config_analyzer"
+                referencedTableName="analyzer"
+                referencedColumnNames="id"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Step 5: Drop the analyzer_configuration table -->
+    <changeSet id="011-027-05-drop-analyzer-configuration" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analyzer_configuration"/>
+        </preConditions>
+        <comment>Remove analyzer_configuration table — all data merged into analyzer</comment>
+        <dropTable tableName="analyzer_configuration"/>
+        <rollback>
+            <createTable tableName="analyzer_configuration">
+                <column name="id" type="VARCHAR(36)">
+                    <constraints primaryKey="true" nullable="false"/>
+                </column>
+                <column name="analyzer_id" type="NUMERIC(10,0)">
+                    <constraints nullable="false" unique="true"/>
+                </column>
+                <column name="ip_address" type="VARCHAR(15)"/>
+                <column name="port" type="INTEGER"/>
+                <column name="protocol_version" type="VARCHAR(20)" defaultValue="ASTM LIS2-A2">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="test_unit_ids" type="TEXT"/>
+                <column name="status" type="VARCHAR(20)"/>
+                <column name="identifier_pattern" type="VARCHAR(255)"/>
+                <column name="is_generic_plugin" type="BOOLEAN" defaultValueBoolean="false">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="prefer_generic_plugin" type="BOOLEAN" defaultValueBoolean="false">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="last_activated_date" type="TIMESTAMP"/>
+                <column name="sys_user_id" type="VARCHAR(36)"/>
+                <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                    <constraints nullable="false"/>
+                </column>
+            </createTable>
+            <addForeignKeyConstraint baseTableName="analyzer_configuration"
+                baseColumnNames="analyzer_id"
+                constraintName="fk_analyzer_config_analyzer"
+                referencedTableName="analyzer"
+                referencedColumnNames="id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -52,22 +52,23 @@ public class DatabaseSchemaValidationTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test that analyzer_configuration table has all required columns from
-     * AnalyzerConfiguration entity
+     * Test that analyzer table has all configuration columns merged from
+     * analyzer_configuration (changeset 026)
      */
     @Test
-    public void testAnalyzerConfigurationTableHasAllRequiredColumns() throws Exception {
-        String tableName = "analyzer_configuration";
+    public void testAnalyzerTableHasMergedConfigurationColumns() throws Exception {
+        String tableName = "analyzer";
         Map<String, String> expectedColumns = new HashMap<>();
-        expectedColumns.put("id", "VARCHAR");
-        expectedColumns.put("analyzer_id", "NUMERIC");
+        // Original analyzer columns
+        expectedColumns.put("id", "NUMERIC");
+        expectedColumns.put("name", "VARCHAR");
+        // Merged from analyzer_configuration (changeset 026)
         expectedColumns.put("ip_address", "VARCHAR");
         expectedColumns.put("port", "INTEGER");
         expectedColumns.put("protocol_version", "VARCHAR");
         expectedColumns.put("test_unit_ids", "TEXT");
-        expectedColumns.put("last_updated", "TIMESTAMP");
-        // Columns added in changeset 004-014 (unified status field)
         expectedColumns.put("status", "VARCHAR");
+        expectedColumns.put("identifier_pattern", "VARCHAR");
         expectedColumns.put("last_activated_date", "TIMESTAMP");
 
         validateTableColumns(tableName, expectedColumns);

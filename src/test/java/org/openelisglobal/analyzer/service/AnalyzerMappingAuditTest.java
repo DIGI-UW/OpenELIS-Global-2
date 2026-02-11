@@ -94,10 +94,6 @@ public class AnalyzerMappingAuditTest extends BaseWebContextSensitiveTest {
             jdbcTemplate.execute("DELETE FROM analyzer_field WHERE analyzer_id IN "
                     + "(SELECT id FROM analyzer WHERE name LIKE 'TEST-%')");
 
-            // Delete analyzer configurations
-            jdbcTemplate.execute("DELETE FROM analyzer_configuration WHERE analyzer_id IN "
-                    + "(SELECT id FROM analyzer WHERE name LIKE 'TEST-%')");
-
             // Delete test analyzer
             jdbcTemplate.execute("DELETE FROM analyzer WHERE name LIKE 'TEST-%'");
         } catch (Exception e) {

@@ -18,10 +18,8 @@ package org.openelisglobal.analyzerimport.analyzerreaders;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Optional;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.openelisglobal.analyzer.service.AnalyzerConfigurationService;
 import org.openelisglobal.analyzer.service.HL7MessageService;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
@@ -105,20 +103,11 @@ public class HL7AnalyzerReader extends AnalyzerReader {
         return false;
     }
 
+    /**
+     * Return the plugin list in default order. (preferGenericPlugin flag has been
+     * removed.)
+     */
     private List<AnalyzerImporterPlugin> choosePluginOrder(PluginAnalyzerService pluginService) {
-        String msh3 = parseMsh3(lines);
-        if (msh3 == null || msh3.trim().isEmpty()) {
-            return pluginService.getAnalyzerPlugins();
-        }
-        AnalyzerConfigurationService configService = SpringContext.getBean(AnalyzerConfigurationService.class);
-        if (configService == null) {
-            return pluginService.getAnalyzerPlugins();
-        }
-        Optional<org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration> config = configService
-                .findByIdentifierPatternMatch(msh3.trim());
-        if (config.isPresent() && config.get().isPreferGenericPlugin()) {
-            return pluginService.getAnalyzerPluginsWithGenericFirst();
-        }
         return pluginService.getAnalyzerPlugins();
     }
 

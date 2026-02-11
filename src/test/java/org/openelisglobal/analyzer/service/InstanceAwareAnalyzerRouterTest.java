@@ -34,7 +34,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.service.InstanceAwareAnalyzerRouter.RouteContext;
 import org.openelisglobal.analyzer.service.InstanceAwareAnalyzerRouter.RouteResult;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.plugin.AnalyzerImporterPlugin;
@@ -45,7 +44,7 @@ import org.openelisglobal.plugin.AnalyzerImporterPlugin;
  * <p>
  * Verifies the 2-stage routing architecture:
  * <ol>
- * <li>Stage 1: IP-based routing (analyzer_configuration.ip_address)
+ * <li>Stage 1: IP-based routing (analyzer.ip_address — merged model)
  * <li>Stage 2: Plugin routing (plugin.isTargetAnalyzer() for all plugins)
  * </ol>
  *
@@ -63,9 +62,6 @@ public class InstanceAwareAnalyzerRouterTest {
     private AnalyzerService analyzerService;
 
     @Mock
-    private AnalyzerConfigurationService analyzerConfigurationService;
-
-    @Mock
     private PluginAnalyzerService pluginAnalyzerService;
 
     @Mock
@@ -79,7 +75,6 @@ public class InstanceAwareAnalyzerRouterTest {
 
     private Analyzer testAnalyzer;
     private AnalyzerType testType;
-    private AnalyzerConfiguration testConfig;
 
     @Before
     public void setUp() {
@@ -94,11 +89,7 @@ public class InstanceAwareAnalyzerRouterTest {
         testAnalyzer.setName("Test ASTM Analyzer");
         testAnalyzer.setActive(true);
         testAnalyzer.setAnalyzerType(testType);
-
-        testConfig = new AnalyzerConfiguration();
-        testConfig.setId("100");
-        testConfig.setAnalyzer(testAnalyzer);
-        testConfig.setIpAddress("192.168.1.50");
+        testAnalyzer.setIpAddress("192.168.1.50");
     }
 
     // ── Stage 1: IP-based routing ──────────────────────────────────────────
@@ -108,7 +99,7 @@ public class InstanceAwareAnalyzerRouterTest {
         List<String> lines = Arrays.asList("H|\\^&|||HORIBA^H500^1.0");
         RouteContext ctx = new RouteContext("192.168.1.50", "HORIBA^H500^1.0", lines);
 
-        when(analyzerConfigurationService.getByIpAddress("192.168.1.50")).thenReturn(Optional.of(testConfig));
+        when(analyzerService.getByIpAddress("192.168.1.50")).thenReturn(Optional.of(testAnalyzer));
         when(pluginAnalyzerService.getPluginByAnalyzerId("10")).thenReturn(genericAstmPlugin);
 
         RouteResult result = router.route(ctx);
@@ -144,7 +135,7 @@ public class InstanceAwareAnalyzerRouterTest {
         RouteContext ctx = new RouteContext("10.0.0.99", "ABX^PENTRA60", lines);
 
         // IP lookup returns nothing
-        when(analyzerConfigurationService.getByIpAddress("10.0.0.99")).thenReturn(Optional.empty());
+        when(analyzerService.getByIpAddress("10.0.0.99")).thenReturn(Optional.empty());
 
         // Plugin iteration finds a match
         when(pluginAnalyzerService.getAnalyzerPlugins()).thenReturn(Collections.singletonList(legacyPlugin));
@@ -187,7 +178,7 @@ public class InstanceAwareAnalyzerRouterTest {
         List<String> lines = Arrays.asList("H|\\^&|||HORIBA^H500^1.0");
         RouteContext ctx = new RouteContext("192.168.1.50", "HORIBA^H500^1.0", lines);
 
-        when(analyzerConfigurationService.getByIpAddress("192.168.1.50")).thenReturn(Optional.of(testConfig));
+        when(analyzerService.getByIpAddress("192.168.1.50")).thenReturn(Optional.of(testAnalyzer));
         when(pluginAnalyzerService.getPluginByAnalyzerId("10")).thenReturn(genericAstmPlugin);
 
         RouteResult result = router.route(ctx);

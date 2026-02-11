@@ -17,7 +17,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.AnalyzerFieldDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerFieldMappingDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
@@ -25,7 +24,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 
 /**
  * Unit tests for AnalyzerFieldMappingService implementation
- * 
+ *
  * Task Reference: T030 Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.Silent.class)
@@ -38,7 +37,7 @@ public class AnalyzerFieldMappingServiceTest {
     private AnalyzerFieldDAO analyzerFieldDAO;
 
     @Mock
-    private AnalyzerConfigurationService analyzerConfigurationService;
+    private AnalyzerService analyzerService;
 
     @Mock
     private AnalyzerErrorService analyzerErrorService;
@@ -67,10 +66,9 @@ public class AnalyzerFieldMappingServiceTest {
                 hydrator);
         // Inject mocked services via reflection for testing
         try {
-            java.lang.reflect.Field field = AnalyzerFieldMappingServiceImpl.class
-                    .getDeclaredField("analyzerConfigurationService");
+            java.lang.reflect.Field field = AnalyzerFieldMappingServiceImpl.class.getDeclaredField("analyzerService");
             field.setAccessible(true);
-            field.set(analyzerFieldMappingService, analyzerConfigurationService);
+            field.set(analyzerFieldMappingService, analyzerService);
         } catch (Exception e) {
             // If field doesn't exist yet, that's okay - will be added in implementation
         }
@@ -142,7 +140,7 @@ public class AnalyzerFieldMappingServiceTest {
     /**
      * Test: Create mapping with type incompatibility throws exception Task
      * Reference: T030
-     * 
+     *
      * Validation: NUMERIC analyzer field can only map to TEST or RESULT OpenELIS
      * fields
      */
@@ -165,7 +163,7 @@ public class AnalyzerFieldMappingServiceTest {
     /**
      * Test: Validate required mappings with missing required throws exception Task
      * Reference: T030
-     * 
+     *
      * Validation: At least one mapping with isRequired=true must exist for Sample
      * ID, Test Code, Result Value
      */
@@ -186,7 +184,7 @@ public class AnalyzerFieldMappingServiceTest {
     /**
      * Test: Activate mapping with active analyzer requires confirmation Task
      * Reference: T030
-     * 
+     *
      * Note: This test verifies that activation requires confirmation flag
      */
     @Test
@@ -211,7 +209,7 @@ public class AnalyzerFieldMappingServiceTest {
     /**
      * Test: Update mapping with active analyzer requires confirmation Task
      * Reference: T070
-     * 
+     *
      * When analyzer is active, updating a mapping requires explicit confirmation to
      * prevent accidental changes to live configuration
      */
@@ -222,15 +220,13 @@ public class AnalyzerFieldMappingServiceTest {
         testMapping.setIsActive(true);
         numericField.setAnalyzer(testAnalyzer); // Ensure field has analyzer relationship
 
-        AnalyzerConfiguration config = new AnalyzerConfiguration();
-        config.setAnalyzer(testAnalyzer);
         // Set status to ACTIVE to trigger confirmation requirement
-        config.setStatus(AnalyzerConfiguration.AnalyzerStatus.ACTIVE);
+        testAnalyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
 
         when(analyzerFieldMappingDAO.get("MAPPING-001")).thenReturn(Optional.of(testMapping));
         when(analyzerFieldDAO.get("FIELD-001")).thenReturn(Optional.of(numericField));
         when(analyzerFieldDAO.findByIdWithAnalyzer("FIELD-001")).thenReturn(Optional.of(numericField));
-        when(analyzerConfigurationService.getByAnalyzerId("1")).thenReturn(Optional.of(config));
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         // Create updated mapping (changing OpenELIS field)
         AnalyzerFieldMapping updatedMapping = new AnalyzerFieldMapping();
@@ -249,7 +245,7 @@ public class AnalyzerFieldMappingServiceTest {
     /**
      * Test: Update mapping with draft state does not require confirmation Task
      * Reference: T070
-     * 
+     *
      * When mapping is in draft state (isActive=false), updates can be made without
      * confirmation since it's not affecting live processing
      */
@@ -287,7 +283,7 @@ public class AnalyzerFieldMappingServiceTest {
     /**
      * Test: Deactivate mapping with active analyzer logs audit trail Task
      * Reference: T070
-     * 
+     *
      * When deactivating a mapping for an active analyzer, the system should log an
      * audit trail entry with who, when, and what changed
      */
@@ -319,7 +315,7 @@ public class AnalyzerFieldMappingServiceTest {
     /**
      * Test: Validate activation with missing required mappings returns false Task
      * Reference: T168
-     * 
+     *
      * Validation: Required mappings (Sample ID, Test Code, Result Value) must exist
      * before activation
      */
@@ -345,7 +341,7 @@ public class AnalyzerFieldMappingServiceTest {
     /**
      * Test: Validate activation with pending messages returns warnings Task
      * Reference: T168
-     * 
+     *
      * Validation: Pending messages in error queue should generate warnings but not
      * block activation
      */
@@ -406,7 +402,7 @@ public class AnalyzerFieldMappingServiceTest {
     /**
      * Test: Validate activation with all checks passing returns true Task
      * Reference: T168
-     * 
+     *
      * Validation: All required mappings present, no pending messages, no concurrent
      * edits
      */
@@ -459,7 +455,7 @@ public class AnalyzerFieldMappingServiceTest {
     /**
      * Test: Activate mapping with concurrent edit throws optimistic lock exception
      * Task Reference: T168
-     * 
+     *
      * Validation: If another user modified mappings since page load, activation
      * should fail
      */
@@ -480,8 +476,7 @@ public class AnalyzerFieldMappingServiceTest {
         numericField.setAnalyzer(testAnalyzer);
 
         when(analyzerFieldMappingDAO.get("MAPPING-001")).thenReturn(Optional.of(currentMapping));
-        // Note: analyzerFieldDAO.findByIdWithAnalyzer and
-        // analyzerConfigurationService.getByAnalyzerId
+        // Note: analyzerFieldDAO.findByIdWithAnalyzer and analyzerService.get
         // are not called because the exception is thrown early in the concurrent edit
         // check
 

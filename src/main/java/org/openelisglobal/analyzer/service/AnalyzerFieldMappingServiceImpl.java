@@ -5,11 +5,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.openelisglobal.analyzer.dao.AnalyzerFieldDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerFieldMappingDAO;
 import org.openelisglobal.analyzer.form.OpenELISFieldForm;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
@@ -54,7 +54,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     private final AnalyzerFieldMappingHydrator hydrator;
 
     @Autowired(required = false)
-    private AnalyzerConfigurationService analyzerConfigurationService;
+    private AnalyzerService analyzerService;
 
     @Autowired(required = false)
     private AnalyzerErrorService analyzerErrorService;
@@ -664,13 +664,13 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     }
 
     /**
-     * Check if analyzer is active by checking AnalyzerConfiguration
-     * 
+     * Check if analyzer is active by checking Analyzer status
+     *
      * @param mapping The mapping to check analyzer status for
      * @return true if analyzer is active, false otherwise
      */
     private boolean isAnalyzerActive(AnalyzerFieldMapping mapping) {
-        if (analyzerConfigurationService == null) {
+        if (analyzerService == null) {
             // If service not available, assume analyzer is not active (safe default)
             return false;
         }
@@ -687,12 +687,9 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             analyzerId = field.getAnalyzer().getId();
         }
 
-        Optional<AnalyzerConfiguration> configOpt = analyzerConfigurationService.getByAnalyzerId(analyzerId);
-
-        if (configOpt.isPresent()) {
-            AnalyzerConfiguration config = configOpt.get();
-            // Check if analyzer is active using unified status field
-            return config.getStatus() == AnalyzerConfiguration.AnalyzerStatus.ACTIVE;
+        Analyzer analyzer = analyzerService.get(analyzerId);
+        if (analyzer != null) {
+            return analyzer.getStatus() == AnalyzerStatus.ACTIVE;
         }
 
         return false;
