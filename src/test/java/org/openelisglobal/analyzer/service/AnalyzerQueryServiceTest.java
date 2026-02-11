@@ -13,6 +13,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -36,7 +37,7 @@ public class AnalyzerQueryServiceTest {
 
         // Default: return a valid TCP-capable analyzer so startQuery passes validation
         Analyzer analyzer = new Analyzer();
-        analyzer.setProtocolVersion("LIS2-A2");
+        analyzer.setProtocolVersion(ProtocolVersion.ASTM_LIS2_A2);
         analyzer.setIpAddress("192.168.1.100");
         analyzer.setPort(5000);
         when(analyzerService.get(anyString())).thenReturn(analyzer);
