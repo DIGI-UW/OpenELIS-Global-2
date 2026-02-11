@@ -31,7 +31,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     pluginTypeId: "",
     ipAddress: "",
     port: "",
-    protocolVersion: "ASTM_E1394",
+    protocolVersion: "ASTM LIS2-A2",
     testUnitIds: [],
     status: "SETUP",
     identifierPattern: "",
@@ -104,7 +104,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         pluginTypeId: analyzer.pluginTypeId || analyzer.analyzerTypeId || "",
         ipAddress: analyzer.ipAddress || "",
         port: analyzer.port ? String(analyzer.port) : "",
-        protocolVersion: analyzer.protocolVersion || "ASTM_E1394",
+        protocolVersion: analyzer.protocolVersion || "ASTM LIS2-A2",
         testUnitIds: analyzer.testUnitIds || [],
         status: analyzer.status || "SETUP",
         identifierPattern: analyzer.identifierPattern || "",
@@ -116,7 +116,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         pluginTypeId: "",
         ipAddress: "",
         port: "",
-        protocolVersion: "ASTM_E1394",
+        protocolVersion: "ASTM LIS2-A2",
         testUnitIds: [],
         status: "SETUP",
         identifierPattern: "",
@@ -449,9 +449,9 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
                 // Auto-set protocol version based on plugin type
                 if (selectedItem?.protocol) {
                   const protocolMap = {
-                    ASTM: "ASTM_E1394",
-                    HL7: "HL7_v2.3.1",
-                    FILE: "FILE_IMPORT",
+                    ASTM: "ASTM LIS2-A2",
+                    HL7: "HL7 v2.3.1",
+                    FILE: "FILE",
                   };
                   handleFieldChange(
                     "protocolVersion",

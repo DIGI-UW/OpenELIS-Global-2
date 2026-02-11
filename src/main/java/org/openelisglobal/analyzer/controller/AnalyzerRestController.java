@@ -15,6 +15,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
@@ -30,7 +32,6 @@ import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.PluginAnalyzerService;
-import org.openelisglobal.plugin.AnalyzerImporterPlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,14 +83,15 @@ public class AnalyzerRestController extends BaseRestController {
      * configurations.
      */
     @GetMapping("/analyzers")
-    public ResponseEntity<List<Map<String, Object>>> getAnalyzers(@RequestParam(required = false) String status,
+    public ResponseEntity<?> getAnalyzers(@RequestParam(required = false) String status,
             @RequestParam(required = false) String search) {
         try {
             List<Analyzer> analyzers = analyzerService.getAll();
+            Set<String> loadedPlugins = getLoadedPluginClassNames();
             List<Map<String, Object>> response = new ArrayList<>();
 
             for (Analyzer analyzer : analyzers) {
-                Map<String, Object> analyzerMap = analyzerToMap(analyzer);
+                Map<String, Object> analyzerMap = analyzerToMap(analyzer, loadedPlugins);
 
                 // Skip DELETED analyzers (soft-deleted with 90-day window)
                 String analyzerStatus = (String) analyzerMap.get("status");
@@ -124,7 +126,7 @@ public class AnalyzerRestController extends BaseRestController {
             if (e.getMessage() != null && !e.getMessage().isEmpty()) {
                 error.put("message", e.getMessage());
             }
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of(error));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 
@@ -172,7 +174,7 @@ public class AnalyzerRestController extends BaseRestController {
             analyzer.setType(form.getAnalyzerType());
             analyzer.setIpAddress(form.getIpAddress());
             analyzer.setPort(form.getPort());
-            analyzer.setProtocolVersion(form.getProtocolVersion() != null ? form.getProtocolVersion() : "LIS2-A2");
+            analyzer.setProtocolVersion(form.getProtocolVersion() != null ? form.getProtocolVersion() : "ASTM LIS2-A2");
             analyzer.setTestUnitIds(form.getTestUnitIds() != null ? form.getTestUnitIds() : new ArrayList<>());
             if (form.getIdentifierPattern() != null) {
                 analyzer.setIdentifierPattern(form.getIdentifierPattern());
@@ -204,7 +206,7 @@ public class AnalyzerRestController extends BaseRestController {
                 throw new LIMSRuntimeException("Failed to retrieve created analyzer");
             }
 
-            Map<String, Object> response = analyzerToMap(createdAnalyzer);
+            Map<String, Object> response = analyzerToMap(createdAnalyzer, getLoadedPluginClassNames());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (LIMSRuntimeException e) {
             logger.error("Error creating analyzer: {}", e.getMessage(), e);
@@ -315,7 +317,7 @@ public class AnalyzerRestController extends BaseRestController {
                 error.put("error", "Analyzer not found: " + id);
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
-            Map<String, Object> response = analyzerToMap(analyzer);
+            Map<String, Object> response = analyzerToMap(analyzer, getLoadedPluginClassNames());
             return ResponseEntity.ok(response);
         } catch (org.hibernate.ObjectNotFoundException e) {
             // Hibernate may throw instead of returning null for missing IDs
@@ -404,7 +406,7 @@ public class AnalyzerRestController extends BaseRestController {
 
             // Retrieve updated analyzer
             Analyzer updatedAnalyzer = analyzerService.get(id);
-            Map<String, Object> response = analyzerToMap(updatedAnalyzer);
+            Map<String, Object> response = analyzerToMap(updatedAnalyzer, getLoadedPluginClassNames());
             return ResponseEntity.ok(response);
         } catch (LIMSRuntimeException e) {
             logger.error("Error updating analyzer: {}", e.getMessage(), e);
@@ -501,7 +503,7 @@ public class AnalyzerRestController extends BaseRestController {
      * Convert Analyzer entity to Map for JSON response. Reads all configuration
      * fields directly from the Analyzer entity (2-table model).
      */
-    private Map<String, Object> analyzerToMap(Analyzer analyzer) {
+    private Map<String, Object> analyzerToMap(Analyzer analyzer, Set<String> loadedPlugins) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", analyzer.getId());
         map.put("name", analyzer.getName());
@@ -509,10 +511,11 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("description", analyzer.getDescription());
         map.put("location", analyzer.getLocation());
 
-        // Plugin loaded check
+        // Plugin loaded check — O(1) via pre-computed Set
         boolean pluginLoaded;
         if (analyzer.getAnalyzerType() != null) {
-            pluginLoaded = isPluginLoaded(analyzer.getAnalyzerType().getPluginClassName());
+            String className = analyzer.getAnalyzerType().getPluginClassName();
+            pluginLoaded = className != null && loadedPlugins.contains(className);
         } else {
             pluginLoaded = pluginAnalyzerService.getPluginByAnalyzerId(analyzer.getId()) != null;
         }
@@ -544,18 +547,12 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * Check if a plugin JAR is currently loaded for the given class name.
+     * Precompute the set of loaded plugin class names for O(1) lookups. Same
+     * pattern as {@link AnalyzerTypeRestController#getLoadedPluginClassNames()}.
      */
-    private boolean isPluginLoaded(String pluginClassName) {
-        if (pluginClassName == null) {
-            return false;
-        }
-        for (AnalyzerImporterPlugin plugin : pluginAnalyzerService.getAnalyzerPlugins()) {
-            if (pluginClassName.equals(plugin.getClass().getName())) {
-                return true;
-            }
-        }
-        return false;
+    private Set<String> getLoadedPluginClassNames() {
+        return pluginAnalyzerService.getAnalyzerPlugins().stream().map(plugin -> plugin.getClass().getName())
+                .collect(Collectors.toSet());
     }
 
     /**
