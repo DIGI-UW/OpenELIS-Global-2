@@ -153,9 +153,15 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
       getAnalyzerTypes({ active: true }, (data) => {
         setLoadingPluginTypes(false);
         if (Array.isArray(data) && data.length > 0) {
-          // Only show types whose plugin JAR is currently loaded
-          const loadedTypes = data.filter((t) => t.pluginLoaded !== false);
-          setPluginTypes(loadedTypes.length > 0 ? loadedTypes : data);
+          // In create mode, prefer showing only loaded types.
+          // In edit mode, show all types so the current type is always available,
+          // even if its plugin JAR is not currently loaded.
+          let typesToUse = data;
+          if (!analyzer) {
+            const loadedTypes = data.filter((t) => t.pluginLoaded !== false);
+            typesToUse = loadedTypes.length > 0 ? loadedTypes : data;
+          }
+          setPluginTypes(typesToUse);
         } else {
           // Fallback to hardcoded list if API returns empty
           console.warn(

@@ -78,7 +78,8 @@ public class AnalyzerRestController extends BaseRestController {
     private static final byte ACK = 0x06;
 
     /**
-     * GET /rest/analyzer/analyzers Retrieve all analyzers with their configurations.
+     * GET /rest/analyzer/analyzers Retrieve all analyzers with their
+     * configurations.
      */
     @GetMapping("/analyzers")
     public ResponseEntity<List<Map<String, Object>>> getAnalyzers(@RequestParam(required = false) String status,
@@ -639,8 +640,8 @@ public class AnalyzerRestController extends BaseRestController {
      *
      * <p>
      * In OpenELIS, HL7 analyzers are typically push-based (results are posted to
-     * OpenELIS), so there is no reliable outbound "connection test" from OpenELIS to
-     * the analyzer. This returns success when the analyzer is configured.
+     * OpenELIS), so there is no reliable outbound "connection test" from OpenELIS
+     * to the analyzer. This returns success when the analyzer is configured.
      *
      * @param analyzer Analyzer entity
      * @return Map with success status and message

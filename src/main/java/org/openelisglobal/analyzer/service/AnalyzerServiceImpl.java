@@ -233,10 +233,6 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         analyzer.setSysUserId(userId);
         analyzer.setLastupdatedFields();
 
-        if (status == AnalyzerStatus.ACTIVE && oldStatus != AnalyzerStatus.ACTIVE) {
-            analyzer.setLastActivatedDate(new Date());
-        }
-
         update(analyzer);
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "setStatusManually", "Analyzer " + analyzerId

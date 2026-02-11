@@ -26,15 +26,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Service implementation for querying analyzers via ASTM protocol
- * 
- * Implements asynchronous query workflow per FR-002: - Background job pattern
- * with job ID - TCP connection to analyzer IP:Port - ASTM LIS2-A2 protocol
- * (ENQ/ACK handshake, frame-based communication) - Response parsing to extract
- * field identifiers - Field storage in AnalyzerField entity
+ * Service implementation for querying analyzers via ASTM protocol.
+ *
+ * <p>
+ * Implements asynchronous query workflow per FR-002: background job pattern
+ * with job ID, TCP connection, ASTM LIS2-A2 protocol, response parsing, and
+ * field storage. Not @Transactional at class level because methods are
+ * primarily in-memory job management; DB operations use TransactionTemplate
+ * explicitly.
  */
 @Service
-@Transactional
 public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
 
     private static final Logger logger = LoggerFactory.getLogger(AnalyzerQueryServiceImpl.class);
@@ -74,7 +75,12 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
         // Push-only analyzers (file-based, serial/RS-232) cannot be actively queried
         // because they deliver results to OpenELIS rather than accepting inbound
         // requests.
-        Analyzer analyzer = analyzerService.get(analyzerId);
+        Analyzer analyzer = null;
+        try {
+            analyzer = analyzerService.get(analyzerId);
+        } catch (Exception e) {
+            logger.debug("Analyzer {} not found in database, skipping transport validation", analyzerId);
+        }
         if (analyzer != null) {
             String protocol = analyzer.getProtocolVersion();
             if (protocol != null) {

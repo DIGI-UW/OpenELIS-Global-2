@@ -21,7 +21,6 @@ import org.openelisglobal.analyzer.dao.AnalyzerDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.common.log.LogEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,10 +35,10 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
     @Override
     @Transactional(readOnly = true)
     public Optional<Analyzer> findByIpAddress(String ipAddress) {
+        if (ipAddress == null || ipAddress.trim().isEmpty()) {
+            return Optional.empty();
+        }
         try {
-            if (ipAddress == null || ipAddress.trim().isEmpty()) {
-                return Optional.empty();
-            }
             String hql = "FROM Analyzer a WHERE a.ipAddress = :ipAddress";
             Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
             query.setParameter("ipAddress", ipAddress.trim());
@@ -47,20 +46,16 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
             return Optional.ofNullable(result);
         } catch (org.hibernate.NonUniqueResultException e) {
             throw new LIMSRuntimeException("Multiple Analyzers found for IP address: " + ipAddress, e);
-        } catch (Exception e) {
-            LogEvent.logDebug(this.getClass().getSimpleName(), "findByIpAddress",
-                    "No Analyzer found for IP address: " + ipAddress + ": " + e.getMessage());
-            return Optional.empty();
         }
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Analyzer> findByName(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            return Optional.empty();
+        }
         try {
-            if (name == null || name.trim().isEmpty()) {
-                return Optional.empty();
-            }
             String hql = "FROM Analyzer a WHERE a.name = :name";
             Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
             query.setParameter("name", name.trim());
@@ -68,10 +63,6 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
             return Optional.ofNullable(result);
         } catch (org.hibernate.NonUniqueResultException e) {
             throw new LIMSRuntimeException("Multiple Analyzers found for name: " + name, e);
-        } catch (Exception e) {
-            LogEvent.logDebug(this.getClass().getSimpleName(), "findByName",
-                    "No Analyzer found for name: " + name + ": " + e.getMessage());
-            return Optional.empty();
         }
     }
 

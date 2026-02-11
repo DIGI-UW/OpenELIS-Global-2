@@ -7,13 +7,12 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
-import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -26,22 +25,21 @@ import org.springframework.test.util.ReflectionTestUtils;
 public class AnalyzerQueryServiceTest {
 
     @Mock
-    private AnalyzerConfigurationService analyzerConfigurationService;
+    private AnalyzerService analyzerService;
 
     private AnalyzerQueryServiceImpl analyzerQueryService;
 
     @Before
     public void setUp() {
         analyzerQueryService = new AnalyzerQueryServiceImpl();
-        ReflectionTestUtils.setField(analyzerQueryService, "analyzerConfigurationService",
-                analyzerConfigurationService);
+        ReflectionTestUtils.setField(analyzerQueryService, "analyzerService", analyzerService);
 
-        // Default: return a valid TCP-capable config so startQuery passes validation
-        AnalyzerConfiguration config = new AnalyzerConfiguration();
-        config.setProtocolVersion("LIS2-A2");
-        config.setIpAddress("192.168.1.100");
-        config.setPort(5000);
-        when(analyzerConfigurationService.getByAnalyzerId(anyString())).thenReturn(Optional.of(config));
+        // Default: return a valid TCP-capable analyzer so startQuery passes validation
+        Analyzer analyzer = new Analyzer();
+        analyzer.setProtocolVersion("LIS2-A2");
+        analyzer.setIpAddress("192.168.1.100");
+        analyzer.setPort(5000);
+        when(analyzerService.get(anyString())).thenReturn(analyzer);
     }
 
     @Test
