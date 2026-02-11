@@ -173,7 +173,7 @@
             <column name="id" type="VARCHAR(36)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="analyzer_id" type="INT">
+            <column name="analyzer_id" type="NUMERIC(10,0)">
                 <constraints nullable="false" unique="true"
                     foreignKeyName="fk_file_import_analyzer"
                     references="analyzer(id)"

@@ -71,7 +71,7 @@
                     foreignKeyName="fk_field_mapping_analyzer_field"
                     references="analyzer_field(id)"/>
             </column>
-            <column name="analyzer_id" type="INTEGER">
+            <column name="analyzer_id" type="NUMERIC(10,0)">
                 <constraints nullable="false"
                     foreignKeyName="fk_field_mapping_analyzer"
                     references="analyzer(id)"
