@@ -84,8 +84,11 @@ limitation, gh CLI issue #5788):
 
 ```bash
 gh api repos/{owner}/{repo}/pulls/{num}/comments --paginate \
-  --jq '.[] | {id, body, path, line, start_line, side, diff_hunk, user: .user.login, in_reply_to_id, pull_request_review_id, created_at}'
+  --jq '.[] | {id, node_id, body, path, line, start_line, side, diff_hunk, user: .user.login, in_reply_to_id, pull_request_review_id, created_at}'
 ```
+
+Note: `node_id` is the stable GraphQL identifier — used later to correlate REST
+comments with GraphQL threads deterministically.
 
 **2. Review envelopes** (APPROVE / REQUEST_CHANGES / COMMENT verdicts):
 
@@ -102,6 +105,7 @@ gh api graphql -f query='
     repository(owner: $owner, name: $repo) {
       pullRequest(number: $num) {
         reviewThreads(first: 100) {
+          pageInfo { hasNextPage endCursor }
           nodes {
             id
             isResolved
@@ -109,7 +113,7 @@ gh api graphql -f query='
             path
             line
             comments(first: 50) {
-              nodes { id body author { login } createdAt }
+              nodes { id databaseId body author { login } createdAt }
             }
           }
         }
@@ -119,6 +123,12 @@ gh api graphql -f query='
 ' -f owner="{owner}" -f repo="{repo}" -F num={num}
 ```
 
+Note: `databaseId` on comment nodes matches the REST `id` field — this is how
+REST comments are correlated to GraphQL threads deterministically (see Merge
+Data below). If `pageInfo.hasNextPage` is true, paginate with
+`after: <endCursor>` to fetch all threads. For most PRs (<100 threads), a single
+call suffices.
+
 **4. General conversation comments** (PR-level, not attached to code):
 
 ```bash
@@ -126,13 +136,18 @@ gh api repos/{owner}/{repo}/issues/{num}/comments \
   --jq '.[] | {id, body, user: .user.login, created_at}'
 ```
 
-**Merge data**: Correlate REST inline comments with GraphQL threads by matching
-`path` + `line` + first comment body. This gives both the full comment content
-(REST) AND resolution status (GraphQL) for each thread.
+**Merge data**: Correlate REST inline comments with GraphQL threads using stable
+identifiers: match each REST comment's `id` (numeric) against the `databaseId`
+field on GraphQL `PullRequestReviewComment` nodes within each thread. This gives
+both the full comment content (REST) AND resolution status (GraphQL) for each
+thread deterministically — avoid matching by `path` + `line` + body, which is
+fragile when lines shift or bodies are edited.
 
 **Build thread model**: Group comments into threads using `in_reply_to_id`. A
 thread is: one top-level comment + zero or more replies, with resolution status
-from GraphQL.
+from GraphQL. Track each comment's **source type** (inline review comment vs
+general conversation comment) — this determines which API endpoints to use for
+replies and reactions later.
 
 Report the preflight summary:
 
@@ -263,12 +278,22 @@ After user selects:
 2. Draft a reply: "Addressed in [commit ref] — [brief description]."
 3. Ask: "Resolve this thread? [y/n]"
 
-**For praise comments**: Offer to add a thumbs-up reaction via:
+**For praise comments**: Offer to add a thumbs-up reaction, using the correct
+endpoint based on comment type:
 
-```bash
-gh api repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions \
-  -f content="+1"
-```
+- **Inline review comments**:
+
+  ```bash
+  gh api repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions \
+    -f content="+1"
+  ```
+
+- **General conversation comments**:
+
+  ```bash
+  gh api repos/{owner}/{repo}/issues/comments/{comment_id}/reactions \
+    -f content="+1"
+  ```
 
 Record each decision:
 `{thread_id, category, action, reply_draft, resolve_yn, files_changed}`.
@@ -317,8 +342,12 @@ Reply drafts:
 Post all 15 replies? [y / n / edit #N]
 ```
 
-- **y**: Post each reply via
-  `gh api --method POST repos/{o}/{r}/pulls/{n}/comments/{id}/replies -f body="..."`
+- **y**: Post each reply using the correct endpoint based on comment type:
+  - **Inline review comments**: reply via
+    `gh api --method POST repos/{o}/{r}/pulls/{n}/comments/{id}/replies -f body="..."`
+  - **General conversation comments**: post a new comment on the PR quoting or
+    linking the original, via
+    `gh api --method POST repos/{o}/{r}/issues/{n}/comments -f body="> [original comment link]\n\n..."`
 - **edit #N**: Show reply N for editing, then re-display the list
 - **n**: Skip posting (user will post manually)
 
@@ -344,7 +373,13 @@ gh api graphql -f query='
 ' -f id="{thread_node_id}"
 ```
 
-Report: "Resolved 12/12 threads successfully."
+**Important**: Only resolve threads whose reply was successfully posted in
+Step 2. If a reply failed to post, skip that thread's resolution and warn:
+`"Skipping resolution for [file:line] — reply failed to post (safety rule: never resolve without a reply)."`
+Re-confirm with the user before retrying the failed reply.
+
+Report: "Resolved N/M threads successfully." (where N excludes threads with
+failed replies)
 
 **Step 4 — Post PR summary comment** (optional):
 
