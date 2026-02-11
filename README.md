@@ -50,6 +50,20 @@ We welcome community contributions to help improve OpenELIS Global!
 
 1. For development , you need to install [Java](https://openjdk.org/install/) 21
 
+### Cloud Development (Cursor, Codespaces, Gitpod)
+
+For development in cloud environments where Maven, Java, and Node may not be
+pre-installed:
+
+- **Dev Container**: Open this repo in a [Dev Container](.devcontainer/)
+  (Cursor, VS Code, GitHub Codespaces). The container includes Java 21, Maven,
+  Node 20, and Docker.
+
+- **Setup script**: On an Ubuntu/Debian or RHEL-based cloud machine, run:
+  `bash scripts/setup-cloud-env.sh` to install Java 21, Maven, and Node 20.
+
+Then run `bash scripts/setup-workspace.sh` and follow the build steps below.
+
 ### For Offline Installation Using the OpenELIS Global2 Installer
 
 Download the OpenELIS Global Installer for each Release from the

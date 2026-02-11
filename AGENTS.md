@@ -503,6 +503,9 @@ delay feedback. Milestone-based delivery enables manageable code reviews.
 git clone https://github.com/DIGI-UW/OpenELIS-Global-2.git
 cd OpenELIS-Global-2
 
+# Cloud environments: install Java 21, Maven, Node (if not present)
+# bash scripts/setup-cloud-env.sh
+
 # Run workspace setup (initializes submodules, hooks, .env)
 bash scripts/setup-workspace.sh
 

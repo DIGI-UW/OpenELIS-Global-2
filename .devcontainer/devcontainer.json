@@ -1,0 +1,42 @@
+{
+  "name": "OpenELIS Global 2",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "postCreateCommand": "bash scripts/setup-workspace.sh || true",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vscjava.vscode-maven",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "java.configuration.runtimes": [
+          {
+            "name": "JavaSE-21",
+            "path": "/usr/lib/jvm/java-21-openjdk-amd64",
+            "default": true
+          }
+        ],
+        "java.jdt.ls.java.home": "/usr/lib/jvm/java-21-openjdk-amd64"
+      }
+    }
+  },
+  "forwardPorts": [80, 443, 3000, 8080, 8081, 8443, 8444, 15432],
+  "portsAttributes": {
+    "80": { "label": "Proxy HTTP" },
+    "443": { "label": "Proxy HTTPS" },
+    "3000": { "label": "Frontend dev" },
+    "8080": { "label": "OpenELIS Tomcat" },
+    "8443": { "label": "OpenELIS HTTPS" },
+    "15432": { "label": "PostgreSQL" }
+  },
+  "remoteUser": "vscode",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  }
+}
