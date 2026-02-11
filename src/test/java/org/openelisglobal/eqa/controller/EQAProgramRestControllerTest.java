@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -16,10 +18,12 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.eqa.controller.rest.EQAProgramRestController;
 import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -29,6 +33,12 @@ public class EQAProgramRestControllerTest {
     @Mock
     private EQAProgramService programService;
 
+    @Mock
+    private HttpServletRequest request;
+
+    @Mock
+    private HttpSession session;
+
     @InjectMocks
     private EQAProgramRestController controller;
 
@@ -37,6 +47,11 @@ public class EQAProgramRestControllerTest {
 
     @Before
     public void setUp() {
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        when(request.getSession()).thenReturn(session);
+        when(session.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(usd);
+
         program1 = new EQAProgram();
         program1.setId(1L);
         program1.setName("Chemistry PT");
@@ -58,7 +73,7 @@ public class EQAProgramRestControllerTest {
         when(programService.get(1L)).thenReturn(program1);
 
         Map<String, Object> body = Map.of("name", "Chemistry PT", "description", "Chemistry proficiency testing");
-        ResponseEntity<?> response = controller.createProgram(body);
+        ResponseEntity<?> response = controller.createProgram(request, body);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         @SuppressWarnings("unchecked")
@@ -70,14 +85,14 @@ public class EQAProgramRestControllerTest {
     @Test
     public void testCreateProgram_MissingName() {
         Map<String, Object> body = Map.of("description", "No name");
-        ResponseEntity<?> response = controller.createProgram(body);
+        ResponseEntity<?> response = controller.createProgram(request, body);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
 
     @Test
     public void testCreateProgram_BlankName() {
         Map<String, Object> body = Map.of("name", "   ");
-        ResponseEntity<?> response = controller.createProgram(body);
+        ResponseEntity<?> response = controller.createProgram(request, body);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
 
@@ -129,7 +144,7 @@ public class EQAProgramRestControllerTest {
         when(programService.update(any(EQAProgram.class))).thenReturn(program1);
 
         Map<String, Object> body = Map.of("name", "Updated Chemistry PT");
-        ResponseEntity<?> response = controller.updateProgram(1L, body);
+        ResponseEntity<?> response = controller.updateProgram(request, 1L, body);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(programService).update(any(EQAProgram.class));
@@ -141,7 +156,7 @@ public class EQAProgramRestControllerTest {
         when(programService.deactivateProgram(1L)).thenReturn(program1);
 
         Map<String, Object> body = Map.of("isActive", false);
-        ResponseEntity<?> response = controller.updateProgram(1L, body);
+        ResponseEntity<?> response = controller.updateProgram(request, 1L, body);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(programService).deactivateProgram(1L);
@@ -153,7 +168,7 @@ public class EQAProgramRestControllerTest {
         when(programService.activateProgram(2L)).thenReturn(program2);
 
         Map<String, Object> body = Map.of("isActive", true);
-        ResponseEntity<?> response = controller.updateProgram(2L, body);
+        ResponseEntity<?> response = controller.updateProgram(request, 2L, body);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(programService).activateProgram(2L);
@@ -164,7 +179,7 @@ public class EQAProgramRestControllerTest {
         when(programService.get(999L)).thenThrow(new ObjectNotFoundException(999L, "EQAProgram"));
 
         Map<String, Object> body = Map.of("name", "Whatever");
-        ResponseEntity<?> response = controller.updateProgram(999L, body);
+        ResponseEntity<?> response = controller.updateProgram(request, 999L, body);
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
     }
@@ -174,7 +189,7 @@ public class EQAProgramRestControllerTest {
         when(programService.get(1L)).thenReturn(program1);
 
         Map<String, Object> body = Map.of("name", "  ");
-        ResponseEntity<?> response = controller.updateProgram(1L, body);
+        ResponseEntity<?> response = controller.updateProgram(request, 1L, body);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
