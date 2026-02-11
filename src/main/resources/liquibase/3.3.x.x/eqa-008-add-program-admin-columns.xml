@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add provider_name, category, and frequency columns to eqa_program -->
+    <changeSet id="eqa-008-add-program-admin-columns" author="eqa-module-feature">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="eqa_program"/>
+            <not>
+                <columnExists tableName="eqa_program" columnName="provider_name"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="eqa_program">
+            <column name="provider_name" type="VARCHAR(255)"/>
+            <column name="category" type="VARCHAR(100)"/>
+            <column name="frequency" type="VARCHAR(50)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="eqa_program" columnName="provider_name"/>
+            <dropColumn tableName="eqa_program" columnName="category"/>
+            <dropColumn tableName="eqa_program" columnName="frequency"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

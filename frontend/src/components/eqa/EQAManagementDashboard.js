@@ -308,7 +308,13 @@ const EQAManagementDashboard = () => {
         }}
       >
         <h4>{intl.formatMessage({ id: "eqa.management.samples.title" })}</h4>
-        <p style={{ color: "#525252", marginBottom: "1rem", fontSize: "0.875rem" }}>
+        <p
+          style={{
+            color: "#525252",
+            marginBottom: "1rem",
+            fontSize: "0.875rem",
+          }}
+        >
           {intl.formatMessage({ id: "eqa.management.samples.subtitle" })}
         </p>
 

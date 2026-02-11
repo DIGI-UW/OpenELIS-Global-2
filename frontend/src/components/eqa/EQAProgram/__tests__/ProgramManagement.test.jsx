@@ -1,10 +1,17 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 import ProgramManagement from "../ProgramManagement";
 import ProgramForm from "../ProgramForm";
+
+jest.mock("../../../../components/common/PageBreadCrumb", () => {
+  const mockReact = require("react");
+  return function MockBreadCrumb() {
+    return mockReact.createElement("div", { "data-testid": "breadcrumb" });
+  };
+});
 
 jest.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: jest.fn(),
@@ -27,12 +34,18 @@ const mockPrograms = [
     id: 1,
     name: "Chemistry PT",
     description: "Chemistry proficiency testing",
+    providerName: "CAP",
+    category: "Chemistry",
+    frequency: "Quarterly",
     isActive: true,
   },
   {
     id: 2,
     name: "Hematology PT",
     description: "Hematology proficiency testing",
+    providerName: "UKNEQAS",
+    category: "Hematology",
+    frequency: "Monthly",
     isActive: false,
   },
 ];
@@ -47,18 +60,24 @@ describe("ProgramManagement", () => {
 
   test("renders title", () => {
     renderWithIntl(<ProgramManagement />);
-    expect(screen.getByText("EQA Program Management")).toBeTruthy();
+    expect(screen.getByText("Program Administration")).toBeTruthy();
   });
 
-  test("renders create button", () => {
+  test("renders add program button", () => {
     renderWithIntl(<ProgramManagement />);
-    expect(screen.getByText("Create Program")).toBeTruthy();
+    expect(screen.getByText("Add Program")).toBeTruthy();
   });
 
   test("renders program list from API", () => {
     renderWithIntl(<ProgramManagement />);
     expect(screen.getByText("Chemistry PT")).toBeTruthy();
     expect(screen.getByText("Hematology PT")).toBeTruthy();
+  });
+
+  test("renders provider and category columns", () => {
+    renderWithIntl(<ProgramManagement />);
+    expect(screen.getByText("CAP")).toBeTruthy();
+    expect(screen.getByText("UKNEQAS")).toBeTruthy();
   });
 
   test("renders active/inactive status tags", () => {
@@ -69,10 +88,24 @@ describe("ProgramManagement", () => {
     expect(greenTags.length).toBeGreaterThanOrEqual(1);
   });
 
-  test("renders edit buttons for each program", () => {
+  test("renders summary tiles", () => {
     renderWithIntl(<ProgramManagement />);
-    const editButtons = screen.getAllByText("Edit Program");
-    expect(editButtons.length).toBe(2);
+    expect(screen.getByText("Active Programs")).toBeTruthy();
+    expect(screen.getByText("System Users")).toBeTruthy();
+    expect(screen.getByText("Total Participants")).toBeTruthy();
+  });
+
+  test("renders tabs", () => {
+    renderWithIntl(<ProgramManagement />);
+    expect(
+      screen.getAllByText("EQA Programs").length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText("User Management").length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText("System Settings").length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   test("shows empty state when no programs", () => {
@@ -86,17 +119,15 @@ describe("ProgramManagement", () => {
 
   test("opens create form when button clicked", () => {
     renderWithIntl(<ProgramManagement />);
-    fireEvent.click(screen.getByText("Create Program"));
-    expect(screen.getByText("Save Program")).toBeTruthy();
+    fireEvent.click(screen.getByText("Add Program"));
+    expect(screen.getByText("Add New EQA Program")).toBeTruthy();
   });
 });
 
 describe("ProgramForm", () => {
-  test("renders create mode", () => {
+  test("renders create mode with correct heading", () => {
     renderWithIntl(<ProgramForm program={null} onClose={jest.fn()} />);
-    expect(screen.getAllByText("Create Program").length).toBeGreaterThanOrEqual(
-      1,
-    );
+    expect(screen.getByText("Add New EQA Program")).toBeTruthy();
   });
 
   test("renders edit mode with program data", () => {
@@ -104,18 +135,26 @@ describe("ProgramForm", () => {
       id: 1,
       name: "Chemistry PT",
       description: "Test desc",
+      providerName: "CAP",
+      category: "Chemistry",
+      frequency: "Quarterly",
       isActive: true,
     };
     renderWithIntl(<ProgramForm program={program} onClose={jest.fn()} />);
-    expect(screen.getAllByText("Edit Program").length).toBeGreaterThanOrEqual(
-      1,
-    );
+    expect(screen.getByText("Edit EQA Program")).toBeTruthy();
   });
 
   test("shows validation error when name is empty", () => {
     renderWithIntl(<ProgramForm program={null} onClose={jest.fn()} />);
-    fireEvent.click(screen.getByText("Save Program"));
+    fireEvent.click(screen.getByText("Add Program"));
     expect(screen.getByText("Program name is required")).toBeTruthy();
+  });
+
+  test("renders provider and category dropdowns", () => {
+    renderWithIntl(<ProgramForm program={null} onClose={jest.fn()} />);
+    expect(screen.getByText("Provider")).toBeTruthy();
+    expect(screen.getByText("Category")).toBeTruthy();
+    expect(screen.getByText("Frequency")).toBeTruthy();
   });
 
   test("renders toggle only in edit mode", () => {
@@ -124,7 +163,12 @@ describe("ProgramForm", () => {
     );
     expect(createContainer.querySelector("#program-active")).toBeNull();
 
-    const program = { id: 1, name: "Test", description: "", isActive: true };
+    const program = {
+      id: 1,
+      name: "Test",
+      description: "",
+      isActive: true,
+    };
     const { container: editContainer } = renderWithIntl(
       <ProgramForm program={program} onClose={jest.fn()} />,
     );

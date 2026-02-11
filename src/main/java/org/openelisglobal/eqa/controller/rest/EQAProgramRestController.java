@@ -39,9 +39,16 @@ public class EQAProgramRestController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Program name is required"));
             }
 
+            String providerName = (String) body.get("providerName");
+            String category = (String) body.get("category");
+            String frequency = (String) body.get("frequency");
+
             EQAProgram program = new EQAProgram();
             program.setName(name);
             program.setDescription(description);
+            program.setProviderName(providerName);
+            program.setCategory(category);
+            program.setFrequency(frequency);
             program.setIsActive(true);
 
             Long id = programService.insert(program);
@@ -92,6 +99,18 @@ public class EQAProgramRestController {
 
             if (body.containsKey("description")) {
                 program.setDescription((String) body.get("description"));
+            }
+
+            if (body.containsKey("providerName")) {
+                program.setProviderName((String) body.get("providerName"));
+            }
+
+            if (body.containsKey("category")) {
+                program.setCategory((String) body.get("category"));
+            }
+
+            if (body.containsKey("frequency")) {
+                program.setFrequency((String) body.get("frequency"));
             }
 
             if (body.containsKey("isActive")) {
@@ -166,6 +185,9 @@ public class EQAProgramRestController {
         dto.put("id", program.getId());
         dto.put("name", program.getName());
         dto.put("description", program.getDescription());
+        dto.put("providerName", program.getProviderName());
+        dto.put("category", program.getCategory());
+        dto.put("frequency", program.getFrequency());
         dto.put("isActive", program.getIsActive());
         dto.put("fhirUuid", program.getFhirUuid() != null ? program.getFhirUuid().toString() : null);
         return dto;

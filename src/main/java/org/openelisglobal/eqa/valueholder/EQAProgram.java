@@ -34,6 +34,15 @@ public class EQAProgram extends BaseObject<Long> {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "provider_name", length = 255)
+    private String providerName;
+
+    @Column(name = "category", length = 100)
+    private String category;
+
+    @Column(name = "frequency", length = 50)
+    private String frequency;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 

@@ -63,4 +63,7 @@
 
   <!-- EQA/QC Menu Items, System Module, and Role Assignments -->
   <include relativeToChangelogFile="true" file="eqa-007-add-eqa-menu-items.xml"/>
+
+  <!-- EQA Program Administration columns (provider, category, frequency) -->
+  <include relativeToChangelogFile="true" file="eqa-008-add-program-admin-columns.xml"/>
 </databaseChangeLog>

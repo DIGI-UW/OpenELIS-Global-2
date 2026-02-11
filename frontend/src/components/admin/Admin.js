@@ -5,6 +5,7 @@ import { Switch, Route, useRouteMatch, useHistory } from "react-router-dom";
 import "../Style.css";
 import ReflexTestManagement from "./reflexTests/ReflexTestManagement";
 import ProgramManagement from "./program/ProgramManagement";
+import EQAProgramManagement from "../eqa/EQAProgram/ProgramManagement";
 import LabNumberManagement from "./labNumber/LabNumberManagement";
 import {
   GlobalMenuManagement,
@@ -33,6 +34,7 @@ import {
   ResultNew,
   Popup,
   Search,
+  DataCheck,
 } from "@carbon/icons-react";
 import CalculatedValue from "./calculatedValue/CalculatedValueForm";
 import {
@@ -158,6 +160,13 @@ function Admin() {
             onClick={handleNavigation(`${path}/program`)}
           >
             <FormattedMessage id="sidenav.label.admin.program" />
+          </SideNavLink>
+          <SideNavLink
+            data-cy="eqaProgramEntry"
+            renderIcon={DataCheck}
+            onClick={handleNavigation(`${path}/eqaProgram`)}
+          >
+            <FormattedMessage id="sidenav.label.admin.eqaProgram" />
           </SideNavLink>
           <SideNavLink
             data-cy="providerMgmnt"
@@ -374,6 +383,7 @@ function Admin() {
         <Route path={`${path}/AnalyzerTestName`} component={AnalyzerTestName} />
         <Route path={`${path}/labNumber`} component={LabNumberManagement} />
         <Route path={`${path}/program`} component={ProgramManagement} />
+        <Route path={`${path}/eqaProgram`} component={EQAProgramManagement} />
         <Route path={`${path}/providerMenu`} component={ProviderMenu} />
         <Route path={`${path}/NotifyUser`} component={PushNotificationPage} />
         <Route

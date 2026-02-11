@@ -189,9 +189,7 @@ const EQADistributionDashboard = () => {
 
   return (
     <div style={{ padding: "1rem" }}>
-      <h2>
-        {intl.formatMessage({ id: "eqa.distribution.dashboard.title" })}
-      </h2>
+      <h2>{intl.formatMessage({ id: "eqa.distribution.dashboard.title" })}</h2>
       <p style={{ color: "#525252", marginBottom: "1.5rem" }}>
         {intl.formatMessage({ id: "eqa.distribution.dashboard.subtitle" })}
       </p>
@@ -409,9 +407,7 @@ const EQADistributionDashboard = () => {
                           }
                           if (cell.info.header === "deadline") {
                             const date = rawRow?.deadline
-                              ? new Date(
-                                  rawRow.deadline,
-                                ).toLocaleDateString()
+                              ? new Date(rawRow.deadline).toLocaleDateString()
                               : "";
                             const shipped = rawRow?.shippedDate
                               ? new Date(
