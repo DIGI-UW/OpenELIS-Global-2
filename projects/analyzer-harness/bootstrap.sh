@@ -33,6 +33,14 @@ mkdir -p "$HARNESS_VOLUME/menu"
 mkdir -p "$HARNESS_VOLUME/logs/oeLogs"
 mkdir -p "$HARNESS_VOLUME/logs/tomcatLogs"
 mkdir -p "$HARNESS_VOLUME/plugins"
+# Copy analyzer plugin JARs from submodule (idempotent: skips existing)
+PLUGIN_SRC="$REPO_ROOT/plugins/plugins"
+if [ -d "$PLUGIN_SRC" ] && ls "$PLUGIN_SRC"/*.jar 1>/dev/null 2>&1; then
+  cp -n "$PLUGIN_SRC"/*.jar "$HARNESS_VOLUME/plugins/" 2>/dev/null || true
+  echo -e "  ${GREEN}✓ Analyzer plugins copied ($(ls "$HARNESS_VOLUME/plugins/"*.jar 2>/dev/null | wc -l) JARs)${NC}"
+else
+  echo -e "  ${YELLOW}WARN: No plugin JARs found at plugins/plugins/. Run 'cd plugins && mvn package' to build them.${NC}"
+fi
 mkdir -p "$HARNESS_VOLUME/programs"
 mkdir -p "$HARNESS_VOLUME/configuration"
 mkdir -p "$HARNESS_VOLUME/analyzer-imports"

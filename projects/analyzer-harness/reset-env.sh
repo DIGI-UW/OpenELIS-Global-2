@@ -6,8 +6,9 @@
 # Options:
 #   --build        Build WAR + harness Docker images first (start from scratch)
 #   --full-reset   Remove DB (and other) volumes before starting (wipe DB)
-#   --skip-fixtures Skip loading test fixtures after startup
-#   --help         Show this help message
+#   --skip-fixtures   Skip loading test fixtures after startup
+#   --skip-letsencrypt Do not run Let's Encrypt setup even when LETSENCRYPT_* env is set
+#   --help            Show this help message
 #
 # Start from scratch: ./build.sh && ./reset-env.sh --full-reset
 # Or: ./reset-env.sh --build --full-reset
@@ -35,10 +36,13 @@ elif [ -f "$REPO_ROOT/.env" ]; then
 else
   ENV_FILE=""
 fi
+# Source .env so LETSENCRYPT_DOMAIN/LETSENCRYPT_EMAIL are available for optional cert setup
+[ -n "$ENV_FILE" ] && set -a && . "$ENV_FILE" && set +a
 
 FULL_RESET=false
 SKIP_FIXTURES=false
 DO_BUILD=false
+SKIP_LETSENCRYPT=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -54,8 +58,12 @@ while [[ $# -gt 0 ]]; do
             SKIP_FIXTURES=true
             shift
             ;;
+        --skip-letsencrypt)
+            SKIP_LETSENCRYPT=true
+            shift
+            ;;
         --help)
-            head -28 "$0" | tail -25
+            head -30 "$0" | tail -27
             exit 0
             ;;
         *)
@@ -119,6 +127,23 @@ done
 if [ $ELAPSED -ge $MAX_WAIT ]; then
     echo -e "  ${RED}✗ Webapp not ready after ${MAX_WAIT}s${NC}"
     exit 1
+fi
+
+# Step 3b: Let's Encrypt setup when LETSENCRYPT_DOMAIN + LETSENCRYPT_EMAIL are set
+if [ "$SKIP_LETSENCRYPT" = false ] && [ -n "${LETSENCRYPT_DOMAIN:-}" ] && [ -n "${LETSENCRYPT_EMAIL:-}" ]; then
+    echo -e "${YELLOW}[3b] Setting up Let's Encrypt for ${LETSENCRYPT_DOMAIN}...${NC}"
+    if "$HARNESS_DIR/scripts/generate-letsencrypt-certs.sh"; then
+        docker compose ${ENV_FILE:+--env-file "$ENV_FILE"} -f "$COMPOSE_DEV" -f "$COMPOSE_ANALYZER" -f "$COMPOSE_LETSENCRYPT" restart proxy
+        echo -e "  ${GREEN}✓ Let's Encrypt cert obtained/renewed; proxy restarted${NC}"
+    else
+        echo -e "  ${YELLOW}⚠ Let's Encrypt setup failed (e.g. DNS/port 80); proxy keeps self-signed${NC}"
+    fi
+else
+    if [ "$SKIP_LETSENCRYPT" = true ]; then
+        echo -e "${YELLOW}[3b] Skipping Let's Encrypt (--skip-letsencrypt)${NC}"
+    else
+        echo -e "${YELLOW}[3b] Skipping Let's Encrypt (set LETSENCRYPT_DOMAIN and LETSENCRYPT_EMAIL in .env to enable)${NC}"
+    fi
 fi
 
 # Step 4: Load fixtures (from repo root, direct psql to harness DB on 15432)
