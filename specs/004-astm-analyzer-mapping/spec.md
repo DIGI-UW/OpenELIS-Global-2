@@ -1,6 +1,7 @@
 # Feature Specification: ASTM Analyzer Field Mapping
 
-**Feature Branch**: `OGC-49-astm-analyzer-mapping`  
+**Feature Branch** (Constitution Principle IX):
+`spec/004-ogc-49-astm-analyzer-mapping`  
 **Created**: 2025-11-14  
 **Status**: Draft  
 **Input**: User description: "ASTM Analyzer Mapping Feature based on OGC-49
@@ -173,38 +174,42 @@ statistics).
   INACTIVE at any time via the analyzer edit form or status dropdown in the
   table row. **Test Unit Filter**: The Test Unit filter MUST be a multi-select
   dropdown showing test unit names (loaded from existing test unit
-  configuration). The filter MUST operate on test unit IDs (not names) - filters
-  analyzers where any selected test unit ID matches any value in the analyzer's
-  `test_unit_ids` array using PostgreSQL array overlap operator
-  (`WHERE analyzer.test_unit_ids && ARRAY[selected_unit_ids]`). The UI displays
-  test unit names for user selection, but filtering logic uses IDs for database
-  queries. System MUST allow authorized users to register and manage ASTM
-  analyzers via an Add/Edit Analyzer modal (ComposedModal, small size
-  ~400-480px) with the following attributes: dialog header with title "Add New
-  Analyzer" / "Edit Analyzer" and subtitle "Configure analyzer connection
-  settings and test units", form fields including analyzer name (unique,
-  required, 1-100 characters, placeholder: "e.g., Hematology Analyzer 1"),
-  analyzer type/model (required, dropdown with "Other" option, placeholder:
-  "Select analyzer type"), IP address (required, IPv4 format validation,
-  half-width, placeholder: "192.168.1.10"), port number (required, 1-65535
-  range, half-width, placeholder: "5000"), protocol version (read-only
-  TextInput, default value: "ASTM LIS2-A2"), test unit assignment (required,
-  multi-select, minimum 1, placeholder: "Select test units...", helper text:
-  "Select one or more test units for this analyzer"), status dropdown (required,
-  label "Status", options: INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING,
-  OFFLINE, with description "Analyzer operational status"), a connection test
-  button (ghost style) in the connection fieldset that opens a Test Connection
-  modal, and audit fields (created date/time, last modified date/time, created
-  by user, all auto-generated). The modal MUST have scrollable content with
-  fixed action buttons (Cancel secondary, Save primary). System MUST validate
-  analyzer name uniqueness and MUST generate a warning (but not block) if
-  IP:Port combination is duplicate. System MUST provide a Test Connection modal
-  (ComposedModal, small size ~400-480px) with three states: (1) Initial state
-  showing analyzer information section (read-only display of analyzer name,
-  type, connection IP:Port, protocol version) with "Test Connection" button in
-  footer, (2) Progress state with loading indicator, "Testing connection..."
-  text, progress bar showing percentage completion (e.g., "50% complete"), and
-  collapsible connection logs section displaying log entries with timestamps in
+  configuration). The filter MUST operate on test unit IDs (not names) and MUST
+  filter analyzers where **any** selected test unit ID is associated with the
+  analyzer (set-overlap semantics). The UI displays test unit names for user
+  selection, but filtering logic uses IDs for matching. **Implementation
+  constraint**: Filtering MUST be implemented in a way consistent with the
+  project’s DAO rules (ORM/HQL-first). If a deployment requires a database-
+  specific query, it MUST be explicitly justified and documented as a legacy
+  exception (with a migration path).
+
+  System MUST allow authorized users to register and manage ASTM analyzers via
+  an Add/Edit Analyzer modal (ComposedModal, small size ~400-480px) with the
+  following attributes: dialog header with title "Add New Analyzer" / "Edit
+  Analyzer" and subtitle "Configure analyzer connection settings and test
+  units", form fields including analyzer name (unique, required, 1-100
+  characters, placeholder: "e.g., Hematology Analyzer 1"), analyzer type/model
+  (required, dropdown with "Other" option, placeholder: "Select analyzer type"),
+  IP address (required, IPv4 format validation, half-width, placeholder:
+  "192.168.1.10"), port number (required, 1-65535 range, half-width,
+  placeholder: "5000"), protocol version (read-only TextInput, default value:
+  "ASTM LIS2-A2"), test unit assignment (required, multi-select, minimum 1,
+  placeholder: "Select test units...", helper text: "Select one or more test
+  units for this analyzer"), status dropdown (required, label "Status", options:
+  INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE, with description
+  "Analyzer operational status"), a connection test button (ghost style) in the
+  connection fieldset that opens a Test Connection modal, and audit fields
+  (created date/time, last modified date/time, created by user, all
+  auto-generated). The modal MUST have scrollable content with fixed action
+  buttons (Cancel secondary, Save primary). System MUST validate analyzer name
+  uniqueness and MUST generate a warning (but not block) if IP:Port combination
+  is duplicate. System MUST provide a Test Connection modal (ComposedModal,
+  small size ~400-480px) with three states: (1) Initial state showing analyzer
+  information section (read-only display of analyzer name, type, connection
+  IP:Port, protocol version) with "Test Connection" button in footer, (2)
+  Progress state with loading indicator, "Testing connection..." text, progress
+  bar showing percentage completion (e.g., "50% complete"), and collapsible
+  connection logs section displaying log entries with timestamps in
   [HH:MM:SS.mmm] format, log levels visually distinguished with icons (info ℹ,
   debug ◆, warning ⚠, error ✗), and log messages showing connection steps (e.g.,
   "Starting connection test", "Resolving IP address...", "TCP handshake
@@ -228,6 +233,7 @@ statistics).
   configuration but MUST NOT process incoming messages. Status changes MUST be
   logged in the audit trail with user ID, timestamp, previous status, and new
   status.
+
 - **FR-002**: For a given analyzer, system MUST provide a "Query Analyzer"
   button in the mapping interface that sends ASTM query messages to retrieve
   available data fields. The query operation MUST execute asynchronously using a
@@ -244,14 +250,14 @@ statistics).
   segments, and display available fields in the source panel with field type
   indicators using color-coded tags (Numeric, Qualitative, Control Test, Melting
   Point, Date/Time, Text, Custom). **Query Timeout**: Query timeout is 5 minutes
-  (configurable via SystemConfiguration key `analyzer.query.timeout.minutes`,
-  default: 5). If the SystemConfiguration key is missing or contains an invalid
-  value (non-numeric, negative, or zero), the system MUST use 5 minutes as the
-  default timeout. The timeout value MUST be stored in the `SystemConfiguration`
-  table and can be adjusted per deployment. Maximum 500 fields per query, rate
-  limit 1 query per minute per analyzer. The query MUST handle timeout/error
-  states gracefully (display error message, allow retry, show connection logs
-  for debugging).
+  (configurable via SiteInformation key `analyzer.query.timeout`, default: 5).
+  If the SiteInformation key is missing or contains an invalid value
+  (non-numeric, negative, or zero), the system MUST use 5 minutes as the default
+  timeout. The timeout value MUST be stored in `clinlims.site_information` and
+  can be adjusted per deployment. Maximum 500 fields per query, rate limit 1
+  query per minute per analyzer. The query MUST handle timeout/error states
+  gracefully (display error message, allow retry, show connection logs for
+  debugging).
 - **FR-003**: System MUST allow users to map each analyzer test code to one or
   more OpenELIS test/analyte definitions using either drag-and-drop or
   click-to-map interaction patterns. The system MUST provide visual connection
@@ -735,10 +741,10 @@ deployment/infrastructure setup):
     also supported. See `research.md` Section 12 and `quickstart.md` Step 0 for
     detailed setup instructions.
 
-### Constitution Compliance Requirements (OpenELIS Global 3.0)
+### Constitution Compliance Requirements (OpenELIS Global 2.0)
 
-_Derived from `.specify/memory/constitution.md` (v1.7.0); only items relevant to
-analyzer mapping are listed:_
+_Derived from `.specify/memory/constitution.md`; only items relevant to analyzer
+mapping are listed:_
 
 - **CR-001**: UI components for analyzer mapping MUST follow the Carbon Design
   System exclusively. Specific components MUST include: Header for page titles,
@@ -1015,11 +1021,11 @@ analyzer mapping are listed:_
   automatically after 7 calendar days have elapsed since the analyzer's
   lifecycle stage was set to GO_LIVE, using the server's timezone for date
   calculations.
-- Q: Query timeout default behavior → A: Option A - If SystemConfiguration key
-  `analyzer.query.timeout.minutes` is missing or invalid, use 5 minutes as
-  default timeout. The system MUST use 5 minutes as the default timeout value
-  when the configuration key is absent from the database or contains an invalid
-  value (non-numeric, negative, or zero).
+- Q: Query timeout default behavior → A: Option A - If SiteInformation key
+  `analyzer.query.timeout` is missing or invalid, use 5 minutes as default
+  timeout. The system MUST use 5 minutes as the default timeout value when the
+  configuration key is absent from `clinlims.site_information` or contains an
+  invalid value (non-numeric, negative, or zero).
 - Q: Terminology consistency - "Analyzers Dashboard" vs "AnalyzersList" → A:
   Option A - Standardize on "Analyzers Dashboard" across all artifacts. Use
   "Analyzers Dashboard" in all user-facing references (spec, UI labels,
@@ -1112,11 +1118,11 @@ analyzer mapping are listed:_
   _[Task Reference: T207]_
 
 - **SC-004**: Query analyzer operation completes within configured timeout
-  (default 5 minutes, configurable via SystemConfiguration key
-  `analyzer.query.timeout.minutes`) and retrieves up to 500 fields. Connection
-  test validates TCP handshake within 30 seconds. Query timeout handling
-  displays error message, allows retry, and shows connection logs for debugging.
-  _[Task Reference: T162, T209]_
+  (default 5 minutes, configurable via SiteInformation key
+  `analyzer.query.timeout`) and retrieves up to 500 fields. Connection test
+  validates TCP handshake within 30 seconds. Query timeout handling displays
+  error message, allows retry, and shows connection logs for debugging. _[Task
+  Reference: T162, T209]_
 
 - **SC-005**: Error Dashboard displays 1000+ error records with pagination,
   filtering, and sorting in <1 second load time. Dashboard supports filtering by
