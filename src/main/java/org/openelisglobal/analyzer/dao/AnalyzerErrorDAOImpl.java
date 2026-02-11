@@ -165,24 +165,30 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
     @Transactional(readOnly = true)
     public java.util.Map<String, Long> getGlobalStatistics() {
         try {
-            // Single query for all statistics
-            String hql = "SELECT COUNT(ae)," + " SUM(CASE WHEN ae.status = :unack THEN 1L ELSE 0L END),"
-                    + " SUM(CASE WHEN ae.severity = :crit THEN 1L ELSE 0L END),"
-                    + " SUM(CASE WHEN ae.lastupdated >= :since24h THEN 1L ELSE 0L END)" + " FROM AnalyzerError ae";
+            // Use separate COUNT queries — Hibernate's classic HQL parser cannot
+            // detect named parameters inside SUM(CASE WHEN ...) aggregate expressions.
+            Session session = entityManager.unwrap(Session.class);
 
-            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
-            // Use .name() to avoid PostgreSQL varchar/bytea type mismatch
-            query.setParameter("unack", AnalyzerError.ErrorStatus.UNACKNOWLEDGED.name());
-            query.setParameter("crit", AnalyzerError.Severity.CRITICAL.name());
-            query.setParameter("since24h",
-                    new java.sql.Timestamp(System.currentTimeMillis() - (24L * 60L * 60L * 1000L)));
+            Long total = (Long) session.createQuery("SELECT COUNT(ae) FROM AnalyzerError ae").uniqueResult();
 
-            Object[] row = query.uniqueResult();
+            Long unacknowledged = (Long) session
+                    .createQuery("SELECT COUNT(ae) FROM AnalyzerError ae WHERE ae.status = :s")
+                    .setParameter("s", AnalyzerError.ErrorStatus.UNACKNOWLEDGED.name()).uniqueResult();
+
+            Long critical = (Long) session.createQuery("SELECT COUNT(ae) FROM AnalyzerError ae WHERE ae.severity = :s")
+                    .setParameter("s", AnalyzerError.Severity.CRITICAL.name()).uniqueResult();
+
+            Long last24h = (Long) session
+                    .createQuery("SELECT COUNT(ae) FROM AnalyzerError ae WHERE ae.lastupdated >= :since")
+                    .setParameter("since",
+                            new java.sql.Timestamp(System.currentTimeMillis() - (24L * 60L * 60L * 1000L)))
+                    .uniqueResult();
+
             java.util.Map<String, Long> stats = new java.util.LinkedHashMap<>();
-            stats.put("totalErrors", row[0] != null ? (Long) row[0] : 0L);
-            stats.put("unacknowledged", row[1] != null ? (Long) row[1] : 0L);
-            stats.put("critical", row[2] != null ? (Long) row[2] : 0L);
-            stats.put("last24Hours", row[3] != null ? (Long) row[3] : 0L);
+            stats.put("totalErrors", total != null ? total : 0L);
+            stats.put("unacknowledged", unacknowledged != null ? unacknowledged : 0L);
+            stats.put("critical", critical != null ? critical : 0L);
+            stats.put("last24Hours", last24h != null ? last24h : 0L);
             return stats;
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting global AnalyzerError statistics", e);
