@@ -126,10 +126,6 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 - Docker Compose uses `.env` for `${VAR}` substitution in compose files
 - Missing `.env` causes authentication failures and SSL certificate errors
 
-**Common mistake:** Running `git reset --hard` or switching branches used to
-delete `.env` because it was accidentally tracked in git. This has been fixed -
-`.env` is now untracked.
-
 ---
 
 ## Technology Stack
