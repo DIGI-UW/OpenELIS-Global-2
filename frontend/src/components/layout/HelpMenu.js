@@ -83,6 +83,8 @@ const HelpMenu = ({ helpOpen, handlePanelToggle }) => {
         ref={buttonRef}
         id="user-Help"
         aria-label="Help"
+        tooltipPosition="bottom"
+        leaveDelayMs={0}
         onClick={() => {
           handlePanelToggle(helpOpen ? "" : "help");
         }}

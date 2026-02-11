@@ -462,6 +462,8 @@ function OEHeader(props) {
                         <HeaderGlobalAction
                           id="search-Icon"
                           aria-label="Search"
+                          tooltipPosition="bottom"
+                          leaveDelayMs={0}
                           onClick={() =>
                             handlePanelToggle(searchBar ? "" : "search")
                           }
@@ -475,6 +477,8 @@ function OEHeader(props) {
                         <HeaderGlobalAction
                           id="notification-Icon"
                           aria-label="Notifications"
+                          tooltipPosition="bottom"
+                          leaveDelayMs={0}
                           onClick={() =>
                             handlePanelToggle(
                               notificationsOpen ? "" : "notifications",
@@ -523,6 +527,8 @@ function OEHeader(props) {
                     <HeaderGlobalAction
                       id="user-Icon"
                       aria-label={panelSwitchLabel()}
+                      tooltipPosition="bottom"
+                      leaveDelayMs={0}
                       onClick={() =>
                         handlePanelToggle(switchCollapsed ? "user" : "")
                       }
