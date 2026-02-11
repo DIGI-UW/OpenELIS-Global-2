@@ -1,10 +1,12 @@
 package org.openelisglobal.eqa.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.hibernate.ObjectNotFoundException;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
@@ -23,14 +25,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa/programs")
-public class EQAProgramRestController {
+public class EQAProgramRestController extends ControllerUtills {
 
     @Autowired
     private EQAProgramService programService;
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('EQA Coordinator')")
-    public ResponseEntity<?> createProgram(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> createProgram(HttpServletRequest request, @RequestBody Map<String, Object> body) {
         try {
             String name = (String) body.get("name");
             String description = (String) body.get("description");
@@ -50,6 +52,7 @@ public class EQAProgramRestController {
             program.setCategory(category);
             program.setFrequency(frequency);
             program.setIsActive(true);
+            program.setSysUserId(getSysUserId(request));
 
             Long id = programService.insert(program);
             program = programService.get(id);
@@ -85,9 +88,11 @@ public class EQAProgramRestController {
 
     @PutMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('EQA Coordinator')")
-    public ResponseEntity<?> updateProgram(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> updateProgram(HttpServletRequest request, @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
         try {
             EQAProgram program = programService.get(id);
+            program.setSysUserId(getSysUserId(request));
 
             if (body.containsKey("name")) {
                 String name = (String) body.get("name");

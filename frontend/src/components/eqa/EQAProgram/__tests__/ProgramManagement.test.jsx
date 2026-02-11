@@ -97,9 +97,9 @@ describe("ProgramManagement", () => {
 
   test("renders tabs", () => {
     renderWithIntl(<ProgramManagement />);
-    expect(
-      screen.getAllByText("EQA Programs").length,
-    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("EQA Programs").length).toBeGreaterThanOrEqual(
+      1,
+    );
     expect(
       screen.getAllByText("User Management").length,
     ).toBeGreaterThanOrEqual(1);
