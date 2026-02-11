@@ -172,11 +172,6 @@ jobs:
           ASSIGNED=$(grep -E '^\s+cypress/e2e/' ../.github/workflows/frontend-qa.yml \
             | sed 's/^[[:space:]]*//' | sed 's/,$//' | sort -u)
 
-      - name: Create .env from template
-        run: cp .env.example .env
-
-      - name: Build OpenELIS Images and Run containers
-        run: docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
           # Find all spec files on disk
           ALL=$(find cypress/e2e -name '*.cy.js' -type f | sort)
 
