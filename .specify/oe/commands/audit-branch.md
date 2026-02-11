@@ -13,7 +13,8 @@ placeholder code, leaked task references, and architectural violations.
 Key capabilities:
 
 - **Tier 1 (Mechanical)**: Regex-based pattern matching against added lines in
-  the diff — fast, zero false positives
+  the diff — fast, tuned for low false positives; findings still require quick
+  human review
 - **Tier 2 (Heuristic)**: Structural analysis requiring context —
   comment-to-code adjacency, import usage, scope relevance
 - **Tier 3 (Semantic)**: LLM reasoning over diff chunks with constitution rules
@@ -52,9 +53,10 @@ defaults.
   commit. The user decides when and how to commit.
 - **Never auto-fix Tier 2 or Tier 3 findings.** Only Tier 1 mechanical patterns
   are eligible for auto-fix.
-- **Scan the diff only.** Findings are limited to lines ADDED in the branch diff
-  (except M10/i18n which checks whole files). Do not report pre-existing issues
-  in unchanged code.
+- **Scan the diff only by default.** Findings should normally be limited to
+  lines ADDED in the branch diff. For explicitly documented whole-file checks
+  (e.g., M10/i18n), you MAY scan entire files, but clearly label any issues that
+  predate the current branch as "pre-existing (out of scope for this branch)."
 - **Report all findings honestly.** Do not suppress, downplay, or editorialize
   findings. Present them with severity, location, matched text, and a brief
   suggested action.
@@ -70,7 +72,8 @@ Run these and summarize the results:
   note but don't block)
 - `git branch --show-current` (if detached, ask user which branch to audit)
 - Detect PR target:
-  - `gh pr view --json baseRefName,number,title 2>/dev/null`
+  - `gh pr view --json baseRefName,number,title` (handle non-zero exit status
+    gracefully if no PR exists for the current branch)
   - If no PR exists, fall back to `develop` (or `main` if `develop` doesn't
     exist)
 - Compute diff scope:
