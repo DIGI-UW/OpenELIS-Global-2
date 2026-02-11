@@ -312,13 +312,13 @@ the base branch version:
 
 ```bash
 # For each base-only file, check if our version matches the base
-BASE_ONLY_FILES=$(comm -23 <(git diff --name-only <FORK_SHA>..<base> | sort) \
-                           <(git diff --name-only <FORK_SHA>..<backup-branch> | sort))
-for f in $BASE_ONLY_FILES; do
-  if ! git diff --quiet <base> HEAD -- "$f" 2>/dev/null; then
-    echo "REGRESSION: $f differs from base branch!"
-  fi
-done
+comm -23 <(git diff --name-only <FORK_SHA>..<base> | sort) \
+         <(git diff --name-only <FORK_SHA>..<backup-branch> | sort) | \
+  while IFS= read -r f; do
+    if ! git diff --quiet <base> HEAD -- "$f" 2>/dev/null; then
+      echo "REGRESSION: $f differs from base branch!"
+    fi
+  done
 ```
 
 If any regressions are found:
