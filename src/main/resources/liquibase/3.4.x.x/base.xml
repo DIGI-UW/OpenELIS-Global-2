@@ -4,33 +4,13 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-  <!-- Analyzer foundation (011-madagascar-analyzer-integration). Fresh DB assumption. -->
+  <!-- Analyzer integration (011-madagascar-analyzer-integration). 2-table model. -->
 
-  <include relativeToChangelogFile="true" file="001-create-analyzer-configuration-table.xml"/>
-  <include relativeToChangelogFile="true" file="002-create-analyzer-field-table.xml"/>
-  <include relativeToChangelogFile="true" file="003-create-analyzer-field-mapping-table.xml"/>
-  <include relativeToChangelogFile="true" file="004-create-qualitative-result-mapping-table.xml"/>
-  <include relativeToChangelogFile="true" file="005-create-unit-mapping-table.xml"/>
-  <include relativeToChangelogFile="true" file="006-create-analyzer-error-table.xml"/>
-  <include relativeToChangelogFile="true" file="007-create-analyzer-indexes.xml"/>
-  <include relativeToChangelogFile="true" file="008-create-custom-field-type-table.xml"/>
-  <include relativeToChangelogFile="true" file="009-create-serial-port-configuration-table.xml"/>
-  <include relativeToChangelogFile="true" file="010-create-file-import-configuration-table.xml"/>
-  <include relativeToChangelogFile="true" file="011-add-version-column-to-mapping.xml"/>
-  <include relativeToChangelogFile="true" file="012-add-qc-mapping-incomplete-error-type.xml"/>
-  <include relativeToChangelogFile="true" file="013-create-validation-rule-configuration-table.xml"/>
-  <include relativeToChangelogFile="true" file="014-add-lifecycle-columns-to-analyzer-configuration.xml"/>
-  <include relativeToChangelogFile="true" file="015-add-custom-field-type-id-to-analyzer-field.xml"/>
-  <include relativeToChangelogFile="true" file="016-add-analyzer-id-to-field-mapping.xml"/>
-  <include relativeToChangelogFile="true" file="017-add-qc-service-unavailable-error-type.xml"/>
-  <include relativeToChangelogFile="true" file="018-add-generic-plugin-columns-to-analyzer-configuration.xml"/>
-  <include relativeToChangelogFile="true" file="019-standardize-analyzer-lastupdated-column-names.xml"/>
-  <include relativeToChangelogFile="true" file="020-add-has-setup-page-to-analyzer.xml"/>
-  <include relativeToChangelogFile="true" file="021-analyzer-structural-config.xml"/>
-  <include relativeToChangelogFile="true" file="022-create-analyzer-type-table.xml"/>
-  <include relativeToChangelogFile="true" file="023-add-menu-items.xml"/>
-  <include relativeToChangelogFile="true" file="024-add-query-timeout-config.xml"/>
-  <include relativeToChangelogFile="true" file="025-add-prefer-generic-plugin-to-analyzer-configuration.xml"/>
-  <include relativeToChangelogFile="true" file="026-fix-protocol-version-default.xml"/>
-  <include relativeToChangelogFile="true" file="027-merge-analyzer-configuration-into-analyzer.xml"/>
+  <include relativeToChangelogFile="true" file="001-create-standalone-tables.xml"/>
+  <include relativeToChangelogFile="true" file="002-modify-analyzer-table.xml"/>
+  <include relativeToChangelogFile="true" file="003-create-field-tables.xml"/>
+  <include relativeToChangelogFile="true" file="004-create-result-mapping-tables.xml"/>
+  <include relativeToChangelogFile="true" file="005-create-support-tables.xml"/>
+  <include relativeToChangelogFile="true" file="006-create-indexes.xml"/>
+  <include relativeToChangelogFile="true" file="007-insert-seed-data.xml"/>
 </databaseChangeLog>
