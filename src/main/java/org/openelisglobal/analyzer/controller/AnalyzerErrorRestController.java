@@ -1,10 +1,9 @@
 package org.openelisglobal.analyzer.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.analyzer.service.AnalyzerErrorService;
@@ -37,41 +36,30 @@ public class AnalyzerErrorRestController extends BaseRestController {
     @Autowired
     private AnalyzerErrorService analyzerErrorService;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
     /**
      * GET /rest/analyzer/errors
-     * 
-     * List analyzer errors with filtering and pagination
-     * 
-     * Query Parameters: - page, size, search, errorType, severity, status,
-     * analyzerId, startDate, endDate, sort
+     *
+     * List analyzer errors with filtering. Parameters are ordered logically:
+     * filters first, then text search, then pagination, then sort.
+     *
+     * Statistics are global (independent of filters) so the dashboard always shows
+     * an accurate overall picture.
      */
     @GetMapping("/errors")
-    public ResponseEntity<Map<String, Object>> getErrors(@RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer size, @RequestParam(required = false) String search,
-            @RequestParam(required = false) String errorType, @RequestParam(required = false) String severity,
-            @RequestParam(required = false) String status, @RequestParam(required = false) String analyzerId,
+    public ResponseEntity<Map<String, Object>> getErrors(@RequestParam(required = false) String analyzerId,
+            @RequestParam(required = false) AnalyzerError.ErrorType errorType,
+            @RequestParam(required = false) AnalyzerError.Severity severity,
+            @RequestParam(required = false) AnalyzerError.ErrorStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Date startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Date endDate,
-            @RequestParam(required = false) String sort) {
+            @RequestParam(required = false) String search, @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size, @RequestParam(required = false) String sort) {
         try {
-            // Parse enum values
-            AnalyzerError.ErrorType errorTypeEnum = errorType != null
-                    ? AnalyzerError.ErrorType.valueOf(errorType.toUpperCase())
-                    : null;
-            AnalyzerError.Severity severityEnum = severity != null
-                    ? AnalyzerError.Severity.valueOf(severity.toUpperCase())
-                    : null;
-            AnalyzerError.ErrorStatus statusEnum = status != null
-                    ? AnalyzerError.ErrorStatus.valueOf(status.toUpperCase())
-                    : null;
+            // DAO-level filtering (all non-null params combined with AND logic)
+            List<AnalyzerError> errors = analyzerErrorService.getErrorsByFilters(analyzerId, errorType, severity,
+                    status, startDate, endDate);
 
-            // Get filtered errors
-            List<AnalyzerError> errors = analyzerErrorService.getErrorsByFilters(analyzerId, errorTypeEnum,
-                    severityEnum, statusEnum, startDate, endDate);
-
-            // Apply search filter if provided
+            // Text search filter (in-memory — analyzer name is eagerly fetched by DAO)
             if (search != null && !search.isEmpty()) {
                 String searchLower = search.toLowerCase();
                 errors = errors.stream().filter(error -> {
@@ -79,59 +67,35 @@ public class AnalyzerErrorRestController extends BaseRestController {
                     if (errorMsg != null && errorMsg.toLowerCase().contains(searchLower)) {
                         return true;
                     }
-                    // Note: Accessing analyzer.name may cause LazyInitializationException
-                    // In production, we'd eagerly fetch analyzer in DAO query
-                    try {
-                        if (error.getAnalyzer() != null && error.getAnalyzer().getName() != null
-                                && error.getAnalyzer().getName().toLowerCase().contains(searchLower)) {
-                            return true;
-                        }
-                    } catch (Exception e) {
-                        // If lazy loading fails, skip analyzer name check
+                    if (error.getAnalyzer() != null && error.getAnalyzer().getName() != null
+                            && error.getAnalyzer().getName().toLowerCase().contains(searchLower)) {
+                        return true;
                     }
                     return false;
                 }).collect(java.util.stream.Collectors.toList());
             }
 
-            // Calculate statistics - use current filtered results for now
-            // TODO: Implement proper statistics query in DAO
-            List<AnalyzerError> allErrors = errors; // Use filtered results for statistics
-            long totalErrors = allErrors.size();
-            long unacknowledged = allErrors.stream()
-                    .filter(e -> e.getStatus() == AnalyzerError.ErrorStatus.UNACKNOWLEDGED).count();
-            long critical = allErrors.stream().filter(e -> e.getSeverity() == AnalyzerError.Severity.CRITICAL).count();
-            long last24Hours = allErrors.stream().filter(e -> {
-                if (e.getLastupdated() == null)
-                    return false;
-                long hoursAgo = (System.currentTimeMillis() - e.getLastupdated().getTime()) / (1000 * 60 * 60);
-                return hoursAgo <= 24;
-            }).count();
-
             // Convert errors to maps for JSON response
             List<Map<String, Object>> errorMaps = errors.stream().map(this::errorToMap)
                     .collect(java.util.stream.Collectors.toList());
 
+            // Global statistics (independent of filters)
+            Map<String, Long> statistics = analyzerErrorService.getErrorStatistics();
+
             // Build response
-            Map<String, Object> response = new HashMap<>();
-            Map<String, Object> data = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
+            Map<String, Object> data = new LinkedHashMap<>();
             data.put("content", errorMaps);
             data.put("totalElements", errorMaps.size());
-            Map<String, Object> statistics = new HashMap<>();
-            statistics.put("totalErrors", totalErrors);
-            statistics.put("unacknowledged", unacknowledged);
-            statistics.put("critical", critical);
-            statistics.put("last24Hours", last24Hours);
             data.put("statistics", statistics);
-            response.put("data", data);
             response.put("status", "success");
+            response.put("data", data);
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error retrieving analyzer errors", e);
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            error.put("status", "error");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         }
     }
 
@@ -146,22 +110,15 @@ public class AnalyzerErrorRestController extends BaseRestController {
             AnalyzerError error = analyzerErrorService.getErrorById(id);
 
             if (error == null) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("error", "AnalyzerError not found: " + id);
-                errorResponse.put("status", "error");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(AnalyzerControllerHelper.wrapError("AnalyzerError not found: " + id));
             }
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("data", errorToMap(error));
-            response.put("status", "success");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(AnalyzerControllerHelper.wrapResponse(errorToMap(error)));
         } catch (Exception e) {
             logger.error("Error retrieving analyzer error", e);
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            error.put("status", "error");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         }
     }
 
@@ -179,22 +136,17 @@ public class AnalyzerErrorRestController extends BaseRestController {
             }
             analyzerErrorService.acknowledgeError(id, actualUserId);
 
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("status", "success");
             response.put("message", "Error acknowledged successfully");
             return ResponseEntity.ok(response);
         } catch (LIMSRuntimeException e) {
             logger.error("Error acknowledging analyzer error", e);
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            error.put("status", "error");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            return AnalyzerControllerHelper.mapExceptionToResponse(e);
         } catch (Exception e) {
             logger.error("Error acknowledging analyzer error", e);
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            error.put("status", "error");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         }
     }
 
@@ -208,25 +160,22 @@ public class AnalyzerErrorRestController extends BaseRestController {
         try {
             boolean success = analyzerErrorService.reprocessError(id);
 
-            Map<String, Object> response = new HashMap<>();
-            Map<String, Object> data = new HashMap<>();
-            data.put("success", success);
-            data.put("message", success ? "Message reprocessed successfully" : "Reprocessing failed");
-            response.put("data", data);
-            response.put("status", "success");
-            return ResponseEntity.ok(response);
+            if (!success) {
+                // Reprocessing failed — return error status, not contradictory 200
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                        .body(AnalyzerControllerHelper.wrapError("Reprocessing failed for error: " + id));
+            }
+
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("message", "Message reprocessed successfully");
+            return ResponseEntity.ok(AnalyzerControllerHelper.wrapResponse(data));
         } catch (LIMSRuntimeException e) {
             logger.error("Error reprocessing analyzer error", e);
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            error.put("status", "error");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            return AnalyzerControllerHelper.mapExceptionToResponse(e);
         } catch (Exception e) {
             logger.error("Error reprocessing analyzer error", e);
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            error.put("status", "error");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         }
     }
 
@@ -247,10 +196,8 @@ public class AnalyzerErrorRestController extends BaseRestController {
             }
 
             if (errorIds == null || errorIds.isEmpty()) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("error", "errorIds is required");
-                error.put("status", "error");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(AnalyzerControllerHelper.wrapError("errorIds is required"));
             }
 
             int acknowledged = 0;
@@ -260,13 +207,13 @@ public class AnalyzerErrorRestController extends BaseRestController {
                     analyzerErrorService.acknowledgeError(errorId, userId);
                     acknowledged++;
                 } catch (Exception e) {
-                    logger.warn("Failed to acknowledge error: " + errorId, e);
+                    logger.warn("Failed to acknowledge error: {}", errorId, e);
                     failed.add(errorId);
                 }
             }
 
-            Map<String, Object> response = new HashMap<>();
-            Map<String, Object> data = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
+            Map<String, Object> data = new LinkedHashMap<>();
             data.put("acknowledged", acknowledged);
             data.put("failed", failed);
             response.put("data", data);
@@ -274,10 +221,8 @@ public class AnalyzerErrorRestController extends BaseRestController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error batch acknowledging analyzer errors", e);
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            error.put("status", "error");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         }
     }
 
@@ -285,10 +230,10 @@ public class AnalyzerErrorRestController extends BaseRestController {
      * Convert AnalyzerError to Map for JSON response
      */
     private Map<String, Object> errorToMap(AnalyzerError error) {
-        Map<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", error.getId());
         if (error.getAnalyzer() != null) {
-            Map<String, Object> analyzerMap = new HashMap<>();
+            Map<String, Object> analyzerMap = new LinkedHashMap<>();
             analyzerMap.put("id", error.getAnalyzer().getId());
             analyzerMap.put("name", error.getAnalyzer().getName());
             map.put("analyzer", analyzerMap);

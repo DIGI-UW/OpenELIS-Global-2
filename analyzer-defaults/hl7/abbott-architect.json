@@ -1,13 +1,15 @@
 {
-  "schema_version": "1.0",
+  "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
   "analyzer_name": "Abbott Architect",
   "manufacturer": "Abbott",
   "category": "IMMUNOLOGY",
-  "protocol": "HL7",
-  "protocol_version": "2.5.1",
+  "protocol": { "name": "HL7", "version": "2.5.1" },
   "identifier_pattern": "ABBOTT|ARCHITECT",
-  "transport": "RS-232 Serial (primary) or TCP/IP via middleware",
-  "default_port": 5000,
+  "transport": ["RS-232", "TCP/IP"],
+  "transport_config": {
+    "RS-232": {},
+    "TCP/IP": { "default_port": 5000, "framing": "MLLP" }
+  },
   "msh3_pattern": "ARCHITECT|ABBOTT",
   "default_test_mappings": [
     {
@@ -41,6 +43,6 @@
       "unit": "ng/mL"
     }
   ],
-  "notes": "⚠️ RESEARCH CORRECTION: Per Abbott documentation, RS-232 Serial is the primary interface. TCP/IP may require Abbott AlinIQ middleware in production. VERIFY with deployment team which transport is available. For RS-232, use ASTM-HTTP Bridge. MSH-3 sending application = 'ARCHITECT' or 'ABBOTT'. Requires MLLP framing for TCP/IP mode.",
+  "notes": "RESEARCH CORRECTION: Per Abbott documentation, RS-232 Serial is the primary interface. TCP/IP may require Abbott AlinIQ middleware in production. VERIFY with deployment team which transport is available. For RS-232, use ASTM-HTTP Bridge. MSH-3 sending application = 'ARCHITECT' or 'ABBOTT'. Requires MLLP framing for TCP/IP mode.",
   "verification_required": true
 }

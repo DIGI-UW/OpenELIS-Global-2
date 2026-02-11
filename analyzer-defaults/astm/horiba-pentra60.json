@@ -1,13 +1,14 @@
 {
-  "schema_version": "1.0",
+  "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
   "analyzer_name": "Horiba ABX Pentra 60 C+",
   "manufacturer": "Horiba ABX",
   "category": "HEMATOLOGY",
-  "protocol": "ASTM",
-  "protocol_version": "LIS2-A2",
+  "protocol": { "name": "ASTM", "version": "LIS2-A2" },
   "identifier_pattern": "ABX.*PENTRA.*60|PENTRA.*60",
-  "transport": "RS-232 Serial",
-  "default_baud_rate": 9600,
+  "transport": ["RS-232"],
+  "transport_config": {
+    "RS-232": { "default_baud_rate": 9600 }
+  },
   "default_test_mappings": [
     {
       "analyzer_code": "WBC",
@@ -70,5 +71,5 @@
       "unit": "%"
     }
   ],
-  "notes": "Requires USB-to-serial adapter + ASTM-HTTP Bridge for RS232→TCP conversion. 20 fields total (5-part differential). Confirmed ASTM E-1381/E-1394 support."
+  "notes": "Requires USB-to-serial adapter + ASTM-HTTP Bridge for RS232-to-TCP conversion. 20 fields total (5-part differential). Confirmed ASTM E-1381/E-1394 support."
 }

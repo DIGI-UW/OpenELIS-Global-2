@@ -1,13 +1,15 @@
 {
-  "schema_version": "1.0",
+  "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
   "analyzer_name": "Cepheid GeneXpert (ASTM Mode)",
   "manufacturer": "Cepheid",
   "category": "MOLECULAR",
-  "protocol": "ASTM",
-  "protocol_version": "LIS2-A2",
+  "protocol": { "name": "ASTM", "version": "LIS2-A2" },
   "identifier_pattern": "GENEXPERT|CEPHEID",
-  "transport": "RS-232 Serial or TCP/IP",
-  "default_baud_rate": 9600,
+  "transport": ["RS-232", "TCP/IP"],
+  "transport_config": {
+    "RS-232": { "default_baud_rate": 9600 },
+    "TCP/IP": {}
+  },
   "default_test_mappings": [
     {
       "analyzer_code": "MTB",
@@ -34,5 +36,5 @@
       "unit": "copies/mL"
     }
   ],
-  "notes": "✅ Multi-protocol capable: FILE (primary), ASTM, HL7 all confirmed per Cepheid LIS spec. This config is for ASTM mode. Results are typically qualitative (Detected/Not Detected) for most assays. GeneXpert supports both RS-232 and TCP/IP transports."
+  "notes": "Multi-protocol capable: FILE (primary), ASTM, HL7 all confirmed per Cepheid LIS spec. This config is for ASTM mode. Results are typically qualitative (Detected/Not Detected) for most assays. GeneXpert supports both RS-232 and TCP/IP transports."
 }

@@ -142,6 +142,23 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
     AnalyzerFieldMapping disableMapping(String mappingId, String retirementReason);
 
     /**
+     * Activate multiple mappings for an analyzer within a single transaction.
+     *
+     * <p>
+     * All-or-nothing: if any mapping fails ownership verification or activation,
+     * the entire batch rolls back.
+     *
+     * @param analyzerId The analyzer ID that owns the mappings
+     * @param mappingIds List of mapping IDs to activate
+     * @param confirmed  Whether user confirmed activation (required for active
+     *                   analyzers)
+     * @return The number of mappings activated
+     * @throws LIMSRuntimeException if any mapping does not belong to the analyzer,
+     *                              or if activation fails for any mapping
+     */
+    int bulkActivateMappings(String analyzerId, List<String> mappingIds, boolean confirmed);
+
+    /**
      * Validate activation requirements for an analyzer
      * 
      * Performs comprehensive validation checks before allowing mapping activation:

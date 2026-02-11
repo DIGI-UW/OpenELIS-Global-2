@@ -53,7 +53,7 @@ public class AnalyzerConfiguration extends BaseObject<String> {
     private Integer port;
 
     @Column(name = "protocol_version", length = 20, nullable = false)
-    private String protocolVersion = "ASTM LIS2-A2";
+    private String protocolVersion = "LIS2-A2";
 
     @Column(name = "test_unit_ids", columnDefinition = "TEXT")
     @Convert(converter = StringListConverter.class)

@@ -53,8 +53,9 @@ public interface AnalyzerErrorService {
     AnalyzerError getErrorById(String errorId);
 
     /**
-     * Get errors filtered by various criteria
-     * 
+     * Get errors filtered by various criteria. All non-null parameters are combined
+     * (AND logic).
+     *
      * @param analyzerId Optional analyzer ID filter
      * @param errorType  Optional error type filter
      * @param severity   Optional severity filter
@@ -66,4 +67,11 @@ public interface AnalyzerErrorService {
     List<AnalyzerError> getErrorsByFilters(String analyzerId, AnalyzerError.ErrorType errorType,
             AnalyzerError.Severity severity, AnalyzerError.ErrorStatus status, java.util.Date startDate,
             java.util.Date endDate);
+
+    /**
+     * Get global error statistics independent of any search/filter criteria.
+     *
+     * @return Map with keys: totalErrors, unacknowledged, critical, last24Hours
+     */
+    java.util.Map<String, Long> getErrorStatistics();
 }

@@ -1,13 +1,14 @@
 {
-  "schema_version": "1.0",
+  "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
   "analyzer_name": "Mindray BC2000",
   "manufacturer": "Mindray",
   "category": "HEMATOLOGY",
-  "protocol": "HL7",
-  "protocol_version": "2.3.1",
+  "protocol": { "name": "HL7", "version": "2.3.1" },
   "identifier_pattern": "MINDRAY.*BC.?2000",
-  "transport": "TCP/IP",
-  "default_port": 5001,
+  "transport": ["TCP/IP"],
+  "transport_config": {
+    "TCP/IP": { "default_port": 5001, "framing": "MLLP" }
+  },
   "msh3_pattern": "MINDRAY",
   "default_test_mappings": [
     {

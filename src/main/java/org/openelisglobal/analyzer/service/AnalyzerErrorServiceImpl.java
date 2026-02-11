@@ -96,21 +96,12 @@ public class AnalyzerErrorServiceImpl implements AnalyzerErrorService {
     @Transactional(readOnly = true)
     public List<AnalyzerError> getErrorsByFilters(String analyzerId, AnalyzerError.ErrorType errorType,
             AnalyzerError.Severity severity, AnalyzerError.ErrorStatus status, Date startDate, Date endDate) {
-        // Simple filtering implementation - can be enhanced later with full criteria
-        if (status != null) {
-            return analyzerErrorDAO.findByStatus(status.name());
-        }
-        if (analyzerId != null) {
-            return analyzerErrorDAO.findByAnalyzerId(analyzerId);
-        }
-        if (errorType != null) {
-            return analyzerErrorDAO.findByErrorType(errorType.name());
-        }
-        if (severity != null) {
-            return analyzerErrorDAO.findBySeverity(severity.name());
-        }
+        return analyzerErrorDAO.findByFilters(analyzerId, errorType, severity, status, startDate, endDate);
+    }
 
-        // If no filters, return all errors
-        return analyzerErrorDAO.findAll();
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Long> getErrorStatistics() {
+        return analyzerErrorDAO.getGlobalStatistics();
     }
 }

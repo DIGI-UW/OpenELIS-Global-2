@@ -699,6 +699,21 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     }
 
     @Override
+    @Transactional
+    public int bulkActivateMappings(String analyzerId, List<String> mappingIds, boolean confirmed) {
+        int activatedCount = 0;
+        for (String mappingId : mappingIds) {
+            // Ownership check — fail immediately instead of silently skipping
+            if (!verifyMappingBelongsToAnalyzer(mappingId, analyzerId)) {
+                throw new LIMSRuntimeException("Mapping " + mappingId + " does not belong to analyzer " + analyzerId);
+            }
+            activateMapping(mappingId, confirmed);
+            activatedCount++;
+        }
+        return activatedCount;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public ActivationValidationResult validateActivation(String analyzerId) {
         ActivationValidationResult result = new ActivationValidationResult();

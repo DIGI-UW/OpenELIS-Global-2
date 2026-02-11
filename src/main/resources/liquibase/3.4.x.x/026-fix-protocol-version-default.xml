@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="026-fix-protocol-version-default" author="dev">
+    <comment>Fix protocol_version column default: drop the ASTM prefix.
+    The column stores the version identifier (LIS2-A2), not the protocol
+    family. The ASTM vs HL7 distinction is conveyed by other metadata.</comment>
+    <addDefaultValue tableName="analyzer_configuration"
+                     columnName="protocol_version"
+                     defaultValue="LIS2-A2"/>
+  </changeSet>
+</databaseChangeLog>

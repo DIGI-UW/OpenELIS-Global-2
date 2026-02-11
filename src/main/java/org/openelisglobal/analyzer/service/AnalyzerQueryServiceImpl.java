@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -72,6 +73,27 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
     public String startQuery(String analyzerId) {
         if (analyzerId == null || analyzerId.trim().isEmpty()) {
             throw new LIMSRuntimeException("Analyzer ID required");
+        }
+
+        // Verify the analyzer exists and is queryable (has TCP/IP configuration).
+        // Push-only analyzers (file-based, serial/RS-232) cannot be actively queried
+        // because they deliver results to OpenELIS rather than accepting inbound
+        // requests.
+        Optional<AnalyzerConfiguration> configOpt = analyzerConfigurationService.getByAnalyzerId(analyzerId);
+        if (configOpt.isPresent()) {
+            String protocol = configOpt.get().getProtocolVersion();
+            if (protocol != null) {
+                String upper = protocol.toUpperCase();
+                if (upper.contains("FILE") || upper.contains("RS232") || upper.contains("RS-232")
+                        || upper.contains("SERIAL")) {
+                    throw new LIMSRuntimeException(
+                            "Analyzer uses a push-only transport (" + protocol + ") and cannot be queried");
+                }
+            }
+            // Also check that TCP/IP connection details are available
+            if (configOpt.get().getIpAddress() == null || configOpt.get().getPort() == null) {
+                throw new LIMSRuntimeException("Analyzer has no TCP/IP connection details configured");
+            }
         }
 
         String jobId = UUID.randomUUID().toString();

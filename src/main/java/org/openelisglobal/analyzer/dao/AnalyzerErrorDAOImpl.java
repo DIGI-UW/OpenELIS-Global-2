@@ -98,6 +98,97 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
 
     @Override
     @Transactional(readOnly = true)
+    public List<AnalyzerError> findByFilters(String analyzerId, AnalyzerError.ErrorType errorType,
+            AnalyzerError.Severity severity, AnalyzerError.ErrorStatus status, java.util.Date startDate,
+            java.util.Date endDate) {
+        try {
+            StringBuilder hql = new StringBuilder(
+                    "SELECT DISTINCT ae FROM AnalyzerError ae LEFT JOIN FETCH ae.analyzer WHERE 1=1");
+
+            if (analyzerId != null) {
+                hql.append(" AND ae.analyzer.id = :analyzerId");
+            }
+            if (errorType != null) {
+                hql.append(" AND ae.errorType = :errorType");
+            }
+            if (severity != null) {
+                hql.append(" AND ae.severity = :severity");
+            }
+            if (status != null) {
+                hql.append(" AND ae.status = :status");
+            }
+            if (startDate != null) {
+                hql.append(" AND ae.lastupdated >= :startDate");
+            }
+            if (endDate != null) {
+                hql.append(" AND ae.lastupdated <= :endDate");
+            }
+            hql.append(" ORDER BY ae.lastupdated DESC");
+
+            Query<AnalyzerError> query = entityManager.unwrap(Session.class).createQuery(hql.toString(),
+                    AnalyzerError.class);
+
+            if (analyzerId != null) {
+                // Legacy Analyzer uses LIMSStringNumberUserType: Java String, DB INTEGER
+                try {
+                    query.setParameter("analyzerId", Integer.parseInt(analyzerId));
+                } catch (NumberFormatException e) {
+                    throw new LIMSRuntimeException("Invalid analyzer ID format: " + analyzerId, e);
+                }
+            }
+            if (errorType != null) {
+                query.setParameter("errorType", errorType);
+            }
+            if (severity != null) {
+                query.setParameter("severity", severity);
+            }
+            if (status != null) {
+                query.setParameter("status", status);
+            }
+            if (startDate != null) {
+                query.setParameter("startDate", new java.sql.Timestamp(startDate.getTime()));
+            }
+            if (endDate != null) {
+                query.setParameter("endDate", new java.sql.Timestamp(endDate.getTime()));
+            }
+
+            return query.list();
+        } catch (LIMSRuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error finding AnalyzerError by filters", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Long> getGlobalStatistics() {
+        try {
+            // Single query for all statistics
+            String hql = "SELECT COUNT(ae)," + " SUM(CASE WHEN ae.status = :unack THEN 1L ELSE 0L END),"
+                    + " SUM(CASE WHEN ae.severity = :crit THEN 1L ELSE 0L END),"
+                    + " SUM(CASE WHEN ae.lastupdated >= :since24h THEN 1L ELSE 0L END)" + " FROM AnalyzerError ae";
+
+            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
+            query.setParameter("unack", AnalyzerError.ErrorStatus.UNACKNOWLEDGED);
+            query.setParameter("crit", AnalyzerError.Severity.CRITICAL);
+            query.setParameter("since24h",
+                    new java.sql.Timestamp(System.currentTimeMillis() - (24L * 60L * 60L * 1000L)));
+
+            Object[] row = query.uniqueResult();
+            java.util.Map<String, Long> stats = new java.util.LinkedHashMap<>();
+            stats.put("totalErrors", row[0] != null ? (Long) row[0] : 0L);
+            stats.put("unacknowledged", row[1] != null ? (Long) row[1] : 0L);
+            stats.put("critical", row[2] != null ? (Long) row[2] : 0L);
+            stats.put("last24Hours", row[3] != null ? (Long) row[3] : 0L);
+            return stats;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting global AnalyzerError statistics", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public java.util.Optional<AnalyzerError> getWithAnalyzer(String errorId) {
         try {
             // Eagerly fetch analyzer to avoid LazyInitializationException
