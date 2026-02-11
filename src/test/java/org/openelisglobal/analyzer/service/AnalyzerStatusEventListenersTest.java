@@ -5,7 +5,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -19,14 +18,13 @@ import org.openelisglobal.analyzer.service.AnalyzerStatusEventListeners.Connecti
 import org.openelisglobal.analyzer.service.AnalyzerStatusEventListeners.MappingCreatedEvent;
 import org.openelisglobal.analyzer.service.AnalyzerStatusEventListeners.UnacknowledgedErrorCreatedEvent;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration.AnalyzerStatus;
+import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 
 /**
  * Unit tests for AnalyzerStatusEventListeners
- * 
+ *
  * Task Reference: T151e, T153b Test Coverage Goal: >80%
- * 
+ *
  * Tests all event listener methods trigger appropriate status transitions
  */
 @RunWith(MockitoJUnitRunner.class)
@@ -36,31 +34,26 @@ public class AnalyzerStatusEventListenersTest {
     private AnalyzerStatusTransitionService transitionService;
 
     @Mock
-    private AnalyzerConfigurationService configurationService;
+    private AnalyzerService analyzerService;
 
     @InjectMocks
     private AnalyzerStatusEventListeners eventListeners;
 
     private Analyzer testAnalyzer;
-    private AnalyzerConfiguration testConfig;
 
     @Before
     public void setUp() {
         testAnalyzer = new Analyzer();
         testAnalyzer.setId("1");
         testAnalyzer.setName("Test Analyzer");
-
-        testConfig = new AnalyzerConfiguration();
-        testConfig.setId("CONFIG-001");
-        testConfig.setAnalyzer(testAnalyzer);
     }
 
     // === onMappingCreated Tests ===
 
     @Test
     public void testOnMappingCreated_WhenInSetup_TriggersValidationTransition() {
-        testConfig.setStatus(AnalyzerStatus.SETUP);
-        when(configurationService.getByAnalyzerId("1")).thenReturn(Optional.of(testConfig));
+        testAnalyzer.setStatus(AnalyzerStatus.SETUP);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         MappingCreatedEvent event = new MappingCreatedEvent(this, "1");
         eventListeners.onMappingCreated(event);
@@ -70,8 +63,8 @@ public class AnalyzerStatusEventListenersTest {
 
     @Test
     public void testOnMappingCreated_WhenNotInSetup_DoesNotTransition() {
-        testConfig.setStatus(AnalyzerStatus.VALIDATION);
-        when(configurationService.getByAnalyzerId("1")).thenReturn(Optional.of(testConfig));
+        testAnalyzer.setStatus(AnalyzerStatus.VALIDATION);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         MappingCreatedEvent event = new MappingCreatedEvent(this, "1");
         eventListeners.onMappingCreated(event);
@@ -81,7 +74,7 @@ public class AnalyzerStatusEventListenersTest {
 
     @Test
     public void testOnMappingCreated_WhenAnalyzerNotFound_DoesNotThrow() {
-        when(configurationService.getByAnalyzerId("999")).thenReturn(Optional.empty());
+        when(analyzerService.get("999")).thenReturn(null);
 
         MappingCreatedEvent event = new MappingCreatedEvent(this, "999");
         eventListeners.onMappingCreated(event); // Should not throw
@@ -91,8 +84,8 @@ public class AnalyzerStatusEventListenersTest {
 
     @Test
     public void testOnAllMappingsActivated_WhenInValidation_TriggersActiveTransition() {
-        testConfig.setStatus(AnalyzerStatus.VALIDATION);
-        when(configurationService.getByAnalyzerId("1")).thenReturn(Optional.of(testConfig));
+        testAnalyzer.setStatus(AnalyzerStatus.VALIDATION);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         AllMappingsActivatedEvent event = new AllMappingsActivatedEvent(this, "1");
         eventListeners.onAllMappingsActivated(event);
@@ -102,8 +95,8 @@ public class AnalyzerStatusEventListenersTest {
 
     @Test
     public void testOnAllMappingsActivated_WhenNotInValidation_DoesNotTransition() {
-        testConfig.setStatus(AnalyzerStatus.SETUP);
-        when(configurationService.getByAnalyzerId("1")).thenReturn(Optional.of(testConfig));
+        testAnalyzer.setStatus(AnalyzerStatus.SETUP);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         AllMappingsActivatedEvent event = new AllMappingsActivatedEvent(this, "1");
         eventListeners.onAllMappingsActivated(event);
@@ -115,8 +108,8 @@ public class AnalyzerStatusEventListenersTest {
 
     @Test
     public void testOnUnacknowledgedErrorCreated_WhenActive_TriggersErrorPendingTransition() {
-        testConfig.setStatus(AnalyzerStatus.ACTIVE);
-        when(configurationService.getByAnalyzerId("1")).thenReturn(Optional.of(testConfig));
+        testAnalyzer.setStatus(AnalyzerStatus.ACTIVE);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         UnacknowledgedErrorCreatedEvent event = new UnacknowledgedErrorCreatedEvent(this, "1", "error-123");
         eventListeners.onUnacknowledgedErrorCreated(event);
@@ -126,8 +119,8 @@ public class AnalyzerStatusEventListenersTest {
 
     @Test
     public void testOnUnacknowledgedErrorCreated_WhenNotActive_DoesNotTransition() {
-        testConfig.setStatus(AnalyzerStatus.VALIDATION);
-        when(configurationService.getByAnalyzerId("1")).thenReturn(Optional.of(testConfig));
+        testAnalyzer.setStatus(AnalyzerStatus.VALIDATION);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         UnacknowledgedErrorCreatedEvent event = new UnacknowledgedErrorCreatedEvent(this, "1", "error-123");
         eventListeners.onUnacknowledgedErrorCreated(event);
@@ -139,8 +132,8 @@ public class AnalyzerStatusEventListenersTest {
 
     @Test
     public void testOnConnectionTestFailed_WhenActive_TriggersOfflineTransition() {
-        testConfig.setStatus(AnalyzerStatus.ACTIVE);
-        when(configurationService.getByAnalyzerId("1")).thenReturn(Optional.of(testConfig));
+        testAnalyzer.setStatus(AnalyzerStatus.ACTIVE);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         ConnectionTestFailedEvent event = new ConnectionTestFailedEvent(this, "1", "Connection timeout");
         eventListeners.onConnectionTestFailed(event);
@@ -150,8 +143,8 @@ public class AnalyzerStatusEventListenersTest {
 
     @Test
     public void testOnConnectionTestFailed_WhenErrorPending_TriggersOfflineTransition() {
-        testConfig.setStatus(AnalyzerStatus.ERROR_PENDING);
-        when(configurationService.getByAnalyzerId("1")).thenReturn(Optional.of(testConfig));
+        testAnalyzer.setStatus(AnalyzerStatus.ERROR_PENDING);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         ConnectionTestFailedEvent event = new ConnectionTestFailedEvent(this, "1", "Connection refused");
         eventListeners.onConnectionTestFailed(event);
@@ -161,8 +154,8 @@ public class AnalyzerStatusEventListenersTest {
 
     @Test
     public void testOnConnectionTestFailed_WhenValidation_DoesNotTransition() {
-        testConfig.setStatus(AnalyzerStatus.VALIDATION);
-        when(configurationService.getByAnalyzerId("1")).thenReturn(Optional.of(testConfig));
+        testAnalyzer.setStatus(AnalyzerStatus.VALIDATION);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         ConnectionTestFailedEvent event = new ConnectionTestFailedEvent(this, "1", "Connection failed");
         eventListeners.onConnectionTestFailed(event);
@@ -174,8 +167,8 @@ public class AnalyzerStatusEventListenersTest {
 
     @Test
     public void testOnAllErrorsAcknowledged_WhenErrorPending_TriggersActiveTransition() {
-        testConfig.setStatus(AnalyzerStatus.ERROR_PENDING);
-        when(configurationService.getByAnalyzerId("1")).thenReturn(Optional.of(testConfig));
+        testAnalyzer.setStatus(AnalyzerStatus.ERROR_PENDING);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         AllErrorsAcknowledgedEvent event = new AllErrorsAcknowledgedEvent(this, "1");
         eventListeners.onAllErrorsAcknowledged(event);
@@ -185,8 +178,8 @@ public class AnalyzerStatusEventListenersTest {
 
     @Test
     public void testOnAllErrorsAcknowledged_WhenActive_DoesNotTransition() {
-        testConfig.setStatus(AnalyzerStatus.ACTIVE);
-        when(configurationService.getByAnalyzerId("1")).thenReturn(Optional.of(testConfig));
+        testAnalyzer.setStatus(AnalyzerStatus.ACTIVE);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         AllErrorsAcknowledgedEvent event = new AllErrorsAcknowledgedEvent(this, "1");
         eventListeners.onAllErrorsAcknowledged(event);
@@ -198,8 +191,8 @@ public class AnalyzerStatusEventListenersTest {
 
     @Test
     public void testOnConnectionTestSucceeded_WhenOffline_TriggersActiveTransition() {
-        testConfig.setStatus(AnalyzerStatus.OFFLINE);
-        when(configurationService.getByAnalyzerId("1")).thenReturn(Optional.of(testConfig));
+        testAnalyzer.setStatus(AnalyzerStatus.OFFLINE);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         ConnectionTestSucceededEvent event = new ConnectionTestSucceededEvent(this, "1");
         eventListeners.onConnectionTestSucceeded(event);
@@ -209,8 +202,8 @@ public class AnalyzerStatusEventListenersTest {
 
     @Test
     public void testOnConnectionTestSucceeded_WhenActive_DoesNotTransition() {
-        testConfig.setStatus(AnalyzerStatus.ACTIVE);
-        when(configurationService.getByAnalyzerId("1")).thenReturn(Optional.of(testConfig));
+        testAnalyzer.setStatus(AnalyzerStatus.ACTIVE);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         ConnectionTestSucceededEvent event = new ConnectionTestSucceededEvent(this, "1");
         eventListeners.onConnectionTestSucceeded(event);
@@ -222,8 +215,8 @@ public class AnalyzerStatusEventListenersTest {
 
     @Test
     public void testOnMappingCreated_WhenTransitionFails_DoesNotThrow() {
-        testConfig.setStatus(AnalyzerStatus.SETUP);
-        when(configurationService.getByAnalyzerId("1")).thenReturn(Optional.of(testConfig));
+        testAnalyzer.setStatus(AnalyzerStatus.SETUP);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
         when(transitionService.transitionToValidation("1")).thenThrow(new RuntimeException("Transition failed"));
 
         MappingCreatedEvent event = new MappingCreatedEvent(this, "1");

@@ -33,7 +33,9 @@ public class AnalyzerQueryServiceIntegrationTest extends BaseWebContextSensitive
     @Test
     public void testQueryAnalyzer_WithTimeout_HandlesGracefully() {
         // Arrange
-        String analyzerId = "TEST-ANALYZER-001";
+        // Use a numeric ID that won't exist in the test DB — startQuery() calls
+        // analyzerService.get() which expects a numeric primary key.
+        String analyzerId = "999901";
 
         // Act - Start query (full implementation executes asynchronously)
         String jobId = analyzerQueryService.startQuery(analyzerId);
@@ -65,8 +67,9 @@ public class AnalyzerQueryServiceIntegrationTest extends BaseWebContextSensitive
         // Arrange
         // Note: This test requires a configured analyzer with valid IP:Port pointing to
         // mock server
-        // For integration test, use analyzer ID 1000 (mock server at 172.20.1.100:5000)
-        String analyzerId = "1000"; // Mock analyzer from test data
+        // Use a numeric ID that won't exist in the test DB — startQuery() calls
+        // analyzerService.get() which expects a numeric primary key.
+        String analyzerId = "999902";
 
         // Act - Start query (full implementation executes ASTM protocol)
         String jobId = analyzerQueryService.startQuery(analyzerId);
@@ -125,7 +128,9 @@ public class AnalyzerQueryServiceIntegrationTest extends BaseWebContextSensitive
     @Test
     public void testQueryWorkflow_CompleteLifecycle() throws Exception {
         // Arrange
-        String analyzerId = "TEST-ANALYZER-003";
+        // Use a numeric ID that won't exist in the test DB — startQuery() calls
+        // analyzerService.get() which expects a numeric primary key.
+        String analyzerId = "999903";
 
         // Act - Start query
         String jobId = analyzerQueryService.startQuery(analyzerId);

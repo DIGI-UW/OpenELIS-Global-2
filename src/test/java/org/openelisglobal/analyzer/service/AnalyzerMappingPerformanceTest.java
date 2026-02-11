@@ -10,7 +10,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerLineInserter;
@@ -35,9 +34,6 @@ public class AnalyzerMappingPerformanceTest extends BaseWebContextSensitiveTest 
     private AnalyzerService analyzerService;
 
     @Autowired
-    private AnalyzerConfigurationService analyzerConfigurationService;
-
-    @Autowired
     private AnalyzerFieldService analyzerFieldService;
 
     @Autowired
@@ -51,7 +47,6 @@ public class AnalyzerMappingPerformanceTest extends BaseWebContextSensitiveTest 
 
     private JdbcTemplate jdbcTemplate;
     private Analyzer testAnalyzer;
-    private AnalyzerConfiguration testAnalyzerConfig;
     private AnalyzerField testField;
     private static final String TEST_USER_ID = "1";
     private static final double REQUIRED_SUCCESS_RATE = 0.98; // 98%
@@ -72,13 +67,6 @@ public class AnalyzerMappingPerformanceTest extends BaseWebContextSensitiveTest 
         testAnalyzer.setSysUserId(TEST_USER_ID);
         String analyzerId = analyzerService.insert(testAnalyzer);
         testAnalyzer.setId(analyzerId);
-
-        // Create analyzer configuration
-        testAnalyzerConfig = new AnalyzerConfiguration();
-        testAnalyzerConfig.setAnalyzer(testAnalyzer);
-        testAnalyzerConfig.setSysUserId(TEST_USER_ID);
-        String configId = analyzerConfigurationService.insert(testAnalyzerConfig);
-        testAnalyzerConfig.setId(configId);
 
         // Create test analyzer field
         testField = new AnalyzerField();
@@ -112,10 +100,6 @@ public class AnalyzerMappingPerformanceTest extends BaseWebContextSensitiveTest 
 
             // Delete analyzer fields
             jdbcTemplate.execute("DELETE FROM analyzer_field WHERE analyzer_id IN "
-                    + "(SELECT id FROM analyzer WHERE name LIKE 'TEST-%')");
-
-            // Delete analyzer configurations
-            jdbcTemplate.execute("DELETE FROM analyzer_configuration WHERE analyzer_id IN "
                     + "(SELECT id FROM analyzer WHERE name LIKE 'TEST-%')");
 
             // Delete test analyzer

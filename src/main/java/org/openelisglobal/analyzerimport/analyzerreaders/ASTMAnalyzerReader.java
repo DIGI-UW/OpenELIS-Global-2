@@ -22,7 +22,6 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import org.openelisglobal.analyzer.service.AnalyzerConfigurationService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.MappingApplicationService;
 import org.openelisglobal.analyzer.service.MappingAwareAnalyzerLineInserter;
@@ -132,24 +131,10 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     }
 
     /**
-     * When a config matches the message and has prefer_generic_plugin=true, try
-     * generic plugins first so admin can switch from legacy to generic without
-     * removing the legacy JAR.
+     * Return the plugin list in default order. (preferGenericPlugin flag has been
+     * removed.)
      */
     private List<AnalyzerImporterPlugin> choosePluginOrder(PluginAnalyzerService pluginService) {
-        String identifier = parseIdentifierFromAstmHeader();
-        if (identifier == null || identifier.trim().isEmpty()) {
-            return pluginService.getAnalyzerPlugins();
-        }
-        AnalyzerConfigurationService configService = SpringContext.getBean(AnalyzerConfigurationService.class);
-        if (configService == null) {
-            return pluginService.getAnalyzerPlugins();
-        }
-        Optional<org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration> config = configService
-                .findByIdentifierPatternMatch(identifier.trim());
-        if (config.isPresent() && config.get().isPreferGenericPlugin()) {
-            return pluginService.getAnalyzerPluginsWithGenericFirst();
-        }
         return pluginService.getAnalyzerPlugins();
     }
 
@@ -261,8 +246,8 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
      * Identify analyzer from ASTM message
      * 
      * Attempts to identify the analyzer by: 1. Parsing ASTM header (H segment) for
-     * analyzer identification 2. Looking up AnalyzerConfiguration by IP address (if
-     * available) 3. Matching by analyzer name from plugin
+     * analyzer identification 2. Looking up Analyzer by IP address (if available)
+     * 3. Matching by analyzer name from plugin
      * 
      * @return Optional Analyzer if identified, empty otherwise
      */
@@ -272,35 +257,32 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                 return Optional.empty();
             }
 
-            AnalyzerConfigurationService configService = SpringContext.getBean(AnalyzerConfigurationService.class);
             AnalyzerService analyzerService = SpringContext.getBean(AnalyzerService.class);
 
-            if (configService == null || analyzerService == null) {
+            if (analyzerService == null) {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
-                        "Services not available for analyzer identification");
+                        "AnalyzerService not available for analyzer identification");
                 return Optional.empty();
             }
 
             // Strategy 1: Parse ASTM H-segment for manufacturer/model
             String analyzerName = parseAnalyzerNameFromHeader();
             if (analyzerName != null && !analyzerName.trim().isEmpty()) {
-                Optional<org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration> config = configService
-                        .getByAnalyzerName(analyzerName.trim());
-                if (config.isPresent() && config.get().getAnalyzer() != null) {
+                Optional<Analyzer> analyzerOpt = analyzerService.getByName(analyzerName.trim());
+                if (analyzerOpt.isPresent()) {
                     LogEvent.logDebug(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
                             "Identified analyzer from header: " + analyzerName);
-                    return Optional.of(config.get().getAnalyzer());
+                    return analyzerOpt;
                 }
             }
 
             // Strategy 2: Client IP address (for direct HTTP push)
             if (clientIpAddress != null && !clientIpAddress.trim().isEmpty()) {
-                Optional<org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration> config = configService
-                        .getByIpAddress(clientIpAddress.trim());
-                if (config.isPresent() && config.get().getAnalyzer() != null) {
+                Optional<Analyzer> analyzerOpt = analyzerService.getByIpAddress(clientIpAddress.trim());
+                if (analyzerOpt.isPresent()) {
                     LogEvent.logDebug(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
                             "Identified analyzer from IP address: " + clientIpAddress);
-                    return Optional.of(config.get().getAnalyzer());
+                    return analyzerOpt;
                 }
             }
 

@@ -25,7 +25,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import javax.sql.DataSource;
 import org.apache.commons.io.IOUtils;
@@ -33,7 +32,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.analyzer.service.AnalyzerConfigurationService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,14 +55,10 @@ public class MindrayBA88AIntegrationTest extends BaseWebContextSensitiveTest {
     private AnalyzerService analyzerService;
 
     @Autowired
-    private AnalyzerConfigurationService analyzerConfigurationService;
-
-    @Autowired
     private DataSource dataSource;
 
     private JdbcTemplate jdbcTemplate;
     private Analyzer ba88aAnalyzer;
-    private String analyzerConfigId;
 
     @Before
     public void setUp() throws Exception {
@@ -87,12 +81,10 @@ public class MindrayBA88AIntegrationTest extends BaseWebContextSensitiveTest {
         ba88aAnalyzer.setName(ANALYZER_NAME);
         ba88aAnalyzer.setActive(true);
         ba88aAnalyzer.setSysUserId("1");
+        ba88aAnalyzer.setIpAddress("127.0.0.1");
+        ba88aAnalyzer.setPort(8080);
         String analyzerId = analyzerService.insert(ba88aAnalyzer);
         ba88aAnalyzer.setId(analyzerId);
-
-        // Create analyzer configuration
-        analyzerConfigId = analyzerConfigurationService.createConfiguration(ba88aAnalyzer, "127.0.0.1", 8080,
-                Collections.emptyList());
 
         // Create RS232 serial port configuration via JDBC
         // This simulates what the openelis-analyzer-bridge configuration would store
@@ -111,9 +103,6 @@ public class MindrayBA88AIntegrationTest extends BaseWebContextSensitiveTest {
                     ANALYZER_NAME);
             jdbcTemplate.update(
                     "DELETE FROM clinlims.serial_port_configuration WHERE analyzer_id IN (SELECT id FROM clinlims.analyzer WHERE name = ?)",
-                    ANALYZER_NAME);
-            jdbcTemplate.update(
-                    "DELETE FROM clinlims.analyzer_configuration WHERE analyzer_id IN (SELECT id FROM clinlims.analyzer WHERE name = ?)",
                     ANALYZER_NAME);
             jdbcTemplate.update("DELETE FROM clinlims.analyzer WHERE name = ?", ANALYZER_NAME);
         } catch (Exception e) {

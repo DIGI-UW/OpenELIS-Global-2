@@ -45,8 +45,6 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
 
     private void cleanTestData() {
         try {
-            jdbcTemplate.execute("DELETE FROM analyzer_configuration "
-                    + "WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name LIKE 'TEST-SEC-%')");
             jdbcTemplate.execute("DELETE FROM analyzer WHERE name LIKE 'TEST-SEC-%'");
             Integer maxId = jdbcTemplate.queryForObject("SELECT COALESCE(MAX(id), 0) FROM analyzer", Integer.class);
             jdbcTemplate.execute("SELECT setval('analyzer_seq', " + maxId + ", true)");

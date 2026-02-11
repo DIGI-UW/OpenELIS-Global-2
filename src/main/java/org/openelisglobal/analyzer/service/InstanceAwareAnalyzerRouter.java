@@ -16,7 +16,6 @@ package org.openelisglobal.analyzer.service;
 import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
@@ -50,9 +49,6 @@ public class InstanceAwareAnalyzerRouter {
 
     @Autowired
     private AnalyzerService analyzerService;
-
-    @Autowired
-    private AnalyzerConfigurationService analyzerConfigurationService;
 
     @Autowired
     private PluginAnalyzerService pluginAnalyzerService;
@@ -148,13 +144,12 @@ public class InstanceAwareAnalyzerRouter {
             return new RouteResult(null, null, null, "IP_NO_MATCH");
         }
 
-        // Find analyzer configuration with matching IP
-        Optional<AnalyzerConfiguration> configOpt = analyzerConfigurationService.getByIpAddress(context.getSourceIp());
+        // Find analyzer with matching IP
+        Optional<Analyzer> analyzerOpt = analyzerService.getByIpAddress(context.getSourceIp());
 
-        if (configOpt.isPresent()) {
-            AnalyzerConfiguration config = configOpt.get();
-            Analyzer analyzer = config.getAnalyzer();
-            if (analyzer != null && analyzer.isActive()) {
+        if (analyzerOpt.isPresent()) {
+            Analyzer analyzer = analyzerOpt.get();
+            if (analyzer.isActive()) {
                 AnalyzerImporterPlugin plugin = pluginAnalyzerService.getPluginByAnalyzerId(analyzer.getId());
                 if (plugin != null) {
                     LogEvent.logDebug(this.getClass().getSimpleName(), "routeByIp",

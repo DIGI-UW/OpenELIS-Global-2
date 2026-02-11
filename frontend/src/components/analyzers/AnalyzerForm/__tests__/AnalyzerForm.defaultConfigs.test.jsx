@@ -145,16 +145,16 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
     jest.clearAllMocks();
   });
 
-  test("should display Load Default Config dropdown only in create mode", async () => {
-    // Arrange & Act: Render in create mode
+  test("should NOT display Load Default Config dropdown when no generic plugin is selected", async () => {
+    // Arrange & Act: Render in create mode without selecting a plugin type
     renderWithIntl(<AnalyzerForm open={true} onClose={jest.fn()} />);
 
-    // Assert: Dropdown should be visible
+    // Assert: Dropdown should NOT be visible (requires isGenericPlugin === true)
     await wait(() => {
       const dropdown = screen.queryByTestId(
         "analyzer-form-default-config-dropdown",
       );
-      expect(dropdown).toBeInTheDocument();
+      expect(dropdown).not.toBeInTheDocument();
     });
   });
 

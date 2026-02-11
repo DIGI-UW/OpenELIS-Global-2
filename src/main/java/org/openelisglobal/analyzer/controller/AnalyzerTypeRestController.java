@@ -18,11 +18,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +59,9 @@ public class AnalyzerTypeRestController extends BaseRestController {
     @Autowired
     private AnalyzerService analyzerService;
 
+    @Autowired
+    private PluginAnalyzerService pluginAnalyzerService;
+
     /**
      * GET /rest/analyzer-types Retrieve all analyzer types with optional filtering.
      */
@@ -74,6 +80,7 @@ public class AnalyzerTypeRestController extends BaseRestController {
             }
 
             List<Map<String, Object>> response = new ArrayList<>();
+            Set<String> loadedPlugins = getLoadedPluginClassNames();
 
             for (AnalyzerType type : types) {
                 // Apply search filter
@@ -85,7 +92,7 @@ public class AnalyzerTypeRestController extends BaseRestController {
                     }
                 }
 
-                response.add(analyzerTypeToMap(type, false));
+                response.add(analyzerTypeToMap(type, false, loadedPlugins));
             }
 
             return ResponseEntity.ok(response);
@@ -108,7 +115,7 @@ public class AnalyzerTypeRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
 
-            return ResponseEntity.ok(analyzerTypeToMap(type, true));
+            return ResponseEntity.ok(analyzerTypeToMap(type, true, getLoadedPluginClassNames()));
         } catch (Exception e) {
             logger.error("Error retrieving analyzer type: " + id, e);
             Map<String, Object> error = new HashMap<>();
@@ -247,7 +254,8 @@ public class AnalyzerTypeRestController extends BaseRestController {
 
             // Return created type
             AnalyzerType createdType = analyzerTypeService.getAnalyzerTypeByName(name);
-            return ResponseEntity.status(HttpStatus.CREATED).body(analyzerTypeToMap(createdType, false));
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(analyzerTypeToMap(createdType, false, getLoadedPluginClassNames()));
         } catch (Exception e) {
             logger.error("Error creating analyzer type", e);
             Map<String, Object> error = new HashMap<>();
@@ -290,7 +298,7 @@ public class AnalyzerTypeRestController extends BaseRestController {
             type.setSysUserId(getSysUserId(httpRequest));
             analyzerTypeService.update(type);
 
-            return ResponseEntity.ok(analyzerTypeToMap(type, false));
+            return ResponseEntity.ok(analyzerTypeToMap(type, false, getLoadedPluginClassNames()));
         } catch (Exception e) {
             logger.error("Error updating analyzer type: " + id, e);
             Map<String, Object> error = new HashMap<>();
@@ -318,7 +326,8 @@ public class AnalyzerTypeRestController extends BaseRestController {
     /**
      * Convert AnalyzerType to Map for JSON response.
      */
-    private Map<String, Object> analyzerTypeToMap(AnalyzerType type, boolean includeInstances) {
+    private Map<String, Object> analyzerTypeToMap(AnalyzerType type, boolean includeInstances,
+            Set<String> loadedPlugins) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", type.getId());
         map.put("name", type.getName());
@@ -328,6 +337,7 @@ public class AnalyzerTypeRestController extends BaseRestController {
         map.put("identifierPattern", type.getIdentifierPattern());
         map.put("isGenericPlugin", type.isGenericPlugin());
         map.put("isActive", type.isActive());
+        map.put("pluginLoaded", type.getPluginClassName() != null && loadedPlugins.contains(type.getPluginClassName()));
         map.put("instanceCount", type.getInstances().size());
 
         if (includeInstances) {
@@ -344,5 +354,10 @@ public class AnalyzerTypeRestController extends BaseRestController {
         }
 
         return map;
+    }
+
+    private Set<String> getLoadedPluginClassNames() {
+        return pluginAnalyzerService.getAnalyzerPlugins().stream().map(plugin -> plugin.getClass().getName())
+                .collect(Collectors.toSet());
     }
 }

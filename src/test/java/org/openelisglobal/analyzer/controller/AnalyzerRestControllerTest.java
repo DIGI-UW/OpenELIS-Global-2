@@ -5,8 +5,10 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.sql.DataSource;
 import org.junit.Before;
@@ -58,13 +60,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     private void cleanAnalyzerTestData() {
         try {
             // Delete test-created analyzer data in order (respecting foreign keys)
-            jdbcTemplate.execute("DELETE FROM analyzer_field_mapping WHERE id LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM analyzer_field WHERE id LIKE 'TEST-%'");
-            // Delete analyzer_configuration first (references analyzer)
-            // Use a subquery to safely delete configurations for test analyzers
-            jdbcTemplate.execute("DELETE FROM analyzer_configuration "
-                    + "WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name LIKE 'TEST-%')");
-            // Then delete analyzer (legacy table, clean by name pattern)
+            String analyzerIdSubquery = "(SELECT id FROM analyzer WHERE name LIKE 'TEST-%')";
+            jdbcTemplate.execute("DELETE FROM analyzer_field_mapping WHERE analyzer_field_id IN "
+                    + "(SELECT id FROM analyzer_field WHERE analyzer_id IN " + analyzerIdSubquery + ")");
+            jdbcTemplate.execute("DELETE FROM analyzer_field WHERE analyzer_id IN " + analyzerIdSubquery);
+            // Delete analyzer (clean by name pattern)
             jdbcTemplate.execute("DELETE FROM analyzer WHERE name LIKE 'TEST-%'");
 
             // Ensure analyzer sequence is synchronized with existing data
@@ -365,5 +365,66 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId + "/query/" + invalidJobId + "/status")
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").exists());
+    }
+
+    /**
+     * Test: GET /rest/analyzer/analyzers includes pluginLoaded field in each entry.
+     * For test-created analyzers (no matching plugin JAR), pluginLoaded should be
+     * false.
+     *
+     * Verifies R1 fix: pluginLoaded field is always present in analyzer responses.
+     */
+    @Test
+    public void testGetAnalyzers_ResponseIncludesPluginLoadedField() throws Exception {
+        // Arrange: Create a test analyzer
+        String uniqueName = "TEST-PluginLoaded-List-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + uniqueName
+                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
+                + "\"port\":5000,\"testUnitIds\":[]}";
+
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andExpect(status().isCreated());
+
+        // Act
+        MvcResult listResult = mockMvc.perform(get("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andReturn();
+
+        // Assert: Each entry should have a pluginLoaded field
+        String responseBody = listResult.getResponse().getContentAsString();
+        List<Map<String, Object>> analyzers = objectMapper.readValue(responseBody,
+                new TypeReference<List<Map<String, Object>>>() {
+                });
+        assertFalse("Response should contain at least one analyzer", analyzers.isEmpty());
+        for (Map<String, Object> analyzerMap : analyzers) {
+            assertTrue("Each analyzer should have pluginLoaded field", analyzerMap.containsKey("pluginLoaded"));
+        }
+    }
+
+    /**
+     * Test: GET /rest/analyzer/analyzers/{id} includes pluginLoaded=false when no
+     * plugin JAR is loaded for the analyzer.
+     *
+     * Verifies R1 fix: pluginLoaded is false (not missing or error) for analyzers
+     * without a loaded plugin.
+     */
+    @Test
+    public void testGetAnalyzer_PluginLoadedFalse_WhenNoMatchingPlugin() throws Exception {
+        // Arrange: Create analyzer (no real plugin JAR loaded for "Chemistry Analyzer")
+        String uniqueName = "TEST-PluginLoaded-False-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + uniqueName
+                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
+                + "\"port\":5000,\"testUnitIds\":[]}";
+
+        MvcResult createResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andExpect(status().isCreated()).andReturn();
+
+        String responseBody = createResult.getResponse().getContentAsString();
+        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
+        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+
+        // Act & Assert: pluginLoaded should be false (no plugin JAR loaded)
+        mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.pluginLoaded").value(false));
     }
 }

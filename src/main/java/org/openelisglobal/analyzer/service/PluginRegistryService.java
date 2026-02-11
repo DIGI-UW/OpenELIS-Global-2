@@ -16,6 +16,7 @@ package org.openelisglobal.analyzer.service;
 import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.Optional;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
@@ -68,6 +69,12 @@ public class PluginRegistryService {
     @Autowired
     private AnalyzerTypeService analyzerTypeService;
 
+    @Autowired
+    private AnalyzerService analyzerService;
+
+    @Autowired
+    private PluginAnalyzerService pluginAnalyzerService;
+
     /**
      * Auto-discover and register all loaded analyzer plugins in the analyzer_type
      * table.
@@ -87,14 +94,7 @@ public class PluginRegistryService {
         LogEvent.logInfo(this.getClass().getName(), "registerLoadedPlugins",
                 "Auto-discovering loaded analyzer plugins...");
 
-        PluginAnalyzerService pluginService = PluginAnalyzerService.getInstance();
-        if (pluginService == null) {
-            LogEvent.logWarn(this.getClass().getName(), "registerLoadedPlugins",
-                    "PluginAnalyzerService not available - skipping plugin registration");
-            return;
-        }
-
-        List<AnalyzerImporterPlugin> plugins = pluginService.getAnalyzerPlugins();
+        List<AnalyzerImporterPlugin> plugins = pluginAnalyzerService.getAnalyzerPlugins();
         int registered = 0;
         int skipped = 0;
 
@@ -124,10 +124,53 @@ public class PluginRegistryService {
             }
         }
 
+        // Link legacy analyzers (created by connect()) to their AnalyzerType
+        linkLegacyAnalyzersToTypes();
+
         // Log summary
         int total = analyzerTypeService.getAll().size();
         LogEvent.logInfo(this.getClass().getName(), "registerLoadedPlugins", String.format(
                 "Plugin registry complete: %d new, %d existing, %d total analyzer types", registered, skipped, total));
+    }
+
+    /**
+     * Gap 2: Link legacy analyzer rows to their analyzer_type.
+     *
+     * <p>
+     * Legacy connect() creates analyzer rows without setting analyzer_type_id. This
+     * method iterates all analyzers, finds those without a type, looks up their
+     * plugin, and links them to the matching AnalyzerType by pluginClassName.
+     */
+    void linkLegacyAnalyzersToTypes() {
+        List<Analyzer> allAnalyzers = analyzerService.getAll();
+        int linked = 0;
+
+        for (Analyzer analyzer : allAnalyzers) {
+            if (analyzer.getAnalyzerType() != null) {
+                continue; // already linked
+            }
+
+            AnalyzerImporterPlugin plugin = pluginAnalyzerService.getPluginByAnalyzerId(analyzer.getId());
+            if (plugin == null) {
+                continue; // no plugin registered for this analyzer
+            }
+
+            String pluginClassName = plugin.getClass().getName();
+            Optional<AnalyzerType> typeOpt = analyzerTypeService.getByPluginClassName(pluginClassName);
+            if (typeOpt.isPresent()) {
+                analyzer.setAnalyzerType(typeOpt.get());
+                analyzer.setSysUserId("1");
+                analyzerService.save(analyzer);
+                LogEvent.logInfo(this.getClass().getName(), "linkLegacyAnalyzersToTypes",
+                        "Linked analyzer '" + analyzer.getName() + "' to type '" + typeOpt.get().getName() + "'");
+                linked++;
+            }
+        }
+
+        if (linked > 0) {
+            LogEvent.logInfo(this.getClass().getName(), "linkLegacyAnalyzersToTypes",
+                    "Linked " + linked + " legacy analyzers to their types");
+        }
     }
 
     /**

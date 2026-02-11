@@ -32,4 +32,5 @@
   <include relativeToChangelogFile="true" file="024-add-query-timeout-config.xml"/>
   <include relativeToChangelogFile="true" file="025-add-prefer-generic-plugin-to-analyzer-configuration.xml"/>
   <include relativeToChangelogFile="true" file="026-fix-protocol-version-default.xml"/>
+  <include relativeToChangelogFile="true" file="027-merge-analyzer-configuration-into-analyzer.xml"/>
 </databaseChangeLog>

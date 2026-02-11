@@ -69,9 +69,6 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
             // Delete analyzer fields
             jdbcTemplate.execute("DELETE FROM analyzer_field WHERE analyzer_id IN " + analyzerIdSubquery);
 
-            // Delete analyzer_configuration entries referencing those analyzers
-            jdbcTemplate.execute("DELETE FROM analyzer_configuration WHERE analyzer_id IN " + analyzerIdSubquery);
-
             // Finally delete the analyzers
             jdbcTemplate.execute("DELETE FROM analyzer WHERE name LIKE 'TEST-%'");
 

@@ -10,7 +10,6 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import org.openelisglobal.analyzer.service.AnalyzerConfigurationService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.MappingApplicationService;
 import org.openelisglobal.analyzer.service.MappingAwareAnalyzerLineInserter;
@@ -215,20 +214,11 @@ public class SerialAnalyzerReader extends AnalyzerReader {
         }
     }
 
+    /**
+     * Return the plugin list in default order. (preferGenericPlugin flag has been
+     * removed.)
+     */
     private List<AnalyzerImporterPlugin> choosePluginOrder(PluginAnalyzerService pluginService) {
-        String identifier = parseIdentifierFromAstmHeader();
-        if (identifier == null || identifier.trim().isEmpty()) {
-            return pluginService.getAnalyzerPlugins();
-        }
-        AnalyzerConfigurationService configService = SpringContext.getBean(AnalyzerConfigurationService.class);
-        if (configService == null) {
-            return pluginService.getAnalyzerPlugins();
-        }
-        Optional<org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration> config = configService
-                .findByIdentifierPatternMatch(identifier.trim());
-        if (config.isPresent() && config.get().isPreferGenericPlugin()) {
-            return pluginService.getAnalyzerPluginsWithGenericFirst();
-        }
         return pluginService.getAnalyzerPlugins();
     }
 

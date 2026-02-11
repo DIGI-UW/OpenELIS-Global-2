@@ -73,7 +73,7 @@
         <!-- Migrated to JPA annotations (chore/011-analyzer-xml-to-annotations) -->
         <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerField</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration</class>
+        <!-- AnalyzerConfiguration removed: merged into Analyzer entity -->
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
         <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping</class>

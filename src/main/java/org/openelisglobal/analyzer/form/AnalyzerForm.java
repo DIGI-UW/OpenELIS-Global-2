@@ -31,8 +31,8 @@ public class AnalyzerForm {
     private String status; // Unified status: INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE
 
     private String identifierPattern; // For generic plugin: regex to match message identifier
-    private Boolean genericPlugin; // Use GenericASTM/GenericHL7 for this analyzer
-    private Boolean preferGenericPlugin; // When true, try generic plugin before legacy when both could match
+
+    private String pluginTypeId; // FK to analyzer_type table (the plugin that handles messages)
 
     // Getters and Setters
 
@@ -108,19 +108,11 @@ public class AnalyzerForm {
         this.identifierPattern = identifierPattern;
     }
 
-    public Boolean getGenericPlugin() {
-        return genericPlugin;
+    public String getPluginTypeId() {
+        return pluginTypeId;
     }
 
-    public void setGenericPlugin(Boolean genericPlugin) {
-        this.genericPlugin = genericPlugin;
-    }
-
-    public Boolean getPreferGenericPlugin() {
-        return preferGenericPlugin;
-    }
-
-    public void setPreferGenericPlugin(Boolean preferGenericPlugin) {
-        this.preferGenericPlugin = preferGenericPlugin;
+    public void setPluginTypeId(String pluginTypeId) {
+        this.pluginTypeId = pluginTypeId;
     }
 }

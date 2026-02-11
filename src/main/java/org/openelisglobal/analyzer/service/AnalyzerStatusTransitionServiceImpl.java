@@ -1,9 +1,8 @@
 package org.openelisglobal.analyzer.service;
 
 import java.util.Date;
-import java.util.Optional;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration.AnalyzerStatus;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -23,15 +22,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransitionService {
 
     @Autowired
-    private AnalyzerConfigurationService configurationService;
+    private AnalyzerService analyzerService;
 
     @Autowired
     private ApplicationEventPublisher eventPublisher;
 
     @Override
-    public AnalyzerConfiguration transitionToValidation(String analyzerId) {
-        AnalyzerConfiguration config = getConfigurationOrThrow(analyzerId);
-        AnalyzerStatus currentStatus = config.getStatus();
+    public Analyzer transitionToValidation(String analyzerId) {
+        Analyzer analyzer = getAnalyzerOrThrow(analyzerId);
+        AnalyzerStatus currentStatus = analyzer.getStatus();
 
         // Validate: must be in SETUP status
         if (currentStatus != AnalyzerStatus.SETUP) {
@@ -39,13 +38,13 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
                     + currentStatus + " status (expected SETUP)");
         }
 
-        return updateStatus(config, AnalyzerStatus.VALIDATION, "First mapping created");
+        return updateStatus(analyzer, AnalyzerStatus.VALIDATION, "First mapping created");
     }
 
     @Override
-    public AnalyzerConfiguration transitionToActive(String analyzerId) {
-        AnalyzerConfiguration config = getConfigurationOrThrow(analyzerId);
-        AnalyzerStatus currentStatus = config.getStatus();
+    public Analyzer transitionToActive(String analyzerId) {
+        Analyzer analyzer = getAnalyzerOrThrow(analyzerId);
+        AnalyzerStatus currentStatus = analyzer.getStatus();
 
         // Validate: must be in VALIDATION status
         if (currentStatus != AnalyzerStatus.VALIDATION) {
@@ -54,15 +53,15 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
         }
 
         // Record activation date
-        config.setLastActivatedDate(new Date());
+        analyzer.setLastActivatedDate(new Date());
 
-        return updateStatus(config, AnalyzerStatus.ACTIVE, "All required mappings activated");
+        return updateStatus(analyzer, AnalyzerStatus.ACTIVE, "All required mappings activated");
     }
 
     @Override
-    public AnalyzerConfiguration transitionToErrorPending(String analyzerId) {
-        AnalyzerConfiguration config = getConfigurationOrThrow(analyzerId);
-        AnalyzerStatus currentStatus = config.getStatus();
+    public Analyzer transitionToErrorPending(String analyzerId) {
+        Analyzer analyzer = getAnalyzerOrThrow(analyzerId);
+        AnalyzerStatus currentStatus = analyzer.getStatus();
 
         // Validate: must be in ACTIVE status
         if (currentStatus != AnalyzerStatus.ACTIVE) {
@@ -70,13 +69,13 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
                     + currentStatus + " status (expected ACTIVE)");
         }
 
-        return updateStatus(config, AnalyzerStatus.ERROR_PENDING, "Unacknowledged error created");
+        return updateStatus(analyzer, AnalyzerStatus.ERROR_PENDING, "Unacknowledged error created");
     }
 
     @Override
-    public AnalyzerConfiguration transitionToOffline(String analyzerId) {
-        AnalyzerConfiguration config = getConfigurationOrThrow(analyzerId);
-        AnalyzerStatus currentStatus = config.getStatus();
+    public Analyzer transitionToOffline(String analyzerId) {
+        Analyzer analyzer = getAnalyzerOrThrow(analyzerId);
+        AnalyzerStatus currentStatus = analyzer.getStatus();
 
         // Validate: must be in ACTIVE or ERROR_PENDING status
         if (currentStatus != AnalyzerStatus.ACTIVE && currentStatus != AnalyzerStatus.ERROR_PENDING) {
@@ -84,13 +83,13 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
                     + currentStatus + " status (expected ACTIVE or ERROR_PENDING)");
         }
 
-        return updateStatus(config, AnalyzerStatus.OFFLINE, "Connection test failed");
+        return updateStatus(analyzer, AnalyzerStatus.OFFLINE, "Connection test failed");
     }
 
     @Override
-    public AnalyzerConfiguration transitionToActiveFromError(String analyzerId) {
-        AnalyzerConfiguration config = getConfigurationOrThrow(analyzerId);
-        AnalyzerStatus currentStatus = config.getStatus();
+    public Analyzer transitionToActiveFromError(String analyzerId) {
+        Analyzer analyzer = getAnalyzerOrThrow(analyzerId);
+        AnalyzerStatus currentStatus = analyzer.getStatus();
 
         // Validate: must be in ERROR_PENDING status
         if (currentStatus != AnalyzerStatus.ERROR_PENDING) {
@@ -98,13 +97,13 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
                     + " is in " + currentStatus + " status (expected ERROR_PENDING)");
         }
 
-        return updateStatus(config, AnalyzerStatus.ACTIVE, "All errors acknowledged");
+        return updateStatus(analyzer, AnalyzerStatus.ACTIVE, "All errors acknowledged");
     }
 
     @Override
-    public AnalyzerConfiguration transitionToActiveFromOffline(String analyzerId) {
-        AnalyzerConfiguration config = getConfigurationOrThrow(analyzerId);
-        AnalyzerStatus currentStatus = config.getStatus();
+    public Analyzer transitionToActiveFromOffline(String analyzerId) {
+        Analyzer analyzer = getAnalyzerOrThrow(analyzerId);
+        AnalyzerStatus currentStatus = analyzer.getStatus();
 
         // Validate: must be in OFFLINE status
         if (currentStatus != AnalyzerStatus.OFFLINE) {
@@ -112,33 +111,33 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
                     + " is in " + currentStatus + " status (expected OFFLINE)");
         }
 
-        return updateStatus(config, AnalyzerStatus.ACTIVE, "Connection restored");
+        return updateStatus(analyzer, AnalyzerStatus.ACTIVE, "Connection restored");
     }
 
     /**
-     * Get analyzer configuration or throw exception
+     * Get analyzer or throw exception
      */
-    private AnalyzerConfiguration getConfigurationOrThrow(String analyzerId) {
-        Optional<AnalyzerConfiguration> configOpt = configurationService.getByAnalyzerId(analyzerId);
-        if (configOpt.isEmpty()) {
-            throw new IllegalArgumentException("AnalyzerConfiguration not found for analyzer: " + analyzerId);
+    private Analyzer getAnalyzerOrThrow(String analyzerId) {
+        Analyzer analyzer = analyzerService.get(analyzerId);
+        if (analyzer == null) {
+            throw new IllegalArgumentException("Analyzer not found: " + analyzerId);
         }
-        return configOpt.get();
+        return analyzer;
     }
 
     /**
      * Update status, log audit trail, and publish event
      */
-    private AnalyzerConfiguration updateStatus(AnalyzerConfiguration config, AnalyzerStatus newStatus, String reason) {
-        AnalyzerStatus oldStatus = config.getStatus();
-        String analyzerId = config.getAnalyzer() != null ? config.getAnalyzer().getId() : "unknown";
+    private Analyzer updateStatus(Analyzer analyzer, AnalyzerStatus newStatus, String reason) {
+        AnalyzerStatus oldStatus = analyzer.getStatus();
+        String analyzerId = analyzer.getId() != null ? analyzer.getId() : "unknown";
 
         // Update status
-        config.setStatus(newStatus);
-        config.setSysUserId("SYSTEM"); // System-triggered transition
-        config.setLastupdatedFields();
+        analyzer.setStatus(newStatus);
+        analyzer.setSysUserId("SYSTEM"); // System-triggered transition
+        analyzer.setLastupdatedFields();
 
-        configurationService.update(config);
+        analyzerService.update(analyzer);
 
         // Log audit trail
         LogEvent.logInfo(this.getClass().getSimpleName(), "updateStatus", "Analyzer " + analyzerId
@@ -147,7 +146,7 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
         // Publish status change event for listeners
         eventPublisher.publishEvent(new AnalyzerStatusChangeEvent(this, analyzerId, oldStatus, newStatus, reason));
 
-        return config;
+        return analyzer;
     }
 
     /**

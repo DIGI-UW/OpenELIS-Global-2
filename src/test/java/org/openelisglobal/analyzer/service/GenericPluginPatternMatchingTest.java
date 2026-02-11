@@ -32,9 +32,8 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerType;
  * queries (getGenericPluginTypes)
  *
  * <p>
- * Note: This test was updated from the original AnalyzerConfiguration-based
- * approach to use AnalyzerType as part of the Type/Instance separation
- * architecture.
+ * Note: This test uses AnalyzerType as part of the Type/Instance separation
+ * architecture (analyzer_configuration was merged into analyzer).
  */
 @RunWith(MockitoJUnitRunner.class)
 public class GenericPluginPatternMatchingTest {

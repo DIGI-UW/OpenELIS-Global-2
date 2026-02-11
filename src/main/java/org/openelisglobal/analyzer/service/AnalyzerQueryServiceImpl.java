@@ -9,14 +9,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.openelisglobal.analyzer.util.NetworkValidationUtil;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -28,15 +26,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Service implementation for querying analyzers via ASTM protocol
- * 
- * Implements asynchronous query workflow per FR-002: - Background job pattern
- * with job ID - TCP connection to analyzer IP:Port - ASTM LIS2-A2 protocol
- * (ENQ/ACK handshake, frame-based communication) - Response parsing to extract
- * field identifiers - Field storage in AnalyzerField entity
+ * Service implementation for querying analyzers via ASTM protocol.
+ *
+ * <p>
+ * Implements asynchronous query workflow per FR-002: background job pattern
+ * with job ID, TCP connection, ASTM LIS2-A2 protocol, response parsing, and
+ * field storage. Not @Transactional at class level because methods are
+ * primarily in-memory job management; DB operations use TransactionTemplate
+ * explicitly.
  */
 @Service
-@Transactional
 public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
 
     private static final Logger logger = LoggerFactory.getLogger(AnalyzerQueryServiceImpl.class);
@@ -61,9 +60,6 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
     private AnalyzerService analyzerService;
 
     @Autowired
-    private AnalyzerConfigurationService analyzerConfigurationService;
-
-    @Autowired
     private AnalyzerFieldService analyzerFieldService;
 
     @Autowired
@@ -79,9 +75,14 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
         // Push-only analyzers (file-based, serial/RS-232) cannot be actively queried
         // because they deliver results to OpenELIS rather than accepting inbound
         // requests.
-        Optional<AnalyzerConfiguration> configOpt = analyzerConfigurationService.getByAnalyzerId(analyzerId);
-        if (configOpt.isPresent()) {
-            String protocol = configOpt.get().getProtocolVersion();
+        Analyzer analyzer = null;
+        try {
+            analyzer = analyzerService.get(analyzerId);
+        } catch (Exception e) {
+            logger.debug("Analyzer {} not found in database, skipping transport validation", analyzerId);
+        }
+        if (analyzer != null) {
+            String protocol = analyzer.getProtocolVersion();
             if (protocol != null) {
                 String upper = protocol.toUpperCase();
                 if (upper.contains("FILE") || upper.contains("RS232") || upper.contains("RS-232")
@@ -91,7 +92,7 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
                 }
             }
             // Also check that TCP/IP connection details are available
-            if (configOpt.get().getIpAddress() == null || configOpt.get().getPort() == null) {
+            if (analyzer.getIpAddress() == null || analyzer.getPort() == null) {
                 throw new LIMSRuntimeException("Analyzer has no TCP/IP connection details configured");
             }
         }
@@ -183,21 +184,14 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
             status.put("progress", 10);
             addLog(status, "Starting query job");
 
-            // Get analyzer configuration
+            // Get analyzer
             Analyzer analyzer = analyzerService.get(analyzerId);
             if (analyzer == null) {
                 throw new LIMSRuntimeException("Analyzer not found: " + analyzerId);
             }
 
-            java.util.Optional<AnalyzerConfiguration> configOpt = analyzerConfigurationService
-                    .getByAnalyzerId(analyzerId);
-            if (!configOpt.isPresent()) {
-                throw new LIMSRuntimeException("Analyzer configuration not found for analyzer: " + analyzerId);
-            }
-
-            AnalyzerConfiguration config = configOpt.get();
-            String ipAddress = config.getIpAddress();
-            Integer port = config.getPort();
+            String ipAddress = analyzer.getIpAddress();
+            Integer port = analyzer.getPort();
 
             if (ipAddress == null || port == null) {
                 throw new LIMSRuntimeException("Analyzer IP address or port not configured");
