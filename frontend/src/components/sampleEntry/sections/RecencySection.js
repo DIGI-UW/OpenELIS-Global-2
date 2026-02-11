@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   Section,
@@ -6,46 +6,64 @@ import {
   Select,
   SelectItem,
   TextInput,
-  RadioButtonGroup,
-  RadioButton,
   Grid,
   Column,
 } from "@carbon/react";
 
-const HPVSection = ({
+const RecencySection = ({
   projectData,
   observations,
   onInputChange,
   onObservationChange,
   organizationLists,
   dictionaryLists,
+  gender,
 }) => {
   const intl = useIntl();
+  const [showPregnancySuckle, setShowPregnancySuckle] = useState({
+    pregnancy: false,
+    suckle: false,
+  });
 
-  // Get ARV centers from organization lists (HPV uses ARV_ORGS)
+  // Get ARV centers from organization lists
   const arvCentersByCode =
     organizationLists && organizationLists["ARV_ORGS"]
       ? organizationLists["ARV_ORGS"]
       : [];
 
-  // Get HIV_STATUSES dictionary
-  const hivStatusList =
-    dictionaryLists && dictionaryLists["HIV_STATUSES"]
-      ? dictionaryLists["HIV_STATUSES"]
+  // Get YES_NO dictionary
+  const yesNoList =
+    dictionaryLists && dictionaryLists["YES_NO"]
+      ? dictionaryLists["YES_NO"]
       : [];
 
-  // Get HPV_SAMPLING_METHOD dictionary
-  const hpvSamplingMethodList =
-    dictionaryLists && dictionaryLists["HPV_SAMPLING_METHOD"]
-      ? dictionaryLists["HPV_SAMPLING_METHOD"]
-      : [];
+  // Check gender and show pregnancy/suckle fields if female
+  useEffect(() => {
+    if (gender) {
+      // Find if gender is female (check various possible values)
+      const isFemale =
+        gender.toLowerCase().includes("f") ||
+        gender.toLowerCase().includes("femme") ||
+        gender.toLowerCase().includes("female");
+
+      setShowPregnancySuckle({
+        pregnancy: isFemale,
+        suckle: isFemale,
+      });
+    } else {
+      setShowPregnancySuckle({
+        pregnancy: false,
+        suckle: false,
+      });
+    }
+  }, [gender]);
 
   return (
     <Section>
       <Heading>
         <FormattedMessage
-          id="sample.entry.project.HPV.title"
-          defaultMessage="HPV Testing"
+          id="sample.entry.project.RT.title"
+          defaultMessage="Recency Testing"
         />
       </Heading>
 
@@ -109,27 +127,55 @@ const HPVSection = ({
           </h4>
         </Column>
 
-        {/* HIV Status */}
-        <Column lg={8} md={4} sm={4}>
-          <Select
-            id="hivStatus"
-            labelText={intl.formatMessage({
-              id: "patient.project.hivStatus",
-              defaultMessage: "HIV Status",
-            })}
-            value={observations.hivStatus || ""}
-            onChange={(e) => onObservationChange("hivStatus", e.target.value)}
-          >
-            <SelectItem text="" value="" />
-            {hivStatusList.map((item) => (
-              <SelectItem
-                key={item.id}
-                text={item.localizedName || item.dictEntry}
-                value={item.id}
-              />
-            ))}
-          </Select>
-        </Column>
+        {/* Pregnancy (Female only) */}
+        {showPregnancySuckle.pregnancy && (
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="vlPregnancy"
+              labelText={intl.formatMessage({
+                id: "sample.project.vlPregnancy",
+                defaultMessage: "Pregnant?",
+              })}
+              value={observations.vlPregnancy || ""}
+              onChange={(e) =>
+                onObservationChange("vlPregnancy", e.target.value)
+              }
+            >
+              <SelectItem text="" value="" />
+              {yesNoList.map((item) => (
+                <SelectItem
+                  key={item.id}
+                  text={item.localizedName || item.dictEntry}
+                  value={item.id}
+                />
+              ))}
+            </Select>
+          </Column>
+        )}
+
+        {/* Breastfeeding/Suckling (Female only) */}
+        {showPregnancySuckle.suckle && (
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="vlSuckle"
+              labelText={intl.formatMessage({
+                id: "sample.project.vlSuckle",
+                defaultMessage: "Breastfeeding?",
+              })}
+              value={observations.vlSuckle || ""}
+              onChange={(e) => onObservationChange("vlSuckle", e.target.value)}
+            >
+              <SelectItem text="" value="" />
+              {yesNoList.map((item) => (
+                <SelectItem
+                  key={item.id}
+                  text={item.localizedName || item.dictEntry}
+                  value={item.id}
+                />
+              ))}
+            </Select>
+          </Column>
+        )}
 
         {/* Sample Section Header */}
         <Column lg={16} md={8} sm={4}>
@@ -167,33 +213,28 @@ const HPVSection = ({
           />
         </Column>
 
-        {/* HPV Sampling Method */}
-        <Column lg={16} md={8} sm={4}>
-          <RadioButtonGroup
-            legendText={intl.formatMessage({
-              id: "sample.entry.project.title.sampleType",
-              defaultMessage: "Sample Collection Method",
+        {/* Name of Sampler */}
+        <Column lg={8} md={4} sm={4}>
+          <TextInput
+            id="nameOfSampler"
+            labelText={intl.formatMessage({
+              id: "patient.project.nameOfSampler",
+              defaultMessage: "Name of Sampler",
             })}
-            name="hpv-sampling-method"
-            valueSelected={observations.hpvSamplingMethod || ""}
-            onChange={(value) =>
-              onObservationChange("hpvSamplingMethod", value)
+            value={observations.nameOfSampler || ""}
+            onChange={(e) =>
+              onObservationChange("nameOfSampler", e.target.value)
             }
-            orientation="vertical"
-          >
-            {hpvSamplingMethodList.map((item) => (
-              <RadioButton
-                key={item.id}
-                id={`hpvSamplingMethod_${item.id}`}
-                labelText={item.localizedName || item.dictEntry}
-                value={item.id}
-              />
-            ))}
-          </RadioButtonGroup>
+            placeholder={intl.formatMessage({
+              id: "patient.project.nameOfSampler.placeholder",
+              defaultMessage: "Enter sampler name",
+            })}
+            maxLength={50}
+          />
         </Column>
       </Grid>
     </Section>
   );
 };
 
-export default HPVSection;
+export default RecencySection;

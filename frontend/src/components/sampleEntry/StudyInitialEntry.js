@@ -27,6 +27,8 @@ import SpecialRequestSection from "./sections/SpecialRequestSection";
 import RTNSection from "./sections/RTNSection";
 import HPVSection from "./sections/HPVSection";
 import IndeterminateSection from "./sections/IndeterminateSection";
+import RecencySection from "./sections/RecencySection";
+import VLSection from "./sections/VLSection";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -61,6 +63,66 @@ const StudyInitialEntry = () => {
 
     // Project Selection
     project: "",
+
+    // Observations (patient observations like HIV status, under investigation, etc.)
+    observations: {
+      nameOfDoctor: "",
+      hivStatus: "",
+      underInvestigation: "",
+
+      // Special Request specific observations
+      reasonForRequest: "",
+
+      // EID specific observations
+      whichPCR: "",
+      reasonForSecondPCRTest: "",
+      nameOfRequestor: "",
+      nameOfSampler: "",
+      eidInfantPTME: "",
+      eidTypeOfClinic: "",
+      eidTypeOfClinicOther: "",
+      eidHowChildFed: "",
+      eidStoppedBreastfeeding: "",
+      eidInfantSymptomatic: "",
+      eidInfantsARV: "",
+      eidInfantCotrimoxazole: "",
+      eidMothersHIVStatus: "",
+      eidMothersARV: "",
+
+      // Indeterminate specific observations
+      indFirstTestDate: "",
+      indFirstTestName: "",
+      indFirstTestResult: "",
+      indSecondTestDate: "",
+      indSecondTestName: "",
+      indSecondTestResult: "",
+      indSiteFinalResult: "",
+
+      // Recency Testing specific observations
+      vlPregnancy: "",
+      vlSuckle: "",
+
+      // HPV specific observations
+      hpvSamplingMethod: "",
+
+      // VL (Viral Load) specific observations
+      currentARVTreatment: "",
+      arvTreatmentInitDate: "",
+      arvTreatmentRegime: "",
+      currentARVTreatmentINNsList: "",
+      vlReasonForRequest: "",
+      vlOtherReasonForRequest: "",
+      initcd4Count: "",
+      initcd4Percent: "",
+      initcd4Date: "",
+      demandcd4Count: "",
+      demandcd4Percent: "",
+      demandcd4Date: "",
+      vlBenefit: "",
+      priorVLLab: "",
+      priorVLValue: "",
+      priorVLDate: "",
+    },
 
     // Project Data (tests and study-specific fields)
     projectData: {
@@ -157,6 +219,8 @@ const StudyInitialEntry = () => {
       faxNumber: "",
       email: "",
       reasonForRequest: "",
+
+      // Under Investigation Note
       underInvestigationNote: "",
     },
   });
@@ -230,6 +294,16 @@ const StudyInitialEntry = () => {
       ...prev,
       projectData: {
         ...prev.projectData,
+        [field]: value,
+      },
+    }));
+  }, []);
+
+  const handleObservationChange = useCallback((field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      observations: {
+        ...prev.observations,
         [field]: value,
       },
     }));
@@ -348,21 +422,30 @@ const StudyInitialEntry = () => {
                 {/* STEP 1: Project-Specific Information (ARV Center, EID Site, etc.) */}
                 {(selectedProject.includes("ARV") ||
                   selectedProject.includes("Initial") ||
-                  selectedProject.includes("Follow")) && (
-                  <Column lg={16} md={8} sm={4}>
-                    <ARVSection
-                      projectData={formData.projectData}
-                      onInputChange={handleProjectDataChange}
-                      organizationLists={displayLists.organizationTypeLists}
-                    />
-                  </Column>
-                )}
+                  selectedProject.includes("Follow")) &&
+                  !selectedProject.includes("VL") &&
+                  selectedProject !== "ARV_VIRAL_LOAD" && (
+                    <Column lg={16} md={8} sm={4}>
+                      <ARVSection
+                        projectData={formData.projectData}
+                        observations={formData.observations}
+                        onInputChange={handleProjectDataChange}
+                        onObservationChange={handleObservationChange}
+                        organizationLists={displayLists.organizationTypeLists}
+                        dictionaryLists={displayLists.dictionaryLists}
+                        birthDate={formData.birthDateForDisplay}
+                        selectedProject={selectedProject}
+                      />
+                    </Column>
+                  )}
 
                 {selectedProject.includes("EID") && (
                   <Column lg={16} md={8} sm={4}>
                     <EIDSection
                       projectData={formData.projectData}
+                      observations={formData.observations}
                       onInputChange={handleProjectDataChange}
+                      onObservationChange={handleObservationChange}
                       organizationLists={displayLists.organizationTypeLists}
                       dictionaryLists={displayLists.dictionaryLists}
                     />
@@ -373,38 +456,80 @@ const StudyInitialEntry = () => {
                   <Column lg={16} md={8} sm={4}>
                     <RTNSection
                       projectData={formData.projectData}
+                      observations={formData.observations}
                       onInputChange={handleProjectDataChange}
-                      organizationLists={displayLists.organizationTypeLists}
+                      onObservationChange={handleObservationChange}
                       dictionaryLists={displayLists.dictionaryLists}
                     />
                   </Column>
                 )}
 
-                {selectedProject.includes("Indeterminate") && (
+                {(selectedProject.includes("Indeterminate") ||
+                  selectedProject === "INDETERMINATE") && (
                   <Column lg={16} md={8} sm={4}>
                     <IndeterminateSection
                       projectData={formData.projectData}
+                      observations={formData.observations}
                       onInputChange={handleProjectDataChange}
+                      onObservationChange={handleObservationChange}
                       organizationLists={displayLists.organizationTypeLists}
                       dictionaryLists={displayLists.dictionaryLists}
                     />
                   </Column>
                 )}
 
-                {selectedProject.includes("HPV") && (
+                {(selectedProject.includes("HPV") ||
+                  selectedProject === "HPV_TESTING") && (
                   <Column lg={16} md={8} sm={4}>
                     <HPVSection
                       projectData={formData.projectData}
+                      observations={formData.observations}
                       onInputChange={handleProjectDataChange}
+                      onObservationChange={handleObservationChange}
+                      organizationLists={displayLists.organizationTypeLists}
+                      dictionaryLists={displayLists.dictionaryLists}
                     />
                   </Column>
                 )}
 
-                {selectedProject.includes("Special") && (
+                {(selectedProject.includes("Recency") ||
+                  selectedProject === "RECENCY_TESTING") && (
+                  <Column lg={16} md={8} sm={4}>
+                    <RecencySection
+                      projectData={formData.projectData}
+                      observations={formData.observations}
+                      onInputChange={handleProjectDataChange}
+                      onObservationChange={handleObservationChange}
+                      organizationLists={displayLists.organizationTypeLists}
+                      dictionaryLists={displayLists.dictionaryLists}
+                      gender={formData.gender}
+                    />
+                  </Column>
+                )}
+
+                {(selectedProject.includes("VL") ||
+                  selectedProject === "ARV_VIRAL_LOAD") && (
+                  <Column lg={16} md={8} sm={4}>
+                    <VLSection
+                      projectData={formData.projectData}
+                      observations={formData.observations}
+                      onInputChange={handleProjectDataChange}
+                      onObservationChange={handleObservationChange}
+                      organizationLists={displayLists.organizationTypeLists}
+                      dictionaryLists={displayLists.dictionaryLists}
+                      gender={formData.gender}
+                    />
+                  </Column>
+                )}
+
+                {(selectedProject.includes("Special") ||
+                  selectedProject === "SPECIAL_REQUEST") && (
                   <Column lg={16} md={8} sm={4}>
                     <SpecialRequestSection
                       projectData={formData.projectData}
+                      observations={formData.observations}
                       onInputChange={handleProjectDataChange}
+                      onObservationChange={handleObservationChange}
                       dictionaryLists={displayLists.dictionaryLists}
                     />
                   </Column>
@@ -424,6 +549,7 @@ const StudyInitialEntry = () => {
                     formData={formData}
                     onInputChange={handleInputChange}
                     genders={displayLists.genders}
+                    selectedProject={selectedProject}
                   />
                 </Column>
 

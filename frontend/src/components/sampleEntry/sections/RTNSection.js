@@ -5,7 +5,6 @@ import {
   Heading,
   Select,
   SelectItem,
-  TextInput,
   TextArea,
   Grid,
   Column,
@@ -13,130 +12,97 @@ import {
 
 const RTNSection = ({
   projectData,
+  observations,
   onInputChange,
-  organizationLists,
+  onObservationChange,
   dictionaryLists,
 }) => {
   const intl = useIntl();
 
-  // Get RTN sites from organization lists
-  const rtnSites =
-    organizationLists && organizationLists["RTN"]
-      ? organizationLists["RTN"]
-      : organizationLists && organizationLists["rtn"]
-        ? organizationLists["rtn"]
-        : organizationLists && organizationLists["RTN_SITE"]
-          ? organizationLists["RTN_SITE"]
-          : [];
+  // Get YES_NO dictionary for under investigation
+  const yesNoList =
+    dictionaryLists && dictionaryLists["YES_NO"]
+      ? dictionaryLists["YES_NO"]
+      : [];
 
-  // Handle RTN site selection and auto-populate code
-  const handleSiteChange = (event) => {
-    const selectedSiteId = event.target.value;
-    onInputChange("RTNsiteName", selectedSiteId);
+  // Check if under investigation comment should be shown
+  const shouldShowInvestigationComment = () => {
+    const underInvestigation = observations.underInvestigation;
+    if (!underInvestigation) return false;
 
-    // Find the selected site and auto-populate its code
-    if (selectedSiteId && rtnSites.length > 0) {
-      const selectedSite = rtnSites.find((site) => site.id === selectedSiteId);
-      if (selectedSite) {
-        onInputChange("RTNsiteCode", selectedSite.code || "");
-      }
-    } else {
-      onInputChange("RTNsiteCode", "");
-    }
+    // Show if "Yes" is selected (check dictionary entry)
+    const yesOption = yesNoList.find(
+      (item) =>
+        item.id === underInvestigation &&
+        (item.dictEntry === "Yes" ||
+          item.dictEntry === "Oui" ||
+          item.localizedName === "Yes"),
+    );
+
+    return !!yesOption;
   };
 
   return (
     <Section>
       <Heading>
         <FormattedMessage
-          id="sample.entry.rtn.section"
-          defaultMessage="RTN (Routine Testing Network) Information"
+          id="sample.entry.project.RTN.title"
+          defaultMessage="RTN (Routine Testing Network)"
         />
       </Heading>
 
       <Grid fullWidth={true}>
-        {/* RTN Site Selection */}
+        {/* Under Investigation */}
         <Column lg={8} md={4} sm={4}>
           <Select
-            id="RTNsiteName"
+            id="underInvestigation"
             labelText={intl.formatMessage({
-              id: "sample.entry.rtn.site",
-              defaultMessage: "RTN Site",
+              id: "patient.project.underInvestigation",
+              defaultMessage: "Under Investigation?",
             })}
-            value={projectData.RTNsiteName || ""}
-            onChange={handleSiteChange}
+            value={observations.underInvestigation || ""}
+            onChange={(e) =>
+              onObservationChange("underInvestigation", e.target.value)
+            }
           >
-            <SelectItem
-              text={intl.formatMessage({
-                id: "sample.entry.rtn.site.select",
-                defaultMessage: "Select RTN Site",
-              })}
-              value=""
-            />
-            {rtnSites.map((site) => (
+            <SelectItem text="" value="" />
+            {yesNoList.map((item) => (
               <SelectItem
-                key={site.id}
-                text={site.organizationName || site.name}
-                value={site.id}
+                key={item.id}
+                text={item.localizedName || item.dictEntry}
+                value={item.id}
               />
             ))}
           </Select>
         </Column>
 
-        {/* RTN Site Code (Auto-populated) */}
-        <Column lg={8} md={4} sm={4}>
-          <TextInput
-            id="RTNsiteCode"
-            labelText={intl.formatMessage({
-              id: "sample.entry.rtn.site.code",
-              defaultMessage: "RTN Site Code",
-            })}
-            value={projectData.RTNsiteCode || ""}
-            onChange={(e) => onInputChange("RTNsiteCode", e.target.value)}
-            readOnly
-            placeholder={intl.formatMessage({
-              id: "sample.entry.rtn.site.code.placeholder",
-              defaultMessage: "Auto-populated",
-            })}
-          />
-        </Column>
-
-        {/* RTN Reference Number */}
-        <Column lg={8} md={4} sm={4}>
-          <TextInput
-            id="rtnReferenceNumber"
-            labelText={intl.formatMessage({
-              id: "sample.entry.rtn.reference",
-              defaultMessage: "RTN Reference Number",
-            })}
-            value={projectData.rtnReferenceNumber || ""}
-            onChange={(e) =>
-              onInputChange("rtnReferenceNumber", e.target.value)
-            }
-            placeholder={intl.formatMessage({
-              id: "sample.entry.rtn.reference.placeholder",
-              defaultMessage: "Enter RTN reference number",
-            })}
-          />
-        </Column>
-
-        {/* RTN Notes */}
-        <Column lg={16} md={8} sm={4}>
-          <TextArea
-            id="rtnNotes"
-            labelText={intl.formatMessage({
-              id: "sample.entry.rtn.notes",
-              defaultMessage: "RTN Notes",
-            })}
-            value={projectData.rtnNotes || ""}
-            onChange={(e) => onInputChange("rtnNotes", e.target.value)}
-            placeholder={intl.formatMessage({
-              id: "sample.entry.rtn.notes.placeholder",
-              defaultMessage: "Enter any additional notes for RTN",
-            })}
-            rows={3}
-          />
-        </Column>
+        {/* Under Investigation Comment (Conditional) */}
+        {shouldShowInvestigationComment() && (
+          <Column lg={16} md={8} sm={4}>
+            <TextArea
+              id="underInvestigationNote"
+              labelText={
+                <>
+                  <span className="required-field">*</span>{" "}
+                  {intl.formatMessage({
+                    id: "patient.project.underInvestigationComment",
+                    defaultMessage: "Investigation Notes",
+                  })}
+                </>
+              }
+              value={projectData.underInvestigationNote || ""}
+              onChange={(e) =>
+                onInputChange("underInvestigationNote", e.target.value)
+              }
+              placeholder={intl.formatMessage({
+                id: "patient.project.underInvestigationComment.placeholder",
+                defaultMessage: "Enter investigation notes",
+              })}
+              rows={3}
+              maxLength={1000}
+            />
+          </Column>
+        )}
       </Grid>
     </Section>
   );

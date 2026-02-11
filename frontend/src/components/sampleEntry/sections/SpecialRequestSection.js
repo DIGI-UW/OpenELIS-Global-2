@@ -3,132 +3,135 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   Section,
   Heading,
-  TextInput,
+  Select,
+  SelectItem,
   TextArea,
   Grid,
   Column,
 } from "@carbon/react";
 
-const SpecialRequestSection = ({ projectData, onInputChange }) => {
+const SpecialRequestSection = ({
+  projectData,
+  observations,
+  onInputChange,
+  onObservationChange,
+  dictionaryLists,
+}) => {
   const intl = useIntl();
+
+  // Get SPECIAL_REQUEST_REASONS dictionary
+  const specialRequestReasonsList =
+    dictionaryLists && dictionaryLists["SPECIAL_REQUEST_REASONS"]
+      ? dictionaryLists["SPECIAL_REQUEST_REASONS"]
+      : [];
+
+  // Get YES_NO dictionary for under investigation
+  const yesNoList =
+    dictionaryLists && dictionaryLists["YES_NO"]
+      ? dictionaryLists["YES_NO"]
+      : [];
+
+  // Check if under investigation comment should be shown
+  const shouldShowInvestigationComment = () => {
+    const underInvestigation = observations.underInvestigation;
+    if (!underInvestigation) return false;
+
+    const yesOption = yesNoList.find(
+      (item) =>
+        item.id === underInvestigation &&
+        (item.dictEntry === "Yes" ||
+          item.dictEntry === "Oui" ||
+          item.localizedName === "Yes"),
+    );
+
+    return !!yesOption;
+  };
 
   return (
     <Section>
       <Heading>
         <FormattedMessage
-          id="sample.entry.special.request.section"
-          defaultMessage="Special Request Information"
+          id="sample.entry.project.specialRequest.title"
+          defaultMessage="Special Request"
         />
       </Heading>
 
       <Grid fullWidth={true}>
-        {/* Address */}
-        <Column lg={16} md={8} sm={4}>
-          <TextArea
-            id="address"
-            labelText={intl.formatMessage({
-              id: "sample.entry.address",
-              defaultMessage: "Address",
-            })}
-            value={projectData.address || ""}
-            onChange={(e) => onInputChange("address", e.target.value)}
-            placeholder={intl.formatMessage({
-              id: "sample.entry.address.placeholder",
-              defaultMessage: "Enter complete address",
-            })}
-            rows={2}
-          />
-        </Column>
-
-        {/* Phone Number */}
-        <Column lg={8} md={4} sm={4}>
-          <TextInput
-            id="phoneNumber"
-            labelText={intl.formatMessage({
-              id: "sample.entry.phone",
-              defaultMessage: "Phone Number",
-            })}
-            value={projectData.phoneNumber || ""}
-            onChange={(e) => onInputChange("phoneNumber", e.target.value)}
-            placeholder={intl.formatMessage({
-              id: "sample.entry.phone.placeholder",
-              defaultMessage: "Enter phone number",
-            })}
-          />
-        </Column>
-
-        {/* Fax Number */}
-        <Column lg={8} md={4} sm={4}>
-          <TextInput
-            id="faxNumber"
-            labelText={intl.formatMessage({
-              id: "sample.entry.fax",
-              defaultMessage: "Fax Number",
-            })}
-            value={projectData.faxNumber || ""}
-            onChange={(e) => onInputChange("faxNumber", e.target.value)}
-            placeholder={intl.formatMessage({
-              id: "sample.entry.fax.placeholder",
-              defaultMessage: "Enter fax number",
-            })}
-          />
-        </Column>
-
-        {/* Email */}
-        <Column lg={8} md={4} sm={4}>
-          <TextInput
-            id="email"
-            labelText={intl.formatMessage({
-              id: "sample.entry.email",
-              defaultMessage: "Email Address",
-            })}
-            value={projectData.email || ""}
-            onChange={(e) => onInputChange("email", e.target.value)}
-            placeholder={intl.formatMessage({
-              id: "sample.entry.email.placeholder",
-              defaultMessage: "Enter email address",
-            })}
-            type="email"
-          />
-        </Column>
-
         {/* Reason for Request */}
-        <Column lg={16} md={8} sm={4}>
-          <TextArea
+        <Column lg={8} md={4} sm={4}>
+          <Select
             id="reasonForRequest"
             labelText={intl.formatMessage({
-              id: "sample.entry.reason",
+              id: "sample.entry.project.specialRequest.reason",
               defaultMessage: "Reason for Request",
             })}
-            value={projectData.reasonForRequest || ""}
-            onChange={(e) => onInputChange("reasonForRequest", e.target.value)}
-            placeholder={intl.formatMessage({
-              id: "sample.entry.reason.placeholder",
-              defaultMessage: "Enter reason for special request",
-            })}
-            rows={3}
-          />
+            value={observations.reasonForRequest || ""}
+            onChange={(e) =>
+              onObservationChange("reasonForRequest", e.target.value)
+            }
+          >
+            <SelectItem text="" value="" />
+            {specialRequestReasonsList.map((item) => (
+              <SelectItem
+                key={item.id}
+                text={item.localizedName || item.dictEntry}
+                value={item.id}
+              />
+            ))}
+          </Select>
         </Column>
 
-        {/* Under Investigation Note */}
-        <Column lg={16} md={8} sm={4}>
-          <TextArea
-            id="underInvestigationNote"
+        {/* Under Investigation */}
+        <Column lg={8} md={4} sm={4}>
+          <Select
+            id="underInvestigation"
             labelText={intl.formatMessage({
-              id: "sample.entry.investigation.note",
-              defaultMessage: "Under Investigation Note",
+              id: "patient.project.underInvestigation",
+              defaultMessage: "Under Investigation?",
             })}
-            value={projectData.underInvestigationNote || ""}
+            value={observations.underInvestigation || ""}
             onChange={(e) =>
-              onInputChange("underInvestigationNote", e.target.value)
+              onObservationChange("underInvestigation", e.target.value)
             }
-            placeholder={intl.formatMessage({
-              id: "sample.entry.investigation.note.placeholder",
-              defaultMessage: "Enter investigation notes",
-            })}
-            rows={3}
-          />
+          >
+            <SelectItem text="" value="" />
+            {yesNoList.map((item) => (
+              <SelectItem
+                key={item.id}
+                text={item.localizedName || item.dictEntry}
+                value={item.id}
+              />
+            ))}
+          </Select>
         </Column>
+
+        {/* Under Investigation Comment (Conditional) */}
+        {shouldShowInvestigationComment() && (
+          <Column lg={16} md={8} sm={4}>
+            <TextArea
+              id="underInvestigationNote"
+              labelText={
+                <>
+                  <span className="required-field">*</span>{" "}
+                  {intl.formatMessage({
+                    id: "patient.project.underInvestigationComment",
+                    defaultMessage: "Investigation Notes",
+                  })}
+                </>
+              }
+              value={projectData.underInvestigationNote || ""}
+              onChange={(e) =>
+                onInputChange("underInvestigationNote", e.target.value)
+              }
+              placeholder={intl.formatMessage({
+                id: "patient.project.underInvestigationComment.placeholder",
+                defaultMessage: "Enter investigation notes",
+              })}
+              rows={3}
+              maxLength={1000}
+            />
+          </Column>
+        )}
       </Grid>
     </Section>
   );
