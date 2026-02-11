@@ -419,28 +419,6 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * DELETE /rest/analyzer/analyzers/{id} Soft delete (deactivate) an analyzer.
-     */
-    @DeleteMapping("/analyzers/{id}")
-    public ResponseEntity<Void> softDeleteAnalyzer(@PathVariable String id) {
-        try {
-            Analyzer analyzer = analyzerService.get(id);
-            if (analyzer == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-
-            analyzer.setStatus(AnalyzerStatus.INACTIVE);
-            analyzer.setActive(false);
-            analyzerService.update(analyzer);
-
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            logger.error("Error deleting analyzer: {}", id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    /**
      * POST /rest/analyzer/analyzers/{id}/delete Delete analyzer.
      *
      * <p>
