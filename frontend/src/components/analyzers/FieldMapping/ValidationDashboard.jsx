@@ -226,8 +226,8 @@ const ValidationDashboard = ({ analyzerId, status }) => {
                 <FormattedMessage id="validation.unmapped.fields.title" />
               </h4>
               <div className="unmapped-fields-list">
-                {metrics.unmappedFields.map((field, index) => (
-                  <Tag key={index} type="red" size="sm">
+                {metrics.unmappedFields.map((field) => (
+                  <Tag key={field} type="red" size="sm">
                     {field}
                   </Tag>
                 ))}
@@ -242,8 +242,8 @@ const ValidationDashboard = ({ analyzerId, status }) => {
                 <FormattedMessage id="validation.warnings.title" />
               </h4>
               <ul className="warnings-list">
-                {metrics.warnings.map((warning, index) => (
-                  <li key={index} className="warning-item">
+                {metrics.warnings.map((warning) => (
+                  <li key={warning} className="warning-item">
                     {warning}
                   </li>
                 ))}

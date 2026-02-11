@@ -27,7 +27,7 @@ jest.mock("../../../../services/analyzerService", () => ({
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
-import "@testing-library/jest-dom/extend-expect";
+import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";

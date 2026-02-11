@@ -24,7 +24,7 @@ import {
   InlineNotification,
   Link,
 } from "@carbon/react";
-import { WarningAlt, Error } from "@carbon/icons-react";
+import { WarningAlt } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./MappingActivationModal.css";
 

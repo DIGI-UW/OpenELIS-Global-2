@@ -11,7 +11,7 @@
  */
 
 import React, { useState } from "react";
-import { ComboBox, Tag, Button } from "@carbon/react";
+import { ComboBox, Button } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import InlineFieldCreationModal from "./InlineFieldCreationModal";

@@ -18,6 +18,4 @@ reports/
 playwright-report/
 playwright/.auth/
 test-results/
-# Stray Playwright test output at frontend root only (playwright/tests/*.ts are formatted)
-/sidenav.spec.ts
 

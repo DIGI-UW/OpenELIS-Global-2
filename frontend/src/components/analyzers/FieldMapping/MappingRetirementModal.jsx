@@ -23,7 +23,7 @@ import {
   TextArea,
   InlineNotification,
 } from "@carbon/react";
-import { WarningAlt } from "@carbon/icons-react";
+
 import { FormattedMessage, useIntl } from "react-intl";
 import "./MappingRetirementModal.css";
 
