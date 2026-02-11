@@ -137,13 +137,14 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
                 }
             }
             if (errorType != null) {
-                query.setParameter("errorType", errorType);
+                // Use .name() to avoid PostgreSQL varchar/bytea type mismatch
+                query.setParameter("errorType", errorType.name());
             }
             if (severity != null) {
-                query.setParameter("severity", severity);
+                query.setParameter("severity", severity.name());
             }
             if (status != null) {
-                query.setParameter("status", status);
+                query.setParameter("status", status.name());
             }
             if (startDate != null) {
                 query.setParameter("startDate", new java.sql.Timestamp(startDate.getTime()));
@@ -170,8 +171,9 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
                     + " SUM(CASE WHEN ae.lastupdated >= :since24h THEN 1L ELSE 0L END)" + " FROM AnalyzerError ae";
 
             Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
-            query.setParameter("unack", AnalyzerError.ErrorStatus.UNACKNOWLEDGED);
-            query.setParameter("crit", AnalyzerError.Severity.CRITICAL);
+            // Use .name() to avoid PostgreSQL varchar/bytea type mismatch
+            query.setParameter("unack", AnalyzerError.ErrorStatus.UNACKNOWLEDGED.name());
+            query.setParameter("crit", AnalyzerError.Severity.CRITICAL.name());
             query.setParameter("since24h",
                     new java.sql.Timestamp(System.currentTimeMillis() - (24L * 60L * 60L * 1000L)));
 

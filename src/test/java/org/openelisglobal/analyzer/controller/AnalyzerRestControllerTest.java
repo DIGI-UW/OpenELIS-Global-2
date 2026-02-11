@@ -240,10 +240,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
         analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
 
-        // Act & Assert: POST delete endpoint should soft delete analyzer
+        // Act & Assert: POST delete endpoint returns 200 with deletion result
+        // (fresh analyzer has no recent results → hard delete → 200 with message)
         mockMvc.perform(
                 post("/rest/analyzer/analyzers/" + analyzerId + "/delete").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk()).andExpect(jsonPath("$.deleted").value(true));
     }
 
     /**

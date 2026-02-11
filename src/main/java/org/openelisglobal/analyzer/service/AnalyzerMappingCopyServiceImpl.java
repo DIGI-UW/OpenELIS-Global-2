@@ -50,7 +50,8 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
         List<AnalyzerFieldMapping> sourceMappings = analyzerFieldMappingDAO
                 .findActiveMappingsByAnalyzerId(sourceAnalyzerId);
         if (sourceMappings == null || sourceMappings.isEmpty()) {
-            throw new LIMSRuntimeException("Source analyzer has no active mappings to copy");
+            throw new LIMSRuntimeException("Source analyzer has no active mappings to copy",
+                    new IllegalArgumentException("Source analyzer has no active mappings to copy"));
         }
 
         // Get target mappings (for conflict detection)
