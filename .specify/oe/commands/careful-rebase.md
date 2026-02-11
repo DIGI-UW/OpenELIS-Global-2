@@ -94,37 +94,118 @@ If there are merge commits on the branch (detect via
 - Recommend `--preserve-merges` by default
 - Ask the user whether to preserve merges or linearize history
 
-### 3) Identify likely conflict hotspots
+### 3) Identify likely conflict hotspots AND base-only improvements
 
-Estimate conflict risk by overlapping touched files since the fork-point:
+Classify every changed file into one of four categories:
 
-- Our files: `git diff --name-only <FORK_SHA>..HEAD`
-- Their files: `git diff --name-only <FORK_SHA>..<base>`
-- Hotspots: intersection of those two lists
+```bash
+OUR_FILES=$(git diff --name-only <FORK_SHA>..HEAD)
+THEIR_FILES=$(git diff --name-only <FORK_SHA>..<base>)
+```
 
-Report:
+| Category                     | Definition                                   | Rebase risk                                                               |
+| ---------------------------- | -------------------------------------------- | ------------------------------------------------------------------------- |
+| **Both modified** (hotspots) | File in both `OUR_FILES` and `THEIR_FILES`   | HIGH — will likely conflict                                               |
+| **Base-only improvements**   | File in `THEIR_FILES` but NOT in `OUR_FILES` | MEDIUM — should auto-merge, but context shifts can cause silent reversion |
+| **Our-only changes**         | File in `OUR_FILES` but NOT in `THEIR_FILES` | LOW — should replay cleanly                                               |
+| **Untouched**                | Neither                                      | NONE                                                                      |
+
+#### 3a) Report hotspots (both-modified files)
 
 - Count of hotspot files
 - The list of hotspot file paths (grouped by extension/area if helpful)
 
-Important: Call out any “special” hotspots (examples):
+Important: Call out any "special" hotspots (examples):
 
 - Lockfiles (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`)
 - Localization JSON (`frontend/src/languages/*.json`)
 - Submodule pointer changes (e.g., `plugins` as a submodule)
 
+#### 3b) Report base-only improvements (CRITICAL — easy to lose)
+
+List **all files that the base branch modified but our branch did not touch**.
+These are improvements from upstream collaborators (code review fixes, new
+features, documentation, scripts, CI configs) that should survive the rebase
+unchanged.
+
+```bash
+# Files modified on base but NOT on our branch
+comm -23 <(echo "$THEIR_FILES" | sort) <(echo "$OUR_FILES" | sort)
+```
+
+**Why this matters:** During conflict resolution, if a base-only file conflicts
+due to context-line shifts near our changes, the agent may default to "take
+ours" — which silently reverts the base's work. This is how harness scripts,
+shell configs, documentation, and non-Java files get lost. The user MUST be
+aware of these files so they can verify they survived after the rebase.
+
+Group base-only improvements by area and highlight:
+
+- Shell scripts (`*.sh`)
+- CI/CD configs (`.github/`, `Dockerfile`, `docker-compose*.yml`)
+- Documentation (`.md`, `.specify/`)
+- Config files (`.xml`, `.yml`, `.json` outside `src/`)
+- Any file type not covered by `mvn compile` or `mvn test`
+
+**Present this list to the user explicitly** — do not bury it in verbose output.
+
+#### Pre-rebase i18n duplicate key scan (MANDATORY)
+
+Before rebasing, **always** scan all localization JSON files (whether or not
+they appear as hotspots) for pre-existing duplicate keys:
+
+```python
+python3 -c "
+import json, collections, sys
+errors = False
+for f in ['frontend/src/languages/en.json', 'frontend/src/languages/fr.json']:
+    try:
+        pairs = json.loads(open(f).read(), object_pairs_hook=lambda p: p)
+        dupes = {k: c for k, c in collections.Counter(k for k,v in pairs).items() if c > 1}
+        if dupes:
+            print(f'{f}: {len(dupes)} duplicate keys found!')
+            errors = True
+        else:
+            print(f'{f}: clean')
+    except FileNotFoundError:
+        pass
+sys.exit(1 if errors else 0)
+"
+```
+
+If duplicates are found, **report them to the user and ask whether to
+deduplicate before or after the rebase**. Do NOT silently proceed — duplicate
+keys in JSON cause CI failures (the `i18n-check` workflow rejects them) and can
+mask data loss when `JSON.parse` silently takes the last value for each key.
+
 ### 4) Answer session (resolve ambiguities up-front)
 
-If hotspots exist (or if the user requests), run an “answer session”:
+If hotspots exist (or if the user requests), run an "answer session":
+
+#### 4a) Hotspot resolution preferences
 
 - Ask the user for **resolution preferences** for hotspot categories, e.g.:
-  - “If we hit a lockfile conflict, should we regenerate post-rebase rather than
-    hand-merge?”
-  - “For translation JSON conflicts, should we merge keys and then format?”
-  - “If a file is deleted on one side and modified on the other, do we keep the
-    file or accept deletion?”
+  - "If we hit a lockfile conflict, should we regenerate post-rebase rather than
+    hand-merge?"
+  - "For translation JSON conflicts, should we merge keys and then format?"
+  - "If a file is deleted on one side and modified on the other, do we keep the
+    file or accept deletion?"
 - For any single hotspot file that looks high-risk, ask:
-  - “Should we prefer our changes, their changes, or do a manual merge?”
+  - "Should we prefer our changes, their changes, or do a manual merge?"
+
+#### 4b) Base-only improvement protection policy (MANDATORY)
+
+For base-only improvements identified in Step 3b, establish a clear policy:
+
+- **Default policy: NEVER "take ours" for base-only files.** If a base-only file
+  shows up as a conflict, it means context lines shifted near our changes. The
+  correct resolution is almost always "take theirs" (the base version) since our
+  branch never intentionally modified the file.
+- Ask the user to confirm this default, or override for specific files.
+- **Explicitly list high-risk base-only files** (shell scripts, CI configs,
+  docs) and confirm: "These files were modified on the base branch but not on
+  ours. After the rebase, I will verify they match the base branch version
+  exactly."
 
 Record these decisions in the chat and apply them consistently if conflicts
 occur.
@@ -176,6 +257,86 @@ Always run these:
 - `git status`
 - `git log -n 10 --oneline --decorate`
 - `git range-diff <FORK_SHA>..<backup-branch> <BASE_SHA>..HEAD`
+
+#### Post-rebase i18n duplicate key check (MANDATORY)
+
+After the rebase completes (even if there were no conflicts on i18n files),
+**always** re-run the duplicate key scan on all localization JSON files:
+
+```python
+python3 -c "
+import json, collections, sys
+errors = False
+for f in ['frontend/src/languages/en.json', 'frontend/src/languages/fr.json']:
+    try:
+        pairs = json.loads(open(f).read(), object_pairs_hook=lambda p: p)
+        dupes = {k: c for k, c in collections.Counter(k for k,v in pairs).items() if c > 1}
+        if dupes:
+            print(f'{f}: {len(dupes)} duplicate keys!')
+            for k, c in sorted(dupes.items())[:10]:
+                print(f'  {k} ({c}x)')
+            if len(dupes) > 10:
+                print(f'  ... and {len(dupes) - 10} more')
+            errors = True
+        else:
+            print(f'{f}: clean ({len(pairs)} unique keys)')
+    except FileNotFoundError:
+        pass
+sys.exit(1 if errors else 0)
+"
+```
+
+If duplicates are found:
+
+1. Report the count and sample keys to the user
+2. Offer to auto-deduplicate (keep last occurrence per key, which matches
+   `JSON.parse` behavior — so no functional change)
+3. The dedup fix should be included in the rebased commit (amend) rather than as
+   a separate commit, since the duplicates are a merge artifact
+
+**Why this matters:** Git's text-based merge can cleanly auto-merge two sets of
+additions to a JSON file, producing valid JSON with duplicate keys. The merge
+succeeds with no conflicts, but the result has silent duplicates that break CI
+(`i18n-check` workflow) and can cause subtle bugs where the "wrong" translation
+wins depending on key order.
+
+#### Post-rebase regression scan (MANDATORY)
+
+After the rebase completes, verify that **base-only improvements survived**. For
+every file identified in Step 3b (base-only), confirm our rebased branch matches
+the base branch version:
+
+```bash
+# For each base-only file, check if our version matches the base
+BASE_ONLY_FILES=$(comm -23 <(git diff --name-only <FORK_SHA>..<base> | sort) \
+                           <(git diff --name-only <FORK_SHA>..<backup-branch> | sort))
+for f in $BASE_ONLY_FILES; do
+  if ! git diff --quiet <base> HEAD -- "$f" 2>/dev/null; then
+    echo "REGRESSION: $f differs from base branch!"
+  fi
+done
+```
+
+If any regressions are found:
+
+1. **Stop and report** the affected files with a side-by-side summary
+2. For each regression, show what the base branch has vs what our branch has
+3. Ask the user whether to restore from base (`git checkout <base> -- <file>`)
+   or keep the current version
+4. **Do not proceed to push** until all regressions are resolved
+
+Additionally, scan for **unintended net deletions** across ALL files (not just
+base-only). This catches cases where conflict resolution on hotspot files
+accidentally dropped content:
+
+```bash
+git diff <base>..HEAD --numstat | awk '$2 > $1 && $1 != "-" {
+  printf "NET DELETION: -%d lines in %s\n", $2 - $1, $3
+}'
+```
+
+For each file with net deletions, verify the deletions are intentional (e.g.,
+removing a deleted entity) rather than accidental (reverting an improvement).
 
 Then run validation level:
 
