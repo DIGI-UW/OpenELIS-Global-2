@@ -4,6 +4,11 @@ import ca.uhn.fhir.model.api.TemporalPrecisionEnum;
 import ca.uhn.fhir.parser.DataFormatException;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.exceptions.FhirClientConnectionException;
+import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
+import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -1734,38 +1739,126 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
     @Override
     public Provider transformToProviderForUpdate(Practitioner practitioner) {
-        String idPart = practitioner.getIdPart();
-        Provider provider = providerService.getProviderByFhirId(UUID.fromString(idPart));
-        provider.setActive(practitioner.getActive());
-        provider.setFhirUuid(UUID.fromString(practitioner.getIdElement().getIdPart()));
 
-        Person person = personService.getPersonByLastName(provider.getPerson().getLastName());
-        addHumanNameToPerson(practitioner.getNameFirstRep(), person);
-        addTelecomToPerson(practitioner.getTelecom(), person);
-        person.setSysUserId("1");
-        Person savedPerson = personService.save(person);
+        String method = "transformToProviderForUpdate";
+        LogEvent.logDebug(this.getClass().getSimpleName(), method, "Transforming Practitioner to Provider for UPDATE");
 
-        provider.setPerson(savedPerson);
+        try {
 
-        return provider;
+            if (practitioner == null || !practitioner.hasId()) {
+
+                LogEvent.logError(this.getClass().getSimpleName(), method, "Practitioner or ID is null");
+
+                throw new InvalidRequestException("Practitioner ID must be provided for update");
+            }
+
+            String idPart = practitioner.getIdElement().getIdPart();
+
+            UUID uuid;
+            try {
+                uuid = UUID.fromString(idPart);
+            } catch (IllegalArgumentException e) {
+
+                LogEvent.logError(this.getClass().getSimpleName(), method, "Invalid UUID format: " + idPart);
+
+                throw new UnprocessableEntityException("Invalid Practitioner UUID format");
+            }
+
+            Provider provider = providerService.getProviderByFhirId(uuid);
+
+            if (provider == null) {
+
+                LogEvent.logError(this.getClass().getSimpleName(), method, "Provider not found for UUID: " + idPart);
+
+                throw new ResourceNotFoundException("Practitioner with ID " + idPart + " not found");
+            }
+
+            provider.setActive(practitioner.getActive());
+            provider.setFhirUuid(uuid);
+
+            if (provider.getPerson() == null) {
+
+                LogEvent.logError(this.getClass().getSimpleName(), method, "Provider has no associated Person");
+
+                throw new InternalErrorException("Provider missing associated Person record");
+            }
+
+            Person person = provider.getPerson();
+
+            addHumanNameToPerson(practitioner.getNameFirstRep(), person);
+            addTelecomToPerson(practitioner.getTelecom(), person);
+
+            person.setSysUserId("1");
+
+            Person savedPerson = personService.save(person);
+            provider.setPerson(savedPerson);
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), method,
+                    "Successfully transformed Practitioner for update with UUID: " + idPart);
+
+            return provider;
+
+        } catch (BaseServerResponseException e) {
+            throw e;
+        } catch (Exception e) {
+
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "Unexpected error during transformation: " + e.getMessage());
+
+            throw new InternalErrorException("Unexpected error transforming Practitioner for update", e);
+        }
     }
 
     @Override
     public Provider transformToProviderForPersistance(Practitioner practitioner) {
 
-        Person person = new Person();
-        addHumanNameToPerson(practitioner.getNameFirstRep(), person);
-        addTelecomToPerson(practitioner.getTelecom(), person);
-        person.setSysUserId("1");
+        String method = "transformToProviderForPersistance";
+        LogEvent.logDebug(this.getClass().getSimpleName(), method, "Transforming Practitioner to Provider for CREATE");
 
-        Person savedPerson = personService.save(person);
+        try {
 
-        Provider provider = new Provider();
-        provider.setActive(practitioner.getActive());
-        provider.setFhirUuid(UUID.randomUUID());
+            if (practitioner == null) {
 
-        provider.setPerson(savedPerson);
-        return provider;
+                LogEvent.logError(this.getClass().getSimpleName(), method, "Practitioner resource is null");
+
+                throw new InvalidRequestException("Practitioner resource cannot be null");
+            }
+
+            Person person = new Person();
+
+            if (!practitioner.hasName()) {
+
+                LogEvent.logError(this.getClass().getSimpleName(), method, "Practitioner missing name");
+
+                throw new UnprocessableEntityException("Practitioner must contain at least one name");
+            }
+
+            addHumanNameToPerson(practitioner.getNameFirstRep(), person);
+            addTelecomToPerson(practitioner.getTelecom(), person);
+
+            person.setSysUserId("1");
+
+            Person savedPerson = personService.save(person);
+
+            Provider provider = new Provider();
+            provider.setActive(practitioner.getActive());
+            provider.setFhirUuid(UUID.randomUUID());
+            provider.setPerson(savedPerson);
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), method,
+                    "Successfully transformed Practitioner for persistence. Generated UUID: " + provider.getFhirUuid());
+
+            return provider;
+
+        } catch (BaseServerResponseException e) {
+            throw e;
+        } catch (Exception e) {
+
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "Unexpected error during CREATE transformation: " + e.getMessage());
+
+            throw new InternalErrorException("Unexpected error transforming Practitioner for persistence", e);
+        }
     }
 
     private void handleException(FhirClientConnectionException e, IPatientUpdate.PatientUpdateStatus status)

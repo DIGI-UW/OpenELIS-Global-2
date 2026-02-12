@@ -46,58 +46,115 @@ public class InternalFhirApi {
     }
 
     @GetMapping("/**")
-    public ResponseEntity<Object> recieveGetFhirRequests(HttpServletRequest request) throws IOException {
+    public ResponseEntity<Object> recieveGetFhirRequests(HttpServletRequest request) {
 
-        String requestUri = request.getRequestURI();
-        String contextPath = request.getContextPath();
-        String path = requestUri.substring(contextPath.length());
-        String fhirPath = path.replaceFirst("/fhir", "");
+        String method = "recieveGetFhirRequests";
 
-        StringBuilder targetUrl = new StringBuilder(fhirConfig.getLocalFhirStorePath());
-        if (!fhirConfig.getLocalFhirStorePath().endsWith("/") && !fhirPath.startsWith("/")) {
-            targetUrl.append("/");
-        }
-        targetUrl.append(fhirPath);
+        try {
 
-        if (request.getQueryString() != null) {
-            targetUrl.append("?").append(request.getQueryString());
-        }
+            String requestUri = request.getRequestURI();
+            String contextPath = request.getContextPath();
+            String path = requestUri.substring(contextPath.length());
+            String fhirPath = path.replaceFirst("/fhir", "");
 
-        HttpGet httpGet = new HttpGet(targetUrl.toString());
+            LogEvent.logDebug(this.getClass().getSimpleName(), method,
+                    "Received GET FHIR request for path: " + fhirPath);
 
-        String username = fhirConfig.getUsername();
-        String password = fhirConfig.getPassword();
-        if (username != null && !username.isBlank()) {
-            String encoding = Base64.getEncoder().encodeToString((username + ":" + password).getBytes());
-            httpGet.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + encoding);
-        }
+            StringBuilder targetUrl = new StringBuilder(fhirConfig.getLocalFhirStorePath());
 
-        httpGet.setHeader(HttpHeaders.ACCEPT, "application/json");
+            if (!fhirConfig.getLocalFhirStorePath().endsWith("/") && !fhirPath.startsWith("/")) {
+                targetUrl.append("/");
+            }
+            targetUrl.append(fhirPath);
 
-        try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+            if (request.getQueryString() != null) {
+                targetUrl.append("?").append(request.getQueryString());
+            }
 
-            String body = EntityUtils.toString(response.getEntity());
+            HttpGet httpGet = new HttpGet(targetUrl.toString());
+            String username = fhirConfig.getUsername();
+            String password = fhirConfig.getPassword();
 
-            ObjectMapper mapper = new ObjectMapper();
-            Object json = mapper.readValue(body, Object.class);
+            if (username != null && !username.isBlank()) {
+                String encoding = Base64.getEncoder().encodeToString((username + ":" + password).getBytes());
+                httpGet.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + encoding);
+            }
 
-            return ResponseEntity.status(response.getStatusLine().getStatusCode())
-                    .contentType(MediaType.APPLICATION_JSON).body(json);
+            httpGet.setHeader(HttpHeaders.ACCEPT, "application/json");
+
+            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+
+                int statusCode = response.getStatusLine().getStatusCode();
+                String body = EntityUtils.toString(response.getEntity());
+
+                LogEvent.logDebug(this.getClass().getSimpleName(), method,
+                        "FHIR store responded with status: " + statusCode);
+
+                ObjectMapper mapper = new ObjectMapper();
+                Object json = mapper.readValue(body, Object.class);
+
+                return ResponseEntity.status(statusCode).contentType(MediaType.APPLICATION_JSON).body(json);
+            }
+
+        } catch (IOException e) {
+
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "I/O error while calling local FHIR store: " + e.getMessage());
+
+            return ResponseEntity.internalServerError().body("Error communicating with FHIR store");
+
+        } catch (Exception e) {
+
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "Unexpected error in GET FHIR request: " + e.getMessage());
+
+            return ResponseEntity.internalServerError().body("Unexpected server error");
         }
     }
 
     @PostMapping(value = "/**")
     public String receivePostFhirRequest(HttpServletRequest request) {
-        return "forward:" + request.getServletPath().replaceFirst("fhir", "fhir/facade") + request.getPathInfo() + "?"
-                + request.getQueryString();
+
+        String method = "receivePostFhirRequest";
+
+        LogEvent.logDebug(this.getClass().getSimpleName(), method, "Forwarding POST FHIR request");
+
+        String queryString = request.getQueryString() != null ? "?" + request.getQueryString() : "";
+
+        return "forward:" + request.getServletPath().replaceFirst("fhir", "fhir/facade")
+                + (request.getPathInfo() != null ? request.getPathInfo() : "") + queryString;
     }
 
     @PutMapping(value = "/{resourceType}/**")
     public ResponseEntity<String> receiveFhirRequest(@PathVariable("resourceType") ResourceType resourceType) {
-        LogEvent.logDebug(this.getClass().getSimpleName(), "receiveFhirRequest",
-                "received notification for resource of type: " + resourceType);
-        fhirApiWorkflowService.processWorkflow(resourceType);
 
-        return ResponseEntity.ok("");
+        String method = "receiveFhirRequest";
+
+        try {
+
+            LogEvent.logDebug(this.getClass().getSimpleName(), method,
+                    "Received workflow notification for resource type: " + resourceType);
+
+            if (resourceType == null) {
+
+                LogEvent.logError(this.getClass().getSimpleName(), method, "ResourceType is null");
+
+                return ResponseEntity.badRequest().body("ResourceType must be provided");
+            }
+
+            fhirApiWorkflowService.processWorkflow(resourceType);
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), method,
+                    "Workflow successfully triggered for resource type: " + resourceType);
+
+            return ResponseEntity.ok("");
+
+        } catch (Exception e) {
+
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "Error processing workflow for resource type " + resourceType + ": " + e.getMessage());
+
+            return ResponseEntity.internalServerError().body("Error processing workflow");
+        }
     }
 }
