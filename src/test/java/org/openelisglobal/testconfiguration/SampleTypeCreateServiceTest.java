@@ -47,13 +47,15 @@ public class SampleTypeCreateServiceTest extends BaseWebContextSensitiveTest {
         localization.setFrench("Salut");
         localization.setEnglish("Hi!");
 
-        String sampleTypeDescription = "CI SampleType " + System.currentTimeMillis();
+        String uniqueSuffix = String.valueOf(System.currentTimeMillis());
+        String sampleTypeDescription = "CI SampleType " + uniqueSuffix;
+        String sampleTypeAbbrev = "CI" + uniqueSuffix.substring(uniqueSuffix.length() - 6);
 
         TypeOfSample typeOfSample = new TypeOfSample();
         typeOfSample.setDescription(sampleTypeDescription);
         typeOfSample.setDomain("H");
         typeOfSample.setLastupdated(Timestamp.valueOf("2024-11-01 12:00:00"));
-        typeOfSample.setLocalAbbreviation("Fluids");
+        typeOfSample.setLocalAbbreviation(sampleTypeAbbrev);
 
         SystemModule workPlanModule = new SystemModule();
         workPlanModule.setSystemModuleName("sample_type workPlan");
