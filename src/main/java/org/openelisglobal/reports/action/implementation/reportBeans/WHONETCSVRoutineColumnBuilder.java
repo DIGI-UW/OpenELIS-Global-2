@@ -46,12 +46,14 @@ public class WHONETCSVRoutineColumnBuilder {
         private String organism;
         private String result;
         private String method;
+        private String latitude;
+        private String longitude;
 
         private String delimeter = "\t";
 
         public WHONetRow(String nationalId, String firstName, String lastName, String sex, String birthdate,
                 String enteredDate, String labNo, String collectionDate, String sampleType, String antibiotic,
-                String organism, String result, String method) {
+                String organism, String result, String method, String latitude, String longitude) {
             this.nationalId = nationalId;
             this.firstName = firstName;
             this.lastName = lastName;
@@ -65,11 +67,13 @@ public class WHONETCSVRoutineColumnBuilder {
             this.organism = organism;
             this.result = result;
             this.method = method;
+            this.latitude = latitude;
+            this.longitude = longitude;
         }
 
         public String getRow() {
             List<String> rowValues = Arrays.asList(nationalId, firstName, lastName, sex, birthdate, enteredDate, labNo,
-                    collectionDate, sampleType, antibiotic, organism, result, method);
+                    collectionDate, sampleType, antibiotic, organism, result, method, latitude, longitude);
             return String.join(delimeter, rowValues);
         }
     }
@@ -107,10 +111,9 @@ public class WHONETCSVRoutineColumnBuilder {
      * @return one string with all names.
      */
     public String getColumnNamesLine() {
-        return new StringBuilder().append(
-                new WHONetRow("NATIONAL ID", "FIRST NAME", "LAST NAME", "SEX", "BIRTHDATE", "DATE ENTERED", "LABNO",
-                        "DATE COLLECTED", "SPECIMEN TYPE", "ANTIBIOTIC", "ORGANISM", "RESULT", "METHOD").getRow())
-                .append(eol).toString();
+        return new StringBuilder().append(new WHONetRow("NATIONAL ID", "FIRST NAME", "LAST NAME", "SEX", "BIRTHDATE",
+                "DATE ENTERED", "LABNO", "DATE COLLECTED", "SPECIMEN TYPE", "ANTIBIOTIC", "ORGANISM", "RESULT",
+                "METHOD", "LATITUDE", "LONGITUDE").getRow()).append(eol).toString();
     }
 
     /**

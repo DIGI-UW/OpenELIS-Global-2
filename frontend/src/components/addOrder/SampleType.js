@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   Checkbox,
   FormGroup,
@@ -24,6 +24,7 @@ import CustomTextInput from "../common/CustomTextInput";
 import OrderReferralRequest from "../addOrder/OrderReferralRequest";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import StorageLocationSelector from "../storage/StorageLocationSelector";
+import GpsCoordinatesCapture from "./GpsCoordinatesCapture";
 
 const SampleType = (props) => {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -114,6 +115,21 @@ const SampleType = (props) => {
       collector: value,
     });
   }
+
+  const handleGpsCoordinatesChange = useCallback((gpsData) => {
+    const updatedSampleXml = {
+      ...sampleXml,
+      gpsLatitude: gpsData.gpsLatitude,
+      gpsLongitude: gpsData.gpsLongitude,
+      gpsAccuracy: gpsData.gpsAccuracy,
+      gpsCaptureMethod: gpsData.gpsCaptureMethod,
+    };
+    setSampleXml(updatedSampleXml);
+    props.sampleTypeObject({
+      sampleXML: updatedSampleXml,
+      sampleObjectIndex: index,
+    });
+  }, [sampleXml, props.sampleTypeObject, index]);
 
   function handleStorageLocationChange(location, positionCoordinate) {
     setSampleXml({
@@ -503,7 +519,6 @@ const SampleType = (props) => {
             id={"rejectedReasonId_" + index}
             options={rejectSampleReasons}
             disabled={rejectionReasonsDisabled}
-            defaultSelect={defaultSelect}
             value={sampleXml.rejectionReason}
             onChange={(e) => handleReasons(e)}
           />
@@ -567,6 +582,17 @@ const SampleType = (props) => {
             className="inputText"
           />
         </div>
+
+        {/* GPS Coordinates Capture - Collapsible section for collection location */}
+        {configurationProperties.GPS_ENABLED === "true" && (
+          <GpsCoordinatesCapture
+            index={index}
+            sampleXml={sampleXml}
+            onChange={handleGpsCoordinatesChange}
+            disabled={sampleXml.rejected}
+          />
+        )}
+
         {/* Storage Location Selector - INT-001: Integration point */}
         {/* NOTE: In order entry workflow, SampleItems are created after Sample is saved.
             Storage assignment operates at SampleItem level, so actual assignment happens

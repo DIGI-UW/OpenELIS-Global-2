@@ -1,6 +1,7 @@
 package org.openelisglobal.barcode.labeltype;
 
 import java.util.ArrayList;
+
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.barcode.LabelField;
 import org.openelisglobal.common.log.LogEvent;
@@ -161,6 +162,13 @@ public class OrderLabel extends Label {
                 StringUtils.substring(referringFacility, 0, 20), 8);
         siteField.setDisplayFieldName(true);
         aboveFields.add(siteField);
+
+        if (sample != null && sample.hasGpsCoordinates()) {
+            LabelField gpsField = new LabelField(MessageUtil.getMessage("barcode.label.info.gps"),
+                    sample.getGpsCoordinatesDisplay(), 12);
+            gpsField.setDisplayFieldName(true);
+            aboveFields.add(gpsField);
+        }
 
         // adding bar code
         if (AccessionFormat.ALPHANUM.toString()
