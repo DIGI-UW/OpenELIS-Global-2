@@ -280,7 +280,7 @@ button {
   position: fixed; /*or fixed*/
   top: 47px;
   right: 0px;
-  z-index: 9100; /* Must be higher than Carbon modals (9000) to appear on top */
+  z-index: 10001; /* Must be higher than all overlays (ReflexStyles: 10000, modals: 9999) */
 }
 
 .selectSampleType {

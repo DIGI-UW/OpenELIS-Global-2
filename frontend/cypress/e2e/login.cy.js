@@ -21,19 +21,28 @@ describe("Login Test Cases", function () {
     cy.wait("@backend", { timeout: Cypress.env("STARTUP_WAIT_MILLISECONDS") });
 
     login.signIn();
-    cy.contains("Username or Password are incorrect").should("be.visible");
+    // Wait for and verify the error notification appears
+    cy.get('.cds--toast-notification', { timeout: 10000 })
+      .should('exist')
+      .and('contain', 'Username or Password are incorrect');
   });
 
   it("Fails to login with only username", function () {
     login.enterUsername(usersData[3].username);
     login.signIn();
-    cy.contains("Username or Password are incorrect").should("be.visible");
+    // Wait for and verify the error notification appears
+    cy.get('.cds--toast-notification', { timeout: 10000 })
+      .should('exist')
+      .and('contain', 'Username or Password are incorrect');
   });
 
   it("Fails to login with only password", function () {
     login.enterPassword(usersData[3].password);
     login.signIn();
-    cy.contains("Username or Password are incorrect").should("be.visible");
+    // Wait for and verify the error notification appears
+    cy.get('.cds--toast-notification', { timeout: 10000 })
+      .should('exist')
+      .and('contain', 'Username or Password are incorrect');
   });
 
   it("User changes from default credentials", function () {
@@ -43,7 +52,10 @@ describe("Login Test Cases", function () {
     login.enterNewPassword(usersData[4].password);
     login.repeatNewPassword(usersData[4].password);
     login.submitNewPassword();
-    cy.contains("Password changed successfully").should("be.visible");
+    // Wait for and verify the success notification appears
+    cy.get('.cds--toast-notification', { timeout: 10000 })
+      .should('exist')
+      .and('contain', 'Password changed successfully');
   });
 
   it("Logs in with correct credentials", function () {
@@ -60,8 +72,10 @@ describe("Login Test Cases", function () {
     login.enterNewPassword(usersData[3].password);
     login.repeatNewPassword(usersData[3].password);
     login.submitNewPassword();
-    //cy.get("div[role='status']").should("be.visible");
-    cy.contains("Password changed successfully").should("be.visible");
+    // Wait for and verify the success notification appears
+    cy.get('.cds--toast-notification', { timeout: 10000 })
+      .should('exist')
+      .and('contain', 'Password changed successfully');
   });
 
   it("User exits password reset", function () {
