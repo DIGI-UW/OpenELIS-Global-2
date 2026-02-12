@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Consolidated performance indexes across all analyzer tables -->
+
+    <changeSet id="011-006-01-create-all-indexes" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_analyzer_field_analyzer_id"/>
+            </not>
+        </preConditions>
+        <comment>Create performance indexes for all analyzer tables</comment>
+
+        <!-- analyzer_field indexes -->
+        <createIndex indexName="idx_analyzer_field_analyzer_id" tableName="analyzer_field">
+            <column name="analyzer_id"/>
+        </createIndex>
+        <createIndex indexName="idx_analyzer_field_is_active" tableName="analyzer_field">
+            <column name="is_active"/>
+        </createIndex>
+
+        <!-- analyzer_field_mapping indexes -->
+        <createIndex indexName="idx_field_mapping_analyzer_field_id" tableName="analyzer_field_mapping">
+            <column name="analyzer_field_id"/>
+        </createIndex>
+        <createIndex indexName="idx_field_mapping_is_active" tableName="analyzer_field_mapping">
+            <column name="is_active"/>
+        </createIndex>
+        <createIndex indexName="idx_field_mapping_openelis_field" tableName="analyzer_field_mapping">
+            <column name="openelis_field_id"/>
+            <column name="openelis_field_type"/>
+        </createIndex>
+        <createIndex indexName="idx_analyzer_field_mapping_analyzer_id" tableName="analyzer_field_mapping">
+            <column name="analyzer_id"/>
+        </createIndex>
+
+        <!-- qualitative_result_mapping indexes -->
+        <createIndex indexName="idx_qualitative_mapping_analyzer_field_id" tableName="qualitative_result_mapping">
+            <column name="analyzer_field_id"/>
+        </createIndex>
+
+        <!-- unit_mapping indexes -->
+        <createIndex indexName="idx_unit_mapping_analyzer_field_id" tableName="unit_mapping">
+            <column name="analyzer_field_id"/>
+        </createIndex>
+
+        <!-- analyzer_error indexes -->
+        <createIndex indexName="idx_analyzer_error_analyzer_id" tableName="analyzer_error">
+            <column name="analyzer_id"/>
+        </createIndex>
+        <createIndex indexName="idx_analyzer_error_status" tableName="analyzer_error">
+            <column name="status"/>
+        </createIndex>
+        <createIndex indexName="idx_analyzer_error_error_type" tableName="analyzer_error">
+            <column name="error_type"/>
+        </createIndex>
+        <createIndex indexName="idx_analyzer_error_last_updated" tableName="analyzer_error">
+            <column name="last_updated"/>
+        </createIndex>
+        <createIndex indexName="idx_analyzer_error_severity" tableName="analyzer_error">
+            <column name="severity"/>
+        </createIndex>
+
+        <!-- validation_rule_configuration indexes -->
+        <createIndex indexName="idx_validation_rule_custom_field_type_id" tableName="validation_rule_configuration">
+            <column name="custom_field_type_id"/>
+        </createIndex>
+
+        <!-- serial_port_configuration indexes -->
+        <createIndex indexName="idx_serial_port_config_analyzer" tableName="serial_port_configuration">
+            <column name="analyzer_id"/>
+        </createIndex>
+        <createIndex indexName="idx_serial_port_config_active" tableName="serial_port_configuration">
+            <column name="active"/>
+        </createIndex>
+
+        <!-- file_import_configuration indexes -->
+        <createIndex indexName="idx_file_import_config_analyzer" tableName="file_import_configuration">
+            <column name="analyzer_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_analyzer_field_analyzer_id" tableName="analyzer_field"/>
+            <dropIndex indexName="idx_analyzer_field_is_active" tableName="analyzer_field"/>
+            <dropIndex indexName="idx_field_mapping_analyzer_field_id" tableName="analyzer_field_mapping"/>
+            <dropIndex indexName="idx_field_mapping_is_active" tableName="analyzer_field_mapping"/>
+            <dropIndex indexName="idx_field_mapping_openelis_field" tableName="analyzer_field_mapping"/>
+            <dropIndex indexName="idx_analyzer_field_mapping_analyzer_id" tableName="analyzer_field_mapping"/>
+            <dropIndex indexName="idx_qualitative_mapping_analyzer_field_id" tableName="qualitative_result_mapping"/>
+            <dropIndex indexName="idx_unit_mapping_analyzer_field_id" tableName="unit_mapping"/>
+            <dropIndex indexName="idx_analyzer_error_analyzer_id" tableName="analyzer_error"/>
+            <dropIndex indexName="idx_analyzer_error_status" tableName="analyzer_error"/>
+            <dropIndex indexName="idx_analyzer_error_error_type" tableName="analyzer_error"/>
+            <dropIndex indexName="idx_analyzer_error_last_updated" tableName="analyzer_error"/>
+            <dropIndex indexName="idx_analyzer_error_severity" tableName="analyzer_error"/>
+            <dropIndex indexName="idx_validation_rule_custom_field_type_id" tableName="validation_rule_configuration"/>
+            <dropIndex indexName="idx_serial_port_config_analyzer" tableName="serial_port_configuration"/>
+            <dropIndex indexName="idx_serial_port_config_active" tableName="serial_port_configuration"/>
+            <dropIndex indexName="idx_file_import_config_analyzer" tableName="file_import_configuration"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
