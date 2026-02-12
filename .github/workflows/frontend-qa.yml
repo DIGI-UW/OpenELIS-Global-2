@@ -171,18 +171,14 @@ jobs:
           # Uses grep/sed instead of PyYAML to avoid non-stdlib dependency.
           ASSIGNED=$(grep -E '^\s+cypress/e2e/' ../.github/workflows/frontend-qa.yml \
             | sed 's/^[[:space:]]*//' | sed 's/,$//' | sort -u)
-
           # Find all spec files on disk
           ALL=$(find cypress/e2e -name '*.cy.js' -type f | sort)
-
           # Compute remaining = ALL - ASSIGNED
           REMAINING=""
           while IFS= read -r spec; do
             echo "$ASSIGNED" | grep -qxF "$spec" || REMAINING="${REMAINING:+$REMAINING,}$spec"
           done <<< "$ALL"
-
           echo "specs=$REMAINING" >> "$GITHUB_OUTPUT"
-
           # Log for debugging
           TOTAL=$(echo "$ALL" | wc -l)
           ASSIGNED_COUNT=$(echo "$ASSIGNED" | wc -l)
