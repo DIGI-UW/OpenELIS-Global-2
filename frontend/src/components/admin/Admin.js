@@ -70,7 +70,7 @@ import MethodCreate from "./testManagementConfigMenu/MethodCreate.js";
 import TestSectionManagement from "./testManagementConfigMenu/TestSectionManagement.js";
 import TestSectionCreate from "./testManagementConfigMenu/TestSectionCreate.js";
 import TestSectionOrder from "./testManagementConfigMenu/TestSectionOrder.js";
-import SampleTypeManagement from "./testManagementConfigMenu/SampleTypeManagement.js";
+import SampleTypeManagement from "./sampleTypeManagement/SampleTypeManagement.js";
 import TestSectionTestAssign from "./testManagementConfigMenu/TestSectionTestAssign.js";
 import SampleTypeOrder from "./testManagementConfigMenu/SampleTypeOrder.js";
 import SampleTypeCreate from "./testManagementConfigMenu/SampleTypeCreate.js";
