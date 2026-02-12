@@ -1,7 +1,3 @@
-import { useContext, useEffect, useRef, useState } from "react";
-import { FormattedMessage, useIntl } from "react-intl";
-import { NotificationKinds } from "../common/CustomNotification";
-import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import {
   Button,
   InlineNotification,
@@ -9,15 +5,19 @@ import {
   Loading,
   Tag,
   TextInput,
-  Toggle
+  Toggle,
 } from "@carbon/react";
 import {
   CheckmarkFilled,
   Crossroads,
   ErrorFilled,
   Location,
-  LocationFilled
+  LocationFilled,
 } from "@carbon/react/icons";
+import { useContext, useEffect, useRef, useState } from "react";
+import { FormattedMessage, useIntl } from "react-intl";
+import { NotificationKinds } from "../common/CustomNotification";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 
 /**
  * Modern GPS Coordinates Capture Component
@@ -35,8 +35,12 @@ const GpsCoordinatesCapture = ({
 
   // Get GPS configuration from standard configuration context
   const gpsConfig = {
-    requiredAccuracyMeters: parseInt(configurationProperties.GPS_ACCURACY_METERS || "100"),
-    timeoutSeconds: parseInt(configurationProperties.GPS_TIMEOUT_SECONDS || "10"),
+    requiredAccuracyMeters: parseInt(
+      configurationProperties.GPS_ACCURACY_METERS || "100",
+    ),
+    timeoutSeconds: parseInt(
+      configurationProperties.GPS_TIMEOUT_SECONDS || "10",
+    ),
   };
 
   const isMounted = useRef(true);
@@ -49,7 +53,7 @@ const GpsCoordinatesCapture = ({
     sampleXml?.gpsCaptureMethod || "",
   );
   const [showManualEntry, setShowManualEntry] = useState(
-    !!(sampleXml?.gpsLatitude || sampleXml?.gpsLongitude)
+    !!(sampleXml?.gpsLatitude || sampleXml?.gpsLongitude),
   );
 
   useEffect(() => {
@@ -208,19 +212,23 @@ const GpsCoordinatesCapture = ({
             <Location size={20} color="#525252" />
           )}
           <div style={{ flex: 1 }}>
-            <h4 style={{
-              margin: 0,
-              fontSize: "1rem",
-              fontWeight: "600",
-              color: "#161616"
-            }}>
+            <h4
+              style={{
+                margin: 0,
+                fontSize: "1rem",
+                fontWeight: "600",
+                color: "#161616",
+              }}
+            >
               <FormattedMessage id="gps.section.title" />
             </h4>
-            <p style={{
-              margin: "0.25rem 0 0 0",
-              fontSize: "0.875rem",
-              color: "#6f6f6f"
-            }}>
+            <p
+              style={{
+                margin: "0.25rem 0 0 0",
+                fontSize: "0.875rem",
+                color: "#6f6f6f",
+              }}
+            >
               <FormattedMessage id="gps.section.description" />
             </p>
           </div>
@@ -237,23 +245,39 @@ const GpsCoordinatesCapture = ({
 
         {/* Current Coordinates Display */}
         {hasValidCoordinates() && (
-          <div style={{
-            padding: "0.75rem",
-            backgroundColor: "#e7f6f1",
-            border: "1px solid #24a148",
-            borderRadius: "4px",
-            marginBottom: "1rem",
-          }}>
+          <div
+            style={{
+              padding: "0.75rem",
+              backgroundColor: "#e7f6f1",
+              border: "1px solid #24a148",
+              borderRadius: "4px",
+              marginBottom: "1rem",
+            }}
+          >
             <div style={{ fontSize: "0.875rem", color: "#161616" }}>
               <strong>
                 <FormattedMessage id="gps.coordinates.current" />:
-              </strong> {latitude}, {longitude}
-              {accuracy && <span style={{ color: "#6f6f6f" }}> (±{accuracy}m)</span>}
+              </strong>{" "}
+              {latitude}, {longitude}
+              {accuracy && (
+                <span style={{ color: "#6f6f6f" }}> (±{accuracy}m)</span>
+              )}
             </div>
-            <div style={{ fontSize: "0.75rem", color: "#6f6f6f", marginTop: "0.25rem" }}>
+            <div
+              style={{
+                fontSize: "0.75rem",
+                color: "#6f6f6f",
+                marginTop: "0.25rem",
+              }}
+            >
               <FormattedMessage
                 id="gps.coordinates.captured.via"
-                values={{ method: captureMethod === "AUTO" ? "browser location" : "manual entry" }}
+                values={{
+                  method:
+                    captureMethod === "AUTO"
+                      ? "browser location"
+                      : "manual entry",
+                }}
               />
             </div>
           </div>
@@ -317,25 +341,31 @@ const GpsCoordinatesCapture = ({
 
         {/* Manual Entry Fields */}
         {showManualEntry && (
-          <div style={{
-            padding: "1rem",
-            border: "1px solid #e0e0e0",
-            borderRadius: "4px",
-            backgroundColor: "#f4f4f4",
-            marginBottom: "1rem"
-          }}>
-            <h5 style={{
-              margin: "0 0 0.75rem 0",
-              fontSize: "0.875rem",
-              fontWeight: "600"
-            }}>
+          <div
+            style={{
+              padding: "1rem",
+              border: "1px solid #e0e0e0",
+              borderRadius: "4px",
+              backgroundColor: "#f4f4f4",
+              marginBottom: "1rem",
+            }}
+          >
+            <h5
+              style={{
+                margin: "0 0 0.75rem 0",
+                fontSize: "0.875rem",
+                fontWeight: "600",
+              }}
+            >
               <FormattedMessage id="gps.manual.entry.title" />
             </h5>
             <div style={{ display: "flex", gap: "1rem" }}>
               <TextInput
                 id={`gps-latitude-${index}`}
                 labelText={intl.formatMessage({ id: "gps.latitude.label" })}
-                placeholder={intl.formatMessage({ id: "gps.latitude.placeholder" })}
+                placeholder={intl.formatMessage({
+                  id: "gps.latitude.placeholder",
+                })}
                 value={latitude}
                 onChange={handleLatitudeChange}
                 disabled={disabled}
@@ -347,12 +377,16 @@ const GpsCoordinatesCapture = ({
               <TextInput
                 id={`gps-longitude-${index}`}
                 labelText={intl.formatMessage({ id: "gps.longitude.label" })}
-                placeholder={intl.formatMessage({ id: "gps.longitude.placeholder" })}
+                placeholder={intl.formatMessage({
+                  id: "gps.longitude.placeholder",
+                })}
                 value={longitude}
                 onChange={handleLongitudeChange}
                 disabled={disabled}
                 invalid={longitude ? !isValidLongitude(longitude) : false}
-                invalidText={intl.formatMessage({ id: "gps.longitude.invalid" })}
+                invalidText={intl.formatMessage({
+                  id: "gps.longitude.invalid",
+                })}
                 helperText={intl.formatMessage({ id: "gps.longitude.helper" })}
               />
             </div>

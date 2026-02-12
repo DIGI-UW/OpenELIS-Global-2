@@ -6,7 +6,7 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!-- GPS Coordinates Capture for Order Entry -->
-    <changeSet id="gps-coordinates-001-add-sample-gps-fields" author="gps-coordinates-feature">
+    <changeSet id="OGC-300-2026-02-11-1" author="mherman22">
         <preConditions onFail="MARK_RAN">
             <not>
                 <columnExists tableName="sample" columnName="gps_latitude"/>
@@ -103,7 +103,7 @@
         </rollback>
     </changeSet>
 
-        <changeSet author="gps-coordinates-feature" id="1">
+        <changeSet author="mherman22" id="OGC-300-2026-02-11-2">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'gpsCoordinatesEnabled'; </sqlCheck>
         </preConditions>
@@ -115,15 +115,15 @@
             <column name="description" value="If true display GPS coordinate fields for collection location on order entry" />
             <column name="value" value="false" />
             <column name="encrypted" value="false" />
-            <column name="domain_id" value="10" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'sampleEntryConfig')" />
             <column name="value_type" value="boolean" />
-            <column name="instructions_key" value="instructions.patient.gps" />
+            <column name="instruction_key" value="instructions.patient.gps" />
             <column name="group" value="0" />
-            <column name="tag" value="siteInfo.gpsCoordinatesEnabled" />
+<!--            <column name="tag" value="siteInfo.gpsEnabled" />-->
         </insert>
     </changeSet>
 
-    <changeSet author="gps-coordinates-feature" id="2">
+    <changeSet author="mherman22" id="OGC-300-2026-02-11-3">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'gpsRequiredAccuracyMeters'; </sqlCheck>
         </preConditions>
@@ -135,15 +135,15 @@
             <column name="description" value="Maximum acceptable GPS accuracy in meters (0 to disable accuracy checking)" />
             <column name="value" value="100" />
             <column name="encrypted" value="false" />
-            <column name="domain_id" value="10" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'sampleEntryConfig')" />
             <column name="value_type" value="text" />
-            <column name="instructions_key" value="instructions.patient.gps.accuracy" />
+            <column name="instruction_key" value="instructions.patient.gps.accuracy" />
             <column name="group" value="0" />
-            <column name="tag" value="siteInfo.gpsRequiredAccuracyMeters" />
+<!--            <column name="tag" value="siteInfo.gpsAccuracy" />-->
         </insert>
     </changeSet>
 
-    <changeSet author="gps-coordinates-feature" id="3">
+    <changeSet author="mherman22" id="OGC-300-2026-02-11-4">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'gpsTimeoutSeconds'; </sqlCheck>
         </preConditions>
@@ -155,11 +155,11 @@
             <column name="description" value="Timeout in seconds for GPS location requests" />
             <column name="value" value="10" />
             <column name="encrypted" value="false" />
-            <column name="domain_id" value="10" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'sampleEntryConfig')"/>
             <column name="value_type" value="text" />
-            <column name="instructions_key" value="instructions.patient.gps.timeout" />
+            <column name="instruction_key" value="instructions.patient.gps.timeout" />
             <column name="group" value="0" />
-            <column name="tag" value="siteInfo.gpsTimeoutSeconds" />
+<!--            <column name="tag" value="siteInfo.gpsTimeout" />-->
         </insert>
     </changeSet>
 
