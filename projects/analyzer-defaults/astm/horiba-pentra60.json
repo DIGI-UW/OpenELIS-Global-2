@@ -1,0 +1,75 @@
+{
+  "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "analyzer_name": "Horiba ABX Pentra 60 C+",
+  "manufacturer": "Horiba ABX",
+  "category": "HEMATOLOGY",
+  "protocol": { "name": "ASTM", "version": "LIS2-A2" },
+  "identifier_pattern": "ABX.*PENTRA.*60|PENTRA.*60",
+  "transport": ["RS-232"],
+  "transport_config": {
+    "RS-232": { "default_baud_rate": 9600 }
+  },
+  "default_test_mappings": [
+    {
+      "analyzer_code": "WBC",
+      "test_name_hint": "White Blood Cells",
+      "loinc": "6690-2",
+      "unit": "10^3/uL"
+    },
+    {
+      "analyzer_code": "RBC",
+      "test_name_hint": "Red Blood Cells",
+      "loinc": "789-8",
+      "unit": "10^6/uL"
+    },
+    {
+      "analyzer_code": "HGB",
+      "test_name_hint": "Hemoglobin",
+      "loinc": "718-7",
+      "unit": "g/dL"
+    },
+    {
+      "analyzer_code": "HCT",
+      "test_name_hint": "Hematocrit",
+      "loinc": "4544-3",
+      "unit": "%"
+    },
+    {
+      "analyzer_code": "PLT",
+      "test_name_hint": "Platelet Count",
+      "loinc": "777-3",
+      "unit": "10^3/uL"
+    },
+    {
+      "analyzer_code": "NEUT",
+      "test_name_hint": "Neutrophils",
+      "loinc": "751-8",
+      "unit": "%"
+    },
+    {
+      "analyzer_code": "LYMPH",
+      "test_name_hint": "Lymphocytes",
+      "loinc": "736-9",
+      "unit": "%"
+    },
+    {
+      "analyzer_code": "MONO",
+      "test_name_hint": "Monocytes",
+      "loinc": "742-7",
+      "unit": "%"
+    },
+    {
+      "analyzer_code": "EOS",
+      "test_name_hint": "Eosinophils",
+      "loinc": "711-2",
+      "unit": "%"
+    },
+    {
+      "analyzer_code": "BASO",
+      "test_name_hint": "Basophils",
+      "loinc": "704-7",
+      "unit": "%"
+    }
+  ],
+  "notes": "Requires USB-to-serial adapter + ASTM-HTTP Bridge for RS232-to-TCP conversion. 20 fields total (5-part differential). Confirmed ASTM E-1381/E-1394 support."
+}

@@ -1,0 +1,56 @@
+# OpenELIS Analyzer Bridge Configuration
+# Reference: https://github.com/DIGI-UW/openelis-analyzer-bridge
+# Feature: 011-madagascar-analyzer-integration
+
+openelis:
+  url: https://oe.openelis.org:8443/api/OpenELIS-Global/analyzer/astm
+  timeout: 30000
+  ssl:
+    verify: false  # Development only - uses self-signed certs
+
+astm:
+  port: 5001
+  bind: 0.0.0.0
+  timeout: 30000
+
+logging:
+  level: DEBUG
+
+# =============================================================================
+# Analyzer-Specific RS232 Serial Configuration Reference
+# =============================================================================
+# Note: RS232 serial port configuration is stored in the OpenELIS database
+# (serial_port_configuration table) and managed through the Analyzer Dashboard.
+# The settings below serve as documentation for supported analyzers.
+#
+# For serial-to-TCP converters (e.g., Moxa, Lantronix), configure the converter
+# to match these RS232 parameters, then configure this bridge for TCP.
+# =============================================================================
+
+# Mindray BA-88A Semi-automatic Biochemistry Analyzer
+# Protocol: ASTM LIS2-A2 over RS232
+# Milestone: M6
+# mindray-ba88a:
+#   serial:
+#     port: /dev/ttyUSB0       # Linux serial port (or COM1 on Windows)
+#     baud_rate: 9600          # Standard baud rate for BA-88A
+#     data_bits: 8             # 8 data bits
+#     stop_bits: 1             # 1 stop bit
+#     parity: NONE             # No parity
+#     flow_control: NONE       # No hardware/software flow control
+#   tests:
+#     - ALT                    # Alanine Aminotransferase
+#     - AST                    # Aspartate Aminotransferase
+#     - ALP                    # Alkaline Phosphatase
+#     - T-Bil                  # Total Bilirubin
+#     - D-Bil                  # Direct Bilirubin
+#     - TC                     # Total Cholesterol
+#     - TG                     # Triglycerides
+#     - HDL-C                  # HDL Cholesterol
+#     - CREA                   # Creatinine
+#     - TP                     # Total Protein
+
+
+
+
+

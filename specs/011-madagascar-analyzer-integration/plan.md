@@ -157,29 +157,34 @@ Per user request:
 
 ### Milestone Table
 
-| ID          | Branch Suffix      | Scope                                            | Workstream | Status      | PR #  | User Stories | Verification                                     | Depends On    | Est. Days |
-| ----------- | ------------------ | ------------------------------------------------ | ---------- | ----------- | ----- | ------------ | ------------------------------------------------ | ------------- | --------- |
-| **[P] M0**  | m0-astm-stabilize  | Validate ASTM mock setup, integration tests      | A          | ⚠️ PENDING  | -     | US-6         | Mock→OpenELIS flow works end-to-end              | -             | 2         |
-| **[P] M1**  | m1-hl7-adapter     | HL7 v2.x protocol adapter (parser + generator)   | B          | ✅ COMPLETE | #2602 | US-1         | Unit tests: ORU^R01/ORM^O01; HL7 round-trip      | -             | 3         |
-| **[P] M2**  | m2-serial-bridge   | RS232 support in ASTM-HTTP Bridge (RS232→TCP)    | C          | ✅ COMPLETE | #2600 | US-3         | Bridge handles RS232; virtual serial tests       | -             | 3         |
-| **[P] M3**  | m3-file-adapter    | File-based import adapter (directory watcher)    | D          | ✅ COMPLETE | #2599 | US-4         | File detection, CSV parsing, archival            | -             | 2         |
-| **[P] M4**  | m4-simulator-base  | Multi-protocol simulator (HL7, RS232, File)      | E          | ✅ COMPLETE | #2601 | US-9         | Simulator supports all protocols; 80%+ templates | -             | 3         |
-| **M5**      | m5-mindray-hl7     | Mindray plugin validation (BC-5380, BS-360E)     | B          | ✅ COMPLETE | #2665 | US-1, US-6   | 2 Mindray HL7 analyzers receive results          | M1            | 2         |
-| **M6**      | m6-mindray-serial  | Mindray BA-88A via RS232 bridge                  | C          | ⚠️ PENDING  | -     | US-3, US-6   | BA-88A via bridge works                          | M2            | 1         |
-| **M7**      | m7-genexpert-multi | GeneXpert all variants (ASTM, HL7, File)         | A, B, D    | ⚠️ PENDING  | -     | US-6         | All 3 GeneXpert variants work                    | M0, M1, M3    | 2         |
-| **M8**      | m8-quantstudio     | QuantStudio 7 Flex (adapt QS3 plugin)            | D          | ⚠️ PENDING  | -     | US-4, US-6   | QS7 CSV import works                             | M3            | 2         |
-| **[P] M9**  | m9-horiba-micros   | Build Horiba Micros 60 external plugin JAR       | C          | ✅ COMPLETE | #2643 | US-3         | Micros 60 via bridge works                       | M2            | 2         |
-| **[P] M10** | m10-horiba-pentra  | Build Horiba Pentra 60 external plugin JAR       | C          | ✅ COMPLETE | #2643 | US-3         | Pentra 60 via bridge works                       | M2            | 2         |
-| **[P] M11** | m11-stago          | Build Stago STart 4 external plugin JAR          | B, C       | ✅ COMPLETE | #2663 | US-1, US-3   | Stago via HL7 or bridge works                    | M1, M2        | 2         |
-| **[P] M12** | m12-abbott         | Build Abbott Architect external plugin JAR       | B          | ✅ COMPLETE | #2662 | US-1         | Abbott HL7 works                                 | M1            | 2         |
-| **[P] M13** | m13-fluorocycler   | Build Hain FluoroCycler XT external plugin JAR   | D          | ✅ COMPLETE | #2664 | US-4         | FluoroCycler CSV import works                    | M3            | 2         |
-| **M14**     | m14-p2-validation  | P2 analyzers: BC2000, Sysmex XN (HL7 validation) | B          | ⚠️ PENDING  | -     | US-1, US-6   | P2 analyzers via HL7                             | M5            | 1         |
-| **M15**     | m15-order-export   | Order export workflow (manual trigger)           | All        | ⚠️ PENDING  | -     | US-2         | Orders export; status tracking works             | M5-M14        | 3         |
-| **M16**     | m16-metadata-form  | Enhanced instrument metadata form                | All        | ⚠️ PENDING  | -     | US-5         | Metadata form; location history                  | M15           | 2         |
-| **M17**     | m17-simulator-adv  | Advanced simulator (QC, errors, stress)          | E          | ⚠️ PENDING  | -     | US-9         | QC results, error conditions, CI/CD              | M4            | 2         |
-| **M18**     | m18-e2e-validation | E2E testing and simulator validation             | All        | ⚠️ PENDING  | -     | All          | All 12 analyzers; E2E pass; simulator coverage   | M15, M16, M17 | 3         |
+| ID          | Branch Suffix           | Scope                                                            | Workstream | Status      | PR #  | User Stories | Verification                                     | Depends On    | Est. Days |
+| ----------- | ----------------------- | ---------------------------------------------------------------- | ---------- | ----------- | ----- | ------------ | ------------------------------------------------ | ------------- | --------- |
+| **[P] M0**  | m0-astm-stabilize       | Validate ASTM mock setup, integration tests                      | A          | ⚠️ PENDING  | -     | US-6         | Mock→OpenELIS flow works end-to-end              | -             | 2         |
+| **[P] M1**  | m1-hl7-adapter          | HL7 v2.x protocol adapter (parser + generator)                   | B          | ✅ COMPLETE | #2602 | US-1         | Unit tests: ORU^R01/ORM^O01; HL7 round-trip      | -             | 3         |
+| **[P] M2**  | m2-serial-bridge        | RS232 support in ASTM-HTTP Bridge (RS232→TCP)                    | C          | ✅ COMPLETE | #2600 | US-3         | Bridge handles RS232; virtual serial tests       | -             | 3         |
+| **[P] M3**  | m3-file-adapter         | File-based import adapter (directory watcher)                    | D          | ✅ COMPLETE | #2599 | US-4         | File detection, CSV parsing, archival            | -             | 2         |
+| **[P] M4**  | m4-simulator-base       | Multi-protocol simulator (HL7, RS232, File)                      | E          | ✅ COMPLETE | #2601 | US-9         | Simulator supports all protocols; 80%+ templates | -             | 3         |
+| **M5**      | m5-mindray-hl7          | Mindray plugin validation (BC-5380, BS-360E)                     | B          | ✅ COMPLETE | #2665 | US-1, US-6   | 2 Mindray HL7 analyzers receive results          | M1            | 2         |
+| **M6**      | m6-mindray-serial       | Mindray BA-88A via RS232 bridge                                  | C          | ⚠️ PENDING  | -     | US-3, US-6   | BA-88A via bridge works                          | M2            | 1         |
+| **M7**      | m7-genexpert-multi      | GeneXpert all variants (ASTM, HL7, File)                         | A, B, D    | ⚠️ PENDING  | -     | US-6         | All 3 GeneXpert variants work                    | M0, M1, M3    | 2         |
+| **M8**      | m8-quantstudio          | QuantStudio 7 Flex (adapt QS3 plugin)                            | D          | ⚠️ PENDING  | -     | US-4, US-6   | QS7 CSV import works                             | M3            | 2         |
+| **[P] M9**  | m9-horiba-micros        | Build Horiba Micros 60 external plugin JAR                       | C          | ✅ COMPLETE | #2643 | US-3         | Micros 60 via bridge works                       | M2            | 2         |
+| **[P] M10** | m10-horiba-pentra       | Build Horiba Pentra 60 external plugin JAR                       | C          | ✅ COMPLETE | #2643 | US-3         | Pentra 60 via bridge works                       | M2            | 2         |
+| **[P] M11** | m11-stago               | Build Stago STart 4 external plugin JAR                          | B, C       | ✅ COMPLETE | #2663 | US-1, US-3   | Stago via HL7 or bridge works                    | M1, M2        | 2         |
+| **[P] M12** | m12-abbott              | Build Abbott Architect external plugin JAR                       | B          | ✅ COMPLETE | #2662 | US-1         | Abbott HL7 works                                 | M1            | 2         |
+| **[P] M13** | m13-fluorocycler        | Build Hain FluoroCycler XT external plugin JAR                   | D          | ✅ COMPLETE | #2664 | US-4         | FluoroCycler CSV import works                    | M3            | 2         |
+| **M14**     | m14-p2-validation       | P2 analyzers: BC2000, Sysmex XN (HL7 validation)                 | B          | ⚠️ PENDING  | -     | US-1, US-6   | P2 analyzers via HL7                             | M5            | 1         |
+| **M15**     | m15-order-export        | Order export workflow (manual trigger)                           | All        | ⚠️ PENDING  | -     | US-2         | Orders export; status tracking works             | M5-M14        | 3         |
+| **M16**     | m16-metadata-form       | Enhanced instrument metadata form                                | All        | ⚠️ PENDING  | -     | US-5         | Metadata form; location history                  | M15           | 2         |
+| **M17**     | m17-simulator-adv       | Advanced simulator (QC, errors, stress)                          | E          | ⚠️ PENDING  | -     | US-9         | QC results, error conditions, CI/CD              | M4            | 2         |
+| **M18**     | m18-e2e-validation      | E2E testing and simulator validation                             | All        | ⚠️ PENDING  | -     | All          | All 12 analyzers; E2E pass; simulator coverage   | M15, M16, M17 | 3         |
+| **M19**     | m19-routing-unification | Unify 2-stage routing: IP match -> Plugin isTargetAnalyzer()     | All        | ✅ COMPLETE | #2802 | US-6         | Router tests pass; no type-pattern matching      | -             | 1         |
+| **M20**     | m20-sync-remediation    | Plugin sync remediation: legacy linking, pluginLoaded, UI health | All        | ✅ COMPLETE | #2802 | US-6         | 4 gaps fixed; startup sync correct               | M19           | 2         |
+| **M21**     | m21-table-merge         | Merge analyzer_configuration into analyzer (2-table model)       | All        | ✅ COMPLETE | #2802 | US-6         | 431 tests pass; Liquibase migration clean        | M20           | 3         |
+| **M22**     | m22-ui-plugin-flow      | Phase 5 UI: pluginTypeId wiring, conditional generic fields      | All        | ✅ COMPLETE | #2802 | US-6         | Frontend conditional rendering; i18n en+fr       | M21           | 1         |
 
-**Total Estimated Duration**: 5 weeks (with parallel development)
+**Total Estimated Duration**: 6 weeks (with parallel development; includes
+plugin system unification)
 
 ### Milestone Dependency Graph
 
@@ -260,6 +265,15 @@ graph TD
     M15 --> M18
     M16 --> M18
     M17 --> M18
+
+    subgraph "Plugin System Unification"
+        M19[M19: Routing Unification<br/>1 day]
+        M20[M20: Sync Remediation<br/>2 days]
+        M21[M21: Table Merge<br/>3 days]
+        M22[M22: UI Plugin Flow<br/>1 day]
+    end
+
+    M19 --> M20 --> M21 --> M22
 ```
 
 ### PR Strategy
@@ -281,6 +295,11 @@ graph TD
 
 **Key Clarification**: M0 only blocks M7 (GeneXpert ASTM variant). All other
 work can proceed without waiting for M0.
+
+**Stacked PR Note**: PR #2802 (M19-M22, plugin system unification) is a stacked
+PR targeting `feat/011-madagascar-analyzer-integration`, not `develop`. It
+consolidates routing unification, sync remediation, table merge, and UI plugin
+flow into a single delivery.
 
 ## Tool Architecture (Critical Distinction)
 

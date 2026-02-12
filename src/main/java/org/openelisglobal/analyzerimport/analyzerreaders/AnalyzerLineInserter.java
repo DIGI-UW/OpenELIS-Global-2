@@ -24,17 +24,39 @@ import org.openelisglobal.spring.util.SpringContext;
 
 public abstract class AnalyzerLineInserter {
 
-    protected AnalyzerResultsService analyzerResultService = SpringContext.getBean(AnalyzerResultsService.class);
+    /**
+     * Analyzer results service (lazy-initialized to allow unit testing without
+     * Spring context).
+     */
+    private AnalyzerResultsService analyzerResultService;
+
+    /**
+     * Get analyzer results service (lazy initialization).
+     *
+     * <p>
+     * This uses lazy initialization instead of eager field initialization to allow
+     * unit tests to instantiate LineInserter subclasses without requiring a full
+     * Spring context. The service is only retrieved when actually needed for
+     * persistence operations.
+     *
+     * @return AnalyzerResultsService instance
+     */
+    protected AnalyzerResultsService getAnalyzerResultService() {
+        if (analyzerResultService == null) {
+            analyzerResultService = SpringContext.getBean(AnalyzerResultsService.class);
+        }
+        return analyzerResultService;
+    }
 
     protected void persistResults(List<AnalyzerResults> results, String systemUserId) {
-        analyzerResultService.insertAnalyzerResults(results, systemUserId);
+        getAnalyzerResultService().insertAnalyzerResults(results, systemUserId);
     }
 
     protected boolean persistImport(String currentUserId, List<AnalyzerResults> results) {
 
         if (results.size() > 0) {
             for (AnalyzerResults analyzerResults : results) {
-                if (analyzerResults.getTestId().equals("-1")) {
+                if ("-1".equals(analyzerResults.getTestId())) {
                     analyzerResults.setTestId(null);
                     analyzerResults.setReadOnly(true);
                 }

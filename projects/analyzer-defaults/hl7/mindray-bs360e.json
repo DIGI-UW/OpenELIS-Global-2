@@ -1,0 +1,64 @@
+{
+  "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "analyzer_name": "Mindray BS-360E",
+  "manufacturer": "Mindray",
+  "category": "CHEMISTRY",
+  "protocol": { "name": "HL7", "version": "2.3.1" },
+  "identifier_pattern": "MINDRAY.*BS.?360E",
+  "transport": ["TCP/IP"],
+  "transport_config": {
+    "TCP/IP": { "default_port": 6001, "framing": "MLLP" }
+  },
+  "msh3_pattern": "MINDRAY",
+  "default_test_mappings": [
+    {
+      "obx_identifier": "GLU",
+      "test_name_hint": "Glucose",
+      "loinc": "2345-7",
+      "unit": "mg/dL"
+    },
+    {
+      "obx_identifier": "CREA",
+      "test_name_hint": "Creatinine",
+      "loinc": "2160-0",
+      "unit": "mg/dL"
+    },
+    {
+      "obx_identifier": "ALT",
+      "test_name_hint": "Alanine Aminotransferase",
+      "loinc": "1742-6",
+      "unit": "U/L"
+    },
+    {
+      "obx_identifier": "AST",
+      "test_name_hint": "Aspartate Aminotransferase",
+      "loinc": "1920-8",
+      "unit": "U/L"
+    },
+    {
+      "obx_identifier": "ALB",
+      "test_name_hint": "Albumin",
+      "loinc": "1751-7",
+      "unit": "g/dL"
+    },
+    {
+      "obx_identifier": "TP",
+      "test_name_hint": "Total Protein",
+      "loinc": "2885-2",
+      "unit": "g/dL"
+    },
+    {
+      "obx_identifier": "TBIL",
+      "test_name_hint": "Total Bilirubin",
+      "loinc": "1975-2",
+      "unit": "mg/dL"
+    },
+    {
+      "obx_identifier": "UREA",
+      "test_name_hint": "Blood Urea Nitrogen",
+      "loinc": "3094-0",
+      "unit": "mg/dL"
+    }
+  ],
+  "notes": "DUAL PROTOCOL SUPPORT: Per Mindray LIS Interface Manual, BS-360E supports BOTH HL7 v2.3.1 AND ASTM E1381-95. This default config uses HL7 mode. For ASTM mode, use astm/mindray-bs360e.json. Requires MLLP framing for HL7 mode. MSH-3 = 'MINDRAY'."
+}

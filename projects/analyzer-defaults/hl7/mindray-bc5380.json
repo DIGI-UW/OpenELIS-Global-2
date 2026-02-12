@@ -1,0 +1,94 @@
+{
+  "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "analyzer_name": "Mindray BC-5380",
+  "manufacturer": "Mindray",
+  "category": "HEMATOLOGY",
+  "protocol": { "name": "HL7", "version": "2.3.1" },
+  "identifier_pattern": "MINDRAY.*BC.?5380",
+  "transport": ["TCP/IP"],
+  "transport_config": {
+    "TCP/IP": { "default_port": 5380, "framing": "MLLP" }
+  },
+  "msh3_pattern": "MINDRAY",
+  "default_test_mappings": [
+    {
+      "obx_identifier": "WBC",
+      "test_name_hint": "White Blood Cells",
+      "loinc": "6690-2",
+      "unit": "10^3/uL"
+    },
+    {
+      "obx_identifier": "RBC",
+      "test_name_hint": "Red Blood Cells",
+      "loinc": "789-8",
+      "unit": "10^6/uL"
+    },
+    {
+      "obx_identifier": "HGB",
+      "test_name_hint": "Hemoglobin",
+      "loinc": "718-7",
+      "unit": "g/dL"
+    },
+    {
+      "obx_identifier": "HCT",
+      "test_name_hint": "Hematocrit",
+      "loinc": "4544-3",
+      "unit": "%"
+    },
+    {
+      "obx_identifier": "MCV",
+      "test_name_hint": "Mean Corpuscular Volume",
+      "loinc": "787-2",
+      "unit": "fL"
+    },
+    {
+      "obx_identifier": "MCH",
+      "test_name_hint": "Mean Corpuscular Hemoglobin",
+      "loinc": "785-6",
+      "unit": "pg"
+    },
+    {
+      "obx_identifier": "MCHC",
+      "test_name_hint": "Mean Corpuscular Hemoglobin Concentration",
+      "loinc": "786-4",
+      "unit": "g/dL"
+    },
+    {
+      "obx_identifier": "PLT",
+      "test_name_hint": "Platelet Count",
+      "loinc": "777-3",
+      "unit": "10^3/uL"
+    },
+    {
+      "obx_identifier": "NEUT",
+      "test_name_hint": "Neutrophils",
+      "loinc": "751-8",
+      "unit": "%"
+    },
+    {
+      "obx_identifier": "LYMPH",
+      "test_name_hint": "Lymphocytes",
+      "loinc": "736-9",
+      "unit": "%"
+    },
+    {
+      "obx_identifier": "MONO",
+      "test_name_hint": "Monocytes",
+      "loinc": "742-7",
+      "unit": "%"
+    },
+    {
+      "obx_identifier": "EOS",
+      "test_name_hint": "Eosinophils",
+      "loinc": "711-2",
+      "unit": "%"
+    },
+    {
+      "obx_identifier": "BASO",
+      "test_name_hint": "Basophils",
+      "loinc": "704-7",
+      "unit": "%"
+    }
+  ],
+  "notes": "Requires MLLP framing (0x0B start, 0x1C 0x0D end). MSH-3 sending application = 'MINDRAY'. Complete CBC panel with 5-part differential."
+}

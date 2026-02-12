@@ -23,21 +23,21 @@
     <analyzer id="1" name="Cobas 6800" analyzer_type="MOLECULAR"
         description="Automated molecular analyzer for PCR testing"
         location="Main Laboratory - Room 101" is_active="true"
-        has_setup_page="true" lastupdated="2023-01-01 12:00:00" />
+        has_setup_page="true" last_updated="2023-01-01 12:00:00" />
     <analyzer id="2" name="ABL800 FLEX" analyzer_type="CHEMISTRY"
         description="Blood gas and electrolyte analyzer"
         location="Emergency Department - Station 3" is_active="true"
-        has_setup_page="false" lastupdated="2023-01-01 12:30:00" />
+        has_setup_page="false" last_updated="2023-01-01 12:30:00" />
 
     <!-- Analyzer Test Map data -->
     <analyzer_test_map analyzer_id="2"
         analyzer_test_name="Glucose Test" test_id="101"
-        lastupdated="2023-01-01 13:00:00" />
+        last_updated="2023-01-01 13:00:00" />
     <analyzer_test_map analyzer_id="1"
         analyzer_test_name="Hemoglobin Test" test_id="102"
-        lastupdated="2023-01-01 12:30:00" />
+        last_updated="2023-01-01 12:30:00" />
     <analyzer_test_map analyzer_id="2"
         analyzer_test_name="Potassium Test" test_id="102"
-        lastupdated="2023-01-01 13:00:00" />
+        last_updated="2023-01-01 13:00:00" />
 
 </dataset>

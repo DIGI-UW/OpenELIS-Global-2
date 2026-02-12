@@ -1,0 +1,35 @@
+# ASTM LIS2-A2 Sample: Horiba ABX Micros 60 CBC
+# Purpose: Test Horiba Micros 60 plugin ASTM parsing (Feature 011, M10)
+# Reference: specs/011-madagascar-analyzer-integration/research.md Section 12
+#
+# Analyzer: Horiba ABX Micros 60 (3-Part Differential Hematology)
+# Protocol: ASTM LIS2-A2 over RS232
+# Parameters: 18 (CBC + 3-DIFF)
+#
+# Segments:
+#   H - Header Record: ABX^MICROS60 identification
+#   P - Patient Record: Patient demographics
+#   O - Order Record: Test order information
+#   R - Result Record: Hematology results with values and units
+#   L - Message Terminator
+
+H|\^&|||ABX^MICROS60^V1.5|||||||LIS2-A2|20260128090000
+P|1||PAT-2026-002|Rabe^Marie^B||F|19900620
+O|1|SAMPLE-2026-0002^LAB|CBC^Complete Blood Count||20260128085500
+R|1|^^^WBC|6.2|10^3/uL|4.0-10.0|N||F|20260128090100
+R|2|^^^RBC|4.35|10^6/uL|4.0-5.5|N||F|20260128090100
+R|3|^^^HGB|12.8|g/dL|12.0-17.5|N||F|20260128090100
+R|4|^^^HCT|38.5|%|36-54|N||F|20260128090100
+R|5|^^^MCV|88.5|fL|80-100|N||F|20260128090100
+R|6|^^^MCH|29.4|pg|27-33|N||F|20260128090100
+R|7|^^^MCHC|33.2|g/dL|32-36|N||F|20260128090100
+R|8|^^^PLT|198|10^3/uL|150-400|N||F|20260128090100
+R|9|^^^RDW|12.8|%|11.5-14.5|N||F|20260128090100
+R|10|^^^MPV|8.9|fL|7.5-11.5|N||F|20260128090100
+R|11|^^^LYM%|35.2|%|20-40|N||F|20260128090100
+R|12|^^^LYM#|2.18|10^3/uL|1.0-4.0|N||F|20260128090100
+R|13|^^^MXD%|8.5|%|5-15|N||F|20260128090100
+R|14|^^^MXD#|0.53|10^3/uL|0.2-1.5|N||F|20260128090100
+R|15|^^^NEU%|56.3|%|40-70|N||F|20260128090100
+R|16|^^^NEU#|3.49|10^3/uL|2.0-7.0|N||F|20260128090100
+L|1|N

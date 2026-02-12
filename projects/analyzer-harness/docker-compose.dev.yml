@@ -1,0 +1,125 @@
+services:
+  certs:
+    image: itechuw/certgen:main
+    platform: linux/amd64
+    restart: "no"
+    environment:
+      - KEYSTORE_PW="kspass"
+      - TRUSTSTORE_PW="tspass"
+    volumes:
+      - key_trust-store-volume:/etc/openelis-global
+      - keys-vol:/etc/ssl/private/
+      - certs-vol:/etc/ssl/certs/
+
+  db:
+    image: postgres:14.4
+    restart: always
+    env_file:
+      - ./volume/database/database.env
+    ports:
+      - "15432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./volume/database/dbInit:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "clinlims", "-U", "clinlims"]
+      timeout: 45s
+      interval: 10s
+      retries: 10
+
+  oe:
+    image: itechuw/openelis-global-2-dev:develop
+    depends_on:
+      - db
+      - certs
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    restart: always
+    environment:
+      - DEFAULT_PW=adminADMIN!
+      - TZ=Africa/Nairobi
+      - SPRING_LIQUIBASE_CONTEXTS=test
+      - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://db:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
+    volumes:
+      - key_trust-store-volume:/etc/openelis-global
+      - lucene_index-vol:/var/lib/lucene_index
+      - ../../target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
+      - ../../volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
+      - ./volume/plugins:/var/lib/openelis-global/plugins
+      - ./volume/programs:/var/lib/openelis-global/programs
+      - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
+      - ./volume/logs/tomcatLogs:/usr/local/tomcat/logs
+      - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
+      - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
+      - ./volume/configuration:/var/lib/openelis-global/configuration
+      - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
+      - ./volume/analyzer-imports:/data/analyzer-imports
+      - ../../projects/analyzer-defaults:/data/analyzer-defaults:ro
+    secrets:
+      - source: datasource.password
+      - source: common.properties
+
+  fhir:
+    image: hapiproject/hapi:v6.6.0-tomcat
+    depends_on:
+      - db
+      - certs
+    ports:
+      - "8081:8080"
+      - "8444:8443"
+    restart: always
+    environment:
+      SPRING_CONFIG_LOCATION: file:///run/secrets/hapi_application.yaml
+      TZ: Africa/Nairobi
+      JAVA_OPTS: "-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore
+                  -Djavax.net.ssl.trustStorePassword=tspass
+                  -Djavax.net.ssl.trustStoreType=pkcs12
+                  -Djavax.net.ssl.keyStore=/etc/openelis-global/keystore
+                  -Djavax.net.ssl.keyStorePassword=kspass
+                  -Djavax.net.ssl.keyStoreType=pkcs12"
+    volumes:
+      - key_trust-store-volume:/etc/openelis-global
+      - ../../tomcat/hapi_server.xml:/opt/bitnami/tomcat/conf/server.xml
+    secrets:
+      - source: hapi_application.yaml
+
+  frontend:
+    image: itechuw/openelis-global-2-frontend-dev:develop
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    tty: true
+    volumes:
+      - ../../frontend/src:/app/src
+      - ../../frontend/public:/app/public
+
+  proxy:
+    image: nginx:1.15-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - certs-vol:/etc/nginx/certs/
+      - keys-vol:/etc/nginx/keys/
+      - ./volume/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../../volume/nginx/certbot:/var/www/certbot
+      - ../../volume/letsencrypt:/etc/letsencrypt:ro
+    restart: unless-stopped
+    depends_on:
+      - certs
+
+secrets:
+  datasource.password:
+    file: ./volume/properties/datasource.password
+  common.properties:
+    file: ./volume/properties/common.properties
+  hapi_application.yaml:
+    file: ./volume/properties/hapi_application.yaml
+
+volumes:
+  db-data:
+  key_trust-store-volume:
+  certs-vol:
+  keys-vol:
+  lucene_index-vol:
+

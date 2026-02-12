@@ -54,7 +54,7 @@
         <class>org.openelisglobal.notebook.valueholder.NoteBookComment</class>
         <class>org.openelisglobal.notebook.valueholder.NoteBookSample</class>
 
-        <!-- Inventory Management entities (004-remove-old-inventory) -->
+        <!-- Inventory Management entities -->
         <class>org.openelisglobal.inventory.valueholder.InventoryItem</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryStorageLocation</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>
@@ -68,6 +68,24 @@
         <class>org.openelisglobal.sitebranding.valueholder.SiteBranding</class>
         <!-- Generic Reporting Framework entities (reporting-framework) -->
         <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
+
+        <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
+        <!-- Migrated to JPA annotations (chore/011-analyzer-xml-to-annotations) -->
+        <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerField</class>
+        <!-- AnalyzerConfiguration removed: merged into Analyzer entity -->
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
+        <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping</class>
+        <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
+        <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerType</class>
+
+        <!-- RS232 Serial Port Configuration entity (011-madagascar-analyzer-integration M2) -->
+        <class>org.openelisglobal.analyzer.valueholder.SerialPortConfiguration</class>
+        <!-- Migrated from HBM to JPA annotations (004-astm-analyzer-mapping) -->
+        <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
 
         <properties>
             <property name="hibernate.cfg_xml_file"

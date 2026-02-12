@@ -707,6 +707,10 @@
             <artifactId>xmlrpc-common</artifactId>
             <version>3.1.3</version>
         </dependency>
+        <!-- Plugin dependencies are defined in the 'with-plugins' profile below
+            to avoid chicken-and-egg: main project needs plugins, but plugins need main
+            JAR. CI builds main JAR first (without plugins), then plugins, then main
+            with tests. -->
     </dependencies>
     <repositories>
         <repository>
@@ -940,6 +944,9 @@
                 <version>3.2.5</version>
                 <configuration>
                     <skipTests>${skipTests}</skipTests>
+                    <environmentVariables>
+                        <ANALYZER_DEFAULTS_DIR>${project.basedir}/projects/analyzer-defaults</ANALYZER_DEFAULTS_DIR>
+                    </environmentVariables>
                 </configuration>
             </plugin>
             <plugin>
@@ -1016,4 +1023,5 @@
         </dependencies>
 
     </dependencyManagement>
+
 </project>

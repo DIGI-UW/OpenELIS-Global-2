@@ -1,0 +1,40 @@
+{
+  "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "analyzer_name": "Cepheid GeneXpert (ASTM Mode)",
+  "manufacturer": "Cepheid",
+  "category": "MOLECULAR",
+  "protocol": { "name": "ASTM", "version": "LIS2-A2" },
+  "identifier_pattern": "GENEXPERT|CEPHEID",
+  "transport": ["RS-232", "TCP/IP"],
+  "transport_config": {
+    "RS-232": { "default_baud_rate": 9600 },
+    "TCP/IP": {}
+  },
+  "default_test_mappings": [
+    {
+      "analyzer_code": "MTB",
+      "test_name_hint": "Mycobacterium tuberculosis DNA",
+      "loinc": "23826-1",
+      "unit": ""
+    },
+    {
+      "analyzer_code": "RIF",
+      "test_name_hint": "Rifampin Resistance",
+      "loinc": "46244-0",
+      "unit": ""
+    },
+    {
+      "analyzer_code": "COVID19",
+      "test_name_hint": "SARS-CoV-2 RNA",
+      "loinc": "94500-6",
+      "unit": ""
+    },
+    {
+      "analyzer_code": "HIV",
+      "test_name_hint": "HIV-1 RNA",
+      "loinc": "20447-9",
+      "unit": "copies/mL"
+    }
+  ],
+  "notes": "Multi-protocol capable: FILE (primary), ASTM, HL7 all confirmed per Cepheid LIS spec. This config is for ASTM mode. Results are typically qualitative (Detected/Not Detected) for most assays. GeneXpert supports both RS-232 and TCP/IP transports."
+}

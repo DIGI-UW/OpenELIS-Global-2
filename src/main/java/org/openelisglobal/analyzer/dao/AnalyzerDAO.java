@@ -13,25 +13,16 @@
  */
 package org.openelisglobal.analyzer.dao;
 
+import java.util.List;
+import java.util.Optional;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.dao.BaseDAO;
 
 public interface AnalyzerDAO extends BaseDAO<Analyzer, String> {
 
-    // public boolean insertData(Analyzer analyzer) throws LIMSRuntimeException;
+    Optional<Analyzer> findByIpAddress(String ipAddress);
 
-    // public void deleteData(List<Analyzer> results) throws LIMSRuntimeException;
+    Optional<Analyzer> findByName(String name);
 
-    // public List<Analyzer> getAllAnalyzers() throws LIMSRuntimeException;
-
-    // public Analyzer readAnalyzer(String idString) throws LIMSRuntimeException;
-
-    // public void getData(Analyzer analyzer) throws LIMSRuntimeException;
-
-    // public void updateData(Analyzer analyzer) throws LIMSRuntimeException;
-
-    // public Analyzer getAnalyzerById(Analyzer analyzer) throws
-    // LIMSRuntimeException;
-
-    // public Analyzer getAnalyzerByName(String name) throws LIMSRuntimeException;
+    List<Analyzer> findGenericAnalyzersWithPatterns();
 }

@@ -453,6 +453,13 @@ the simulated messages.
      - An error record MUST be created with the raw message and matching
        candidates for operator resolution.
 
+  > **Implementation note (PR #2802)**: The `InstanceAwareAnalyzerRouter`
+  > implements a **2-stage routing** pipeline: (1) IP address match against
+  > `analyzer.ip_address`, then (2) plugin `isTargetAnalyzer()` callback for
+  > message-level identification. A former Stage 2 (type-pattern matching) was
+  > removed as redundant. Runtime-only `pluginLoaded` (computed per request)
+  > replaces startup DB mutations for availability tracking.
+
 #### Analyzer Coverage (Contract Critical - Deadline: 2026-02-28)
 
 - **FR-006**: System MUST support all 12 contract-required analyzers with
@@ -619,7 +626,8 @@ Ordered by implementation priority (Romain's deployment list):
 
   - New entities (InstrumentMetadata, MaintenanceEvent, ModuleStatus) MUST use
     JPA/Hibernate annotations.
-  - Integration with legacy Analyzer entity (XML-mapped) follows the manual
+  - Integration with the core Analyzer entity (now JPA-annotated after the
+    plugin system unification, PR #2802; formerly XML-mapped) follows the manual
     relationship management pattern established in feature 004.
   - Services MUST compile all data within transactions to prevent
     LazyInitializationException.
@@ -648,6 +656,16 @@ Ordered by implementation priority (Romain's deployment list):
 
 ### Key Entities
 
+> **Plugin System Unification (PR #2802)**: The core analyzer data model was
+> unified from 3 tables to 2 tables. `analyzer_type` (plugin capability,
+> read-only) + `analyzer` (device instance + operational config, merged) = the
+> **2-table model**. The former `analyzer_configuration` table (ip, port,
+> status, identifier_pattern) was folded into `analyzer` and dropped via
+> Liquibase migration. `analyzer_type.is_generic_plugin` differentiates generic
+> plugins (DB-driven config) from legacy plugins (hardcoded identification).
+> `pluginLoaded` is runtime-only (computed per REST request, never persisted).
+> See [data-model.md](data-model.md) for the full schema.
+
 - **InstrumentMetadata**: Extended instrument information including installation
   date, warranty expiration, software version, and hierarchical location.
   One-to-one relationship with existing Analyzer entity.
@@ -672,7 +690,9 @@ Ordered by implementation priority (Romain's deployment list):
   serial number, status, test count, and failure metrics.
 
 - **SerialPortConfiguration**: RS232 configuration parameters (port, baud rate,
-  parity, stop bits, flow control) linked to AnalyzerConfiguration.
+  parity, stop bits, flow control) linked to Analyzer (previously linked to
+  AnalyzerConfiguration, which was merged into `analyzer` per PR #2802 -- see
+  [data-model.md](data-model.md)).
 
 - **FileImportConfiguration**: File-based import settings including directory
   path, file pattern, column mappings, and archive/error directory paths.
@@ -768,9 +788,12 @@ Ordered by implementation priority (Romain's deployment list):
    vendor-specific variations. Implementation must handle common variations
    gracefully.
 
-3. **Legacy Integration**: The Analyzer entity uses XML-based Hibernate
-   mappings. New entities must work around this constraint using the established
-   manual relationship management pattern.
+3. **Legacy Integration**: The Analyzer entity was originally XML-mapped but now
+   uses JPA annotations after the plugin system unification (PR #2802, 2-table
+   model). The former `AnalyzerConfiguration` entity (merged into `analyzer`)
+   has been deleted. New extension entities (SerialPortConfiguration,
+   FileImportConfiguration, etc.) link to `analyzer` via manual FK
+   (`analyzer_id`) following the established relationship management pattern.
 
 4. **Backward Compatibility**: Existing analyzer plugins must continue to
    function. The new protocol adapters (HL7, RS232, File) must not break

@@ -70,6 +70,25 @@ public class PluginAnalyzerService {
         return analyzerPlugins;
     }
 
+    /**
+     * Returns plugin list with generic plugins (GenericASTM, GenericHL7) first. Use
+     * when analyzer_configuration.prefer_generic_plugin is true so generic is tried
+     * before legacy.
+     */
+    public List<AnalyzerImporterPlugin> getAnalyzerPluginsWithGenericFirst() {
+        List<AnalyzerImporterPlugin> generic = new ArrayList<>();
+        List<AnalyzerImporterPlugin> legacy = new ArrayList<>();
+        for (AnalyzerImporterPlugin p : analyzerPlugins) {
+            if (p.isGenericPlugin()) {
+                generic.add(p);
+            } else {
+                legacy.add(p);
+            }
+        }
+        generic.addAll(legacy);
+        return generic;
+    }
+
     @PostConstruct
     private void registerInstance() {
         INSTANCE = this;

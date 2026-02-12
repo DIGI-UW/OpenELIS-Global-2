@@ -1,6 +1,7 @@
 # Data Model: Madagascar Analyzer Integration
 
-**Feature**: 011-madagascar-analyzer-integration **Date**: 2026-01-22 **Spec
+**Feature**: 011-madagascar-analyzer-integration **Date**: 2026-01-22
+**Updated**: 2026-02-11 (plugin system unification — 2-table model) **Spec
 Reference**: [spec.md](spec.md)
 
 ---
@@ -12,10 +13,51 @@ This data model extends the existing Feature 004 analyzer entities to support:
 - HL7, RS232, and file-based protocol configurations
 - Order export tracking with status management
 - Enhanced instrument metadata with location history
+- Unified plugin system (legacy + generic analyzers via 2-table model)
 
 **Design Principle**: All new entities use JPA/Hibernate annotations
-(Constitution IV). Integration with legacy XML-mapped `Analyzer` entity follows
-the manual relationship management pattern established in Feature 004.
+(Constitution IV). The core analyzer tables (`analyzer_type` + `analyzer`) use a
+unified 2-table model after the plugin system unification (PR #2802).
+
+---
+
+## Plugin System Unification (2-Table Model)
+
+**PR**: #2802 (`fix/011-sync-remediation` -> `feat/011`)
+
+The original 3-table model (`analyzer_type` + `analyzer` +
+`analyzer_configuration`) was merged to 2 tables. The `analyzer_configuration`
+table was a 1:1 bolt-on that duplicated data and complicated every query.
+
+### Before (3-table model)
+
+```
+analyzer_type  1──N  analyzer  1──1  analyzer_configuration
+(plugin def)         (device)        (ip, port, status, pattern)
+```
+
+### After (2-table model)
+
+```
+analyzer_type (Plugin Capability — read-only, created at startup)
+  │  name, plugin_class_name, protocol, is_generic_plugin,
+  │  identifier_pattern (default template), is_active
+  │
+  │  ONE ──────── MANY
+  ▼
+analyzer (Device Instance + Operational Config — MERGED)
+     name, description, location, machine_id, is_active,
+     analyzer_type_id (FK),
+     ip_address, port, protocol_version, status,
+     identifier_pattern, test_unit_ids, last_activated_date
+     Status: INACTIVE | SETUP | VALIDATION | ACTIVE | ERROR_PENDING | OFFLINE
+```
+
+**Removed**: `analyzer_configuration` table, `is_generic_plugin` on config
+(derived from `analyzer_type`), `prefer_generic_plugin` flag.
+
+**Runtime-only**: `pluginLoaded` — computed per REST request by scanning
+in-memory plugin list, never persisted.
 
 ---
 
@@ -23,18 +65,18 @@ the manual relationship management pattern established in Feature 004.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          EXISTING ENTITIES (Feature 004)                     │
+│                     CORE ENTITIES (Unified 2-Table Model)                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│   ┌──────────────┐     ┌────────────────────┐     ┌─────────────────────┐   │
-│   │   Analyzer   │────▶│AnalyzerConfiguration│────▶│  AnalyzerField     │   │
-│   │  (XML-mapped)│     │   (JPA-annotated)   │     │  (JPA-annotated)   │   │
-│   └──────┬───────┘     └────────────────────┘     └─────────────────────┘   │
-│          │                                                                   │
-│          │ 1:1 (manual relationship)                                        │
-│          ▼                                                                   │
+│   ┌──────────────┐     ┌────────────────┐     ┌─────────────────────┐      │
+│   │ AnalyzerType │──┐  │    Analyzer    │────▶│  AnalyzerField     │      │
+│   │ (JPA entity) │  │  │ (JPA entity,  │     │  (JPA-annotated)   │      │
+│   └──────────────┘  │  │  merged config)│     └─────────────────────┘      │
+│                     │  └───────┬────────┘                                  │
+│                     └─── FK ───┘                                           │
+│                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                          NEW ENTITIES (Feature 011)                          │
+│                       EXTENSION ENTITIES (Feature 011)                      │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │   ┌──────────────────────┐                                                  │

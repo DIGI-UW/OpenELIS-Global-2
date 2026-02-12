@@ -84,10 +84,10 @@ production-grade infrastructure:
 ### 1. Understanding Default Templates
 
 Default templates are **JSON configuration files** stored in
-`analyzer-defaults/`:
+`projects/analyzer-defaults/`:
 
 ```
-analyzer-defaults/
+projects/analyzer-defaults/
 ├── astm/
 │   ├── genexpert-astm.json        # Cepheid GeneXpert (ASTM)
 │   ├── horiba-micros60.json       # Horiba Micros 60
@@ -911,13 +911,13 @@ docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml -f 
 
 ### Issue: Defaults API returns empty array
 
-**Cause**: `analyzer-defaults/` not mounted  
+**Cause**: `projects/analyzer-defaults/` not mounted  
 **Fix**: Verify mount in `docker-compose.dev.yml`:
 
 ```yaml
 oe:
   volumes:
-    - ../../analyzer-defaults:/data/analyzer-defaults:ro
+    - ../../projects/analyzer-defaults:/data/analyzer-defaults:ro
 ```
 
 ### Issue: Generic plugin not matching
@@ -975,7 +975,7 @@ docker logs analyzer-harness-astm-simulator-1 | grep "H|"
 - Harness compose:
   `projects/analyzer-harness/docker-compose.{dev,analyzer-test,letsencrypt}.yml`
 - Harness scripts: `projects/analyzer-harness/{build,reset-env}.sh`
-- Default templates: `analyzer-defaults/{astm,hl7}/*.json`
+- Default templates: `projects/analyzer-defaults/{astm,hl7}/*.json`
 - Canonical fixtures:
   `src/test/resources/testdata/madagascar-analyzer-test-data.xml`
 - Generated SQL: `src/test/resources/testdata/analyzer-e2e.generated.sql`

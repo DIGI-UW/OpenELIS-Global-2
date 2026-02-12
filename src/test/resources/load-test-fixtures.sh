@@ -7,14 +7,18 @@
 #
 # Files loaded (in order):
 #   1. e2e-foundational-data.sql - Providers, Organizations (base data for ALL tests)
-#   2. storage-e2e.xml (DBUnit XML) - Storage hierarchy + E2E test data
+#   2. analyzer-test-data.sql - Analyzer E2E fixtures (IDs 1000-1004, configs, fields, mappings)
+#   3. storage-e2e.xml (DBUnit XML) - Storage hierarchy + E2E test data
 #      Converted to SQL on-demand (*.generated.sql files never committed)
+#   4. (Docker only) load-analyzer-test-data.sh --dataset-011 - Madagascar/011 analyzer set (IDs 2000-2012)
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
+ANALYZER_SQL_FILE="$SCRIPT_DIR/analyzer-test-data.sql"
+ANALYZER_011_LOADER="$SCRIPT_DIR/load-analyzer-test-data.sh"
 RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
 
 RESET=false
@@ -84,10 +88,23 @@ fi
 
 # Generate SQL from DBUnit XML (on-demand, never committed)
 echo "Generating SQL from DBUnit XML..."
-python3 "$XML_TO_SQL_SCRIPT" "$STORAGE_XML" "$STORAGE_SQL"
+python3 "$XML_TO_SQL_SCRIPT" "$STORAGE_XML" "$STORAGE_SQL" \
+    --on-conflict-do-nothing
 if [ $? -ne 0 ]; then
     echo "ERROR: Failed to generate SQL from XML"
     exit 1
+fi
+
+# Generate analyzer E2E SQL from DBUnit XML (Feature 011, IDs 2000-2012)
+ANALYZER_E2E_XML="$SCRIPT_DIR/testdata/madagascar-analyzer-test-data.xml"
+ANALYZER_E2E_SQL="$SCRIPT_DIR/testdata/analyzer-e2e.generated.sql"
+if [ -f "$ANALYZER_E2E_XML" ]; then
+    echo "Generating analyzer E2E SQL from DBUnit XML..."
+    python3 "$XML_TO_SQL_SCRIPT" "$ANALYZER_E2E_XML" "$ANALYZER_E2E_SQL" \
+        --on-conflict-do-nothing
+    if [ $? -ne 0 ]; then
+        echo "WARNING: Failed to generate analyzer E2E SQL (non-fatal)"
+    fi
 fi
 echo ""
 
@@ -118,12 +135,12 @@ check_dependencies() {
 
     while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         if [ "$USE_DOCKER" = true ]; then
-            TYPE_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            TYPE_COUNT=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
             # Minimum required status for fixtures is 'Entered' (used by samples/sample_items).
             # Some environments may not seed analysis statuses ('Not Tested', 'Finalized') consistently.
-            STATUS_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM status_of_sample WHERE name = 'Entered';" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            STATUS_COUNT=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM status_of_sample WHERE name = 'Entered';" 2>/dev/null | tr -d '[:space:]' || echo "0")
             # Check storage hierarchy exists (from DBUnit fixtures)
-            ROOM_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            ROOM_COUNT=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
         else
             TYPE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
             STATUS_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM status_of_sample WHERE name = 'Entered';" 2>/dev/null | tr -d '[:space:]' || echo "0")
@@ -203,7 +220,7 @@ verify_fixtures() {
         echo ""
 
         # Verify E2E test data
-        docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "
+        docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "
             SELECT
                 'E2E Test Data' AS category,
                 'Patients' AS type, COUNT(*) AS count FROM patient WHERE external_id LIKE 'E2E-%'
@@ -220,9 +237,9 @@ verify_fixtures() {
         " | sed 's/^[[:space:]]*//' | grep -v '^$'
 
         # Check specific counts
-        ROOM_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" | tr -d '[:space:]')
-        SAMPLE_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM sample WHERE accession_number LIKE 'DEV0100%';" | tr -d '[:space:]')
-        PATIENT_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM patient WHERE external_id LIKE 'E2E-%';" | tr -d '[:space:]')
+        ROOM_COUNT=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" | tr -d '[:space:]')
+        SAMPLE_COUNT=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM sample WHERE accession_number LIKE 'DEV0100%';" | tr -d '[:space:]')
+        PATIENT_COUNT=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM patient WHERE external_id LIKE 'E2E-%';" | tr -d '[:space:]')
     else
         # Verify storage hierarchy
         psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "
@@ -280,10 +297,12 @@ verify_fixtures() {
 
 # Determine execution method: Docker or direct psql
 USE_DOCKER=false
+DB_CONTAINER=""
 if command -v docker &> /dev/null; then
-    if docker ps | grep -q openelisglobal-database; then
+    DB_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E '^openelisglobal-database$|analyzer-harness.*-db-' | head -1)
+    if [ -n "$DB_CONTAINER" ]; then
         USE_DOCKER=true
-        echo "Using Docker container: openelisglobal-database"
+        echo "Using Docker container: $DB_CONTAINER"
     fi
 fi
 
@@ -293,7 +312,7 @@ if [ "$USE_DOCKER" = true ]; then
 
     # Load foundational data first (providers, organizations)
     echo "Loading foundational fixtures via Docker..."
-    docker exec -i openelisglobal-database psql -U clinlims -d clinlims < "$FOUNDATIONAL_SQL_FILE"
+    docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims < "$FOUNDATIONAL_SQL_FILE"
 
     if [ $? -ne 0 ]; then
         echo ""
@@ -306,9 +325,36 @@ if [ "$USE_DOCKER" = true ]; then
     echo "✅ Foundational data loaded (providers, organizations)"
     echo ""
 
+    # Load analyzer E2E fixtures (same as CI frontend-qa; IDs 1000-1004)
+    if [ -f "$ANALYZER_SQL_FILE" ]; then
+        echo "Loading analyzer fixtures via SQL..."
+        docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims < "$ANALYZER_SQL_FILE"
+        if [ $? -eq 0 ]; then
+            echo "✅ Analyzer fixtures loaded (analyzer-test-data.sql)"
+        else
+            echo "⚠️  WARNING: Analyzer fixture load had errors (non-fatal)"
+        fi
+        echo ""
+    else
+        echo "⚠️  WARNING: analyzer-test-data.sql not found; skipping analyzer fixtures"
+        echo ""
+    fi
+
+    # Load unified analyzer fixtures (IDs 2000-2012) from canonical SQL
+    if [ -f "$ANALYZER_E2E_SQL" ]; then
+        echo "Loading analyzer fixtures (analyzer-e2e.generated.sql)..."
+        docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims < "$ANALYZER_E2E_SQL"
+        if [ $? -eq 0 ]; then
+            echo "✅ Analyzer fixtures loaded (12 analyzers 2000-2012)"
+        else
+            echo "⚠️  WARNING: Analyzer fixture loading failed (non-fatal; manually load if needed: $ANALYZER_E2E_SQL)"
+        fi
+        echo ""
+    fi
+
     # Load storage hierarchy + E2E test data via generated SQL
     echo "Loading storage fixtures via generated SQL..."
-    docker exec -i openelisglobal-database psql -U clinlims -d clinlims < "$STORAGE_SQL"
+    docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims < "$STORAGE_SQL"
 
     if [ $? -eq 0 ]; then
         echo ""
@@ -339,7 +385,7 @@ else
     # Use direct psql connection
     if ! command -v psql &> /dev/null; then
         echo "ERROR: psql not found. Please install PostgreSQL client."
-        echo "Alternatively, ensure Docker is running with openelisglobal-database container."
+        echo "Alternatively, ensure Docker is running (openelisglobal-database or analyzer-harness DB container)."
         exit 1
     fi
 
@@ -373,6 +419,33 @@ else
 
     echo "✅ Foundational data loaded (providers, organizations)"
     echo ""
+
+    # Load analyzer E2E fixtures (same as CI frontend-qa; IDs 1000-1004)
+    if [ -f "$ANALYZER_SQL_FILE" ]; then
+        echo "Loading analyzer fixtures via SQL..."
+        psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -f "$ANALYZER_SQL_FILE"
+        if [ $? -eq 0 ]; then
+            echo "✅ Analyzer fixtures loaded (analyzer-test-data.sql)"
+        else
+            echo "⚠️  WARNING: Analyzer fixture load had errors (non-fatal)"
+        fi
+        echo ""
+    else
+        echo "⚠️  WARNING: analyzer-test-data.sql not found; skipping analyzer fixtures"
+        echo ""
+    fi
+
+    # Load unified analyzer fixtures (IDs 2000-2012) from canonical SQL
+    if [ -f "$ANALYZER_E2E_SQL" ]; then
+        echo "Loading analyzer fixtures (analyzer-e2e.generated.sql)..."
+        psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -f "$ANALYZER_E2E_SQL"
+        if [ $? -eq 0 ]; then
+            echo "✅ Analyzer fixtures loaded (12 analyzers 2000-2012)"
+        else
+            echo "⚠️  WARNING: Analyzer fixture loading failed (non-fatal)"
+        fi
+        echo ""
+    fi
 
     # Load storage hierarchy + E2E test data via generated SQL
     echo "Loading storage fixtures via generated SQL..."

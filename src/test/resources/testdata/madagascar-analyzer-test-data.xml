@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Madagascar Analyzer Test Data (DBUnit Flat XML Dataset) Feature: specs/011-madagascar-analyzer-integration
+    Usage: executeDataSetWithStateManagement("testdata/madagascar-analyzer-test-data.xml")
+    Contents: - 11 Active Analyzers (IDs 2000, 2002-2011) for Feature 011 dashboard
+    population - 11 Analyzer Configurations (network settings for TCP/IP, protocol
+    metadata for all) - 5 Serial Port Configurations (for RS232 analyzers) -
+    3 File Import Configurations (for FILE-based analyzers) ID Range: 2000-2011
+    (reserved for Feature 011 to avoid conflicts with Feature 004 IDs 1000-1004)
+    Note: ID 2001 reserved but not assigned. BC2000 (analyzer #12 in contract)
+    is P2 deprioritized. Reference: specs/011-madagascar-analyzer-integration/contracts/supported-analyzers.md -->
+<dataset>
+    <!-- ================================================================= -->
+    <!-- ANALYZERS (legacy table, IDs 2000+ for Feature 011) -->
+    <!-- ================================================================= -->
+
+    <!-- ID 2000: Abbott Architect (HL7/IMMUNOLOGY) -->
+    <analyzer id="2000" name="Abbott Architect"
+        analyzer_type="IMMUNOLOGY" DESCRIPTION="HL7 v2.5.1 over TCP/IP"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 2001: Stago STart 4 (ASTM/RS232/COAGULATION) - Reserved for future,
+        not assigned in contract -->
+
+    <!-- ID 2002: GeneXpert (FILE/MOLECULAR) -->
+    <analyzer id="2002" name="Cepheid GeneXpert"
+        analyzer_type="MOLECULAR" DESCRIPTION="FILE-based import (CSV)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 2003: Hain FluoroCycler XT (FILE/MOLECULAR) -->
+    <analyzer id="2003" name="Hain FluoroCycler XT"
+        analyzer_type="MOLECULAR" DESCRIPTION="FILE-based import (CSV)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 2004: Horiba Micros 60 (ASTM/RS232/HEMATOLOGY) -->
+    <analyzer id="2004" name="Horiba ABX Micros 60"
+        analyzer_type="HEMATOLOGY"
+        DESCRIPTION="ASTM LIS2-A2 over RS232 Serial" is_active="true"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 2005: Horiba Pentra 60 (ASTM/RS232/HEMATOLOGY) -->
+    <analyzer id="2005" name="Horiba ABX Pentra 60 C+"
+        analyzer_type="HEMATOLOGY"
+        DESCRIPTION="ASTM LIS2-A2 over RS232 Serial" is_active="true"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 2006: Mindray BA-88A (ASTM/RS232/CHEMISTRY) -->
+    <analyzer id="2006" name="Mindray BA-88A"
+        analyzer_type="CHEMISTRY" DESCRIPTION="ASTM over RS232 Serial"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 2007: Mindray BC-5380 (HL7/HEMATOLOGY) -->
+    <analyzer id="2007" name="Mindray BC-5380"
+        analyzer_type="HEMATOLOGY" DESCRIPTION="HL7 v2.3.1 over TCP/IP (MLLP)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 2008: Mindray BS-360E (HL7/CHEMISTRY) -->
+    <analyzer id="2008" name="Mindray BS-360E"
+        analyzer_type="CHEMISTRY" DESCRIPTION="HL7 v2.3.1 over TCP/IP (MLLP)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 2009: QuantStudio 7 Flex (FILE/MOLECULAR) -->
+    <analyzer id="2009" name="Thermo Fisher QuantStudio 7 Flex"
+        analyzer_type="MOLECULAR" DESCRIPTION="FILE-based import (CSV)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 2010: Stago STart 4 (ASTM/RS232/COAGULATION) -->
+    <analyzer id="2010" name="Stago STart 4"
+        analyzer_type="COAGULATION"
+        DESCRIPTION="ASTM LIS2-A2 over RS232 Serial" is_active="true"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 2011: Sysmex XN Series (ASTM/TCP/HEMATOLOGY) -->
+    <analyzer id="2011" name="Sysmex XN Series"
+        analyzer_type="HEMATOLOGY" DESCRIPTION="ASTM E1381-02 over TCP/IP"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 2012: Mindray BC2000 (HL7/HEMATOLOGY) - PROMOTED TO P1, USES GenericHL7 -->
+    <analyzer id="2012" name="Mindray BC2000"
+        analyzer_type="HEMATOLOGY" DESCRIPTION="HL7 v2.3.1 over TCP/IP (MLLP)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- SERIAL PORT CONFIGURATIONS -->
+    <!-- (for RS232 analyzers via ASTM-HTTP Bridge with virtual serial ports) -->
+    <!-- Note: /dev/serial/ttyVUSB* are virtual serial ports created by socat
+        service -->
+    <!-- ================================================================= -->
+
+    <!-- SERIAL-2004: Horiba Micros 60 -->
+    <serial_port_configuration id="SERIAL-2004"
+        analyzer_id="2004" port_name="/dev/serial/ttyVUSB0" baud_rate="9600"
+        DATA_BITS="8" stop_bits="ONE" parity="NONE" flow_control="NONE"
+        active="true" fhir_uuid="a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d"
+        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+
+    <!-- SERIAL-2005: Horiba Pentra 60 -->
+    <serial_port_configuration id="SERIAL-2005"
+        analyzer_id="2005" port_name="/dev/serial/ttyVUSB1" baud_rate="9600"
+        DATA_BITS="8" stop_bits="ONE" parity="NONE" flow_control="NONE"
+        active="true" fhir_uuid="b2c3d4e5-f6a7-4b6c-9d0e-1f2a3b4c5d6e"
+        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+
+    <!-- SERIAL-2006: Mindray BA-88A -->
+    <serial_port_configuration id="SERIAL-2006"
+        analyzer_id="2006" port_name="/dev/serial/ttyVUSB2" baud_rate="9600"
+        DATA_BITS="8" stop_bits="ONE" parity="NONE" flow_control="NONE"
+        active="true" fhir_uuid="c3d4e5f6-a7b8-4c7d-0e1f-2a3b4c5d6e7f"
+        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+
+    <!-- SERIAL-2010: Stago STart 4 -->
+    <serial_port_configuration id="SERIAL-2010"
+        analyzer_id="2010" port_name="/dev/serial/ttyVUSB3" baud_rate="9600"
+        DATA_BITS="8" stop_bits="ONE" parity="NONE" flow_control="NONE"
+        active="true" fhir_uuid="d4e5f6a7-b8c9-4d8e-1f2a-3b4c5d6e7f8a"
+        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+
+    <!-- SERIAL-2011: Sysmex XN (optional, for RS232 mode) -->
+    <serial_port_configuration id="SERIAL-2011"
+        analyzer_id="2011" port_name="/dev/serial/ttyVUSB4" baud_rate="19200"
+        DATA_BITS="8" stop_bits="ONE" parity="NONE" flow_control="NONE"
+        active="false" fhir_uuid="e5f6a7b8-c9d0-4e9f-2a3b-4c5d6e7f8a9b"
+        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- FILE IMPORT CONFIGURATIONS -->
+    <!-- (for FILE-based analyzers) -->
+    <!-- ================================================================= -->
+
+    <!-- FILE-2002: GeneXpert -->
+    <file_import_configuration id="FILE-2002"
+        analyzer_id="2002" IMPORT_DIRECTORY="/data/analyzer-imports/genexpert"
+        file_pattern="*.csv" active="true"
+        fhir_uuid="f6a7b8c9-d0e1-4f0a-3b4c-5d6e7f8a9b0c" sys_user_id="1"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- FILE-2003: Hain FluoroCycler XT -->
+    <file_import_configuration id="FILE-2003"
+        analyzer_id="2003"
+        IMPORT_DIRECTORY="/data/analyzer-imports/fluorocycler"
+        file_pattern="*.csv" active="true"
+        fhir_uuid="a7b8c9d0-e1f2-4a1b-4c5d-6e7f8a9b0c1d" sys_user_id="1"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- FILE-2009: QuantStudio 7 Flex -->
+    <file_import_configuration id="FILE-2009"
+        analyzer_id="2009"
+        IMPORT_DIRECTORY="/data/analyzer-imports/quantstudio"
+        file_pattern="*.csv" active="true"
+        fhir_uuid="b8c9d0e1-f2a3-4b2c-5d6e-7f8a9b0c1d2e" sys_user_id="1"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- ANALYZER CONFIGURATIONS -->
+    <!-- (Network settings for TCP/IP analyzers, protocol metadata for all) -->
+    <!-- ================================================================= -->
+
+    <!-- CONFIG-2000: Abbott Architect (HL7 TCP) -->
+    <analyzer_configuration id="CONFIG-2000"
+        analyzer_id="2000" protocol_version="HL7 v2.5.1" status="ACTIVE"
+        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+
+    <!-- CONFIG-2002: GeneXpert (FILE) -->
+    <analyzer_configuration id="CONFIG-2002"
+        analyzer_id="2002" protocol_version="FILE" status="ACTIVE"
+        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+
+    <!-- CONFIG-2003: FluoroCycler XT (FILE) -->
+    <analyzer_configuration id="CONFIG-2003"
+        analyzer_id="2003" protocol_version="FILE" status="ACTIVE"
+        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+
+    <!-- CONFIG-2004: Horiba Micros 60 (ASTM RS232) -->
+    <analyzer_configuration id="CONFIG-2004"
+        analyzer_id="2004" protocol_version="ASTM LIS2-A2" status="ACTIVE"
+        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+
+    <!-- CONFIG-2005: Horiba Pentra 60 (ASTM RS232) -->
+    <analyzer_configuration id="CONFIG-2005"
+        analyzer_id="2005" protocol_version="ASTM LIS2-A2" status="ACTIVE"
+        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+
+    <!-- CONFIG-2006: Mindray BA-88A (ASTM RS232) - USES GenericASTM with default
+        config -->
+    <analyzer_configuration id="CONFIG-2006"
+        analyzer_id="2006" protocol_version="ASTM LIS2-A2"
+        identifier_pattern="MINDRAY.*BA-88A|BA88A" is_generic_plugin="true"
+        status="ACTIVE" sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+
+    <!-- CONFIG-2007: Mindray BC-5380 (HL7 TCP) - USES GenericHL7 with default
+        config -->
+    <analyzer_configuration id="CONFIG-2007"
+        analyzer_id="2007" protocol_version="HL7 v2.3.1"
+        identifier_pattern="MINDRAY.*BC.?5380|BC5380" is_generic_plugin="true"
+        status="ACTIVE" sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+
+    <!-- CONFIG-2008: Mindray BS-360E (HL7 TCP) - USES GenericHL7 with default
+        config -->
+    <analyzer_configuration id="CONFIG-2008"
+        analyzer_id="2008" protocol_version="HL7 v2.3.1"
+        identifier_pattern="MINDRAY.*BS.?360E|BS360E" is_generic_plugin="true"
+        status="ACTIVE" sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+
+    <!-- CONFIG-2009: QuantStudio 7 Flex (FILE) -->
+    <analyzer_configuration id="CONFIG-2009"
+        analyzer_id="2009" protocol_version="FILE" status="ACTIVE"
+        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+
+    <!-- CONFIG-2010: Stago STart 4 (ASTM RS232) -->
+    <analyzer_configuration id="CONFIG-2010"
+        analyzer_id="2010" protocol_version="ASTM LIS2-A2" status="ACTIVE"
+        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+
+    <!-- CONFIG-2011: Sysmex XN Series (ASTM TCP via bridge) -->
+    <analyzer_configuration id="CONFIG-2011"
+        analyzer_id="2011" ip_address="openelis-analyzer-bridge" port="12001"
+        protocol_version="ASTM E1381-02" status="ACTIVE" sys_user_id="1"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- CONFIG-2012: Mindray BC2000 (HL7 TCP) - USES GenericHL7 with default
+        config -->
+    <analyzer_configuration id="CONFIG-2012"
+        analyzer_id="2012" protocol_version="HL7 v2.3.1"
+        identifier_pattern="MINDRAY.*BC.?2000" is_generic_plugin="true"
+        status="ACTIVE" sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+</dataset>
