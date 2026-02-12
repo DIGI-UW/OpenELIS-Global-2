@@ -21,7 +21,7 @@ import NoNotificationSVG from "./NoNotificationSVG";
 
 export default function SlideOverNotifications(props) {
   const intl = useIntl();
-  const { notificationVisible, addNotification, setNotificationVisible } =
+  const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
   const [iconLoading, setIconLoading] = useState({
     icon: null,

@@ -6,6 +6,7 @@ import { Content, Theme } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { useSideNavPreference } from "./useSideNavPreference";
+import { AlertDialog } from "../common/CustomNotification";
 
 export const ConfigurationContext = createContext(null);
 export const NotificationContext = createContext(null);
@@ -116,6 +117,7 @@ export default function Layout(props) {
             defaultMode={layoutConfig.defaultMode}
             storageKeyPrefix={layoutConfig.storageKeyPrefix}
           />
+          <AlertDialog />
           {/* Theme wrapper creates white theme zone for content area */}
           {/* Global SCSS theme = blue header/nav, this = light content */}
           <Theme theme="white">
