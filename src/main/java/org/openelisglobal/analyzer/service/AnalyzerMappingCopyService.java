@@ -5,7 +5,6 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 /**
  * Service interface for copying analyzer field mappings
  * 
- * Task Reference: T192
  * 
  * Provides methods for copying field mappings from one analyzer to another
  * with: - Conflict resolution (overwrite, merge) - Type compatibility
@@ -16,7 +15,6 @@ public interface AnalyzerMappingCopyService {
     /**
      * Copy all field mappings from source analyzer to target analyzer
      * 
-     * Task Reference: T193
      * 
      * @param sourceAnalyzerId The source analyzer ID
      * @param targetAnalyzerId The target analyzer ID

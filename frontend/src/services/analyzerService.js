@@ -4,7 +4,6 @@
  * Provides methods for CRUD operations on analyzers and analyzer field mappings
  * Follows OpenELIS pattern using getFromOpenElisServer, postToOpenElisServerJsonResponse, and fetch for PUT/DELETE
  *
- * Task Reference: T065
  * Pattern Reference: AGENTS.md Section 5 (Frontend Data Fetching Pattern)
  */
 
@@ -666,7 +665,6 @@ export const deleteValidationRule = (
  * - isGenericPlugin: Whether this is a dashboard-configurable generic plugin
  * - identifierPattern: Regex pattern for generic plugins
  *
- * <p>Task Reference: Phase 1.1 - Analyzer type API integration
  *
  * @param {Object} filters - Optional filters { active, genericOnly, search }
  * @param {Function} callback - Callback function (data) => void
@@ -702,7 +700,6 @@ export const getAnalyzerTypes = (filters, callback) => {
  * - protocol ("ASTM" or "HL7")
  * - analyzerName (from JSON)
  *
- * <p>Task Reference: M20 - Default config templates API
  *
  * @param {Function} callback - Callback function (data) => void
  */
@@ -716,7 +713,6 @@ export const getDefaultConfigs = (callback) => {
  *
  * <p>Loads JSON template from filesystem for the specified protocol and name.
  *
- * <p>Task Reference: M20 - Default config templates API
  *
  * @param {String} protocol - Protocol type ("astm" or "hl7")
  * @param {String} name - Template name (without .json extension)

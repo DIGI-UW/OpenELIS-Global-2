@@ -34,7 +34,7 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
             // Eagerly fetch analyzer to avoid LazyInitializationException
             String hql = "SELECT ae FROM AnalyzerError ae LEFT JOIN FETCH ae.analyzer WHERE ae.analyzer.id = :analyzerId ORDER BY ae.lastupdated DESC";
             Query<AnalyzerError> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerError.class);
-            query.setParameter("analyzerId", analyzerIdInt); // Pass Integer, not String
+            query.setParameter("analyzerId", analyzerIdInt);
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding AnalyzerError by analyzer ID", e);

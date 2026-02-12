@@ -24,7 +24,6 @@ import org.openelisglobal.analyzer.valueholder.CustomFieldType;
 /**
  * DAO tests for CustomFieldTypeDAO
  * 
- * Task Reference: T033d Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class CustomFieldTypeDAOTest {
@@ -69,7 +68,7 @@ public class CustomFieldTypeDAOTest {
     }
 
     /**
-     * Test: Find all active returns only active types Task Reference: T033d
+     * Test: Find all active returns only active types
      */
     @Test
     public void testFindAllActive_ReturnsOnlyActiveTypes() {
@@ -93,7 +92,7 @@ public class CustomFieldTypeDAOTest {
     }
 
     /**
-     * Test: Find by name returns matching type Task Reference: T033d
+     * Test: Find by name returns matching type
      */
     @Test
     public void testFindByName_ReturnsMatchingType() {
@@ -118,7 +117,6 @@ public class CustomFieldTypeDAOTest {
 
     /**
      * Test: Find by name with no match returns null
-     * Task Reference: T033d
      */
     @Test
     public void testFindByName_NoMatch_ReturnsNull() {
@@ -137,7 +135,7 @@ public class CustomFieldTypeDAOTest {
     }
 
     /**
-     * Test: Find by type name returns matching type Task Reference: T033d
+     * Test: Find by type name returns matching type
      */
     @Test
     public void testFindByTypeName_ReturnsMatchingType() {
@@ -162,7 +160,6 @@ public class CustomFieldTypeDAOTest {
 
     /**
      * Test: Find by type name with no match returns null
-     * Task Reference: T033d
      */
     @Test
     public void testFindByTypeName_NoMatch_ReturnsNull() {

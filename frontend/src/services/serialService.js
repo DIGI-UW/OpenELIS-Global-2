@@ -1,6 +1,5 @@
 /**
  * Serial Port Service API Client
- * Task Reference: T038, M2
  *
  * Provides methods for CRUD operations on serial port configurations
  * Follows OpenELIS pattern using getFromOpenElisServer, postToOpenElisServerJsonResponse
@@ -90,7 +89,6 @@ export const updateSerialPortConfiguration = (
       }
     })
     .catch((error) => {
-      console.error("Error updating serial port configuration:", error);
       if (callback) {
         callback({ error: error.message }, extraParams);
       }
@@ -116,7 +114,6 @@ export const deleteSerialPortConfiguration = (id, callback, extraParams) => {
       }
     })
     .catch((error) => {
-      console.error("Error deleting serial port configuration:", error);
       if (callback) {
         callback({ error: error.message }, extraParams);
       }

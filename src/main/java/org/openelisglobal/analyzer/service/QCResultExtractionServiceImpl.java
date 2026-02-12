@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
  * Implementation of QCResultExtractionService for extracting QC result data
  * from parsed Q-segments
  * 
- * Task Reference: T188
  * 
  * Applies QC field mappings to QCSegmentData and returns QCResultDTO with all
  * required fields populated.
@@ -79,36 +78,30 @@ public class QCResultExtractionServiceImpl implements QCResultExtractionService 
             throw new LIMSRuntimeException("Invalid control level: " + controlLevelStr + ". Must be L, N, or H");
         }
 
-        // Map test code to Test ID
         String testId = mapTestCodeToTestId(qcData.getTestCode(), analyzerId);
         if (testId == null) {
             throw new LIMSRuntimeException("No mapping found for test code: " + qcData.getTestCode());
         }
 
-        // Map control lot number to Control Lot ID
         String controlLotId = mapControlLotNumberToControlLotId(qcData.getControlLotNumber(), analyzerId);
         if (controlLotId == null) {
             throw new LIMSRuntimeException("No mapping found for control lot number: " + qcData.getControlLotNumber());
         }
 
-        // Convert result value to BigDecimal
         BigDecimal resultValue = parseResultValue(qcData.getResultValue());
         if (resultValue == null) {
             throw new LIMSRuntimeException("Invalid result value: " + qcData.getResultValue());
         }
 
-        // Apply unit conversions if needed
         String unit = qcData.getUnit() != null ? qcData.getUnit().trim() : "";
         BigDecimal convertedValue = applyUnitConversion(resultValue, unit, qcData.getTestCode(), analyzerId);
         String convertedUnit = getConvertedUnit(unit, qcData.getTestCode(), analyzerId);
 
-        // Convert timestamp
         Date timestamp = qcData.getTimestamp();
         if (timestamp == null) {
             timestamp = new Date(); // Use current time if not provided
         }
 
-        // Create and return QCResultDTO
         QCResultDTO dto = new QCResultDTO();
         dto.setAnalyzerId(analyzerId);
         dto.setTestId(testId);
@@ -153,7 +146,6 @@ public class QCResultExtractionServiceImpl implements QCResultExtractionService 
      * @return Test ID if mapping found, null otherwise
      */
     private String mapTestCodeToTestId(String testCode, String analyzerId) {
-        // Find analyzer field by analyzer ID and field name
         Optional<AnalyzerField> fieldOpt = analyzerFieldDAO.findByAnalyzerIdAndFieldName(analyzerId, testCode);
         if (!fieldOpt.isPresent()) {
             return null;
@@ -162,7 +154,6 @@ public class QCResultExtractionServiceImpl implements QCResultExtractionService 
         AnalyzerField field = fieldOpt.get();
         List<AnalyzerFieldMapping> mappings = analyzerFieldMappingDAO.findByAnalyzerFieldId(field.getId());
 
-        // Find active mapping with TEST type
         for (AnalyzerFieldMapping mapping : mappings) {
             if (mapping.getIsActive()
                     && mapping.getOpenelisFieldType() == AnalyzerFieldMapping.OpenELISFieldType.TEST) {
@@ -181,7 +172,6 @@ public class QCResultExtractionServiceImpl implements QCResultExtractionService 
      * @return Control Lot ID if mapping found, null otherwise
      */
     private String mapControlLotNumberToControlLotId(String controlLotNumber, String analyzerId) {
-        // Find analyzer field by analyzer ID and field name (control lot number)
         Optional<AnalyzerField> fieldOpt = analyzerFieldDAO.findByAnalyzerIdAndFieldName(analyzerId, controlLotNumber);
         if (!fieldOpt.isPresent()) {
             return null;
@@ -190,7 +180,6 @@ public class QCResultExtractionServiceImpl implements QCResultExtractionService 
         AnalyzerField field = fieldOpt.get();
         List<AnalyzerFieldMapping> mappings = analyzerFieldMappingDAO.findByAnalyzerFieldId(field.getId());
 
-        // Find active mapping with QC type (for control lot)
         for (AnalyzerFieldMapping mapping : mappings) {
             if (mapping.getIsActive() && mapping.getOpenelisFieldType() == AnalyzerFieldMapping.OpenELISFieldType.QC) {
                 return mapping.getOpenelisFieldId();
@@ -233,32 +222,29 @@ public class QCResultExtractionServiceImpl implements QCResultExtractionService 
             return resultValue; // No unit to convert
         }
 
-        // Find analyzer field for test code
         Optional<AnalyzerField> fieldOpt = analyzerFieldDAO.findByAnalyzerIdAndFieldName(analyzerId, testCode);
         if (!fieldOpt.isPresent()) {
-            return resultValue; // No field found, no conversion
+            return resultValue;
         }
 
         AnalyzerField field = fieldOpt.get();
         List<UnitMapping> unitMappings = unitMappingDAO.findByAnalyzerFieldId(field.getId());
 
-        // Find unit mapping matching the analyzer unit
         for (UnitMapping unitMapping : unitMappings) {
             if (unitMapping.getAnalyzerUnit().equals(unit)) {
                 BigDecimal conversionFactor = unitMapping.getConversionFactor();
                 if (conversionFactor != null && conversionFactor.compareTo(BigDecimal.ZERO) != 0) {
-                    // Apply conversion: value * factor
                     return resultValue.multiply(conversionFactor);
                 }
             }
         }
 
-        return resultValue; // No conversion found, return original
+        return resultValue;
     }
 
     /**
      * Get converted unit if UnitMapping is configured
-     * 
+     *
      * @param unit       Original unit
      * @param testCode   Test code (for finding field)
      * @param analyzerId Analyzer ID
@@ -269,25 +255,23 @@ public class QCResultExtractionServiceImpl implements QCResultExtractionService 
             return unit;
         }
 
-        // Find analyzer field for test code
         Optional<AnalyzerField> fieldOpt = analyzerFieldDAO.findByAnalyzerIdAndFieldName(analyzerId, testCode);
         if (!fieldOpt.isPresent()) {
-            return unit; // No field found, return original unit
+            return unit;
         }
 
         AnalyzerField field = fieldOpt.get();
         List<UnitMapping> unitMappings = unitMappingDAO.findByAnalyzerFieldId(field.getId());
 
-        // Find unit mapping matching the analyzer unit
         for (UnitMapping unitMapping : unitMappings) {
             if (unitMapping.getAnalyzerUnit().equals(unit)) {
                 String openelisUnit = unitMapping.getOpenelisUnit();
                 if (openelisUnit != null && !openelisUnit.trim().isEmpty()) {
-                    return openelisUnit; // Return converted unit
+                    return openelisUnit;
                 }
             }
         }
 
-        return unit; // No conversion found, return original
+        return unit;
     }
 }

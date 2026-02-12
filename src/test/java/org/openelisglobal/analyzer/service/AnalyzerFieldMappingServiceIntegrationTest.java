@@ -18,7 +18,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * Integration tests for AnalyzerFieldMappingService update workflow
  *
- * Task Reference: T071 Test Coverage Goal: >80%
  *
  * These tests verify: - Mapping updates preserve historical data (existing
  * results unchanged) - Activation workflow applies changes to new messages only
@@ -142,8 +141,7 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
     }
 
     /**
-     * Test: Update mapping with existing results preserves historical data Task
-     * Reference: T071
+     * Test: Update mapping with existing results preserves historical data
      *
      * When a mapping is updated, existing results should remain unchanged. Only new
      * messages should use the updated mapping.
@@ -183,8 +181,7 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
     }
 
     /**
-     * Test: Activate mapping with confirmation applies to new messages Task
-     * Reference: T071
+     * Test: Activate mapping with confirmation applies to new messages
      *
      * When a draft mapping is activated with confirmation, it should become active
      * and apply to new messages only (existing results unchanged).
@@ -216,8 +213,7 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
     }
 
     /**
-     * Test: Update active mapping on active analyzer requires confirmation Task
-     * Reference: T071
+     * Test: Update active mapping on active analyzer requires confirmation
      *
      * When analyzer is active and mapping is active, updates require confirmation.
      */

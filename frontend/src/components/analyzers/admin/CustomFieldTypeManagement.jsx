@@ -38,7 +38,6 @@ import "./CustomFieldTypeManagement.css";
  * CustomFieldTypeManagement Component
  *
  * Admin-only page for managing custom field types (FR-018)
- * Task Reference: T140
  */
 const CustomFieldTypeManagement = () => {
   const intl = useIntl();

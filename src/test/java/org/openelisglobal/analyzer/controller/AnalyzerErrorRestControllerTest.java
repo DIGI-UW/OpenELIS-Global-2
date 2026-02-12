@@ -22,7 +22,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * Controller tests for AnalyzerErrorRestController
  * 
- * Task Reference: T085
  * 
  * Note: Using BaseWebContextSensitiveTest pattern (matching existing codebase)
  * since @WebMvcTest dependencies not available. @WebMvcTest would be preferred
@@ -94,7 +93,7 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
     }
 
     /**
-     * Test: GET /rest/analyzer/errors with filters Task Reference: T085
+     * Test: GET /rest/analyzer/errors with filters
      * 
      * Verifies that GET endpoint returns filtered list of errors.
      */
@@ -113,7 +112,7 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
     }
 
     /**
-     * Test: GET /rest/analyzer/errors/{id} Task Reference: T085
+     * Test: GET /rest/analyzer/errors/{id}
      * 
      * Verifies that GET endpoint returns single error by ID.
      */
@@ -133,7 +132,7 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
     }
 
     /**
-     * Test: POST /rest/analyzer/errors/{id}/acknowledge Task Reference: T085
+     * Test: POST /rest/analyzer/errors/{id}/acknowledge
      * 
      * Verifies that acknowledge endpoint updates error status.
      */
@@ -158,7 +157,7 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
     }
 
     /**
-     * Test: POST /rest/analyzer/errors/{id}/reprocess Task Reference: T085
+     * Test: POST /rest/analyzer/errors/{id}/reprocess
      * 
      * Verifies that reprocess endpoint reprocesses error message.
      */
@@ -178,7 +177,7 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
     }
 
     /**
-     * Test: GET /rest/analyzer/errors - 404 Not Found Task Reference: T085
+     * Test: GET /rest/analyzer/errors - 404 Not Found
      * 
      * Verifies that GET endpoint returns 404 for invalid error ID.
      */
@@ -195,7 +194,6 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
      * This test would have caught the bug where getErrorsByFilters returned empty
      * list when no filters were provided.
      * 
-     * Task Reference: T085
      */
     @Test
     public void testGetErrors_WithNoFilters_ReturnsAllErrors() throws Exception {
@@ -235,7 +233,6 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
      * as entity objects) and that the response structure matches what the frontend
      * expects: { data: { content: [...], statistics: {...} }, status: "success" }
      * 
-     * Task Reference: T085
      */
     @Test
     public void testGetErrors_ResponseFormat_MatchesFrontendExpectations() throws Exception {

@@ -2,7 +2,6 @@
  * MappingRetirementModal Component
  *
  * Confirmation modal for retiring field mappings
- * Task Reference: T170
  *
  * Per FR-013 specification:
  * - Small size ComposedModal (~400px)

@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 /**
  * Integration tests for ASTMQSegmentParser implementation
  * 
- * Task Reference: T183
  * 
  * Tests the complete Q-segment parsing workflow with Spring Boot context: -
  * Parse full ASTM message with Q-segments extracts QC data - Parse multiple
@@ -27,8 +26,7 @@ public class ASTMQSegmentParserIntegrationTest extends BaseWebContextSensitiveTe
     private ASTMQSegmentParser astmQSegmentParser;
 
     /**
-     * Test: Parse full ASTM message with Q-segments extracts QC data Task
-     * Reference: T183
+     * Test: Parse full ASTM message with Q-segments extracts QC data
      * 
      * Verifies that parseQSegments() correctly extracts QC data from full ASTM
      * message including H-segment (header) and Q-segments (QC results).
@@ -60,7 +58,7 @@ public class ASTMQSegmentParserIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Parse multiple Q-segments from single message Task Reference: T183
+     * Test: Parse multiple Q-segments from single message
      * 
      * Verifies that parseQSegments() correctly extracts all Q-segments from a
      * single ASTM message containing multiple QC results (e.g., multiple control
@@ -117,8 +115,7 @@ public class ASTMQSegmentParserIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Parse message with Q-segments only (no patient results) Task Reference:
-     * T183
+     * Test: Parse message with Q-segments only (no patient results)
      * 
      * Verifies that parseQSegments() correctly extracts Q-segments even when
      * message contains only QC results (no patient data).
@@ -140,8 +137,7 @@ public class ASTMQSegmentParserIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Parse message with mixed segments (patient results + QC results) Task
-     * Reference: T183
+     * Test: Parse message with mixed segments (patient results + QC results)
      * 
      * Verifies that parseQSegments() correctly extracts only Q-segments from
      * message containing both patient results (P, O, R segments) and QC results (Q
@@ -172,8 +168,7 @@ public class ASTMQSegmentParserIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Parse message with no Q-segments returns empty list Task Reference:
-     * T183
+     * Test: Parse message with no Q-segments returns empty list
      * 
      * Verifies that parseQSegments() returns empty list when message contains no
      * Q-segments (patient results only).

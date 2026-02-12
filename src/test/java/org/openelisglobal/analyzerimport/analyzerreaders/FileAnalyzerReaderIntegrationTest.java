@@ -25,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Integration tests for FileAnalyzerReader with full Spring context
  *
- * Task Reference: T048 (Integration Test)
  *
  * Tests the complete FileAnalyzerReader workflow: - CSV parsing with
  * SpringContext available - Plugin matching via PluginAnalyzerService - Data
@@ -119,7 +118,7 @@ public class FileAnalyzerReaderIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Read CSV stream with SpringContext available Task Reference: T048
+     * Test: Read CSV stream with SpringContext available
      */
     @Test
     public void testReadStream_WithValidCSVAndSpringContext_ParsesSuccessfully() throws Exception {
@@ -144,7 +143,7 @@ public class FileAnalyzerReaderIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Read CSV with header row uses column mappings Task Reference: T048
+     * Test: Read CSV with header row uses column mappings
      */
     @Test
     public void testReadStream_WithHeaderRow_UsesColumnMappings() throws Exception {
@@ -163,7 +162,7 @@ public class FileAnalyzerReaderIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Read CSV without header uses direct column access Task Reference: T048
+     * Test: Read CSV without header uses direct column access
      */
     @Test
     public void testReadStream_WithNoHeader_UsesDirectColumns() throws Exception {
@@ -182,7 +181,7 @@ public class FileAnalyzerReaderIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Read CSV with custom delimiter Task Reference: T048
+     * Test: Read CSV with custom delimiter
      */
     @Test
     public void testReadStream_WithCustomDelimiter_ParsesCorrectly() throws Exception {
@@ -201,7 +200,7 @@ public class FileAnalyzerReaderIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Read empty file returns false Task Reference: T048
+     * Test: Read empty file returns false
      */
     @Test
     public void testReadStream_WithEmptyFile_ReturnsFalse() throws Exception {
@@ -222,8 +221,7 @@ public class FileAnalyzerReaderIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Insert analyzer data with SpringContext (if plugin matches) Task
-     * Reference: T048
+     * Test: Insert analyzer data with SpringContext (if plugin matches)
      * 
      * Note: This test may fail if no matching plugin exists for the test data
      * format. The test verifies the integration structure, but actual plugin

@@ -25,7 +25,6 @@ import org.springframework.test.web.servlet.MvcResult;
 /**
  * Integration tests for AnalyzerMappingPreviewRestController
  * 
- * Task Reference: T158 Test Coverage Goal: >80%
  * 
  * Uses BaseWebContextSensitiveTest for integration testing with full Spring
  * context
@@ -44,8 +43,7 @@ public class AnalyzerMappingPreviewRestControllerTest extends BaseWebContextSens
     }
 
     /**
-     * Test: Preview mapping with valid message returns structured response Task
-     * Reference: T158
+     * Test: Preview mapping with valid message returns structured response
      */
     @Test
     public void testPreviewMapping_WithValidMessage_ReturnsStructuredResponse() throws Exception {
@@ -109,8 +107,7 @@ public class AnalyzerMappingPreviewRestControllerTest extends BaseWebContextSens
     }
 
     /**
-     * Test: Preview mapping with large message returns bad request Task Reference:
-     * T158
+     * Test: Preview mapping with large message returns bad request
      */
     @Test
     public void testPreviewMapping_WithLargeMessage_ReturnsBadRequest() throws Exception {
@@ -128,8 +125,7 @@ public class AnalyzerMappingPreviewRestControllerTest extends BaseWebContextSens
     }
 
     /**
-     * Test: Preview mapping with null message returns bad request Task Reference:
-     * T158
+     * Test: Preview mapping with null message returns bad request
      */
     @Test
     public void testPreviewMapping_WithNullMessage_ReturnsBadRequest() throws Exception {

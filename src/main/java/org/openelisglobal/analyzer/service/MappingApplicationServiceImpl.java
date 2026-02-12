@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service implementation for applying field mappings to ASTM message segments
  * 
- * Task Reference: T179
  * 
  * This service transforms raw ASTM message segments by applying configured
  * field mappings. Used by MappingAwareAnalyzerLineInserter wrapper to apply
@@ -46,11 +45,9 @@ public class MappingApplicationServiceImpl implements MappingApplicationService 
         }
 
         try {
-            // Get active mappings for analyzer
             List<AnalyzerFieldMapping> mappings = analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId(analyzerId);
 
             if (mappings == null || mappings.isEmpty()) {
-                // No mappings configured - return original lines
                 result.setTransformedLines(new ArrayList<>(lines));
                 result.setHasMappings(false);
                 result.setSuccess(true);
@@ -59,7 +56,6 @@ public class MappingApplicationServiceImpl implements MappingApplicationService 
 
             result.setHasMappings(true);
 
-            // Build map of mappings by analyzer field name for quick lookup
             Map<String, AnalyzerFieldMapping> mappingsByFieldName = new HashMap<>();
             for (AnalyzerFieldMapping mapping : mappings) {
                 AnalyzerField field = mapping.getAnalyzerField();
@@ -68,7 +64,6 @@ public class MappingApplicationServiceImpl implements MappingApplicationService 
                 }
             }
 
-            // Parse and transform lines
             List<String> transformedLines = new ArrayList<>();
             List<String> unmappedFields = new ArrayList<>();
 
@@ -78,10 +73,8 @@ public class MappingApplicationServiceImpl implements MappingApplicationService 
                     continue;
                 }
 
-                // Parse ASTM line segments
                 String[] segments = line.split("\\|");
                 if (segments.length < 2) {
-                    // Not a valid ASTM line, pass through unchanged
                     transformedLines.add(line);
                     continue;
                 }
@@ -92,7 +85,6 @@ public class MappingApplicationServiceImpl implements MappingApplicationService 
                     continue;
                 }
 
-                // Transform line based on segment type
                 String transformedLine = transformLine(line, segments, segmentType, mappingsByFieldName,
                         unmappedFields);
                 transformedLines.add(transformedLine);
@@ -125,17 +117,9 @@ public class MappingApplicationServiceImpl implements MappingApplicationService 
      */
     private String transformLine(String line, String[] segments, String segmentType,
             Map<String, AnalyzerFieldMapping> mappingsByFieldName, List<String> unmappedFields) {
-        // For now, return original line
-        // TODO: Implement actual transformation logic based on segment type
-        // This is a placeholder - actual implementation would:
-        // 1. Extract test codes, units, qualitative values from segments
-        // 2. Look up mappings
-        // 3. Apply transformations (unit conversions, qualitative value mappings)
-        // 4. Reconstruct line with transformed values
+        // Line passthrough — segment-type transformation deferred to Phase 2
 
-        // Track unmapped fields for error reporting
         if (segmentType.equals("R")) {
-            // Result segment - check for test code mapping
             // Format: R|sequence|test_code|value|units|...
             if (segments.length >= 3) {
                 String testCode = segments[2].trim();

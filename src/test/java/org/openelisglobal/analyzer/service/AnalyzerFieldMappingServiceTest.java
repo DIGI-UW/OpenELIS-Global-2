@@ -25,7 +25,6 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 /**
  * Unit tests for AnalyzerFieldMappingService implementation
  *
- * Task Reference: T030 Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.Silent.class)
 public class AnalyzerFieldMappingServiceTest {
@@ -120,7 +119,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Create mapping with valid data persists mapping Task Reference: T030
+     * Test: Create mapping with valid data persists mapping
      */
     @Test
     public void testCreateMapping_WithValidData_PersistsMapping() {
@@ -138,8 +137,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Create mapping with type incompatibility throws exception Task
-     * Reference: T030
+     * Test: Create mapping with type incompatibility throws exception
      *
      * Validation: NUMERIC analyzer field can only map to TEST or RESULT OpenELIS
      * fields
@@ -161,8 +159,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Validate required mappings with missing required throws exception Task
-     * Reference: T030
+     * Test: Validate required mappings with missing required throws exception
      *
      * Validation: At least one mapping with isRequired=true must exist for Sample
      * ID, Test Code, Result Value
@@ -182,8 +179,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Activate mapping with active analyzer requires confirmation Task
-     * Reference: T030
+     * Test: Activate mapping with active analyzer requires confirmation
      *
      * Note: This test verifies that activation requires confirmation flag
      */
@@ -207,8 +203,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Update mapping with active analyzer requires confirmation Task
-     * Reference: T070
+     * Test: Update mapping with active analyzer requires confirmation
      *
      * When analyzer is active, updating a mapping requires explicit confirmation to
      * prevent accidental changes to live configuration
@@ -243,8 +238,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Update mapping with draft state does not require confirmation Task
-     * Reference: T070
+     * Test: Update mapping with draft state does not require confirmation
      *
      * When mapping is in draft state (isActive=false), updates can be made without
      * confirmation since it's not affecting live processing
@@ -281,8 +275,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Deactivate mapping with active analyzer logs audit trail Task
-     * Reference: T070
+     * Test: Deactivate mapping with active analyzer logs audit trail
      *
      * When deactivating a mapping for an active analyzer, the system should log an
      * audit trail entry with who, when, and what changed
@@ -313,8 +306,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Validate activation with missing required mappings returns false Task
-     * Reference: T168
+     * Test: Validate activation with missing required mappings returns false
      *
      * Validation: Required mappings (Sample ID, Test Code, Result Value) must exist
      * before activation
@@ -339,8 +331,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Validate activation with pending messages returns warnings Task
-     * Reference: T168
+     * Test: Validate activation with pending messages returns warnings
      *
      * Validation: Pending messages in error queue should generate warnings but not
      * block activation
@@ -400,8 +391,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Validate activation with all checks passing returns true Task
-     * Reference: T168
+     * Test: Validate activation with all checks passing returns true
      *
      * Validation: All required mappings present, no pending messages, no concurrent
      * edits
@@ -454,7 +444,6 @@ public class AnalyzerFieldMappingServiceTest {
 
     /**
      * Test: Activate mapping with concurrent edit throws optimistic lock exception
-     * Task Reference: T168
      *
      * Validation: If another user modified mappings since page load, activation
      * should fail
@@ -487,8 +476,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Activate mapping with stale version throws OptimisticLockException Task
-     * Reference: T168a
+     * Test: Activate mapping with stale version throws OptimisticLockException
      */
     @Test(expected = LIMSRuntimeException.class)
     public void testActivateMapping_WithStaleVersion_ThrowsOptimisticLockException() {
@@ -515,8 +503,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Retire mapping with no pending messages sets inactive successfully Task
-     * Reference: T201
+     * Test: Retire mapping with no pending messages sets inactive successfully
      */
     @Test
     public void testRetireMapping_WithNoPendingMessages_SetsInactiveSuccessfully() {
@@ -548,8 +535,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Retire mapping with pending messages throws exception Task Reference:
-     * T201
+     * Test: Retire mapping with pending messages throws exception
      */
     @Test(expected = LIMSRuntimeException.class)
     public void testRetireMapping_WithPendingMessages_ThrowsException() {
@@ -583,7 +569,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Retire mapping with reason stores reason in notes Task Reference: T201
+     * Test: Retire mapping with reason stores reason in notes
      */
     @Test
     public void testRetireMapping_WithReason_StoresReasonInNotes() {
@@ -619,7 +605,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Retire mapping sets retirement date to now Task Reference: T201
+     * Test: Retire mapping sets retirement date to now
      */
     @Test
     public void testRetireMapping_SetsRetirementDateToNow() {

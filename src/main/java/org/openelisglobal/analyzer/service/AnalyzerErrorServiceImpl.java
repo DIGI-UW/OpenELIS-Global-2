@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service implementation for AnalyzerError operations
  * 
- * Task Reference: T090
  * 
  * Provides business logic for: - Creating error records for unmapped/failed
  * analyzer messages - Acknowledging errors - Reprocessing errors after mappings

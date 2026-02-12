@@ -2,7 +2,6 @@
  * MappingActivationModal Component
  *
  * Warning modal for confirming activation of mapping changes
- * Task Reference: T164
  *
  * Per FR-010 specification:
  * - Warning variant ComposedModal

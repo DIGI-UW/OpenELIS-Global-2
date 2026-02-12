@@ -61,7 +61,7 @@ public class HibernateMappingValidationTest {
         configuration.addAnnotatedClass(CustomFieldType.class);
         configuration.addAnnotatedClass(FileImportConfiguration.class);
         configuration.addAnnotatedClass(ValidationRuleConfiguration.class);
-        configuration.addAnnotatedClass(SerialPortConfiguration.class); // Task Reference: T022, M2
+        configuration.addAnnotatedClass(SerialPortConfiguration.class); //
         configuration.addAnnotatedClass(QualitativeResultMapping.class); // Migrated to annotations
         configuration.addAnnotatedClass(UnitMapping.class); // Migrated to annotations
 
@@ -109,9 +109,9 @@ public class HibernateMappingValidationTest {
         assertNotNull("ValidationRuleConfiguration should be registered",
                 sessionFactory.getMetamodel().entity(ValidationRuleConfiguration.class));
         assertNotNull("SerialPortConfiguration should be registered",
-                sessionFactory.getMetamodel().entity(SerialPortConfiguration.class)); // Task Reference: T022, M2
+                sessionFactory.getMetamodel().entity(SerialPortConfiguration.class)); //
         assertNotNull("FileImportConfiguration should be registered",
-                sessionFactory.getMetamodel().entity(FileImportConfiguration.class)); // Task Reference: T045, M3
+                sessionFactory.getMetamodel().entity(FileImportConfiguration.class)); //
     }
 
     /**

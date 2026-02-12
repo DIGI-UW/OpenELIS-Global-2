@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
  * Implementation of QCResultProcessingService for processing QC results from
  * ASTM Q-segments
  * 
- * Task Reference: T191
  * 
  * This service coordinates the complete QC result processing workflow: (1)
  * Receives QCResultDTO from QCResultExtractionService (after Q-segment parsing
@@ -35,7 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 
  * Error Handling: If Feature 003's QCResultService is unavailable or throws an
  * exception, this service creates an AnalyzerError with type MAPPING (will be
- * QC_MAPPING_INCOMPLETE per T194) and severity ERROR (per FR-011).
+ * QC_MAPPING_INCOMPLETE and severity ERROR (per FR-011).
  * 
  * Note: Feature 003's QCResultService is injected via @Autowired(required =
  * false) since it may not be implemented yet. When Feature 003 is implemented,
@@ -94,7 +93,6 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
     public Object processQCResult(QCResultDTO qcResultDTO, String analyzerId) {
-        // Validate input
         if (qcResultDTO == null) {
             throw new IllegalArgumentException("QCResultDTO cannot be null");
         }
@@ -102,7 +100,6 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
             throw new IllegalArgumentException("Analyzer ID cannot be null or empty");
         }
 
-        // Check if Feature 003's QCResultService is available
         if (qcResultService == null) {
             // Service unavailable - create AnalyzerError (per FR-011)
             String errorMessage = String.format(
@@ -113,11 +110,9 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
         }
 
         try {
-            // Get analyzer entity
             Analyzer analyzer = analyzerDAO.get(analyzerId)
                     .orElseThrow(() -> new LIMSRuntimeException("Analyzer not found: " + analyzerId));
 
-            // Convert Date to Timestamp for Feature 003's service
             Timestamp timestamp = qcResultDTO.getTimestamp() != null
                     ? new Timestamp(qcResultDTO.getTimestamp().getTime())
                     : new Timestamp(System.currentTimeMillis());
@@ -135,8 +130,6 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
             // qcResultDTO.getUnit(),
             // timestamp);
 
-            // Using reflection to call createQCResult() method
-            // This allows the code to compile before Feature 003 is implemented
             try {
                 java.lang.reflect.Method createQCResultMethod = qcResultService.getClass().getMethod("createQCResult",
                         String.class, String.class, String.class, QCResultDTO.ControlLevel.class, BigDecimal.class,
@@ -160,7 +153,6 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
             }
 
         } catch (LIMSRuntimeException e) {
-            // Re-throw LIMSRuntimeException as-is
             throw e;
         } catch (Exception e) {
             // Unexpected error - create AnalyzerError (per FR-011)
@@ -188,7 +180,7 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
                 return;
             }
 
-            // Create error with type QC_MAPPING_INCOMPLETE (per FR-011 and T194)
+            // Create error with type QC_MAPPING_INCOMPLETE (per FR-011)
             analyzerErrorService.createError(analyzer, AnalyzerError.ErrorType.QC_MAPPING_INCOMPLETE,
                     AnalyzerError.Severity.ERROR, errorMessage, rawMessage);
 

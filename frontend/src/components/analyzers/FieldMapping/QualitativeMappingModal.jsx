@@ -2,7 +2,6 @@
  * QualitativeMappingModal Component
  *
  * Modal for configuring qualitative value mappings (many-to-one)
- * Task Reference: T064
  */
 
 import React, { useState, useEffect } from "react";

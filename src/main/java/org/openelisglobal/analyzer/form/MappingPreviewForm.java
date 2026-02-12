@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Size;
 /**
  * Form object for mapping preview request
  * 
- * Task Reference: T157
  */
 public class MappingPreviewForm {
 

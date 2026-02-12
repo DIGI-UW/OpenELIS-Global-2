@@ -23,7 +23,6 @@ import org.springframework.stereotype.Service;
  * intervals. Processes files matching the configured file pattern and moves
  * them to archive or error directories based on processing results.
  * 
- * Task Reference: T054
  */
 @Service
 public class FileImportWatchService {

@@ -20,7 +20,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 /**
  * Unit tests for AnalyzerMappingPreviewService implementation
  * 
- * Task Reference: T154 Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerMappingPreviewServiceTest {
@@ -65,7 +64,7 @@ public class AnalyzerMappingPreviewServiceTest {
     }
 
     /**
-     * Test: Preview mapping with valid message returns preview Task Reference: T154
+     * Test: Preview mapping with valid message returns preview
      */
     @Test
     public void testPreviewMapping_WithValidMessage_ReturnsPreview() {
@@ -93,8 +92,7 @@ public class AnalyzerMappingPreviewServiceTest {
     }
 
     /**
-     * Test: Preview mapping with invalid format still attempts to parse Task
-     * Reference: T154
+     * Test: Preview mapping with invalid format still attempts to parse
      * 
      * Note: Current implementation is lenient and attempts to parse any input.
      * Invalid format may result in empty parsed fields or warnings, not errors.
@@ -117,8 +115,7 @@ public class AnalyzerMappingPreviewServiceTest {
     }
 
     /**
-     * Test: Preview mapping with unmapped fields returns warnings Task Reference:
-     * T154
+     * Test: Preview mapping with unmapped fields returns warnings
      */
     @Test
     public void testPreviewMapping_WithUnmappedFields_ReturnsWarnings() {
@@ -141,8 +138,7 @@ public class AnalyzerMappingPreviewServiceTest {
     }
 
     /**
-     * Test: Parse ASTM message with complex message parses all fields Task
-     * Reference: T154
+     * Test: Parse ASTM message with complex message parses all fields
      */
     @Test
     public void testParseAstmMessage_WithComplexMessage_ParsesAllFields() {
@@ -159,8 +155,7 @@ public class AnalyzerMappingPreviewServiceTest {
     }
 
     /**
-     * Test: Apply mappings with type compatibility applies mappings Task Reference:
-     * T154
+     * Test: Apply mappings with type compatibility applies mappings
      */
     @Test
     public void testApplyMappings_WithTypeCompatibility_AppliesMappings() {
@@ -185,7 +180,7 @@ public class AnalyzerMappingPreviewServiceTest {
     }
 
     /**
-     * Test: Build entity preview constructs test and result Task Reference: T154
+     * Test: Build entity preview constructs test and result
      */
     @Test
     public void testBuildEntityPreview_ConstructsTestAndResult() {

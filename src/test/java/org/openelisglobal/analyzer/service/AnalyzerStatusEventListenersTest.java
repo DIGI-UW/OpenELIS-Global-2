@@ -23,7 +23,6 @@ import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 /**
  * Unit tests for AnalyzerStatusEventListeners
  *
- * Task Reference: T151e, T153b Test Coverage Goal: >80%
  *
  * Tests all event listener methods trigger appropriate status transitions
  */

@@ -19,7 +19,6 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 /**
  * Unit tests for UnitMappingService implementation
  * 
- * Task Reference: T032 Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class UnitMappingServiceTest {
@@ -61,8 +60,7 @@ public class UnitMappingServiceTest {
     }
 
     /**
-     * Test: Create mapping with conversion factor applies conversion Task
-     * Reference: T032
+     * Test: Create mapping with conversion factor applies conversion
      * 
      * Conversion factor: Used when analyzer unit differs from OpenELIS unit
      */
@@ -87,8 +85,7 @@ public class UnitMappingServiceTest {
     }
 
     /**
-     * Test: Create mapping with unit mismatch requires conversion factor Task
-     * Reference: T032
+     * Test: Create mapping with unit mismatch requires conversion factor
      * 
      * Validation: If units don't match, conversion factor is required
      */
@@ -108,7 +105,6 @@ public class UnitMappingServiceTest {
 
     /**
      * Test: Create mapping with matching units doesn't require conversion factor
-     * Task Reference: T032
      */
     @Test
     public void testCreateMapping_WithMatchingUnits_DoesNotRequireConversionFactor() {

@@ -3,7 +3,6 @@ package org.openelisglobal.analyzer.service;
 /**
  * Applied mapping result
  * 
- * Task Reference: T155
  */
 public class AppliedMapping {
     private String analyzerFieldName;

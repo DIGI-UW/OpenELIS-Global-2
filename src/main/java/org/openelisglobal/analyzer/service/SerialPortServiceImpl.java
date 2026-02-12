@@ -14,8 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service implementation for SerialPortConfiguration operations Task Reference:
- * T031, M2
+ * Service implementation for SerialPortConfiguration operations
  * 
  * Manages serial port configurations and connection lifecycle using jSerialComm
  * library.
@@ -70,7 +69,6 @@ public class SerialPortServiceImpl extends BaseObjectServiceImpl<SerialPortConfi
                 return false;
             }
 
-            // Check if already connected
             if (activeConnections.containsKey(configId)) {
                 SerialPort existingPort = activeConnections.get(configId);
                 if (existingPort.isOpen()) {
@@ -78,13 +76,11 @@ public class SerialPortServiceImpl extends BaseObjectServiceImpl<SerialPortConfi
                             "Port already open for configuration: " + configId);
                     return true;
                 } else {
-                    // Clean up stale connection
                     activeConnections.remove(configId);
                     connectionStatuses.remove(configId);
                 }
             }
 
-            // Get serial port by name
             SerialPort serialPort = SerialPort.getCommPort(config.getPortName());
             if (serialPort == null) {
                 LogEvent.logError(this.getClass().getSimpleName(), "openConnection",
@@ -93,11 +89,9 @@ public class SerialPortServiceImpl extends BaseObjectServiceImpl<SerialPortConfi
                 return false;
             }
 
-            // Configure port parameters
             serialPort.setBaudRate(config.getBaudRate());
             serialPort.setNumDataBits(config.getDataBits());
 
-            // Map stop bits enum to jSerialComm constant
             int stopBitsValue;
             switch (config.getStopBits()) {
             case ONE:
@@ -114,7 +108,6 @@ public class SerialPortServiceImpl extends BaseObjectServiceImpl<SerialPortConfi
             }
             serialPort.setNumStopBits(stopBitsValue);
 
-            // Map parity enum to jSerialComm constant
             int parityValue;
             switch (config.getParity()) {
             case NONE:
@@ -137,7 +130,6 @@ public class SerialPortServiceImpl extends BaseObjectServiceImpl<SerialPortConfi
             }
             serialPort.setParity(parityValue);
 
-            // Map flow control enum to jSerialComm constants
             int flowControlValue = 0;
             switch (config.getFlowControl()) {
             case NONE:
@@ -156,7 +148,6 @@ public class SerialPortServiceImpl extends BaseObjectServiceImpl<SerialPortConfi
             // Set read timeout (5 seconds)
             serialPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 5000, 0);
 
-            // Open the port
             if (serialPort.openPort()) {
                 activeConnections.put(configId, serialPort);
                 connectionStatuses.put(configId, "CONNECTED");
@@ -219,11 +210,9 @@ public class SerialPortServiceImpl extends BaseObjectServiceImpl<SerialPortConfi
             return "DISCONNECTED";
         }
 
-        // Verify actual connection state
         if (isConnected(configId)) {
             return "CONNECTED";
         } else {
-            // Clean up stale status
             connectionStatuses.remove(configId);
             return "DISCONNECTED";
         }

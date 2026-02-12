@@ -22,7 +22,6 @@ import org.springframework.test.web.servlet.MvcResult;
  * Integration tests for AnalyzerFieldMappingRestController Following TDD
  * approach: Write tests BEFORE implementation
  * 
- * Task Reference: T036 Test Coverage Goal: >80%
  */
 public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensitiveTest {
 
@@ -128,7 +127,7 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
 
     /**
      * Test: GET /rest/analyzer/analyzers/{analyzerId}/mappings returns list of
-     * mappings Task Reference: T036
+     * mappings
      * 
      * This test verifies that the mappings endpoint returns a direct array (not
      * wrapped in data object), which matches frontend expectations.
@@ -155,7 +154,6 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
      * format that the frontend expects: direct array of mapping objects with all
      * required fields.
      * 
-     * Task Reference: T036
      */
     @Test
     public void testGetMappings_WithExistingMappings_ReturnsCorrectFormat() throws Exception {
@@ -192,7 +190,7 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
 
     /**
      * Test: POST /rest/analyzer/analyzers/{analyzerId}/mappings creates mapping
-     * with valid data Task Reference: T036
+     * with valid data
      */
     @Test
     public void testCreateMapping_WithValidData_ReturnsCreated() throws Exception {
@@ -215,7 +213,7 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
 
     /**
      * Test: POST /rest/analyzer/analyzers/{analyzerId}/mappings with type
-     * incompatibility returns bad request Task Reference: T036
+     * incompatibility returns bad request
      */
     @Test
     public void testCreateMapping_WithTypeIncompatibility_ReturnsBadRequest() throws Exception {
@@ -237,7 +235,7 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
 
     /**
      * Test: PUT /rest/analyzer/analyzers/{analyzerId}/mappings/{mappingId} updates
-     * mapping Task Reference: T036
+     * mapping
      */
     @Test
     public void testUpdateMapping_WithValidData_ReturnsUpdated() throws Exception {
@@ -271,7 +269,7 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
 
     /**
      * Test: DELETE /rest/analyzer/analyzers/{analyzerId}/mappings/{mappingId}
-     * deletes mapping Task Reference: T036
+     * deletes mapping
      */
     @Test
     public void testDeleteMapping_WithValidId_ReturnsNoContent() throws Exception {
@@ -327,7 +325,7 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
 
     /**
      * Test: POST /rest/analyzer/analyzers/{targetId}/copy-mappings with valid
-     * request returns copy results Task Reference: T195
+     * request returns copy results
      */
     @Test
     public void testCopyMappings_WithValidRequest_ReturnsCopyResults() throws Exception {
@@ -353,7 +351,7 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
 
     /**
      * Test: POST /rest/analyzer/analyzers/{targetId}/copy-mappings with no source
-     * mappings returns bad request Task Reference: T195
+     * mappings returns bad request
      */
     @Test
     public void testCopyMappings_WithNoSourceMappings_ReturnsBadRequest() throws Exception {
@@ -377,7 +375,7 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
 
     /**
      * Test: POST /rest/analyzer/analyzers/{targetId}/copy-mappings with missing
-     * sourceAnalyzerId returns bad request Task Reference: T195
+     * sourceAnalyzerId returns bad request
      */
     @Test
     public void testCopyMappings_WithMissingSourceAnalyzerId_ReturnsBadRequest() throws Exception {

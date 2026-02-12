@@ -100,7 +100,6 @@ public class AnalyzerRestController extends BaseRestController {
                     continue;
                 }
 
-                // Apply search filter
                 if (search != null && !search.isEmpty()) {
                     String searchLower = search.toLowerCase();
                     if (!analyzer.getName().toLowerCase().contains(searchLower) && (analyzer.getType() == null
@@ -109,7 +108,6 @@ public class AnalyzerRestController extends BaseRestController {
                     }
                 }
 
-                // Apply lifecycle status filter (SETUP, ACTIVE, INACTIVE, DELETED)
                 if (status != null && !status.isEmpty()) {
                     if (analyzerStatus == null || !analyzerStatus.equalsIgnoreCase(status)) {
                         continue;
@@ -169,7 +167,6 @@ public class AnalyzerRestController extends BaseRestController {
                 error.put("validationErrors", validationErrors);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
-            // Check for duplicate name
             List<Analyzer> existingAnalyzers = analyzerService.getAll();
             for (Analyzer existing : existingAnalyzers) {
                 if (existing.getName().equalsIgnoreCase(form.getName())) {
@@ -191,7 +188,6 @@ public class AnalyzerRestController extends BaseRestController {
                 analyzer.setIdentifierPattern(form.getIdentifierPattern());
             }
 
-            // Link to plugin type (analyzer_type FK)
             if (form.getPluginTypeId() != null && !form.getPluginTypeId().trim().isEmpty()) {
                 AnalyzerType pluginType = analyzerTypeService.get(form.getPluginTypeId());
                 if (pluginType != null) {
@@ -199,7 +195,6 @@ public class AnalyzerRestController extends BaseRestController {
                 }
             }
 
-            // Set lifecycle status (SETUP → ACTIVE → INACTIVE → DELETED)
             String statusStr = form.getStatus() != null ? form.getStatus() : "SETUP";
             try {
                 analyzer.setStatus(AnalyzerStatus.valueOf(statusStr));
@@ -211,7 +206,6 @@ public class AnalyzerRestController extends BaseRestController {
             analyzer.setSysUserId(getSysUserId(request));
             String analyzerId = analyzerService.insert(analyzer);
 
-            // Retrieve created analyzer
             Analyzer createdAnalyzer = analyzerService.get(analyzerId);
             if (createdAnalyzer == null) {
                 throw new LIMSRuntimeException("Failed to retrieve created analyzer");
@@ -405,7 +399,6 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getIdentifierPattern() != null) {
                 analyzer.setIdentifierPattern(form.getIdentifierPattern());
             }
-            // Update plugin type link (analyzer_type FK)
             if (form.getPluginTypeId() != null && !form.getPluginTypeId().trim().isEmpty()) {
                 AnalyzerType pluginType = analyzerTypeService.get(form.getPluginTypeId());
                 if (pluginType != null) {

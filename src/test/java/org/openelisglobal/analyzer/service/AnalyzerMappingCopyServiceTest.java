@@ -23,7 +23,6 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 /**
  * Unit tests for AnalyzerMappingCopyService implementation
  * 
- * Task Reference: T191 Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerMappingCopyServiceTest {
@@ -74,8 +73,7 @@ public class AnalyzerMappingCopyServiceTest {
     }
 
     /**
-     * Test: Copy mappings with valid source copies all mappings Task Reference:
-     * T191
+     * Test: Copy mappings with valid source copies all mappings
      */
     @Test
     public void testCopyMappings_WithValidSource_CopiesAllMappings() {
@@ -112,8 +110,7 @@ public class AnalyzerMappingCopyServiceTest {
     }
 
     /**
-     * Test: Copy mappings with existing mappings overwrites target Task Reference:
-     * T191
+     * Test: Copy mappings with existing mappings overwrites target
      */
     @Test
     public void testCopyMappings_WithExistingMappings_OverwritesTarget() {
@@ -153,8 +150,7 @@ public class AnalyzerMappingCopyServiceTest {
     }
 
     /**
-     * Test: Copy mappings with type incompatibility generates warnings Task
-     * Reference: T191
+     * Test: Copy mappings with type incompatibility generates warnings
      */
     @Test
     public void testCopyMappings_WithTypeIncompatibility_GeneratesWarnings() {
@@ -189,8 +185,7 @@ public class AnalyzerMappingCopyServiceTest {
     }
 
     /**
-     * Test: Merge qualitative mappings combines values deduplicated Task Reference:
-     * T191
+     * Test: Merge qualitative mappings combines values deduplicated
      */
     @Test
     public void testMergeQualitativeMappings_CombinesValuesDeduplicated() {
@@ -245,8 +240,7 @@ public class AnalyzerMappingCopyServiceTest {
     }
 
     /**
-     * Test: Copy mappings with partial failure rolls back transaction Task
-     * Reference: T191
+     * Test: Copy mappings with partial failure rolls back transaction
      */
     @Test(expected = LIMSRuntimeException.class)
     public void testCopyMappings_WithPartialFailure_RollsBackTransaction() {

@@ -17,7 +17,6 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * SerialPortConfiguration entity - RS232 serial communication parameters for
  * analyzers.
  * 
- * Task Reference: T026, M2 Feature: 011-madagascar-analyzer-integration
  * 
  * One-to-one relationship with legacy Analyzer entity (via analyzer_id). Stores
  * serial port settings: port name, baud rate, data bits, stop bits, parity,

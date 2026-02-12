@@ -11,7 +11,6 @@ import org.openelisglobal.spring.util.SpringContext;
  * Wrapper class for AnalyzerLineInserter that applies field mappings before
  * delegating to plugin inserter
  * 
- * Task Reference: T177
  * 
  * Wrapper logic: 1. Receive raw ASTM message segments from ASTMAnalyzerReader
  * 2. Call MappingApplicationService.applyMappings() to transform segments using
@@ -33,12 +32,6 @@ public class MappingAwareAnalyzerLineInserter extends AnalyzerLineInserter {
     private final QCResultProcessingService qcResultProcessingService;
     private String error;
 
-    /**
-     * Constructor
-     * 
-     * @param originalInserter The original plugin inserter to wrap
-     * @param analyzer         The analyzer configuration
-     */
     public MappingAwareAnalyzerLineInserter(AnalyzerLineInserter originalInserter, Analyzer analyzer) {
         this.originalInserter = originalInserter;
         this.analyzer = analyzer;
@@ -65,25 +58,21 @@ public class MappingAwareAnalyzerLineInserter extends AnalyzerLineInserter {
         }
 
         try {
-            // Check if analyzer has active mappings
             if (!mappingApplicationService.hasActiveMappings(analyzer.getId())) {
                 // No mappings configured - delegate to original inserter (backward
                 // compatibility)
                 return originalInserter.insert(lines, currentUserId);
             }
 
-            // Apply mappings to transform lines
             MappingApplicationResult result = mappingApplicationService.applyMappings(analyzer.getId(), lines);
 
             if (!result.isSuccess()) {
-                // Mapping application failed - create error and return false
                 String errorMessage = "Failed to apply mappings: " + String.join(", ", result.getErrors());
                 createError(errorMessage, lines);
                 error = errorMessage;
                 return false;
             }
 
-            // Check for unmapped fields
             if (!result.getUnmappedFields().isEmpty()) {
                 // Some fields are unmapped - create error but still try to process
                 String errorMessage = "Unmapped fields detected: " + String.join(", ", result.getUnmappedFields());
@@ -91,19 +80,16 @@ public class MappingAwareAnalyzerLineInserter extends AnalyzerLineInserter {
                 // Continue processing - partial data may still be useful
             }
 
-            // Delegate to original inserter with transformed lines
             boolean success = originalInserter.insert(result.getTransformedLines(), currentUserId);
 
             if (!success) {
-                // Original inserter failed - get error from original inserter
                 error = originalInserter.getError();
                 if (error == null || error.isEmpty()) {
                     error = "Failed to insert analyzer data";
                 }
             }
 
-            // After processing patient results, check for Q-segments and process QC results
-            // (per FR-021: QC results processed within same transaction as patient results)
+            // FR-021: QC results processed within same transaction as patient results
             if (success) {
                 processQCSegments(lines);
             }
@@ -127,7 +113,6 @@ public class MappingAwareAnalyzerLineInserter extends AnalyzerLineInserter {
     /**
      * Process Q-segments (QC results) from ASTM message
      * 
-     * Task Reference: T192
      * 
      * Detects Q-segments in ASTM message, parses them, extracts QC results using
      * field mappings, and processes them via QCResultProcessingService (which calls
@@ -138,30 +123,23 @@ public class MappingAwareAnalyzerLineInserter extends AnalyzerLineInserter {
      */
     private void processQCSegments(List<String> lines) {
         try {
-            // Join lines to create full ASTM message string
             String astmMessage = String.join("\r", lines);
 
-            // Parse Q-segments from message
             List<QCSegmentData> qcSegments = astmQSegmentParser.parseQSegments(astmMessage);
 
             if (qcSegments.isEmpty()) {
-                // No Q-segments in message - nothing to process
                 return;
             }
 
-            // Process each Q-segment
             for (QCSegmentData qcSegmentData : qcSegments) {
                 try {
-                    // Extract QC result using field mappings
                     QCResultDTO qcResultDTO = qcResultExtractionService.extractQCResult(qcSegmentData,
                             analyzer.getId());
 
-                    // Process QC result via QCResultProcessingService (calls Feature 003's service)
                     qcResultProcessingService.processQCResult(qcResultDTO, analyzer.getId());
 
                 } catch (Exception e) {
-                    // QC mapping or processing error - create AnalyzerError
-                    // Error type: QC_MAPPING_INCOMPLETE (per FR-011 and T194)
+                    // Error type: QC_MAPPING_INCOMPLETE (per FR-011)
                     String errorMessage = String.format(
                             "Failed to process QC result for analyzer %s, test code %s, control lot %s: %s",
                             analyzer.getId(), qcSegmentData.getTestCode(), qcSegmentData.getControlLotNumber(),
@@ -180,10 +158,9 @@ public class MappingAwareAnalyzerLineInserter extends AnalyzerLineInserter {
     /**
      * Create AnalyzerError record for QC processing failures
      * 
-     * Task Reference: T192
      * 
      * Creates AnalyzerError with type MAPPING (will be QC_MAPPING_INCOMPLETE per
-     * T194) and severity ERROR for QC mapping errors (per FR-011).
+     * QC_MAPPING_INCOMPLETE) and severity ERROR for QC mapping errors (per FR-011).
      * 
      * @param errorMessage Error message
      * @param rawMessage   Raw ASTM message

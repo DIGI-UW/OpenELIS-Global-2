@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service implementation for copying analyzer field mappings
  * 
- * Task Reference: T193
  * 
  * Provides business logic for copying mappings from source to target analyzer
  * with: - Conflict resolution (overwrite, merge) - Type compatibility
@@ -41,12 +40,10 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
     public CopyMappingsResult copyMappings(String sourceAnalyzerId, String targetAnalyzerId, CopyOptions options) {
         CopyMappingsResult result = new CopyMappingsResult();
 
-        // Default options
         if (options == null) {
             options = new CopyOptions();
         }
 
-        // Get source mappings
         List<AnalyzerFieldMapping> sourceMappings = analyzerFieldMappingDAO
                 .findActiveMappingsByAnalyzerId(sourceAnalyzerId);
         if (sourceMappings == null || sourceMappings.isEmpty()) {
@@ -54,11 +51,9 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
                     new IllegalArgumentException("Source analyzer has no active mappings to copy"));
         }
 
-        // Get target mappings (for conflict detection)
         List<AnalyzerFieldMapping> targetMappings = analyzerFieldMappingDAO
                 .findActiveMappingsByAnalyzerId(targetAnalyzerId);
 
-        // Build map of target mappings by field name for quick lookup
         Map<String, AnalyzerFieldMapping> targetMappingsByFieldName = new HashMap<>();
         for (AnalyzerFieldMapping targetMapping : targetMappings) {
             AnalyzerField targetField = targetMapping.getAnalyzerField();
@@ -67,7 +62,6 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
             }
         }
 
-        // Copy each source mapping
         for (AnalyzerFieldMapping sourceMapping : sourceMappings) {
             try {
                 AnalyzerField sourceField = sourceMapping.getAnalyzerField();
@@ -77,7 +71,6 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
                     continue;
                 }
 
-                // Find corresponding field in target analyzer
                 Optional<AnalyzerField> targetFieldOpt = analyzerFieldDAO.findByAnalyzerIdAndFieldName(targetAnalyzerId,
                         sourceField.getFieldName());
 
@@ -90,7 +83,6 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
 
                 AnalyzerField targetField = targetFieldOpt.get();
 
-                // Check type compatibility
                 if (!sourceField.getFieldType().equals(targetField.getFieldType())) {
                     if (options.isSkipIncompatible()) {
                         result.setSkippedCount(result.getSkippedCount() + 1);
@@ -100,19 +92,16 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
                                         + ", target: " + targetField.getFieldType() + ")");
                         continue;
                     } else {
-                        // Generate warning but continue
                         result.getWarnings()
                                 .add("Type incompatibility for field '" + sourceField.getFieldName() + "': source type "
                                         + sourceField.getFieldType() + " vs target type " + targetField.getFieldType());
                     }
                 }
 
-                // Check if target already has mapping for this field
                 AnalyzerFieldMapping existingTargetMapping = targetMappingsByFieldName.get(sourceField.getFieldName());
 
                 if (existingTargetMapping != null) {
                     if (options.isOverwriteExisting()) {
-                        // Overwrite existing mapping
                         existingTargetMapping.setOpenelisFieldId(sourceMapping.getOpenelisFieldId());
                         existingTargetMapping.setOpenelisFieldType(sourceMapping.getOpenelisFieldType());
                         existingTargetMapping.setMappingType(sourceMapping.getMappingType());
@@ -130,7 +119,6 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
                                 + "': Existing mapping found and overwrite disabled");
                     }
                 } else {
-                    // Create new mapping
                     AnalyzerFieldMapping newMapping = new AnalyzerFieldMapping();
                     newMapping.setAnalyzerField(targetField);
                     newMapping.setAnalyzer(targetField.getAnalyzer()); // Required after annotation migration

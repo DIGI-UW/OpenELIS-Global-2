@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
  * ValidationRuleEngine implementation - Stateless validation engine
  * (NO @Transactional)
  * 
- * Task Reference: T172
  */
 @Service
 public class ValidationRuleEngineImpl implements ValidationRuleEngine {

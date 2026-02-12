@@ -124,19 +124,16 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     @Override
     @Transactional
     public String createMapping(AnalyzerFieldMapping mapping) {
-        // Validate type compatibility (requires analyzerField to be hydrated)
         if (mapping.getAnalyzerField() == null && mapping.getAnalyzerFieldId() != null) {
             hydrator.hydrateAnalyzerField(mapping);
         }
         validateTypeCompatibility(mapping);
 
-        // Set analyzer relationship from analyzerField if not already set
         if (mapping.getAnalyzer() == null && mapping.getAnalyzerField() != null
                 && mapping.getAnalyzerField().getAnalyzer() != null) {
             mapping.setAnalyzer(mapping.getAnalyzerField().getAnalyzer());
         }
 
-        // Set audit fields (who, when)
         if (mapping.getLastupdated() == null) {
             mapping.setLastupdatedFields();
         }
@@ -149,7 +146,6 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     public void validateRequiredMappings(String analyzerId) {
         List<AnalyzerFieldMapping> mappings = analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId(analyzerId);
 
-        // Check if there are any required mappings
         boolean hasRequiredMappings = mappings.stream().anyMatch(m -> m.getIsRequired() != null && m.getIsRequired());
 
         if (!hasRequiredMappings) {
@@ -175,7 +171,6 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             throw new LIMSRuntimeException("Mapping not found: " + mappingId);
         }
 
-        // Check for concurrent edits using version-based optimistic locking (T168a)
         if (expectedVersion != null && mapping.getVersion() != null) {
             if (!mapping.getVersion().equals(expectedVersion)) {
                 throw new LIMSRuntimeException("Mapping was modified by another user. Please refresh and try again.");
@@ -190,8 +185,6 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             }
         }
 
-        // Get analyzer ID from mapping (use analyzerId field directly, or hydrate if
-        // needed)
         String analyzerId = mapping.getAnalyzerId();
         if (analyzerId == null) {
             hydrator.hydrateAnalyzerField(mapping);
@@ -202,25 +195,16 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             analyzerId = field.getAnalyzer().getId();
         }
 
-        // Note: Required mappings validation (T074 requirement) should be performed at
-        // analyzer
-        // activation time, not individual mapping activation time. This allows mappings
-        // to be
-        // activated independently while still ensuring analyzer configuration
-        // completeness before
-        // the analyzer is activated for production use.
-        // The validateRequiredMappings() method can be called from analyzer activation
-        // workflow.
+        // Required mappings validation is performed at analyzer activation time,
+        // not individual mapping activation, so mappings can be activated
+        // independently.
 
-        // Check if analyzer is active - requires confirmation for active analyzers
         boolean analyzerIsActive = isAnalyzerActive(mapping);
         if (analyzerIsActive && !confirmed) {
             throw new LIMSRuntimeException("Confirmation required to activate mapping for active analyzer");
         }
 
-        // Activate mapping
         mapping.setIsActive(true);
-        // Set audit fields (T075: who, when)
         mapping.setLastupdatedFields();
 
         return analyzerFieldMappingDAO.update(mapping);
@@ -241,24 +225,18 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     @Override
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getMappingsForAnalyzer(String analyzerId, boolean includeRetired) {
-        // Get mappings with ID fields only (no relationships)
         List<AnalyzerFieldMapping> mappings = analyzerFieldMappingDAO.findByAnalyzerId(analyzerId);
-
-        // Hydrate relationships for all mappings
         hydrator.hydrateAnalyzerFields(mappings);
 
-        // Compile complete data
         List<Map<String, Object>> result = new ArrayList<>();
         for (AnalyzerFieldMapping mapping : mappings) {
-            // Filter by active status if includeRetired is false
             if (!includeRetired && (mapping.getIsActive() == null || !mapping.getIsActive())) {
-                continue; // Skip retired/inactive mappings
+                continue;
             }
 
-            // Get hydrated analyzerField
             AnalyzerField field = mapping.getAnalyzerField();
             if (field == null) {
-                continue; // Skip if field not found
+                continue;
             }
 
             Map<String, Object> map = new HashMap<>();
@@ -267,7 +245,6 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             map.put("analyzerFieldName", field.getFieldName());
             map.put("analyzerFieldType", field.getFieldType().toString());
 
-            // Add custom field type information if field type is CUSTOM (T141)
             if (field.getFieldType() == AnalyzerField.FieldType.CUSTOM && field.getCustomFieldType() != null) {
                 Map<String, Object> customFieldTypeMap = new HashMap<>();
                 customFieldTypeMap.put("id", field.getCustomFieldType().getId());
@@ -303,12 +280,10 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
                 }
             }
 
-            // Add unit mapping information if available
             if (unitMappingService != null && field.getUnit() != null && !field.getUnit().trim().isEmpty()) {
                 try {
                     List<UnitMapping> unitMappings = unitMappingService.getMappingsByAnalyzerFieldId(field.getId());
                     if (unitMappings != null && !unitMappings.isEmpty()) {
-                        // Find unit mapping that matches the analyzer unit
                         for (UnitMapping unitMapping : unitMappings) {
                             if (unitMapping.getAnalyzerUnit() != null
                                     && field.getUnit().equals(unitMapping.getAnalyzerUnit())) {
@@ -329,7 +304,6 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
                 }
             }
 
-            // Add validation rules for CUSTOM field types (T176, T141)
             if (field.getFieldType() == AnalyzerField.FieldType.CUSTOM) {
                 try {
                     if (validationRuleConfigurationService != null) {
@@ -359,7 +333,6 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
                 }
             }
 
-            // Add retirement information if mapping is retired
             if (!mapping.getIsActive() && mapping.getLastupdated() != null) {
                 map.put("retirementDate", mapping.getLastupdated());
                 // Note: retirement_reason would be stored in notes field or separate column
@@ -377,16 +350,13 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             AnalyzerFieldMapping.MappingType mappingType, Boolean isRequired, Boolean isActive,
             String specimenTypeConstraint, String panelConstraint) {
 
-        // Get analyzer field with analyzer eagerly fetched (within transaction)
         AnalyzerField field = analyzerFieldDAO.findByIdWithAnalyzer(analyzerFieldId)
                 .orElseThrow(() -> new LIMSRuntimeException("AnalyzerField not found: " + analyzerFieldId));
 
-        // Verify field belongs to analyzer
         if (field.getAnalyzer() == null || !field.getAnalyzer().getId().equals(analyzerId)) {
             throw new LIMSRuntimeException("Analyzer field does not belong to analyzer: " + analyzerId);
         }
 
-        // Create mapping entity with relationship objects
         AnalyzerFieldMapping mapping = new AnalyzerFieldMapping();
         mapping.setAnalyzerField(field);
         mapping.setAnalyzer(field.getAnalyzer());
@@ -399,24 +369,17 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         mapping.setPanelConstraint(panelConstraint);
         mapping.setSysUserId("1"); // Default system user (should come from security context)
 
-        // Validate and create
         String mappingId = createMapping(mapping);
-
-        // Return complete data
         return getMappingWithCompleteData(mappingId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> getMappingWithCompleteData(String mappingId) {
-        // Get mapping with ID fields only
         AnalyzerFieldMapping mapping = analyzerFieldMappingDAO.get(mappingId)
                 .orElseThrow(() -> new LIMSRuntimeException("Mapping not found: " + mappingId));
-
-        // Hydrate relationships
         hydrator.hydrateAnalyzerField(mapping);
 
-        // Get hydrated analyzerField
         AnalyzerField field = mapping.getAnalyzerField();
         if (field == null) {
             throw new LIMSRuntimeException("AnalyzerField not found for mapping: " + mappingId);
@@ -427,7 +390,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         map.put("analyzerFieldName", field.getFieldName());
         map.put("analyzerFieldType", field.getFieldType().toString());
 
-        // Add custom field type information if field type is CUSTOM (T141)
+        // Add custom field type information if field type is CUSTOM
         if (field.getFieldType() == AnalyzerField.FieldType.CUSTOM && field.getCustomFieldType() != null) {
             Map<String, Object> customFieldTypeMap = new HashMap<>();
             customFieldTypeMap.put("id", field.getCustomFieldType().getId());
@@ -444,7 +407,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         map.put("specimenTypeConstraint", mapping.getSpecimenTypeConstraint());
         map.put("panelConstraint", mapping.getPanelConstraint());
 
-        // Add validation rules for CUSTOM field types (T176, T141)
+        // Add validation rules for CUSTOM field types
         if (field.getFieldType() == AnalyzerField.FieldType.CUSTOM) {
             try {
                 if (validationRuleConfigurationService != null) {
@@ -479,7 +442,6 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     @Override
     @Transactional(readOnly = true)
     public boolean verifyMappingBelongsToAnalyzer(String mappingId, String analyzerId) {
-        // Get mapping with ID fields only
         AnalyzerFieldMapping mapping = analyzerFieldMappingDAO.get(mappingId).orElse(null);
         if (mapping == null) {
             return false;
@@ -528,7 +490,6 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         AnalyzerField.FieldType analyzerFieldType = field.getFieldType();
         AnalyzerFieldMapping.OpenELISFieldType openelisFieldType = mapping.getOpenelisFieldType();
 
-        // Type compatibility rules
         if (analyzerFieldType == AnalyzerField.FieldType.NUMERIC) {
             // NUMERIC can map to TEST or RESULT (both can be numeric)
             if (openelisFieldType != AnalyzerFieldMapping.OpenELISFieldType.TEST
@@ -559,16 +520,13 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     @Override
     @Transactional
     public AnalyzerFieldMapping updateMapping(AnalyzerFieldMapping mapping, boolean confirmed) {
-        // Get existing mapping
         AnalyzerFieldMapping existingMapping = get(mapping.getId());
         if (existingMapping == null) {
             throw new LIMSRuntimeException("Mapping not found: " + mapping.getId());
         }
 
-        // Validate type compatibility
         validateTypeCompatibility(mapping);
 
-        // Check if analyzer is active and mapping is active - requires confirmation
         boolean analyzerIsActive = isAnalyzerActive(existingMapping);
         boolean mappingIsActive = existingMapping.getIsActive() != null && existingMapping.getIsActive();
 
@@ -576,7 +534,6 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             throw new LIMSRuntimeException("Confirmation required to update active mapping for active analyzer");
         }
 
-        // Update mapping fields
         existingMapping.setOpenelisFieldId(mapping.getOpenelisFieldId());
         existingMapping.setOpenelisFieldType(mapping.getOpenelisFieldType());
         existingMapping.setMappingType(mapping.getMappingType());
@@ -585,7 +542,6 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         existingMapping.setSpecimenTypeConstraint(mapping.getSpecimenTypeConstraint());
         existingMapping.setPanelConstraint(mapping.getPanelConstraint());
 
-        // Set audit fields (T075: who, when)
         if (mapping.getSysUserId() != null) {
             existingMapping.setSysUserId(mapping.getSysUserId());
         }
@@ -606,22 +562,17 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     @Override
     @Transactional
     public AnalyzerFieldMapping disableMapping(String mappingId, String retirementReason) {
-        // Get existing mapping
         AnalyzerFieldMapping mapping = get(mappingId);
         if (mapping == null) {
             throw new LIMSRuntimeException("Mapping not found: " + mappingId);
         }
 
-        // Cannot disable required mappings
         if (mapping.getIsRequired() != null && mapping.getIsRequired()) {
             throw new LIMSRuntimeException(
                     "Cannot disable required mapping. Required mappings (Sample ID, Test Code, Result Value) must remain active.");
         }
 
-        // Check for pending messages in error queue (Task Reference: T198)
         if (analyzerErrorService != null) {
-            // Get analyzer ID from mapping (use analyzerId field directly, or hydrate if
-            // needed)
             String analyzerId = mapping.getAnalyzerId();
             if (analyzerId == null) {
                 hydrator.hydrateAnalyzerField(mapping);
@@ -644,9 +595,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             }
         }
 
-        // Set inactive
         mapping.setIsActive(false);
-        // Set audit fields (T075: who, when)
         mapping.setLastupdatedFields();
 
         // Note: Retirement reason and detailed audit trail (previous vs new values) can
@@ -675,8 +624,6 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             return false;
         }
 
-        // Get analyzer ID from mapping (use analyzerId field directly, or hydrate if
-        // needed)
         String analyzerId = mapping.getAnalyzerId();
         if (analyzerId == null) {
             hydrator.hydrateAnalyzerField(mapping);
@@ -715,10 +662,8 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     public ActivationValidationResult validateActivation(String analyzerId) {
         ActivationValidationResult result = new ActivationValidationResult();
 
-        // Get all active mappings for analyzer
         List<AnalyzerFieldMapping> mappings = analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId(analyzerId);
 
-        // Check required mappings (Sample ID, Test Code, Result Value)
         List<String> missingRequired = new ArrayList<>();
         boolean hasSampleIdMapping = mappings.stream().anyMatch(m -> m.getIsRequired() != null && m.getIsRequired()
                 && m.getOpenelisFieldType() == AnalyzerFieldMapping.OpenELISFieldType.SAMPLE);
@@ -739,7 +684,6 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
 
         result.setMissingRequired(missingRequired);
 
-        // Check pending messages in error queue
         int pendingMessagesCount = 0;
         if (analyzerErrorService != null) {
             List<AnalyzerError> pendingErrors = analyzerErrorService.getErrorsByFilters(analyzerId, null, null,
@@ -748,14 +692,12 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         }
         result.setPendingMessagesCount(pendingMessagesCount);
 
-        // Add warnings for pending messages
         List<String> warnings = new ArrayList<>();
         if (pendingMessagesCount > 0) {
             warnings.add("This analyzer has " + pendingMessagesCount
                     + " pending messages in the error queue. Activating mapping changes may affect how these messages are reprocessed.");
         }
 
-        // Validate all active mappings have compatible types
         for (AnalyzerFieldMapping mapping : mappings) {
             try {
                 validateTypeCompatibility(mapping);
@@ -764,7 +706,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             }
         }
 
-        // Check for concurrent edits using version-based optimistic locking (T168a)
+        // Check for concurrent edits using version-based optimistic locking
         // Note: This is a pre-check. Actual optimistic locking happens during update
         // via Hibernate @Version
         // If any mapping version has changed since last load, concurrent edit is
@@ -774,7 +716,6 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
 
         result.setWarnings(warnings);
 
-        // Can activate if all required mappings are present
         boolean canActivate = missingRequired.isEmpty();
         result.setCanActivate(canActivate);
 

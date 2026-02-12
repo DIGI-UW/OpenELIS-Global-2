@@ -59,7 +59,6 @@ public class FileAnalyzerReader extends AnalyzerReader {
         }
 
         try {
-            // Determine CSV format based on configuration
             CSVFormat csvFormat = CSVFormat.DEFAULT
                     .withDelimiter(configuration.getDelimiter() != null && !configuration.getDelimiter().isEmpty()
                             ? configuration.getDelimiter().charAt(0)
@@ -69,17 +68,14 @@ public class FileAnalyzerReader extends AnalyzerReader {
                 csvFormat = csvFormat.withFirstRecordAsHeader();
             }
 
-            // Parse CSV file
             try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
                     CSVParser parser = csvFormat.parse(reader)) {
 
                 Map<String, String> columnMappings = configuration.getColumnMappings();
 
                 for (CSVRecord record : parser) {
-                    // Store parsed record for duplicate checking
                     Map<String, String> parsedRecord = new HashMap<>();
                     if (configuration.getHasHeader() != null && configuration.getHasHeader()) {
-                        // Store all mapped columns
                         for (Map.Entry<String, String> mapping : columnMappings.entrySet()) {
                             String csvColumn = mapping.getKey();
                             String value = record.get(csvColumn);
@@ -89,20 +85,17 @@ public class FileAnalyzerReader extends AnalyzerReader {
                             }
                         }
                     } else {
-                        // No header - store by index
                         for (int i = 0; i < record.size(); i++) {
                             parsedRecord.put("column_" + i, record.get(i));
                         }
                     }
                     parsedRecords.add(parsedRecord);
 
-                    // Convert CSV record to line format expected by AnalyzerLineInserter
                     StringBuilder lineBuilder = new StringBuilder();
 
                     if (configuration.getHasHeader() != null && configuration.getHasHeader()) {
                         buildLineFromRecord(record, columnMappings, lineBuilder);
                     } else {
-                        // No header - use record values directly
                         for (int i = 0; i < record.size(); i++) {
                             lineBuilder.append(record.get(i)).append("\t");
                         }
@@ -144,7 +137,6 @@ public class FileAnalyzerReader extends AnalyzerReader {
     }
 
     private void setInserter() {
-        // Try to find matching plugin analyzer
         PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
         if (configuration != null && configuration.getAnalyzerId() != null) {
             AnalyzerImporterPlugin configuredPlugin = pluginService
@@ -165,8 +157,7 @@ public class FileAnalyzerReader extends AnalyzerReader {
             }
         }
 
-        // If no plugin matches, we might need a generic CSV inserter
-        // For now, set error if no inserter found
+        // No matching plugin — report error to caller
         error = "No matching analyzer plugin found for file format";
     }
 
@@ -215,7 +206,6 @@ public class FileAnalyzerReader extends AnalyzerReader {
             return false;
         }
 
-        // Check for duplicates before insertion (if configuration available)
         if (configuration != null && configuration.getAnalyzerId() != null && !parsedRecords.isEmpty()) {
             checkDuplicatesBeforeInsertion();
         }
@@ -242,14 +232,12 @@ public class FileAnalyzerReader extends AnalyzerReader {
             Integer analyzerId = configuration.getAnalyzerId();
 
             for (Map<String, String> record : parsedRecords) {
-                // Extract sample ID, test code, date, and time from parsed record
                 String sampleId = extractField(record, columnMappings, "sampleId", "Sample_ID", "sample_id");
                 String testCode = extractField(record, columnMappings, "testCode", "Test_Code", "test_code");
                 String testDate = extractField(record, columnMappings, "testDate", "Date", "date");
                 String testTime = extractField(record, columnMappings, "testTime", "Time", "time");
 
                 if (sampleId != null && testCode != null) {
-                    // Check for duplicate
                     boolean isDuplicate = fileImportService.isDuplicate(analyzerId, sampleId, testCode, testDate,
                             testTime);
                     if (isDuplicate) {
@@ -273,12 +261,10 @@ public class FileAnalyzerReader extends AnalyzerReader {
      */
     private String extractField(Map<String, String> record, Map<String, String> columnMappings,
             String internalFieldName, String... possibleColumnNames) {
-        // Try internal field name first (from column mappings value)
         if (record.containsKey(internalFieldName)) {
             return record.get(internalFieldName);
         }
 
-        // Try CSV column names
         for (String columnName : possibleColumnNames) {
             if (record.containsKey(columnName)) {
                 return record.get(columnName);

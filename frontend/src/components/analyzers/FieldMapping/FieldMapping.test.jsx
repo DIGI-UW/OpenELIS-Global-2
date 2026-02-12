@@ -10,7 +10,6 @@
  * - GREEN: Write minimal code to make test pass
  * - REFACTOR: Improve code quality while keeping tests green
  *
- * Task Reference: T039
  * Test Naming: test{Scenario}_{ExpectedResult}
  */
 
@@ -99,7 +98,6 @@ describe("FieldMapping", () => {
 
   /**
    * Test: Select field opens mapping panel
-   * Task Reference: T039
    */
   test("testSelectField_OpensMappingPanel", async () => {
     // Arrange: Setup API mocks
@@ -205,7 +203,6 @@ describe("FieldMapping", () => {
 
   /**
    * Test: Create mapping with valid data saves mapping
-   * Task Reference: T039
    */
   test("testCreateMapping_WithValidData_SavesMapping", async () => {
     // Arrange: Setup API mocks
@@ -342,7 +339,6 @@ describe("FieldMapping", () => {
    *
    * This would have caught the issue where mappings weren't showing in the mappings screen.
    *
-   * Task Reference: T039
    */
   test("testMappingsDisplay_WithExistingMappings_ShowsMappedFields", async () => {
     // Arrange: Setup API mocks with existing mappings
@@ -445,7 +441,6 @@ describe("FieldMapping", () => {
 
   /**
    * Test: Type compatibility blocks incompatible types
-   * Task Reference: T039
    */
   test("testTypeCompatibility_BlocksIncompatibleTypes", async () => {
     // Arrange: Setup API mocks
@@ -538,7 +533,6 @@ describe("FieldMapping", () => {
 
   /**
    * Test: Draft/active mapping indicators display correctly
-   * Task Reference: T079
    *
    * Arrange-Act-Assert pattern:
    * 1. Arrange: Setup API mocks with mappings in draft and active states
@@ -658,7 +652,6 @@ describe("FieldMapping", () => {
 
   /**
    * Test: ValidationDashboard displays when lifecycle stage is VALIDATION
-   * Task Reference: T153
    *
    * Arrange-Act-Assert pattern:
    * 1. Arrange: Setup API mocks with analyzer in VALIDATION stage

@@ -6,7 +6,6 @@ import java.util.List;
  * Service interface for parsing Q-segments (Quality Control result segments)
  * from ASTM messages
  * 
- * Task Reference: T184
  * 
  * This service parses ASTM LIS2-A2 Q-segments to extract QC result data
  * including: instrument ID (from H-segment header), test code, control lot
@@ -23,7 +22,6 @@ public interface ASTMQSegmentParser {
     /**
      * Parse all Q-segments from ASTM message
      * 
-     * Task Reference: T184
      * 
      * Parses ASTM message to extract all Q-segments (Quality Control result
      * segments) and returns list of QCSegmentData objects containing extracted QC

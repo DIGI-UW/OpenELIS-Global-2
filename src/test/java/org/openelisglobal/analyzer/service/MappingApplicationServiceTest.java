@@ -21,7 +21,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 /**
  * Unit tests for MappingApplicationService implementation
  * 
- * Task Reference: T179 (test coverage for service implementation)
  * 
  * Test Coverage Goal: >80%
  */

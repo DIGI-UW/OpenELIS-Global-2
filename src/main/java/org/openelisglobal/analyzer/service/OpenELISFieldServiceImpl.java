@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service implementation for creating OpenELIS fields inline from the analyzer
- * mapping interface. Task Reference: T145
+ * mapping interface.
  * 
  * Supports creation of TEST, PANEL, RESULT, ORDER, SAMPLE, QC, METADATA, UNIT
  * entities. Currently implements TEST entity type; other types to be added
@@ -47,12 +47,10 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
 
     @Override
     public String createField(OpenELISFieldForm form) throws LIMSRuntimeException {
-        // Validate uniqueness first
         if (!validateFieldUniqueness(form)) {
             throw new LIMSRuntimeException("Field with the same name, code, or LOINC already exists");
         }
 
-        // Create field based on entity type
         switch (form.getEntityType()) {
         case TEST:
             return createTestField(form);
@@ -84,7 +82,7 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
         case QC:
         case METADATA:
         case UNIT:
-            // TODO: Implement validation for other entity types
+            // Only TEST entity validated; other types return true (FR-019 Phase 2)
             return true;
         default:
             return false;
@@ -123,7 +121,7 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
             case QC:
             case METADATA:
             case UNIT:
-                // TODO: Implement retrieval for other entity types
+                // Only TEST entity retrieval implemented; others return null (FR-019 Phase 2)
                 return null;
             default:
                 return null;
@@ -143,14 +141,12 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
      */
     private String createTestField(OpenELISFieldForm form) throws LIMSRuntimeException {
         try {
-            // Create Localization for test name
             Localization nameLocalization = LocalizationServiceImpl.createNewLocalization(form.getFieldName(), // English
-                    form.getFieldName(), // French (use same as English for now)
+                    form.getFieldName(), // French (uses English value as default)
                     LocalizationServiceImpl.LocalizationType.TEST_NAME);
             String nameLocalizationId = localizationService.insert(nameLocalization);
             nameLocalization.setId(nameLocalizationId);
 
-            // Create Localization for reporting name (use same as name for now)
             Localization reportingNameLocalization = LocalizationServiceImpl.createNewLocalization(form.getFieldName(), // English
                     form.getFieldName(), // French
                     LocalizationServiceImpl.LocalizationType.REPORTING_TEST_NAME);
@@ -165,15 +161,12 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
             test.setLocalizedReportingName(reportingNameLocalization);
             test.setGuid(String.valueOf(UUID.randomUUID()));
 
-            // Set default values for required fields
             test.setIsActive("Y");
             test.setOrderable(true);
 
-            // Set sysUserId (required for BaseObject)
-            // TODO: Get from security context when available
-            test.setSysUserId("1"); // Default system user
+            // Default system user; SecurityContext integration deferred
+            test.setSysUserId("1");
 
-            // Insert the test
             String testId = testService.insert(test);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "createTestField",
@@ -190,13 +183,11 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
      * Validates that a Test field is unique (by description, localCode, and LOINC).
      */
     private boolean validateTestUniqueness(OpenELISFieldForm form) {
-        // Check description uniqueness
         Test existingByDescription = testService.getTestByDescription(form.getFieldName());
         if (existingByDescription != null) {
             return false;
         }
 
-        // Check localCode uniqueness (if provided)
         if (form.getTestCode() != null && !form.getTestCode().trim().isEmpty()) {
             List<Test> testsByName = testDAO.getTestsByName(form.getFieldName());
             for (Test test : testsByName) {
@@ -206,7 +197,6 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
             }
         }
 
-        // Check LOINC code uniqueness (if provided)
         if (form.getLoincCode() != null && !form.getLoincCode().trim().isEmpty()) {
             List<Test> testsByLoinc = testService.getTestsByLoincCode(form.getLoincCode());
             if (!testsByLoinc.isEmpty()) {

@@ -94,7 +94,6 @@ function Login(props) {
   };
 
   const loginMessage = () => {
-    // Task Reference: T041 - Use custom login logo if available, otherwise default
     // Add cache-busting parameter to prevent stale logo display after upload
     const logoSrc = loginLogoUrl
       ? `${config.serverBaseUrl}${loginLogoUrl}?v=${logoVersion}`
@@ -259,9 +258,7 @@ function Login(props) {
                         .then(() => {
                           doLogin(values);
                         })
-                        .catch((error) => {
-                          console.error(error);
-                        });
+                        .catch(() => {});
                     }}
                   >
                     {({ isValid, handleChange, handleSubmit }) => (

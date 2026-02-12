@@ -5,7 +5,6 @@ import java.util.List;
 /**
  * Service interface for applying field mappings to ASTM message segments
  * 
- * Task Reference: T178
  * 
  * This service transforms raw ASTM message segments by applying configured
  * field mappings. Used by MappingAwareAnalyzerLineInserter wrapper to apply
@@ -16,7 +15,6 @@ public interface MappingApplicationService {
     /**
      * Apply mappings to raw ASTM message segments
      * 
-     * Task Reference: T179
      * 
      * Receives raw ASTM message segments (List<String> lines), extracts test codes,
      * units, and qualitative values, queries AnalyzerFieldMapping, applies

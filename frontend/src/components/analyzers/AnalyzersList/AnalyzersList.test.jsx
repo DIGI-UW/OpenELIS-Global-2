@@ -1,7 +1,6 @@
 /**
  * AnalyzersList Component Tests
  *
- * Task Reference: T037
  * Testing Roadmap: .specify/guides/testing-roadmap.md
  *
  * Test Strategy:
@@ -134,7 +133,6 @@ describe("AnalyzersList", () => {
 
   /**
    * Test: Renders AnalyzersList with data displays table
-   * Task Reference: T037
    *
    * Arrange-Act-Assert pattern:
    * 1. Arrange: Setup API mocks with analyzer data
@@ -189,7 +187,6 @@ describe("AnalyzersList", () => {
 
   /**
    * Test: Search analyzers with query filters results
-   * Task Reference: T037
    *
    * Arrange-Act-Assert pattern:
    * 1. Arrange: Setup API mocks with analyzer data
@@ -244,7 +241,6 @@ describe("AnalyzersList", () => {
 
   /**
    * Test: Open Add Analyzer modal shows form
-   * Task Reference: T037
    *
    * Arrange-Act-Assert pattern:
    * 1. Arrange: Setup API mocks
@@ -285,7 +281,6 @@ describe("AnalyzersList", () => {
 
   /**
    * Test: Lifecycle stage badge displays correctly
-   * Task Reference: T152
    *
    * Arrange-Act-Assert pattern:
    * 1. Arrange: Setup API mocks with analyzer data including lifecycleStage
@@ -326,7 +321,6 @@ describe("AnalyzersList", () => {
 
   /**
    * Test: Lifecycle stage filter filters analyzers correctly
-   * Task Reference: T152
    *
    * Arrange-Act-Assert pattern:
    * 1. Arrange: Setup API mocks with analyzers in different lifecycle stages

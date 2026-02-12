@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 /**
  * Event listeners for automatic analyzer status transitions
  * 
- * Task Reference: T151e
  * 
  * Listens for domain events and triggers appropriate status transitions: -
  * MappingCreatedEvent → SETUP → VALIDATION - AllMappingsActivatedEvent →

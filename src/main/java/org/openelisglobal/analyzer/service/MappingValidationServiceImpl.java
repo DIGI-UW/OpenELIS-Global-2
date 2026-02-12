@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service implementation for mapping validation operations
  * 
- * Task Reference: T205
  * 
  * Provides validation metrics and analysis for analyzer field mappings. Target
  * response time: <1 second
@@ -43,7 +42,6 @@ public class MappingValidationServiceImpl implements MappingValidationService {
     @Cacheable(value = "validationMetrics", key = "#analyzerId", unless = "#result == null")
     public double calculateMappingAccuracy(String analyzerId) {
         // For now, calculate based on active mappings vs total fields
-        // In future, integrate with historical test execution results
         List<AnalyzerField> allFields = analyzerFieldDAO.findByAnalyzerId(analyzerId);
         List<AnalyzerFieldMapping> activeMappings = analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId(analyzerId);
 
@@ -51,11 +49,9 @@ public class MappingValidationServiceImpl implements MappingValidationService {
             return 0.0;
         }
 
-        // Count fields with active mappings
         long mappedFields = activeMappings.stream().map(AnalyzerFieldMapping::getAnalyzerField)
                 .map(AnalyzerField::getId).distinct().count();
 
-        // Calculate accuracy as percentage of fields with mappings
         return (double) mappedFields / allFields.size();
     }
 
@@ -64,11 +60,9 @@ public class MappingValidationServiceImpl implements MappingValidationService {
         List<AnalyzerField> allFields = analyzerFieldDAO.findByAnalyzerId(analyzerId);
         List<AnalyzerFieldMapping> activeMappings = analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId(analyzerId);
 
-        // Get IDs of fields that have active mappings
         List<String> mappedFieldIds = activeMappings.stream().map(AnalyzerFieldMapping::getAnalyzerField)
                 .map(AnalyzerField::getId).collect(Collectors.toList());
 
-        // Find fields without mappings
         return allFields.stream().filter(field -> !mappedFieldIds.contains(field.getId()))
                 .map(AnalyzerField::getFieldName).collect(Collectors.toList());
     }
@@ -86,7 +80,6 @@ public class MappingValidationServiceImpl implements MappingValidationService {
             FieldType analyzerFieldType = field.getFieldType();
             OpenELISFieldType openelisFieldType = mapping.getOpenelisFieldType();
 
-            // Check type compatibility
             if (!isTypeCompatible(analyzerFieldType, openelisFieldType)) {
                 warnings.add(String.format(
                         "Type mismatch for field '%s': Analyzer field type '%s' is not compatible with OpenELIS field type '%s'",
@@ -121,7 +114,6 @@ public class MappingValidationServiceImpl implements MappingValidationService {
             return testUnit;
         }));
 
-        // Calculate coverage for each test unit
         for (Map.Entry<String, List<AnalyzerField>> entry : fieldsByTestUnit.entrySet()) {
             String testUnit = entry.getKey();
             List<AnalyzerField> fields = entry.getValue();
@@ -140,20 +132,16 @@ public class MappingValidationServiceImpl implements MappingValidationService {
     public ValidationMetrics getValidationMetrics(String analyzerId) {
         ValidationMetrics metrics = new ValidationMetrics();
 
-        // Calculate accuracy
         metrics.setAccuracy(calculateMappingAccuracy(analyzerId));
 
-        // Identify unmapped fields
         List<String> unmappedFields = identifyUnmappedFields(analyzerId);
         metrics.setUnmappedFields(unmappedFields);
         metrics.setUnmappedCount(unmappedFields.size());
 
-        // Validate type compatibility
         List<AnalyzerFieldMapping> activeMappings = analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId(analyzerId);
         List<String> warnings = validateTypeCompatibility(activeMappings);
         metrics.setWarnings(warnings);
 
-        // Generate coverage report
         Map<String, Double> coverage = generateCoverageReport(analyzerId);
         metrics.setCoverageByTestUnit(coverage);
 
@@ -197,11 +185,7 @@ public class MappingValidationServiceImpl implements MappingValidationService {
         return false;
     }
 
-    /**
-     * Invalidate cache when mappings change
-     */
     @CacheEvict(value = "validationMetrics", key = "#analyzerId")
     public void invalidateCache(String analyzerId) {
-        // Cache eviction handled by annotation
     }
 }

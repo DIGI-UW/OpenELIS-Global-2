@@ -10,7 +10,6 @@
  * - GREEN: Write minimal code to make test pass
  * - REFACTOR: Improve code quality while keeping tests green
  *
- * Task Reference: T196
  * Test Naming: test{Scenario}_{ExpectedResult}
  */
 
@@ -104,7 +103,6 @@ describe("CopyMappingsModal", () => {
 
   /**
    * Test: Select target enables copy button
-   * Task Reference: T196
    *
    * When a target analyzer is selected, the copy button should be enabled.
    */
@@ -138,7 +136,6 @@ describe("CopyMappingsModal", () => {
 
   /**
    * Test: Copy mappings modal structure supports confirmation flow
-   * Task Reference: T196
    *
    * Verifies modal renders with copy button and warning section. Full confirmation
    * dialog flow (select target + click copy) requires Carbon dropdown interaction;
@@ -162,7 +159,6 @@ describe("CopyMappingsModal", () => {
 
   /**
    * Test: Copy success shows notification with count
-   * Task Reference: T196
    *
    * When copy operation succeeds, a success notification should be displayed with the count.
    * Note: We test the result modal rendering by verifying component structure.
@@ -185,7 +181,6 @@ describe("CopyMappingsModal", () => {
 
   /**
    * Test: Copy with conflicts displays warnings
-   * Task Reference: T196
    *
    * When copy operation has conflicts, warnings should be displayed.
    * Note: We verify the component structure supports warning display.

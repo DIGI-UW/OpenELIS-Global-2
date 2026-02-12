@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.*;
 /**
  * REST Controller for Analyzer Error management
  * 
- * Task Reference: T095
  * 
  * Handles operations for error dashboard and reprocessing workflow: - List
  * errors with filtering - Get error by ID - Acknowledge errors - Reprocess

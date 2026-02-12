@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * Form object for creating new OpenELIS fields inline from the analyzer mapping
- * interface. Task Reference: T144-T146
+ * interface.
  * 
  * Supports 8 entity types: TEST, PANEL, RESULT, ORDER, SAMPLE, QC, METADATA,
  * UNIT

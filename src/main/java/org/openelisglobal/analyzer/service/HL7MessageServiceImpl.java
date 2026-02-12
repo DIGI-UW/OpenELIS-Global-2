@@ -37,7 +37,6 @@ import org.springframework.stereotype.Service;
  * HL7 v2.x message parsing and generation implementation.
  *
  * <p>
- * Task Reference: T010 (M1 HL7 Adapter) – ORU^R01 parsing, ORM^O01 generation.
  */
 @Service
 public class HL7MessageServiceImpl implements HL7MessageService {

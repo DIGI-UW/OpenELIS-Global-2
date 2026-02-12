@@ -2,7 +2,6 @@
  * ValidationDashboard Component
  *
  * Displays validation metrics and test results for analyzer field mappings
- * Task Reference: T203
  *
  * Features:
  * - Metrics display: Mapping accuracy, unmapped field count, type compatibility warnings

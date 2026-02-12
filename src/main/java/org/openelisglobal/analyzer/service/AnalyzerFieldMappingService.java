@@ -67,7 +67,6 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * Get all mappings for an analyzer with complete data compiled (optionally
      * including retired mappings)
      * 
-     * Task Reference: T200
      * 
      * @param analyzerId     The analyzer ID
      * @param includeRetired Whether to include retired (inactive) mappings
@@ -167,7 +166,6 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * check) - All active mappings have compatible types - Analyzer connection
      * operational (optional warning)
      * 
-     * Task Reference: T167
      * 
      * @param analyzerId The analyzer ID to validate
      * @return ActivationValidationResult containing validation status, missing

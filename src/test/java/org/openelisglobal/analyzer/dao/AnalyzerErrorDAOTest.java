@@ -25,7 +25,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 /**
  * DAO tests for AnalyzerErrorDAO
  * 
- * Task Reference: T084
  * 
  * Note: Using Mockito pattern (matching existing codebase) since @DataJpaTest
  * dependencies not available. Tests HQL query logic and DAO methods.
@@ -85,7 +84,6 @@ public class AnalyzerErrorDAOTest {
 
     /**
      * Test: Find errors by status
-     * Task Reference: T084
      * 
      * Verifies that findByStatus() returns only errors with the specified status.
      */
@@ -112,7 +110,6 @@ public class AnalyzerErrorDAOTest {
 
     /**
      * Test: Find errors by analyzer ID
-     * Task Reference: T084
      * 
      * Verifies that findByAnalyzerId() returns all errors for the specified
      * analyzer.
@@ -146,7 +143,6 @@ public class AnalyzerErrorDAOTest {
 
     /**
      * Test: Find errors by error type
-     * Task Reference: T084
      * 
      * Verifies that findByErrorType() returns only errors with the specified type.
      */
@@ -172,7 +168,6 @@ public class AnalyzerErrorDAOTest {
 
     /**
      * Test: Find errors by severity
-     * Task Reference: T084
      * 
      * Verifies that findBySeverity() returns only errors with the specified
      * severity.
@@ -199,7 +194,6 @@ public class AnalyzerErrorDAOTest {
 
     /**
      * Test: Get error by ID
-     * Task Reference: T084
      * 
      * Verifies that get() retrieves error by ID correctly.
      */
@@ -221,7 +215,6 @@ public class AnalyzerErrorDAOTest {
 
     /**
      * Test: Get error by invalid ID
-     * Task Reference: T084
      * 
      * Verifies that get() returns empty Optional for invalid ID.
      */

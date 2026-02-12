@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service implementation for ValidationRuleConfiguration
  * 
- * Task Reference: T174
  */
 @Service
 @Transactional

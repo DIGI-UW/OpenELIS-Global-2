@@ -1,7 +1,6 @@
 /**
  * Unit tests for ErrorDashboard component
  *
- * Task Reference: T086
  * Testing Roadmap: .specify/guides/testing-roadmap.md
  *
  * Test Strategy:
@@ -85,7 +84,6 @@ describe("ErrorDashboard", () => {
 
   /**
    * Test: Renders ErrorDashboard with errors displays table
-   * Task Reference: T086
    *
    * This test verifies that the component correctly handles the API response format:
    * { data: { content: [...], statistics: {...} }, status: "success" }
@@ -155,7 +153,6 @@ describe("ErrorDashboard", () => {
 
   /**
    * Test: Filter errors by type filters results
-   * Task Reference: T086
    *
    * This test verifies that the component correctly handles filtered API responses
    * with the correct response format.
@@ -226,7 +223,6 @@ describe("ErrorDashboard", () => {
 
   /**
    * Test: Error actions cell renders with OverflowMenu
-   * Task Reference: T086
    * Note: Testing OverflowMenu interaction is complex due to portal rendering.
    * This test verifies the actions cell exists and contains the menu structure.
    */
@@ -270,7 +266,6 @@ describe("ErrorDashboard", () => {
 
   /**
    * Test: Search errors filters results
-   * Task Reference: T086
    *
    * This test verifies that the component correctly handles search-filtered API
    * responses with the correct response format.
@@ -337,7 +332,6 @@ describe("ErrorDashboard", () => {
 
   /**
    * Test: Acknowledge all button calls handler
-   * Task Reference: T086
    */
   test("testAcknowledgeAll_CallsHandler", async () => {
     // Arrange: Mock API response with correct format

@@ -6,7 +6,6 @@ import java.util.Date;
 /**
  * Data Transfer Object for QC Result data extracted from ASTM Q-segments
  * 
- * Task Reference: T186
  * 
  * This DTO contains the data structure needed to call Feature 003's
  * QCResultService.createQCResult() method. It holds mapped OpenELIS entity IDs

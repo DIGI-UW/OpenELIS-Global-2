@@ -18,7 +18,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * Integration tests for AnalyzerErrorService error queue workflow
  * 
- * Task Reference: T083
  * 
  * Tests the complete error queue workflow: - Holding unmapped messages in error
  * queue - Reprocessing errors after mappings are created
@@ -87,7 +86,7 @@ public class AnalyzerErrorServiceIntegrationTest extends BaseWebContextSensitive
     }
 
     /**
-     * Test: Hold unmapped message in error queue Task Reference: T083
+     * Test: Hold unmapped message in error queue
      * 
      * Verifies that when a mapping is not found, an AnalyzerError record is created
      * and the message is held in the error queue.
@@ -117,7 +116,7 @@ public class AnalyzerErrorServiceIntegrationTest extends BaseWebContextSensitive
     }
 
     /**
-     * Test: Reprocess error after mapping created Task Reference: T083
+     * Test: Reprocess error after mapping created
      * 
      * Verifies that after a mapping is created, the error can be reprocessed. Note:
      * This test verifies the reprocessing service is called, but actual
@@ -147,7 +146,7 @@ public class AnalyzerErrorServiceIntegrationTest extends BaseWebContextSensitive
     }
 
     /**
-     * Test: Acknowledge error updates status Task Reference: T083
+     * Test: Acknowledge error updates status
      * 
      * Verifies that acknowledging an error updates its status to ACKNOWLEDGED.
      */
@@ -175,7 +174,7 @@ public class AnalyzerErrorServiceIntegrationTest extends BaseWebContextSensitive
     }
 
     /**
-     * Test: Get errors by filters Task Reference: T083
+     * Test: Get errors by filters
      * 
      * Verifies that filtering errors by status, type, and severity works correctly.
      */

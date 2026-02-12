@@ -7,7 +7,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 /**
  * Service interface for mapping validation operations
  * 
- * Task Reference: T204
  * 
  * Provides validation metrics and analysis for analyzer field mappings
  */

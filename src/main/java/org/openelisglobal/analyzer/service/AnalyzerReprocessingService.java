@@ -5,7 +5,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 /**
  * Service interface for reprocessing analyzer errors
  * 
- * Task Reference: T091
  * 
  * Provides methods for reprocessing failed analyzer messages after mappings are
  * created.

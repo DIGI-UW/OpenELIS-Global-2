@@ -1,7 +1,6 @@
 /**
  * Unit tests for ErrorDetailsModal component
  *
- * Task Reference: T087
  * Testing Roadmap: .specify/guides/testing-roadmap.md
  *
  * Test Strategy:
@@ -86,7 +85,6 @@ describe("ErrorDetailsModal", () => {
 
   /**
    * Test: Display error details shows full context
-   * Task Reference: T087
    */
   test("testDisplayErrorDetails_ShowsFullContext", async () => {
     // Arrange: Create mock error with full details
@@ -126,7 +124,6 @@ describe("ErrorDetailsModal", () => {
 
   /**
    * Test: Modal displays acknowledged error correctly
-   * Task Reference: T087
    */
   test("testDisplayAcknowledgedError_ShowsAcknowledgmentInfo", async () => {
     // Arrange: Create acknowledged error
@@ -155,7 +152,6 @@ describe("ErrorDetailsModal", () => {
 
   /**
    * Test: Modal displays analyzer logs section
-   * Task Reference: T087
    */
   test("testDisplayAnalyzerLogs_ShowsLogsSection", async () => {
     // Arrange: Create error with logs
@@ -189,7 +185,6 @@ describe("ErrorDetailsModal", () => {
 
   /**
    * Test: Close button calls onClose handler
-   * Task Reference: T087
    */
   test("testCloseButton_CallsOnClose", async () => {
     // Arrange: Create mock error
@@ -218,7 +213,6 @@ describe("ErrorDetailsModal", () => {
 
   /**
    * Test: Acknowledge button calls onAcknowledge handler
-   * Task Reference: T087
    */
   test("testAcknowledgeButton_CallsOnAcknowledge", async () => {
     // Arrange: Create unacknowledged error
@@ -253,7 +247,6 @@ describe("ErrorDetailsModal", () => {
 
   /**
    * Test: Modal does not render when closed
-   * Task Reference: T087
    */
   test("testModal_WhenClosed_NotVisible", async () => {
     // Arrange: Create mock error
@@ -284,7 +277,6 @@ describe("ErrorDetailsModal", () => {
 
   /**
    * Test: Modal does not render when error is null
-   * Task Reference: T087
    */
   test("testModal_WhenErrorNull_NotRendered", () => {
     // Act: Render modal with null error

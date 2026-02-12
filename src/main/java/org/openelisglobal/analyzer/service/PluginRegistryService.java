@@ -101,7 +101,6 @@ public class PluginRegistryService {
         for (AnalyzerImporterPlugin plugin : plugins) {
             String className = plugin.getClass().getName();
 
-            // Check if already registered
             Optional<AnalyzerType> existing = analyzerTypeService.getByPluginClassName(className);
             if (existing.isPresent()) {
                 LogEvent.logDebug(this.getClass().getName(), "registerLoadedPlugins",
@@ -110,7 +109,6 @@ public class PluginRegistryService {
                 continue;
             }
 
-            // Create new AnalyzerType
             AnalyzerType analyzerType = createAnalyzerTypeFromPlugin(plugin);
             try {
                 analyzerTypeService.insert(analyzerType);
@@ -127,7 +125,6 @@ public class PluginRegistryService {
         // Link legacy analyzers (created by connect()) to their AnalyzerType
         linkLegacyAnalyzersToTypes();
 
-        // Log summary
         int total = analyzerTypeService.getAll().size();
         LogEvent.logInfo(this.getClass().getName(), "registerLoadedPlugins", String.format(
                 "Plugin registry complete: %d new, %d existing, %d total analyzer types", registered, skipped, total));
@@ -192,7 +189,6 @@ public class PluginRegistryService {
         type.setActive(true);
         type.setSysUserId("1");
 
-        // For generic plugins, set a default identifier pattern hint
         if (isGeneric) {
             type.setIdentifierPattern(getDefaultIdentifierPattern(className));
         }
@@ -323,7 +319,7 @@ public class PluginRegistryService {
      * Get a default identifier pattern for generic plugins.
      *
      * @param className Fully qualified class name
-     * @return Default identifier pattern (placeholder)
+     * @return Default identifier pattern, or null for non-generic plugins
      */
     private String getDefaultIdentifierPattern(String className) {
         if (className.equals(GENERIC_ASTM_CLASS)) {

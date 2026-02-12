@@ -2,7 +2,6 @@
  * FieldMappingPanel Component
  *
  * Left panel displaying analyzer fields table
- * Task Reference: T060
  */
 
 import React, { useState, useMemo } from "react";

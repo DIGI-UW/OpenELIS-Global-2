@@ -1,7 +1,6 @@
 /**
  * Unit tests for DeleteAnalyzerModal component
  *
- * Task Reference: PR #2610 review comments
  * Testing Roadmap: .specify/guides/testing-roadmap.md
  *
  * Test Strategy:

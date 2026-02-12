@@ -19,7 +19,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * Integration tests for AnalyzerFieldMapping processing performance (SC-002)
  * 
- * Task Reference: T208
  * 
  * Tests the complete message processing workflow: - Process 1000 ASTM messages
  * with mappings configured - Verify 98%+ processed successfully - Test error
@@ -114,7 +113,6 @@ public class AnalyzerMappingPerformanceTest extends BaseWebContextSensitiveTest 
      * Test: Process 1000 messages with mappings configured, verify 98%+ success
      * rate
      * 
-     * Task Reference: T208
      * 
      * Verifies SC-002: System processes 98%+ of ASTM messages successfully when
      * mappings are configured.
@@ -179,7 +177,6 @@ public class AnalyzerMappingPerformanceTest extends BaseWebContextSensitiveTest 
     /**
      * Test: Process messages with unmapped fields handles gracefully
      * 
-     * Task Reference: T208
      * 
      * Verifies SC-002 edge cases: unmapped fields, unit mismatches, validation
      * errors are handled gracefully (queued for resolution rather than failing

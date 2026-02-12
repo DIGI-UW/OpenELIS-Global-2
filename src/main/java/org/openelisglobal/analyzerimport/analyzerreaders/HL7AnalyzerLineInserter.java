@@ -29,7 +29,6 @@ import org.openelisglobal.spring.util.SpringContext;
  * Inserts HL7 ORU^R01 segment lines into analyzer results.
  *
  * <p>
- * Task Reference: T008 (M1) – used by HL7AnalyzerReader. Parses ORU from
  * segment lines, builds AnalyzerResults, persists.
  */
 public class HL7AnalyzerLineInserter extends AnalyzerLineInserter {

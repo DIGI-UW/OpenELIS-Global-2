@@ -1,7 +1,6 @@
 /**
  * Integration test for Mindray BA-88A biochemistry analyzer via RS232/ASTM.
  *
- * <p>Task Reference: T135 [M6] Mindray BA-88A RS232 integration test.
  *
  * <p>The BA-88A is a semi-automatic biochemistry analyzer that communicates via RS232
  * serial protocol using ASTM LIS2-A2 format. Unlike BC-5380 and BS-360E which use HL7,

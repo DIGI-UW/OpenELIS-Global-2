@@ -5,7 +5,6 @@ import java.util.Date;
 /**
  * Value object representing parsed QC result data from ASTM Q-segment
  * 
- * Task Reference: T184
  * 
  * This class holds extracted QC data from ASTM LIS2-A2 Q-segments including:
  * instrument ID (from H-segment header), test code, control lot number, control

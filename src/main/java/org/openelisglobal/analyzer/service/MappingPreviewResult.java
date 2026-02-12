@@ -6,7 +6,6 @@ import java.util.List;
 /**
  * Result object for mapping preview operation
  * 
- * Task Reference: T155
  */
 public class MappingPreviewResult {
     private List<ParsedField> parsedFields;

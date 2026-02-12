@@ -50,10 +50,8 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
     private static final byte CR = 0x0D; // Carriage Return
     private static final byte LF = 0x0A; // Line Feed
 
-    // In-memory job store
     private final Map<String, Map<String, Object>> jobStore = new ConcurrentHashMap<>();
 
-    // Thread pool for background query jobs
     private final ExecutorService executorService = Executors.newCachedThreadPool();
 
     @Autowired
@@ -104,7 +102,6 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
                 logger.warn("Analyzer ID [{}] is not numeric; unable to perform transport validation", analyzerId, e);
                 throw new LIMSRuntimeException("Analyzer ID must be numeric for transport validation", e);
             }
-            // Also check that TCP/IP connection details are available
             if (analyzer.getIpAddress() == null || analyzer.getPort() == null) {
                 throw new LIMSRuntimeException("Analyzer has no TCP/IP connection details configured");
             }
@@ -112,7 +109,6 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
 
         String jobId = UUID.randomUUID().toString();
 
-        // Initialize job status
         Map<String, Object> status = new HashMap<>();
         status.put("analyzerId", analyzerId);
         status.put("jobId", jobId);
@@ -125,7 +121,6 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
 
         jobStore.put(jobKey(analyzerId, jobId), status);
 
-        // Start background query job
         executorService.submit(() -> executeQuery(analyzerId, jobId));
 
         return jobId;
@@ -150,7 +145,6 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
             List<org.openelisglobal.analyzer.valueholder.AnalyzerField> savedFields = analyzerFieldService
                     .getFieldsByAnalyzerId(analyzerId);
 
-            // Convert to Map format for response
             List<Map<String, Object>> fieldsList = new ArrayList<>();
             for (org.openelisglobal.analyzer.valueholder.AnalyzerField field : savedFields) {
                 Map<String, Object> fieldMap = new HashMap<>();
@@ -197,7 +191,6 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
             status.put("progress", 10);
             addLog(status, "Starting query job");
 
-            // Get analyzer
             Analyzer analyzer = analyzerService.get(analyzerId);
             if (analyzer == null) {
                 throw new LIMSRuntimeException("Analyzer not found: " + analyzerId);
@@ -216,11 +209,9 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
             addLog(status, String.format("Connecting to analyzer at %s:%d", ipAddress, port));
             status.put("progress", 20);
 
-            // Get query timeout from SystemConfiguration (default: 5 minutes)
             int timeoutMinutes = getQueryTimeout();
             int timeoutMs = timeoutMinutes * 60 * 1000;
 
-            // Execute ASTM query
             List<Map<String, Object>> fields = queryAnalyzerASTM(ipAddress, port, timeoutMs, status);
 
             // Store fields directly in database (single source of truth)
@@ -266,7 +257,6 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
         List<Map<String, Object>> fields = new ArrayList<>();
 
         try {
-            // Connect to analyzer
             socket = new Socket();
             socket.connect(new java.net.InetSocketAddress(ipAddress, port), 5000);
             socket.setSoTimeout(timeoutMs);
@@ -375,14 +365,12 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
                 }
             }
 
-            // Parse records to extract fields
             addLog(status, String.format("Parsing %d records", records.size()));
             status.put("progress", 80);
 
             fields = parseFieldRecords(records);
             addLog(status, String.format("Extracted %d fields from response", fields.size()));
 
-            // Log all parsed fields
             logger.info("[QUERY_ASTM] Parsed {} fields from analyzer response", fields.size());
             for (int i = 0; i < fields.size(); i++) {
                 Map<String, Object> field = fields.get(i);
@@ -565,7 +553,6 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
 
             } catch (Exception e) {
                 logger.warn("Error parsing R record: {}", record, e);
-                // Continue with next record
             }
         }
 
@@ -578,7 +565,6 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
      * @return Number of fields successfully stored
      */
     private int storeFields(String analyzerId, List<Map<String, Object>> fields) {
-        // Get existing fields to avoid duplicates
         List<AnalyzerField> existingFields = analyzerFieldService.getFieldsByAnalyzerId(analyzerId);
         Map<String, AnalyzerField> existingByAstmRef = new HashMap<>();
         for (AnalyzerField existing : existingFields) {
@@ -593,12 +579,10 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
         for (Map<String, Object> fieldData : fields) {
             String astmRef = (String) fieldData.get("astmRef");
 
-            // Skip if field already exists
             if (existingByAstmRef.containsKey(astmRef)) {
                 continue;
             }
 
-            // Create new AnalyzerField
             AnalyzerField field = new AnalyzerField();
 
             // CRITICAL: Entity uses "assigned" ID strategy - must set ID manually before
@@ -608,7 +592,6 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
             String fieldId = java.util.UUID.randomUUID().toString();
             field.setId(fieldId);
 
-            // Set all other fields
             field.setAnalyzer(analyzer);
 
             String fieldNameValue = (String) fieldData.get("fieldName");
@@ -637,13 +620,11 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
             field.setIsActive(true);
             field.setSysUserId("1");
 
-            // Verify all required fields are set before persist
             logger.info(
                     "[STORE_FIELD] Creating field: id={}, fieldName='{}', astmRef='{}', unit='{}', type='{}', analyzerId={}",
                     field.getId(), field.getFieldName(), field.getAstmRef(), field.getUnit(), field.getFieldType(),
                     analyzerId);
 
-            // Double-check critical fields are not null
             if (field.getFieldName() == null || field.getFieldName().trim().isEmpty()) {
                 logger.error("[STORE_FIELD] CRITICAL: fieldName is null after setting! field={}", field);
                 continue;
