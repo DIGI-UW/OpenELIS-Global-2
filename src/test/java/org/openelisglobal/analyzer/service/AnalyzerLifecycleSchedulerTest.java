@@ -23,7 +23,6 @@ import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 /**
  * Unit tests for AnalyzerLifecycleScheduler
  *
- * Task Reference: T153a, T153b
  */
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerLifecycleSchedulerTest {
@@ -61,8 +60,7 @@ public class AnalyzerLifecycleSchedulerTest {
     }
 
     /**
-     * Test: Transition to MAINTENANCE after 7 days updates stage Task Reference:
-     * T153a
+     * Test: Transition to MAINTENANCE after 7 days updates stage
      */
     @Test
     public void testTransitionToMaintenance_After7Days_UpdatesStage() {
@@ -82,8 +80,7 @@ public class AnalyzerLifecycleSchedulerTest {
     }
 
     /**
-     * Test: Transition to MAINTENANCE before 7 days does not update Task Reference:
-     * T153a
+     * Test: Transition to MAINTENANCE before 7 days does not update
      */
     @Test
     public void testTransitionToMaintenance_Before7Days_NoUpdate() {
@@ -103,7 +100,6 @@ public class AnalyzerLifecycleSchedulerTest {
 
     /**
      * Test: Transition to MAINTENANCE with multiple analyzers updates all eligible
-     * Task Reference: T153a
      */
     @Test
     public void testTransitionToMaintenance_WithMultipleAnalyzers_UpdatesAll() {
@@ -136,8 +132,7 @@ public class AnalyzerLifecycleSchedulerTest {
     }
 
     /**
-     * Test: Transition failure logs error and continues processing Task Reference:
-     * T153b
+     * Test: Transition failure logs error and continues processing
      */
     @Test
     public void testTransitionFailure_LogsErrorAndContinuesProcessing() {

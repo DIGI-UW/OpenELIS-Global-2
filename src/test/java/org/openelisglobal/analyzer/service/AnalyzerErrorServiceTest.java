@@ -23,7 +23,6 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 /**
  * Unit tests for AnalyzerErrorService implementation
  * 
- * Task Reference: T081 Test Coverage Goal: >80%
  * 
  * TDD Workflow (MANDATORY for complex logic): - RED: Write failing test first
  * (defines expected behavior) - GREEN: Write minimal code to make test pass -
@@ -67,7 +66,7 @@ public class AnalyzerErrorServiceTest {
     }
 
     /**
-     * Test: Create error record with unmapped field Task Reference: T081
+     * Test: Create error record with unmapped field
      * 
      * Verifies that createError() creates a new AnalyzerError record with correct
      * fields and persists it via DAO.
@@ -96,7 +95,7 @@ public class AnalyzerErrorServiceTest {
     }
 
     /**
-     * Test: Acknowledge error with valid user Task Reference: T081
+     * Test: Acknowledge error with valid user
      * 
      * Verifies that acknowledgeError() updates error status to ACKNOWLEDGED and
      * sets acknowledged_by and acknowledged_at fields.
@@ -119,7 +118,6 @@ public class AnalyzerErrorServiceTest {
 
     /**
      * Test: Reprocess error after new mapping created
-     * Task Reference: T081
      * 
      * Verifies that reprocessError() calls AnalyzerReprocessingService to
      * reprocess the error message.
@@ -141,7 +139,7 @@ public class AnalyzerErrorServiceTest {
     }
 
     /**
-     * Test: Get errors by filters Task Reference: T081
+     * Test: Get errors by filters
      *
      * Verifies that getErrorsByFilters() delegates to DAO's findByFilters() with
      * the correct parameters.
@@ -170,7 +168,6 @@ public class AnalyzerErrorServiceTest {
 
     /**
      * Test: Acknowledge error with invalid ID throws exception
-     * Task Reference: T081
      * 
      * Verifies that acknowledgeError() throws exception when error not found.
      */

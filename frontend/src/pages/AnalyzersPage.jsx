@@ -2,7 +2,6 @@
  * AnalyzersPage Route Component
  *
  * Page component integrating AnalyzersList
- * Task Reference: T066
  */
 
 import React from "react";

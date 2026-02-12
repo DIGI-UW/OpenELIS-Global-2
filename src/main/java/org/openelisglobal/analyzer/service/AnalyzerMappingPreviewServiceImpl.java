@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 /**
  * Service implementation for analyzer mapping preview operations
  * 
- * Task Reference: T156
  * 
  * Provides stateless preview operations for testing field mappings with sample
  * ASTM messages. NO @Transactional - read-only stateless operations.
@@ -39,34 +38,27 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
     public MappingPreviewResult previewMapping(String analyzerId, String astmMessage, PreviewOptions options) {
         MappingPreviewResult result = new MappingPreviewResult();
 
-        // Validate message size
         if (astmMessage == null || astmMessage.length() > MAX_MESSAGE_SIZE) {
             result.getErrors().add("ASTM message exceeds maximum size of 10KB");
             return result;
         }
 
-        // Default options
         if (options == null) {
             options = new PreviewOptions();
         }
 
         try {
-            // Parse ASTM message
             List<ParsedField> parsedFields = parseAstmMessage(astmMessage);
             result.setParsedFields(parsedFields);
 
-            // Get active mappings for analyzer
             List<AnalyzerFieldMapping> mappings = analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId(analyzerId);
 
-            // Apply mappings
             List<AppliedMapping> appliedMappings = applyMappings(parsedFields, mappings);
             result.setAppliedMappings(appliedMappings);
 
-            // Build entity preview
             EntityPreview entityPreview = buildEntityPreview(appliedMappings);
             result.setEntityPreview(entityPreview);
 
-            // Validate mappings and generate warnings
             validateMappings(parsedFields, mappings, result);
 
         } catch (Exception e) {
@@ -84,7 +76,6 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
             return parsedFields;
         }
 
-        // Basic ASTM parsing - split by record separator (CR/LF)
         String[] lines = astmMessage.split("[\r\n]+");
 
         for (String line : lines) {
@@ -92,8 +83,7 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
                 continue;
             }
 
-            // Parse ASTM record segments (H, P, O, R, etc.)
-            // Format: Segment|Field1^Field2^Field3|Field4|...
+            // ASTM record format: Segment|Field1^Field2^Field3|Field4|...
             String[] segments = line.split("\\|");
             if (segments.length < 2) {
                 continue;
@@ -104,8 +94,7 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
                 continue;
             }
 
-            // Extract fields from segments
-            // This is a simplified parser - actual implementation would use
+            // Simplified parser - actual implementation would use
             // ASTMAnalyzerReader or plugin-based parsing
             for (int i = 1; i < segments.length; i++) {
                 String fieldValue = segments[i];
@@ -114,11 +103,10 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
                     field.setFieldName(segmentType + "_" + i);
                     field.setAstmRef(segmentType + "|" + i);
                     field.setRawValue(fieldValue);
-                    // Determine field type from segment type
                     if (segmentType.equals("R")) {
-                        field.setFieldType("NUMERIC"); // Result segments typically numeric
+                        field.setFieldType("NUMERIC");
                     } else if (segmentType.equals("P")) {
-                        field.setFieldType("TEXT"); // Patient segments typically text
+                        field.setFieldType("TEXT");
                     } else {
                         field.setFieldType("TEXT");
                     }
@@ -134,7 +122,6 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
     public List<AppliedMapping> applyMappings(List<ParsedField> parsedFields, List<AnalyzerFieldMapping> mappings) {
         List<AppliedMapping> appliedMappings = new ArrayList<>();
 
-        // Build map of mappings by analyzer field name for quick lookup
         Map<String, AnalyzerFieldMapping> mappingsByFieldName = new HashMap<>();
         for (AnalyzerFieldMapping mapping : mappings) {
             AnalyzerField field = mapping.getAnalyzerField();
@@ -143,7 +130,6 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
             }
         }
 
-        // Apply mappings to parsed fields
         for (ParsedField parsedField : parsedFields) {
             AnalyzerFieldMapping mapping = mappingsByFieldName.get(parsedField.getFieldName());
             if (mapping != null) {
@@ -164,7 +150,6 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
     public EntityPreview buildEntityPreview(List<AppliedMapping> appliedMappings) {
         EntityPreview preview = new EntityPreview();
 
-        // Group applied mappings by OpenELIS field type
         Map<String, List<AppliedMapping>> mappingsByType = appliedMappings.stream()
                 .collect(Collectors.groupingBy(AppliedMapping::getOpenelisFieldType));
 

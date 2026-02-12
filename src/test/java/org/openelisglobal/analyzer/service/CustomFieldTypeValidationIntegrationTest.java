@@ -19,7 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
  * relationship - Validation rules are fetched for CUSTOM field types -
  * Validation rule evaluation works end-to-end
  * 
- * Task Reference: T141, T176
  */
 public class CustomFieldTypeValidationIntegrationTest extends BaseWebContextSensitiveTest {
 
@@ -40,7 +39,7 @@ public class CustomFieldTypeValidationIntegrationTest extends BaseWebContextSens
 
     /**
      * Test that AnalyzerField with CUSTOM type can have customFieldType
-     * relationship (T141)
+     * relationship
      */
     @Test
     public void testCustomFieldTypeWithValidationRules_IncludedInMappingResponse() throws Exception {
@@ -105,7 +104,7 @@ public class CustomFieldTypeValidationIntegrationTest extends BaseWebContextSens
 
     /**
      * Test that AnalyzerField without customFieldType (CUSTOM type but no
-     * relationship) doesn't cause errors (T141)
+     * relationship) doesn't cause errors
      */
     @Test
     public void testCustomFieldTypeWithoutRelationship_DoesNotCauseErrors() throws Exception {

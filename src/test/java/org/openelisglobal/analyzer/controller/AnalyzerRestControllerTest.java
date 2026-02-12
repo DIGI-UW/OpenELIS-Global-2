@@ -27,7 +27,6 @@ import org.springframework.test.web.servlet.MvcResult;
  * Integration tests for AnalyzerRestController Following TDD approach: Write
  * tests BEFORE implementation
  * 
- * Task Reference: T035 Test Coverage Goal: >80%
  */
 public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
@@ -81,8 +80,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: GET /rest/analyzer/analyzers returns list of analyzers Task Reference:
-     * T035
+     * Test: GET /rest/analyzer/analyzers returns list of analyzers
      */
     @Test
     public void testGetAnalyzers_ReturnsList() throws Exception {
@@ -93,8 +91,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: POST /rest/analyzer/analyzers creates analyzer with valid data Task
-     * Reference: T035
+     * Test: POST /rest/analyzer/analyzers creates analyzer with valid data
      */
     @Test
     public void testCreateAnalyzer_WithValidData_ReturnsCreated() throws Exception {
@@ -112,7 +109,6 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
     /**
      * Test: POST /rest/analyzer/analyzers/{id}/test-connection tests connection
-     * Task Reference: T035
      */
     @Test
     public void testTestConnection_WithValidConfig_ReturnsSuccess() throws Exception {
@@ -152,8 +148,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: GET /rest/analyzer/analyzers/{id} returns analyzer by ID Task
-     * Reference: T054
+     * Test: GET /rest/analyzer/analyzers/{id} returns analyzer by ID
      */
     @Test
     public void testGetAnalyzer_WithValidId_ReturnsAnalyzer() throws Exception {
@@ -179,7 +174,6 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
     /**
      * Test: GET /rest/analyzer/analyzers/{id} returns 404 for non-existent analyzer
-     * Task Reference: T054
      */
     @Test
     public void testGetAnalyzer_WithInvalidId_ReturnsNotFound() throws Exception {
@@ -189,7 +183,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: PUT /rest/analyzer/analyzers/{id} updates analyzer Task Reference: T054
+     * Test: PUT /rest/analyzer/analyzers/{id} updates analyzer
      */
     @Test
     public void testUpdateAnalyzer_WithValidData_ReturnsUpdated() throws Exception {
@@ -217,8 +211,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: POST /rest/analyzer/analyzers/{id}/delete soft deletes analyzer Task
-     * Reference: T054
+     * Test: POST /rest/analyzer/analyzers/{id}/delete soft deletes analyzer
      *
      * Note: Uses POST /delete endpoint (not HTTP DELETE) — the duplicate
      * 
@@ -254,7 +247,6 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
      * This test verifies the controller endpoint correctly delegates to
      * AnalyzerQueryService and returns the expected HTTP response.
      * 
-     * Task Reference: T106 - Query endpoint verification
      * 
      * Note: This test mocks AnalyzerQueryService to avoid real TCP connections.
      * Real end-to-end testing with the mock server should be done in Cypress E2E
@@ -294,7 +286,6 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
      * This test verifies the controller endpoint correctly delegates to
      * AnalyzerQueryService and returns the expected HTTP response.
      * 
-     * Task Reference: T106 - Query status endpoint verification
      * 
      * Note: This test mocks AnalyzerQueryService to avoid real TCP connections.
      * Real end-to-end testing with the mock server should be done in Cypress E2E
@@ -339,7 +330,6 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
      * Test: GET /rest/analyzer/analyzers/{id}/query/{jobId}/status returns 404 for
      * non-existent job
      * 
-     * Task Reference: T106 - Query status endpoint error handling
      */
     @Test
     public void testGetQueryStatus_WithInvalidJobId_ReturnsNotFound() throws Exception {

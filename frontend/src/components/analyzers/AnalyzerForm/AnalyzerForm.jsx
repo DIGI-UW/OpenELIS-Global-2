@@ -48,16 +48,13 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
   const [testConnectionModalOpen, setTestConnectionModalOpen] = useState(false);
   const closeTimeoutRef = useRef(null);
 
-  // Default configuration template state (M20)
   const [defaultConfigs, setDefaultConfigs] = useState([]);
   const [loadingDefaults, setLoadingDefaults] = useState(false);
   const [selectedDefault, setSelectedDefault] = useState(null);
 
-  // Plugin types from /rest/analyzer-types API (Phase 1.1)
   const [pluginTypes, setPluginTypes] = useState([]);
   const [loadingPluginTypes, setLoadingPluginTypes] = useState(false);
 
-  // Fallback plugin types if API returns empty
   const FALLBACK_PLUGIN_TYPES = [
     {
       id: "generic-astm",
@@ -100,7 +97,6 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     },
   ];
 
-  // Initialize form data when analyzer changes
   useEffect(() => {
     if (analyzer) {
       setFormData({
@@ -132,7 +128,6 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     setSelectedDefault(null);
   }, [analyzer, open]);
 
-  // Clear close timeout on unmount
   useEffect(() => {
     return () => {
       if (closeTimeoutRef.current) {
@@ -151,7 +146,6 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     onClose();
   };
 
-  // Load plugin types from API (Phase 1.1)
   useEffect(() => {
     if (open) {
       setLoadingPluginTypes(true);
@@ -169,22 +163,17 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
           setPluginTypes(typesToUse);
         } else {
           // Fallback to hardcoded list if API returns empty
-          console.warn(
-            "Analyzer types API returned empty - using fallback list",
-          );
           setPluginTypes(FALLBACK_PLUGIN_TYPES);
         }
       });
     }
   }, [open]);
 
-  // Derive whether the selected plugin type is a generic (DB-configurable) plugin
   const selectedPluginType = pluginTypes.find(
     (t) => t.id === formData.pluginTypeId,
   );
   const isGenericPlugin = selectedPluginType?.isGenericPlugin === true;
 
-  // Load default configs when in create mode (M20)
   useEffect(() => {
     if (!isEditMode && open) {
       setLoadingDefaults(true);
@@ -193,14 +182,12 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         if (Array.isArray(data)) {
           setDefaultConfigs(data);
         } else {
-          console.error("Failed to load default configs:", data);
           setDefaultConfigs([]);
         }
       });
     }
   }, [isEditMode, open]);
 
-  // Validate IP address format
   const validateIPAddress = (ip) => {
     const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
     if (!ipRegex.test(ip)) {
@@ -220,10 +207,8 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     return null;
   };
 
-  // Handle field changes
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error for this field
     if (errors[field]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -233,7 +218,6 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     }
   };
 
-  // Handle default config selection (M20)
   const handleDefaultConfigSelect = (defaultItem) => {
     if (!defaultItem || !defaultItem.id) {
       return;
@@ -244,10 +228,8 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     // Parse protocol and name from id (e.g., "hl7/mindray-bc2000")
     const [protocol, name] = defaultItem.id.split("/");
 
-    // Load the full config JSON
     getDefaultConfig(protocol, name, (configData) => {
       if (configData && !configData.error) {
-        // Populate form fields from config
         setFormData((prev) => ({
           ...prev,
           name: configData.analyzer_name || prev.name,
@@ -260,7 +242,6 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
             : prev.port,
         }));
 
-        // Show success notification
         setNotification({
           kind: "info",
           title: intl.formatMessage({ id: "analyzer.form.defaults.loaded" }),
@@ -281,7 +262,6 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     });
   };
 
-  // Validate form
   const validateForm = () => {
     const newErrors = {};
 
@@ -317,7 +297,6 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
   const handleSubmit = () => {
     if (!validateForm()) {
       return;

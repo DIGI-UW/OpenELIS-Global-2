@@ -10,7 +10,7 @@ jest.mock("../../../services/analyzerService", () => ({
 import React from "react";
 
 // Testing Library (all utilities in one import)
-import { render, screen, fireEvent, within, act } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 
 // userEvent (PREFERRED for user interactions)
@@ -50,7 +50,6 @@ import messages from "../../../languages/en.json";
  * - GREEN: Write minimal code to make test pass
  * - REFACTOR: Improve code quality while keeping tests green
  *
- * Task Reference: T178
  * Test Coverage Goal: >70% (measured via Jest)
  *
  * Test Naming: test{Scenario}_{ExpectedResult}
@@ -78,7 +77,6 @@ describe("ValidationRuleEditor Component", () => {
 
   /**
    * Test: Select rule type shows relevant fields
-   * Task Reference: T178
    */
   test("testSelectRuleType_ShowsRelevantFields", async () => {
     renderWithIntl(
@@ -122,7 +120,6 @@ describe("ValidationRuleEditor Component", () => {
 
   /**
    * Test: Regex rule with invalid pattern shows error
-   * Task Reference: T178
    */
   test("testRegexRule_WithInvalidPattern_ShowsError", async () => {
     renderWithIntl(
@@ -153,7 +150,6 @@ describe("ValidationRuleEditor Component", () => {
 
   /**
    * Test: Range rule with min greater than max shows error
-   * Task Reference: T178
    */
   test("testRangeRule_WithMinGreaterThanMax_ShowsError", async () => {
     renderWithIntl(
@@ -192,7 +188,6 @@ describe("ValidationRuleEditor Component", () => {
 
   /**
    * Test: Test validation with sample value displays result
-   * Task Reference: T178
    */
   test("testTestValidation_WithSampleValue_DisplaysResult", async () => {
     renderWithIntl(
@@ -226,7 +221,6 @@ describe("ValidationRuleEditor Component", () => {
 
   /**
    * Test: Enum rule allows adding and removing values
-   * Task Reference: T178
    */
   test("testEnumRule_AddAndRemoveValues_UpdatesList", async () => {
     renderWithIntl(
@@ -265,7 +259,6 @@ describe("ValidationRuleEditor Component", () => {
 
   /**
    * Test: Save rule with valid data calls onSave
-   * Task Reference: T178
    */
   test("testSaveRule_WithValidData_CallsOnSave", async () => {
     createValidationRule.mockImplementation((id, data, callback) => {
@@ -315,7 +308,6 @@ describe("ValidationRuleEditor Component", () => {
 
   /**
    * Test: Cancel button calls onCancel
-   * Task Reference: T178
    */
   test("testCancelButton_CallsOnCancel", async () => {
     renderWithIntl(
@@ -334,7 +326,6 @@ describe("ValidationRuleEditor Component", () => {
 
   /**
    * Test: Editing existing rule loads rule data
-   * Task Reference: T178
    */
   test("testEditingRule_LoadsRuleData", async () => {
     const editingRule = {

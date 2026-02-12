@@ -2,7 +2,6 @@
  * TestMappingModal Component
  *
  * Modal for testing field mappings with sample ASTM messages
- * Task Reference: T160
  *
  * Per FR-007 specification:
  * - Medium size ComposedModal (~600-700px)

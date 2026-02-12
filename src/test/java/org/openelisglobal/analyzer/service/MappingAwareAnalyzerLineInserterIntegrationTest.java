@@ -20,7 +20,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * Integration tests for MappingAwareAnalyzerLineInserter wrapper pattern
  * 
- * Task Reference: T181
  * 
  * Tests the complete wrapper pattern workflow: - Process message with mappings
  * applies transformations - Process message without mappings uses original
@@ -96,8 +95,7 @@ public class MappingAwareAnalyzerLineInserterIntegrationTest extends BaseWebCont
     }
 
     /**
-     * Test: Check has active mappings returns false when no mappings exist Task
-     * Reference: T181
+     * Test: Check has active mappings returns false when no mappings exist
      */
     @Test
     public void testProcessMessage_WithoutMappings_UsesOriginalInserter() {
@@ -112,8 +110,7 @@ public class MappingAwareAnalyzerLineInserterIntegrationTest extends BaseWebCont
     }
 
     /**
-     * Test: Apply mappings with no mappings returns original lines Task Reference:
-     * T181
+     * Test: Apply mappings with no mappings returns original lines
      */
     @Test
     public void testApplyMappings_WithNoMappings_ReturnsOriginalLines() {
@@ -138,7 +135,7 @@ public class MappingAwareAnalyzerLineInserterIntegrationTest extends BaseWebCont
     }
 
     /**
-     * Test: Process message with unmapped field creates error Task Reference: T181
+     * Test: Process message with unmapped field creates error
      * 
      * Note: This test verifies that when mappings are applied and unmapped fields
      * are detected, an error is created. Full integration test would require

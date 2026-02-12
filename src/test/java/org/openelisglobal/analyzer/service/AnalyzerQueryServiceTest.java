@@ -22,7 +22,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 /**
  * Unit tests for AnalyzerQueryService implementation
  *
- * Task Reference: T102 Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerQueryServiceTest {

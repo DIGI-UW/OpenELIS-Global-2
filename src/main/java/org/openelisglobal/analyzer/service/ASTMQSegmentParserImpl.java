@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
  * Implementation of ASTMQSegmentParser for parsing Q-segments from ASTM
  * messages
  * 
- * Task Reference: T185
  * 
  * Parses ASTM LIS2-A2 Q-segments to extract QC result data. Handles: -
  * Extracting instrument ID from H-segment header - Parsing Q-segments with all
@@ -40,10 +39,8 @@ public class ASTMQSegmentParserImpl implements ASTMQSegmentParser {
             throw new LIMSRuntimeException("ASTM message cannot be null or empty");
         }
 
-        // Extract instrument ID from H-segment header
         String instrumentId = extractInstrumentIdFromHeader(astmMessage);
 
-        // Find all Q-segments and parse them
         List<QCSegmentData> qcResults = new ArrayList<>();
         String[] lines = astmMessage.split("\r|\n|\r\n");
 
@@ -129,7 +126,6 @@ public class ASTMQSegmentParserImpl implements ASTMQSegmentParser {
         String unit = fields.length > 4 ? fields[4] : null;
         String timestampStr = fields.length > 5 ? fields[5] : null;
 
-        // Validate required fields
         if (testInfo == null || testInfo.trim().isEmpty()) {
             throw new LIMSRuntimeException("Q-segment missing test code/control lot/level");
         }
@@ -146,7 +142,6 @@ public class ASTMQSegmentParserImpl implements ASTMQSegmentParser {
         String controlLotNumber = testComponents.length > 1 ? testComponents[1] : null;
         String controlLevel = testComponents.length > 2 ? testComponents[2] : null;
 
-        // Validate composite field components
         if (testCode == null || testCode.trim().isEmpty()) {
             throw new LIMSRuntimeException("Q-segment missing test code");
         }
@@ -165,7 +160,6 @@ public class ASTMQSegmentParserImpl implements ASTMQSegmentParser {
         // Parse timestamp (format: yyyyMMddHHmmss)
         Date timestamp = parseTimestamp(timestampStr.trim());
 
-        // Create QCSegmentData object
         QCSegmentData qcData = new QCSegmentData();
         qcData.setInstrumentId(instrumentId);
         qcData.setTestCode(testCode.trim());

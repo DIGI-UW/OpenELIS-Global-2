@@ -3,7 +3,6 @@ package org.openelisglobal.analyzer.service;
 /**
  * Options for copy mappings operation
  * 
- * Task Reference: T193
  */
 public class CopyOptions {
     private boolean overwriteExisting = true;

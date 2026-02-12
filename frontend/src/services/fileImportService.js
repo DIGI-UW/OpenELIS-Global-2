@@ -4,7 +4,6 @@
  * Provides methods for CRUD operations on file import configurations
  * Follows OpenELIS pattern using getFromOpenElisServer, postToOpenElisServerJsonResponse, and fetch for PUT/DELETE
  *
- * Task Reference: T061
  * Pattern Reference: AGENTS.md Section 5 (Frontend Data Fetching Pattern)
  */
 
@@ -114,7 +113,6 @@ export const updateConfiguration = (
       callback(json, extraParams);
     })
     .catch((error) => {
-      console.error("updateConfiguration error:", error);
       callback(
         {
           error: error.message || "Network error",
@@ -177,7 +175,6 @@ export const deleteConfiguration = (id, callback, extraParams) => {
       );
     })
     .catch((error) => {
-      console.error("deleteConfiguration error:", error);
       callback(
         {
           error: error.message || "Network error",

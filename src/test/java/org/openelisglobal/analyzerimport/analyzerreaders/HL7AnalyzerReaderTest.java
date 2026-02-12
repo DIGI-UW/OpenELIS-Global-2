@@ -1,7 +1,6 @@
 /**
  * Unit tests for HL7AnalyzerReader (ORU^R01 parse, readStream, MSH identification).
  *
- * <p>Task Reference: T004 [M1] HL7 Adapter
  */
 package org.openelisglobal.analyzerimport.analyzerreaders;
 

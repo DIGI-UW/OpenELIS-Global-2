@@ -8,7 +8,6 @@ import java.util.Map;
 /**
  * Entity preview for mapping preview result
  * 
- * Task Reference: T155
  */
 public class EntityPreview {
     private List<Map<String, Object>> tests;

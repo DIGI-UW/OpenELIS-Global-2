@@ -1,7 +1,6 @@
 /**
  * FileImportConfiguration Component Tests
  *
- * Task Reference: T063
  * Testing Roadmap: .specify/guides/testing-roadmap.md
  *
  * Test Strategy:

@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * DAO implementation for ValidationRuleConfiguration
  * 
- * Task Reference: T170
  */
 @Component
 @Transactional

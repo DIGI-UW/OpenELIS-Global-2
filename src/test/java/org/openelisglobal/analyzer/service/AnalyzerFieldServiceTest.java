@@ -26,7 +26,6 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
  * (defines expected behavior) - GREEN: Write minimal code to make test pass -
  * REFACTOR: Improve code quality while keeping tests green
  * 
- * Task Reference: T029 Test Coverage Goal: >80% (measured via JaCoCo)
  * 
  * Test Naming: test{MethodName}_{Scenario}_{ExpectedResult}
  */
@@ -61,7 +60,7 @@ public class AnalyzerFieldServiceTest {
     }
 
     /**
-     * Test: Get fields by analyzer ID returns list of fields Task Reference: T029
+     * Test: Get fields by analyzer ID returns list of fields
      */
     @Test
     public void testGetFieldsByAnalyzerId_ReturnsFields() {
@@ -91,7 +90,7 @@ public class AnalyzerFieldServiceTest {
     }
 
     /**
-     * Test: Create field with valid data persists field Task Reference: T029
+     * Test: Create field with valid data persists field
      */
     @Test
     public void testCreateField_WithValidData_PersistsField() {
@@ -114,8 +113,7 @@ public class AnalyzerFieldServiceTest {
     }
 
     /**
-     * Test: Create field with invalid field type throws exception Task Reference:
-     * T029
+     * Test: Create field with invalid field type throws exception
      * 
      * Validation: NUMERIC fields must have unit, non-NUMERIC fields must not have
      * unit
@@ -135,8 +133,7 @@ public class AnalyzerFieldServiceTest {
     }
 
     /**
-     * Test: Create field with QUALITATIVE type and unit throws exception Task
-     * Reference: T029
+     * Test: Create field with QUALITATIVE type and unit throws exception
      * 
      * Validation: QUALITATIVE fields must not have unit
      */
@@ -155,7 +152,6 @@ public class AnalyzerFieldServiceTest {
 
     /**
      * Test: Get fields by analyzer ID with empty result returns empty list
-     * Task Reference: T029
      */
     @Test
     public void testGetFieldsByAnalyzerId_WithNoFields_ReturnsEmptyList() {

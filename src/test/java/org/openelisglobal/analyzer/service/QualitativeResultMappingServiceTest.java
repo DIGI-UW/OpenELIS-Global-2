@@ -20,7 +20,6 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 /**
  * Unit tests for QualitativeResultMappingService implementation
  * 
- * Task Reference: T031 Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class QualitativeResultMappingServiceTest {
@@ -61,8 +60,7 @@ public class QualitativeResultMappingServiceTest {
     }
 
     /**
-     * Test: Create mapping with many-to-one mapping persists multiple values Task
-     * Reference: T031
+     * Test: Create mapping with many-to-one mapping persists multiple values
      * 
      * Many-to-one: Multiple analyzer values can map to the same OpenELIS code
      */
@@ -98,8 +96,7 @@ public class QualitativeResultMappingServiceTest {
     }
 
     /**
-     * Test: Create mapping with duplicate value throws exception Task Reference:
-     * T031
+     * Test: Create mapping with duplicate value throws exception
      * 
      * Validation: Unique constraint on (analyzer_field_id, analyzer_value)
      */
@@ -131,7 +128,6 @@ public class QualitativeResultMappingServiceTest {
 
     /**
      * Test: Create mapping with valid data persists mapping
-     * Task Reference: T031
      */
     @Test
     public void testCreateMapping_WithValidData_PersistsMapping() {

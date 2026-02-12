@@ -14,7 +14,6 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 /**
  * Unit tests for ASTMQSegmentParser implementation
  * 
- * Task Reference: T182
  * 
  * TDD Workflow (MANDATORY): - RED: Write failing test first (defines expected
  * behavior) - GREEN: Write minimal code to make test pass - REFACTOR: Improve
@@ -37,7 +36,7 @@ public class ASTMQSegmentParserTest {
     }
 
     /**
-     * Test: Parse valid Q-segment with all required fields Task Reference: T182
+     * Test: Parse valid Q-segment with all required fields
      * 
      * Verifies that parseQSegments() correctly extracts all fields from a valid
      * Q-segment including: test code, control lot number, control level, result
@@ -74,7 +73,7 @@ public class ASTMQSegmentParserTest {
     }
 
     /**
-     * Test: Extract instrument ID from H-segment header Task Reference: T182
+     * Test: Extract instrument ID from H-segment header
      * 
      * Verifies that instrument ID is correctly extracted from ASTM message header
      * (H-segment) per FR-021 requirement.
@@ -97,7 +96,7 @@ public class ASTMQSegmentParserTest {
     }
 
     /**
-     * Test: Extract control level (Low/Normal/High) Task Reference: T182
+     * Test: Extract control level (Low/Normal/High)
      * 
      * Verifies that control level is correctly extracted from Q-segment. Control
      * level values: L (Low), N (Normal), H (High)
@@ -126,7 +125,7 @@ public class ASTMQSegmentParserTest {
     }
 
     /**
-     * Test: Extract control lot number Task Reference: T182
+     * Test: Extract control lot number
      * 
      * Verifies that control lot number is correctly extracted from Q-segment.
      */
@@ -145,7 +144,7 @@ public class ASTMQSegmentParserTest {
     }
 
     /**
-     * Test: Extract numeric result value Task Reference: T182
+     * Test: Extract numeric result value
      * 
      * Verifies that numeric result values are correctly extracted from Q-segment.
      */
@@ -163,7 +162,7 @@ public class ASTMQSegmentParserTest {
     }
 
     /**
-     * Test: Extract qualitative result value Task Reference: T182
+     * Test: Extract qualitative result value
      * 
      * Verifies that qualitative result values are correctly extracted from
      * Q-segment per FR-021 requirement.
@@ -182,7 +181,7 @@ public class ASTMQSegmentParserTest {
     }
 
     /**
-     * Test: Extract timestamp from Q-segment Task Reference: T182
+     * Test: Extract timestamp from Q-segment
      * 
      * Verifies that timestamp is correctly extracted and parsed from Q-segment.
      * Format: YYYYMMDDHHMMSS
@@ -203,7 +202,7 @@ public class ASTMQSegmentParserTest {
     }
 
     /**
-     * Test: Parse multiple Q-segments from single message Task Reference: T182
+     * Test: Parse multiple Q-segments from single message
      * 
      * Verifies that parseQSegments() correctly extracts multiple Q-segments from a
      * single ASTM message per FR-021 requirement.
@@ -228,7 +227,7 @@ public class ASTMQSegmentParserTest {
     }
 
     /**
-     * Test: Handle malformed Q-segment with missing fields Task Reference: T182
+     * Test: Handle malformed Q-segment with missing fields
      * 
      * Verifies that parseQSegments() throws exception for malformed Q-segments with
      * missing required fields per FR-021 error handling requirement.
@@ -246,7 +245,7 @@ public class ASTMQSegmentParserTest {
     }
 
     /**
-     * Test: Handle message with no Q-segments Task Reference: T182
+     * Test: Handle message with no Q-segments
      * 
      * Verifies that parseQSegments() returns empty list when message contains no
      * Q-segments (patient result only, no QC results).
@@ -267,7 +266,7 @@ public class ASTMQSegmentParserTest {
     }
 
     /**
-     * Test: Handle empty or null message Task Reference: T182
+     * Test: Handle empty or null message
      * 
      * Verifies that parseQSegments() handles edge cases gracefully.
      */

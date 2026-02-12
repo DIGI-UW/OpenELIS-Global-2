@@ -2,7 +2,6 @@
  * MappingPanel Component
  *
  * Right panel with View Mode and Edit Mode for field mappings
- * Task Reference: T062, T078
  *
  * Supports draft/active workflow per FR-010:
  * - "Save as Draft" button (saves with isActive=false)
@@ -48,7 +47,6 @@ const MappingPanel = ({
     isActive: mapping?.isActive !== undefined ? mapping.isActive : false, // Default to draft
   });
 
-  // Validation rule state (T176)
   const [validationRules, setValidationRules] = useState(
     mapping?.validationRules || [],
   );
@@ -56,7 +54,6 @@ const MappingPanel = ({
   const [validationResult, setValidationResult] = useState(null);
   const [validationErrors, setValidationErrors] = useState([]);
 
-  // Fetch validation rules when field type is CUSTOM (T176)
   useEffect(() => {
     if (field?.fieldType === "CUSTOM" && mapping?.validationRules) {
       setValidationRules(mapping.validationRules);
@@ -65,7 +62,6 @@ const MappingPanel = ({
     }
   }, [field?.fieldType, mapping?.validationRules]);
 
-  // Handle form field changes
   const handleFieldChange = (fieldName, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -73,10 +69,8 @@ const MappingPanel = ({
     }));
   };
 
-  // Handle save as draft
   const handleSaveAsDraft = () => {
     if (!field?.id) {
-      console.warn("Cannot save as draft: field.id is undefined");
       return;
     }
     const mappingData = {
@@ -97,10 +91,8 @@ const MappingPanel = ({
     setEditMode(false);
   };
 
-  // Handle save and activate
   const handleSaveAndActivate = () => {
     if (!field?.id) {
-      console.warn("Cannot save and activate: field.id is undefined");
       return;
     }
     const mappingData = {
@@ -112,14 +104,11 @@ const MappingPanel = ({
       isActive: true, // Activate
     };
 
-    // Check if confirmation is required (active analyzer with active mapping)
     const isUpdatingActiveMapping = mapping && mapping.isActive;
     if (analyzerIsActive && isUpdatingActiveMapping) {
-      // Show confirmation modal
       setPendingMappingData(mappingData);
       setShowActivationModal(true);
     } else {
-      // No confirmation needed, save directly
       if (mapping) {
         onUpdateMapping(mapping.id, mappingData);
       } else {
@@ -299,7 +288,7 @@ const MappingPanel = ({
             />
           </div>
 
-          {/* Validation Rules Section (T176) - Only show for CUSTOM field types */}
+          {/* Validation Rules Section - Only show for CUSTOM field types */}
           {field?.fieldType === "CUSTOM" &&
             validationRules &&
             validationRules.length > 0 && (

@@ -22,7 +22,6 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * patterns, value ranges, allowed characters) and MUST be available for use in
  * field mapping configuration.
  * 
- * Task Reference: T167
  */
 @Entity
 @Table(name = "validation_rule_configuration")

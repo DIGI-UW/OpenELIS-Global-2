@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * REST controller for creating OpenELIS fields inline from the analyzer mapping
- * interface. Task Reference: T146
+ * interface.
  * 
  * Endpoint: POST /rest/analyzer/openelis-fields Authorization: LAB_ADMIN or
  * LAB_SUPERVISOR (TODO: Add security annotations)
@@ -110,14 +110,23 @@ public class OpenELISFieldRestController extends BaseRestController {
     @GetMapping("/openelis-fields/{fieldId}")
     public ResponseEntity<?> getField(@PathVariable String fieldId, @RequestParam(required = false) String entityType) {
 
-        try {
-            if (entityType == null || entityType.trim().isEmpty()) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("error", "Entity type parameter is required");
-                return ResponseEntity.badRequest().body(errorResponse);
-            }
+        // Validate entity type before lookup
+        if (entityType == null || entityType.trim().isEmpty()) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Entity type parameter is required");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
 
-            OpenELISFieldForm.EntityType type = OpenELISFieldForm.EntityType.valueOf(entityType.toUpperCase());
+        OpenELISFieldForm.EntityType type;
+        try {
+            type = OpenELISFieldForm.EntityType.valueOf(entityType.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Unsupported entity type: " + entityType);
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+
+        try {
             Map<String, Object> fieldData = openELISFieldService.getFieldById(fieldId, type);
 
             if (fieldData == null) {
@@ -127,18 +136,9 @@ public class OpenELISFieldRestController extends BaseRestController {
             return ResponseEntity.ok(fieldData);
 
         } catch (NumberFormatException e) {
-            // Invalid ID format (e.g., "INVALID-ID" when numeric ID expected) - treat as
-            // not found
+            // Invalid ID format (e.g., "INVALID-ID" when numeric ID expected)
             return ResponseEntity.notFound().build();
         } catch (IllegalArgumentException e) {
-            // Could be invalid entity type
-            // If it's an entity type issue, return 400; otherwise treat as not found
-            if (e.getMessage() != null && e.getMessage().contains("entity")) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("error", "Invalid entity type: " + entityType);
-                return ResponseEntity.badRequest().body(errorResponse);
-            }
-            // Other parsing error - treat as not found
             return ResponseEntity.notFound().build();
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
             // LIMSRuntimeException from DAO - likely field not found

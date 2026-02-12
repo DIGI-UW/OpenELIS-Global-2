@@ -19,7 +19,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * Integration tests for AnalyzerFieldMapping audit trail completeness (SC-003)
  * 
- * Task Reference: T207
  * 
  * Success Criteria SC-003: - 100% of mapping changes (create, update, retire)
  * are recorded in audit trail - Audit trail fields: user ID, timestamp,

@@ -1,7 +1,6 @@
 /**
  * Integration test for GeneXpert HL7 protocol variant.
  *
- * <p>Task Reference: T144 [M7] GeneXpert HL7 integration test.
  *
  * <p>Verifies that:
  * <ul>

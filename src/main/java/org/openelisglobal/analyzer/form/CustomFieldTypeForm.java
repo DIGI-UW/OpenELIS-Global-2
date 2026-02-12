@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Size;
 /**
  * Form DTO for CustomFieldType CRUD operations
  * 
- * Task Reference: T140
  */
 public class CustomFieldTypeForm {
 

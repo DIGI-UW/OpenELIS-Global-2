@@ -26,7 +26,6 @@ import org.openelisglobal.analyzer.valueholder.UnitMapping;
 /**
  * DAO tests for UnitMappingDAO
  * 
- * Task Reference: T033c Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class UnitMappingDAOTest {
@@ -78,7 +77,7 @@ public class UnitMappingDAOTest {
     }
 
     /**
-     * Test: Find by analyzer field ID returns mappings Task Reference: T033c
+     * Test: Find by analyzer field ID returns mappings
      */
     @Test
     public void testFindByAnalyzerFieldId_ReturnsMappings() {
@@ -105,7 +104,6 @@ public class UnitMappingDAOTest {
 
     /**
      * Test: Find by analyzer field ID with no mappings returns empty list
-     * Task Reference: T033c
      */
     @Test
     public void testFindByAnalyzerFieldId_NoMappings_ReturnsEmptyList() {

@@ -16,7 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * DAO tests for SerialPortConfigurationDAO Task Reference: T024, M2
+ * DAO tests for SerialPortConfigurationDAO
  * 
  * Tests persistence layer with real HQL query execution. Follows OpenELIS DAO
  * test pattern: JdbcTemplate for setup/teardown, DAO for queries.

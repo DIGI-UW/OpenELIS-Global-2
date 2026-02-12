@@ -1,7 +1,6 @@
 /**
  * Test that validates GenericASTM plugin can parse Mindray BA-88A ASTM messages.
  *
- * <p>Task Reference: T138 [M6] Verify Mindray plugin handles BA-88A format.
  *
  * <p>The BA-88A uses ASTM LIS2-A2 protocol over RS232, which is handled by the GenericASTM
  * plugin (not the existing Mindray HL7 plugin). This test validates that:

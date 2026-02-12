@@ -120,7 +120,7 @@ public class DatabaseSchemaValidationTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test that analyzer_field table has custom_field_type_id column (T141)
+     * Test that analyzer_field table has custom_field_type_id column
      */
     @Test
     public void testAnalyzerFieldTableHasCustomFieldTypeIdColumn() throws Exception {
@@ -135,7 +135,7 @@ public class DatabaseSchemaValidationTest extends BaseWebContextSensitiveTest {
         expectedColumns.put("is_active", "BOOLEAN");
         // expectedColumns.put("sys_user_id", "VARCHAR"); // Column not in test schema
         expectedColumns.put("last_updated", "TIMESTAMP");
-        // Column added in changeset 004-015 (T141)
+        // Column added in changeset 004-015
         expectedColumns.put("custom_field_type_id", "VARCHAR");
 
         validateTableColumns(tableName, expectedColumns);

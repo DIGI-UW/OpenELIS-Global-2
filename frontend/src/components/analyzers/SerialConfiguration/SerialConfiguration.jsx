@@ -1,6 +1,5 @@
 /**
  * SerialConfiguration Component
- * Task Reference: T037, M2
  *
  * Form component for configuring serial port settings for analyzers
  * Uses Carbon Design System components

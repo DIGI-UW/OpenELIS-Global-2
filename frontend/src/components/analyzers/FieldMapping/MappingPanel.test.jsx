@@ -10,7 +10,6 @@
  * - GREEN: Write minimal code to make test pass
  * - REFACTOR: Improve code quality while keeping tests green
  *
- * Task Reference: T072
  * Test Naming: test{Scenario}_{ExpectedResult}
  */
 
@@ -113,7 +112,6 @@ describe("MappingPanel", () => {
 
   /**
    * Test: Update mapping shows confirmation modal for active analyzers
-   * Task Reference: T072, T078
    *
    * When updating an active mapping on an active analyzer using "Save and Activate",
    * a confirmation modal should be shown before applying the changes.
@@ -167,7 +165,6 @@ describe("MappingPanel", () => {
 
   /**
    * Test: Save draft mapping does not require confirmation
-   * Task Reference: T072, T078
    *
    * When saving a draft mapping using "Save as Draft" button, no confirmation modal
    * should be shown. The mapping should be saved directly with isActive=false.
@@ -232,7 +229,6 @@ describe("MappingPanel", () => {
 
   /**
    * Test: Create new mapping does not require confirmation
-   * Task Reference: T072, T078
    *
    * When creating a new mapping (no existing mapping), no confirmation should
    * be required regardless of analyzer status. "Save and Activate" should work
@@ -293,7 +289,6 @@ describe("MappingPanel", () => {
 
   /**
    * Test: Retire button with pending messages shows disabled tooltip
-   * Task Reference: T202
    *
    * When there are pending messages for a mapping, the retire button should be
    * disabled and show a tooltip explaining why it cannot be retired.
@@ -327,7 +322,6 @@ describe("MappingPanel", () => {
 
   /**
    * Test: Retire mapping opens confirmation modal
-   * Task Reference: T202
    *
    * When clicking the retire button for an active, non-required mapping with no
    * pending messages, the retirement confirmation modal should open.
@@ -368,7 +362,6 @@ describe("MappingPanel", () => {
 
   /**
    * Test: Retired mapping displays retired badge
-   * Task Reference: T202
    *
    * When a mapping is retired (isActive=false), it should display a "Retired"
    * badge in the panel header.
@@ -403,7 +396,6 @@ describe("MappingPanel", () => {
 
   /**
    * Test: Retire with reason submits reason to API
-   * Task Reference: T202
    *
    * When retiring a mapping with a reason provided in the retirement modal,
    * the reason should be passed to the onRetireMapping callback.

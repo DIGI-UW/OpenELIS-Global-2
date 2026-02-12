@@ -3,7 +3,6 @@ package org.openelisglobal.analyzer.service;
 /**
  * Options for mapping preview operation
  * 
- * Task Reference: T155
  */
 public class PreviewOptions {
     private boolean includeDetailedParsing = false;

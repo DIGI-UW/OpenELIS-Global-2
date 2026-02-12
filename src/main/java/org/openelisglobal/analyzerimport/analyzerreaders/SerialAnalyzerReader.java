@@ -25,7 +25,6 @@ import org.openelisglobal.spring.util.SpringContext;
  * SerialAnalyzerReader - Reads ASTM messages from RS232 serial port
  * connections.
  * 
- * Task Reference: T032, M2 Feature: 011-madagascar-analyzer-integration
  * 
  * Extends AnalyzerReader to support serial port communication for analyzers.
  * Reads ASTM messages from serial ports and processes them using existing
@@ -71,7 +70,6 @@ public class SerialAnalyzerReader extends AnalyzerReader {
                 return false;
             }
 
-            // Get serial port configuration
             Optional<SerialPortConfiguration> configOpt = serialPortService.getByAnalyzerId(analyzerId);
             if (configOpt.isEmpty()) {
                 error = "Serial port configuration not found for analyzer ID: " + analyzerId;
@@ -86,7 +84,6 @@ public class SerialAnalyzerReader extends AnalyzerReader {
                 return false;
             }
 
-            // Open connection if not already open
             String configId = config.getId();
             if (!serialPortService.isConnected(configId)) {
                 if (!serialPortService.openConnection(configId)) {
@@ -96,10 +93,8 @@ public class SerialAnalyzerReader extends AnalyzerReader {
                 }
             }
 
-            // Get serial port from service (we need direct access for reading)
-            // Note: This is a limitation - we need to refactor SerialPortService to expose
-            // SerialPort
-            // For now, we'll get it directly
+            // TODO: Refactor SerialPortService to expose SerialPort instead of
+            // bypassing service encapsulation here
             SerialPort port = SerialPort.getCommPort(config.getPortName());
             if (port == null || !port.isOpen()) {
                 error = "Serial port not available or not open: " + config.getPortName();
@@ -109,7 +104,6 @@ public class SerialAnalyzerReader extends AnalyzerReader {
 
             serialPort = port;
 
-            // Read from serial port InputStream
             InputStream stream = serialPort.getInputStream();
             return readStream(stream);
 
@@ -257,7 +251,6 @@ public class SerialAnalyzerReader extends AnalyzerReader {
             LogEvent.logError(this.getClass().getSimpleName(), "insertAnalyzerData", error);
             return false;
         } else {
-            // Check if analyzer has active mappings and wrap inserter if needed
             AnalyzerLineInserter finalInserter = wrapInserterIfMappingsExist(inserter);
 
             boolean success = finalInserter.insert(lines, systemUserId);
@@ -289,15 +282,12 @@ public class SerialAnalyzerReader extends AnalyzerReader {
                 return originalInserter;
             }
 
-            // Check if analyzer has active mappings
             MappingApplicationService mappingApplicationService = SpringContext
                     .getBean(MappingApplicationService.class);
             if (mappingApplicationService != null && mappingApplicationService.hasActiveMappings(analyzer.getId())) {
-                // Analyzer has active mappings - wrap inserter
                 return new MappingAwareAnalyzerLineInserter(originalInserter, analyzer);
             }
 
-            // No mappings configured - use original inserter (backward compatibility)
             return originalInserter;
 
         } catch (Exception e) {

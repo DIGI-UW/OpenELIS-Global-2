@@ -2,7 +2,6 @@
  * UnitMappingModal Component
  *
  * Modal for configuring unit mappings with conversion factors
- * Task Reference: T063
  */
 
 import React, { useState, useEffect } from "react";

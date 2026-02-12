@@ -1,6 +1,5 @@
 /**
  * SerialConfiguration Component Tests
- * Task Reference: T036, M2
  */
 
 import React from "react";

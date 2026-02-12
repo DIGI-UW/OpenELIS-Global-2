@@ -10,7 +10,6 @@
  * - GREEN: Write minimal code to make test pass
  * - REFACTOR: Improve code quality while keeping tests green
  *
- * Task Reference: T149
  * Test Naming: test{Scenario}_{ExpectedResult}
  */
 
@@ -77,12 +76,10 @@ describe("InlineFieldCreationModal", () => {
    * interaction complexity in Jest/jsdom test environment. This functionality is
    * covered by E2E tests in analyzerConfiguration.cy.js (testInlineFieldCreation_WithValidData_CreatesField).
    *
-   * Task Reference: T149
    */
 
   /**
    * Test: Render modal with duplicate-error mock - smoke test
-   * Task Reference: T149
    *
    * Verifies modal renders with form fields when createField mock is configured.
    * Full duplicate-error flow (submit + assert error display) requires Carbon
@@ -122,7 +119,6 @@ describe("InlineFieldCreationModal", () => {
 
   /**
    * Test: Select entity type shows relevant fields
-   * Task Reference: T149
    *
    * When entity type is selected, relevant form fields should be displayed.
    */
@@ -169,7 +165,6 @@ describe("InlineFieldCreationModal", () => {
 
   /**
    * Test: Modal not visible when closed
-   * Task Reference: T149
    *
    * When the modal is closed (open=false), it should not be visible.
    */
@@ -200,7 +195,6 @@ describe("InlineFieldCreationModal", () => {
 
   /**
    * Test: Cancel button calls onClose
-   * Task Reference: T149
    *
    * When the cancel button is clicked, onClose should be called.
    */

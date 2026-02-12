@@ -2,7 +2,6 @@
  * ErrorDashboard Component
  *
  * Displays all unmapped or failed analyzer messages
- * Task Reference: T096
  * Specification: FR-016
  *
  * Features:
@@ -48,7 +47,6 @@ const ErrorDashboard = () => {
   const location = useLocation();
   const searchTimeoutRef = useRef(null);
 
-  // State
   const [errors, setErrors] = useState([]);
   const [filteredErrors, setFilteredErrors] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -67,10 +65,9 @@ const ErrorDashboard = () => {
   const [selectedError, setSelectedError] = useState(null);
   const [errorDetailsOpen, setErrorDetailsOpen] = useState(false);
 
-  // Load errors from API
   const loadErrors = useCallback((searchFilters = {}) => {
     setLoading(true);
-    // TODO: Replace with actual API endpoint when AnalyzerErrorRestController is implemented (T095)
+    // TODO: Replace with actual API endpoint when AnalyzerErrorRestController is implemented
     // Endpoint will be: GET /rest/analyzer/errors?errorType=...&severity=...&analyzer=...
     const endpoint = "/rest/analyzer/errors";
     const params = new URLSearchParams();
@@ -125,7 +122,6 @@ const ErrorDashboard = () => {
           last24Hours: statistics.last24Hours || 0,
         });
       } else {
-        // Calculate statistics from errors
         const now = new Date();
         const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         const unacknowledgedCount = errors.filter(
@@ -194,11 +190,9 @@ const ErrorDashboard = () => {
     };
   }, [loadErrors, location.search]);
 
-  // Search handler with debounce
   const handleSearch = (value) => {
     setSearchTerm(value);
 
-    // Update URL query parameters
     const params = new URLSearchParams(location.search);
     if (value.trim()) {
       params.set("search", value.trim());
@@ -210,12 +204,10 @@ const ErrorDashboard = () => {
       search: params.toString(),
     });
 
-    // Clear existing timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    // Set new timeout for debounced search
     searchTimeoutRef.current = setTimeout(() => {
       const searchFilters = { ...filters };
       if (value.trim()) {
@@ -225,12 +217,10 @@ const ErrorDashboard = () => {
     }, 300);
   };
 
-  // Filter handlers
   const handleFilterChange = (filterName, value) => {
     const newFilters = { ...filters, [filterName]: value };
     setFilters(newFilters);
 
-    // Update URL query parameters
     const params = new URLSearchParams(location.search);
     if (value) {
       params.set(filterName, value);

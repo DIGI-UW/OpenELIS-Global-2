@@ -2,7 +2,6 @@
  * InlineFieldCreationModal Component
  *
  * Modal for creating new OpenELIS fields inline from the field mapping interface
- * Task Reference: T143
  *
  * Features:
  * - Form fields: Field Name, Entity Type, LOINC Code, Description, Field Type, Accepted Units

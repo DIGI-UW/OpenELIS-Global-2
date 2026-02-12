@@ -10,7 +10,6 @@
  * - GREEN: Write minimal code to make test pass
  * - REFACTOR: Improve code quality while keeping tests green
  *
- * Task Reference: T161
  * Test Naming: test{Scenario}_{ExpectedResult}
  */
 
@@ -78,7 +77,6 @@ describe("TestMappingModal", () => {
 
   /**
    * Test: Submit message with valid message displays preview
-   * Task Reference: T161
    *
    * When a valid ASTM message is entered and preview is clicked,
    * the modal should display preview results.
@@ -146,7 +144,6 @@ describe("TestMappingModal", () => {
 
   /**
    * Test: Validation with invalid format shows error
-   * Task Reference: T161
    *
    * When an invalid ASTM message format is submitted, the modal
    * should display an error message.
@@ -182,7 +179,6 @@ describe("TestMappingModal", () => {
 
   /**
    * Test: Validation with message too large shows error
-   * Task Reference: T161
    *
    * When an ASTM message exceeds the maximum size (10KB), the modal
    * should display an error message.
@@ -215,7 +211,6 @@ describe("TestMappingModal", () => {
 
   /**
    * Test: Clear form with Test Another resets state
-   * Task Reference: T161
    *
    * When "Test Another Message" button is clicked after a preview,
    * the form should be reset and results cleared.
@@ -280,7 +275,6 @@ describe("TestMappingModal", () => {
 
   /**
    * Test: Preview button disabled when message is empty
-   * Task Reference: T161
    *
    * When the ASTM message input is empty, the preview button
    * should be disabled.
@@ -298,7 +292,6 @@ describe("TestMappingModal", () => {
 
   /**
    * Test: Modal displays analyzer information
-   * Task Reference: T161
    *
    * When the modal is opened, it should display analyzer information
    * including name, type, and active mappings count.

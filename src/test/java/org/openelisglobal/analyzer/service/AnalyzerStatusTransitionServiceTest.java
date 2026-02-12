@@ -21,7 +21,6 @@ import org.springframework.context.ApplicationEventPublisher;
 /**
  * Unit tests for AnalyzerStatusTransitionService
  *
- * Task Reference: T151d, T153a Test Coverage Goal: >80%
  *
  * Tests all status transition methods: - transitionToValidation -
  * transitionToActive - transitionToErrorPending - transitionToOffline -

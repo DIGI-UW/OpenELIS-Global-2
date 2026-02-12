@@ -22,7 +22,7 @@ import org.openelisglobal.test.dao.TestDAO;
 import org.openelisglobal.test.service.TestService;
 
 /**
- * Unit tests for OpenELISFieldService. Task Reference: T147
+ * Unit tests for OpenELISFieldService.
  * 
  * Tests field creation, uniqueness validation, and error handling.
  */

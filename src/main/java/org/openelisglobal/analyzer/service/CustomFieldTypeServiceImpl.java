@@ -39,19 +39,16 @@ public class CustomFieldTypeServiceImpl extends BaseObjectServiceImpl<CustomFiel
     @Override
     @Transactional
     public CustomFieldType createCustomFieldType(CustomFieldType customFieldType) {
-        // Validate regex pattern if provided
         if (customFieldType.getValidationPattern() != null && !customFieldType.getValidationPattern().isEmpty()) {
             validateRegexPattern(customFieldType.getValidationPattern());
         }
 
-        // Validate value range if provided
         if (customFieldType.getValueRangeMin() != null && customFieldType.getValueRangeMax() != null) {
             if (customFieldType.getValueRangeMin().compareTo(customFieldType.getValueRangeMax()) > 0) {
                 throw new LIMSRuntimeException("Value range minimum cannot be greater than maximum");
             }
         }
 
-        // Check for duplicate type name
         CustomFieldType existing = customFieldTypeDAO.findByTypeName(customFieldType.getTypeName());
         if (existing != null) {
             throw new LIMSRuntimeException(
@@ -66,19 +63,16 @@ public class CustomFieldTypeServiceImpl extends BaseObjectServiceImpl<CustomFiel
     @Override
     @Transactional
     public CustomFieldType updateCustomFieldType(CustomFieldType customFieldType) {
-        // Validate regex pattern if provided
         if (customFieldType.getValidationPattern() != null && !customFieldType.getValidationPattern().isEmpty()) {
             validateRegexPattern(customFieldType.getValidationPattern());
         }
 
-        // Validate value range if provided
         if (customFieldType.getValueRangeMin() != null && customFieldType.getValueRangeMax() != null) {
             if (customFieldType.getValueRangeMin().compareTo(customFieldType.getValueRangeMax()) > 0) {
                 throw new LIMSRuntimeException("Value range minimum cannot be greater than maximum");
             }
         }
 
-        // Check for duplicate type name (excluding current entity)
         CustomFieldType existing = customFieldTypeDAO.findByTypeName(customFieldType.getTypeName());
         if (existing != null && !existing.getId().equals(customFieldType.getId())) {
             throw new LIMSRuntimeException(
@@ -95,7 +89,6 @@ public class CustomFieldTypeServiceImpl extends BaseObjectServiceImpl<CustomFiel
             return false;
         }
 
-        // Validate regex pattern if provided
         if (customFieldType.getValidationPattern() != null && !customFieldType.getValidationPattern().isEmpty()) {
             try {
                 Pattern pattern = Pattern.compile(customFieldType.getValidationPattern());
@@ -124,7 +117,6 @@ public class CustomFieldTypeServiceImpl extends BaseObjectServiceImpl<CustomFiel
             }
         }
 
-        // Validate allowed characters if provided
         if (customFieldType.getAllowedCharacters() != null && !customFieldType.getAllowedCharacters().isEmpty()) {
             for (char c : value.toCharArray()) {
                 if (customFieldType.getAllowedCharacters().indexOf(c) == -1) {

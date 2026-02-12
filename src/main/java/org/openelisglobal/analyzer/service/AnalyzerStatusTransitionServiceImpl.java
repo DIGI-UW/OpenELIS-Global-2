@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Implementation of AnalyzerStatusTransitionService
  * 
- * Task Reference: T151d
  * 
  * Handles event-driven status transitions with: - Prerequisite validation -
  * Status update - Audit trail logging - Status change event publishing
@@ -32,7 +31,6 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
         Analyzer analyzer = getAnalyzerOrThrow(analyzerId);
         AnalyzerStatus currentStatus = analyzer.getStatus();
 
-        // Validate: must be in SETUP status
         if (currentStatus != AnalyzerStatus.SETUP) {
             throw new IllegalStateException("Cannot transition to VALIDATION: analyzer " + analyzerId + " is in "
                     + currentStatus + " status (expected SETUP)");
@@ -46,13 +44,11 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
         Analyzer analyzer = getAnalyzerOrThrow(analyzerId);
         AnalyzerStatus currentStatus = analyzer.getStatus();
 
-        // Validate: must be in VALIDATION status
         if (currentStatus != AnalyzerStatus.VALIDATION) {
             throw new IllegalStateException("Cannot transition to ACTIVE: analyzer " + analyzerId + " is in "
                     + currentStatus + " status (expected VALIDATION)");
         }
 
-        // Record activation date
         analyzer.setLastActivatedDate(new Date());
 
         return updateStatus(analyzer, AnalyzerStatus.ACTIVE, "All required mappings activated");
@@ -63,7 +59,6 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
         Analyzer analyzer = getAnalyzerOrThrow(analyzerId);
         AnalyzerStatus currentStatus = analyzer.getStatus();
 
-        // Validate: must be in ACTIVE status
         if (currentStatus != AnalyzerStatus.ACTIVE) {
             throw new IllegalStateException("Cannot transition to ERROR_PENDING: analyzer " + analyzerId + " is in "
                     + currentStatus + " status (expected ACTIVE)");
@@ -77,7 +72,6 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
         Analyzer analyzer = getAnalyzerOrThrow(analyzerId);
         AnalyzerStatus currentStatus = analyzer.getStatus();
 
-        // Validate: must be in ACTIVE or ERROR_PENDING status
         if (currentStatus != AnalyzerStatus.ACTIVE && currentStatus != AnalyzerStatus.ERROR_PENDING) {
             throw new IllegalStateException("Cannot transition to OFFLINE: analyzer " + analyzerId + " is in "
                     + currentStatus + " status (expected ACTIVE or ERROR_PENDING)");
@@ -91,7 +85,6 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
         Analyzer analyzer = getAnalyzerOrThrow(analyzerId);
         AnalyzerStatus currentStatus = analyzer.getStatus();
 
-        // Validate: must be in ERROR_PENDING status
         if (currentStatus != AnalyzerStatus.ERROR_PENDING) {
             throw new IllegalStateException("Cannot transition to ACTIVE from ERROR_PENDING: analyzer " + analyzerId
                     + " is in " + currentStatus + " status (expected ERROR_PENDING)");
@@ -105,7 +98,6 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
         Analyzer analyzer = getAnalyzerOrThrow(analyzerId);
         AnalyzerStatus currentStatus = analyzer.getStatus();
 
-        // Validate: must be in OFFLINE status
         if (currentStatus != AnalyzerStatus.OFFLINE) {
             throw new IllegalStateException("Cannot transition to ACTIVE from OFFLINE: analyzer " + analyzerId
                     + " is in " + currentStatus + " status (expected OFFLINE)");
@@ -132,18 +124,15 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
         AnalyzerStatus oldStatus = analyzer.getStatus();
         String analyzerId = analyzer.getId() != null ? analyzer.getId() : "unknown";
 
-        // Update status
         analyzer.setStatus(newStatus);
         analyzer.setSysUserId("SYSTEM"); // System-triggered transition
         analyzer.setLastupdatedFields();
 
         analyzerService.update(analyzer);
 
-        // Log audit trail
         LogEvent.logInfo(this.getClass().getSimpleName(), "updateStatus", "Analyzer " + analyzerId
                 + " status transitioned from " + oldStatus + " to " + newStatus + ". Reason: " + reason);
 
-        // Publish status change event for listeners
         eventPublisher.publishEvent(new AnalyzerStatusChangeEvent(this, analyzerId, oldStatus, newStatus, reason));
 
         return analyzer;

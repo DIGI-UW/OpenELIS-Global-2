@@ -1,7 +1,6 @@
 /**
  * CustomFieldTypeManagement Component Tests
  *
- * Task Reference: T166
  * Testing Roadmap: .specify/guides/testing-roadmap.md
  *
  * Test Strategy:
@@ -89,7 +88,6 @@ describe("CustomFieldTypeManagement", () => {
 
   /**
    * Test: Renders CustomFieldTypes with data displays table
-   * Task Reference: T166
    */
   test("testRendersCustomFieldTypes_WithData_DisplaysTable", async () => {
     // Arrange
@@ -132,7 +130,6 @@ describe("CustomFieldTypeManagement", () => {
 
   /**
    * Test: Create CustomFieldType with valid data saves type
-   * Task Reference: T166
    */
   test("testCreateCustomFieldType_WithValidData_SavesType", async () => {
     // Arrange
@@ -185,7 +182,6 @@ describe("CustomFieldTypeManagement", () => {
 
   /**
    * Test: Validate pattern with invalid regex shows error
-   * Task Reference: T166
    */
   test("testValidatePattern_WithInvalidRegex_ShowsError", async () => {
     // Arrange

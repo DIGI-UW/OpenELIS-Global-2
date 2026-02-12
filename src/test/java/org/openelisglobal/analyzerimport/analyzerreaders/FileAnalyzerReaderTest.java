@@ -16,7 +16,6 @@ import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
 /**
  * Unit tests for FileAnalyzerReader implementation
  * 
- * Task Reference: T048 Test Coverage Goal: >80%
  * 
  * TDD Workflow (MANDATORY for complex logic): - RED: Write failing test first
  * (defines expected behavior) - GREEN: Write minimal code to make test pass -

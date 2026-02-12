@@ -1,7 +1,6 @@
 /**
  * AnalyzerForm Component Tests
  *
- * Task Reference: T038
  * Testing Roadmap: .specify/guides/testing-roadmap.md
  *
  * Test Strategy:
@@ -107,7 +106,6 @@ describe("AnalyzerForm", () => {
    *
    * This would have caught the issue where analyzer type dropdown wasn't rendering.
    *
-   * Task Reference: T038
    */
   test("testAnalyzerTypeDropdown_DisplaysAllOptions", async () => {
     // Arrange

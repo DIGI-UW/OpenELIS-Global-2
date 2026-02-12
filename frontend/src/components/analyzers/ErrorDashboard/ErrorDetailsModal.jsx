@@ -2,7 +2,6 @@
  * ErrorDetailsModal Component
  *
  * Displays detailed error information and analyzer logs
- * Task Reference: T097
  * Specification: FR-016
  */
 
@@ -71,7 +70,7 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
     defaultMessage: severity,
   });
 
-  // Analyzer logs (placeholder - will be populated from API)
+  // Analyzer logs from error object (empty array fallback)
   const analyzerLogs = error.analyzerLogs || [];
 
   const handleClose = () => {

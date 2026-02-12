@@ -23,7 +23,6 @@ import org.springframework.web.context.WebApplicationContext;
  * GenericASTM and GenericHL7 plugins.
  *
  * <p>
- * Task Reference: M20 - Backend tests for defaults API
  */
 public class AnalyzerDefaultsRestControllerTest extends BaseWebContextSensitiveTest {
 

@@ -2,7 +2,6 @@
  * CustomFieldTypeManagementPage Route Component
  *
  * Page component integrating CustomFieldTypeManagement
- * Task Reference: Phase 8.5 - Custom Field Types UI
  */
 
 import React from "react";

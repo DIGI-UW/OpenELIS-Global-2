@@ -34,7 +34,6 @@ const AnalyzersList = () => {
   const history = useHistory();
   const searchTimeoutRef = useRef(null);
 
-  // State
   const [analyzers, setAnalyzers] = useState([]);
   const [filteredAnalyzers, setFilteredAnalyzers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -65,7 +64,6 @@ const AnalyzersList = () => {
     analyzer: null,
   });
 
-  // Load analyzers from API
   const loadAnalyzers = useCallback((searchFilters = {}) => {
     setLoading(true);
     getAnalyzers(searchFilters, (data) => {
@@ -89,7 +87,6 @@ const AnalyzersList = () => {
     });
   }, []);
 
-  // Initial load + restore state from URL/sessionStorage
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const initialSearch = params.get("search") || "";
@@ -108,7 +105,6 @@ const AnalyzersList = () => {
       ...(initialSearch ? { search: initialSearch } : {}),
     });
 
-    // Restore scroll position (session)
     const storedScrollY = sessionStorage.getItem("analyzers.scrollY");
     if (storedScrollY) {
       try {
@@ -118,7 +114,6 @@ const AnalyzersList = () => {
       }
     }
 
-    // Persist scroll position on unload
     const onBeforeUnload = () => {
       sessionStorage.setItem("analyzers.scrollY", String(window.scrollY));
     };
@@ -129,23 +124,19 @@ const AnalyzersList = () => {
     };
   }, [loadAnalyzers]);
 
-  // Search handler with debounce
   const handleSearch = (value) => {
     setSearchTerm(value);
 
-    // Clear existing timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    // Set new timeout for debounced search
     searchTimeoutRef.current = setTimeout(() => {
       const searchFilters = { ...filters };
       if (value.trim()) {
         searchFilters.search = value.trim();
       }
       loadAnalyzers(searchFilters);
-      // Update URL
       const params = new URLSearchParams(window.location.search);
       if (value.trim()) {
         params.set("search", value.trim());
@@ -156,12 +147,10 @@ const AnalyzersList = () => {
     }, 300);
   };
 
-  // Filter handlers
   const handleFilterChange = (filterName, value) => {
     const newFilters = { ...filters, [filterName]: value };
     setFilters(newFilters);
     loadAnalyzers(newFilters);
-    // Update URL
     const params = new URLSearchParams(window.location.search);
     if (value) {
       params.set(filterName, value);
@@ -171,7 +160,6 @@ const AnalyzersList = () => {
     history.replace({ search: params.toString() });
   };
 
-  // Table headers
   const headers = [
     {
       key: "name",
@@ -203,7 +191,6 @@ const AnalyzersList = () => {
     },
   ];
 
-  // Format analyzer data for table rows (Carbon DataTable format)
   const rows = filteredAnalyzers.map((analyzer) => {
     const connection =
       analyzer.ipAddress && analyzer.port
@@ -231,7 +218,6 @@ const AnalyzersList = () => {
 
   return (
     <div className="analyzers-list" data-testid="analyzers-list">
-      {/* Header */}
       <div
         className="analyzers-list-header"
         data-testid="analyzers-list-header"
@@ -266,7 +252,6 @@ const AnalyzersList = () => {
         </Button>
       </div>
 
-      {/* Statistics Cards */}
       <Grid className="analyzers-list-stats" data-testid="analyzers-list-stats">
         <Column lg={4} md={2} sm={2}>
           <Tile data-testid="stat-total">
@@ -306,7 +291,6 @@ const AnalyzersList = () => {
         )}
       </Grid>
 
-      {/* Search and Filters */}
       <div
         className="analyzers-list-filters"
         data-testid="analyzers-list-filters"
@@ -410,7 +394,6 @@ const AnalyzersList = () => {
         </Grid>
       </div>
 
-      {/* DataTable */}
       <Grid>
         <Column lg={16} md={8} sm={4}>
           <TableContainer
@@ -443,7 +426,6 @@ const AnalyzersList = () => {
                       const analyzer =
                         row._analyzer ||
                         filteredAnalyzers.find((a) => a.id === row.id);
-                      // Get unified status from analyzer or row data
                       const unifiedStatus =
                         analyzer?.status || row.status || "SETUP";
 
@@ -454,7 +436,6 @@ const AnalyzersList = () => {
                           data-testid={`analyzer-row-${row.id}`}
                         >
                           {row.cells.map((cell, index) => {
-                            // Map cell headers to testids
                             const headerKey = cell.info.header;
                             let testId = null;
                             let cellContent = cell.value;
@@ -485,7 +466,6 @@ const AnalyzersList = () => {
                               testId = `analyzer-test-units-${row.id}`;
                             } else if (headerKey === "status") {
                               testId = `analyzer-status-${row.id}`;
-                              // Map unified status to color and translation key
                               const statusColorMap = {
                                 INACTIVE: "gray",
                                 SETUP: "gray",
@@ -602,7 +582,6 @@ const AnalyzersList = () => {
         </Column>
       </Grid>
 
-      {/* AnalyzerForm Modal */}
       {analyzerFormOpen && (
         <AnalyzerForm
           analyzer={selectedAnalyzer}
@@ -615,7 +594,6 @@ const AnalyzersList = () => {
         />
       )}
 
-      {/* Test Connection Modal */}
       {testConnectionModal.open && (
         <TestConnectionModal
           analyzer={testConnectionModal.analyzer}
@@ -626,7 +604,6 @@ const AnalyzersList = () => {
         />
       )}
 
-      {/* Delete Analyzer Modal */}
       {deleteModal.open && (
         <DeleteAnalyzerModal
           analyzer={deleteModal.analyzer}
@@ -635,13 +612,11 @@ const AnalyzersList = () => {
             setDeleteModal({ open: false, analyzer: null });
           }}
           onConfirm={(deletedId) => {
-            // Reload analyzers list after successful delete
             loadAnalyzers();
           }}
         />
       )}
 
-      {/* Copy Mappings Modal */}
       {copyMappingsModal.open && copyMappingsModal.analyzer && (
         <CopyMappingsModal
           open={copyMappingsModal.open}
@@ -654,10 +629,7 @@ const AnalyzersList = () => {
           onClose={() => {
             setCopyMappingsModal({ open: false, analyzer: null });
           }}
-          onSuccess={(result, targetAnalyzerId) => {
-            // Optionally reload analyzers list or show success notification
-            // The modal will handle navigation to target analyzer
-          }}
+          onSuccess={(result, targetAnalyzerId) => {}}
         />
       )}
     </div>

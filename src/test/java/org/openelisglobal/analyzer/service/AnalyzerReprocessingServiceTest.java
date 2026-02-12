@@ -22,7 +22,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 /**
  * Unit tests for AnalyzerReprocessingService implementation
  * 
- * Task Reference: T082 Test Coverage Goal: >80%
  * 
  * TDD Workflow (MANDATORY for complex logic): - RED: Write failing test first
  * (defines expected behavior) - GREEN: Write minimal code to make test pass -
@@ -73,7 +72,7 @@ public class AnalyzerReprocessingServiceTest {
     }
 
     /**
-     * Test: Reprocess message with valid mapping Task Reference: T082
+     * Test: Reprocess message with valid mapping
      * 
      * Verifies that reprocessMessage() successfully processes the message when
      * mappings are available.
@@ -106,7 +105,6 @@ public class AnalyzerReprocessingServiceTest {
 
     /**
      * Test: Reprocess message with still unmapped fields
-     * Task Reference: T082
      * 
      * Verifies that reprocessMessage() returns false when mappings are still
      * missing.
@@ -126,7 +124,7 @@ public class AnalyzerReprocessingServiceTest {
     }
 
     /**
-     * Test: Reprocess message with null raw message Task Reference: T082
+     * Test: Reprocess message with null raw message
      * 
      * Verifies that reprocessMessage() handles null raw message gracefully.
      */
@@ -144,7 +142,7 @@ public class AnalyzerReprocessingServiceTest {
     }
 
     /**
-     * Test: Reprocess message with empty raw message Task Reference: T082
+     * Test: Reprocess message with empty raw message
      * 
      * Verifies that reprocessMessage() handles empty raw message gracefully.
      */

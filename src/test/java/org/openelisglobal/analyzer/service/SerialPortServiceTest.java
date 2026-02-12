@@ -17,8 +17,7 @@ import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.analyzer.valueholder.StopBits;
 
 /**
- * Unit tests for SerialPortService implementation Task Reference: T023, M2 Test
- * Coverage Goal: >80%
+ * Unit tests for SerialPortService implementation Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class SerialPortServiceTest {

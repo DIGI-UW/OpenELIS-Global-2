@@ -29,7 +29,6 @@ import org.openelisglobal.spring.util.SpringContext;
  * delegating.
  *
  * <p>
- * Task Reference: T013 (M1) – Integrates with FieldMappingService (T014) for
  * test code mapping. Unmapped fields create error records in dashboard.
  */
 public class MappingAwareHL7AnalyzerLineInserter extends AnalyzerLineInserter {

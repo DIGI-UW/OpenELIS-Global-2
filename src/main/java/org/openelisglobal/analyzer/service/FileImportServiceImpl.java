@@ -62,10 +62,8 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
     @Override
     public boolean processFile(Path filePath, FileImportConfiguration configuration, String systemUserId) {
         try (InputStream fileStream = Files.newInputStream(filePath)) {
-            // Create FileAnalyzerReader with configuration
             FileAnalyzerReader reader = new FileAnalyzerReader(configuration);
 
-            // Read and parse the file
             boolean readSuccess = reader.readStream(fileStream);
             if (!readSuccess) {
                 String error = reader.getError();
@@ -74,7 +72,6 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
                 return false;
             }
 
-            // Insert analyzer data
             boolean insertSuccess = reader.insertAnalyzerData(systemUserId);
             if (!insertSuccess) {
                 String error = reader.getError();
@@ -183,13 +180,11 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
     @Transactional(readOnly = true)
     public boolean isDuplicate(Integer analyzerId, String sampleId, String testCode, String testDate, String testTime) {
         try {
-            // Construct a temporary AnalyzerResults object for duplicate checking
             AnalyzerResults tempResult = new AnalyzerResults();
             tempResult.setAnalyzerId(String.valueOf(analyzerId));
             tempResult.setAccessionNumber(sampleId);
             tempResult.setTestName(testCode);
 
-            // Parse date and time to create completeDate
             Timestamp completeDate = null;
             if (testDate != null && !testDate.isEmpty()) {
                 try {
@@ -199,7 +194,6 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
                     } else {
                         dateTimeString += " 00:00:00";
                     }
-                    // Try common date formats
                     SimpleDateFormat[] formats = { new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"),
                             new SimpleDateFormat("yyyy-MM-dd HH:mm"), new SimpleDateFormat("MM/dd/yyyy HH:mm:ss"),
                             new SimpleDateFormat("dd-MM-yyyy HH:mm:ss") };
@@ -222,11 +216,9 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             }
             tempResult.setCompleteDate(completeDate);
 
-            // Query for duplicates (analyzerId, accessionNumber, testName)
             List<AnalyzerResults> duplicates = analyzerResultsDAO.getDuplicateResultByAccessionAndTest(tempResult);
 
             if (duplicates != null && !duplicates.isEmpty()) {
-                // Check if any duplicate has the same completeDate
                 if (completeDate != null) {
                     for (AnalyzerResults duplicate : duplicates) {
                         if (duplicate.getCompleteDate() != null && duplicate.getCompleteDate().equals(completeDate)) {

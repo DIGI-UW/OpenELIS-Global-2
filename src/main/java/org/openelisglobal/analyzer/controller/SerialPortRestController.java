@@ -17,8 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST Controller for Serial Port Configuration management Task Reference:
- * T034, M2
+ * REST Controller for Serial Port Configuration management
  * 
  * Handles CRUD operations for serial port configurations and connection
  * management.

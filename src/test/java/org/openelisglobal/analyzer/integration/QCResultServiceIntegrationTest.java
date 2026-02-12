@@ -24,7 +24,6 @@ import org.springframework.test.util.ReflectionTestUtils;
  * Integration tests for QCResultProcessingService integration with Feature
  * 003's QCResultService
  * 
- * Task Reference: T189
  * 
  * Tests the complete QC result processing workflow with Spring Boot context: -
  * Verify QCResultProcessingService calls 003's QCResultService.createQCResult()
@@ -86,8 +85,7 @@ public class QCResultServiceIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     /**
-     * Test: Process QC result calls 003's QCResultService.createQCResult() Task
-     * Reference: T189
+     * Test: Process QC result calls 003's QCResultService.createQCResult()
      * 
      * Verifies that QCResultProcessingService correctly calls Feature 003's
      * QCResultService.createQCResult() method with correct parameters.
@@ -133,7 +131,6 @@ public class QCResultServiceIntegrationTest extends BaseWebContextSensitiveTest 
 
     /**
      * Test: Process QC result uses same transaction as patient result processing
-     * Task Reference: T189
      * 
      * Verifies that QCResultProcessingService processes QC results within the same
      * transaction as patient result processing (per FR-021 requirement: "within the
@@ -181,8 +178,7 @@ public class QCResultServiceIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     /**
-     * Test: Process QC result handles 003's service unavailable gracefully Task
-     * Reference: T189
+     * Test: Process QC result handles 003's service unavailable gracefully
      * 
      * Verifies that QCResultProcessingService handles errors when Feature 003's
      * QCResultService is unavailable or throws exceptions. Error should be handled

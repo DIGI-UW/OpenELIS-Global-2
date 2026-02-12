@@ -2,7 +2,6 @@
  * ErrorDashboardPage Route Component
  *
  * Page component integrating ErrorDashboard
- * Task Reference: T098
  */
 
 import React from "react";

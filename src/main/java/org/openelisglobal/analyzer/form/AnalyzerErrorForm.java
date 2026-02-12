@@ -7,7 +7,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 /**
  * Form DTO for AnalyzerError operations
  * 
- * Task Reference: T094
  * 
  * Used for REST API request/response mapping and validation.
  */

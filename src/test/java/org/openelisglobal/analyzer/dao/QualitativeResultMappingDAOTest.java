@@ -25,7 +25,6 @@ import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
 /**
  * DAO tests for QualitativeResultMappingDAO
  * 
- * Task Reference: T033b Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class QualitativeResultMappingDAOTest {
@@ -75,7 +74,7 @@ public class QualitativeResultMappingDAOTest {
     }
 
     /**
-     * Test: Find by analyzer field ID returns mappings Task Reference: T033b
+     * Test: Find by analyzer field ID returns mappings
      */
     @Test
     public void testFindByAnalyzerFieldId_ReturnsMappings() {
@@ -102,7 +101,6 @@ public class QualitativeResultMappingDAOTest {
 
     /**
      * Test: Find by analyzer field ID with no mappings returns empty list
-     * Task Reference: T033b
      */
     @Test
     public void testFindByAnalyzerFieldId_NoMappings_ReturnsEmptyList() {

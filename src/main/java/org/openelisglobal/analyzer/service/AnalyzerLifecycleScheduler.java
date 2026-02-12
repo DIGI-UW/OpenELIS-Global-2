@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Scheduled job for time-based analyzer status transitions
  * 
- * Task Reference: T151h, T153a, T153b
  * 
  * Transitions analyzers from ACTIVE to OFFLINE after 7 days of inactivity. Runs
  * daily at 2 AM.
@@ -24,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
  * AnalyzerStatusEventListeners - Core transition logic is in
  * AnalyzerStatusTransitionService
  * 
- * Includes monitoring and alerting for transition failures (T153b).
+ * Includes monitoring and alerting for transition failures.
  * 
  * @see AnalyzerStatusTransitionService
  * @see AnalyzerStatusEventListeners
@@ -35,7 +34,7 @@ public class AnalyzerLifecycleScheduler {
     @Autowired
     private AnalyzerService analyzerService;
 
-    // Metrics tracking (T153b)
+    // Metrics tracking
     private int successCount = 0;
     private int failureCount = 0;
     private long executionTime = 0;
@@ -43,7 +42,7 @@ public class AnalyzerLifecycleScheduler {
     /**
      * Scheduled job to transition analyzers from ACTIVE to OFFLINE after 7 days
      * 
-     * Runs daily at 2 AM (cron: "0 0 2 * * ?") Task Reference: T153a
+     * Runs daily at 2 AM (cron: "0 0 2 * * ?")
      */
     @Scheduled(cron = "0 0 2 * * ?")
     @Transactional
@@ -54,7 +53,7 @@ public class AnalyzerLifecycleScheduler {
         LogEvent.logInfo(this.getClass().getSimpleName(), "transitionToMaintenance",
                 "Starting lifecycle transition job at " + jobStartTime);
 
-        // Reset metrics for this execution (T153b)
+        // Reset metrics for this execution
         int transitionedCount = 0;
         int failedCount = 0;
         List<String> failedAnalyzerIds = new java.util.ArrayList<>();
@@ -80,7 +79,7 @@ public class AnalyzerLifecycleScheduler {
                         LogEvent.logInfo(this.getClass().getSimpleName(), "transitionToMaintenance",
                                 "Transitioned analyzer " + analyzer.getId() + " to OFFLINE stage");
                     } catch (Exception e) {
-                        // Log error but continue processing other analyzers (T153b requirement)
+                        // Log error but continue processing other analyzers
                         failedCount++;
                         failureCount++;
                         String analyzerId = analyzer.getId() != null ? analyzer.getId() : "unknown";
@@ -95,13 +94,13 @@ public class AnalyzerLifecycleScheduler {
             long executionTimeMs = System.currentTimeMillis() - startTime;
             executionTime = executionTimeMs;
 
-            // Log summary with metrics (T153b)
+            // Log summary with metrics
             LogEvent.logInfo(this.getClass().getSimpleName(), "transitionToMaintenance",
                     "Lifecycle transition job completed. Transitioned " + transitionedCount + " analyzers to OFFLINE, "
                             + failedCount + " failures. Execution time: " + executionTimeMs + "ms");
 
             // Failure notification: If >3 analyzers fail transition, log WARNING with
-            // summary (T153b)
+            // summary
             if (failedCount > 3) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "transitionToMaintenance",
                         "WARNING: " + failedCount + " analyzers failed transition to OFFLINE. "
@@ -119,7 +118,7 @@ public class AnalyzerLifecycleScheduler {
     }
 
     /**
-     * Get transition metrics (T153b)
+     * Get transition metrics
      * 
      * @return Map with success count, failure count, and execution time
      */
@@ -134,7 +133,6 @@ public class AnalyzerLifecycleScheduler {
     /**
      * Get date 7 days ago (calendar days)
      * 
-     * Task Reference: T153a - "7 days" refers to calendar days
      */
     private Date getDateSevenDaysAgo() {
         Calendar cal = Calendar.getInstance();

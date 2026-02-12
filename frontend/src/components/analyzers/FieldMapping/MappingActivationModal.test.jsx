@@ -10,7 +10,6 @@
  * - GREEN: Write minimal code to make test pass
  * - REFACTOR: Improve code quality while keeping tests green
  *
- * Task Reference: T165
  * Test Naming: test{Scenario}_{ExpectedResult}
  */
 
@@ -67,7 +66,6 @@ describe("MappingActivationModal", () => {
 
   /**
    * Test: Display modal shows warning messages
-   * Task Reference: T165
    *
    * When the modal is opened, it should display warning messages
    * including general warning and active analyzer warning (if applicable).
@@ -97,7 +95,6 @@ describe("MappingActivationModal", () => {
 
   /**
    * Test: Display modal shows active analyzer warning when analyzer is active
-   * Task Reference: T165
    *
    * When the modal is opened for an active analyzer, it should display
    * an additional warning about the analyzer being active.
@@ -127,7 +124,6 @@ describe("MappingActivationModal", () => {
 
   /**
    * Test: Activate button disabled without checkbox
-   * Task Reference: T165
    *
    * When the confirmation checkbox is not checked, the "Activate Changes"
    * button should be disabled.
@@ -160,7 +156,6 @@ describe("MappingActivationModal", () => {
 
   /**
    * Test: Activate button enabled with checkbox
-   * Task Reference: T165
    *
    * When the confirmation checkbox is checked, the "Activate Changes"
    * button should be enabled.
@@ -200,7 +195,6 @@ describe("MappingActivationModal", () => {
 
   /**
    * Test: Clicking activate button calls onConfirm
-   * Task Reference: T165
    *
    * When the confirmation checkbox is checked and the "Activate Changes"
    * button is clicked, onConfirm should be called.
@@ -243,7 +237,6 @@ describe("MappingActivationModal", () => {
 
   /**
    * Test: Clicking cancel button calls onClose
-   * Task Reference: T165
    *
    * When the cancel button is clicked, onClose should be called.
    */
@@ -273,7 +266,6 @@ describe("MappingActivationModal", () => {
 
   /**
    * Test: Modal not visible when closed
-   * Task Reference: T165
    *
    * When the modal is closed (open=false), it should not be visible.
    * Note: ComposedModal may still render content but hide it with aria-hidden.
@@ -307,7 +299,6 @@ describe("MappingActivationModal", () => {
 
   /**
    * Test: Activation with missing required mappings shows error and blocks button
-   * Task Reference: T169a
    *
    * When missingRequired array is provided with items, an error notification
    * should be displayed and the activate button should be disabled.
@@ -353,7 +344,6 @@ describe("MappingActivationModal", () => {
 
   /**
    * Test: Activation with pending messages shows warning and allows activation
-   * Task Reference: T169a
    *
    * When pendingMessagesCount > 0, a warning should be displayed but activation
    * should still be allowed if confirmation checkbox is checked.
@@ -404,7 +394,6 @@ describe("MappingActivationModal", () => {
 
   /**
    * Test: Activation with concurrent edit shows optimistic lock warning
-   * Task Reference: T169a
    *
    * When concurrentEdit is true, an error notification should be displayed
    * with a reload page option, and activation should be blocked.

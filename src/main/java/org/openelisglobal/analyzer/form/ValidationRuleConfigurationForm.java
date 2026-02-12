@@ -12,7 +12,6 @@ import jakarta.validation.constraints.Size;
  * patterns, value ranges, allowed characters) and MUST be available for use in
  * field mapping configuration.
  * 
- * Task Reference: T173
  */
 public class ValidationRuleConfigurationForm {
 

@@ -3,7 +3,6 @@ package org.openelisglobal.analyzer.service;
 /**
  * Service interface for processing QC results from ASTM Q-segments
  * 
- * Task Reference: T190
  * 
  * This service coordinates the complete QC result processing workflow: (1)
  * Q-segment parsing (via ASTMQSegmentParser), (2) Mapping application (via

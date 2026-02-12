@@ -3,7 +3,6 @@ package org.openelisglobal.analyzer.service;
 /**
  * Service interface for extracting QC result data from parsed Q-segments
  * 
- * Task Reference: T187
  * 
  * This service applies QC field mappings to QCSegmentData (parsed from ASTM
  * Q-segments) to extract OpenELIS entity IDs and values needed to call Feature
@@ -20,7 +19,6 @@ public interface QCResultExtractionService {
     /**
      * Extract QC result data from parsed Q-segment
      * 
-     * Task Reference: T187
      * 
      * Applies QC field mappings to QCSegmentData and returns QCResultDTO with all
      * required fields populated for calling Feature 003's QCResultService.

@@ -30,7 +30,6 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
  * identifier pattern matching (methods migrated from
  * AnalyzerConfigurationService).
  *
- * Task Reference: T151c, T153a Test Coverage Goal: >80%
  *
  * Tests the unified status transition validation: - Manual transitions
  * (INACTIVE, SETUP, VALIDATION) - Automatic transitions (ACTIVE, ERROR_PENDING,

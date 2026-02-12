@@ -7,7 +7,6 @@ import org.openelisglobal.common.service.BaseObjectService;
 /**
  * Service interface for ValidationRuleConfiguration
  * 
- * Task Reference: T174
  */
 public interface ValidationRuleConfigurationService extends BaseObjectService<ValidationRuleConfiguration, String> {
     List<ValidationRuleConfiguration> findByCustomFieldTypeId(String customFieldTypeId);

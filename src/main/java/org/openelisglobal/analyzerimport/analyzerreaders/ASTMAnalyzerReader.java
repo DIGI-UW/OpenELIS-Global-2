@@ -177,8 +177,6 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
             LogEvent.logError(this.getClass().getSimpleName(), "insertAnalyzerData", error);
             return false;
         } else {
-            // Check if analyzer has active mappings and wrap inserter if needed
-            // Task Reference: T180
             AnalyzerLineInserter finalInserter = wrapInserterIfMappingsExist(inserter);
 
             boolean success = finalInserter.insert(lines, systemUserId);
@@ -194,7 +192,6 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
      * Wrap inserter with MappingAwareAnalyzerLineInserter if analyzer has active
      * mappings
      * 
-     * Task Reference: T180
      * 
      * Per research.md Section 7: Conditional wrapping logic - Check if analyzer has
      * active mappings before wrapping - If analyzer has active mappings: Wrap
@@ -206,24 +203,19 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
      */
     private AnalyzerLineInserter wrapInserterIfMappingsExist(AnalyzerLineInserter originalInserter) {
         try {
-            // Try to identify analyzer from message
             Optional<Analyzer> analyzer = identifyAnalyzerFromMessage();
 
             if (!analyzer.isPresent()) {
-                // Cannot identify analyzer - use original inserter (backward compatibility)
                 return originalInserter;
             }
 
-            // Check if analyzer has active mappings
             MappingApplicationService mappingApplicationService = SpringContext
                     .getBean(MappingApplicationService.class);
             if (mappingApplicationService != null
                     && mappingApplicationService.hasActiveMappings(analyzer.get().getId())) {
-                // Analyzer has active mappings - wrap inserter
                 return new MappingAwareAnalyzerLineInserter(originalInserter, analyzer.get());
             }
 
-            // No mappings configured - use original inserter (backward compatibility)
             return originalInserter;
 
         } catch (Exception e) {
@@ -320,10 +312,8 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                     if (!manufacturerModel.isEmpty()) {
                         String[] parts = manufacturerModel.split("\\^");
                         if (parts.length >= 2) {
-                            // Return "MANUFACTURER MODEL"
                             return parts[0].trim() + " " + parts[1].trim();
                         } else if (parts.length == 1) {
-                            // Only manufacturer provided
                             return parts[0].trim();
                         }
                     }

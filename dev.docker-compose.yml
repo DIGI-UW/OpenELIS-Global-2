@@ -77,7 +77,7 @@ services:
             - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
             - ./volume/analyzer-imports:/data/analyzer-imports  # FILE-based analyzer import directories
         # devices:
-            # Serial port device mapping example for RS232 analyzer integration (Task Reference: T039, M2)
+            # Serial port device mapping example for RS232 analyzer integration
             # Uncomment and adjust device path as needed for your system
             # - /dev/ttyUSB0:/dev/ttyUSB0
         secrets:

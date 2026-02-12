@@ -7,7 +7,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 /**
  * Service interface for AnalyzerError operations
  * 
- * Task Reference: T089
  * 
  * Provides methods for: - Creating error records for unmapped/failed analyzer
  * messages - Acknowledging errors - Reprocessing errors after mappings are

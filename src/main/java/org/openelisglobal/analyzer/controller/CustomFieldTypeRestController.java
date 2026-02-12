@@ -33,7 +33,6 @@ import org.springframework.web.bind.annotation.RestController;
  * REST Controller for Custom Field Type management Handles CRUD operations for
  * custom field types (FR-018)
  * 
- * Task Reference: T140, T174
  */
 @RestController
 @RequestMapping("/rest/analyzer/custom-field-types")
@@ -191,7 +190,6 @@ public class CustomFieldTypeRestController extends BaseRestController {
      * GET /rest/analyzer/custom-field-types/{id}/validation-rules Retrieve all
      * validation rules for a custom field type
      * 
-     * Task Reference: T174
      */
     @GetMapping("/{id}/validation-rules")
     public ResponseEntity<List<ValidationRuleConfiguration>> getValidationRules(@PathVariable String id) {
@@ -214,7 +212,7 @@ public class CustomFieldTypeRestController extends BaseRestController {
      * POST /rest/analyzer/custom-field-types/{id}/validation-rules Create a new
      * validation rule for a custom field type
      * 
-     * Authorization: System Administrator only Task Reference: T174
+     * Authorization: System Administrator only
      */
     @PostMapping("/{id}/validation-rules")
     public ResponseEntity<Map<String, Object>> createValidationRule(@PathVariable String id,
@@ -256,7 +254,7 @@ public class CustomFieldTypeRestController extends BaseRestController {
      * PUT /rest/analyzer/custom-field-types/{id}/validation-rules/{ruleId} Update
      * an existing validation rule
      * 
-     * Authorization: System Administrator only Task Reference: T174
+     * Authorization: System Administrator only
      */
     @PutMapping("/{id}/validation-rules/{ruleId}")
     public ResponseEntity<Map<String, Object>> updateValidationRule(@PathVariable String id,
@@ -306,7 +304,7 @@ public class CustomFieldTypeRestController extends BaseRestController {
      * DELETE /rest/analyzer/custom-field-types/{id}/validation-rules/{ruleId}
      * Delete a validation rule
      * 
-     * Authorization: System Administrator only Task Reference: T174
+     * Authorization: System Administrator only
      */
     @DeleteMapping("/{id}/validation-rules/{ruleId}")
     public ResponseEntity<Map<String, Object>> deleteValidationRule(@PathVariable String id,

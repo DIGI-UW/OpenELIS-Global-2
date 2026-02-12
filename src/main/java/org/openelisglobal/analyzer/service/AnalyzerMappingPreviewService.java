@@ -6,7 +6,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 /**
  * Service interface for analyzer mapping preview operations
  * 
- * Task Reference: T155
  * 
  * Provides stateless preview operations for testing field mappings with sample
  * ASTM messages
@@ -16,7 +15,6 @@ public interface AnalyzerMappingPreviewService {
     /**
      * Preview how a sample ASTM message will be interpreted with current mappings
      * 
-     * Task Reference: T156
      * 
      * @param analyzerId  The analyzer ID
      * @param astmMessage The sample ASTM message (max 10KB)

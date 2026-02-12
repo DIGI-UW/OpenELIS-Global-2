@@ -2,7 +2,6 @@
  * OpenELISFieldSelector Component
  *
  * Searchable dropdown with category filtering for OpenELIS fields
- * Task Reference: T061
  *
  * Features:
  * - Searchable dropdown

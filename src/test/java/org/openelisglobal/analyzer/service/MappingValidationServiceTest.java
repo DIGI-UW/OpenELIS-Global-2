@@ -25,7 +25,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping.OpenELISFiel
 /**
  * Unit tests for MappingValidationService
  * 
- * Task Reference: T205
  */
 @RunWith(MockitoJUnitRunner.class)
 public class MappingValidationServiceTest {

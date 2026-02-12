@@ -2,7 +2,6 @@
  * FieldMapping Component
  *
  * Dual-panel interface for mapping analyzer fields to OpenELIS fields
- * Task Reference: T059
  *
  * Features:
  * - 50/50 split layout using Carbon Grid
@@ -49,7 +48,6 @@ const FieldMapping = () => {
   const location = useLocation();
   const { id: analyzerId } = useParams();
 
-  // State
   const [analyzer, setAnalyzer] = useState(null);
   const [fields, setFields] = useState([]);
   const [mappings, setMappings] = useState([]);
@@ -61,20 +59,17 @@ const FieldMapping = () => {
   const [testMappingModalOpen, setTestMappingModalOpen] = useState(false);
   const [errorNotification, setErrorNotification] = useState(null);
 
-  // Restore state from URL query parameters and sessionStorage
   useEffect(() => {
     if (!analyzerId) {
       return;
     }
 
-    // Restore from URL query parameters
     const params = new URLSearchParams(location.search);
     const initialSearch = params.get("search") || "";
     const initialSelectedFieldId = params.get("selectedField") || "";
 
     setSearchTerm(initialSearch);
 
-    // Restore scroll position from sessionStorage
     const storageKey = `fieldMapping.${analyzerId}.scrollY`;
     const storedScrollY = sessionStorage.getItem(storageKey);
     if (storedScrollY) {
@@ -87,7 +82,6 @@ const FieldMapping = () => {
       }
     }
 
-    // Restore selected field from URL or sessionStorage
     const storedSelectedField = sessionStorage.getItem(
       `fieldMapping.${analyzerId}.selectedField`,
     );
@@ -95,19 +89,16 @@ const FieldMapping = () => {
 
     setLoading(true);
 
-    // Load analyzer
     analyzerService.getAnalyzer(analyzerId, (analyzerData) => {
       if (analyzerData) {
         setAnalyzer(analyzerData);
       }
     });
 
-    // Load fields from database
     analyzerService.getFields(analyzerId, (fieldsData) => {
       if (fieldsData && Array.isArray(fieldsData)) {
         setFields(fieldsData);
 
-        // Restore selected field after fields are loaded
         const fieldId = fieldIdToRestore;
         if (fieldId) {
           const fieldToSelect = fieldsData.find((f) => f.id === fieldId);
@@ -118,7 +109,6 @@ const FieldMapping = () => {
       }
     });
 
-    // Load mappings
     analyzerService.getMappings(analyzerId, (mappingsData) => {
       const mappings = extractMappings(mappingsData);
       setMappings(mappings);
@@ -128,7 +118,6 @@ const FieldMapping = () => {
     // Note: Initial query is removed - fields are loaded from database on page load
     // User must explicitly click "Query Analyzer" button to trigger a new query
 
-    // Persist scroll position on unload
     const onBeforeUnload = () => {
       sessionStorage.setItem(
         `fieldMapping.${analyzerId}.scrollY`,
@@ -145,11 +134,9 @@ const FieldMapping = () => {
     };
   }, [analyzerId, location.search]);
 
-  // Handle field selection - update URL and sessionStorage
   const handleFieldSelect = (field) => {
     setSelectedField(field);
 
-    // Update URL query parameters
     const params = new URLSearchParams(location.search);
     if (field && field.id) {
       params.set("selectedField", field.id);
@@ -167,25 +154,21 @@ const FieldMapping = () => {
     });
   };
 
-  // Handle mapping creation
   const handleCreateMapping = (mappingData) => {
     analyzerService.createMapping(
       analyzerId,
       mappingData,
       (response, error) => {
         if (!error && !(response && response.error)) {
-          // Reload mappings
           analyzerService.getMappings(analyzerId, (mappingsData) => {
             const mappings = extractMappings(mappingsData);
             setMappings(mappings);
           });
-          // Keep field selected to show the new mapping
         }
       },
     );
   };
 
-  // Filter fields by search term
   const filteredFields = fields.filter((field) => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
@@ -196,18 +179,15 @@ const FieldMapping = () => {
     );
   });
 
-  // Get mapping for selected field
   const selectedFieldMapping = selectedField
     ? mappings.find((m) => m.analyzerFieldId === selectedField.id)
     : null;
 
-  // Calculate statistics for stats cards
   const requiredMappings = mappings.filter((m) => m.isRequired).length;
   const unmappedFieldsCount = fields.filter(
     (f) => !mappings.some((m) => m.analyzerFieldId === f.id),
   ).length;
 
-  // Check if required mappings are missing
   const requiredFieldTypes = ["sampleId", "testCode", "resultValue"];
   const hasUnmappedRequired = requiredFieldTypes.some(
     (type) => !mappings.some((m) => m.mappingType === type),
@@ -248,7 +228,6 @@ const FieldMapping = () => {
         </div>
       </div>
 
-      {/* Error/Warning Notifications */}
       {errorNotification && (
         <Grid>
           <Column lg={16} md={8} sm={4}>
@@ -264,7 +243,6 @@ const FieldMapping = () => {
         </Grid>
       )}
 
-      {/* Warning Banner - Conditional */}
       {hasUnmappedRequired && (
         <Grid>
           <Column lg={16} md={8} sm={4}>
@@ -284,7 +262,6 @@ const FieldMapping = () => {
         </Grid>
       )}
 
-      {/* Statistics Cards */}
       <Grid className="field-mapping-stats" data-testid="field-mapping-stats">
         <Column lg={5} md={4} sm={4}>
           <Tile data-testid="stat-total-mappings">
@@ -321,7 +298,6 @@ const FieldMapping = () => {
         <ValidationDashboard analyzerId={analyzerId} status={analyzer.status} />
       )}
 
-      {/* Action Buttons */}
       <div
         className="field-mapping-actions"
         data-testid="field-mapping-actions"
@@ -366,9 +342,7 @@ const FieldMapping = () => {
         </Button>
       </div>
 
-      {/* Dual Panel Layout */}
       <Grid className="field-mapping-grid">
-        {/* Left Panel: Analyzer Fields */}
         <Column lg={8} md={8} sm={4}>
           <FieldMappingPanel
             fields={filteredFields}
@@ -378,7 +352,6 @@ const FieldMapping = () => {
             onSearchChange={(value) => {
               setSearchTerm(value);
 
-              // Update URL query parameters
               const params = new URLSearchParams(location.search);
               if (value) {
                 params.set("search", value);
@@ -394,7 +367,6 @@ const FieldMapping = () => {
           />
         </Column>
 
-        {/* Right Panel: Mapping Panel */}
         <Column lg={8} md={8} sm={4}>
           {selectedField ? (
             <MappingPanel
@@ -448,7 +420,6 @@ const FieldMapping = () => {
         onCompleted={(data) => {
           if (data && data.state === "completed") {
             if (data.error) {
-              // Query completed but with an error
               setErrorNotification({
                 kind: "error",
                 title: "Query Failed",
@@ -457,8 +428,6 @@ const FieldMapping = () => {
                   "Failed to query analyzer fields. Please try again.",
               });
             } else {
-              // Query completed successfully
-              // Backend returns saved fields with IDs in the status response
               if (
                 data.fields &&
                 Array.isArray(data.fields) &&
@@ -468,11 +437,9 @@ const FieldMapping = () => {
                 const hasIds = data.fields.every((f) => f.id != null);
 
                 if (hasIds) {
-                  // Fields from status have IDs - use them directly
                   setFields(data.fields);
                   setErrorNotification(null);
                 } else {
-                  // Fields don't have IDs - reload from database
                   analyzerService.getFields(analyzerId, (fieldsData) => {
                     if (fieldsData && Array.isArray(fieldsData)) {
                       setFields(fieldsData);
@@ -488,7 +455,6 @@ const FieldMapping = () => {
                   });
                 }
               } else {
-                // No fields in status - reload from database to check
                 analyzerService.getFields(analyzerId, (fieldsData) => {
                   if (fieldsData && Array.isArray(fieldsData)) {
                     if (fieldsData.length === 0) {
@@ -513,7 +479,6 @@ const FieldMapping = () => {
               }
             }
           } else if (data && data.state === "failed") {
-            // Query failed
             setErrorNotification({
               kind: "error",
               title: "Query Failed",

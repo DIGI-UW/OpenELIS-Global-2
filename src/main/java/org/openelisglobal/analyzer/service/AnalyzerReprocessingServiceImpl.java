@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service implementation for reprocessing analyzer errors
  * 
- * Task Reference: T092
  * 
  * Provides business logic for reprocessing failed analyzer messages after
  * mappings are created. Reprocesses raw ASTM messages through
@@ -43,14 +42,12 @@ public class AnalyzerReprocessingServiceImpl implements AnalyzerReprocessingServ
     @Override
     @Transactional
     public boolean reprocessMessage(AnalyzerError error) {
-        // Validate input
         if (error == null || GenericValidator.isBlankOrNull(error.getRawMessage())) {
             LogEvent.logError(this.getClass().getSimpleName(), "reprocessMessage",
                     "Cannot reprocess error: raw message is null or empty");
             return false;
         }
 
-        // Check if analyzer has active mappings
         // Note: Analyzer uses String IDs in Java, but findActiveMappingsByAnalyzerId
         // accepts String and handles conversion internally
         // Reference: ID_TYPE_ANALYSIS.md
@@ -63,10 +60,8 @@ public class AnalyzerReprocessingServiceImpl implements AnalyzerReprocessingServ
             return false;
         }
 
-        // Convert raw message string to InputStream
         InputStream messageStream = new ByteArrayInputStream(error.getRawMessage().getBytes(StandardCharsets.UTF_8));
 
-        // Create ASTMAnalyzerReader and process message
         try {
             ASTMAnalyzerReader reader = (ASTMAnalyzerReader) AnalyzerReaderFactory.getReaderFor("astm");
 
@@ -76,7 +71,6 @@ public class AnalyzerReprocessingServiceImpl implements AnalyzerReprocessingServ
                 return false;
             }
 
-            // Read the message stream
             boolean readSuccess = reader.readStream(messageStream);
             if (!readSuccess) {
                 LogEvent.logError(this.getClass().getSimpleName(), "reprocessMessage",
@@ -84,10 +78,8 @@ public class AnalyzerReprocessingServiceImpl implements AnalyzerReprocessingServ
                 return false;
             }
 
-            // Process the data (use system user ID for reprocessing)
-            // Note: In production, we might want to use the original user ID or a
-            // system user
-            String systemUserId = "SYSTEM"; // TODO: Get actual system user ID
+            // Uses SYSTEM user; SecurityContext integration deferred to Phase 2
+            String systemUserId = "SYSTEM";
             boolean processSuccess = reader.processData(systemUserId);
 
             if (!processSuccess) {
@@ -96,8 +88,7 @@ public class AnalyzerReprocessingServiceImpl implements AnalyzerReprocessingServ
                 return false;
             }
 
-            // After successful reprocessing, check for Q-segments and process QC results
-            // (per FR-011: QC messages are reprocessed when mappings are resolved)
+            // FR-011: QC messages are reprocessed when mappings are resolved
             processQCSegmentsInReprocessedMessage(error);
 
             return true;
@@ -110,7 +101,6 @@ public class AnalyzerReprocessingServiceImpl implements AnalyzerReprocessingServ
     /**
      * Process Q-segments (QC results) in reprocessed message
      * 
-     * Task Reference: T193
      * 
      * Detects Q-segments in reprocessed message, parses them, extracts QC results
      * with updated mappings, and processes them via QCResultProcessingService. This
@@ -127,24 +117,18 @@ public class AnalyzerReprocessingServiceImpl implements AnalyzerReprocessingServ
 
             String analyzerId = error.getAnalyzer().getId();
 
-            // Parse Q-segments from reprocessed message
             List<org.openelisglobal.analyzer.service.QCSegmentData> qcSegments = astmQSegmentParser
                     .parseQSegments(rawMessage);
 
             if (qcSegments.isEmpty()) {
-                // No Q-segments in message - nothing to process
                 return;
             }
 
-            // Process each Q-segment with updated mappings
             for (org.openelisglobal.analyzer.service.QCSegmentData qcSegmentData : qcSegments) {
                 try {
-                    // Extract QC result using updated mappings
                     org.openelisglobal.analyzer.service.QCResultDTO qcResultDTO = qcResultExtractionService
                             .extractQCResult(qcSegmentData, analyzerId);
 
-                    // Process QC result via QCResultProcessingService (calls Feature 003's service)
-                    // This creates QCResult entities after mapping resolution
                     qcResultProcessingService.processQCResult(qcResultDTO, analyzerId);
 
                 } catch (Exception e) {

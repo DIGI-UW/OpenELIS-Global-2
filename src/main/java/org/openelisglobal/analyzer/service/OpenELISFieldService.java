@@ -5,7 +5,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 
 /**
  * Service interface for creating OpenELIS fields inline from the analyzer
- * mapping interface. Task Reference: T144
+ * mapping interface.
  * 
  * Supports creation of TEST, PANEL, RESULT, ORDER, SAMPLE, QC, METADATA, UNIT
  * entities.

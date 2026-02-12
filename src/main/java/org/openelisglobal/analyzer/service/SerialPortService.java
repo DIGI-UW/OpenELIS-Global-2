@@ -5,8 +5,7 @@ import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.common.service.BaseObjectService;
 
 /**
- * Service interface for SerialPortConfiguration operations Task Reference:
- * T030, M2
+ * Service interface for SerialPortConfiguration operations
  * 
  * Provides business logic for managing serial port configurations and
  * connection lifecycle.

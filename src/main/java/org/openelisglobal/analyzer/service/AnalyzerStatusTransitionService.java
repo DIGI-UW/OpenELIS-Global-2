@@ -5,7 +5,6 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 /**
  * Service for event-driven analyzer status transitions
  *
- * Task Reference: T151d
  *
  * Handles automatic status transitions triggered by system events: - SETUP →
  * VALIDATION: First mapping created - VALIDATION → ACTIVE: All required

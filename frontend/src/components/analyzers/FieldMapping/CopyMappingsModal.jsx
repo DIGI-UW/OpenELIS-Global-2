@@ -2,7 +2,6 @@
  * CopyMappingsModal Component
  *
  * Modal for copying field mappings from one analyzer to another
- * Task Reference: T076
  *
  * Per FR-006 specification:
  * - Small size ComposedModal (~400-480px)

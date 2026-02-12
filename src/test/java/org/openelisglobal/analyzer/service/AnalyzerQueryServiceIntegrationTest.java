@@ -15,7 +15,6 @@ import org.springframework.test.context.junit4.SpringRunner;
 /**
  * Integration tests for AnalyzerQueryService query workflow
  * 
- * Task Reference: T103 Test Coverage Goal: >80%
  * 
  * These tests verify: - Query analyzer workflow with full Spring context -
  * Timeout handling for long-running queries - ASTM response parsing and field

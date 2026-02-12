@@ -3,7 +3,6 @@ package org.openelisglobal.analyzer.service;
 /**
  * Parsed field from ASTM message
  * 
- * Task Reference: T155
  */
 public class ParsedField {
     private String fieldName;

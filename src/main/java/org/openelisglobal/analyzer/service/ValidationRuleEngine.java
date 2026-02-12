@@ -11,7 +11,6 @@ import org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration;
  * patterns, value ranges, allowed characters) and MUST be available for use in
  * field mapping configuration.
  * 
- * Task Reference: T171
  */
 public interface ValidationRuleEngine {
     /**

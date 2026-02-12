@@ -20,7 +20,6 @@ import org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration;
  * (defines expected behavior) - GREEN: Write minimal code to make test pass -
  * REFACTOR: Improve code quality while keeping tests green
  * 
- * Task Reference: T177 Test Coverage Goal: >80% (measured via JaCoCo)
  * 
  * Test Naming: test{MethodName}_{Scenario}_{ExpectedResult}
  */
@@ -87,7 +86,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Validate regex with matching value returns true Task Reference: T177
+     * Test: Validate regex with matching value returns true
      */
     @Test
     public void testValidateRegex_WithMatchingValue_ReturnsTrue() {
@@ -103,8 +102,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Validate regex with non-matching value returns false Task Reference:
-     * T177
+     * Test: Validate regex with non-matching value returns false
      */
     @Test
     public void testValidateRegex_WithNonMatchingValue_ReturnsFalse() {
@@ -120,7 +118,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Validate range with value in range returns true Task Reference: T177
+     * Test: Validate range with value in range returns true
      */
     @Test
     public void testValidateRange_WithValueInRange_ReturnsTrue() {
@@ -137,8 +135,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Validate range with value out of range returns false Task Reference:
-     * T177
+     * Test: Validate range with value out of range returns false
      */
     @Test
     public void testValidateRange_WithValueOutOfRange_ReturnsFalse() {
@@ -155,8 +152,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Validate range with value at boundaries returns true Task Reference:
-     * T177
+     * Test: Validate range with value at boundaries returns true
      */
     @Test
     public void testValidateRange_WithValueAtBoundaries_ReturnsTrue() {
@@ -176,7 +172,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Validate enum with allowed value returns true Task Reference: T177
+     * Test: Validate enum with allowed value returns true
      */
     @Test
     public void testValidateEnum_WithAllowedValue_ReturnsTrue() {
@@ -192,7 +188,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Validate enum with disallowed value returns false Task Reference: T177
+     * Test: Validate enum with disallowed value returns false
      */
     @Test
     public void testValidateEnum_WithDisallowedValue_ReturnsFalse() {
@@ -208,7 +204,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Validate length with valid length returns true Task Reference: T177
+     * Test: Validate length with valid length returns true
      */
     @Test
     public void testValidateLength_WithValidLength_ReturnsTrue() {
@@ -225,7 +221,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Validate length with invalid length returns false Task Reference: T177
+     * Test: Validate length with invalid length returns false
      */
     @Test
     public void testValidateLength_WithInvalidLength_ReturnsFalse() {
@@ -245,8 +241,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Validate length with value at boundaries returns true Task Reference:
-     * T177
+     * Test: Validate length with value at boundaries returns true
      */
     @Test
     public void testValidateLength_WithValueAtBoundaries_ReturnsTrue() {
@@ -266,8 +261,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Evaluate rule with regex type returns correct result Task Reference:
-     * T177
+     * Test: Evaluate rule with regex type returns correct result
      */
     @Test
     public void testEvaluateRule_WithRegexType_ReturnsCorrectResult() {
@@ -285,8 +279,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Evaluate rule with range type returns correct result Task Reference:
-     * T177
+     * Test: Evaluate rule with range type returns correct result
      */
     @Test
     public void testEvaluateRule_WithRangeType_ReturnsCorrectResult() {
@@ -304,8 +297,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Evaluate rule with enum type returns correct result Task Reference:
-     * T177
+     * Test: Evaluate rule with enum type returns correct result
      */
     @Test
     public void testEvaluateRule_WithEnumType_ReturnsCorrectResult() {
@@ -323,8 +315,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Evaluate rule with length type returns correct result Task Reference:
-     * T177
+     * Test: Evaluate rule with length type returns correct result
      */
     @Test
     public void testEvaluateRule_WithLengthType_ReturnsCorrectResult() {
@@ -342,8 +333,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Evaluate rule with invalid rule expression throws exception Task
-     * Reference: T177
+     * Test: Evaluate rule with invalid rule expression throws exception
      */
     @Test(expected = org.openelisglobal.common.exception.LIMSRuntimeException.class)
     public void testEvaluateRule_WithInvalidRuleExpression_ThrowsException() {
@@ -365,7 +355,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Evaluate rule with null value returns false Task Reference: T177
+     * Test: Evaluate rule with null value returns false
      */
     @Test
     public void testEvaluateRule_WithNullValue_ReturnsFalse() {
@@ -377,7 +367,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Evaluate rule with null rule returns false Task Reference: T177
+     * Test: Evaluate rule with null rule returns false
      */
     @Test
     public void testEvaluateRule_WithNullRule_ReturnsFalse() {
@@ -392,8 +382,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Validate regex with null pattern returns true (no validation) Task
-     * Reference: T177
+     * Test: Validate regex with null pattern returns true (no validation)
      */
     @Test
     public void testValidateRegex_WithNullPattern_ReturnsTrue() {
@@ -408,8 +397,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Validate regex with empty pattern returns true (no validation) Task
-     * Reference: T177
+     * Test: Validate regex with empty pattern returns true (no validation)
      */
     @Test
     public void testValidateRegex_WithEmptyPattern_ReturnsTrue() {
@@ -424,7 +412,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Validate range with null min/max handles correctly Task Reference: T177
+     * Test: Validate range with null min/max handles correctly
      */
     @Test
     public void testValidateRange_WithNullMinMax_HandlesCorrectly() {
@@ -443,7 +431,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Validate enum with null value returns false Task Reference: T177
+     * Test: Validate enum with null value returns false
      */
     @Test
     public void testValidateEnum_WithNullValue_ReturnsFalse() {
@@ -458,7 +446,7 @@ public class ValidationRuleEngineTest {
     }
 
     /**
-     * Test: Validate length with null value returns false Task Reference: T177
+     * Test: Validate length with null value returns false
      */
     @Test
     public void testValidateLength_WithNullValue_ReturnsFalse() {

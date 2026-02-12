@@ -32,7 +32,6 @@ import "./ValidationRuleEditor.css";
  * patterns, value ranges, allowed characters) and MUST be available for use in
  * field mapping configuration.
  *
- * Task Reference: T175
  *
  * @param {Object} props - Component props
  * @param {String} props.customFieldTypeId - Custom field type ID
@@ -109,7 +108,7 @@ const ValidationRuleEditor = ({
               break;
           }
         } catch (e) {
-          console.error("Error parsing rule expression:", e);
+          // Parse error handled silently — form will show default values
         }
       }
     }

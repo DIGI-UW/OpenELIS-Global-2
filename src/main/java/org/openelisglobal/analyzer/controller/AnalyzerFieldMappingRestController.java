@@ -71,13 +71,11 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
      * mappings for an analyzer Service layer compiles all data - controller never
      * accesses relationships
      * 
-     * Task Reference: T200 - Enhanced to support includeRetired parameter
      */
     @GetMapping("/analyzers/{analyzerId}/mappings")
     public ResponseEntity<List<Map<String, Object>>> getMappings(@PathVariable String analyzerId,
             @RequestParam(defaultValue = "false") boolean includeRetired) {
         try {
-            // Service layer eagerly fetches all relationships and compiles complete data
             List<Map<String, Object>> response = analyzerFieldMappingService.getMappingsForAnalyzer(analyzerId,
                     includeRetired);
             return ResponseEntity.ok(response);
@@ -98,9 +96,6 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> createMapping(@PathVariable String analyzerId,
             @Valid @RequestBody AnalyzerFieldMappingForm form) {
         try {
-            // Service layer verifies analyzer field belongs to analyzer, validates type
-            // compatibility,
-            // and returns complete compiled data - controller never accesses relationships
             Map<String, Object> response = analyzerFieldMappingService.createMappingForAnalyzer(analyzerId,
                     form.getAnalyzerFieldId(), form.getOpenelisFieldId(), form.getOpenelisFieldType(),
                     form.getMappingType(), form.getIsRequired(), form.getIsActive(), form.getSpecimenTypeConstraint(),
@@ -125,15 +120,12 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> updateMapping(@PathVariable String analyzerId,
             @PathVariable String mappingId, @Valid @RequestBody AnalyzerFieldMappingForm form) {
         try {
-            // Verify mapping belongs to analyzer (service layer handles relationship
-            // access)
             if (!analyzerFieldMappingService.verifyMappingBelongsToAnalyzer(mappingId, analyzerId)) {
                 Map<String, Object> error = new LinkedHashMap<>();
                 error.put("error", "Mapping does not belong to analyzer: " + analyzerId);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
 
-            // Get existing mapping (for update - no relationship access)
             AnalyzerFieldMapping mapping;
             try {
                 mapping = analyzerFieldMappingService.get(mappingId);
@@ -143,7 +135,6 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
 
-            // Update mapping fields (only direct properties, no relationship access)
             if (form.getOpenelisFieldId() != null) {
                 mapping.setOpenelisFieldId(form.getOpenelisFieldId());
             }
@@ -168,8 +159,6 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
 
             analyzerFieldMappingService.update(mapping);
 
-            // Service layer compiles complete data - controller never accesses
-            // relationships
             Map<String, Object> response = analyzerFieldMappingService.getMappingWithCompleteData(mappingId);
             return ResponseEntity.ok(response);
         } catch (LIMSRuntimeException e) {
@@ -190,13 +179,10 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
     @DeleteMapping("/analyzers/{analyzerId}/mappings/{mappingId}")
     public ResponseEntity<Void> deleteMapping(@PathVariable String analyzerId, @PathVariable String mappingId) {
         try {
-            // Verify mapping belongs to analyzer (service layer handles relationship
-            // access)
             if (!analyzerFieldMappingService.verifyMappingBelongsToAnalyzer(mappingId, analyzerId)) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
             }
 
-            // Get existing mapping (for delete - no relationship access)
             AnalyzerFieldMapping mapping;
             try {
                 mapping = analyzerFieldMappingService.get(mappingId);
@@ -215,7 +201,7 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
 
     /**
      * POST /rest/analyzer/analyzers/{id}/activate-mappings Activate mapping changes
-     * for an analyzer with validation Task Reference: T166
+     * for an analyzer with validation
      * 
      * Validates activation requirements: - Required mappings present (Sample ID,
      * Test Code, Result Value) - Pending messages in error queue - Concurrent edit
@@ -225,10 +211,8 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> activateMappings(@PathVariable String id,
             @RequestBody Map<String, Object> request) {
         try {
-            // Validate activation requirements
             ActivationValidationResult validationResult = analyzerFieldMappingService.validateActivation(id);
 
-            // Check if activation can proceed
             if (!validationResult.isCanActivate()) {
                 Map<String, Object> error = AnalyzerControllerHelper
                         .wrapError("Cannot activate: required mappings missing — "
@@ -237,20 +221,16 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
 
-            // Get mapping IDs from request (optional - if not provided, activate all draft
-            // mappings)
             @SuppressWarnings("unchecked")
             List<String> mappingIds = (List<String>) request.get("mappingIds");
             String confirmationToken = (String) request.get("confirmationToken");
 
-            // Activate mappings via service (transactional, all-or-nothing)
             int activatedCount = 0;
             if (mappingIds != null && !mappingIds.isEmpty()) {
                 boolean confirmed = confirmationToken != null && !confirmationToken.isEmpty();
                 activatedCount = analyzerFieldMappingService.bulkActivateMappings(id, mappingIds, confirmed);
             }
 
-            // Build response
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("activatedCount", activatedCount);
             response.put("warnings", validationResult.getWarnings());
@@ -269,7 +249,7 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
 
     /**
      * POST /rest/analyzer/analyzers/{targetId}/copy-mappings Copy field mappings
-     * from source analyzer to target analyzer Task Reference: T194
+     * from source analyzer to target analyzer
      * 
      * Request body: { sourceAnalyzerId: String, overwriteExisting: Boolean (default
      * true), skipIncompatible: Boolean (default false) }
@@ -289,7 +269,6 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
                         .body(AnalyzerControllerHelper.wrapError("sourceAnalyzerId is required"));
             }
 
-            // Build copy options
             CopyOptions options = new CopyOptions();
             if (request.containsKey("overwriteExisting")) {
                 options.setOverwriteExisting((Boolean) request.get("overwriteExisting"));
@@ -298,16 +277,13 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
                 options.setSkipIncompatible((Boolean) request.get("skipIncompatible"));
             }
 
-            // Perform copy operation
             CopyMappingsResult result = analyzerMappingCopyService.copyMappings(sourceAnalyzerId, targetId, options);
 
-            // Build response
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("copiedCount", result.getCopiedCount());
             response.put("skippedCount", result.getSkippedCount());
             response.put("warnings", result.getWarnings());
 
-            // Convert conflicts to map format
             List<Map<String, Object>> conflictsList = new ArrayList<>();
             for (CopyMappingsResult.ConflictDetail conflict : result.getConflicts()) {
                 Map<String, Object> conflictMap = new LinkedHashMap<>();
@@ -333,7 +309,6 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
      * POST /rest/analyzer/analyzers/{id}/preview-mapping Preview how a sample ASTM
      * message will be interpreted with current mappings
      * 
-     * Task Reference: T157
      * 
      * Request body: { astmMessage: String (max 10KB), includeDetailedParsing:
      * Boolean, validateAllMappings: Boolean }
@@ -362,16 +337,13 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
                         .body(AnalyzerControllerHelper.wrapError("Mapping preview feature not available"));
             }
 
-            // Build preview options
             PreviewOptions options = new PreviewOptions();
             options.setIncludeDetailedParsing(form.isIncludeDetailedParsing());
             options.setValidateAllMappings(form.isValidateAllMappings());
 
-            // Call service to preview mapping
             MappingPreviewResult result = analyzerMappingPreviewService.previewMapping(id, form.getAstmMessage(),
                     options);
 
-            // Convert result to response map
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("parsedFields", result.getParsedFields());
             response.put("appliedMappings", result.getAppliedMappings());
@@ -394,7 +366,6 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
      * GET /rest/analyzer/analyzers/{id}/validation-metrics Get validation metrics
      * for an analyzer
      * 
-     * Task Reference: T206
      * 
      * Response: { accuracy: Float (0.0-1.0), unmappedCount: Integer,
      * unmappedFields: String[], warnings: String[], coverageByTestUnit: Map<String,
@@ -411,10 +382,8 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
                         .body(AnalyzerControllerHelper.wrapError("Mapping validation feature not available"));
             }
 
-            // Get validation metrics
             MappingValidationService.ValidationMetrics metrics = mappingValidationService.getValidationMetrics(id);
 
-            // Convert to response map
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("accuracy", metrics.getAccuracy());
             response.put("unmappedCount", metrics.getUnmappedCount());
@@ -437,7 +406,6 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
      * POST /rest/analyzer/analyzers/{analyzerId}/fields/{fieldId}/validate-value
      * Validate a field value against custom field type validation rules
      * 
-     * Task Reference: T176
      * 
      * @param analyzerId The analyzer ID
      * @param fieldId    The analyzer field ID
@@ -455,7 +423,6 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
 
-            // Get analyzer field
             org.openelisglobal.analyzer.valueholder.AnalyzerField field = analyzerFieldService.get(fieldId);
             if (field == null) {
                 Map<String, Object> error = new LinkedHashMap<>();
@@ -463,14 +430,12 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
 
-            // Verify field belongs to analyzer
             if (field.getAnalyzer() == null || !field.getAnalyzer().getId().equals(analyzerId)) {
                 Map<String, Object> error = new LinkedHashMap<>();
                 error.put("error", "Field does not belong to analyzer");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
 
-            // Only validate if field type is CUSTOM
             if (field.getFieldType() != org.openelisglobal.analyzer.valueholder.AnalyzerField.FieldType.CUSTOM) {
                 Map<String, Object> result = new LinkedHashMap<>();
                 result.put("isValid", true);
@@ -478,7 +443,6 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
                 return ResponseEntity.ok(result);
             }
 
-            // Get custom field type ID (T141)
             String customFieldTypeId = field.getCustomFieldTypeId();
             if (customFieldTypeId == null) {
                 Map<String, Object> result = new LinkedHashMap<>();
@@ -487,7 +451,6 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
                 return ResponseEntity.ok(result);
             }
 
-            // Fetch validation rules
             if (validationRuleConfigurationService == null || validationRuleEngine == null) {
                 Map<String, Object> result = new LinkedHashMap<>();
                 result.put("isValid", true);
@@ -495,7 +458,6 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
                 return ResponseEntity.ok(result);
             }
 
-            // Evaluate validation rules
             List<org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration> rules = validationRuleConfigurationService
                     .findActiveRulesByCustomFieldTypeId(customFieldTypeId);
 

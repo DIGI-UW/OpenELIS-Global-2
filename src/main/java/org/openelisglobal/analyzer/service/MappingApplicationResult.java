@@ -6,7 +6,6 @@ import java.util.List;
 /**
  * Result object for mapping application operations
  * 
- * Task Reference: T179
  */
 public class MappingApplicationResult {
 

@@ -28,7 +28,6 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 /**
  * Unit tests for QCResultExtractionService implementation
  * 
- * Task Reference: T186
  * 
  * TDD Workflow (MANDATORY): - RED: Write failing test first (defines expected
  * behavior) - GREEN: Write minimal code to make test pass - REFACTOR: Improve
@@ -82,8 +81,7 @@ public class QCResultExtractionServiceTest {
     }
 
     /**
-     * Test: Extract QC result with valid mappings returns QCResultDTO Task
-     * Reference: T186
+     * Test: Extract QC result with valid mappings returns QCResultDTO
      * 
      * Verifies that extractQCResult() correctly applies QC field mappings and
      * returns a QCResultDTO with all required fields populated.
@@ -149,7 +147,6 @@ public class QCResultExtractionServiceTest {
 
     /**
      * Test: Extract QC result with missing control level mapping throws exception
-     * Task Reference: T186
      * 
      * Verifies that extractQCResult() throws exception when required control level
      * mapping is missing (control level is extracted from Q-segment, but mapping
@@ -174,8 +171,7 @@ public class QCResultExtractionServiceTest {
     }
 
     /**
-     * Test: Extract QC result with missing lot number mapping throws exception Task
-     * Reference: T186
+     * Test: Extract QC result with missing lot number mapping throws exception
      * 
      * Verifies that extractQCResult() throws exception when required control lot
      * number mapping is missing per FR-021 requirement.
@@ -211,7 +207,7 @@ public class QCResultExtractionServiceTest {
     }
 
     /**
-     * Test: Extract QC result applies unit conversions Task Reference: T186
+     * Test: Extract QC result applies unit conversions
      * 
      * Verifies that extractQCResult() applies unit conversions via UnitMapping when
      * configured (per FR-004).
@@ -283,8 +279,7 @@ public class QCResultExtractionServiceTest {
     }
 
     /**
-     * Test: Extract QC result with qualitative value maps to coded result Task
-     * Reference: T186
+     * Test: Extract QC result with qualitative value maps to coded result
      * 
      * Verifies that extractQCResult() handles qualitative result values correctly
      * (per FR-005). Note: QC results are typically numeric, but this test ensures
@@ -359,7 +354,7 @@ public class QCResultExtractionServiceTest {
     }
 
     /**
-     * Test: Extract QC result maps control level correctly Task Reference: T186
+     * Test: Extract QC result maps control level correctly
      * 
      * Verifies that extractQCResult() correctly maps control level strings (L/N/H)
      * to ControlLevel enum values.

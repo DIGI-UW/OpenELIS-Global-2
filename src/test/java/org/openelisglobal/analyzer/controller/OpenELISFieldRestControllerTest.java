@@ -18,7 +18,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 /**
- * Integration tests for OpenELISFieldRestController. Task Reference: T148
+ * Integration tests for OpenELISFieldRestController.
  * 
  * Test Coverage Goal: >80%
  * 

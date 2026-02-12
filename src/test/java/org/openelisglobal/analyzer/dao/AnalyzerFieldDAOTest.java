@@ -29,7 +29,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerField;
  * 
  * References: - Testing Roadmap: .specify/guides/testing-roadmap.md
  * 
- * Task Reference: T033 Test Coverage Goal: >80%
  * 
  * Note: Using Mockito pattern (matching existing codebase) since @DataJpaTest
  * dependencies not available. Tests HQL query logic and DAO methods.
@@ -80,7 +79,6 @@ public class AnalyzerFieldDAOTest {
 
     /**
      * Test: Find by analyzer ID with valid ID returns fields
-     * Task Reference: T033
      */
     @Test
     public void testFindByAnalyzerId_WithValidId_ReturnsFields() {
@@ -106,7 +104,6 @@ public class AnalyzerFieldDAOTest {
 
     /**
      * Test: Find by analyzer ID with invalid ID returns empty list
-     * Task Reference: T033
      */
     @Test
     public void testFindByAnalyzerId_WithInvalidId_ReturnsEmptyList() {
@@ -125,7 +122,7 @@ public class AnalyzerFieldDAOTest {
     }
 
     /**
-     * Test: Insert with valid data persists to database Task Reference: T033
+     * Test: Insert with valid data persists to database
      * 
      * Note: Testing DAO insert method. Actual persistence verified via service
      * tests.
@@ -161,7 +158,6 @@ public class AnalyzerFieldDAOTest {
 
     /**
      * Test: Get by ID returns field
-     * Task Reference: T033
      */
     @Test
     public void testGet_WithValidId_ReturnsField() {
@@ -180,7 +176,6 @@ public class AnalyzerFieldDAOTest {
 
     /**
      * Test: Get by invalid ID returns empty Optional
-     * Task Reference: T033
      */
     @Test
     public void testGet_WithInvalidId_ReturnsEmpty() {

@@ -1,7 +1,6 @@
 /**
  * Integration test for GeneXpert File-based protocol variant.
  *
- * <p>Task Reference: T145 [M7] GeneXpert File integration test.
  *
  * <p>Verifies that:
  * <ul>

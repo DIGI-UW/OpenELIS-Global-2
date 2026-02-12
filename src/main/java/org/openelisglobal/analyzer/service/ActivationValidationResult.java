@@ -6,7 +6,6 @@ import java.util.List;
 /**
  * Result object for activation validation
  * 
- * Task Reference: T167
  * 
  * Contains validation results for analyzer mapping activation including: -
  * Whether activation can proceed - Missing required mappings - Pending message

@@ -6,7 +6,6 @@ import java.util.List;
 /**
  * Result object for copy mappings operation
  * 
- * Task Reference: T192
  * 
  * Contains results of copying mappings from source to target analyzer
  * including: - Number of mappings copied - Number of mappings skipped -

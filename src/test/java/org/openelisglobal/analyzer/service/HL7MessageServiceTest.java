@@ -1,7 +1,6 @@
 /**
  * Unit tests for HL7MessageService (ORU^R01 parsing, ORM^O01 generation, MSH extraction).
  *
- * <p>Task Reference: T003 [M1] HL7 Adapter
  */
 package org.openelisglobal.analyzer.service;
 

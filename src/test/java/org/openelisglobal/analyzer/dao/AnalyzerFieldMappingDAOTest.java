@@ -24,7 +24,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 /**
  * DAO tests for AnalyzerFieldMappingDAO
  * 
- * Task Reference: T034 Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.Silent.class)
 public class AnalyzerFieldMappingDAOTest {
@@ -82,7 +81,7 @@ public class AnalyzerFieldMappingDAOTest {
     }
 
     /**
-     * Test: Find by analyzer field ID returns mappings Task Reference: T034
+     * Test: Find by analyzer field ID returns mappings
      */
     @Test
     public void testFindByAnalyzerFieldId_ReturnsMappings() {
@@ -107,8 +106,7 @@ public class AnalyzerFieldMappingDAOTest {
     }
 
     /**
-     * Test: Find active mappings by analyzer ID returns only active Task Reference:
-     * T034
+     * Test: Find active mappings by analyzer ID returns only active
      */
     @Test
     public void testFindActiveMappingsByAnalyzerId_ReturnsOnlyActive() {
@@ -136,8 +134,7 @@ public class AnalyzerFieldMappingDAOTest {
     }
 
     /**
-     * Test: Find active mappings with no active mappings returns empty list Task
-     * Reference: T034
+     * Test: Find active mappings with no active mappings returns empty list
      */
     @Test
     public void testFindActiveMappingsByAnalyzerId_WithNoActiveMappings_ReturnsEmptyList() {
