@@ -147,9 +147,9 @@ are now on the `analyzer` table and accessible via the `Analyzer` entity.
 
 ### Phase 5B: Pre-loaded Config from Volume
 
-Default configs loaded from `projects/analyzer-harness/analyzer-defaults/`
-volume at startup. Currently served from classpath. Deferred per plan ("greyed
-out / disabled for now").
+Default configs loaded from `projects/analyzer-defaults/` volume at startup.
+Currently served from classpath. Deferred per plan ("greyed out / disabled for
+now").
 
 ### Phase 6: E2E Testing
 

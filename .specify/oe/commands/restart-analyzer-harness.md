@@ -281,7 +281,7 @@ Print summary:
 
   Database: localhost:15432
   Analyzers: 12 loaded (IDs 2000-2012)
-  Defaults: 11 templates at /data/analyzer-defaults
+  Defaults: 11 templates at /data/analyzer-defaults (host path: projects/analyzer-defaults)
 
   Analyzer Infrastructure:
     - ASTM Bridge: openelis-analyzer-bridge:12001
