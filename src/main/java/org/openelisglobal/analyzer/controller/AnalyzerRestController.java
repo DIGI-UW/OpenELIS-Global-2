@@ -159,8 +159,10 @@ public class AnalyzerRestController extends BaseRestController {
                 validationErrors.add("Port must be between 1 and 65535");
             }
             if (form.getProtocolVersion() != null && ProtocolVersion.fromValue(form.getProtocolVersion()) == null) {
-                validationErrors.add("Invalid protocol version: " + form.getProtocolVersion()
-                        + ". Valid values: ASTM_LIS2_A2, HL7_V2_3_1, HL7_V2_5");
+                String validValues = java.util.Arrays.stream(ProtocolVersion.values()).map(ProtocolVersion::name)
+                        .collect(Collectors.joining(", "));
+                validationErrors.add(
+                        "Invalid protocol version: " + form.getProtocolVersion() + ". Valid values: " + validValues);
             }
             if (!validationErrors.isEmpty()) {
                 Map<String, Object> error = AnalyzerControllerHelper.wrapError(String.join("; ", validationErrors));
@@ -388,9 +390,11 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getProtocolVersion() != null) {
                 ProtocolVersion updatedPv = ProtocolVersion.fromValue(form.getProtocolVersion());
                 if (updatedPv == null) {
+                    String validValues = java.util.Arrays.stream(ProtocolVersion.values()).map(ProtocolVersion::name)
+                            .collect(Collectors.joining(", "));
                     Map<String, Object> error = new LinkedHashMap<>();
-                    error.put("error", "Invalid protocol version: " + form.getProtocolVersion()
-                            + ". Valid values: ASTM_LIS2_A2, HL7_V2_3_1, HL7_V2_5");
+                    error.put("error", "Invalid protocol version: " + form.getProtocolVersion() + ". Valid values: "
+                            + validValues);
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
                 }
                 analyzer.setProtocolVersion(updatedPv);

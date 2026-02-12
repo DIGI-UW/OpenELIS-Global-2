@@ -3,9 +3,12 @@
     xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-  <changeSet id="028-normalize-protocol-version-enum" author="dev">
+  <changeSet id="011-008-01-normalize-protocol-version-enum" author="madagascar-analyzer-integration">
+    <preConditions onFail="MARK_RAN">
+      <columnExists tableName="analyzer" columnName="protocol_version"/>
+    </preConditions>
     <comment>
       Normalize protocol_version column to ProtocolVersion enum constant names.
       Previously stored human-readable labels (e.g. 'ASTM LIS2-A2') or transport
@@ -49,6 +52,10 @@
     <addDefaultValue tableName="analyzer"
                      columnName="protocol_version"
                      defaultValue="ASTM_LIS2_A2"/>
+
+    <rollback>
+      <dropDefaultValue tableName="analyzer" columnName="protocol_version"/>
+    </rollback>
   </changeSet>
 
 </databaseChangeLog>

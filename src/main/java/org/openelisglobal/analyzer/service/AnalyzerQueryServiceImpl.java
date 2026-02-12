@@ -90,14 +90,19 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
         if (analyzer != null) {
             // Block push-only transports — derive from config entities, not
             // protocolVersion (which tracks message format, not transport).
-            Integer analyzerIdInt = Integer.valueOf(analyzerId);
-            if (fileImportService.getByAnalyzerId(analyzerIdInt).isPresent()) {
-                throw new LIMSRuntimeException(
-                        "Analyzer uses a push-only transport (file import) and cannot be queried");
-            }
-            if (serialPortService.getByAnalyzerId(analyzerIdInt).isPresent()) {
-                throw new LIMSRuntimeException(
-                        "Analyzer uses a push-only transport (RS-232 serial) and cannot be queried");
+            try {
+                Integer analyzerIdInt = Integer.valueOf(analyzerId);
+                if (fileImportService.getByAnalyzerId(analyzerIdInt).isPresent()) {
+                    throw new LIMSRuntimeException(
+                            "Analyzer uses a push-only transport (file import) and cannot be queried");
+                }
+                if (serialPortService.getByAnalyzerId(analyzerIdInt).isPresent()) {
+                    throw new LIMSRuntimeException(
+                            "Analyzer uses a push-only transport (RS-232 serial) and cannot be queried");
+                }
+            } catch (NumberFormatException e) {
+                logger.warn("Analyzer ID [{}] is not numeric; unable to perform transport validation", analyzerId, e);
+                throw new LIMSRuntimeException("Analyzer ID must be numeric for transport validation", e);
             }
             // Also check that TCP/IP connection details are available
             if (analyzer.getIpAddress() == null || analyzer.getPort() == null) {
