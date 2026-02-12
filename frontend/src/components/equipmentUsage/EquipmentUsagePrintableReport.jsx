@@ -55,8 +55,16 @@ const EquipmentUsagePrintableReport = () => {
     setError(null);
 
     try {
-      CartridgeUsageAPI.getUsageHistory(null, (data) => {
-        if (data && Array.isArray(data)) {
+      CartridgeUsageAPI.getUsageHistory(null, (data, error) => {
+        if (error) {
+          setError(
+            intl.formatMessage({
+              id: "equipment.usage.error.generateReportFailed",
+              defaultMessage: "Failed to generate report",
+            }),
+          );
+          setLoading(false);
+        } else if (data && Array.isArray(data)) {
           // Filter by date range
           let filtered = data;
           const startDate = new Date(filters.startDate);
@@ -70,11 +78,12 @@ const EquipmentUsagePrintableReport = () => {
 
           setUsageData(filtered);
           setReportGenerated(true);
+          setLoading(false);
+        } else {
+          setLoading(false);
         }
-        setLoading(false);
       });
     } catch (error) {
-      console.error("Error generating report:", error);
       setError(
         intl.formatMessage({
           id: "equipment.usage.error.reportFailed",

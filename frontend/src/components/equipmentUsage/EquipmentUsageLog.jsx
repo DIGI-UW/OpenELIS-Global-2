@@ -84,36 +84,47 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
       setEquipmentError(null);
       try {
         // Fetch cartridges from inventory
-        CartridgeUsageAPI.getCartridges(
-          (data) => {
-            if (data && Array.isArray(data)) {
-              setEquipment(data);
-            } else {
-              setEquipmentError(
-                intl.formatMessage({ id: "equipment.error.loadFailed" }),
-              );
-            }
+        CartridgeUsageAPI.getCartridges((data, error) => {
+          if (error) {
+            notify({
+              kind: NotificationKinds.error,
+              title: intl.formatMessage({ id: "notification.error" }),
+              message: intl.formatMessage({
+                id: "equipment.error.loadFailed",
+                defaultMessage: "Failed to load equipment",
+              }),
+            });
             setLoadingEquipment(false);
-          },
-          (error) => {
-            console.error("Error loading equipment:", error);
-            setEquipmentError(
-              intl.formatMessage({ id: "equipment.error.loadFailed" }),
-            );
+          } else if (data && Array.isArray(data)) {
+            setEquipment(data);
             setLoadingEquipment(false);
-          },
-        );
+          } else {
+            notify({
+              kind: NotificationKinds.error,
+              title: intl.formatMessage({ id: "notification.error" }),
+              message: intl.formatMessage({
+                id: "equipment.error.loadFailed",
+                defaultMessage: "Failed to load equipment",
+              }),
+            });
+            setLoadingEquipment(false);
+          }
+        });
       } catch (error) {
-        console.error("Error fetching equipment:", error);
-        setEquipmentError(
-          intl.formatMessage({ id: "equipment.error.loadFailed" }),
-        );
+        notify({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.error" }),
+          message: intl.formatMessage({
+            id: "equipment.error.loadFailed",
+            defaultMessage: "Failed to load equipment",
+          }),
+        });
         setLoadingEquipment(false);
       }
     };
 
     fetchEquipment();
-  }, [intl]);
+  }, [intl, notify]);
 
   // Handle Equipment Selection
   const handleSelectEquipment = (equipment) => {
