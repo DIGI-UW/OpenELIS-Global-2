@@ -2,12 +2,10 @@ package org.openelisglobal.fhir.providers;
 
 import ca.uhn.fhir.rest.annotation.Create;
 import ca.uhn.fhir.rest.annotation.IdParam;
-import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
 import ca.uhn.fhir.rest.annotation.Update;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.server.IResourceProvider;
-import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Practitioner;
@@ -32,14 +30,6 @@ public class PractitionerProvider implements IResourceProvider {
     @Override
     public Class<? extends IBaseResource> getResourceType() {
         return Practitioner.class;
-    }
-
-    @Read
-    public Practitioner getPractitionerById(@IdParam IdType theId) throws FhirLocalPersistingException {
-        String resourceId = theId.getIdPart();
-        Provider provider = providerService.getProviderByFhirId(UUID.fromString(resourceId));
-        Practitioner practitioner = fhirTransformService.transformProviderToPractitioner(provider);
-        return practitioner;
     }
 
     @Create
