@@ -179,17 +179,18 @@ public class SampleAddService {
                 String storageLocationType = sampleItem.attributeValue("storageLocationType");
                 String storagePositionCoordinate = sampleItem.attributeValue("storagePositionCoordinate");
 
-                // Parse GPS coordinate attributes for later assignment
                 String gpsLatitude = sampleItem.attributeValue("gpsLatitude");
                 String gpsLongitude = sampleItem.attributeValue("gpsLongitude");
                 String gpsAccuracy = sampleItem.attributeValue("gpsAccuracy");
                 String gpsCaptureMethod = sampleItem.attributeValue("gpsCaptureMethod");
 
-                sampleItemsTests.add(new SampleTestCollection(item, tests,
-                        USE_RECEIVE_DATE_FOR_COLLECTION_DATE ? collectionDateFromRecieveDate : collectionDateTime,
-                        initialConditionList, testIdToUserSectionMap, testIdToSampleTypeMap, sampleNature,
-                        storageLocationId, storageLocationType, storagePositionCoordinate,
-                        gpsLatitude, gpsLongitude, gpsAccuracy, gpsCaptureMethod));
+                sampleItemsTests
+                        .add(new SampleTestCollection(item, tests,
+                                USE_RECEIVE_DATE_FOR_COLLECTION_DATE ? collectionDateFromRecieveDate
+                                        : collectionDateTime,
+                                initialConditionList, testIdToUserSectionMap, testIdToSampleTypeMap, sampleNature,
+                                storageLocationId, storageLocationType, storagePositionCoordinate, gpsLatitude,
+                                gpsLongitude, gpsAccuracy, gpsCaptureMethod));
             }
         } catch (DocumentException e) {
             LogEvent.logDebug(e);
@@ -303,7 +304,6 @@ public class SampleAddService {
         public String storageLocationType;
         public String storagePositionCoordinate;
 
-        // GPS coordinates info - parsed from sample XML for later assignment
         public String gpsLatitude;
         public String gpsLongitude;
         public String gpsAccuracy;

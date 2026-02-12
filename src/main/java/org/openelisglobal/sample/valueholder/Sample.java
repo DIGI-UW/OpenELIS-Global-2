@@ -64,8 +64,6 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
     private String clinicalOrderId;
     private Boolean isConfirmation = false;
     private OrderPriority priority;
-
-    // GPS coordinates for sample collection location
     private Double gpsLatitude;
     private Double gpsLongitude;
     private Integer gpsAccuracyMeters;

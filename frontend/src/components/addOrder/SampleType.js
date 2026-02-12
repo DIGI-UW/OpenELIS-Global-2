@@ -1,29 +1,29 @@
-import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   Checkbox,
   FormGroup,
   Layer,
+  Loading,
   Search,
   Select,
   SelectItem,
   Tag,
-  Tile,
   TextInput,
-  Loading,
+  Tile,
 } from "@carbon/react";
-import CustomCheckBox from "../common/CustomCheckBox";
-import CustomSelect from "../common/CustomSelect";
-import CustomDatePicker from "../common/CustomDatePicker";
-import CustomTimePicker from "../common/CustomTimePicker";
-import { NotificationKinds } from "../common/CustomNotification";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../utils/Utils";
-import { NotificationContext, ConfigurationContext } from "../layout/Layout";
-import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
-import CustomTextInput from "../common/CustomTextInput";
-import OrderReferralRequest from "../addOrder/OrderReferralRequest";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import OrderReferralRequest from "../addOrder/OrderReferralRequest";
+import CustomCheckBox from "../common/CustomCheckBox";
+import CustomDatePicker from "../common/CustomDatePicker";
+import { NotificationKinds } from "../common/CustomNotification";
+import CustomSelect from "../common/CustomSelect";
+import CustomTextInput from "../common/CustomTextInput";
+import CustomTimePicker from "../common/CustomTimePicker";
+import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import StorageLocationSelector from "../storage/StorageLocationSelector";
+import { getFromOpenElisServer } from "../utils/Utils";
 import GpsCoordinatesCapture from "./GpsCoordinatesCapture";
 
 const SampleType = (props) => {
@@ -116,20 +116,23 @@ const SampleType = (props) => {
     });
   }
 
-  const handleGpsCoordinatesChange = useCallback((gpsData) => {
-    const updatedSampleXml = {
-      ...sampleXml,
-      gpsLatitude: gpsData.gpsLatitude,
-      gpsLongitude: gpsData.gpsLongitude,
-      gpsAccuracy: gpsData.gpsAccuracy,
-      gpsCaptureMethod: gpsData.gpsCaptureMethod,
-    };
-    setSampleXml(updatedSampleXml);
-    props.sampleTypeObject({
-      sampleXML: updatedSampleXml,
-      sampleObjectIndex: index,
-    });
-  }, [sampleXml, props.sampleTypeObject, index]);
+  const handleGpsCoordinatesChange = useCallback(
+    (gpsData) => {
+      const updatedSampleXml = {
+        ...sampleXml,
+        gpsLatitude: gpsData.gpsLatitude,
+        gpsLongitude: gpsData.gpsLongitude,
+        gpsAccuracy: gpsData.gpsAccuracy,
+        gpsCaptureMethod: gpsData.gpsCaptureMethod,
+      };
+      setSampleXml(updatedSampleXml);
+      props.sampleTypeObject({
+        sampleXML: updatedSampleXml,
+        sampleObjectIndex: index,
+      });
+    },
+    [sampleXml, props.sampleTypeObject, index],
+  );
 
   function handleStorageLocationChange(location, positionCoordinate) {
     setSampleXml({
@@ -583,14 +586,15 @@ const SampleType = (props) => {
           />
         </div>
 
-        {/* GPS Coordinates Capture - Collapsible section for collection location */}
         {configurationProperties.GPS_ENABLED === "true" && (
-          <GpsCoordinatesCapture
-            index={index}
-            sampleXml={sampleXml}
-            onChange={handleGpsCoordinatesChange}
-            disabled={sampleXml.rejected}
-          />
+          <div className="gpsDiv">
+            <GpsCoordinatesCapture
+              index={index}
+              sampleXml={sampleXml}
+              onChange={handleGpsCoordinatesChange}
+              disabled={sampleXml.rejected}
+            />
+          </div>
         )}
 
         {/* Storage Location Selector - INT-001: Integration point */}

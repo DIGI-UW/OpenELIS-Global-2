@@ -1,7 +1,6 @@
 import {
   Button,
   InlineNotification,
-  Layer,
   Loading,
   Tag,
   TextInput,
@@ -20,8 +19,9 @@ import { NotificationKinds } from "../common/CustomNotification";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 
 /**
- * Modern GPS Coordinates Capture Component
- * Always visible design with progressive disclosure for manual entry
+ * GPS Coordinates Capture Component
+ * Compact inline design matching StorageLocationSelector pattern
+ * Expands to full form when "Expand" button is clicked
  */
 const GpsCoordinatesCapture = ({
   index,
@@ -55,6 +55,7 @@ const GpsCoordinatesCapture = ({
   const [showManualEntry, setShowManualEntry] = useState(
     !!(sampleXml?.gpsLatitude || sampleXml?.gpsLongitude),
   );
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     const gpsData = {
@@ -194,44 +195,65 @@ const GpsCoordinatesCapture = ({
     return (latitude && !longitude) || (!latitude && longitude);
   };
 
+  const displayValue = hasValidCoordinates()
+    ? `${latitude}, ${longitude}${accuracy ? ` (±${accuracy}m)` : ""}`
+    : intl.formatMessage({
+        id: "gps.not.captured",
+        defaultMessage: "Not captured",
+      });
+
   return (
-    <div className="gps-coordinates-section" style={{ marginBottom: "1.5rem" }}>
-      <Layer style={{ padding: "1.5rem" }}>
-        {/* Header Section */}
+    <div className="gps-coordinates-section">
+      {!isExpanded && (
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: "0.75rem",
-            marginBottom: "1rem",
+            padding: "0.375rem 0.5rem",
+            minHeight: "2.5rem",
+            maxWidth: "100%",
+            border: hasValidCoordinates()
+              ? "1px solid #24a148"
+              : "1px solid var(--cds-border-subtle, #e0e0e0)",
+            borderRadius: "2px",
+            backgroundColor: hasValidCoordinates()
+              ? "#e7f6f1"
+              : "var(--cds-layer-01, #f4f4f4)",
           }}
         >
-          {hasValidCoordinates() ? (
-            <LocationFilled size={20} color="#24a148" />
-          ) : (
-            <Location size={20} color="#525252" />
-          )}
-          <div style={{ flex: 1 }}>
-            <h4
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}
+          >
+            {hasValidCoordinates() ? (
+              <LocationFilled size={16} style={{ color: "#24a148" }} />
+            ) : (
+              <Location size={16} style={{ color: "#525252" }} />
+            )}
+            <span
               style={{
-                margin: 0,
-                fontSize: "1rem",
                 fontWeight: "600",
-                color: "#161616",
-              }}
-            >
-              <FormattedMessage id="gps.section.title" />
-            </h4>
-            <p
-              style={{
-                margin: "0.25rem 0 0 0",
+                color: "var(--cds-text-secondary, #525252)",
                 fontSize: "0.875rem",
-                color: "#6f6f6f",
               }}
             >
-              <FormattedMessage id="gps.section.description" />
-            </p>
+              <FormattedMessage id="gps.section.title" />:
+            </span>
+            <span
+              style={{
+                color: "var(--cds-text-primary, #161616)",
+                fontSize: "0.875rem",
+              }}
+            >
+              {displayValue}
+            </span>
           </div>
+
           {hasValidCoordinates() ? (
             <Tag type="green" size="sm">
               <FormattedMessage id="gps.status.captured" />
@@ -241,172 +263,210 @@ const GpsCoordinatesCapture = ({
               <FormattedMessage id="gps.status.optional" />
             </Tag>
           )}
-        </div>
 
-        {/* Current Coordinates Display */}
-        {hasValidCoordinates() && (
-          <div
-            style={{
-              padding: "0.75rem",
-              backgroundColor: "#e7f6f1",
-              border: "1px solid #24a148",
-              borderRadius: "4px",
-              marginBottom: "1rem",
-            }}
-          >
-            <div style={{ fontSize: "0.875rem", color: "#161616" }}>
-              <strong>
-                <FormattedMessage id="gps.coordinates.current" />:
-              </strong>{" "}
-              {latitude}, {longitude}
-              {accuracy && (
-                <span style={{ color: "#6f6f6f" }}> (±{accuracy}m)</span>
-              )}
-            </div>
-            <div
-              style={{
-                fontSize: "0.75rem",
-                color: "#6f6f6f",
-                marginTop: "0.25rem",
-              }}
-            >
-              <FormattedMessage
-                id="gps.coordinates.captured.via"
-                values={{
-                  method:
-                    captureMethod === "AUTO"
-                      ? "browser location"
-                      : "manual entry",
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Error Display */}
-        {gpsStatus === "error" && errorMessage && (
-          <InlineNotification
-            kind="error"
-            title={intl.formatMessage({ id: "gps.error.title" })}
-            subtitle={errorMessage}
-            hideCloseButton={true}
-            style={{ marginBottom: "1rem" }}
-          />
-        )}
-
-        {/* Primary GPS Button */}
-        <div style={{ marginBottom: "1.5rem" }}>
           <Button
-            kind={gpsStatus === "success" ? "primary" : "secondary"}
-            size="lg"
-            onClick={requestLocation}
-            disabled={disabled || gpsStatus === "loading"}
-            style={{ minWidth: "200px" }}
+            kind="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(true)}
+            disabled={disabled}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              {gpsStatus === "loading" && (
-                <div style={{ width: "16px", height: "16px" }}>
-                  <Loading small />
-                </div>
-              )}
-              {gpsStatus === "success" && <CheckmarkFilled size={16} />}
-              {gpsStatus === "error" && <ErrorFilled size={16} />}
-              {gpsStatus === "idle" && <Crossroads size={16} />}
-
-              {gpsStatus === "loading" && (
-                <FormattedMessage id="gps.button.getting.location" />
-              )}
-              {gpsStatus === "success" && (
-                <FormattedMessage id="gps.button.location.captured" />
-              )}
-              {(gpsStatus === "idle" || gpsStatus === "error") && (
-                <FormattedMessage id="gps.button.use.my.location" />
-              )}
-            </div>
+            <FormattedMessage id="button.expand" defaultMessage="Expand" />
           </Button>
         </div>
+      )}
 
-        {/* Manual Entry Toggle */}
-        <div style={{ marginBottom: "1rem" }}>
-          <Toggle
-            id={`gps-manual-toggle-${index}`}
-            labelText={intl.formatMessage({ id: "gps.manual.entry.toggle" })}
-            labelA={intl.formatMessage({ id: "gps.manual.entry.off" })}
-            labelB={intl.formatMessage({ id: "gps.manual.entry.on" })}
-            toggled={showManualEntry}
-            onToggle={(toggled) => setShowManualEntry(toggled)}
-            disabled={disabled}
-          />
-        </div>
-
-        {/* Manual Entry Fields */}
-        {showManualEntry && (
+      {isExpanded && (
+        <div
+          style={{
+            border: hasValidCoordinates()
+              ? "1px solid #24a148"
+              : "1px solid var(--cds-border-subtle, #e0e0e0)",
+            borderRadius: "4px",
+            padding: "1rem",
+            maxWidth: "100%",
+            backgroundColor: hasValidCoordinates()
+              ? "#e7f6f1"
+              : "var(--cds-layer-01, #f4f4f4)",
+          }}
+        >
           <div
             style={{
-              padding: "1rem",
-              border: "1px solid #e0e0e0",
-              borderRadius: "4px",
-              backgroundColor: "#f4f4f4",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
               marginBottom: "1rem",
             }}
           >
-            <h5
-              style={{
-                margin: "0 0 0.75rem 0",
-                fontSize: "0.875rem",
-                fontWeight: "600",
-              }}
-            >
-              <FormattedMessage id="gps.manual.entry.title" />
-            </h5>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <TextInput
-                id={`gps-latitude-${index}`}
-                labelText={intl.formatMessage({ id: "gps.latitude.label" })}
-                placeholder={intl.formatMessage({
-                  id: "gps.latitude.placeholder",
-                })}
-                value={latitude}
-                onChange={handleLatitudeChange}
-                disabled={disabled}
-                invalid={latitude ? !isValidLatitude(latitude) : false}
-                invalidText={intl.formatMessage({ id: "gps.latitude.invalid" })}
-                helperText={intl.formatMessage({ id: "gps.latitude.helper" })}
-              />
-
-              <TextInput
-                id={`gps-longitude-${index}`}
-                labelText={intl.formatMessage({ id: "gps.longitude.label" })}
-                placeholder={intl.formatMessage({
-                  id: "gps.longitude.placeholder",
-                })}
-                value={longitude}
-                onChange={handleLongitudeChange}
-                disabled={disabled}
-                invalid={longitude ? !isValidLongitude(longitude) : false}
-                invalidText={intl.formatMessage({
-                  id: "gps.longitude.invalid",
-                })}
-                helperText={intl.formatMessage({ id: "gps.longitude.helper" })}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Actions */}
-        {(hasValidCoordinates() || hasPartialCoordinates()) && (
-          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: "600" }}>
+              <FormattedMessage id="gps.section.title" />
+            </h4>
             <Button
-              kind="danger--tertiary"
+              kind="ghost"
               size="sm"
-              onClick={handleClear}
+              onClick={() => setIsExpanded(false)}
               disabled={disabled}
             >
-              <FormattedMessage id="gps.button.clear" />
+              <FormattedMessage
+                id="button.collapse"
+                defaultMessage="Collapse"
+              />
             </Button>
           </div>
-        )}
-      </Layer>
+
+          <InlineNotification
+            kind="info"
+            title={intl.formatMessage({
+              id: "gps.info.title",
+              defaultMessage: "GPS Coordinates",
+            })}
+            subtitle={intl.formatMessage({
+              id: "gps.info.description",
+              defaultMessage:
+                "GPS coordinates record the geographic location where the sample was collected. This supports epidemiological surveillance and disease mapping.",
+            })}
+            hideCloseButton={true}
+            lowContrast
+            style={{ marginBottom: "1rem" }}
+          />
+
+          {gpsStatus === "error" && errorMessage && (
+            <InlineNotification
+              kind="error"
+              title={intl.formatMessage({ id: "gps.error.title" })}
+              subtitle={errorMessage}
+              hideCloseButton={true}
+              style={{ marginBottom: "1rem" }}
+            />
+          )}
+
+          <div style={{ marginBottom: "1.5rem" }}>
+            <Button
+              kind={gpsStatus === "success" ? "primary" : "secondary"}
+              size="md"
+              onClick={requestLocation}
+              disabled={disabled || gpsStatus === "loading"}
+              style={{ minWidth: "200px" }}
+            >
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              >
+                {gpsStatus === "loading" && (
+                  <div style={{ width: "16px", height: "16px" }}>
+                    <Loading small withOverlay={false} />
+                  </div>
+                )}
+                {gpsStatus === "success" && <CheckmarkFilled size={16} />}
+                {gpsStatus === "error" && <ErrorFilled size={16} />}
+                {gpsStatus === "idle" && <Crossroads size={16} />}
+
+                {gpsStatus === "loading" && (
+                  <FormattedMessage id="gps.button.getting.location" />
+                )}
+                {gpsStatus === "success" && (
+                  <FormattedMessage id="gps.button.location.captured" />
+                )}
+                {(gpsStatus === "idle" || gpsStatus === "error") && (
+                  <FormattedMessage id="gps.button.use.my.location" />
+                )}
+              </div>
+            </Button>
+          </div>
+
+          <div style={{ marginBottom: "1rem" }}>
+            <Toggle
+              id={`gps-manual-toggle-${index}`}
+              labelText={intl.formatMessage({
+                id: "gps.manual.entry.toggle",
+              })}
+              labelA={intl.formatMessage({ id: "gps.manual.entry.off" })}
+              labelB={intl.formatMessage({ id: "gps.manual.entry.on" })}
+              toggled={showManualEntry}
+              onToggle={(toggled) => setShowManualEntry(toggled)}
+              disabled={disabled}
+            />
+          </div>
+
+          {showManualEntry && (
+            <div
+              style={{
+                padding: "1rem",
+                border: "1px solid #e0e0e0",
+                borderRadius: "4px",
+                backgroundColor: "#f4f4f4",
+                marginBottom: "1rem",
+              }}
+            >
+              <h5
+                style={{
+                  margin: "0 0 0.75rem 0",
+                  fontSize: "0.875rem",
+                  fontWeight: "600",
+                }}
+              >
+                <FormattedMessage id="gps.manual.entry.title" />
+              </h5>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "1rem",
+                }}
+              >
+                <TextInput
+                  id={`gps-latitude-${index}`}
+                  labelText={intl.formatMessage({ id: "gps.latitude.label" })}
+                  placeholder={intl.formatMessage({
+                    id: "gps.latitude.placeholder",
+                  })}
+                  value={latitude}
+                  onChange={handleLatitudeChange}
+                  disabled={disabled}
+                  invalid={latitude ? !isValidLatitude(latitude) : false}
+                  invalidText={intl.formatMessage({
+                    id: "gps.latitude.invalid",
+                  })}
+                  helperText={intl.formatMessage({
+                    id: "gps.latitude.helper",
+                  })}
+                />
+
+                <TextInput
+                  id={`gps-longitude-${index}`}
+                  labelText={intl.formatMessage({
+                    id: "gps.longitude.label",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "gps.longitude.placeholder",
+                  })}
+                  value={longitude}
+                  onChange={handleLongitudeChange}
+                  disabled={disabled}
+                  invalid={longitude ? !isValidLongitude(longitude) : false}
+                  invalidText={intl.formatMessage({
+                    id: "gps.longitude.invalid",
+                  })}
+                  helperText={intl.formatMessage({
+                    id: "gps.longitude.helper",
+                  })}
+                />
+              </div>
+            </div>
+          )}
+
+          {(hasValidCoordinates() || hasPartialCoordinates()) && (
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <Button
+                kind="danger--tertiary"
+                size="sm"
+                onClick={handleClear}
+                disabled={disabled}
+              >
+                <FormattedMessage id="gps.button.clear" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

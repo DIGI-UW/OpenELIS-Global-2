@@ -1,7 +1,6 @@
 package org.openelisglobal.barcode.labeltype;
 
 import java.util.ArrayList;
-
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.barcode.LabelField;
 import org.openelisglobal.common.log.LogEvent;

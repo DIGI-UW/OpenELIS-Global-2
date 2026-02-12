@@ -87,8 +87,6 @@
             type="java.lang.Boolean" />
         <property name="fhirUuid" column="fhir_uuid"
             type="java.util.UUID" />
-
-        <!-- GPS Coordinates for sample collection location -->
         <property name="gpsLatitude" column="gps_latitude"
             type="java.lang.Double" />
         <property name="gpsLongitude" column="gps_longitude"
