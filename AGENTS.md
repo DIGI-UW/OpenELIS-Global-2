@@ -107,6 +107,25 @@ mvn clean install -DskipTests
 - **Node.js 16+**: Frontend development
 - **Git with submodules**: `git submodule update --init --recursive`
 
+### Environment Configuration (.env file) - CRITICAL
+
+**IMPORTANT:** Before running any `docker compose` command, you MUST create a
+`.env` file:
+
+```bash
+cp .env.example .env
+```
+
+Then customize `.env` for your environment (database passwords, domain, etc.).
+
+**Why this matters:**
+
+- `.env` is in `.gitignore` (contains secrets and server-specific settings)
+- **`.env` is intentionally NOT tracked in git** - each developer/server needs
+  their own
+- Docker Compose uses `.env` for `${VAR}` substitution in compose files
+- Missing `.env` causes authentication failures and SSL certificate errors
+
 ---
 
 ## Technology Stack
