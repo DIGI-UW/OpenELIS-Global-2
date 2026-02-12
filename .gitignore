@@ -48,6 +48,7 @@ volume/logs/*
 volume/ocl/*
 volume/odoo/*
 .specify/temp/
+.specify/audit-reports/*.md
 volume/branding/*
 volume/lucene/*
 
@@ -68,6 +69,9 @@ volume/lucene/*
 # Generated test fixtures (derived from DBUnit XML, never commit)
 # These are generated on-the-fly during test runs from authoritative XML sources
 src/test/resources/testdata/*.generated.sql
+
+# Docker volume artifacts (created by dev/CI containers, never commit)
+projects/*/volume/
 
 .dev-docs/
 
