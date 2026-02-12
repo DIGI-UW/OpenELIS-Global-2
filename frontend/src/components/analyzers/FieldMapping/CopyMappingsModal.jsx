@@ -60,14 +60,11 @@ const CopyMappingsModal = ({
 
       // Load all analyzers
       analyzerService.getAnalyzers({}, (data) => {
-        if (Array.isArray(data)) {
-          // Filter out source analyzer and only include analyzers with active mappings
-          // For now, include all analyzers (we'll filter by active mappings if needed)
-          const filtered = data.filter((a) => a.id !== sourceAnalyzerId);
-          setAvailableAnalyzers(filtered);
-        } else {
-          setAvailableAnalyzers([]);
-        }
+        const list =
+          data && Array.isArray(data.analyzers) ? data.analyzers : [];
+        // Filter out source analyzer
+        const filtered = list.filter((a) => a.id !== sourceAnalyzerId);
+        setAvailableAnalyzers(filtered);
         setLoading(false);
       });
     }

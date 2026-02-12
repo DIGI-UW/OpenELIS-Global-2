@@ -63,6 +63,12 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
     private AnalyzerFieldService analyzerFieldService;
 
     @Autowired
+    private FileImportService fileImportService;
+
+    @Autowired
+    private SerialPortService serialPortService;
+
+    @Autowired
     private org.springframework.transaction.PlatformTransactionManager transactionManager;
 
     @Override
@@ -82,14 +88,21 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
             logger.debug("Analyzer {} not found in database, skipping transport validation", analyzerId);
         }
         if (analyzer != null) {
-            String protocol = analyzer.getProtocolVersion();
-            if (protocol != null) {
-                String upper = protocol.toUpperCase();
-                if (upper.contains("FILE") || upper.contains("RS232") || upper.contains("RS-232")
-                        || upper.contains("SERIAL")) {
+            // Block push-only transports — derive from config entities, not
+            // protocolVersion (which tracks message format, not transport).
+            try {
+                Integer analyzerIdInt = Integer.valueOf(analyzerId);
+                if (fileImportService.getByAnalyzerId(analyzerIdInt).isPresent()) {
                     throw new LIMSRuntimeException(
-                            "Analyzer uses a push-only transport (" + protocol + ") and cannot be queried");
+                            "Analyzer uses a push-only transport (file import) and cannot be queried");
                 }
+                if (serialPortService.getByAnalyzerId(analyzerIdInt).isPresent()) {
+                    throw new LIMSRuntimeException(
+                            "Analyzer uses a push-only transport (RS-232 serial) and cannot be queried");
+                }
+            } catch (NumberFormatException e) {
+                logger.warn("Analyzer ID [{}] is not numeric; unable to perform transport validation", analyzerId, e);
+                throw new LIMSRuntimeException("Analyzer ID must be numeric for transport validation", e);
             }
             // Also check that TCP/IP connection details are available
             if (analyzer.getIpAddress() == null || analyzer.getPort() == null) {

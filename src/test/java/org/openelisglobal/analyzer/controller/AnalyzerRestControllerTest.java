@@ -88,7 +88,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testGetAnalyzers_ReturnsList() throws Exception {
         // Act & Assert
         mockMvc.perform(get("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
+                .accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.analyzers").isArray());
     }
 
     /**
@@ -391,9 +392,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
         // Assert: Each entry should have a pluginLoaded field
         String responseBody = listResult.getResponse().getContentAsString();
-        List<Map<String, Object>> analyzers = objectMapper.readValue(responseBody,
-                new TypeReference<List<Map<String, Object>>>() {
-                });
+        Map<String, Object> envelope = objectMapper.readValue(responseBody, new TypeReference<Map<String, Object>>() {
+        });
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> analyzers = (List<Map<String, Object>>) envelope.get("analyzers");
+        assertNotNull("Response should contain analyzers array", analyzers);
         assertFalse("Response should contain at least one analyzer", analyzers.isEmpty());
         for (Map<String, Object> analyzerMap : analyzers) {
             assertTrue("Each analyzer should have pluginLoaded field", analyzerMap.containsKey("pluginLoaded"));

@@ -3,16 +3,19 @@ package org.openelisglobal.analyzer.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -27,25 +30,37 @@ public class AnalyzerQueryServiceTest {
     @Mock
     private AnalyzerService analyzerService;
 
+    @Mock
+    private FileImportService fileImportService;
+
+    @Mock
+    private SerialPortService serialPortService;
+
     private AnalyzerQueryServiceImpl analyzerQueryService;
 
     @Before
     public void setUp() {
         analyzerQueryService = new AnalyzerQueryServiceImpl();
         ReflectionTestUtils.setField(analyzerQueryService, "analyzerService", analyzerService);
+        ReflectionTestUtils.setField(analyzerQueryService, "fileImportService", fileImportService);
+        ReflectionTestUtils.setField(analyzerQueryService, "serialPortService", serialPortService);
 
         // Default: return a valid TCP-capable analyzer so startQuery passes validation
         Analyzer analyzer = new Analyzer();
-        analyzer.setProtocolVersion("LIS2-A2");
+        analyzer.setProtocolVersion(ProtocolVersion.ASTM_LIS2_A2);
         analyzer.setIpAddress("192.168.1.100");
         analyzer.setPort(5000);
         when(analyzerService.get(anyString())).thenReturn(analyzer);
+
+        // Default: no file-import or serial-port config (TCP analyzer)
+        when(fileImportService.getByAnalyzerId(any())).thenReturn(Optional.empty());
+        when(serialPortService.getByAnalyzerId(any())).thenReturn(Optional.empty());
     }
 
     @Test
     public void testQueryAnalyzer_WithValidConfig_ReturnsJobId() {
         // Arrange
-        String analyzerId = "ANALYZER-001";
+        String analyzerId = "1";
 
         // Act
         String jobId = analyzerQueryService.startQuery(analyzerId);
@@ -76,7 +91,7 @@ public class AnalyzerQueryServiceTest {
     @Test
     public void testGetQueryStatus_WithJobId_ReturnsStatus() {
         // Arrange
-        String analyzerId = "ANALYZER-001";
+        String analyzerId = "1";
         String jobId = analyzerQueryService.startQuery(analyzerId);
 
         // Act
@@ -94,7 +109,7 @@ public class AnalyzerQueryServiceTest {
     @Test
     public void testGetQueryStatus_WithInvalidJobId_ReturnsNotFoundStatus() {
         // Arrange
-        String analyzerId = "ANALYZER-001";
+        String analyzerId = "1";
         String invalidJobId = "INVALID-JOB-ID";
 
         // Act
@@ -109,7 +124,7 @@ public class AnalyzerQueryServiceTest {
     @Test
     public void testCancelQuery_WithJobId_CancelsJob() {
         // Arrange
-        String analyzerId = "ANALYZER-001";
+        String analyzerId = "1";
         String jobId = analyzerQueryService.startQuery(analyzerId);
 
         // Act
@@ -125,7 +140,7 @@ public class AnalyzerQueryServiceTest {
     @Test
     public void testCancelQuery_WithInvalidJobId_DoesNotThrow() {
         // Arrange
-        String analyzerId = "ANALYZER-001";
+        String analyzerId = "1";
         String invalidJobId = "INVALID-JOB-ID";
 
         // Act & Assert - should not throw exception

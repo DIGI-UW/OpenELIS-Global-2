@@ -96,7 +96,8 @@ public class Analyzer extends BaseObject<String> {
     private Integer port;
 
     @Column(name = "protocol_version", length = 20)
-    private String protocolVersion = "ASTM LIS2-A2";
+    @Enumerated(EnumType.STRING)
+    private ProtocolVersion protocolVersion = ProtocolVersion.ASTM_LIS2_A2;
 
     @Column(name = "test_unit_ids", columnDefinition = "TEXT")
     @Convert(converter = StringListConverter.class)
@@ -213,11 +214,11 @@ public class Analyzer extends BaseObject<String> {
         this.port = port;
     }
 
-    public String getProtocolVersion() {
+    public ProtocolVersion getProtocolVersion() {
         return protocolVersion;
     }
 
-    public void setProtocolVersion(String protocolVersion) {
+    public void setProtocolVersion(ProtocolVersion protocolVersion) {
         this.protocolVersion = protocolVersion;
     }
 

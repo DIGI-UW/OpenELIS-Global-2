@@ -15,6 +15,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
@@ -26,11 +28,11 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
+import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.PluginAnalyzerService;
-import org.openelisglobal.plugin.AnalyzerImporterPlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,14 +84,15 @@ public class AnalyzerRestController extends BaseRestController {
      * configurations.
      */
     @GetMapping("/analyzers")
-    public ResponseEntity<List<Map<String, Object>>> getAnalyzers(@RequestParam(required = false) String status,
+    public ResponseEntity<Map<String, Object>> getAnalyzers(@RequestParam(required = false) String status,
             @RequestParam(required = false) String search) {
         try {
             List<Analyzer> analyzers = analyzerService.getAll();
-            List<Map<String, Object>> response = new ArrayList<>();
+            Set<String> loadedPlugins = getLoadedPluginClassNames();
+            List<Map<String, Object>> analyzerList = new ArrayList<>();
 
             for (Analyzer analyzer : analyzers) {
-                Map<String, Object> analyzerMap = analyzerToMap(analyzer);
+                Map<String, Object> analyzerMap = analyzerToMap(analyzer, loadedPlugins);
 
                 // Skip DELETED analyzers (soft-deleted with 90-day window)
                 String analyzerStatus = (String) analyzerMap.get("status");
@@ -113,18 +116,21 @@ public class AnalyzerRestController extends BaseRestController {
                     }
                 }
 
-                response.add(analyzerMap);
+                analyzerList.add(analyzerMap);
             }
 
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("analyzers", analyzerList);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error retrieving analyzers", e);
             Map<String, Object> error = new LinkedHashMap<>();
+            error.put("analyzers", new ArrayList<>());
             error.put("error", "Error retrieving analyzers");
             if (e.getMessage() != null && !e.getMessage().isEmpty()) {
                 error.put("message", e.getMessage());
             }
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of(error));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 
@@ -152,6 +158,12 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getPort() != null && (form.getPort() < 1 || form.getPort() > 65535)) {
                 validationErrors.add("Port must be between 1 and 65535");
             }
+            if (form.getProtocolVersion() != null && ProtocolVersion.fromValue(form.getProtocolVersion()) == null) {
+                String validValues = java.util.Arrays.stream(ProtocolVersion.values()).map(ProtocolVersion::name)
+                        .collect(Collectors.joining(", "));
+                validationErrors.add(
+                        "Invalid protocol version: " + form.getProtocolVersion() + ". Valid values: " + validValues);
+            }
             if (!validationErrors.isEmpty()) {
                 Map<String, Object> error = AnalyzerControllerHelper.wrapError(String.join("; ", validationErrors));
                 error.put("validationErrors", validationErrors);
@@ -172,7 +184,8 @@ public class AnalyzerRestController extends BaseRestController {
             analyzer.setType(form.getAnalyzerType());
             analyzer.setIpAddress(form.getIpAddress());
             analyzer.setPort(form.getPort());
-            analyzer.setProtocolVersion(form.getProtocolVersion() != null ? form.getProtocolVersion() : "LIS2-A2");
+            ProtocolVersion pv = ProtocolVersion.fromValue(form.getProtocolVersion());
+            analyzer.setProtocolVersion(pv != null ? pv : ProtocolVersion.ASTM_LIS2_A2);
             analyzer.setTestUnitIds(form.getTestUnitIds() != null ? form.getTestUnitIds() : new ArrayList<>());
             if (form.getIdentifierPattern() != null) {
                 analyzer.setIdentifierPattern(form.getIdentifierPattern());
@@ -204,7 +217,7 @@ public class AnalyzerRestController extends BaseRestController {
                 throw new LIMSRuntimeException("Failed to retrieve created analyzer");
             }
 
-            Map<String, Object> response = analyzerToMap(createdAnalyzer);
+            Map<String, Object> response = analyzerToMap(createdAnalyzer, getLoadedPluginClassNames());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (LIMSRuntimeException e) {
             logger.error("Error creating analyzer: {}", e.getMessage(), e);
@@ -230,33 +243,33 @@ public class AnalyzerRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
 
-            String protocol = analyzer.getProtocolVersion();
-
-            // Protocol-aware connection testing
+            // Transport-first routing: check config entities, then use message
+            // format for handshake selection. Transport (FILE, RS232, TCP) is
+            // orthogonal to message format (ASTM, HL7).
             Map<String, Object> response;
-            if (protocol != null && protocol.toUpperCase().startsWith("HL7")) {
-                response = testHl7Connection(analyzer);
-            } else if (protocol != null && (protocol.toUpperCase().startsWith("ASTM")
-                    || protocol.toUpperCase().contains("E1381") || protocol.toUpperCase().contains("LIS2"))) {
-                response = testAstmTcpConnection(analyzer);
-            } else if (protocol != null && protocol.toUpperCase().contains("FILE")) {
+            Integer analyzerIdInt = Integer.valueOf(id);
+            if (fileImportService.getByAnalyzerId(analyzerIdInt).isPresent()) {
                 response = testFileConfiguration(analyzer);
-            } else if (protocol != null && protocol.toUpperCase().contains("RS232")) {
+            } else if (serialPortService.getByAnalyzerId(analyzerIdInt).isPresent()) {
                 response = testSerialConfiguration(id);
-            } else {
-                // Fallback: try TCP connection if IP/port available
-                if (analyzer.getIpAddress() != null && analyzer.getPort() != null) {
-                    response = testTcpConnection(analyzer.getIpAddress(), analyzer.getPort());
+            } else if (analyzer.getIpAddress() != null && analyzer.getPort() != null) {
+                // Use message format to pick the right handshake
+                ProtocolVersion pv = analyzer.getProtocolVersion();
+                if (pv != null && pv.isHl7()) {
+                    response = testHl7Connection(analyzer);
                 } else {
-                    response = new LinkedHashMap<>();
-                    response.put("success", false);
-                    response.put("message", "Unknown protocol or missing connection details: " + protocol);
+                    response = testAstmTcpConnection(analyzer);
                 }
+            } else {
+                response = new LinkedHashMap<>();
+                response.put("success", false);
+                response.put("message", "No transport configured (missing IP/port, file import, or serial config)");
             }
 
             response.put("analyzerId", id);
             response.put("analyzerName", analyzer.getName());
-            response.put("protocol", protocol);
+            response.put("protocol",
+                    analyzer.getProtocolVersion() != null ? analyzer.getProtocolVersion().name() : null);
             if (analyzer.getIpAddress() != null) {
                 response.put("ipAddress", analyzer.getIpAddress());
             }
@@ -315,7 +328,7 @@ public class AnalyzerRestController extends BaseRestController {
                 error.put("error", "Analyzer not found: " + id);
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
-            Map<String, Object> response = analyzerToMap(analyzer);
+            Map<String, Object> response = analyzerToMap(analyzer, getLoadedPluginClassNames());
             return ResponseEntity.ok(response);
         } catch (org.hibernate.ObjectNotFoundException e) {
             // Hibernate may throw instead of returning null for missing IDs
@@ -375,7 +388,16 @@ public class AnalyzerRestController extends BaseRestController {
                 analyzer.setPort(form.getPort());
             }
             if (form.getProtocolVersion() != null) {
-                analyzer.setProtocolVersion(form.getProtocolVersion());
+                ProtocolVersion updatedPv = ProtocolVersion.fromValue(form.getProtocolVersion());
+                if (updatedPv == null) {
+                    String validValues = java.util.Arrays.stream(ProtocolVersion.values()).map(ProtocolVersion::name)
+                            .collect(Collectors.joining(", "));
+                    Map<String, Object> error = new LinkedHashMap<>();
+                    error.put("error", "Invalid protocol version: " + form.getProtocolVersion() + ". Valid values: "
+                            + validValues);
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                }
+                analyzer.setProtocolVersion(updatedPv);
             }
             if (form.getTestUnitIds() != null) {
                 analyzer.setTestUnitIds(form.getTestUnitIds());
@@ -404,7 +426,7 @@ public class AnalyzerRestController extends BaseRestController {
 
             // Retrieve updated analyzer
             Analyzer updatedAnalyzer = analyzerService.get(id);
-            Map<String, Object> response = analyzerToMap(updatedAnalyzer);
+            Map<String, Object> response = analyzerToMap(updatedAnalyzer, getLoadedPluginClassNames());
             return ResponseEntity.ok(response);
         } catch (LIMSRuntimeException e) {
             logger.error("Error updating analyzer: {}", e.getMessage(), e);
@@ -413,28 +435,6 @@ public class AnalyzerRestController extends BaseRestController {
             logger.error("Error updating analyzer", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
-        }
-    }
-
-    /**
-     * DELETE /rest/analyzer/analyzers/{id} Soft delete (deactivate) an analyzer.
-     */
-    @DeleteMapping("/analyzers/{id}")
-    public ResponseEntity<Void> softDeleteAnalyzer(@PathVariable String id) {
-        try {
-            Analyzer analyzer = analyzerService.get(id);
-            if (analyzer == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-
-            analyzer.setStatus(AnalyzerStatus.INACTIVE);
-            analyzer.setActive(false);
-            analyzerService.update(analyzer);
-
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            logger.error("Error deleting analyzer: {}", id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -501,7 +501,7 @@ public class AnalyzerRestController extends BaseRestController {
      * Convert Analyzer entity to Map for JSON response. Reads all configuration
      * fields directly from the Analyzer entity (2-table model).
      */
-    private Map<String, Object> analyzerToMap(Analyzer analyzer) {
+    private Map<String, Object> analyzerToMap(Analyzer analyzer, Set<String> loadedPlugins) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", analyzer.getId());
         map.put("name", analyzer.getName());
@@ -509,10 +509,11 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("description", analyzer.getDescription());
         map.put("location", analyzer.getLocation());
 
-        // Plugin loaded check
+        // Plugin loaded check — O(1) via pre-computed Set
         boolean pluginLoaded;
         if (analyzer.getAnalyzerType() != null) {
-            pluginLoaded = isPluginLoaded(analyzer.getAnalyzerType().getPluginClassName());
+            String className = analyzer.getAnalyzerType().getPluginClassName();
+            pluginLoaded = className != null && loadedPlugins.contains(className);
         } else {
             pluginLoaded = pluginAnalyzerService.getPluginByAnalyzerId(analyzer.getId()) != null;
         }
@@ -521,7 +522,7 @@ public class AnalyzerRestController extends BaseRestController {
         // Configuration fields (stored directly on Analyzer in 2-table model)
         map.put("ipAddress", analyzer.getIpAddress());
         map.put("port", analyzer.getPort());
-        map.put("protocolVersion", analyzer.getProtocolVersion());
+        map.put("protocolVersion", analyzer.getProtocolVersion() != null ? analyzer.getProtocolVersion().name() : null);
         map.put("testUnitIds", analyzer.getTestUnitIds());
         map.put("identifierPattern", analyzer.getIdentifierPattern());
 
@@ -544,18 +545,12 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * Check if a plugin JAR is currently loaded for the given class name.
+     * Precompute the set of loaded plugin class names for O(1) lookups. Same
+     * pattern as {@link AnalyzerTypeRestController#getLoadedPluginClassNames()}.
      */
-    private boolean isPluginLoaded(String pluginClassName) {
-        if (pluginClassName == null) {
-            return false;
-        }
-        for (AnalyzerImporterPlugin plugin : pluginAnalyzerService.getAnalyzerPlugins()) {
-            if (pluginClassName.equals(plugin.getClass().getName())) {
-                return true;
-            }
-        }
-        return false;
+    private Set<String> getLoadedPluginClassNames() {
+        return pluginAnalyzerService.getAnalyzerPlugins().stream().map(plugin -> plugin.getClass().getName())
+                .collect(Collectors.toSet());
     }
 
     /**
@@ -894,7 +889,8 @@ public class AnalyzerRestController extends BaseRestController {
      * </ul>
      */
     @GetMapping("/defaults/{protocol}/{name}")
-    public ResponseEntity<?> getDefaultConfig(@PathVariable String protocol, @PathVariable String name) {
+    public ResponseEntity<Map<String, Object>> getDefaultConfig(@PathVariable String protocol,
+            @PathVariable String name) {
         try {
             // Validate protocol (allowlist, case-insensitive)
             if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")) {

@@ -79,18 +79,20 @@ describe("CopyMappingsModal", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     analyzerService.getAnalyzers.mockImplementation((filters, callback) => {
-      callback([
-        {
-          id: "TARGET-001",
-          name: "Target Analyzer 1",
-          analyzerType: "CHEMISTRY",
-        },
-        {
-          id: "TARGET-002",
-          name: "Target Analyzer 2",
-          analyzerType: "HAEMATOLOGY",
-        },
-      ]);
+      callback({
+        analyzers: [
+          {
+            id: "TARGET-001",
+            name: "Target Analyzer 1",
+            analyzerType: "CHEMISTRY",
+          },
+          {
+            id: "TARGET-002",
+            name: "Target Analyzer 2",
+            analyzerType: "HAEMATOLOGY",
+          },
+        ],
+      });
     });
     analyzerService.getMappings.mockImplementation((analyzerId, callback) => {
       callback([

@@ -10,6 +10,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
+import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -57,7 +58,7 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
         testAnalyzer.setActive(false); // Start inactive
         testAnalyzer.setIpAddress("192.168.1.100");
         testAnalyzer.setPort(8080);
-        testAnalyzer.setProtocolVersion("ASTM LIS2-A2");
+        testAnalyzer.setProtocolVersion(ProtocolVersion.ASTM_LIS2_A2);
         testAnalyzer.setSysUserId("1");
         String analyzerId = analyzerService.insert(testAnalyzer);
         testAnalyzer.setId(analyzerId);

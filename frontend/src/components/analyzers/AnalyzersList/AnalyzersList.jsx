@@ -69,29 +69,22 @@ const AnalyzersList = () => {
   const loadAnalyzers = useCallback((searchFilters = {}) => {
     setLoading(true);
     getAnalyzers(searchFilters, (data) => {
-      if (Array.isArray(data)) {
-        setAnalyzers(data);
-        setFilteredAnalyzers(data);
+      const list = data && Array.isArray(data.analyzers) ? data.analyzers : [];
+      setAnalyzers(list);
+      setFilteredAnalyzers(list);
 
-        // Calculate statistics based on unified status
-        const activeCount = data.filter((a) => a.status === "ACTIVE").length;
-        const inactiveCount = data.filter(
-          (a) => a.status === "INACTIVE",
-        ).length;
-        const pluginWarningCount = data.filter(
-          (a) => a.pluginLoaded === false,
-        ).length;
-        setStats({
-          total: data.length,
-          active: activeCount,
-          inactive: inactiveCount,
-          pluginWarnings: pluginWarningCount,
-        });
-      } else {
-        setAnalyzers([]);
-        setFilteredAnalyzers([]);
-        setStats({ total: 0, active: 0, inactive: 0, pluginWarnings: 0 });
-      }
+      // Calculate statistics based on unified status
+      const activeCount = list.filter((a) => a.status === "ACTIVE").length;
+      const inactiveCount = list.filter((a) => a.status === "INACTIVE").length;
+      const pluginWarningCount = list.filter(
+        (a) => a.pluginLoaded === false,
+      ).length;
+      setStats({
+        total: list.length,
+        active: activeCount,
+        inactive: inactiveCount,
+        pluginWarnings: pluginWarningCount,
+      });
       setLoading(false);
     });
   }, []);

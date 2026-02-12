@@ -19,6 +19,11 @@ import {
   getAnalyzerTypes,
 } from "../../../services/analyzerService";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
+import {
+  PROTOCOL_VERSIONS,
+  PLUGIN_PROTOCOL_DEFAULTS,
+  DEFAULT_PROTOCOL_VERSION,
+} from "../constants";
 import "./AnalyzerForm.css";
 
 const AnalyzerForm = ({ analyzer, open, onClose }) => {
@@ -31,7 +36,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     pluginTypeId: "",
     ipAddress: "",
     port: "",
-    protocolVersion: "ASTM_E1394",
+    protocolVersion: DEFAULT_PROTOCOL_VERSION,
     testUnitIds: [],
     status: "SETUP",
     identifierPattern: "",
@@ -104,7 +109,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         pluginTypeId: analyzer.pluginTypeId || analyzer.analyzerTypeId || "",
         ipAddress: analyzer.ipAddress || "",
         port: analyzer.port ? String(analyzer.port) : "",
-        protocolVersion: analyzer.protocolVersion || "ASTM_E1394",
+        protocolVersion: analyzer.protocolVersion || DEFAULT_PROTOCOL_VERSION,
         testUnitIds: analyzer.testUnitIds || [],
         status: analyzer.status || "SETUP",
         identifierPattern: analyzer.identifierPattern || "",
@@ -116,7 +121,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         pluginTypeId: "",
         ipAddress: "",
         port: "",
-        protocolVersion: "ASTM_E1394",
+        protocolVersion: DEFAULT_PROTOCOL_VERSION,
         testUnitIds: [],
         status: "SETUP",
         identifierPattern: "",
@@ -248,9 +253,8 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
           name: configData.analyzer_name || prev.name,
           analyzerType: configData.category || prev.analyzerType,
           protocolVersion:
-            protocol === "hl7"
-              ? `HL7 v${configData.protocol_version || "2.3.1"}`
-              : configData.protocol_version || prev.protocolVersion,
+            PLUGIN_PROTOCOL_DEFAULTS[protocol.toUpperCase()] ||
+            prev.protocolVersion,
           port: configData.default_port
             ? String(configData.default_port)
             : prev.port,
@@ -448,14 +452,9 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
                 handleFieldChange("pluginTypeId", selectedItem?.id || "");
                 // Auto-set protocol version based on plugin type
                 if (selectedItem?.protocol) {
-                  const protocolMap = {
-                    ASTM: "ASTM_E1394",
-                    HL7: "HL7_v2.3.1",
-                    FILE: "FILE_IMPORT",
-                  };
                   handleFieldChange(
                     "protocolVersion",
-                    protocolMap[selectedItem.protocol] ||
+                    PLUGIN_PROTOCOL_DEFAULTS[selectedItem.protocol] ||
                       formData.protocolVersion,
                   );
                 }
@@ -516,6 +515,27 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
                 })}
               />
             )}
+
+            <Dropdown
+              id="analyzer-protocol-version"
+              data-testid="analyzer-form-protocol-version-dropdown"
+              titleText={intl.formatMessage({
+                id: "analyzer.form.protocolVersion",
+                defaultMessage: "Message Protocol",
+              })}
+              items={PROTOCOL_VERSIONS}
+              selectedItem={
+                PROTOCOL_VERSIONS.find(
+                  (opt) => opt.value === formData.protocolVersion,
+                ) || PROTOCOL_VERSIONS[0]
+              }
+              itemToString={(item) => (item ? item.label : "")}
+              onChange={({ selectedItem }) => {
+                if (selectedItem) {
+                  handleFieldChange("protocolVersion", selectedItem.value);
+                }
+              }}
+            />
 
             <div
               className="connection-fields"

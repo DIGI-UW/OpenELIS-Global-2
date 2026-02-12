@@ -55,10 +55,12 @@ describe("FileImportConfiguration", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     getAnalyzers.mockImplementation((filters, callback) => {
-      callback([
-        { id: "1", name: "Test Analyzer 1" },
-        { id: "2", name: "Test Analyzer 2" },
-      ]);
+      callback({
+        analyzers: [
+          { id: "1", name: "Test Analyzer 1" },
+          { id: "2", name: "Test Analyzer 2" },
+        ],
+      });
     });
   });
 
