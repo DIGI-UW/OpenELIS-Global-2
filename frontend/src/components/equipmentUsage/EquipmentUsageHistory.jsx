@@ -61,8 +61,13 @@ const EquipmentUsageHistory = () => {
 
       try {
         // Fetch all usage records from inventory
-        CartridgeUsageAPI.getUsageHistory(null, (data) => {
-          if (data && Array.isArray(data)) {
+        CartridgeUsageAPI.getUsageHistory(null, (data, error) => {
+          if (error) {
+            setError(
+              intl.formatMessage({ id: "equipment.usage.error.loadFailed" }),
+            );
+            setLoading(false);
+          } else if (data && Array.isArray(data)) {
             // Filter by date range if specified
             let filtered = data;
 
@@ -84,15 +89,15 @@ const EquipmentUsageHistory = () => {
             }
 
             setUsageRecords(filtered);
+            setLoading(false);
           } else {
             setError(
               intl.formatMessage({ id: "equipment.usage.error.loadFailed" }),
             );
+            setLoading(false);
           }
-          setLoading(false);
         });
       } catch (error) {
-        console.error("Error fetching usage history:", error);
         setError(
           intl.formatMessage({ id: "equipment.usage.error.loadFailed" }),
         );

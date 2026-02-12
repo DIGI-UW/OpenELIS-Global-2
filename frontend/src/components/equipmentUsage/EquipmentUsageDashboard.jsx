@@ -75,32 +75,29 @@ const EquipmentUsageDashboard = ({ initialSubmission }) => {
         CartridgeUsageAPI.getEquipmentUsageMetrics(
           null,
           null,
-          (data) => {
-            if (isMounted && data && typeof data === "object") {
+          (data, error) => {
+            if (error) {
+              if (isMounted) {
+                notify({
+                  kind: NotificationKinds.error,
+                  title: intl.formatMessage({ id: "notification.error" }),
+                  message: intl.formatMessage({
+                    id: "equipment.usage.error.loadMetricsFailed",
+                    defaultMessage: "Failed to load metrics",
+                  }),
+                });
+                setLoadingMetrics(false);
+              }
+            } else if (isMounted && data && typeof data === "object") {
               setMetrics(data);
-            }
-            if (isMounted) {
               setLoadingMetrics(false);
-            }
-          },
-          (error) => {
-            console.error("Error loading metrics:", error);
-            if (isMounted) {
-              notify({
-                kind: NotificationKinds.error,
-                title: intl.formatMessage({ id: "notification.error" }),
-                message: intl.formatMessage({
-                  id: "equipment.usage.error.loadMetricsFailed",
-                  defaultMessage: "Failed to load metrics",
-                }),
-              });
+            } else if (isMounted) {
               setLoadingMetrics(false);
             }
           },
           controller.signal,
         );
       } catch (error) {
-        console.error("Error fetching metrics:", error);
         if (isMounted) {
           setLoadingMetrics(false);
         }
@@ -113,24 +110,21 @@ const EquipmentUsageDashboard = ({ initialSubmission }) => {
         CartridgeUsageAPI.getEquipmentUsageSubmissions(
           null,
           null,
-          (data) => {
-            if (isMounted && Array.isArray(data)) {
+          (data, error) => {
+            if (error) {
+              if (isMounted) {
+                setLoadingSubmissions(false);
+              }
+            } else if (isMounted && Array.isArray(data)) {
               setSubmissionRows(data);
-            }
-            if (isMounted) {
               setLoadingSubmissions(false);
-            }
-          },
-          (error) => {
-            console.error("Error loading submissions:", error);
-            if (isMounted) {
+            } else if (isMounted) {
               setLoadingSubmissions(false);
             }
           },
           controller.signal,
         );
       } catch (error) {
-        console.error("Error fetching submissions:", error);
         if (isMounted) {
           setLoadingSubmissions(false);
         }
@@ -155,29 +149,23 @@ const EquipmentUsageDashboard = ({ initialSubmission }) => {
     CartridgeUsageAPI.getEquipmentUsageSubmissions(
       null,
       null,
-      (data) => {
-        if (Array.isArray(data)) {
+      (data, error) => {
+        if (error) {
+          // Silent refresh - don't show error notification for background updates
+        } else if (Array.isArray(data)) {
           setSubmissionRows(data);
         }
-      },
-      (error) => {
-        console.error("Error fetching updated submissions:", error);
       },
     );
 
     // Refresh metrics to include the new submission
-    CartridgeUsageAPI.getEquipmentUsageMetrics(
-      null,
-      null,
-      (data) => {
-        if (data && typeof data === "object") {
-          setMetrics(data);
-        }
-      },
-      (error) => {
-        console.error("Error refreshing metrics:", error);
-      },
-    );
+    CartridgeUsageAPI.getEquipmentUsageMetrics(null, null, (data, error) => {
+      if (error) {
+        // Silent refresh - don't show error notification for background updates
+      } else if (data && typeof data === "object") {
+        setMetrics(data);
+      }
+    });
   }, []);
 
   // Handle print

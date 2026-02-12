@@ -27,11 +27,16 @@ export const CartridgeUsageAPI = {
    * Get all active cartridge items from inventory
    * Filters InventoryItems to only CARTRIDGE type
    */
-  getCartridges: (callback, errorCallback = null, signal = null) => {
+  getCartridges: (callback, signal = null) => {
     getFromOpenElisServer(
       "/rest/inventory/items/type/CARTRIDGE",
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -40,11 +45,16 @@ export const CartridgeUsageAPI = {
    * Get all cartridges (both active and inactive)
    * Useful for admin views or full inventory status
    */
-  getAllCartridges: (callback, errorCallback = null, signal = null) => {
+  getAllCartridges: (callback, signal = null) => {
     getFromOpenElisServer(
       "/rest/inventory/items/all?itemType=CARTRIDGE",
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -53,11 +63,16 @@ export const CartridgeUsageAPI = {
    * Get a single cartridge item by ID
    * @param {number} itemId - The inventory item ID
    */
-  getCartridgeById: (itemId, callback, errorCallback = null, signal = null) => {
+  getCartridgeById: (itemId, callback, signal = null) => {
     getFromOpenElisServer(
       `/rest/inventory/items/${itemId}`,
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -66,11 +81,16 @@ export const CartridgeUsageAPI = {
    * Get total stock level for a cartridge item
    * @param {number} itemId - The inventory item ID
    */
-  getStockLevel: (itemId, callback, errorCallback = null, signal = null) => {
+  getStockLevel: (itemId, callback, signal = null) => {
     getFromOpenElisServer(
       `/rest/inventory/items/${itemId}/stock`,
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -81,11 +101,16 @@ export const CartridgeUsageAPI = {
    * Sorts by earliest expiration date first
    * @param {number} itemId - The cartridge item ID
    */
-  getAvailableLots: (itemId, callback, errorCallback = null, signal = null) => {
+  getAvailableLots: (itemId, callback, signal = null) => {
     getFromOpenElisServer(
       `/rest/inventory/lots/item/${itemId}/available`,
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -94,11 +119,16 @@ export const CartridgeUsageAPI = {
    * Get all lots for a cartridge (regardless of status/availability)
    * @param {number} itemId - The cartridge item ID
    */
-  getAllLots: (itemId, callback, errorCallback = null, signal = null) => {
+  getAllLots: (itemId, callback, signal = null) => {
     getFromOpenElisServer(
       `/rest/inventory/lots/item/${itemId}`,
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -107,11 +137,16 @@ export const CartridgeUsageAPI = {
    * Get total quantity available for a cartridge item
    * @param {number} itemId - The inventory item ID
    */
-  getTotalQuantity: (itemId, callback, errorCallback = null, signal = null) => {
+  getTotalQuantity: (itemId, callback, signal = null) => {
     getFromOpenElisServer(
       `/rest/inventory/lots/item/${itemId}/total-quantity`,
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -141,11 +176,16 @@ export const CartridgeUsageAPI = {
    * Get usage history for a specific cartridge item
    * @param {number} itemId - The cartridge item ID
    */
-  getUsageHistory: (itemId, callback, errorCallback = null, signal = null) => {
+  getUsageHistory: (itemId, callback, signal = null) => {
     getFromOpenElisServer(
       `/rest/inventory/usage/item/${itemId}`,
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -154,16 +194,16 @@ export const CartridgeUsageAPI = {
    * Get usage records linked to a specific test result
    * @param {string|number} testResultId - The test result ID
    */
-  getUsageByTestResult: (
-    testResultId,
-    callback,
-    errorCallback = null,
-    signal = null,
-  ) => {
+  getUsageByTestResult: (testResultId, callback, signal = null) => {
     getFromOpenElisServer(
       `/rest/inventory/usage/test-result/${testResultId}`,
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -172,16 +212,16 @@ export const CartridgeUsageAPI = {
    * Get usage records linked to a specific analysis
    * @param {string|number} analysisId - The analysis ID
    */
-  getUsageByAnalysis: (
-    analysisId,
-    callback,
-    errorCallback = null,
-    signal = null,
-  ) => {
+  getUsageByAnalysis: (analysisId, callback, signal = null) => {
     getFromOpenElisServer(
       `/rest/inventory/usage/analysis/${analysisId}`,
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -191,16 +231,16 @@ export const CartridgeUsageAPI = {
    * Provides complete audit trail of lot modifications
    * @param {number} lotId - The inventory lot ID
    */
-  getLotTransactionHistory: (
-    lotId,
-    callback,
-    errorCallback = null,
-    signal = null,
-  ) => {
+  getLotTransactionHistory: (lotId, callback, signal = null) => {
     getFromOpenElisServer(
       `/rest/inventory/transactions/lot/${lotId}`,
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -210,17 +250,16 @@ export const CartridgeUsageAPI = {
    * @param {number} itemId - The cartridge item ID
    * @param {number} quantity - Requested quantity
    */
-  checkAvailability: (
-    itemId,
-    quantity,
-    callback,
-    errorCallback = null,
-    signal = null,
-  ) => {
+  checkAvailability: (itemId, quantity, callback, signal = null) => {
     getFromOpenElisServer(
       `/rest/inventory/management/check-availability?itemId=${itemId}&quantity=${quantity}`,
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -229,16 +268,16 @@ export const CartridgeUsageAPI = {
    * Get inventory alerts (low stock, expiring, expired)
    * @param {number} expirationWarningDays - Days before expiration to warn (optional, default 30)
    */
-  getAlerts: (
-    callback,
-    errorCallback = null,
-    signal = null,
-    expirationWarningDays = 30,
-  ) => {
+  getAlerts: (callback, signal = null, expirationWarningDays = 30) => {
     getFromOpenElisServer(
       `/rest/inventory/management/alerts?expirationWarningDays=${expirationWarningDays}`,
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -247,11 +286,16 @@ export const CartridgeUsageAPI = {
    * Get low stock items (cartridges only)
    * Useful for inventory monitoring dashboard
    */
-  getLowStockItems: (callback, errorCallback = null, signal = null) => {
+  getLowStockItems: (callback, signal = null) => {
     getFromOpenElisServer(
       "/rest/inventory/items/low-stock",
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -260,16 +304,16 @@ export const CartridgeUsageAPI = {
    * Get lots expiring within a specified timeframe
    * @param {number} daysBeforeExpiration - Number of days from today (default 30)
    */
-  getExpiringLots: (
-    callback,
-    errorCallback = null,
-    signal = null,
-    daysBeforeExpiration = 30,
-  ) => {
+  getExpiringLots: (callback, signal = null, daysBeforeExpiration = 30) => {
     getFromOpenElisServer(
       `/rest/inventory/lots/expiring?days=${daysBeforeExpiration}`,
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -278,11 +322,16 @@ export const CartridgeUsageAPI = {
    * Get expired lots that are still active
    * Should be disposed/quarantined
    */
-  getExpiredLots: (callback, errorCallback = null, signal = null) => {
+  getExpiredLots: (callback, signal = null) => {
     getFromOpenElisServer(
       "/rest/inventory/lots/expired",
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -291,11 +340,16 @@ export const CartridgeUsageAPI = {
    * Get a specific lot by ID
    * @param {number} lotId - The inventory lot ID
    */
-  getLotById: (lotId, callback, errorCallback = null, signal = null) => {
+  getLotById: (lotId, callback, signal = null) => {
     getFromOpenElisServer(
       `/rest/inventory/lots/${lotId}`,
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -304,16 +358,16 @@ export const CartridgeUsageAPI = {
    * Get a lot by lot number
    * @param {string} lotNumber - The lot number/identifier
    */
-  getLotByNumber: (
-    lotNumber,
-    callback,
-    errorCallback = null,
-    signal = null,
-  ) => {
+  getLotByNumber: (lotNumber, callback, signal = null) => {
     getFromOpenElisServer(
       `/rest/inventory/lots/lot-number/${lotNumber}`,
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -321,13 +375,18 @@ export const CartridgeUsageAPI = {
   /**
    * Get all items of CARTRIDGE type with available lots (enhanced DTO)
    * Similar to getCartridges but with aggregated lot data
-   * Uses reagent controller endpoint that aggregates cartridge items with lot information
+   * Uses InventoryReagentRestController.getInstruments() endpoint
    */
-  getCartridgesWithLots: (callback, errorCallback = null, signal = null) => {
+  getCartridgesWithLots: (callback, signal = null) => {
     getFromOpenElisServer(
-      "/rest/inventory/reagents/instruments",
-      callback,
-      errorCallback,
+      "/rest/inventory/instruments",
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -363,14 +422,23 @@ export const CartridgeUsageAPI = {
     startDate = null,
     endDate = null,
     callback,
-    errorCallback = null,
     signal = null,
   ) => {
     let url = `/rest/equipment/usage/item/${itemId}`;
     if (startDate && endDate) {
       url += `?startDate=${startDate}&endDate=${endDate}`;
     }
-    getFromOpenElisServer(url, callback, errorCallback, signal);
+    getFromOpenElisServer(
+      url,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
+      signal,
+    );
   },
 
   /**
@@ -383,30 +451,39 @@ export const CartridgeUsageAPI = {
     startDate = null,
     endDate = null,
     callback,
-    errorCallback = null,
     signal = null,
   ) => {
     let url = "/rest/equipment/usage/metrics";
     if (startDate && endDate) {
       url += `?startDate=${startDate}&endDate=${endDate}`;
     }
-    getFromOpenElisServer(url, callback, errorCallback, signal);
+    getFromOpenElisServer(
+      url,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
+      signal,
+    );
   },
 
   /**
    * Get usage records for a specific lab/department
    * @param {string} labUnitId - The lab unit ID
    */
-  getUsageByLabUnit: (
-    labUnitId,
-    callback,
-    errorCallback = null,
-    signal = null,
-  ) => {
+  getUsageByLabUnit: (labUnitId, callback, signal = null) => {
     getFromOpenElisServer(
       `/rest/equipment/usage/lab/${labUnitId}`,
-      callback,
-      errorCallback,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
       signal,
     );
   },
@@ -450,14 +527,23 @@ export const CartridgeUsageAPI = {
     startDate = null,
     endDate = null,
     callback,
-    errorCallback = null,
     signal = null,
   ) => {
     let url = "/rest/equipment/usage/submissions";
     if (startDate && endDate) {
       url += `?startDate=${startDate}&endDate=${endDate}`;
     }
-    getFromOpenElisServer(url, callback, errorCallback, signal);
+    getFromOpenElisServer(
+      url,
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
+      signal,
+    );
   },
 };
 
