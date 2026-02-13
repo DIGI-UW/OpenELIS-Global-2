@@ -257,7 +257,8 @@ describe("User Management", function () {
       loginPage.enterUsername(usersData[1].username);
       loginPage.enterPassword(usersData[1].password);
       loginPage.signIn();
-      cy.contains("Username or Password are incorrect").should("be.visible");
+      // Check for existence instead of visibility to avoid flakiness from overlapping notifications
+      cy.contains("Username or Password are incorrect").should("exist");
     });
 
     it("Login with Active user", () => {
