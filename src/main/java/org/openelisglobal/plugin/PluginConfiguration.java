@@ -177,7 +177,7 @@ public class PluginConfiguration implements BeanFactoryAware {
                 try {
                     controller.afterPropertiesSet();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogEvent.logError(e);
                 }
             }
 

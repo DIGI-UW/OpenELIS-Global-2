@@ -78,7 +78,6 @@ public class FreezerReportController {
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "generateReport",
                     "Error in report generation: " + e.getClass().getName() + " - " + e.getMessage());
-            e.printStackTrace();
             if (!response.isCommitted()) {
                 try {
                     response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,

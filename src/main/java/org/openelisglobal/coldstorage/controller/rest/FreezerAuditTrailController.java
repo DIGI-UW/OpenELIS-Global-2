@@ -18,6 +18,7 @@ import org.openelisglobal.coldstorage.service.CorrectiveActionService;
 import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.valueholder.CorrectiveAction;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
@@ -208,7 +209,7 @@ public class FreezerAuditTrailController extends BaseRestController {
             auditEvents.sort(Comparator.comparing((Map<String, Object> e) -> (String) e.get("performedAt")).reversed());
 
         } catch (Exception e) {
-            e.printStackTrace();
+            LogEvent.logError(e);
             return ResponseEntity.badRequest().build();
         }
 
@@ -249,7 +250,7 @@ public class FreezerAuditTrailController extends BaseRestController {
 
             return event;
         } catch (Exception e) {
-            e.printStackTrace();
+            LogEvent.logError(e);
             return null;
         }
     }
@@ -271,7 +272,7 @@ public class FreezerAuditTrailController extends BaseRestController {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LogEvent.logError(e);
         }
         return changes;
     }

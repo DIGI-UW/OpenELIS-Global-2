@@ -101,7 +101,7 @@ public class FreezerReportServiceImpl implements FreezerReportService {
         } catch (JRException | java.io.IOException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "generatePdfReport",
                     "Error generating report: " + e.getMessage());
-            e.printStackTrace();
+            LogEvent.logError(e);
             throw new RuntimeException("Failed to generate PDF report", e);
         }
     }

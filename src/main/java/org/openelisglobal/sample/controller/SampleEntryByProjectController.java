@@ -302,7 +302,7 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LogEvent.logError(e);
         }
     }
 
@@ -747,7 +747,6 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
             LogEvent.logError(e);
         }
     }
