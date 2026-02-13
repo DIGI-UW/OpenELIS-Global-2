@@ -5,13 +5,20 @@ import { confirmAlert } from "react-confirm-alert";
 import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
 import StorageDashboard from "./components/storage/StorageDashboard";
-import InventoryManagement from "./components/inventory/InventoryManagement";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
+import AnalyzersPage from "./pages/AnalyzersPage";
+import FieldMapping from "./components/analyzers/FieldMapping/FieldMapping";
+import ErrorDashboardPage from "./pages/ErrorDashboardPage";
+import CustomFieldTypeManagementPage from "./pages/CustomFieldTypeManagementPage";
+import QCDashboardPlaceholder from "./pages/analyzers/QCDashboardPlaceholder";
+import QCAlertsPlaceholder from "./pages/analyzers/QCAlertsPlaceholder";
+import CorrectiveActionsPlaceholder from "./pages/analyzers/CorrectiveActionsPlaceholder";
 import { Admin } from "./components";
 import ResultSearch from "./components/resultPage/ResultSearch";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { getFromOpenElisServer } from "./components/utils/Utils";
+import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import "./App.css";
 import { languages } from "./languages";
 import config from "./config.json";
@@ -56,6 +63,7 @@ import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitori
 import ProgramDashboard from "./components/program/programDashboard.jsx";
 import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
+import InventoryManagement from "./components/inventory/InventoryManagement";
 
 export default function App() {
   const defaultLocale =
@@ -72,6 +80,21 @@ export default function App() {
 
   useEffect(() => {
     getUserSessionDetails();
+  }, []);
+
+  // Load and apply site branding (colors, favicon)
+  useEffect(() => {
+    loadAndApplyBranding();
+
+    // Listen for branding updates from admin UI
+    const handleBrandingUpdate = () => {
+      loadAndApplyBranding();
+    };
+    window.addEventListener("branding-updated", handleBrandingUpdate);
+
+    return () => {
+      window.removeEventListener("branding-updated", handleBrandingUpdate);
+    };
   }, []);
 
   const getUserSessionDetails = async () => {
@@ -141,18 +164,19 @@ export default function App() {
       })
         .then((response) => response.text())
         .then((html) => {
-          const POPUP_HEIGHT = 700;
-          const POPUP_WIDTH = 600;
-          const top =
-            window.outerHeight / 2 + window.screenY - POPUP_HEIGHT / 2;
-          const left = window.outerWidth / 2 + window.screenX - POPUP_WIDTH / 2;
-          const newWindow = window.open(
-            "",
-            "SAML Popup",
-            `height=${POPUP_HEIGHT},width=${POPUP_WIDTH},top=${top},left=${left}`,
-          );
-          newWindow.document.write(html);
-          newWindow.document.close();
+          // Use a hidden iframe instead of a popup to process SAML SLO silently
+          const iframe = document.createElement("iframe");
+          iframe.style.display = "none";
+          iframe.name = "saml-logout-frame";
+          document.body.appendChild(iframe);
+          iframe.contentDocument.write(html);
+          iframe.contentDocument.close();
+          // Remove the iframe after a short delay to allow the logout request to complete
+          setTimeout(() => {
+            if (iframe.parentNode) {
+              iframe.parentNode.removeChild(iframe);
+            }
+          }, 5000);
           getUserSessionDetails();
           window.location.href = config.loginRedirect;
         })
@@ -254,36 +278,6 @@ export default function App() {
                   role=""
                 />
                 <SecureRoute
-                  path="/GenericSample/Order"
-                  exact
-                  component={() => {
-                    const GenericSampleOrder =
-                      require("./components/genericSample/GenericSampleOrder").default;
-                    return <GenericSampleOrder />;
-                  }}
-                  role=""
-                />
-                <SecureRoute
-                  path="/GenericSample/Edit"
-                  exact
-                  component={() => {
-                    const GenericSampleOrderEdit =
-                      require("./components/genericSample/GenericSampleOrderEdit").default;
-                    return <GenericSampleOrderEdit />;
-                  }}
-                  role=""
-                />
-                <SecureRoute
-                  path="/GenericSample/Import"
-                  exact
-                  component={() => {
-                    const GenericSampleOrderImport =
-                      require("./components/genericSample/GenericSampleOrderImport").default;
-                    return <GenericSampleOrderImport />;
-                  }}
-                  role=""
-                />
-                <SecureRoute
                   path="/Dashboard"
                   exact
                   component={() => <Home />}
@@ -347,12 +341,6 @@ export default function App() {
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute
-                  path="/FreezerMonitoring"
-                  exact
-                  component={() => <FreezerMonitoringDashboard />}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
                   path="/NoteBookDashboard"
                   exact
                   component={() => <NoteBookDashBoard />}
@@ -400,6 +388,42 @@ export default function App() {
                   component={() => <CytologyCaseView />}
                   role=""
                   labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path="/GenericSample/Order"
+                  exact
+                  component={() => {
+                    const GenericSampleOrder =
+                      require("./components/genericSample/GenericSampleOrder").default;
+                    return <GenericSampleOrder />;
+                  }}
+                  role=""
+                />
+                <SecureRoute
+                  path="/GenericSample/Edit"
+                  exact
+                  component={() => {
+                    const GenericSampleOrderEdit =
+                      require("./components/genericSample/GenericSampleOrderEdit").default;
+                    return <GenericSampleOrderEdit />;
+                  }}
+                  role=""
+                />
+                <SecureRoute
+                  path="/GenericSample/Import"
+                  exact
+                  component={() => {
+                    const GenericSampleOrderImport =
+                      require("./components/genericSample/GenericSampleOrderImport").default;
+                    return <GenericSampleOrderImport />;
+                  }}
+                  role=""
+                />
+                <SecureRoute
+                  path="/FreezerMonitoring"
+                  exact
+                  component={() => <FreezerMonitoringDashboard />}
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/SamplePatientEntry"
@@ -494,14 +518,46 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
-                  path="/GenericSample/Results"
+                  path="/analyzers"
                   exact
-                  component={() => {
-                    const GenericSampleResults =
-                      require("./components/genericSample/GenericSampleResults").default;
-                    return <GenericSampleResults />;
-                  }}
-                  role={[Roles.RESULTS]}
+                  component={() => <AnalyzersPage />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/:id/mappings"
+                  exact
+                  component={FieldMapping}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/errors"
+                  exact
+                  component={() => <ErrorDashboardPage />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/custom-field-types"
+                  exact
+                  component={() => <CustomFieldTypeManagementPage />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/qc"
+                  exact
+                  component={() => <QCDashboardPlaceholder />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/alerts"
+                  exact
+                  component={() => <QCAlertsPlaceholder />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/corrective-actions"
+                  exact
+                  component={() => <CorrectiveActionsPlaceholder />}
+                  role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute
                   path="/PatientHistory"
@@ -514,6 +570,16 @@ export default function App() {
                   exact
                   component={() => <PatientMerge />}
                   role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/GenericSample/Results"
+                  exact
+                  component={() => {
+                    const GenericSampleResults =
+                      require("./components/genericSample/GenericSampleResults").default;
+                    return <GenericSampleResults />;
+                  }}
+                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/Aliquot"
