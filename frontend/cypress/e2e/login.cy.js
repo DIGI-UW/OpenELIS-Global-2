@@ -22,27 +22,27 @@ describe("Login Test Cases", function () {
 
     login.signIn();
     // Wait for and verify the error notification appears
-    cy.get('.cds--toast-notification', { timeout: 10000 })
-      .should('exist')
-      .and('contain', 'Username or Password are incorrect');
+    cy.get(".cds--toast-notification", { timeout: 10000 })
+      .should("exist")
+      .and("contain", "Username or Password are incorrect");
   });
 
   it("Fails to login with only username", function () {
     login.enterUsername(usersData[3].username);
     login.signIn();
     // Wait for and verify the error notification appears
-    cy.get('.cds--toast-notification', { timeout: 10000 })
-      .should('exist')
-      .and('contain', 'Username or Password are incorrect');
+    cy.get(".cds--toast-notification", { timeout: 10000 })
+      .should("exist")
+      .and("contain", "Username or Password are incorrect");
   });
 
   it("Fails to login with only password", function () {
     login.enterPassword(usersData[3].password);
     login.signIn();
     // Wait for and verify the error notification appears
-    cy.get('.cds--toast-notification', { timeout: 10000 })
-      .should('exist')
-      .and('contain', 'Username or Password are incorrect');
+    cy.get(".cds--toast-notification", { timeout: 10000 })
+      .should("exist")
+      .and("contain", "Username or Password are incorrect");
   });
 
   it("User changes from default credentials", function () {
@@ -53,9 +53,9 @@ describe("Login Test Cases", function () {
     login.repeatNewPassword(usersData[4].password);
     login.submitNewPassword();
     // Wait for and verify the success notification appears
-    cy.get('.cds--toast-notification', { timeout: 10000 })
-      .should('exist')
-      .and('contain', 'Password changed successfully');
+    cy.get(".cds--toast-notification", { timeout: 10000 })
+      .should("exist")
+      .and("contain", "Password changed successfully");
   });
 
   it("Logs in with correct credentials", function () {
@@ -73,9 +73,9 @@ describe("Login Test Cases", function () {
     login.repeatNewPassword(usersData[3].password);
     login.submitNewPassword();
     // Wait for and verify the success notification appears
-    cy.get('.cds--toast-notification', { timeout: 10000 })
-      .should('exist')
-      .and('contain', 'Password changed successfully');
+    cy.get(".cds--toast-notification", { timeout: 10000 })
+      .should("exist")
+      .and("contain", "Password changed successfully");
   });
 
   it("User exits password reset", function () {
