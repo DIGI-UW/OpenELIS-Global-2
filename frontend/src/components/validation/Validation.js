@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
+import { sanitizeHTML } from "../../utils/sanitize";
 import { Field, Formik } from "formik";
 import {
   Button,
@@ -300,7 +301,9 @@ const Validation = (props) => {
           <>
             <div
               className="note"
-              dangerouslySetInnerHTML={{ __html: row.pastNotes }}
+              dangerouslySetInnerHTML={{
+                __html: sanitizeHTML(row.pastNotes),
+              }}
             />
           </>
         );

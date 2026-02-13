@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState, useRef } from "react";
+import { sanitizeHTML } from "../../utils/sanitize";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "../Style.css";
 import {
@@ -1137,7 +1138,9 @@ export function SearchResults(props) {
               ></TextArea>
               <div
                 className="note"
-                dangerouslySetInnerHTML={{ __html: row.pastNotes }}
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeHTML(row.pastNotes),
+                }}
               />
             </div>
           </>
