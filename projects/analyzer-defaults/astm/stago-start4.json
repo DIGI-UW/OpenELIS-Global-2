@@ -1,0 +1,45 @@
+{
+  "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "analyzer_name": "Stago STart 4",
+  "manufacturer": "Stago",
+  "category": "COAGULATION",
+  "protocol": { "name": "ASTM", "version": "LIS2-A2" },
+  "identifier_pattern": "STAGO.*START.*4|START4",
+  "transport": ["RS-232"],
+  "transport_config": {
+    "RS-232": { "default_baud_rate": 9600 }
+  },
+  "default_test_mappings": [
+    {
+      "analyzer_code": "PT",
+      "test_name_hint": "Prothrombin Time",
+      "loinc": "5902-2",
+      "unit": "s"
+    },
+    {
+      "analyzer_code": "INR",
+      "test_name_hint": "INR",
+      "loinc": "6301-6",
+      "unit": ""
+    },
+    {
+      "analyzer_code": "APTT",
+      "test_name_hint": "Activated Partial Thromboplastin Time",
+      "loinc": "3173-2",
+      "unit": "s"
+    },
+    {
+      "analyzer_code": "FIB",
+      "test_name_hint": "Fibrinogen",
+      "loinc": "3255-7",
+      "unit": "mg/dL"
+    },
+    {
+      "analyzer_code": "DDIMER",
+      "test_name_hint": "D-Dimer",
+      "loinc": "48065-7",
+      "unit": "mg/L FEU"
+    }
+  ],
+  "notes": "Older semi-automatic analyzer. Protocol details unclear from public sources. Per vendor spec, supports both ASTM and HL7, but RS232/ASTM mode prioritized. 5 coagulation fields. VERIFY protocol capabilities with deployment team."
+}

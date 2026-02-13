@@ -1,0 +1,83 @@
+/**
+ * TwoModeLayout Styles
+ *
+ * CSS for the two-mode sidenav layout component that:
+ * - Pushes content when sidenav is expanded (not overlay)
+ * - Uses Carbon Design System transition timing
+ * - Supports responsive behavior at Carbon lg breakpoint (1056px)
+ *
+ * @see spec.md FR-003: CSS transitions (110ms cubic-bezier timing)
+ * @see spec.md FR-007: Content pushing (not overlay) with isFixedNav
+ * @see research.md Appendix A2: CSS Styles for Content Pushing
+ */
+
+/* Wrapper variants driven by nav mode */
+.content-locked {
+  margin-left: 16rem;
+  width: calc(100% - 16rem);
+  transition:
+    margin-left 0.11s cubic-bezier(0.2, 0, 1, 0.9),
+    width 0.11s cubic-bezier(0.2, 0, 1, 0.9);
+}
+
+.content-rail {
+  margin-left: 3rem;
+  width: calc(100% - 3rem);
+  transition:
+    margin-left 0.11s cubic-bezier(0.2, 0, 1, 0.9),
+    width 0.11s cubic-bezier(0.2, 0, 1, 0.9);
+}
+
+.content-overlay {
+  margin-left: 0;
+  width: 100%;
+  transition:
+    margin-left 0.11s cubic-bezier(0.2, 0, 1, 0.9),
+    width 0.11s cubic-bezier(0.2, 0, 1, 0.9);
+}
+
+/* Ensure Carbon Content inside wrapper is full width */
+.content-locked .cds--content,
+.content-rail .cds--content,
+.content-overlay .cds--content {
+  margin-left: 0;
+  width: 100%;
+}
+
+/**
+ * Responsive adjustments - below Carbon lg breakpoint (1056px)
+ *
+ * On smaller screens:
+ * - Sidenav overlays content rather than pushing it
+ * - Content takes full width regardless of sidenav state
+ *
+ * @see spec.md US6: Responsive Behavior on Mobile (P3)
+ * @see research.md R6: Responsive Behavior
+ *
+ * Note: This responsive behavior will be fully implemented in M3.
+ */
+@media (max-width: 1056px) {
+  .content-locked,
+  .content-rail,
+  .content-overlay {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+/* Active/hover styling aligned with develop (left border indicator) */
+.cds--side-nav__item--active > .cds--side-nav__link,
+.cds--side-nav__link[aria-current="page"] {
+  border-left: 4px solid var(--cds-link-primary);
+  background-color: var(--cds-layer-selected-01);
+}
+
+.cds--side-nav__link:hover {
+  background-color: var(--cds-layer-hover-01);
+  border-left: 4px solid var(--cds-link-primary);
+}
+
+/* Suppress competing default indicator */
+.cds--side-nav__link[aria-current="page"]::before {
+  display: none;
+}
