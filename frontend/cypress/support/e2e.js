@@ -16,6 +16,10 @@
 // Import commands.js using ES2015 syntax:
 import "./commands";
 
+// Import cypress-fail-fast support for fail-fast functionality
+// Controlled by FAIL_FAST_ENABLED env variable (set via E2E_FAIL_FAST=true)
+import "cypress-fail-fast";
+
 // Storage test support (globally available for all storage tests)
 import "./load-storage-fixtures";
 import "./storage-setup";
