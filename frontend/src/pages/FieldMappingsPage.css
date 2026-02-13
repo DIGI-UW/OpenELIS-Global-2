@@ -1,0 +1,34 @@
+/* FieldMappingsPage Modal Styling */
+
+.field-mappings-modal {
+  /* Full-screen or large modal overlay */
+  z-index: 9000; /* Above other content */
+}
+
+.field-mappings-modal .cds--modal-container {
+  /* Make modal larger for field mapping interface */
+  max-width: 95vw;
+  width: 95vw;
+  max-height: 95vh;
+  height: 95vh;
+}
+
+.field-mappings-modal-body {
+  /* Ensure modal body takes full available height */
+  height: calc(95vh - 120px); /* Account for header and footer */
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.field-mappings-modal-body .field-mapping {
+  /* FieldMapping component should fill modal body */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.field-mappings-modal-body .field-mapping-grid {
+  /* Grid should take remaining space */
+  flex: 1;
+  overflow-y: auto;
+}
