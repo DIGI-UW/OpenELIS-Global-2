@@ -22,6 +22,7 @@ code {
  */
 .cds--header.cds--header {
   background-color: var(--site-branding-header, #295785);
+  border-bottom: none;
 }
 
 .slide-over-root {
