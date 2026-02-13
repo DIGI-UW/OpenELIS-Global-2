@@ -1,0 +1,357 @@
+openapi: 3.0.3
+info:
+  title: OpenELIS Order Export API
+  description: REST API for exporting test orders to laboratory analyzers
+  version: 1.0.0
+  contact:
+    name: OpenELIS Global Team
+
+servers:
+  - url: /rest
+    description: OpenELIS REST API base path
+
+paths:
+  /analyzer/order-export:
+    get:
+      summary: List order exports
+      description: Retrieve list of order exports with optional filtering
+      operationId: listOrderExports
+      tags:
+        - Order Export
+      parameters:
+        - name: analyzerId
+          in: query
+          description: Filter by analyzer ID
+          schema:
+            type: integer
+        - name: status
+          in: query
+          description: Filter by export status
+          schema:
+            type: string
+            enum: [PENDING, SENT, ACKNOWLEDGED, RESULTS_RECEIVED, FAILED, EXPIRED, CANCELLED]
+        - name: fromDate
+          in: query
+          description: Filter exports from this date (ISO 8601)
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          description: Filter exports to this date (ISO 8601)
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 25
+      responses:
+        '200':
+          description: List of order exports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderExportListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: Export orders to analyzer
+      description: Trigger export of selected orders to specified analyzer
+      operationId: exportOrders
+      tags:
+        - Order Export
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderExportRequest'
+      responses:
+        '202':
+          description: Export initiated (async processing)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderExportBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /analyzer/order-export/{id}:
+    get:
+      summary: Get order export details
+      description: Retrieve details of a specific order export
+      operationId: getOrderExport
+      tags:
+        - Order Export
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Order export details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderExportResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Cancel order export
+      description: Cancel a pending or failed order export
+      operationId: cancelOrderExport
+      tags:
+        - Order Export
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Export cancelled
+        '400':
+          description: Cannot cancel (already sent or completed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /analyzer/order-export/{id}/retry:
+    post:
+      summary: Retry failed export
+      description: Retry a failed order export
+      operationId: retryOrderExport
+      tags:
+        - Order Export
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Retry initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderExportResponse'
+        '400':
+          description: Cannot retry (not in failed state)
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /analyzer/{analyzerId}/pending-orders:
+    get:
+      summary: Get pending orders for export
+      description: List samples with pending tests that can be exported to this analyzer
+      operationId: getPendingOrdersForExport
+      tags:
+        - Order Export
+      parameters:
+        - name: analyzerId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: testType
+          in: query
+          description: Filter by test type
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of pending orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingOrdersResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    OrderExportRequest:
+      type: object
+      required:
+        - analyzerId
+        - sampleIds
+      properties:
+        analyzerId:
+          type: integer
+          description: Target analyzer ID
+        sampleIds:
+          type: array
+          items:
+            type: integer
+          description: List of sample IDs to export
+
+    OrderExportResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sampleId:
+          type: integer
+        analyzerId:
+          type: integer
+        analyzerName:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, SENT, ACKNOWLEDGED, RESULTS_RECEIVED, FAILED, EXPIRED, CANCELLED]
+        messageType:
+          type: string
+          enum: [ASTM, HL7]
+        sentTimestamp:
+          type: string
+          format: date-time
+        acknowledgedTimestamp:
+          type: string
+          format: date-time
+        resultsReceivedTimestamp:
+          type: string
+          format: date-time
+        retryCount:
+          type: integer
+        errorMessage:
+          type: string
+        sampleAccessionNumber:
+          type: string
+        patientName:
+          type: string
+        testNames:
+          type: array
+          items:
+            type: string
+
+    OrderExportListResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderExportResponse'
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+        page:
+          type: integer
+        size:
+          type: integer
+
+    OrderExportBatchResponse:
+      type: object
+      properties:
+        exports:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderExportResponse'
+        totalRequested:
+          type: integer
+        totalAccepted:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              sampleId:
+                type: integer
+              error:
+                type: string
+
+    PendingOrdersResponse:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            type: object
+            properties:
+              sampleId:
+                type: integer
+              accessionNumber:
+                type: string
+              patientName:
+                type: string
+              collectionDate:
+                type: string
+                format: date-time
+              tests:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    testId:
+                      type: integer
+                    testName:
+                      type: string
+                    testCode:
+                      type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Authentication required
+    Forbidden:
+      description: Insufficient permissions (requires LAB_SUPERVISOR)
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
+
+security:
+  - cookieAuth: []
+
+tags:
+  - name: Order Export
+    description: Export test orders to laboratory analyzers
