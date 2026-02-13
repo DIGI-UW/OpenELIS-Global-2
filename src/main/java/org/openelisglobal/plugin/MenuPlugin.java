@@ -16,10 +16,20 @@
 
 package org.openelisglobal.plugin;
 
+import org.openelisglobal.common.log.LogEvent;
+
 public abstract class MenuPlugin implements APlugin {
     public boolean connect() {
-        insertMenu();
-        return true;
+        try {
+            insertMenu();
+            return true;
+        } catch (NullPointerException e) {
+            LogEvent.logError(this.getClass().getName(), "connect",
+                    "PluginMenuService not available during plugin initialization. "
+                            + "This indicates a Spring bean initialization order issue.");
+            LogEvent.logError(e);
+            return false;
+        }
     }
 
     protected abstract void insertMenu();
