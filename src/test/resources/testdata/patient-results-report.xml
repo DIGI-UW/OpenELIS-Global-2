@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Localizations -->
+    <localization id="1" english="Biochemistry"
+        french="Biochimie" description="Biochemistry Section"
+        lastupdated="2023-11-01 12:00:00" />
+    <localization id="2" english="Glucose" french="Glucose"
+        description="Glucose Test" lastupdated="2023-11-01 12:00:00" />
+    <localization id="3" english="Blood" french="Sang"
+        description="Blood Sample Type" lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Person for Patient -->
+    <person id="1" last_name="Patient" first_name="Test"
+        middle_name="Mapping" city="Test City" state="Test State"
+        zip_code="12345" country="Test Country"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Person for Provider (Clinician) -->
+    <person id="2" last_name="Clinician" first_name="Test"
+        middle_name="Expert" city="Medical City" state="Medical State"
+        zip_code="54321" country="Test Country"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Patient -->
+    <patient id="1" person_id="1" race="white" gender="M"
+        birth_date="1980-01-01 09:00:00" external_id="EXT-PAT-001"
+        is_merged="0" lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Provider -->
+    <provider id="1" person_id="2" provider_type="P"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Organization (Requester) -->
+    <organization id="1" name="Test Health Center"
+        city="Test City" is_active="Y" lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Status -->
+    <status_of_sample id="1" name="Final Result" code="1"
+        status_type="SAMPLE" description="Finalized results" is_active="Y"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Sample -->
+    <sample id="1" accession_number="24-00001"
+        received_date="2024-02-12 10:00:00" entered_date="2024-02-12"
+        collection_date="2024-02-11 08:30:00" status_id="1"
+        lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Sample Human link -->
+    <sample_human id="1" patient_id="1" samp_id="1"
+        provider_id="1" lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Sample Organization link -->
+    <sample_organization id="1" samp_id="1" org_id="1"
+        lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Type of Sample -->
+    <type_of_sample id="1" description="Blood"
+        local_abbrev="BLOOD" is_active="1" name_localization_id="3"
+        lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Sample Item link -->
+    <sample_item id="1" samp_id="1" sort_order="1"
+        status_id="1" typeosamp_id="1" lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Analyte -->
+    <analyte id="1" name="Glucose" is_active="Y"
+        lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Test Setup -->
+    <test_section id="1" name="Biochemistry"
+        description="Biochemistry Section" is_active="Y"
+        name_localization_id="1" lastupdated="2024-02-12 10:00:00" />
+    <test id="1" name="Glucose" description="Serum Glucose"
+        test_section_id="1" is_active="Y" is_reportable="Y"
+        name_localization_id="2" guid="glucose-test-guid"
+        lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Analysis -->
+    <analysis id="1" sampitem_id="1" test_id="1" status_id="1"
+        analysis_type="NORMAL" is_reportable="Y"
+        lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Result -->
+    <test_result id="1" test_id="1" value="Normal"
+        lastupdated="2024-02-12 10:00:00" />
+    <result id="1" analysis_id="1" value="5.5" test_result_id="1"
+        analyte_id="1" is_reportable="Y" result_type="D"
+        lastupdated="2024-02-12 10:00:00" />
+
+</dataset>
