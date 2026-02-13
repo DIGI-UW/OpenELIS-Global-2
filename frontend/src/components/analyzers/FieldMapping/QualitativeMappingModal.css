@@ -1,0 +1,33 @@
+/**
+ * QualitativeMappingModal Styles
+ */
+
+.qualitative-mapping-item {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: 4px;
+}
+
+.qualitative-mapping-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.qualitative-mapping-analyzer-value {
+  min-width: 150px;
+  flex-shrink: 0;
+}
+
+.qualitative-mapping-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.qualitative-mapping-controls .cds--dropdown {
+  flex: 1;
+  max-width: 300px;
+}
