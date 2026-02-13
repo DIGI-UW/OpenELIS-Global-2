@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Seed data: menu items and system configuration entries -->
+
+    <!-- Menu items for analyzer navigation -->
+    <changeSet author="madagascar-analyzer-integration" id="011-007-01-add-menu-items-parent">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_analyzers'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Analyzers parent menu item</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="presentation_order" value="26"/>
+            <column name="element_id" value="menu_analyzers"/>
+            <column name="action_url" value="/analyzers"/>
+            <column name="display_key" value="analyzer.navigation.analyzers"/>
+            <column name="tool_tip_key" value="analyzer.navigation.analyzers"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="hide_in_old_ui" valueBoolean="true"/>
+        </insert>
+        <rollback>
+            <delete tableName="menu" schemaName="clinlims">
+                <where>element_id = 'menu_analyzers'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="madagascar-analyzer-integration" id="011-007-02-add-menu-items-list">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_analyzers_list'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Analyzers List sub-menu item</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_analyzers')"/>
+            <column name="presentation_order" value="1"/>
+            <column name="element_id" value="menu_analyzers_list"/>
+            <column name="action_url" value="/analyzers"/>
+            <column name="display_key" value="analyzer.navigation.analyzersList"/>
+            <column name="tool_tip_key" value="analyzer.navigation.analyzersList"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="hide_in_old_ui" valueBoolean="true"/>
+        </insert>
+        <rollback>
+            <delete tableName="menu" schemaName="clinlims">
+                <where>element_id = 'menu_analyzers_list'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="madagascar-analyzer-integration" id="011-007-03-add-menu-items-errors">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_analyzers_errors'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Error Dashboard sub-menu item</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_analyzers')"/>
+            <column name="presentation_order" value="2"/>
+            <column name="element_id" value="menu_analyzers_errors"/>
+            <column name="action_url" value="/analyzers/errors"/>
+            <column name="display_key" value="analyzer.navigation.errorDashboard"/>
+            <column name="tool_tip_key" value="analyzer.navigation.errorDashboard"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="hide_in_old_ui" valueBoolean="true"/>
+        </insert>
+        <rollback>
+            <delete tableName="menu" schemaName="clinlims">
+                <where>element_id = 'menu_analyzers_errors'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- System configuration entries for analyzer query functionality -->
+    <changeSet author="madagascar-analyzer-integration" id="011-007-04-add-query-timeout-config">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_configuration" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_configuration WHERE name = 'analyzer.query.timeout.minutes'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add analyzer query timeout configuration (default 5 minutes)</comment>
+        <insert tableName="system_configuration" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_configuration_seq"/>
+            <column name="name" value="analyzer.query.timeout.minutes"/>
+            <column name="value" value="5"/>
+            <column name="description" value="Query analyzer timeout in minutes"/>
+            <column name="active" valueBoolean="true"/>
+        </insert>
+        <rollback>
+            <delete tableName="system_configuration" schemaName="clinlims">
+                <where>name = 'analyzer.query.timeout.minutes'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="madagascar-analyzer-integration" id="011-007-05-add-query-rate-limit-config">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_configuration" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_configuration WHERE name = 'analyzer.query.rate.limit.per.minute'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add analyzer query rate limit configuration (default 1 per minute)</comment>
+        <insert tableName="system_configuration" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_configuration_seq"/>
+            <column name="name" value="analyzer.query.rate.limit.per.minute"/>
+            <column name="value" value="1"/>
+            <column name="description" value="Maximum queries per analyzer per minute"/>
+            <column name="active" valueBoolean="true"/>
+        </insert>
+        <rollback>
+            <delete tableName="system_configuration" schemaName="clinlims">
+                <where>name = 'analyzer.query.rate.limit.per.minute'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="madagascar-analyzer-integration" id="011-007-06-add-max-fields-config">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_configuration" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_configuration WHERE name = 'analyzer.max.fields.per.query'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add analyzer max fields per query configuration (default 500)</comment>
+        <insert tableName="system_configuration" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_configuration_seq"/>
+            <column name="name" value="analyzer.max.fields.per.query"/>
+            <column name="value" value="500"/>
+            <column name="description" value="Maximum fields returned per query"/>
+            <column name="active" valueBoolean="true"/>
+        </insert>
+        <rollback>
+            <delete tableName="system_configuration" schemaName="clinlims">
+                <where>name = 'analyzer.max.fields.per.query'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
