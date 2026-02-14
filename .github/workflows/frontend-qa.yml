@@ -216,10 +216,6 @@ jobs:
               | grep -vxF "cypress/e2e/orderEntity.cy.js" \
               | grep -vxF "cypress/e2e/patientEntry.cy.js" \
               | grep -vxF "cypress/e2e/storageSearch.cy.js" \
-              | grep -vxF "cypress/e2e/notebookWorkflow.cy.js" \
-              | grep -vxF "cypress/e2e/notebookWorkflowArchiving.cy.js" \
-              | grep -vxF "cypress/e2e/notebookWorkflowRouting.cy.js" \
-              | grep -vxF "cypress/e2e/notebookWorkflowStorage.cy.js" \
               | paste -sd, -)
           fi
 
@@ -269,7 +265,7 @@ jobs:
         if: failure()
         uses: jwalton/gh-docker-logs@v2
         with:
-        # Only show last 100 lines of each
+          # Only show last 100 lines of each
           tail: "100"
 
   # Fan-in job: name must match the branch-protection required check.

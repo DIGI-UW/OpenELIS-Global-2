@@ -496,13 +496,16 @@ module.exports = defineConfig({
       });
 
       try {
+        const enableCustomSpecOrder =
+          process.env.CYPRESS_CUSTOM_SPEC_ORDER === "true";
         const hasExplicitSpecArg = process.argv.some(
           (arg) => arg === "--spec" || arg.startsWith("--spec="),
         );
-        if (hasExplicitSpecArg) {
-          // Respect CLI --spec so CI shard filtering is not overridden.
+        if (!enableCustomSpecOrder || hasExplicitSpecArg) {
+          // Keep Cypress discovery defaults unless custom order is explicitly enabled.
+          // Always respect CLI --spec so CI shard filtering is never overridden.
           console.log(
-            "Detected explicit --spec CLI argument; preserving config.specPattern:",
+            "Preserving config.specPattern (custom order disabled or explicit --spec provided):",
             config.specPattern,
           );
           return config;
