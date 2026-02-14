@@ -20,12 +20,25 @@ export default defineConfig({
   expect: { timeout: 5_000 },
 
   // Reporting
-  reporter: process.env.CI ? "github" : "html",
+  reporter: process.env.CI
+    ? [
+        ["github"],
+        ["json", { outputFile: "playwright-report/results.json" }],
+        ["html", { outputFolder: "playwright-report", open: "never" }],
+      ]
+    : [
+        ["list"],
+        ["html", { outputFolder: "playwright-report", open: "never" }],
+      ],
+
+  // Keep artifacts in a consistent location for parity pipelines.
+  outputDir: "test-results/playwright",
 
   // Global settings
   use: {
     baseURL: process.env.BASE_URL || "https://localhost",
     ignoreHTTPSErrors: true,
+    testIdAttribute: "data-testid",
 
     // Evidence collection
     trace: "on-first-retry",
