@@ -81,7 +81,7 @@ export const useAutocomplete = (props) => {
         }
       }
     }
-  }, [props, initialised]);
+  }, [props.value, props.suggestions, initialised]);
 
   const onChange = (e) => {
     const { suggestions } = props;
@@ -154,6 +154,7 @@ export const useAutocomplete = (props) => {
 
   return {
     textValue,
+    setTextValue,
     activeSuggestion,
     filteredSuggestions,
     showSuggestions,

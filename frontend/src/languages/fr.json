@@ -1282,6 +1282,7 @@
   "label.includeInactiveTests": "Inclure les tests inactifs",
   "label.inside.normalrange": "est dans la plage normale",
   "label.lastPrinted": "Dernière impression : {date} {heure} par {utilisateur}",
+  "label.loading": "Chargement...",
   "label.loinc": "LOINC",
   "label.management.title": "Gestion des étiquettes",
   "label.notValidated": "Non validé",
