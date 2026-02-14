@@ -34,4 +34,13 @@ docker compose -f build.docker-compose.yml up -d --wait --wait-timeout 600
 ## M3 Baseline Test Gate Result (T046)
 
 - Command: `cd frontend && npm run pw:test`
-- Status: `PENDING` (to be updated after M3 gate execution)
+- Execution date: `2026-02-14`
+- Status: `BLOCKED_IN_ENV`
+- Observed output summary:
+  - First run failed due missing browser binary (`Executable doesn't exist ...`).
+  - Installed browser with `npm --prefix frontend exec playwright install chromium`.
+  - Second run reached test execution, then failed in setup with
+    `net::ERR_CONNECTION_REFUSED at https://localhost/` because OpenELIS app was
+    not reachable in this cloud environment.
+- Artifact path from failed run:
+  - `frontend/test-results/playwright/auth.setup.ts-authenticate-setup/test-failed-1.png`

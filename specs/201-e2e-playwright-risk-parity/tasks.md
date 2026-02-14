@@ -88,24 +88,26 @@ bite-size PRs and explicit verification gates.
 
 **Goal**: Stable foundation for large-scale migration.
 
-- [ ] T040 [M3] Create milestone branch
+- [x] T040 [M3] Create milestone branch
       `feat/201-e2e-playwright-risk-parity-m3-pw-foundation`
-- [ ] T041 [P] [M3] Add shared Playwright fixture helper
+      (tracked on `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch constraint)
+- [x] T041 [P] [M3] Add shared Playwright fixture helper
       `frontend/playwright/fixtures/e2e-base.ts` (navigation/auth/standard waits)
-- [ ] T042 [P] [M3] Add parity metadata helper
+- [x] T042 [P] [M3] Add parity metadata helper
       `frontend/playwright/fixtures/parity-metadata.ts` (legacy scenario IDs, risk tags)
-- [ ] T043 [M3] Add harness smoke spec
+- [x] T043 [M3] Add harness smoke spec
       `frontend/playwright/tests/harness-smoke.spec.ts` (auth setup + common navigation sanity)
-- [ ] T044 [M3] Update Playwright config for migration conventions in
+- [x] T044 [M3] Update Playwright config for migration conventions in
       `frontend/playwright.config.ts` (reporter details, project annotations, artifact consistency)
-- [ ] T045 [M3] Add Playwright migration quickstart section in
+- [x] T045 [M3] Add Playwright migration quickstart section in
       `specs/201-e2e-playwright-risk-parity/quickstart.md`
-- [ ] T046 [M3] Test gate: run `npm run pw:test` and record baseline outcome in quickstart
+- [x] T046 [M3] Test gate: run `npm run pw:test` and record baseline outcome in quickstart
 - [ ] T047 [M3] Milestone gate: existing Playwright suite remains green after foundation changes
-- [ ] T048 [M3] Add assertion-quality checklist for migrated scenarios in
+      (blocked in current cloud environment: app at `https://localhost` not reachable; `docker` unavailable)
+- [x] T048 [M3] Add assertion-quality checklist for migrated scenarios in
       `specs/201-e2e-playwright-risk-parity/assertion-quality-checklist.md`
       (user-visible assertions + real-effect expectations)
-- [ ] T049 [M3] Add E2E semantics guardrail checklist in
+- [x] T049 [M3] Add E2E semantics guardrail checklist in
       `specs/201-e2e-playwright-risk-parity/e2e-semantics-checklist.md`
       (avoid turning real E2E into mocked-backend tests)
 

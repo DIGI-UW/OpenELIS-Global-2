@@ -2,10 +2,11 @@ import { addParityAnnotations } from "../fixtures/parity-metadata";
 import { test, expect } from "../fixtures/e2e-base";
 
 test.describe("Playwright harness smoke", () => {
-  test("authenticated shell is available on dashboard", async (
-    { page, gotoAndWait, ensureAuthenticatedShell },
-    testInfo,
-  ) => {
+  test("authenticated shell is available on dashboard", async ({
+    page,
+    gotoAndWait,
+    ensureAuthenticatedShell,
+  }, testInfo) => {
     addParityAnnotations(testInfo, {
       legacyScenarioId: "LEG-CYP-024",
       riskTier: "P0",
@@ -18,10 +19,11 @@ test.describe("Playwright harness smoke", () => {
     await expect(page.locator("#dashboardPage")).toBeVisible();
   });
 
-  test("storage samples route is reachable with authenticated session", async (
-    { page, gotoAndWait, ensureAuthenticatedShell },
-    testInfo,
-  ) => {
+  test("storage samples route is reachable with authenticated session", async ({
+    page,
+    gotoAndWait,
+    ensureAuthenticatedShell,
+  }, testInfo) => {
     addParityAnnotations(testInfo, {
       legacyScenarioId: "LEG-CYP-033",
       riskTier: "P0",
