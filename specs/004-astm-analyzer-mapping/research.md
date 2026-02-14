@@ -753,8 +753,7 @@ seamless communication between analyzers and OpenELIS.
 
 - **Bridge Deployment**: ASTM-HTTP bridge is integrated into the standard
   development environment via `dev.docker-compose.yml`
-  - Container: `openelis-astm-bridge` (image:
-    `digiuw/openelis-analyzer-bridge:latest`)
+  - Container: `openelis-astm-bridge` (image: `digiuw/astm-http-bridge:latest`)
   - Static IP: `172.20.1.101` (within Docker network)
   - TCP Listener Port: `5001` (exposed on host)
   - Configuration: `volume/astm-bridge/configuration.yml` (mounted as read-only)
@@ -791,7 +790,7 @@ seamless communication between analyzers and OpenELIS.
 - `dev.docker-compose.yml` - Bridge service definition
 - `volume/astm-bridge/configuration.yml` - Bridge configuration
 - `docs/astm.md` - ASTM bi-directional interface documentation
-- [DIGI-UW/openelis-analyzer-bridge](https://github.com/DIGI-UW/openelis-analyzer-bridge) -
+- [DIGI-UW/astm-http-bridge](https://github.com/DIGI-UW/astm-http-bridge) -
   Bridge repository
 - [OpenELIS ASTM Communication Documentation](https://uwdigi.atlassian.net/wiki/external/YTllOWIzZWEzMmQ3NDllOWI4MGJlODc3MTQzYTI1MWI) -
   Comprehensive ASTM analyzer communication workflow and requirements
@@ -995,7 +994,7 @@ for (int i = parts.length - 1; i >= 0; i--) {
 
 - `src/main/java/org/openelisglobal/analyzer/service/AnalyzerQueryServiceImpl.java` -
   Parsing implementation
-- `tools/analyzer-mock-server/server.py` - Mock server R-record format
+- `tools/astm-mock-server/server.py` - Mock server R-record format
 - `src/main/java/org/openelisglobal/analyzerimport/analyzerreaders/ASTMQSegmentParserImpl.java` -
   Existing ASTM parsing pattern
 - [OpenELIS ASTM Communication Documentation](https://uwdigi.atlassian.net/wiki/external/YTllOWIzZWEzMmQ3NDllOWI4MGJlODc3MTQzYTI1MWI) -

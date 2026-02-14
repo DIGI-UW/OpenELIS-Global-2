@@ -127,62 +127,36 @@ function ChangePassword() {
                   changePassword(values);
                 }}
                 validationSchema={Yup.object().shape({
-                  loginName: Yup.string().required(
-                    intl.formatMessage({ id: "validation.field.required" }),
-                  ),
-                  password: Yup.string().required(
-                    intl.formatMessage({ id: "validation.field.required" }),
-                  ),
+                  loginName: Yup.string().required(),
+                  password: Yup.string().required(),
                   newPassword: Yup.string()
-                    .required(
-                      intl.formatMessage({ id: "validation.field.required" }),
-                    )
-                    .min(
-                      7,
-                      intl.formatMessage({
-                        id: "validation.password.minLength",
-                      }),
-                    )
+                    .required()
+                    .min(7, "Password must be at least 7 characters")
                     .matches(
                       /^(?=.*[*$#!])(?=.*[A-Z])[A-Za-z0-9*$#!]{7,}$/,
-                      intl.formatMessage({
-                        id: "validation.password.specialChar",
-                      }),
+                      "Password must contain at least one special character",
                     )
                     .test(
                       "not-same-as-old",
-                      intl.formatMessage({
-                        id: "validation.password.notSameAsOld",
-                      }),
+                      "New password must not be the same as the old password",
                       function (value) {
                         return value !== this.parent.password; // compare newPassword to old password
                       },
                     ),
                   confirmPassword: Yup.string()
-                    .required(
-                      intl.formatMessage({ id: "validation.field.required" }),
-                    )
+                    .required()
                     .oneOf(
                       [Yup.ref("newPassword"), null],
-                      intl.formatMessage({ id: "validation.password.match" }),
+                      "Passwords must match",
                     )
-                    .min(
-                      7,
-                      intl.formatMessage({
-                        id: "validation.password.minLength",
-                      }),
-                    )
+                    .min(7, "Password must be at least 7 characters")
                     .matches(
                       /^(?=.*[*$#!])(?=.*[A-Z])[A-Za-z0-9*$#!]{7,}$/,
-                      intl.formatMessage({
-                        id: "validation.password.specialChar",
-                      }),
+                      "Password must contain at least one special character",
                     )
                     .test(
                       "not-same-as-old",
-                      intl.formatMessage({
-                        id: "validation.password.notSameAsOld",
-                      }),
+                      "New password must not be the same as the old password",
                       function (value) {
                         return value !== this.parent.password; // compare newPassword to old password
                       },

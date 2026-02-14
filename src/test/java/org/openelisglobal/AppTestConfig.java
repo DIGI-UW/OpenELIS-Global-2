@@ -76,15 +76,15 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.systemmodule", "org.openelisglobal.testdictionary", "org.openelisglobal.dictionarycategory",
         "org.openelisglobal.sampledomain", "org.openelisglobal.sampleproject",
         "org.openelisglobal.observationhistorytype", "org.openelisglobal.statusofsample", "org.openelisglobal.test",
-        "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.plugin",
-        "org.openelisglobal.testanalyte", "org.openelisglobal.observationhistory",
-        "org.openelisglobal.systemusersection", "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample",
-        "org.openelisglobal.siteinformation", "org.openelisglobal.config", "org.openelisglobal.image",
-        "org.openelisglobal.testresult", "org.openelisglobal.barcode", "org.openelisglobal.referral",
-        "org.openelisglobal.qaevent", "org.openelisglobal.project", "org.openelisglobal.sampleqaevent",
-        "org.openelisglobal.patientrelation", "org.openelisglobal.inventory", "org.openelisglobal.testcodes",
-        "org.openelisglobal.datasubmission", "org.openelisglobal.label", "org.openelisglobal.renametestsection",
-        "org.openelisglobal.action", "org.openelisglobal.analysisqaevent", "org.openelisglobal.analysisqaeventaction",
+        "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.testanalyte",
+        "org.openelisglobal.observationhistory", "org.openelisglobal.systemusersection",
+        "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample", "org.openelisglobal.siteinformation",
+        "org.openelisglobal.config", "org.openelisglobal.image", "org.openelisglobal.testresult",
+        "org.openelisglobal.barcode", "org.openelisglobal.referral", "org.openelisglobal.qaevent",
+        "org.openelisglobal.project", "org.openelisglobal.sampleqaevent", "org.openelisglobal.patientrelation",
+        "org.openelisglobal.inventory", "org.openelisglobal.testcodes", "org.openelisglobal.datasubmission",
+        "org.openelisglobal.label", "org.openelisglobal.renametestsection", "org.openelisglobal.action",
+        "org.openelisglobal.analysisqaevent", "org.openelisglobal.analysisqaeventaction",
         "org.openelisglobal.dataexchange", "org.openelisglobal.samplepdf", "org.openelisglobal.samplenewborn",
         "org.openelisglobal.sampleqaeventaction", "org.openelisglobal.analyzerresults", "org.openelisglobal.testreflex",
         "org.openelisglobal.county", "org.openelisglobal.sampletracking", "org.openelisglobal.testresultsview",
@@ -93,9 +93,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.testcalculated", "org.openelisglobal.odoo", "org.openelisglobal.ocl",
         "org.openelisglobal.storage", "org.openelisglobal.notebook", "org.openelisglobal.storage",
         "org.openelisglobal.coldstorage", "org.openelisglobal.alert", "org.openelisglobal.notification",
-        "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler",
-        "org.openelisglobal.sitebranding" }, excludeFilters = {
-
+        "org.openelisglobal.scheduler" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -322,9 +320,8 @@ public class AppTestConfig implements WebMvcConfigurer {
     }
 
     @Override
-    public void extendMessageConverters(@NonNull List<HttpMessageConverter<?>> converters) {
-        // Add custom converters while keeping default converters
-        // (including ResourceHttpMessageConverter for serving files)
+    public void configureMessageConverters(@NonNull List<HttpMessageConverter<?>> converters) {
+        WebMvcConfigurer.super.configureMessageConverters(converters);
         converters.add(new StringHttpMessageConverter());
         converters.add(jsonConverter());
     }

@@ -110,8 +110,7 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
         while ((line = reader.readLine()) != null) {
             lineNumber++;
-            // Skip empty lines and comments (lines starting with #)
-            if (line.trim().isEmpty() || line.trim().startsWith("#")) {
+            if (line.trim().isEmpty()) {
                 continue;
             }
 

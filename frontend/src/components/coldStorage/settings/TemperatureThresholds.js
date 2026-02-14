@@ -9,7 +9,7 @@ import {
   Heading,
   InlineNotification,
 } from "@carbon/react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, injectIntl } from "react-intl";
 import { fetchDevices, updateDeviceThresholds } from "../api";
 import {
   AlertDialog,
@@ -17,8 +17,7 @@ import {
 } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 
-function TemperatureThresholds() {
-  const intl = useIntl();
+function TemperatureThresholds({ intl }) {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const notify = useCallback(
@@ -58,15 +57,13 @@ function TemperatureThresholds() {
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "error.title" }),
-        subtitle:
-          intl.formatMessage({ id: "coldStorage.error.loadDevices" }) +
-          (err.message || ""),
+        title: "Error",
+        subtitle: "Failed to load devices: " + (err.message || ""),
       });
     } finally {
       setLoading(false);
     }
-  }, [notify, intl]);
+  }, [notify]);
 
   useEffect(() => {
     loadDevices();
@@ -101,19 +98,16 @@ function TemperatureThresholds() {
 
       notify({
         kind: NotificationKinds.success,
-        title: intl.formatMessage({ id: "notification.success" }),
-        subtitle: intl.formatMessage({
-          id: "coldStorage.threshold.saveSuccess",
-        }),
+        title: "Success",
+        subtitle: "Threshold configuration saved successfully",
       });
       await loadDevices();
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "error.title" }),
+        title: "Error",
         subtitle:
-          intl.formatMessage({ id: "coldStorage.error.saveThreshold" }) +
-          (err.message || ""),
+          "Failed to save threshold configuration: " + (err.message || ""),
       });
     } finally {
       setSaving(false);
@@ -121,11 +115,7 @@ function TemperatureThresholds() {
   };
 
   if (loading) {
-    return (
-      <Loading
-        description={intl.formatMessage({ id: "coldStorage.loadingDevices" })}
-      />
-    );
+    return <Loading description="Loading devices..." />;
   }
 
   return (
@@ -141,20 +131,14 @@ function TemperatureThresholds() {
             marginBottom: "1.5rem",
           }}
         >
-          <Heading>
-            <FormattedMessage id="coldStorage.thresholdConfiguration" />
-          </Heading>
+          <Heading>Temperature Threshold Configuration</Heading>
         </div>
 
         {devices.length === 0 ? (
           <InlineNotification
             kind="info"
-            title={intl.formatMessage({
-              id: "coldStorage.noDevicesConfigured",
-            })}
-            subtitle={intl.formatMessage({
-              id: "coldStorage.addDevicesMessage",
-            })}
+            title="No Devices Configured"
+            subtitle="Please add devices in Device Management to configure temperature thresholds."
             lowContrast
             hideCloseButton
           />
@@ -193,9 +177,7 @@ function TemperatureThresholds() {
                     >
                       <TextInput
                         id={`target-${device.id}`}
-                        labelText={intl.formatMessage({
-                          id: "coldStorage.targetTemperature",
-                        })}
+                        labelText="Target Temperature (°C)"
                         type="number"
                         step="0.1"
                         value={deviceThresholds.targetTemperature || ""}
@@ -210,9 +192,7 @@ function TemperatureThresholds() {
 
                       <TextInput
                         id={`warning-${device.id}`}
-                        labelText={intl.formatMessage({
-                          id: "coldStorage.warningThreshold",
-                        })}
+                        labelText="Warning Threshold (°C)"
                         type="number"
                         step="0.1"
                         value={deviceThresholds.warningThreshold || ""}
@@ -227,9 +207,7 @@ function TemperatureThresholds() {
 
                       <TextInput
                         id={`critical-${device.id}`}
-                        labelText={intl.formatMessage({
-                          id: "coldStorage.criticalThreshold",
-                        })}
+                        labelText="Critical Threshold (°C)"
                         type="number"
                         step="0.1"
                         value={deviceThresholds.criticalThreshold || ""}
@@ -244,9 +222,7 @@ function TemperatureThresholds() {
 
                       <TextInput
                         id={`poll-${device.id}`}
-                        labelText={intl.formatMessage({
-                          id: "coldStorage.pollInterval",
-                        })}
+                        labelText="Poll Interval (seconds)"
                         type="number"
                         value={deviceThresholds.pollInterval || ""}
                         onChange={(e) =>
@@ -268,11 +244,7 @@ function TemperatureThresholds() {
                 disabled={saving || devices.length === 0}
                 style={{ width: "100%", maxWidth: "none" }}
               >
-                {saving
-                  ? intl.formatMessage({ id: "coldStorage.saving" })
-                  : intl.formatMessage({
-                      id: "coldStorage.saveThresholdConfig",
-                    })}
+                {saving ? "Saving..." : "Save Threshold Configuration"}
               </Button>
             </Stack>
           </Form>

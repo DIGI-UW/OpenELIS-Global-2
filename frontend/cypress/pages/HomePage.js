@@ -79,24 +79,6 @@ class HomePage {
     cy.get(this.selectors.menuButton).click();
   }
 
-  closeNavigationMenu() {
-    cy.get(this.selectors.menuButton)
-      .then(($btn) => {
-        const ariaLabel = $btn.attr("aria-label");
-
-        // Only click if the current state indicates the menu is open.
-        if (ariaLabel && ariaLabel.toLowerCase().includes("close")) {
-          cy.wrap($btn).click();
-        }
-      })
-      .should(($btn) => {
-        const ariaLabel = $btn.attr("aria-label");
-        if (ariaLabel) {
-          expect(ariaLabel.toLowerCase()).not.to.include("close");
-        }
-      });
-  }
-
   // Order Entry related functions
   goToOrderPage() {
     this.openNavigationMenu();
@@ -302,14 +284,12 @@ class HomePage {
   goToAdminPageProgram() {
     this.openNavigationMenu();
     cy.get(this.selectors.administrationMenu).click();
-    this.closeNavigationMenu();
     return new AdminPage();
   }
 
   goToAdminPage() {
     this.openNavigationMenu();
     cy.get(this.selectors.administrationNav).click();
-    this.closeNavigationMenu();
     return new AdminPage();
   }
 

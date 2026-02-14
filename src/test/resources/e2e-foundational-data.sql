@@ -96,6 +96,7 @@ SELECT
   NULL,
   CURRENT_TIMESTAMP,
   gen_random_uuid()
+FROM organization
 WHERE NOT EXISTS (
   SELECT 1 FROM organization WHERE name = 'CAMES MAN'
 );
@@ -134,6 +135,7 @@ SELECT
   NULL,
   CURRENT_TIMESTAMP,
   gen_random_uuid()
+FROM organization
 WHERE NOT EXISTS (
   SELECT 1 FROM organization WHERE name = 'CEDRES'
 );

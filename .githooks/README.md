@@ -7,23 +7,21 @@ prevent CI failures (format + Catalyst Python lint).
 
 ### Setup (One-Time)
 
-Run once per clone (or worktree) so commits use these hooks:
+Run once per clone so commits use these hooks:
 
 ```bash
 ./.githooks/setup.sh
 ```
 
-Or manually: `git config core.hooksPath .githooks`
-
-**Cursor IDE:** Worktrees created via Cursor automatically run this setup via
-`.cursor/worktrees.json`.
+Or manually: `git config core.hooksPath .githooks` (omit `--global` for
+repo-only).
 
 ### What It Does
 
 The hook runs on **staged files only**:
 
-- **Format**: Java, Markdown, Shell, XML, .gitignore, pom.xml (spotless),
-  frontend (prettier), Python (ruff format). Formatted files are re-staged.
+- **Format**: Java (spotless), frontend (prettier), Python (ruff format).
+  Formatted files are re-staged.
 - **Lint**: For staged Catalyst Python files, runs `ruff check` (same as
   Catalyst CI). Commit is blocked if lint fails.
 

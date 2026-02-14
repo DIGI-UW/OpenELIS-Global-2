@@ -14,11 +14,10 @@
 
 .hist-toolbar {
   display: flex;
-  justify-content: flex-start;
-  align-items: center;
+  justify-content: flex-end;
+  align-items: flex-end;
   gap: 0.5rem;
   margin-top: 1.5rem;
-  flex-wrap: wrap;
 }
 
 .hist-chart-card {

@@ -65,22 +65,6 @@ see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
 
 ### For Running OpenELIS Global2 from Source Code
 
-**Prerequisites for all methods below:**
-
-Before running any `docker compose` command, you must create a `.env` file with
-your environment configuration:
-
-```bash
-cp .env.example .env
-```
-
-Then edit `.env` to customize settings for your environment (database passwords,
-domain, etc.). See `.env.example` for detailed documentation of each variable.
-
-**IMPORTANT:** Never commit `.env` to version control as it contains secrets and
-server-specific settings. CI copies `.env.example` to `.env` before running
-docker compose.
-
 #### Running OpenELIS Global2 using docker compose With published docker images on dockerhub
 
     docker compose up -d
@@ -220,7 +204,17 @@ This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
 Spec-Driven Development (SDD). AI coding agents can use slash commands to create
 specifications, plans, and tasks.
 
-**Available Commands:**
+**Setup SpecKit Commands (single entry point):**
+
+```bash
+# Bash (Linux/macOS) - Install for all AI agents
+./.specify/scripts/bash/install-commands.sh
+
+# PowerShell (Windows) - Install for all AI agents
+.\.specify\scripts\powershell\install-commands.ps1
+```
+
+**Available Commands** (after installation):
 
 - `/speckit.specify` - Create feature specification
 - `/speckit.plan` - Generate implementation plan
@@ -230,7 +224,8 @@ specifications, plans, and tasks.
 
 **Reference Documentation:**
 
-- **AGENTS.md** - Comprehensive guide for AI coding agents
+- **AGENTS.md** - Comprehensive guide for AI coding agents (includes full setup
+  options)
 - **Constitution**: `.specify/memory/constitution.md` - Governance principles
 - **Feature Example**: `specs/001-sample-storage/` - Complete SDD example
 

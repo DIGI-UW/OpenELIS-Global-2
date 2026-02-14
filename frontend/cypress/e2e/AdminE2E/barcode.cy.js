@@ -50,7 +50,6 @@ describe("Barcode configuration", function () {
   });
 
   it("Navigate to Barcode Page", function () {
-    homePage.closeNavigationMenu(); // Close sidenav before navigation
     barcodePage = homePage.goToBarcode();
     barcodePage.validatePage();
   });

@@ -104,7 +104,7 @@ const ProgramDashboard = () => {
     { key: "programCode", header: <FormattedMessage id="storage.room.code" /> },
     {
       key: "accession",
-      header: <FormattedMessage id="barcode.label.info.labnumber" />,
+      header: <FormattedMessage id="barcode.label.info.labNumber" />,
     },
     {
       key: "receivedDate",
