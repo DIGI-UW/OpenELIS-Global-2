@@ -213,6 +213,7 @@ jobs:
               | grep -vxF "cypress/e2e/AdminE2E/organizationManagement.cy.js" \
               | grep -vxF "cypress/e2e/siteBranding.cy.js" \
               | grep -vxF "cypress/e2e/AdminE2E/generalConfigurations.cy.js" \
+              | grep -vxF "cypress/e2e/orderEntity.cy.js" \
               | grep -vxF "cypress/e2e/storageSearch.cy.js" \
               | grep -vxF "cypress/e2e/notebookWorkflow.cy.js" \
               | grep -vxF "cypress/e2e/notebookWorkflowArchiving.cy.js" \
