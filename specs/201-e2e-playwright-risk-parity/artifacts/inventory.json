@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-02-14T22:09:59.771Z",
+  "generatedAt": "2026-02-14T22:16:04.799Z",
   "generatedBy": "scripts/e2e/export-e2e-inventory.js",
   "sourceRoots": {
     "cypress": "frontend/cypress/e2e/**/*.cy.js",
@@ -16,10 +16,10 @@
         "testsFixme": 0
       },
       "playwright": {
-        "specs": 13,
-        "activeSpecs": 12,
-        "testsTotal": 42,
-        "testsActive": 41,
+        "specs": 17,
+        "activeSpecs": 16,
+        "testsTotal": 51,
+        "testsActive": 50,
         "testsSkipped": 1,
         "testsFixme": 0
       }
@@ -50,9 +50,9 @@
         "testsSkipped": 11
       },
       "other": {
-        "specs": 4,
-        "testsTotal": 7,
-        "testsActive": 7,
+        "specs": 8,
+        "testsTotal": 16,
+        "testsActive": 16,
         "testsSkipped": 0
       },
       "analyzer": {
@@ -75,10 +75,10 @@
       }
     },
     "totals": {
-      "specs": 61,
-      "activeSpecs": 59,
-      "testsTotal": 482,
-      "testsActive": 470,
+      "specs": 65,
+      "activeSpecs": 63,
+      "testsTotal": 491,
+      "testsActive": 479,
       "testsSkipped": 12,
       "testsFixme": 0
     }
@@ -743,6 +743,54 @@
         "fixme": 0
       },
       "activeSpec": false
+    },
+    {
+      "framework": "playwright",
+      "specPath": "playwright/tests/clinical-nonconform.spec.ts",
+      "domain": "other",
+      "testCounts": {
+        "total": 1,
+        "active": 1,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "playwright",
+      "specPath": "playwright/tests/clinical-patient-order.spec.ts",
+      "domain": "other",
+      "testCounts": {
+        "total": 4,
+        "active": 4,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "playwright",
+      "specPath": "playwright/tests/clinical-report-workplan.spec.ts",
+      "domain": "other",
+      "testCounts": {
+        "total": 2,
+        "active": 2,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "playwright",
+      "specPath": "playwright/tests/clinical-result-validation.spec.ts",
+      "domain": "other",
+      "testCounts": {
+        "total": 2,
+        "active": 2,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
     },
     {
       "framework": "playwright",

@@ -171,8 +171,9 @@ bite-size PRs and explicit verification gates.
 - [x] T084 [P] [M5] Add Playwright spec
       `frontend/playwright/tests/clinical-nonconform.spec.ts`
 - [x] T085 [M5] Update parity matrix for clinical P0 scenarios
-- [ ] T086 [M5] Test gate: run clinical Playwright specs + targeted Cypress references
+- [x] T086 [M5] Test gate: run clinical Playwright specs + targeted Cypress references
 - [ ] T087 [M5] Milestone gate: no unresolved blocking P0 clinical gaps
+      (blocked in current cloud environment: `https://localhost` unavailable for both Playwright and Cypress spot-checks)
 
 ---
 

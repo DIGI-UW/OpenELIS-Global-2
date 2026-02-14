@@ -15,8 +15,8 @@ node scripts/e2e/validate-e2e-inventory.js
 | Framework | Specs | Active Specs | Tests Total | Tests Active | Tests Skipped | Tests Fixme |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Cypress | 48 | 47 | 440 | 429 | 11 | 0 |
-| Playwright | 13 | 12 | 42 | 41 | 1 | 0 |
-| **Total** | **61** | **59** | **482** | **470** | **12** | **0** |
+| Playwright | 17 | 16 | 51 | 50 | 1 | 0 |
+| **Total** | **65** | **63** | **491** | **479** | **12** | **0** |
 
 ## Domain Summary
 
@@ -25,7 +25,7 @@ node scripts/e2e/validate-e2e-inventory.js
 | admin | 21 | 133 | 133 | 0 |
 | analyzer | 2 | 8 | 8 | 0 |
 | auth-nav | 5 | 22 | 21 | 1 |
-| clinical | 10 | 169 | 169 | 0 |
+| clinical | 14 | 178 | 178 | 0 |
 | core | 6 | 46 | 46 | 0 |
 | dashboard | 2 | 6 | 6 | 0 |
 | other | 1 | 2 | 2 | 0 |
@@ -97,6 +97,10 @@ node scripts/e2e/validate-e2e-inventory.js
 | `playwright/tests/analyzer-navigation.spec.ts` | analyzer | 3/3 | 0 | active |
 | `playwright/tests/auth-login.spec.ts` | auth-nav | 3/3 | 0 | active |
 | `playwright/tests/auth.setup.ts` | auth-nav | 0/0 | 0 | inactive |
+| `playwright/tests/clinical-nonconform.spec.ts` | clinical | 1/1 | 0 | active |
+| `playwright/tests/clinical-patient-order.spec.ts` | clinical | 4/4 | 0 | active |
+| `playwright/tests/clinical-report-workplan.spec.ts` | clinical | 2/2 | 0 | active |
+| `playwright/tests/clinical-result-validation.spec.ts` | clinical | 2/2 | 0 | active |
 | `playwright/tests/dashboard-smoke.spec.ts` | dashboard | 1/1 | 0 | active |
 | `playwright/tests/error-dashboard.spec.ts` | dashboard | 5/5 | 0 | active |
 | `playwright/tests/harness-smoke.spec.ts` | other | 2/2 | 0 | active |
@@ -108,7 +112,7 @@ node scripts/e2e/validate-e2e-inventory.js
 
 ```text
 $ node scripts/e2e/validate-e2e-inventory.js
-PASS: inventory covers all active specs (59 active specs).
+PASS: inventory covers all active specs (63 active specs).
 ```
 
 ## M1 Milestone Gate Status
