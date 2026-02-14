@@ -181,20 +181,21 @@ bite-size PRs and explicit verification gates.
 
 **Goal**: Close high-risk legacy storage gaps (including skipped legacy cases).
 
-- [ ] T090 [M6] Create milestone branch
+- [x] T090 [M6] Create milestone branch
       `feat/201-e2e-playwright-risk-parity-m6-storage-gaps`
-- [ ] T091 [P] [M6] Add Playwright spec
+      (tracked on `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch constraint)
+- [x] T091 [P] [M6] Add Playwright spec
       `frontend/playwright/tests/storage-assignment-critical.spec.ts`
       (cascading, typeahead, barcode, capacity warning)
-- [ ] T092 [P] [M6] Add Playwright spec
+- [x] T092 [P] [M6] Add Playwright spec
       `frontend/playwright/tests/storage-box-crud-critical.spec.ts`
       (edit/delete/constraint behavior)
-- [ ] T093 [P] [M6] Add Playwright spec
+- [x] T093 [P] [M6] Add Playwright spec
       `frontend/playwright/tests/storage-samples-visibility.spec.ts`
-- [ ] T094 [P] [M6] Add Playwright spec
+- [x] T094 [P] [M6] Add Playwright spec
       `frontend/playwright/tests/storage-view-edit-critical.spec.ts`
-- [ ] T095 [M6] Integrate fixture-loading workflow into Playwright tests using existing loader scripts
-- [ ] T096 [M6] Update `critical-gap-register.md` and `parity-matrix.csv` statuses
+- [x] T095 [M6] Integrate fixture-loading workflow into Playwright tests using existing loader scripts
+- [x] T096 [M6] Update `critical-gap-register.md` and `parity-matrix.csv` statuses
 - [ ] T097 [M6] Test gate: validate critical storage gap list reduced to zero P0/P1 open items or approved exceptions
 
 ---

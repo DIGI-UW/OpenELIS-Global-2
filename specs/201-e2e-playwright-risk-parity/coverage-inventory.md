@@ -161,3 +161,18 @@ PASS: inventory covers all active specs (63 active specs).
   - `LEG-CYP-026` -> status `PARTIAL`
 - These rows will move to `PASS` after M5 gate validation (T086/T087).
 
+## M6 Migration Evidence Notes (Storage Critical Gaps)
+
+- Added Playwright specs:
+  - `frontend/playwright/tests/storage-assignment-critical.spec.ts`
+  - `frontend/playwright/tests/storage-box-crud-critical.spec.ts`
+  - `frontend/playwright/tests/storage-samples-visibility.spec.ts`
+  - `frontend/playwright/tests/storage-view-edit-critical.spec.ts`
+- Added fixture integration helper:
+  - `frontend/playwright/fixtures/storage-fixtures.ts` (loads shared storage fixtures when `PW_LOAD_STORAGE_FIXTURES=true`)
+- Parity matrix updates (implementation-complete, gate pending):
+  - `LEG-CYP-033`, `LEG-CYP-034`, `LEG-CYP-035` -> status `PARTIAL`
+  - `LEG-CYP-040`, `LEG-CYP-042`, `LEG-CYP-046` -> status `PARTIAL`
+  - `LEG-CYP-044` -> status `PARTIAL`
+- `critical-gap-register.md` updated: GAP-001 through GAP-006 moved from `Open` to `In Progress`.
+
