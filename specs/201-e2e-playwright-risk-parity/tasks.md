@@ -20,18 +20,18 @@ bite-size PRs and explicit verification gates.
 
 ## Milestone to Story Mapping
 
-| Milestone | Primary Stories | Scope |
-| --------- | --------------- | ----- |
-| M1        | US1             | Coverage inventory and CI execution map |
-| M2        | US1, US2        | Risk model + parity map skeleton |
-| M3        | US2             | Playwright migration foundation hardening |
-| M4a       | US2, US3        | P0 auth/nav Playwright migration |
-| M4b       | US2, US3        | P0 admin-core Playwright migration |
-| M5        | US2, US3        | P0 clinical workflow migration |
-| M6        | US3             | Critical storage gap closure |
-| M7        | US2, US4, US5   | Dual-run CI parity report pipeline |
+| Milestone | Primary Stories | Scope                                                   |
+| --------- | --------------- | ------------------------------------------------------- |
+| M1        | US1             | Coverage inventory and CI execution map                 |
+| M2        | US1, US2        | Risk model + parity map skeleton                        |
+| M3        | US2             | Playwright migration foundation hardening               |
+| M4a       | US2, US3        | P0 auth/nav Playwright migration                        |
+| M4b       | US2, US3        | P0 admin-core Playwright migration                      |
+| M5        | US2, US3        | P0 clinical workflow migration                          |
+| M6        | US3             | Critical storage gap closure                            |
+| M7        | US2, US4, US5   | Dual-run CI parity report pipeline                      |
 | M8        | US4, US5        | Big-bang cutover (Playwright primary, Cypress retained) |
-| M9        | US4, US5        | Stabilization and signoff packet |
+| M9        | US4, US5        | Stabilization and signoff packet                        |
 
 ---
 
@@ -40,21 +40,27 @@ bite-size PRs and explicit verification gates.
 **Goal**: Authoritative inventory of current Cypress and Playwright coverage.
 
 - [x] T001 [M1] Create milestone branch
-      `feat/201-e2e-playwright-risk-parity-m1-inventory` from current feature branch
-      (tracked on `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch constraint)
+      `feat/201-e2e-playwright-risk-parity-m1-inventory` from current feature
+      branch (tracked on `cursor/e2e-test-revamp-investigation-e1a2` due cloud
+      single-branch constraint)
 - [x] T002 [M1] Create inventory artifact
-      `specs/201-e2e-playwright-risk-parity/coverage-inventory.md` (spec-level listing, domains, counts, skip status)
+      `specs/201-e2e-playwright-risk-parity/coverage-inventory.md` (spec-level
+      listing, domains, counts, skip status)
 - [x] T003 [P] [M1] Create CI execution mapping artifact
-      `specs/201-e2e-playwright-risk-parity/ci-execution-map.md` (workflow/job/shard -> spec mapping)
+      `specs/201-e2e-playwright-risk-parity/ci-execution-map.md`
+      (workflow/job/shard -> spec mapping)
 - [x] T004 [P] [M1] Add inventory generation helper script
-      `scripts/e2e/export-e2e-inventory.js` (parse Cypress/Playwright specs and emit normalized JSON)
+      `scripts/e2e/export-e2e-inventory.js` (parse Cypress/Playwright specs and
+      emit normalized JSON)
 - [x] T005 [P] [M1] Add inventory validation script
-      `scripts/e2e/validate-e2e-inventory.js` (fail if active specs are missing from inventory)
+      `scripts/e2e/validate-e2e-inventory.js` (fail if active specs are missing
+      from inventory)
 - [x] T006 [M1] Add raw normalized inventory output
       `specs/201-e2e-playwright-risk-parity/artifacts/inventory.json`
 - [x] T007 [M1] Run validation gate and record output in
       `specs/201-e2e-playwright-risk-parity/coverage-inventory.md`
-- [x] T008 [M1] Milestone gate: verify 100% active Cypress + Playwright specs represented
+- [x] T008 [M1] Milestone gate: verify 100% active Cypress + Playwright specs
+      represented
 
 ---
 
@@ -66,7 +72,8 @@ bite-size PRs and explicit verification gates.
       `specs/201-e2e-playwright-risk-parity/data-model.md` (P0/P1/P2 rubric)
 - [x] T021 [M2] Create parity mapping matrix template in
       `specs/201-e2e-playwright-risk-parity/parity-matrix.csv`
-- [x] T022 [P] [M2] Populate all P0/P1 legacy scenarios into parity matrix with initial status
+- [x] T022 [P] [M2] Populate all P0/P1 legacy scenarios into parity matrix with
+      initial status
 - [x] T023 [P] [M2] Create critical gap register
       `specs/201-e2e-playwright-risk-parity/critical-gap-register.md`
 - [x] T024 [P] [M2] Create approved exception template
@@ -89,27 +96,34 @@ bite-size PRs and explicit verification gates.
 **Goal**: Stable foundation for large-scale migration.
 
 - [x] T040 [M3] Create milestone branch
-      `feat/201-e2e-playwright-risk-parity-m3-pw-foundation`
-      (tracked on `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch constraint)
+      `feat/201-e2e-playwright-risk-parity-m3-pw-foundation` (tracked on
+      `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch
+      constraint)
 - [x] T041 [P] [M3] Add shared Playwright fixture helper
-      `frontend/playwright/fixtures/e2e-base.ts` (navigation/auth/standard waits)
+      `frontend/playwright/fixtures/e2e-base.ts` (navigation/auth/standard
+      waits)
 - [x] T042 [P] [M3] Add parity metadata helper
-      `frontend/playwright/fixtures/parity-metadata.ts` (legacy scenario IDs, risk tags)
+      `frontend/playwright/fixtures/parity-metadata.ts` (legacy scenario IDs,
+      risk tags)
 - [x] T043 [M3] Add harness smoke spec
-      `frontend/playwright/tests/harness-smoke.spec.ts` (auth setup + common navigation sanity)
+      `frontend/playwright/tests/harness-smoke.spec.ts` (auth setup + common
+      navigation sanity)
 - [x] T044 [M3] Update Playwright config for migration conventions in
-      `frontend/playwright.config.ts` (reporter details, project annotations, artifact consistency)
+      `frontend/playwright.config.ts` (reporter details, project annotations,
+      artifact consistency)
 - [x] T045 [M3] Add Playwright migration quickstart section in
       `specs/201-e2e-playwright-risk-parity/quickstart.md`
-- [x] T046 [M3] Test gate: run `npm run pw:test` and record baseline outcome in quickstart
-- [ ] T047 [M3] Milestone gate: existing Playwright suite remains green after foundation changes
-      (blocked in current cloud environment: app at `https://localhost` not reachable; `docker` unavailable)
+- [x] T046 [M3] Test gate: run `npm run pw:test` and record baseline outcome in
+      quickstart
+- [ ] T047 [M3] Milestone gate: existing Playwright suite remains green after
+      foundation changes (blocked in current cloud environment: app at
+      `https://localhost` not reachable; `docker` unavailable)
 - [x] T048 [M3] Add assertion-quality checklist for migrated scenarios in
       `specs/201-e2e-playwright-risk-parity/assertion-quality-checklist.md`
       (user-visible assertions + real-effect expectations)
 - [x] T049 [M3] Add E2E semantics guardrail checklist in
-      `specs/201-e2e-playwright-risk-parity/e2e-semantics-checklist.md`
-      (avoid turning real E2E into mocked-backend tests)
+      `specs/201-e2e-playwright-risk-parity/e2e-semantics-checklist.md` (avoid
+      turning real E2E into mocked-backend tests)
 
 ---
 
@@ -118,20 +132,26 @@ bite-size PRs and explicit verification gates.
 **Goal**: Port core auth/navigation critical workflows.
 
 - [x] T060 [M4a] Create milestone branch
-      `feat/201-e2e-playwright-risk-parity-m4a-core-authnav`
-      (tracked on `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch constraint)
+      `feat/201-e2e-playwright-risk-parity-m4a-core-authnav` (tracked on
+      `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch
+      constraint)
 - [x] T061 [P] [M4a] Add Playwright spec
-      `frontend/playwright/tests/auth-login.spec.ts` (login success/failure/session)
+      `frontend/playwright/tests/auth-login.spec.ts` (login
+      success/failure/session)
 - [x] T062 [P] [M4a] Add Playwright spec
-      `frontend/playwright/tests/home-navigation.spec.ts` (home navbar actions, key menu navigation)
+      `frontend/playwright/tests/home-navigation.spec.ts` (home navbar actions,
+      key menu navigation)
 - [x] T063 [P] [M4a] Add Playwright spec
-      `frontend/playwright/tests/dashboard-smoke.spec.ts` (critical dashboard tile navigation)
+      `frontend/playwright/tests/dashboard-smoke.spec.ts` (critical dashboard
+      tile navigation)
 - [x] T064 [M4a] Update parity matrix statuses for migrated auth/nav scenarios
 - [x] T065 [M4a] Add migration evidence notes in
       `specs/201-e2e-playwright-risk-parity/coverage-inventory.md`
-- [x] T066 [M4a] Test gate: run new auth/nav Playwright specs and Cypress counterparts for parity spot-check
+- [x] T066 [M4a] Test gate: run new auth/nav Playwright specs and Cypress
+      counterparts for parity spot-check
 - [ ] T067 [M4a] Milestone gate: migrated auth/nav parity entries move to PASS
-      (blocked in current cloud environment: `https://localhost` unavailable for both Playwright and Cypress spot-checks)
+      (blocked in current cloud environment: `https://localhost` unavailable for
+      both Playwright and Cypress spot-checks)
 
 ---
 
@@ -140,8 +160,9 @@ bite-size PRs and explicit verification gates.
 **Goal**: Port critical admin workflows.
 
 - [x] T070 [M4b] Create milestone branch
-      `feat/201-e2e-playwright-risk-parity-m4b-core-admin`
-      (tracked on `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch constraint)
+      `feat/201-e2e-playwright-risk-parity-m4b-core-admin` (tracked on
+      `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch
+      constraint)
 - [x] T071 [P] [M4b] Add Playwright spec
       `frontend/playwright/tests/admin-user-management.spec.ts`
 - [x] T072 [P] [M4b] Add Playwright spec
@@ -149,9 +170,11 @@ bite-size PRs and explicit verification gates.
 - [x] T073 [P] [M4b] Add Playwright spec
       `frontend/playwright/tests/admin-barcode-core.spec.ts`
 - [x] T074 [M4b] Update parity matrix for admin-core scenario mappings
-- [x] T075 [M4b] Test gate: run migrated admin Playwright specs and target Cypress admin specs
+- [x] T075 [M4b] Test gate: run migrated admin Playwright specs and target
+      Cypress admin specs
 - [ ] T076 [M4b] Milestone gate: migrated admin-core parity entries move to PASS
-      (blocked in current cloud environment: `https://localhost` unavailable for both Playwright and Cypress spot-checks)
+      (blocked in current cloud environment: `https://localhost` unavailable for
+      both Playwright and Cypress spot-checks)
 
 ---
 
@@ -160,8 +183,9 @@ bite-size PRs and explicit verification gates.
 **Goal**: Port critical clinical workflows (patient/order/result/report).
 
 - [x] T080 [M5] Create milestone branch
-      `feat/201-e2e-playwright-risk-parity-m5-core-clinical`
-      (tracked on `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch constraint)
+      `feat/201-e2e-playwright-risk-parity-m5-core-clinical` (tracked on
+      `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch
+      constraint)
 - [x] T081 [P] [M5] Add Playwright spec
       `frontend/playwright/tests/clinical-patient-order.spec.ts`
 - [x] T082 [P] [M5] Add Playwright spec
@@ -171,9 +195,11 @@ bite-size PRs and explicit verification gates.
 - [x] T084 [P] [M5] Add Playwright spec
       `frontend/playwright/tests/clinical-nonconform.spec.ts`
 - [x] T085 [M5] Update parity matrix for clinical P0 scenarios
-- [x] T086 [M5] Test gate: run clinical Playwright specs + targeted Cypress references
-- [ ] T087 [M5] Milestone gate: no unresolved blocking P0 clinical gaps
-      (blocked in current cloud environment: `https://localhost` unavailable for both Playwright and Cypress spot-checks)
+- [x] T086 [M5] Test gate: run clinical Playwright specs + targeted Cypress
+      references
+- [ ] T087 [M5] Milestone gate: no unresolved blocking P0 clinical gaps (blocked
+      in current cloud environment: `https://localhost` unavailable for both
+      Playwright and Cypress spot-checks)
 
 ---
 
@@ -182,8 +208,9 @@ bite-size PRs and explicit verification gates.
 **Goal**: Close high-risk legacy storage gaps (including skipped legacy cases).
 
 - [x] T090 [M6] Create milestone branch
-      `feat/201-e2e-playwright-risk-parity-m6-storage-gaps`
-      (tracked on `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch constraint)
+      `feat/201-e2e-playwright-risk-parity-m6-storage-gaps` (tracked on
+      `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch
+      constraint)
 - [x] T091 [P] [M6] Add Playwright spec
       `frontend/playwright/tests/storage-assignment-critical.spec.ts`
       (cascading, typeahead, barcode, capacity warning)
@@ -194,10 +221,14 @@ bite-size PRs and explicit verification gates.
       `frontend/playwright/tests/storage-samples-visibility.spec.ts`
 - [x] T094 [P] [M6] Add Playwright spec
       `frontend/playwright/tests/storage-view-edit-critical.spec.ts`
-- [x] T095 [M6] Integrate fixture-loading workflow into Playwright tests using existing loader scripts
-- [x] T096 [M6] Update `critical-gap-register.md` and `parity-matrix.csv` statuses
-- [ ] T097 [M6] Test gate: validate critical storage gap list reduced to zero P0/P1 open items or approved exceptions
-      (execution checks blocked in current cloud environment: `https://localhost` unavailable for both Playwright and Cypress spot-checks)
+- [x] T095 [M6] Integrate fixture-loading workflow into Playwright tests using
+      existing loader scripts
+- [x] T096 [M6] Update `critical-gap-register.md` and `parity-matrix.csv`
+      statuses
+- [ ] T097 [M6] Test gate: validate critical storage gap list reduced to zero
+      P0/P1 open items or approved exceptions (execution checks blocked in
+      current cloud environment: `https://localhost` unavailable for both
+      Playwright and Cypress spot-checks)
 
 ---
 
@@ -211,26 +242,26 @@ bite-size PRs and explicit verification gates.
       `scripts/e2e/export-playwright-results.js`
 - [ ] T102 [P] [M7] Add normalized Cypress result exporter
       `scripts/e2e/export-cypress-results.js`
-- [ ] T103 [M7] Add comparison script
-      `scripts/e2e/compare-e2e-results.js`
+- [ ] T103 [M7] Add comparison script `scripts/e2e/compare-e2e-results.js`
 - [ ] T104 [M7] Add parity report schema
       `specs/201-e2e-playwright-risk-parity/contracts/parity-report.schema.json`
 - [ ] T105 [M7] Update Playwright workflow to emit normalized artifact
       `.github/workflows/playwright-e2e.yml`
 - [ ] T106 [M7] Update Cypress workflow to emit normalized artifact
       `.github/workflows/frontend-qa.yml`
-- [ ] T107 [M7] Add CI parity-report job/workflow that publishes markdown/json parity report
-      `.github/workflows/e2e-parity-report.yml`
+- [ ] T107 [M7] Add CI parity-report job/workflow that publishes markdown/json
+      parity report `.github/workflows/e2e-parity-report.yml`
 - [ ] T108 [M7] Add parity report output location
       `specs/201-e2e-playwright-risk-parity/artifacts/parity-report.md`
-- [ ] T109 [M7] Milestone gate: CI emits classified parity report with risk labels on each run
+- [ ] T109 [M7] Milestone gate: CI emits classified parity report with risk
+      labels on each run
 - [ ] T110 [M7] Extend parity comparison script to classify failures by
       `failure_class` (setup/infra, assertion, parity divergence)
 - [ ] T111 [M7] Add runtime metric exporter
       `scripts/e2e/export-runtime-metrics.js` (capture suite wall-clock per run)
 - [ ] T112 [M7] Define runtime budget in
-      `specs/201-e2e-playwright-risk-parity/runtime-budget.md`
-      (Playwright + Cypress dual-run target/bounds)
+      `specs/201-e2e-playwright-risk-parity/runtime-budget.md` (Playwright +
+      Cypress dual-run target/bounds)
 - [ ] T113 [M7] Include failure classification and runtime budget status in
       `artifacts/parity-report.md` for each CI run
 
@@ -238,25 +269,27 @@ bite-size PRs and explicit verification gates.
 
 ## M8: Big-Bang Cutover (Primary Playwright, Cypress Retained) (Bite-size PR 8)
 
-**Goal**: Make Playwright primary E2E gate while keeping full Cypress comparison.
+**Goal**: Make Playwright primary E2E gate while keeping full Cypress
+comparison.
 
 - [ ] T120 [M8] Create milestone branch
       `feat/201-e2e-playwright-risk-parity-m8-bigbang`
-- [ ] T121 [M8] Update E2E workflow orchestration to make Playwright the primary gate check
-      `.github/workflows/playwright-e2e.yml`
-- [ ] T122 [M8] Keep Cypress full-suite workflow active and explicit as comparison suite
-      `.github/workflows/frontend-qa.yml`
-- [ ] T123 [M8] Add/adjust aggregate check naming and documentation for primary vs comparison roles
-      `specs/201-e2e-playwright-risk-parity/quickstart.md`
+- [ ] T121 [M8] Update E2E workflow orchestration to make Playwright the primary
+      gate check `.github/workflows/playwright-e2e.yml`
+- [ ] T122 [M8] Keep Cypress full-suite workflow active and explicit as
+      comparison suite `.github/workflows/frontend-qa.yml`
+- [ ] T123 [M8] Add/adjust aggregate check naming and documentation for primary
+      vs comparison roles `specs/201-e2e-playwright-risk-parity/quickstart.md`
 - [ ] T124 [M8] Add explicit non-decommission statement in migration docs
       `specs/201-e2e-playwright-risk-parity/quickstart.md`
-- [ ] T125 [M8] Milestone gate: Playwright check is primary while Cypress still fully runs
+- [ ] T125 [M8] Milestone gate: Playwright check is primary while Cypress still
+      fully runs
 - [ ] T126 [M8] Verify required checks policy via GitHub CLI and record evidence
-      in `specs/201-e2e-playwright-risk-parity/signoff-summary.md`
-      (confirm Playwright primary check + Cypress comparison checks)
+      in `specs/201-e2e-playwright-risk-parity/signoff-summary.md` (confirm
+      Playwright primary check + Cypress comparison checks)
 - [ ] T127 [M8] Add cutover checklist artifact
-      `specs/201-e2e-playwright-risk-parity/cutover-checklist.md`
-      (checks, owners, rollback criteria)
+      `specs/201-e2e-playwright-risk-parity/cutover-checklist.md` (checks,
+      owners, rollback criteria)
 
 ---
 
@@ -270,12 +303,15 @@ bite-size PRs and explicit verification gates.
       `specs/201-e2e-playwright-risk-parity/stabilization-report.md`
 - [ ] T142 [P] [M9] Add divergence triage ledger
       `specs/201-e2e-playwright-risk-parity/divergence-triage.md`
-- [ ] T143 [P] [M9] Update parity matrix with stabilization outcomes and owner assignment
+- [ ] T143 [P] [M9] Update parity matrix with stabilization outcomes and owner
+      assignment
 - [ ] T144 [M9] Create final signoff summary
       `specs/201-e2e-playwright-risk-parity/signoff-summary.md`
-- [ ] T145 [M9] Confirm explicit scope statement: Cypress retained; no retirement milestone
+- [ ] T145 [M9] Confirm explicit scope statement: Cypress retained; no
+      retirement milestone
       `specs/201-e2e-playwright-risk-parity/signoff-summary.md`
-- [ ] T146 [M9] Milestone gate: no untriaged P0/P1 divergences at end of stabilization window
+- [ ] T146 [M9] Milestone gate: no untriaged P0/P1 divergences at end of
+      stabilization window
 - [ ] T147 [M9] Execute 20-run CI-equivalent reliability evaluation for baseline
       flaky scenarios and record pass rates in
       `specs/201-e2e-playwright-risk-parity/stabilization-report.md`
@@ -291,8 +327,10 @@ bite-size PRs and explicit verification gates.
 - [ ] T160 [P] [M1-M9] Run required formatting before each commit:
       `mvn spotless:apply` and `cd frontend && npm run format`
 - [ ] T161 [P] [M1-M9] Run mandatory pre-push full-suite validation before each
-      PR: `cd frontend && npm run pw:test` and `cd frontend && npm run cy:failfast`
-- [ ] T162 [P] [M1-M9] Keep `parity-matrix.csv` and `critical-gap-register.md` current
+      PR: `cd frontend && npm run pw:test` and
+      `cd frontend && npm run cy:failfast`
+- [ ] T162 [P] [M1-M9] Keep `parity-matrix.csv` and `critical-gap-register.md`
+      current
 - [ ] T163 [P] [M1-M9] Capture CI artifact links in milestone PR descriptions
 - [ ] T164 [P] [M1-M9] Attach pre-push validation evidence (commands, run IDs,
       parity artifact links) in milestone PR description/checklist
@@ -310,8 +348,8 @@ bite-size PRs and explicit verification gates.
 
 - M4a and M4b are parallel milestone tracks
 - Within most milestones, `[P]` tasks can run concurrently
-- Script/artifact tasks can proceed in parallel with test authoring where no file
-  overlap exists
+- Script/artifact tasks can proceed in parallel with test authoring where no
+  file overlap exists
 
 ### Within Each Milestone
 
@@ -335,9 +373,10 @@ bite-size PRs and explicit verification gates.
 
 ## Notes
 
-- This task plan intentionally prioritizes small, testable milestones and explicit
-  stop/go gates.
-- Branch naming in milestone tasks follows the plan’s `feat/201-...-mN-*` pattern.
+- This task plan intentionally prioritizes small, testable milestones and
+  explicit stop/go gates.
+- Branch naming in milestone tasks follows the plan’s `feat/201-...-mN-*`
+  pattern.
 - Milestone branch names are logical targets for parallel development; in
   constrained single-branch environments, preserve this naming in documentation
   and PR titles/checklists for traceability.

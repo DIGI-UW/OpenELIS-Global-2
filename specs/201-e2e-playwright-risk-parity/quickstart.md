@@ -1,7 +1,7 @@
 # Quickstart: Playwright Risk-Parity Migration
 
-This guide captures local/CI commands and milestone gate evidence for Feature
-201.
+This guide captures local/CI commands and milestone gate evidence for
+Feature 201.
 
 ## M3 Foundation Commands
 
@@ -37,8 +37,10 @@ docker compose -f build.docker-compose.yml up -d --wait --wait-timeout 600
 - Execution date: `2026-02-14`
 - Status: `BLOCKED_IN_ENV`
 - Observed output summary:
-  - First run failed due missing browser binary (`Executable doesn't exist ...`).
-  - Installed browser with `npm --prefix frontend exec playwright install chromium`.
+  - First run failed due missing browser binary
+    (`Executable doesn't exist ...`).
+  - Installed browser with
+    `npm --prefix frontend exec playwright install chromium`.
   - Second run reached test execution, then failed in setup with
     `net::ERR_CONNECTION_REFUSED at https://localhost/` because OpenELIS app was
     not reachable in this cloud environment.
@@ -54,9 +56,10 @@ docker compose -f build.docker-compose.yml up -d --wait --wait-timeout 600
 - Execution date: `2026-02-14`
 - Status: `BLOCKED_IN_ENV`
 - Observed outcome:
-  - Playwright setup project failed first with `net::ERR_CONNECTION_REFUSED at https://localhost/`.
-  - Cypress launched successfully under xvfb, then failed baseUrl verification because
-    `https://localhost` was not running.
+  - Playwright setup project failed first with
+    `net::ERR_CONNECTION_REFUSED at https://localhost/`.
+  - Cypress launched successfully under xvfb, then failed baseUrl verification
+    because `https://localhost` was not running.
 
 ## M4b Admin-Core Spot-Check Gate Result (T075)
 
@@ -67,9 +70,10 @@ docker compose -f build.docker-compose.yml up -d --wait --wait-timeout 600
 - Execution date: `2026-02-14`
 - Status: `BLOCKED_IN_ENV`
 - Observed outcome:
-  - Playwright setup project failed first with `net::ERR_CONNECTION_REFUSED at https://localhost/`.
-  - Cypress launched successfully under xvfb, then failed baseUrl verification because
-    `https://localhost` was not running.
+  - Playwright setup project failed first with
+    `net::ERR_CONNECTION_REFUSED at https://localhost/`.
+  - Cypress launched successfully under xvfb, then failed baseUrl verification
+    because `https://localhost` was not running.
 
 ## M5 Clinical Spot-Check Gate Result (T086)
 
@@ -80,9 +84,10 @@ docker compose -f build.docker-compose.yml up -d --wait --wait-timeout 600
 - Execution date: `2026-02-14`
 - Status: `BLOCKED_IN_ENV`
 - Observed outcome:
-  - Playwright setup project failed first with `net::ERR_CONNECTION_REFUSED at https://localhost/`.
-  - Cypress launched successfully under xvfb, then failed baseUrl verification because
-    `https://localhost` was not running.
+  - Playwright setup project failed first with
+    `net::ERR_CONNECTION_REFUSED at https://localhost/`.
+  - Cypress launched successfully under xvfb, then failed baseUrl verification
+    because `https://localhost` was not running.
 
 ## M6 Storage Critical Gap Spot-Check Gate Result (T097)
 
@@ -93,8 +98,10 @@ docker compose -f build.docker-compose.yml up -d --wait --wait-timeout 600
 - Execution date: `2026-02-14`
 - Status: `BLOCKED_IN_ENV`
 - Observed outcome:
-  - Playwright setup project failed first with `net::ERR_CONNECTION_REFUSED at https://localhost/`.
-  - Cypress launched successfully under xvfb, then failed baseUrl verification because
-    `https://localhost` was not running.
+  - Playwright setup project failed first with
+    `net::ERR_CONNECTION_REFUSED at https://localhost/`.
+  - Cypress launched successfully under xvfb, then failed baseUrl verification
+    because `https://localhost` was not running.
 - Gap register check:
-  - `critical-gap-register.md` has **zero** `Open` entries targeting milestone `M6` after this update.
+  - `critical-gap-register.md` has **zero** `Open` entries targeting milestone
+    `M6` after this update.

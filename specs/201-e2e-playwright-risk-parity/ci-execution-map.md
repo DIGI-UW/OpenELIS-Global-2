@@ -11,20 +11,20 @@ This document maps E2E specs to their current CI execution points.
 
 ### Job Structure
 
-| Job | Purpose | Notes |
-| --- | --- | --- |
-| `static-checks` | frontend formatting + unit test checks | Runs before E2E Cypress |
-| `e2e-cypress` | matrix Cypress execution | Shards: `core`, `storage`, `admin`, `independent` |
-| `build-and-run-qa-tests` | fan-in status gate | Consolidated branch-protection check name |
+| Job                      | Purpose                                | Notes                                             |
+| ------------------------ | -------------------------------------- | ------------------------------------------------- |
+| `static-checks`          | frontend formatting + unit test checks | Runs before E2E Cypress                           |
+| `e2e-cypress`            | matrix Cypress execution               | Shards: `core`, `storage`, `admin`, `independent` |
+| `build-and-run-qa-tests` | fan-in status gate                     | Consolidated branch-protection check name         |
 
 ### Matrix Shard Summary
 
-| Shard | Mapping Type | Explicit Specs in Workflow | Current Resolved Specs |
-| --- | --- | ---: | ---: |
-| core | static list | 15 | 15 |
-| storage | static list | 14 | 14 |
-| admin | static list | 8 | 8 |
-| independent | dynamic catch-all | 0 | 11 |
+| Shard       | Mapping Type      | Explicit Specs in Workflow | Current Resolved Specs |
+| ----------- | ----------------- | -------------------------: | ---------------------: |
+| core        | static list       |                         15 |                     15 |
+| storage     | static list       |                         14 |                     14 |
+| admin       | static list       |                          8 |                      8 |
+| independent | dynamic catch-all |                          0 |                     11 |
 
 ### Shard -> Spec Mapping
 
@@ -98,20 +98,21 @@ Current resolved set:
 
 ### Job Structure
 
-| Job | Command | Scope |
-| --- | --- | --- |
+| Job                | Command           | Scope                                                             |
+| ------------------ | ----------------- | ----------------------------------------------------------------- |
 | `playwright-tests` | `npm run pw:test` | Executes Playwright projects from `frontend/playwright.config.ts` |
 
 ### Project -> Spec Mapping
 
-| Project | Matching Rule | Current Specs |
-| --- | --- | --- |
-| `setup` | `testMatch: /.*\\.setup\\.ts/` | `playwright/tests/auth.setup.ts` |
+| Project    | Matching Rule                                                          | Current Specs                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `setup`    | `testMatch: /.*\\.setup\\.ts/`                                         | `playwright/tests/auth.setup.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `chromium` | default Playwright spec match (`*.spec.ts`) with dependency on `setup` | `playwright/tests/admin-barcode-core.spec.ts`, `playwright/tests/admin-organization-provider.spec.ts`, `playwright/tests/admin-user-management.spec.ts`, `playwright/tests/analyzer-list.spec.ts`, `playwright/tests/analyzer-navigation.spec.ts`, `playwright/tests/auth-login.spec.ts`, `playwright/tests/clinical-nonconform.spec.ts`, `playwright/tests/clinical-patient-order.spec.ts`, `playwright/tests/clinical-report-workplan.spec.ts`, `playwright/tests/clinical-result-validation.spec.ts`, `playwright/tests/dashboard-smoke.spec.ts`, `playwright/tests/error-dashboard.spec.ts`, `playwright/tests/harness-smoke.spec.ts`, `playwright/tests/home-navigation.spec.ts`, `playwright/tests/navbar.spec.ts`, `playwright/tests/sidenav.spec.ts`, `playwright/tests/storage-assignment-critical.spec.ts`, `playwright/tests/storage-box-crud-critical.spec.ts`, `playwright/tests/storage-samples-visibility.spec.ts`, `playwright/tests/storage-view-edit-critical.spec.ts` |
 
 ## Notes for Migration Planning
 
 - Cypress CI currently runs via matrix sharding plus a dynamic catch-all shard.
-- Playwright CI currently runs as a single job with project-level setup/auth dependency.
-- For parity work, this mapping can be used to identify where migrated specs should be added and where legacy comparisons are still executed.
-
+- Playwright CI currently runs as a single job with project-level setup/auth
+  dependency.
+- For parity work, this mapping can be used to identify where migrated specs
+  should be added and where legacy comparisons are still executed.
