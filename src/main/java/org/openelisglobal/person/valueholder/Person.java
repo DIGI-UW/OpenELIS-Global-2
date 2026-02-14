@@ -16,6 +16,7 @@ package org.openelisglobal.person.valueholder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.util.HashSet;
 import java.util.Set;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.AssociationInverseSide;
@@ -34,10 +35,12 @@ public class Person extends BaseObject<String> {
     private String id;
 
     @ValidName(nameType = NameType.LAST_NAME)
+    @Size(max = 255)
     @KeywordField(normalizer = "lowercase")
     private String lastName;
 
     @ValidName(nameType = NameType.FIRST_NAME)
+    @Size(max = 255)
     @KeywordField(normalizer = "lowercase")
     private String firstName;
 

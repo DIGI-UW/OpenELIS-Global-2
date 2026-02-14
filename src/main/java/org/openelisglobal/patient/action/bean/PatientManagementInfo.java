@@ -74,12 +74,14 @@ public class PatientManagementInfo implements Serializable {
             SamplePatientEntryForm.SamplePatientEntry.class })
     @Pattern(regexp = ValidationHelper.PATIENT_ID_REGEX, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
+    @Size(max = 255, groups = { SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class })
     private String subjectNumber;
 
     @OptionalNotBlank(properties = { Property.PATIENT_NATIONAL_ID_REQUIRED }, groups = {
             SamplePatientEntryForm.SamplePatientEntry.class })
     @Pattern(regexp = ValidationHelper.PATIENT_ID_REGEX, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
+    @Size(max = 255, groups = { SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class })
     private String nationalId;
 
     @Pattern(regexp = ValidationHelper.PATIENT_ID_REGEX, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
@@ -91,12 +93,14 @@ public class PatientManagementInfo implements Serializable {
             SamplePatientEntryForm.SamplePatientEntry.class })
     @ValidName(nameType = NameType.LAST_NAME, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
+    @Size(max = 255, groups = { SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class })
     private String lastName;
 
     @OptionalNotBlank(formFields = { Field.PatientNameRequired }, groups = {
             SamplePatientEntryForm.SamplePatientEntry.class })
     @ValidName(nameType = NameType.FIRST_NAME, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
+    @Size(max = 255, groups = { SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class })
     private String firstName;
 
     @ValidName(nameType = NameType.FULL_NAME, groups = { SamplePatientEntryForm.SamplePatientEntry.class,

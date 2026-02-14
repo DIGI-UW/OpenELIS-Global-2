@@ -29,7 +29,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.validation.annotation.Validated;
@@ -56,7 +55,7 @@ public class PatientManagementRestController extends BaseRestController {
 
     @PostMapping(value = "PatientManagement", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public void savepatient(HttpServletRequest request,
+    public ResponseEntity<?> savepatient(HttpServletRequest request,
             @Validated(SamplePatientEntryForm.SamplePatientEntry.class) @RequestBody PatientManagementInfo patientInfo,
             BindingResult bindingResult) throws Exception {
 
@@ -70,30 +69,29 @@ public class PatientManagementRestController extends BaseRestController {
         if (patientInfo.getPatientUpdateStatus() != PatientUpdateStatus.NO_ACTION) {
             preparePatientData(bindingResult, request, patientInfo, patient);
             if (bindingResult.hasErrors()) {
-                try {
-                    throw new BindException(bindingResult);
-                } catch (BindException e) {
-                    LogEvent.logError(e);
-                }
+                return ResponseEntity.badRequest().body(bindingResult.getAllErrors());
             }
             try {
                 patientService.persistPatientData(patientInfo, patient, getSysUserId(request));
                 fhirTransformService.transformPersistPatient(patientInfo,
                         (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD));
                 photoService.savePhoto(patient.getId(), patientInfo.getPhoto());
+                return ResponseEntity.ok().build();
             } catch (LIMSRuntimeException e) {
 
                 if (e.getCause() instanceof StaleObjectStateException) {
-
+                    return ResponseEntity.status(409).body(Map.of("error", "Concurrent modification detected"));
                 } else {
                     LogEvent.logDebug(e);
+                    return ResponseEntity.status(500).body(Map.of("error", "Failed to save patient data"));
                 }
-                request.setAttribute(ALLOW_EDITS_KEY, "false");
 
             } catch (FhirTransformationException | FhirPersistanceException e) {
                 LogEvent.logError(e);
+                return ResponseEntity.status(500).body(Map.of("error", "FHIR synchronization failed"));
             }
         }
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("patient-photos/{id}/{isThumbnail}")
