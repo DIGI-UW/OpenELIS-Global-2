@@ -62,24 +62,24 @@ bite-size PRs and explicit verification gates.
 
 **Goal**: Establish risk tiers and scenario-level parity mapping baseline.
 
-- [ ] T020 [M2] Create/expand risk model document in
+- [x] T020 [M2] Create/expand risk model document in
       `specs/201-e2e-playwright-risk-parity/data-model.md` (P0/P1/P2 rubric)
-- [ ] T021 [M2] Create parity mapping matrix template in
+- [x] T021 [M2] Create parity mapping matrix template in
       `specs/201-e2e-playwright-risk-parity/parity-matrix.csv`
-- [ ] T022 [P] [M2] Populate all P0/P1 legacy scenarios into parity matrix with initial status
-- [ ] T023 [P] [M2] Create critical gap register
+- [x] T022 [P] [M2] Populate all P0/P1 legacy scenarios into parity matrix with initial status
+- [x] T023 [P] [M2] Create critical gap register
       `specs/201-e2e-playwright-risk-parity/critical-gap-register.md`
-- [ ] T024 [P] [M2] Create approved exception template
+- [x] T024 [P] [M2] Create approved exception template
       `specs/201-e2e-playwright-risk-parity/approved-exception-template.md`
-- [ ] T025 [M2] Add P0/P1 parity completeness validator script
+- [x] T025 [M2] Add P0/P1 parity completeness validator script
       `scripts/e2e/validate-parity-mapping.js`
-- [ ] T026 [M2] Run parity mapping validator and append results to
+- [x] T026 [M2] Run parity mapping validator and append results to
       `specs/201-e2e-playwright-risk-parity/parity-matrix.csv` notes column
-- [ ] T027 [M2] Milestone gate: 100% P0/P1 scenarios have parity map records
-- [ ] T028 [M2] Define reliability SLO and baseline flaky scenario set in
+- [x] T027 [M2] Milestone gate: 100% P0/P1 scenarios have parity map records
+- [x] T028 [M2] Define reliability SLO and baseline flaky scenario set in
       `specs/201-e2e-playwright-risk-parity/baseline-flaky-scenarios.md`
       (target: >=95% pass rate across 20 CI-equivalent runs)
-- [ ] T029 [M2] Link baseline flaky scenarios into `parity-matrix.csv` with
+- [x] T029 [M2] Link baseline flaky scenarios into `parity-matrix.csv` with
       reliability tracking identifiers
 
 ---
