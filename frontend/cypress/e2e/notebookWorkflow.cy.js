@@ -55,10 +55,12 @@ describe("Notebook Workflow - Page Navigation", function () {
     workflowPage.waitForLoad();
 
     workflowPage.verifyActivePage(0);
-    workflowPage
-      .getPageTitle()
-      .should("contain.text", "Sample Reception")
-      .or("contain.text", "Page 1");
+    workflowPage.getPageTitle().then(($title) => {
+      const titleText = $title.text();
+      expect(
+        titleText.includes("Sample Reception") || titleText.includes("Page 1"),
+      ).to.equal(true);
+    });
   });
 
   it("should navigate to Page 2 when clicked", function () {
@@ -70,10 +72,13 @@ describe("Notebook Workflow - Page Navigation", function () {
 
     // Verify Page 2 is now active
     workflowPage.verifyActivePage(1);
-    workflowPage
-      .getPageTitle()
-      .should("contain.text", "Initial Processing")
-      .or("contain.text", "Page 2");
+    workflowPage.getPageTitle().then(($title) => {
+      const titleText = $title.text();
+      expect(
+        titleText.includes("Initial Processing") ||
+          titleText.includes("Page 2"),
+      ).to.equal(true);
+    });
   });
 
   it("should show different content for each page", function () {

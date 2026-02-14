@@ -270,10 +270,9 @@ class UserManagementPage {
   }
 
   validateColumnContent(columnNum, value) {
-    cy.get(this.selectors.tableData, { timeout: 10000 }).should("be.visible");
-    cy.get(`${this.selectors.tableData} td:nth-child(${columnNum})`, {
-      timeout: 10000,
-    }).should("contain", value);
+    cy.get(this.selectors.tableData, { timeout: 10000 })
+      .should("be.visible")
+      .and("contain", value);
   }
 
   inactiveUser(value) {
@@ -294,7 +293,9 @@ class UserManagementPage {
   }
 
   checkUser(columnNum, value) {
-    cy.get(`td:nth-child(${columnNum})`).should("contain", value).click();
+    cy.get(this.selectors.tableData, { timeout: 10000 })
+      .contains("td", value, { timeout: 10000 })
+      .click();
   }
 
   adminUser() {
