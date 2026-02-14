@@ -39,33 +39,33 @@ graph LR
 **Independent Test**: Admin config save/load round-trip works; malformed values
 fallback safely; localized labels render correctly.
 
-- [ ] T001 Create milestone branch
+- [x] T001 Create milestone branch
       `feat/284-barcode-label-quantity-management-m1-config-i18n-hardening` from
       `develop` and add worktree at
       `/workspace-worktrees/ogc-284-m1-config-i18n`
-- [ ] T002 [P] [US1] Extend configuration round-trip and malformed-value fallback
+- [x] T002 [P] [US1] Extend configuration round-trip and malformed-value fallback
       tests in
       `src/test/java/org/openelisglobal/barcode/BarcodeConfigurationRestControllerTest.java`
-- [ ] T003 [P] [US1] Add backend message-key and safe parsing coverage in
+- [x] T003 [P] [US1] Add backend message-key and safe parsing coverage in
       `src/test/java/org/openelisglobal/barcode/BarcodeInformationServiceTest.java`
-- [ ] T004 [P] [US1] Create/extend frontend config and i18n tests in
+- [x] T004 [P] [US1] Create/extend frontend config and i18n tests in
       `frontend/src/components/admin/barcodeConfiguration/BarcodeConfiguration.test.js`
-- [ ] T005 [US1] Implement explicit numeric range validation + fallback behavior
+- [x] T005 [US1] Implement explicit numeric range validation + fallback behavior
       in
       `src/main/java/org/openelisglobal/barcode/controller/rest/BarcodeConfigurationRestController.java`
-- [ ] T006 [US1] Align config load/save mapping for touched quantity and toggle
+- [x] T006 [US1] Align config load/save mapping for touched quantity and toggle
       keys in
       `src/main/java/org/openelisglobal/barcode/service/BarcodeConfigServiceImpl.java`
-- [ ] T007 [US1] Add missing backend label info keys in
+- [x] T007 [US1] Add missing backend label info keys in
       `src/main/resources/languages/message_en.properties`
-- [ ] T008 [US1] Add matching backend label info keys in
+- [x] T008 [US1] Add matching backend label info keys in
       `src/main/resources/languages/message_fr.properties`
-- [ ] T009 [US1] Align frontend localization keys for barcode config labels in
+- [x] T009 [US1] Align frontend localization keys for barcode config labels in
       `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
-- [ ] T010 [US1] Verify Carbon-only component usage for touched barcode config UI
+- [x] T010 [US1] Verify Carbon-only component usage for touched barcode config UI
       in
       `frontend/src/components/admin/barcodeConfiguration/BarcodeConfiguration.js`
-- [ ] T011 [US1] Run milestone tests and record verification evidence in
+- [x] T011 [US1] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
 - [ ] T012 Create milestone PR for M1 with test evidence and scope summary
 

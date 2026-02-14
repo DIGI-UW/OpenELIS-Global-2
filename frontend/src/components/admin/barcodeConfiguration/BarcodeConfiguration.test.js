@@ -1,6 +1,5 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
 import BarcodeConfiguration from "./BarcodeConfiguration";
@@ -67,22 +66,22 @@ describe("BarcodeConfiguration", () => {
   test("renders form values from backend response", async () => {
     renderWithProviders();
     await screen.findByText(enMessages["barcodeconfiguration.browse.title"]);
-    expect(screen.getByDisplayValue("10")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("ABCD")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("10")).toBeTruthy();
+    expect(screen.getByDisplayValue("ABCD")).toBeTruthy();
   });
 
   test("enables save button when max order label count changes", async () => {
     renderWithProviders();
-    const saveButton = await screen.findByRole("button", {
-      name: enMessages["label.button.save"],
-    });
-    expect(saveButton).toBeDisabled();
+    await screen.findByText(enMessages["barcodeconfiguration.browse.title"]);
+    const saveButton = document.getElementById("saveButton");
+    expect(saveButton).toBeTruthy();
+    expect(saveButton.disabled).toBe(true);
 
     const orderInputs = screen.getAllByLabelText(
       enMessages["siteInfo.title.default.barcode.order"],
     );
     fireEvent.change(orderInputs[1], { target: { value: "11" } });
-    expect(saveButton).not.toBeDisabled();
+    expect(saveButton.disabled).toBe(false);
   });
 
   test("contains required barcode label i18n keys in en and fr", () => {

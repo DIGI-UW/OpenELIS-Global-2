@@ -113,3 +113,34 @@ Before final review request:
 - [ ] Test evidence attached in PR comment
 - [ ] Review threads resolved
 - [ ] Merge conflicts resolved
+
+---
+
+## M1 execution evidence (2026-02-14)
+
+### Branch/workflow
+
+- Active milestone branch:
+  `feat/284-barcode-label-quantity-management-m1-config-i18n-hardening`
+- Branch pushed to origin successfully.
+
+### Test execution evidence
+
+- Frontend targeted test (PASS):
+  - Command:
+    `CI=true npm test -- BarcodeConfiguration.test.js --watchAll=false`
+  - Result: 1 suite, 3 tests passed.
+
+### Environment blockers
+
+- Backend targeted Maven tests could not be executed in this environment:
+  - `mvn`: not found
+  - `docker`: not found (no containerized Maven fallback)
+
+### Manual follow-up commands (backend)
+
+Run these in an environment with Maven installed:
+
+```bash
+mvn test -Dtest="BarcodeConfigurationRestControllerTest,BarcodeInformationServiceTest"
+```
