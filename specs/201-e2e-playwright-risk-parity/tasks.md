@@ -39,21 +39,22 @@ bite-size PRs and explicit verification gates.
 
 **Goal**: Authoritative inventory of current Cypress and Playwright coverage.
 
-- [ ] T001 [M1] Create milestone branch
+- [x] T001 [M1] Create milestone branch
       `feat/201-e2e-playwright-risk-parity-m1-inventory` from current feature branch
-- [ ] T002 [M1] Create inventory artifact
+      (tracked on `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch constraint)
+- [x] T002 [M1] Create inventory artifact
       `specs/201-e2e-playwright-risk-parity/coverage-inventory.md` (spec-level listing, domains, counts, skip status)
-- [ ] T003 [P] [M1] Create CI execution mapping artifact
+- [x] T003 [P] [M1] Create CI execution mapping artifact
       `specs/201-e2e-playwright-risk-parity/ci-execution-map.md` (workflow/job/shard -> spec mapping)
-- [ ] T004 [P] [M1] Add inventory generation helper script
+- [x] T004 [P] [M1] Add inventory generation helper script
       `scripts/e2e/export-e2e-inventory.js` (parse Cypress/Playwright specs and emit normalized JSON)
-- [ ] T005 [P] [M1] Add inventory validation script
+- [x] T005 [P] [M1] Add inventory validation script
       `scripts/e2e/validate-e2e-inventory.js` (fail if active specs are missing from inventory)
-- [ ] T006 [M1] Add raw normalized inventory output
+- [x] T006 [M1] Add raw normalized inventory output
       `specs/201-e2e-playwright-risk-parity/artifacts/inventory.json`
-- [ ] T007 [M1] Run validation gate and record output in
+- [x] T007 [M1] Run validation gate and record output in
       `specs/201-e2e-playwright-risk-parity/coverage-inventory.md`
-- [ ] T008 [M1] Milestone gate: verify 100% active Cypress + Playwright specs represented
+- [x] T008 [M1] Milestone gate: verify 100% active Cypress + Playwright specs represented
 
 ---
 

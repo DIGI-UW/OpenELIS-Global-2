@@ -1,0 +1,730 @@
+{
+  "generatedAt": "2026-02-14T21:14:55.562Z",
+  "generatedBy": "scripts/e2e/export-e2e-inventory.js",
+  "sourceRoots": {
+    "cypress": "frontend/cypress/e2e/**/*.cy.js",
+    "playwright": "frontend/playwright/tests/**/*.ts"
+  },
+  "summary": {
+    "frameworks": {
+      "cypress": {
+        "specs": 48,
+        "activeSpecs": 47,
+        "testsTotal": 440,
+        "testsActive": 429,
+        "testsSkipped": 11,
+        "testsFixme": 0
+      },
+      "playwright": {
+        "specs": 6,
+        "activeSpecs": 5,
+        "testsTotal": 29,
+        "testsActive": 28,
+        "testsSkipped": 1,
+        "testsFixme": 0
+      }
+    },
+    "domains": {
+      "admin": {
+        "specs": 18,
+        "testsTotal": 128,
+        "testsActive": 128,
+        "testsSkipped": 0
+      },
+      "clinical": {
+        "specs": 10,
+        "testsTotal": 169,
+        "testsActive": 169,
+        "testsSkipped": 0
+      },
+      "core": {
+        "specs": 6,
+        "testsTotal": 46,
+        "testsActive": 46,
+        "testsSkipped": 0
+      },
+      "storage": {
+        "specs": 14,
+        "testsTotal": 97,
+        "testsActive": 86,
+        "testsSkipped": 11
+      },
+      "analyzer": {
+        "specs": 2,
+        "testsTotal": 8,
+        "testsActive": 8,
+        "testsSkipped": 0
+      },
+      "auth-nav": {
+        "specs": 3,
+        "testsTotal": 16,
+        "testsActive": 15,
+        "testsSkipped": 1
+      },
+      "dashboard": {
+        "specs": 1,
+        "testsTotal": 5,
+        "testsActive": 5,
+        "testsSkipped": 0
+      }
+    },
+    "totals": {
+      "specs": 54,
+      "activeSpecs": 52,
+      "testsTotal": 469,
+      "testsActive": 457,
+      "testsSkipped": 12,
+      "testsFixme": 0
+    }
+  },
+  "specs": [
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/barcode.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 11,
+        "active": 11,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/batchTestReassignmentandCancelation.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 5,
+        "active": 5,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 7,
+        "active": 7,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/dictionaryMenu.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 10,
+        "active": 10,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/generalConfigurations.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 5,
+        "active": 5,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/MenuConfig/billingMenuConfig.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 6,
+        "active": 6,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/MenuConfig/globalMenuConfig.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 5,
+        "active": 5,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/MenuConfig/nonConformMenuConfig.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 7,
+        "active": 7,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/MenuConfig/patientMenuConfig.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 7,
+        "active": 7,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/MenuConfig/studyMenuConfig.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 7,
+        "active": 7,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/notifyUser.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 5,
+        "active": 5,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/organizationManagement.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 6,
+        "active": 6,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/programEntry.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 1,
+        "active": 1,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/providerManagement.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 9,
+        "active": 9,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/reflexTestsManagement.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 3,
+        "active": 3,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/resultReportingConfig.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 3,
+        "active": 3,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/testManagement.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 4,
+        "active": 4,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/AdminE2E/userManagement.cy.js",
+      "domain": "admin",
+      "testCounts": {
+        "total": 27,
+        "active": 27,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/batchOrderEntry.cy.js",
+      "domain": "clinical",
+      "testCounts": {
+        "total": 14,
+        "active": 14,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/dashboard.cy.js",
+      "domain": "core",
+      "testCounts": {
+        "total": 14,
+        "active": 14,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/help.cy.js",
+      "domain": "core",
+      "testCounts": {
+        "total": 4,
+        "active": 4,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/home.cy.js",
+      "domain": "core",
+      "testCounts": {
+        "total": 14,
+        "active": 14,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/labNumberManagement.cy.js",
+      "domain": "core",
+      "testCounts": {
+        "total": 5,
+        "active": 5,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/login.cy.js",
+      "domain": "core",
+      "testCounts": {
+        "total": 8,
+        "active": 8,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/modifyOrder.cy.js",
+      "domain": "clinical",
+      "testCounts": {
+        "total": 19,
+        "active": 19,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/nonConform.cy.js",
+      "domain": "clinical",
+      "testCounts": {
+        "total": 19,
+        "active": 19,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/orderEntity.cy.js",
+      "domain": "clinical",
+      "testCounts": {
+        "total": 8,
+        "active": 8,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/patientEntry.cy.js",
+      "domain": "clinical",
+      "testCounts": {
+        "total": 15,
+        "active": 15,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/patientMerge.cy.js",
+      "domain": "clinical",
+      "testCounts": {
+        "total": 10,
+        "active": 10,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/report.cy.js",
+      "domain": "clinical",
+      "testCounts": {
+        "total": 38,
+        "active": 38,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/result.cy.js",
+      "domain": "clinical",
+      "testCounts": {
+        "total": 30,
+        "active": 30,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/siteBranding.cy.js",
+      "domain": "core",
+      "testCounts": {
+        "total": 1,
+        "active": 1,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/storageAssignment.cy.js",
+      "domain": "storage",
+      "testCounts": {
+        "total": 5,
+        "active": 1,
+        "skipped": 4,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/storageBoxCRUD-integration.cy.js",
+      "domain": "storage",
+      "testCounts": {
+        "total": 4,
+        "active": 2,
+        "skipped": 2,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/storageBoxCRUD.cy.js",
+      "domain": "storage",
+      "testCounts": {
+        "total": 4,
+        "active": 3,
+        "skipped": 1,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/storageDashboard.cy.js",
+      "domain": "storage",
+      "testCounts": {
+        "total": 5,
+        "active": 5,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/storageDashboardMetrics.cy.js",
+      "domain": "storage",
+      "testCounts": {
+        "total": 5,
+        "active": 5,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/storageDisposal.cy.js",
+      "domain": "storage",
+      "testCounts": {
+        "total": 5,
+        "active": 5,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/storageFilters.cy.js",
+      "domain": "storage",
+      "testCounts": {
+        "total": 11,
+        "active": 11,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/storageLocationCRUD-integration.cy.js",
+      "domain": "storage",
+      "testCounts": {
+        "total": 4,
+        "active": 4,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/storageLocationCRUD-smoke.cy.js",
+      "domain": "storage",
+      "testCounts": {
+        "total": 2,
+        "active": 2,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/storageLocationCRUD.cy.js",
+      "domain": "storage",
+      "testCounts": {
+        "total": 14,
+        "active": 13,
+        "skipped": 1,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/storageLocationExpandableRows.cy.js",
+      "domain": "storage",
+      "testCounts": {
+        "total": 16,
+        "active": 16,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/storageSamplesTable.cy.js",
+      "domain": "storage",
+      "testCounts": {
+        "total": 2,
+        "active": 0,
+        "skipped": 2,
+        "fixme": 0
+      },
+      "activeSpec": false
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/storageSearch.cy.js",
+      "domain": "storage",
+      "testCounts": {
+        "total": 16,
+        "active": 16,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/storageViewStorage.cy.js",
+      "domain": "storage",
+      "testCounts": {
+        "total": 4,
+        "active": 3,
+        "skipped": 1,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/validation.cy.js",
+      "domain": "clinical",
+      "testCounts": {
+        "total": 7,
+        "active": 7,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "cypress",
+      "specPath": "cypress/e2e/workplan.cy.js",
+      "domain": "clinical",
+      "testCounts": {
+        "total": 9,
+        "active": 9,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "playwright",
+      "specPath": "playwright/tests/analyzer-list.spec.ts",
+      "domain": "analyzer",
+      "testCounts": {
+        "total": 5,
+        "active": 5,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "playwright",
+      "specPath": "playwright/tests/analyzer-navigation.spec.ts",
+      "domain": "analyzer",
+      "testCounts": {
+        "total": 3,
+        "active": 3,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "playwright",
+      "specPath": "playwright/tests/auth.setup.ts",
+      "domain": "auth-nav",
+      "testCounts": {
+        "total": 0,
+        "active": 0,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": false
+    },
+    {
+      "framework": "playwright",
+      "specPath": "playwright/tests/error-dashboard.spec.ts",
+      "domain": "dashboard",
+      "testCounts": {
+        "total": 5,
+        "active": 5,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "playwright",
+      "specPath": "playwright/tests/navbar.spec.ts",
+      "domain": "auth-nav",
+      "testCounts": {
+        "total": 5,
+        "active": 5,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "playwright",
+      "specPath": "playwright/tests/sidenav.spec.ts",
+      "domain": "auth-nav",
+      "testCounts": {
+        "total": 11,
+        "active": 10,
+        "skipped": 1,
+        "fixme": 0
+      },
+      "activeSpec": true
+    }
+  ]
+}
