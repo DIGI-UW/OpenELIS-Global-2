@@ -8,7 +8,7 @@ node scripts/e2e/validate-e2e-inventory.js
 ```
 
 - Inventory artifact: `specs/201-e2e-playwright-risk-parity/artifacts/inventory.json`
-- Generated at: `2026-02-14T21:14:55.562Z`
+- Generated timestamp is recorded in `inventory.json` as `generatedAt`.
 
 ## Framework Summary
 

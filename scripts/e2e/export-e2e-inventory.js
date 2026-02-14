@@ -235,8 +235,41 @@ function resolveOutputPath(args) {
   return DEFAULT_OUTPUT;
 }
 
+function stripGeneratedAt(inventory) {
+  const clone = JSON.parse(JSON.stringify(inventory));
+  delete clone.generatedAt;
+  return clone;
+}
+
+function preserveGeneratedTimestampIfUnchanged(inventory, outputPath) {
+  if (!fs.existsSync(outputPath)) {
+    return inventory;
+  }
+
+  try {
+    const existing = JSON.parse(fs.readFileSync(outputPath, "utf8"));
+    const sameLogicalContent =
+      JSON.stringify(stripGeneratedAt(existing)) ===
+      JSON.stringify(stripGeneratedAt(inventory));
+
+    if (sameLogicalContent && existing.generatedAt) {
+      return {
+        ...inventory,
+        generatedAt: existing.generatedAt,
+      };
+    }
+  } catch (error) {
+    // Ignore malformed existing artifact and overwrite with fresh output.
+  }
+
+  return inventory;
+}
+
 function writeInventory(outputPath) {
-  const inventory = collectInventory();
+  const inventory = preserveGeneratedTimestampIfUnchanged(
+    collectInventory(),
+    outputPath,
+  );
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, `${JSON.stringify(inventory, null, 2)}\n`, "utf8");
 

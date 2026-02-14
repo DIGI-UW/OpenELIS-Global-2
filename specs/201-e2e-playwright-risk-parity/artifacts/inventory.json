@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-02-14T21:14:55.562Z",
+  "generatedAt": "2026-02-14T21:19:05.178Z",
   "generatedBy": "scripts/e2e/export-e2e-inventory.js",
   "sourceRoots": {
     "cypress": "frontend/cypress/e2e/**/*.cy.js",
