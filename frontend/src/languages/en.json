@@ -2833,6 +2833,7 @@
   "storage.location.description": "Description",
   "storage.location.label": "Storage Location",
   "storage.location.name": "Location Name",
+  "storage.location.search.placeholder": "Search storage locations",
   "storage.metrics.active": "Active",
   "storage.metrics.disposed": "Disposed",
   "storage.metrics.storage.locations": "Storage Locations",

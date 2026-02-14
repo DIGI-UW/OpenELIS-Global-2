@@ -3,9 +3,12 @@ import { ComboBox } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 
-const AutocompleteMode = ({ onLocationChange }) => {
+const DEBOUNCE_MS = 500;
+
+const AutocompleteMode = ({ onLocationChange = () => {} }) => {
   const intl = useIntl();
   const [searchResults, setSearchResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const debounceTimer = useRef(null);
   const abortControllerRef = useRef(null);
 
@@ -16,57 +19,68 @@ const AutocompleteMode = ({ onLocationChange }) => {
     };
   }, []);
 
-  const handleSearch = (inputValue) => {
+  const cancelPending = () => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     if (abortControllerRef.current) abortControllerRef.current.abort();
+  };
 
-    if (!inputValue) {
+  const handleSearch = (inputValue) => {
+    cancelPending();
+
+    if (!inputValue?.trim()) {
       setSearchResults([]);
+      setIsLoading(false);
       return;
     }
 
+    setIsLoading(true);
+
     debounceTimer.current = setTimeout(() => {
-      abortControllerRef.current = new AbortController();
-      const signal = abortControllerRef.current.signal;
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const { signal } = controller;
 
       getFromOpenElisServer(
-        `/rest/storage/devices/search?q=${encodeURIComponent(inputValue)}`,
+        `/rest/storage/devices/search?q=${encodeURIComponent(inputValue.trim())}`,
         (data) => {
-          if (!signal.aborted) {
-            const formattedResults = (data || []).map((item) => ({
-              ...item,
-              displayPath: item.parentRoomName
-                ? `${item.parentRoomName} > ${item.name}`
-                : item.name,
-            }));
-            setSearchResults(formattedResults);
-          }
+          if (signal.aborted) return;
+
+          const formattedResults = (data || []).map((item) => ({
+            ...item,
+            displayPath: item.parentRoomName
+              ? `${item.parentRoomName} > ${item.name}`
+              : item.name,
+          }));
+
+          setSearchResults(formattedResults);
+          setIsLoading(false);
         },
         signal,
-        (error) => {
-          if (error.name !== "AbortError") {
-            console.error("Error searching storage devices:", error);
-            setSearchResults([]);
-          }
-        },
       );
-    }, 500);
+    }, DEBOUNCE_MS);
+  };
+
+  const handleChange = ({ selectedItem }) => {
+    onLocationChange(selectedItem);
   };
 
   return (
     <div className="autocomplete-container">
       <ComboBox
         id="location-search"
-        titleText={intl.formatMessage({ id: "storage.location.label" })}
+        titleText={intl.formatMessage({
+          id: "storage.location.label",
+          defaultMessage: "Location",
+        })}
         placeholder={intl.formatMessage({
           id: "storage.location.search.placeholder",
+          defaultMessage: "Search storage locations",
         })}
         items={searchResults}
         itemToString={(item) => (item ? item.displayPath : "")}
-        onChange={({ selectedItem }) =>
-          onLocationChange && onLocationChange(selectedItem)
-        }
+        onChange={handleChange}
         onInputChange={handleSearch}
+        loading={isLoading}
       />
     </div>
   );

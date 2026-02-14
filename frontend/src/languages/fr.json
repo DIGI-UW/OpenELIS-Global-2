@@ -2839,6 +2839,7 @@
   "storage.location.description": "Description",
   "storage.location.label": "Emplacement de stockage",
   "storage.location.name": "Nom de l'emplacement",
+  "storage.location.search.placeholder": "Rechercher des emplacements de stockage",
   "storage.location.tempMax": "Température Max",
   "storage.location.tempMin": "Température Min",
   "storage.location.type": "Type Emplacement",
