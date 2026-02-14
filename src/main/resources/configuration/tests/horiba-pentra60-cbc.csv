@@ -1,0 +1,21 @@
+testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure,englishName,frenchName
+WBC,Hematology,Whole Blood,6690-2,Y,Y,1,10^3/uL,White Blood Cells,Leucocytes
+RBC,Hematology,Whole Blood,789-8,Y,Y,2,10^6/uL,Red Blood Cells,Érythrocytes
+HGB,Hematology,Whole Blood,718-7,Y,Y,3,g/dL,Hemoglobin,Hémoglobine
+HCT,Hematology,Whole Blood,4544-3,Y,Y,4,%,Hematocrit,Hématocrite
+MCV,Hematology,Whole Blood,787-2,Y,Y,5,fL,Mean Corpuscular Volume,Volume Globulaire Moyen
+MCH,Hematology,Whole Blood,785-6,Y,Y,6,pg,Mean Corpuscular Hemoglobin,Teneur Corpusculaire Moyenne en Hémoglobine
+MCHC,Hematology,Whole Blood,786-4,Y,Y,7,g/dL,Mean Corpuscular Hemoglobin Concentration,Concentration Corpusculaire Moyenne en Hémoglobine
+PLT,Hematology,Whole Blood,777-3,Y,Y,8,10^3/uL,Platelets,Plaquettes
+RDW,Hematology,Whole Blood,788-0,Y,Y,9,%,Red Cell Distribution Width,Largeur de Distribution des Érythrocytes
+MPV,Hematology,Whole Blood,32623-1,Y,Y,10,fL,Mean Platelet Volume,Volume Plaquettaire Moyen
+LYM%,Hematology,Whole Blood,736-9,Y,Y,11,%,Lymphocytes Percent,Lymphocytes Pourcentage
+LYM#,Hematology,Whole Blood,731-0,Y,Y,12,10^3/uL,Lymphocytes Absolute,Lymphocytes Nombre Absolu
+MON%,Hematology,Whole Blood,5905-5,Y,Y,13,%,Monocytes Percent,Monocytes Pourcentage
+MON#,Hematology,Whole Blood,742-7,Y,Y,14,10^3/uL,Monocytes Absolute,Monocytes Nombre Absolu
+NEU%,Hematology,Whole Blood,770-8,Y,Y,15,%,Neutrophils Percent,Neutrophiles Pourcentage
+NEU#,Hematology,Whole Blood,751-8,Y,Y,16,10^3/uL,Neutrophils Absolute,Neutrophiles Nombre Absolu
+EOS%,Hematology,Whole Blood,713-8,Y,Y,17,%,Eosinophils Percent,Éosinophiles Pourcentage
+EOS#,Hematology,Whole Blood,711-2,Y,Y,18,10^3/uL,Eosinophils Absolute,Éosinophiles Nombre Absolu
+BAS%,Hematology,Whole Blood,706-2,Y,Y,19,%,Basophils Percent,Basophiles Pourcentage
+BAS#,Hematology,Whole Blood,704-7,Y,Y,20,10^3/uL,Basophils Absolute,Basophiles Nombre Absolu
