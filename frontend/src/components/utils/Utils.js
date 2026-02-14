@@ -61,6 +61,7 @@ export const postToOpenElisServer = (
     })
     .catch((error) => {
       console.error(error);
+      callback(0, extraParams);
     });
 };
 
@@ -87,6 +88,7 @@ export const postToOpenElisServerFullResponse = (
     .then((response) => callback(response, extraParams))
     .catch((error) => {
       console.error(error);
+      callback(undefined, extraParams);
     });
 };
 
@@ -114,6 +116,7 @@ export const postToOpenElisServerFormData = (
     })
     .catch((error) => {
       console.error(error);
+      callback(0, extraParams);
     });
 };
 
@@ -275,6 +278,7 @@ export const putToOpenElisServer = (endPoint, payLoad, callback) => {
     })
     .catch((error) => {
       console.error(error);
+      callback(0);
     });
 };
 
@@ -297,6 +301,7 @@ export const putToOpenElisServerFullResponse = (
     .then((response) => callback(response, extraParams))
     .catch((error) => {
       console.error(error);
+      callback(undefined, extraParams);
     });
 };
 
@@ -316,6 +321,7 @@ export const deleteFromOpenElisServer = (endPoint, callback) => {
     })
     .catch((error) => {
       console.error(error);
+      callback(0);
     });
 };
 
@@ -336,6 +342,7 @@ export const deleteFromOpenElisServerFullResponse = (
     .then((response) => callback(response, extraParams))
     .catch((error) => {
       console.error(error);
+      callback(undefined, extraParams);
     });
 };
 
@@ -393,6 +400,7 @@ export const patchToOpenElisServerJsonResponse = (
     })
     .catch((error) => {
       console.error(error);
+      callback(undefined, extraParams);
     });
 };
 
