@@ -37,8 +37,10 @@
 
   <!-- Add device connectivity fields for network-connected storage equipment -->
   <include relativeToChangelogFile="true" file="023-storage-device-connectivity.xml"/>
-  <!-- Freezer monitoring - formerly 011 (renumbered to avoid duplicate sequence) -->
+  <!-- Freezer monitoring: creates menu_storage_management and cold storage under menu_storage -->
   <include relativeToChangelogFile="true" file="024-freezer-monitoring-schema.xml"/>
+  <!-- Add storage subnav items (Samples, Rooms, Devices, etc.) under menu_storage_management -->
+  <include relativeToChangelogFile="true" file="029-add-storage-subnav-items.xml"/>
   <include relativeToChangelogFile="true" file="generic-program-menu.xml"/>
   <!-- Freezer audit trail - formerly 012 (renumbered to avoid duplicate sequence) -->
   <include relativeToChangelogFile="true" file="025-register-freezer-audit-trail.xml"/>
@@ -48,4 +50,6 @@
 
   <!-- Site Branding / White Labeling (001-site-branding) -->
   <include relativeToChangelogFile="true" file="028-create-site-branding-table.xml"/>
+
+  <!-- NOTE: Analyzer-related changesets have been moved to 3.4.x.x/base.xml -->
 </databaseChangeLog>

@@ -7,6 +7,8 @@
 
 #local use files
 liqubase.properties
+id_file
+.env
 
 # IDE files #
 .idea/
@@ -46,7 +48,9 @@ volume/logs/*
 volume/ocl/*
 volume/odoo/*
 .specify/temp/
+.specify/audit-reports/*.md
 volume/branding/*
+volume/lucene/*
 
 # AI Agent command directories (populated by scripts/install-speckit-commands.py)
 # These are compiled from .specify/core/commands/ and .specify/oe/commands/ and should not be tracked
@@ -66,6 +70,17 @@ volume/branding/*
 # These are generated on-the-fly during test runs from authoritative XML sources
 src/test/resources/testdata/*.generated.sql
 
+# Docker volume artifacts (created by dev/CI containers, never commit)
+projects/*/volume/
+
+.dev-docs/
+
+# Playwright test artifacts (generated, not source)
+**/playwright-report/
+**/playwright/.cache/
+**/playwright/.auth/
+**/test-results/
+# Note: frontend/playwright/ test sources are tracked (not ignored)
 # Catalyst dev files
 projects/catalyst/.env
 projects/catalyst/logs/
@@ -74,3 +89,11 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+*.bak
+
+cypress-screenshots/
+cypress-videos/
+# Vendor documentation (too large for git - 100MB+ PDFs)
+specs/*/research/AnalyzerDocs/
+
+# Miscellaneous dev artifacts

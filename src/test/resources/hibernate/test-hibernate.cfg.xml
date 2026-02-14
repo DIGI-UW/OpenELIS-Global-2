@@ -101,8 +101,6 @@
         <mapping resource="hibernate/hbm/Role.hbm.xml" />
         <mapping resource="hibernate/hbm/UserRole.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemRoleModule.hbm.xml" />
-        <mapping resource="hibernate/hbm/Analyzer.hbm.xml" />
-        <mapping resource="hibernate/hbm/AnalyzerResults.hbm.xml" />
         <mapping resource="hibernate/hbm/OrganizationType.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleRequester.hbm.xml" />
         <mapping resource="hibernate/hbm/DatabaseChangeLog.hbm.xml" />
@@ -112,7 +110,6 @@
         <mapping resource="hibernate/hbm/ObservationHistory.hbm.xml" />
         <mapping
             resource="hibernate/hbm/ObservationHistoryType.hbm.xml" />
-        <mapping resource="hibernate/hbm/AnalyzerTestMapping.hbm.xml" />
         <mapping resource="hibernate/hbm/ReferralReason.hbm.xml" />
         <mapping resource="hibernate/hbm/ReferralType.hbm.xml" />
         <mapping resource="hibernate/hbm/Referral.hbm.xml" />
@@ -162,6 +159,10 @@
         <!-- Sample Storage Management mappings (001-sample-storage) -->
         <!-- Moved to annotation-based mappings (JPA) - entities registered in
             test-persistence.xml -->
+
+        <!-- ASTM Analyzer Mapping: QualitativeResultMapping and UnitMapping are
+            JPA-annotated; entities are declared in test-persistence.xml -->
+
     </session-factory>
 
 </hibernate-configuration>
