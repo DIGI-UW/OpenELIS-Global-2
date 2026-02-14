@@ -108,13 +108,35 @@ export class Sidenav {
   /** Check if a menu item is active/current */
   async expectMenuActive(text: string) {
     const link = this.nav.getByRole("link", { name: text });
-    await expect(link).toHaveClass(/cds--side-nav__link--current/);
+    await expect(link).toBeVisible();
+    await expect
+      .poll(async () => {
+        const className = (await link.getAttribute("class")) || "";
+        const ariaCurrent = await link.getAttribute("aria-current");
+        return (
+          className.includes("cds--side-nav__link--current") ||
+          ariaCurrent === "page" ||
+          ariaCurrent === "true"
+        );
+      })
+      .toBeTruthy();
   }
 
   /** Check if a menu item is NOT active */
   async expectMenuInactive(text: string) {
     const link = this.nav.getByRole("link", { name: text });
-    await expect(link).not.toHaveClass(/cds--side-nav__link--current/);
+    await expect(link).toBeVisible();
+    await expect
+      .poll(async () => {
+        const className = (await link.getAttribute("class")) || "";
+        const ariaCurrent = await link.getAttribute("aria-current");
+        return (
+          className.includes("cds--side-nav__link--current") ||
+          ariaCurrent === "page" ||
+          ariaCurrent === "true"
+        );
+      })
+      .toBeFalsy();
   }
 
   /** Navigate to storage section and wait for load */

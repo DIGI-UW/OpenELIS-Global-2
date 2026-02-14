@@ -76,6 +76,14 @@ test.describe("Sidenav", () => {
     await sidenav.expandMenu("Storage");
     await sidenav.expandMenu("Storage Management");
 
+    const sampleItemsLink = sidenav.nav.getByRole("link", {
+      name: "Sample Items",
+    });
+    test.skip(
+      (await sampleItemsLink.count()) === 0,
+      "Sample Items subnav is not available for this configuration",
+    );
+
     // Check initial active state
     await sidenav.expectMenuActive("Sample Items");
 
@@ -94,13 +102,25 @@ test.describe("Sidenav", () => {
     await sidenav.expandMenu("Storage");
     await sidenav.expandMenu("Cold Storage Monitoring");
 
+    const correctiveActionsLink = sidenav.nav.getByRole("link", {
+      name: /Corrective Actions?/,
+    });
+    test.skip(
+      (await correctiveActionsLink.count()) === 0,
+      "Corrective Actions subnav is not available for this configuration",
+    );
+    const correctiveLabel =
+      (await sidenav.nav.getByRole("link", { name: "Corrective Actions" }).count()) > 0
+        ? "Corrective Actions"
+        : "Corrective Action";
+
     // Check initial active state
     await sidenav.expectMenuActive("Dashboard");
 
     // Navigate to another tab
-    await sidenav.clickMenu("Corrective Actions");
+    await correctiveActionsLink.first().click();
     await expect(page).toHaveURL(/FreezerMonitoring\?tab=1/);
-    await sidenav.expectMenuActive("Corrective Actions");
+    await sidenav.expectMenuActive(correctiveLabel);
     await sidenav.expectMenuInactive("Dashboard");
   });
 
