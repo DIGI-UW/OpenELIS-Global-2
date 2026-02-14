@@ -107,7 +107,7 @@ Current resolved set:
 | Project | Matching Rule | Current Specs |
 | --- | --- | --- |
 | `setup` | `testMatch: /.*\\.setup\\.ts/` | `playwright/tests/auth.setup.ts` |
-| `chromium` | default Playwright spec match (`*.spec.ts`) with dependency on `setup` | `playwright/tests/analyzer-list.spec.ts`, `playwright/tests/analyzer-navigation.spec.ts`, `playwright/tests/error-dashboard.spec.ts`, `playwright/tests/harness-smoke.spec.ts`, `playwright/tests/navbar.spec.ts`, `playwright/tests/sidenav.spec.ts` |
+| `chromium` | default Playwright spec match (`*.spec.ts`) with dependency on `setup` | `playwright/tests/analyzer-list.spec.ts`, `playwright/tests/analyzer-navigation.spec.ts`, `playwright/tests/auth-login.spec.ts`, `playwright/tests/dashboard-smoke.spec.ts`, `playwright/tests/error-dashboard.spec.ts`, `playwright/tests/harness-smoke.spec.ts`, `playwright/tests/home-navigation.spec.ts`, `playwright/tests/navbar.spec.ts`, `playwright/tests/sidenav.spec.ts` |
 
 ## Notes for Migration Planning
 

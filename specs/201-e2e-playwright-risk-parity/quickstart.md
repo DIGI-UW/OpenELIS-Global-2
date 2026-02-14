@@ -44,3 +44,16 @@ docker compose -f build.docker-compose.yml up -d --wait --wait-timeout 600
     not reachable in this cloud environment.
 - Artifact path from failed run:
   - `frontend/test-results/playwright/auth.setup.ts-authenticate-setup/test-failed-1.png`
+
+## M4a Auth/Nav Spot-Check Gate Result (T066)
+
+- Playwright command:
+  - `cd frontend && TEST_USER=admin TEST_PASS=adminADMIN! npm run pw:test -- --grep "Auth login parity migration|Home and navbar navigation parity migration|Dashboard critical navigation smoke"`
+- Cypress counterpart command:
+  - `cd frontend && TEST_USER=admin TEST_PASS=adminADMIN! xvfb-run -a npm run cy:failfast:spec "cypress/e2e/login.cy.js,cypress/e2e/home.cy.js,cypress/e2e/dashboard.cy.js"`
+- Execution date: `2026-02-14`
+- Status: `BLOCKED_IN_ENV`
+- Observed outcome:
+  - Playwright setup project failed first with `net::ERR_CONNECTION_REFUSED at https://localhost/`.
+  - Cypress launched successfully under xvfb, then failed baseUrl verification because
+    `https://localhost` was not running.

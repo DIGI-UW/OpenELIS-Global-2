@@ -129,8 +129,9 @@ bite-size PRs and explicit verification gates.
 - [x] T064 [M4a] Update parity matrix statuses for migrated auth/nav scenarios
 - [x] T065 [M4a] Add migration evidence notes in
       `specs/201-e2e-playwright-risk-parity/coverage-inventory.md`
-- [ ] T066 [M4a] Test gate: run new auth/nav Playwright specs and Cypress counterparts for parity spot-check
+- [x] T066 [M4a] Test gate: run new auth/nav Playwright specs and Cypress counterparts for parity spot-check
 - [ ] T067 [M4a] Milestone gate: migrated auth/nav parity entries move to PASS
+      (blocked in current cloud environment: `https://localhost` unavailable for both Playwright and Cypress spot-checks)
 
 ---
 
