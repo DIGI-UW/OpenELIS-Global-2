@@ -35,6 +35,7 @@ import org.hl7.fhir.r4.model.QuestionnaireResponse.QuestionnaireResponseStatus;
 import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.TimeType;
 import org.hl7.fhir.r4.model.Type;
+import org.openelisglobal.barcode.service.BarcodeInfoService;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
 import org.openelisglobal.common.services.IStatusService;
@@ -121,6 +122,9 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
 
     @Autowired
     private FhirConfig fhirConfig;
+
+    @Autowired
+    private BarcodeInfoService barcodeInfoService;
 
     @Override
     public Map<String, Object> saveGenericSampleOrder(GenericSampleOrderForm form, String sysUserId)
@@ -242,6 +246,11 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
         saveAdditionalFields(sample, defaultFields, sysUserId);
         LogEvent.logInfo(this.getClass().getSimpleName(), "saveGenericSampleOrder",
                 "Additional fields saved successfully");
+
+        // Save barcode label counts for order/specimen (OGC-284)
+        int numOrderLabels = defaultFields.getNumOrderLabels() != null ? defaultFields.getNumOrderLabels() : 1;
+        int numSpecimenLabels = defaultFields.getNumSpecimenLabels() != null ? defaultFields.getNumSpecimenLabels() : 1;
+        barcodeInfoService.saveBarcodeInfoForSampleAndSampleItems(sample, numOrderLabels, numSpecimenLabels);
 
         // Save notebook sample and questionnaire response if notebook is selected
         if (form.getNotebookId() != null && form.getFhirQuestionnaire() != null && form.getFhirResponses() != null

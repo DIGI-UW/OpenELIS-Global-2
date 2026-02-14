@@ -27,13 +27,13 @@
 		<table style="margin:auto;border-spacing:15px 2px;">
 			<tr>
 				<td><ul>
-					<li><spring:message code="barcode.label.info.labnumber"/></li>
-					<li><spring:message code="barcode.label.info.patientid"/></li>
+					<li><spring:message code="barcode.label.info.labNumber"/></li>
+					<li><spring:message code="barcode.label.info.patientId"/></li>
 					<li>Site ID</li>
 				</ul></td>
 				<td><ul>
-					<li><spring:message code="barcode.label.info.patientname"/></li>
-					<li><spring:message code="barcode.label.info.patientdobfull"/></li>
+					<li><spring:message code="barcode.label.info.patientName"/></li>
+					<li><spring:message code="barcode.label.info.patientDobFull"/></li>
 				</ul></td>
 			</tr>
 		</table>
@@ -42,12 +42,12 @@
 		<table style="margin:auto;border-spacing:15px 2px;">
 			<tr>
 				<td><ul>
-					<li><spring:message code="barcode.label.info.labnumber"/></li>
-					<li><spring:message code="barcode.label.info.patientid"/></li>
+					<li><spring:message code="barcode.label.info.labNumber"/></li>
+					<li><spring:message code="barcode.label.info.patientId"/></li>
 				</ul></td>
 				<td><ul>
-					<li><spring:message code="barcode.label.info.patientname"/></li>
-					<li><spring:message code="barcode.label.info.patientdobfull"/></li>
+					<li><spring:message code="barcode.label.info.patientName"/></li>
+					<li><spring:message code="barcode.label.info.patientDobFull"/></li>
 				</ul></td>
 			</tr>
 		</table>
@@ -75,7 +75,7 @@
 					<form:checkbox path="collectionDateCheck"
 						value="true"
 						onchange="enableSave();"/>
-					<spring:message code="barcode.label.info.collectiondatetime"/>
+					<spring:message code="barcode.label.info.collectionDateTime"/>
 				</td>
 			</tr>
 			<tr>
@@ -99,7 +99,7 @@
 					<form:checkbox path="patientSexCheck"
 						value="true"
 						onchange="enableSave();"/>
-					<spring:message code="barcode.label.info.patientsexfull"/>
+					<spring:message code="barcode.label.info.patientSexFull"/>
 				</td>
 			</tr>
 		</table>

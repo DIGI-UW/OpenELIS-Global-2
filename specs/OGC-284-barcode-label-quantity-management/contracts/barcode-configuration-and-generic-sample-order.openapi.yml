@@ -1,0 +1,252 @@
+openapi: 3.0.3
+info:
+  title: OGC-284 Barcode Configuration and Generic Sample Order Contract
+  version: 1.0.0
+  description: >
+    Contract documentation for existing endpoints impacted by OGC-284
+    remediation. No new endpoints are introduced; this contract clarifies payload
+    and response expectations used by barcode quantity management.
+
+paths:
+  /rest/BarcodeConfiguration:
+    get:
+      summary: Retrieve barcode configuration
+      operationId: getBarcodeConfiguration
+      responses:
+        "200":
+          description: Barcode configuration form payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarcodeConfigurationForm"
+    post:
+      summary: Save barcode configuration
+      operationId: saveBarcodeConfiguration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BarcodeConfigurationForm"
+      responses:
+        "200":
+          description: Validation failure returns form payload with errors
+        "302":
+          description: Successful save redirects to /rest/BarcodeConfiguration
+
+  /rest/GenericSampleOrder:
+    post:
+      summary: Save generic sample order with barcode quantity defaults
+      operationId: saveGenericSampleOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenericSampleOrderRequest"
+      responses:
+        "200":
+          description: Generic sample order save result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericSampleOrderResponse"
+
+components:
+  schemas:
+    BarcodeConfigurationForm:
+      type: object
+      properties:
+        formName:
+          type: string
+          example: BarcodeConfigurationForm
+        numMaxOrderLabels:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        numMaxSpecimenLabels:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        numMaxSlideLabels:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        numMaxBlockLabels:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        numMaxFreezerLabels:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        numDefaultOrderLabels:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        numDefaultSpecimenLabels:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        numDefaultSlideLabels:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        numDefaultBlockLabels:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        numDefaultFreezerLabels:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        heightOrderLabels:
+          type: number
+          format: float
+        widthOrderLabels:
+          type: number
+          format: float
+        heightSpecimenLabels:
+          type: number
+          format: float
+        widthSpecimenLabels:
+          type: number
+          format: float
+        heightSlideLabels:
+          type: number
+          format: float
+        widthSlideLabels:
+          type: number
+          format: float
+        heightBlockLabels:
+          type: number
+          format: float
+        widthBlockLabels:
+          type: number
+          format: float
+        heightFreezerLabels:
+          type: number
+          format: float
+        widthFreezerLabels:
+          type: number
+          format: float
+        orderPatientDobCheck:
+          type: boolean
+        orderPatientIdCheck:
+          type: boolean
+        orderPatientNameCheck:
+          type: boolean
+        orderSiteIdCheck:
+          type: boolean
+        specimenPatientDobCheck:
+          type: boolean
+        specimenPatientIdCheck:
+          type: boolean
+        specimenPatientNameCheck:
+          type: boolean
+        specimenCollectionDateCheck:
+          type: boolean
+        specimenCollectedByCheck:
+          type: boolean
+        specimenTestsCheck:
+          type: boolean
+        specimenPatientSexCheck:
+          type: boolean
+        slidePatientIdCheck:
+          type: boolean
+        slideSlideIdCheck:
+          type: boolean
+        slideStainTypeCheck:
+          type: boolean
+        slideBlockIdCheck:
+          type: boolean
+        slideCaseNumberCheck:
+          type: boolean
+        blockPatientIdCheck:
+          type: boolean
+        blockBlockIdCheck:
+          type: boolean
+        blockSpecimenTypeCheck:
+          type: boolean
+        blockCaseNumberCheck:
+          type: boolean
+        freezerPatientIdCheck:
+          type: boolean
+        freezerStorageLocationCheck:
+          type: boolean
+        freezerSpecimenTypeCheck:
+          type: boolean
+        freezerCollectionDateCheck:
+          type: boolean
+        freezerExpiryDateCheck:
+          type: boolean
+        prePrintDontUseAltAccession:
+          type: boolean
+        prePrintAltAccessionPrefix:
+          type: string
+          minLength: 0
+          maxLength: 4
+
+    GenericSampleOrderRequest:
+      type: object
+      properties:
+        defaultFields:
+          $ref: "#/components/schemas/GenericSampleDefaultFields"
+        notebookId:
+          type: integer
+          nullable: true
+        notebookEntryId:
+          type: integer
+          nullable: true
+        fhirQuestionnaire:
+          type: object
+          nullable: true
+        fhirResponses:
+          type: object
+          additionalProperties: true
+      required:
+        - defaultFields
+
+    GenericSampleDefaultFields:
+      type: object
+      properties:
+        labNo:
+          type: string
+        sampleTypeId:
+          type: string
+        quantity:
+          type: string
+        sampleUnitOfMeasure:
+          type: string
+        from:
+          type: string
+        collector:
+          type: string
+        collectionDate:
+          type: string
+        collectionTime:
+          type: string
+        numOrderLabels:
+          type: integer
+          description: Optional; defaults to 1 when omitted
+          minimum: 1
+        numSpecimenLabels:
+          type: integer
+          description: Optional; defaults to 1 when omitted
+          minimum: 1
+
+    GenericSampleOrderResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        error:
+          type: string
+        sampleId:
+          type: string
+        sampleItemId:
+          type: string
+        accessionNumber:
+          type: string
