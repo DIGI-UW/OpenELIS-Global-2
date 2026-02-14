@@ -139,15 +139,16 @@ bite-size PRs and explicit verification gates.
 
 **Goal**: Port critical admin workflows.
 
-- [ ] T070 [M4b] Create milestone branch
+- [x] T070 [M4b] Create milestone branch
       `feat/201-e2e-playwright-risk-parity-m4b-core-admin`
-- [ ] T071 [P] [M4b] Add Playwright spec
+      (tracked on `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch constraint)
+- [x] T071 [P] [M4b] Add Playwright spec
       `frontend/playwright/tests/admin-user-management.spec.ts`
-- [ ] T072 [P] [M4b] Add Playwright spec
+- [x] T072 [P] [M4b] Add Playwright spec
       `frontend/playwright/tests/admin-organization-provider.spec.ts`
-- [ ] T073 [P] [M4b] Add Playwright spec
+- [x] T073 [P] [M4b] Add Playwright spec
       `frontend/playwright/tests/admin-barcode-core.spec.ts`
-- [ ] T074 [M4b] Update parity matrix for admin-core scenario mappings
+- [x] T074 [M4b] Update parity matrix for admin-core scenario mappings
 - [ ] T075 [M4b] Test gate: run migrated admin Playwright specs and target Cypress admin specs
 - [ ] T076 [M4b] Milestone gate: migrated admin-core parity entries move to PASS
 

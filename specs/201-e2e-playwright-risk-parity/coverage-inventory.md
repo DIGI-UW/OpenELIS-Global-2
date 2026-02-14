@@ -127,3 +127,16 @@ PASS: inventory covers all active specs (56 active specs).
   - `LEG-CYP-020` (`dashboard.cy.js`) -> status `PARTIAL`
 - These rows will move to `PASS` after M4a gate validation (T066/T067).
 
+## M4b Migration Evidence Notes (Admin-Core)
+
+- Added Playwright specs:
+  - `frontend/playwright/tests/admin-user-management.spec.ts`
+  - `frontend/playwright/tests/admin-organization-provider.spec.ts`
+  - `frontend/playwright/tests/admin-barcode-core.spec.ts`
+- Parity matrix updates (implementation-complete, gate pending):
+  - `LEG-CYP-018` (`userManagement.cy.js`) -> status `PARTIAL`
+  - `LEG-CYP-012` (`organizationManagement.cy.js`) -> status `PARTIAL`
+  - `LEG-CYP-014` (`providerManagement.cy.js`) -> status `PARTIAL`
+  - `LEG-CYP-001` (`barcode.cy.js`) -> status `PARTIAL`
+- These rows will move to `PASS` after M4b gate validation (T075/T076).
+
