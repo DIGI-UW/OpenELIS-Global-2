@@ -197,6 +197,7 @@ bite-size PRs and explicit verification gates.
 - [x] T095 [M6] Integrate fixture-loading workflow into Playwright tests using existing loader scripts
 - [x] T096 [M6] Update `critical-gap-register.md` and `parity-matrix.csv` statuses
 - [ ] T097 [M6] Test gate: validate critical storage gap list reduced to zero P0/P1 open items or approved exceptions
+      (execution checks blocked in current cloud environment: `https://localhost` unavailable for both Playwright and Cypress spot-checks)
 
 ---
 

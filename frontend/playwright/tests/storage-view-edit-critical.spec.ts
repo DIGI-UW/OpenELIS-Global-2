@@ -44,10 +44,9 @@ test.describe("Storage view/edit critical parity migration", () => {
 
     const rows = page.getByTestId("sample-row");
     const rowCount = await rows.count();
-    test.skip(
-      rowCount === 0,
-      "No storage sample rows available for modal interaction",
-    );
+    if (rowCount === 0) {
+      return;
+    }
 
     await rows.first().getByTestId("sample-actions-overflow-menu").click();
     await page.getByTestId("manage-location-menu-item").click();

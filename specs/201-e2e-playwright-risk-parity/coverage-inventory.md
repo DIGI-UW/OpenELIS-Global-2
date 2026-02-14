@@ -15,8 +15,8 @@ node scripts/e2e/validate-e2e-inventory.js
 | Framework | Specs | Active Specs | Tests Total | Tests Active | Tests Skipped | Tests Fixme |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Cypress | 48 | 47 | 440 | 429 | 11 | 0 |
-| Playwright | 17 | 16 | 51 | 50 | 1 | 0 |
-| **Total** | **65** | **63** | **491** | **479** | **12** | **0** |
+| Playwright | 21 | 20 | 59 | 58 | 1 | 0 |
+| **Total** | **69** | **67** | **499** | **487** | **12** | **0** |
 
 ## Domain Summary
 
@@ -29,7 +29,7 @@ node scripts/e2e/validate-e2e-inventory.js
 | core | 6 | 46 | 46 | 0 |
 | dashboard | 2 | 6 | 6 | 0 |
 | other | 1 | 2 | 2 | 0 |
-| storage | 14 | 97 | 86 | 11 |
+| storage | 18 | 105 | 94 | 11 |
 
 ## Spec-Level Listing
 
@@ -107,12 +107,16 @@ node scripts/e2e/validate-e2e-inventory.js
 | `playwright/tests/home-navigation.spec.ts` | auth-nav | 2/2 | 0 | active |
 | `playwright/tests/navbar.spec.ts` | auth-nav | 5/5 | 0 | active |
 | `playwright/tests/sidenav.spec.ts` | auth-nav | 10/11 | 1 | active |
+| `playwright/tests/storage-assignment-critical.spec.ts` | storage | 2/2 | 0 | active |
+| `playwright/tests/storage-box-crud-critical.spec.ts` | storage | 2/2 | 0 | active |
+| `playwright/tests/storage-samples-visibility.spec.ts` | storage | 1/1 | 0 | active |
+| `playwright/tests/storage-view-edit-critical.spec.ts` | storage | 3/3 | 0 | active |
 
 ## Validation Gate Output (T007)
 
 ```text
 $ node scripts/e2e/validate-e2e-inventory.js
-PASS: inventory covers all active specs (63 active specs).
+PASS: inventory covers all active specs (67 active specs).
 ```
 
 ## M1 Milestone Gate Status

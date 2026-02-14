@@ -83,3 +83,18 @@ docker compose -f build.docker-compose.yml up -d --wait --wait-timeout 600
   - Playwright setup project failed first with `net::ERR_CONNECTION_REFUSED at https://localhost/`.
   - Cypress launched successfully under xvfb, then failed baseUrl verification because
     `https://localhost` was not running.
+
+## M6 Storage Critical Gap Spot-Check Gate Result (T097)
+
+- Playwright command:
+  - `cd frontend && TEST_USER=admin TEST_PASS=adminADMIN! npm run pw:test -- --grep "Storage assignment critical parity migration|Storage box CRUD critical parity migration|Storage samples visibility parity migration|Storage view/edit critical parity migration"`
+- Cypress counterpart command:
+  - `cd frontend && TEST_USER=admin TEST_PASS=adminADMIN! xvfb-run -a npm run cy:failfast:spec "cypress/e2e/storageAssignment.cy.js,cypress/e2e/storageBoxCRUD-integration.cy.js,cypress/e2e/storageBoxCRUD.cy.js,cypress/e2e/storageLocationCRUD.cy.js,cypress/e2e/storageViewStorage.cy.js,cypress/e2e/storageSamplesTable.cy.js"`
+- Execution date: `2026-02-14`
+- Status: `BLOCKED_IN_ENV`
+- Observed outcome:
+  - Playwright setup project failed first with `net::ERR_CONNECTION_REFUSED at https://localhost/`.
+  - Cypress launched successfully under xvfb, then failed baseUrl verification because
+    `https://localhost` was not running.
+- Gap register check:
+  - `critical-gap-register.md` has **zero** `Open` entries targeting milestone `M6` after this update.
