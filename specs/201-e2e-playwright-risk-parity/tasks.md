@@ -117,16 +117,17 @@ bite-size PRs and explicit verification gates.
 
 **Goal**: Port core auth/navigation critical workflows.
 
-- [ ] T060 [M4a] Create milestone branch
+- [x] T060 [M4a] Create milestone branch
       `feat/201-e2e-playwright-risk-parity-m4a-core-authnav`
-- [ ] T061 [P] [M4a] Add Playwright spec
+      (tracked on `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch constraint)
+- [x] T061 [P] [M4a] Add Playwright spec
       `frontend/playwright/tests/auth-login.spec.ts` (login success/failure/session)
-- [ ] T062 [P] [M4a] Add Playwright spec
+- [x] T062 [P] [M4a] Add Playwright spec
       `frontend/playwright/tests/home-navigation.spec.ts` (home navbar actions, key menu navigation)
-- [ ] T063 [P] [M4a] Add Playwright spec
+- [x] T063 [P] [M4a] Add Playwright spec
       `frontend/playwright/tests/dashboard-smoke.spec.ts` (critical dashboard tile navigation)
-- [ ] T064 [M4a] Update parity matrix statuses for migrated auth/nav scenarios
-- [ ] T065 [M4a] Add migration evidence notes in
+- [x] T064 [M4a] Update parity matrix statuses for migrated auth/nav scenarios
+- [x] T065 [M4a] Add migration evidence notes in
       `specs/201-e2e-playwright-risk-parity/coverage-inventory.md`
 - [ ] T066 [M4a] Test gate: run new auth/nav Playwright specs and Cypress counterparts for parity spot-check
 - [ ] T067 [M4a] Milestone gate: migrated auth/nav parity entries move to PASS

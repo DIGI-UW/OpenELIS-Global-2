@@ -18,11 +18,11 @@ LEG-CYP-016,P2,admin,cypress/e2e/AdminE2E/resultReportingConfig.cy.js,playwright
 LEG-CYP-017,P2,admin,cypress/e2e/AdminE2E/testManagement.cy.js,playwright/tests/admin-test-management.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M9,NA,m2-baseline
 LEG-CYP-018,P0,admin,cypress/e2e/AdminE2E/userManagement.cy.js,playwright/tests/admin-user-management.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M4b,NA,m2-baseline|T026_PASS_2026-02-14
 LEG-CYP-019,P0,clinical,cypress/e2e/batchOrderEntry.cy.js,playwright/tests/clinical-patient-order.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M5,NA,m2-baseline|T026_PASS_2026-02-14
-LEG-CYP-020,P1,core,cypress/e2e/dashboard.cy.js,playwright/tests/dashboard-smoke.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M4a,NA,m2-baseline|T026_PASS_2026-02-14
+LEG-CYP-020,P1,core,cypress/e2e/dashboard.cy.js,playwright/tests/dashboard-smoke.spec.ts,PARTIAL,NONE,qa-e2e,M4a,NA,m2-baseline|T026_PASS_2026-02-14|m4a-impl
 LEG-CYP-021,P1,core,cypress/e2e/help.cy.js,playwright/tests/help-navigation.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M9,NA,m2-baseline|T026_PASS_2026-02-14
-LEG-CYP-022,P0,core,cypress/e2e/home.cy.js,playwright/tests/home-navigation.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M4a,NA,m2-baseline|T026_PASS_2026-02-14
+LEG-CYP-022,P0,core,cypress/e2e/home.cy.js,playwright/tests/home-navigation.spec.ts,PARTIAL,NONE,qa-e2e,M4a,NA,m2-baseline|T026_PASS_2026-02-14|m4a-impl
 LEG-CYP-023,P1,core,cypress/e2e/labNumberManagement.cy.js,playwright/tests/lab-number-management.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M9,NA,m2-baseline|T026_PASS_2026-02-14
-LEG-CYP-024,P0,core,cypress/e2e/login.cy.js,playwright/tests/auth-login.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M4a,NA,m2-baseline|T026_PASS_2026-02-14
+LEG-CYP-024,P0,core,cypress/e2e/login.cy.js,playwright/tests/auth-login.spec.ts,PARTIAL,NONE,qa-e2e,M4a,NA,m2-baseline|T026_PASS_2026-02-14|m4a-impl
 LEG-CYP-025,P0,clinical,cypress/e2e/modifyOrder.cy.js,playwright/tests/clinical-patient-order.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M5,NA,m2-baseline|T026_PASS_2026-02-14
 LEG-CYP-026,P0,clinical,cypress/e2e/nonConform.cy.js,playwright/tests/clinical-nonconform.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M5,NA,m2-baseline|T026_PASS_2026-02-14
 LEG-CYP-027,P0,clinical,cypress/e2e/orderEntity.cy.js,playwright/tests/clinical-patient-order.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M5,NA,m2-baseline|T026_PASS_2026-02-14

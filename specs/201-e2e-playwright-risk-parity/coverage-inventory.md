@@ -112,3 +112,15 @@ PASS: inventory covers all active specs (53 active specs).
 - [x] Validation command is repeatable and passing
 - [x] Spec-level listing includes domain, counts, and skip status
 
+## M4a Migration Evidence Notes (Auth/Nav)
+
+- Added Playwright specs:
+  - `frontend/playwright/tests/auth-login.spec.ts`
+  - `frontend/playwright/tests/home-navigation.spec.ts`
+  - `frontend/playwright/tests/dashboard-smoke.spec.ts`
+- Parity matrix updates (implementation-complete, gate pending):
+  - `LEG-CYP-024` (`login.cy.js`) -> status `PARTIAL`
+  - `LEG-CYP-022` (`home.cy.js`) -> status `PARTIAL`
+  - `LEG-CYP-020` (`dashboard.cy.js`) -> status `PARTIAL`
+- These rows will move to `PASS` after M4a gate validation (T066/T067).
+
