@@ -161,7 +161,9 @@ class UserManagementPage {
   }
 
   allPermissions() {
-    cy.get(this.selectors.allPermissions).check({ force: true });
+    cy.get('input[id^="all-permissions-"]', { timeout: 10000 })
+      .first()
+      .check({ force: true });
   }
 
   checkLatestAllPermissions() {
