@@ -74,8 +74,8 @@ services:
       test: ["CMD", "/healthcheck.sh"]
       timeout: 10s
       interval: 30s
-      retries: 3
-      start_period: 2m
+      retries: 6
+      start_period: 4m
 
   fhir.openelis.org:
     container_name: external-fhir-api
