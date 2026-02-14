@@ -31,14 +31,18 @@ graph LR
 ## Milestone M1: Config + i18n hardening
 
 **Branch Suffix**: `m1-config-i18n-hardening`  
+**Suggested Branch**:
+`feat/284-barcode-label-quantity-management-m1-config-i18n-hardening`  
+**Suggested Worktree**: `/workspace-worktrees/ogc-284-m1-config-i18n`  
 **Stories**: US1  
 **Depends On**: None  
 **Independent Test**: Admin config save/load round-trip works; malformed values
 fallback safely; localized labels render correctly.
 
 - [ ] T001 Create milestone branch
-      `feat/OGC-284-barcode-label-quantity-management-m1-config-i18n-hardening`
-      from `develop`
+      `feat/284-barcode-label-quantity-management-m1-config-i18n-hardening` from
+      `develop` and add worktree at
+      `/workspace-worktrees/ogc-284-m1-config-i18n`
 - [ ] T002 [P] [US1] Extend configuration round-trip and malformed-value fallback
       tests in
       `src/test/java/org/openelisglobal/barcode/BarcodeConfigurationRestControllerTest.java`
@@ -70,14 +74,18 @@ fallback safely; localized labels render correctly.
 ## Milestone [P] M2: Persistence + upsert reliability
 
 **Branch Suffix**: `m2-persistence-upsert`  
+**Suggested Branch**:
+`feat/284-barcode-label-quantity-management-m2-persistence-upsert`  
+**Suggested Worktree**: `/workspace-worktrees/ogc-284-m2-persistence-upsert`  
 **Stories**: US2  
 **Depends On**: M1  
 **Independent Test**: Generic sample order stores default/explicit quantities and
 updates existing barcode metadata without duplication.
 
 - [ ] T013 Create milestone branch
-      `feat/OGC-284-barcode-label-quantity-management-m2-persistence-upsert`
-      from `develop`
+      `feat/284-barcode-label-quantity-management-m2-persistence-upsert` from
+      `develop` and add worktree at
+      `/workspace-worktrees/ogc-284-m2-persistence-upsert`
 - [ ] T014 [P] [US2] Extend default-value and upsert/dedup tests in
       `src/test/java/org/openelisglobal/barcode/service/BarcodeInfoServiceImplTest.java`
 - [ ] T015 [P] [US2] Create service-level generic sample order persistence tests
@@ -99,14 +107,18 @@ updates existing barcode metadata without duplication.
 ## Milestone [P] M3: Label resilience + max-limit enforcement
 
 **Branch Suffix**: `m3-label-resilience`  
+**Suggested Branch**:
+`feat/284-barcode-label-quantity-management-m3-label-resilience`  
+**Suggested Worktree**: `/workspace-worktrees/ogc-284-m3-label-resilience`  
 **Stories**: US3  
 **Depends On**: M1  
 **Independent Test**: Slide/freezer/block labels honor toggles and remain stable;
 requests above max labels are blocked unless override is enabled.
 
 - [ ] T021 Create milestone branch
-      `feat/OGC-284-barcode-label-quantity-management-m3-label-resilience` from
-      `develop`
+      `feat/284-barcode-label-quantity-management-m3-label-resilience` from
+      `develop` and add worktree at
+      `/workspace-worktrees/ogc-284-m3-label-resilience`
 - [ ] T022 [P] [US3] Add block label behavior tests in
       `src/test/java/org/openelisglobal/barcode/labeltype/BlockLabelTest.java`
 - [ ] T023 [P] [US3] Add slide label optional-field tests in
@@ -138,14 +150,18 @@ requests above max labels are blocked unless override is enabled.
 ## Milestone M4: Integration, CI, and review closure
 
 **Branch Suffix**: `m4-integration-ci-review`  
+**Suggested Branch**:
+`feat/284-barcode-label-quantity-management-m4-integration-ci-review`  
+**Suggested Worktree**: `/workspace-worktrees/ogc-284-m4-integration-ci-review`  
 **Stories**: US1, US2, US3  
 **Depends On**: M2, M3  
 **Independent Test**: Combined milestone changes pass targeted QA checks and all
 review threads can be closed with evidence.
 
 - [ ] T033 Create milestone branch
-      `feat/OGC-284-barcode-label-quantity-management-m4-integration-ci-review`
-      from `develop`
+      `feat/284-barcode-label-quantity-management-m4-integration-ci-review` from
+      `develop` and add worktree at
+      `/workspace-worktrees/ogc-284-m4-integration-ci-review`
 - [ ] T034 [P] Run combined backend verification suites for M1-M3 changes and
       record outputs in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`

@@ -13,14 +13,20 @@ gaps on top of existing OGC-284 work.
 ## 1) Prepare environment
 
 ```bash
-# Ensure you are on the OGC-284 implementation branch
-git checkout feat/ogc-284-expand-barcode
-
-# Sync branch with remote and resolve base conflicts early
+# Sync develop first
 git fetch origin develop
-git pull origin feat/ogc-284-expand-barcode
 
-# (If needed) rebase/merge develop before final verification
+# Create milestone branches per Constitution Principle IX
+git checkout -b feat/284-barcode-label-quantity-management-m1-config-i18n-hardening origin/develop
+git checkout -b feat/284-barcode-label-quantity-management-m2-persistence-upsert origin/develop
+git checkout -b feat/284-barcode-label-quantity-management-m3-label-resilience origin/develop
+git checkout -b feat/284-barcode-label-quantity-management-m4-integration-ci-review origin/develop
+
+# Recommended: one worktree per milestone branch
+git worktree add "/workspace-worktrees/ogc-284-m1-config-i18n" "feat/284-barcode-label-quantity-management-m1-config-i18n-hardening"
+git worktree add "/workspace-worktrees/ogc-284-m2-persistence-upsert" "feat/284-barcode-label-quantity-management-m2-persistence-upsert"
+git worktree add "/workspace-worktrees/ogc-284-m3-label-resilience" "feat/284-barcode-label-quantity-management-m3-label-resilience"
+git worktree add "/workspace-worktrees/ogc-284-m4-integration-ci-review" "feat/284-barcode-label-quantity-management-m4-integration-ci-review"
 ```
 
 ---
