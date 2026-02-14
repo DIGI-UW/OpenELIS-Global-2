@@ -1,6 +1,7 @@
 package org.openelisglobal.barcode;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -13,10 +14,17 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.barcode.form.BarcodeConfigurationForm;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.siteinformation.service.SiteInformationService;
+import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.springframework.http.MediaType;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.MvcResult;
 
 public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensitiveTest {
+
+    @Autowired
+    private SiteInformationService siteInformationService;
 
     @Before
     public void setUp() throws Exception {
@@ -124,15 +132,6 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
     }
 
     @Test
-    public void saveBarcodeConfiguration_ShouldAcceptNegativeNumbers_WhenNoValidationExists() throws Exception {
-        BarcodeConfigurationForm form = new BarcodeConfigurationForm();
-        form.setNumMaxOrderLabels(-1);
-
-        mockMvc.perform(post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON)
-                .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isOk());
-    }
-
-    @Test
     public void saveBarcodeConfiguration_ShouldRedirectOnSuccess() throws Exception {
         BarcodeConfigurationForm form = new BarcodeConfigurationForm();
         form.setHeightOrderLabels(10.0f);
@@ -144,26 +143,44 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
     }
 
     @Test
-    public void saveBarcodeConfiguration_ShouldStoreDefault_WhenNegativeNumberProvided() throws Exception {
+    public void saveBarcodeConfiguration_ShouldNormalizeNegativeAndOversizedValues() throws Exception {
         BarcodeConfigurationForm form = new BarcodeConfigurationForm();
         form.setNumMaxOrderLabels(-1);
+        form.setNumMaxSpecimenLabels(5001);
+        form.setNumDefaultOrderLabels(0);
+        form.setPrePrintDontUseAltAccession(true);
 
         mockMvc.perform(post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON)
-                .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isOk());
+                .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isFound())
+                .andExpect(redirectedUrl("/rest/BarcodeConfiguration"));
 
         BarcodeConfigurationForm saved = new ObjectMapper().readValue(
                 mockMvc.perform(get("/rest/BarcodeConfiguration")).andReturn().getResponse().getContentAsString(),
                 BarcodeConfigurationForm.class);
 
-        assertEquals("System overrides invalid input with default", 10, saved.getNumMaxOrderLabels());
+        assertEquals("Invalid max order should normalize to default max order", 10, saved.getNumMaxOrderLabels());
+        assertEquals("Oversized max specimen should normalize to default max value", 10, saved.getNumMaxSpecimenLabels());
+        assertEquals("Zero default order should normalize to default quantity", 1, saved.getNumDefaultOrderLabels());
     }
 
     @Test
-    public void barcodeConfigurationEndpoints_ShouldBeAccessibleWithoutAuthentication() throws Exception {
-        mockMvc.perform(get("/rest/BarcodeConfiguration")).andExpect(status().isOk());
+    public void showBarcodeConfiguration_ShouldFallbackForMalformedStoredQuantityValues() throws Exception {
+        SiteInformation maxOrder = siteInformationService.getSiteInformationByName("numMaxOrderLabels");
+        SiteInformation defaultOrder = siteInformationService.getSiteInformationByName("numDefaultOrderLabels");
+        assertNotNull("max order site information should exist", maxOrder);
+        assertNotNull("default order site information should exist", defaultOrder);
 
-        mockMvc.perform(post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON)
-                .content(new ObjectMapper().writeValueAsString(new BarcodeConfigurationForm())))
-                .andExpect(status().isOk());
+        maxOrder.setValue("not-a-number");
+        defaultOrder.setValue("NaN");
+        siteInformationService.update(maxOrder);
+        siteInformationService.update(defaultOrder);
+        ConfigurationProperties.loadDBValuesIntoConfiguration();
+
+        BarcodeConfigurationForm saved = new ObjectMapper().readValue(
+                mockMvc.perform(get("/rest/BarcodeConfiguration")).andReturn().getResponse().getContentAsString(),
+                BarcodeConfigurationForm.class);
+
+        assertEquals("Malformed max order should fallback to 10", 10, saved.getNumMaxOrderLabels());
+        assertEquals("Malformed default order should fallback to 1", 1, saved.getNumDefaultOrderLabels());
     }
 }

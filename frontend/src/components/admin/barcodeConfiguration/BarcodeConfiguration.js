@@ -1056,8 +1056,9 @@ function BarcodeConfiguration() {
                                       title: intl.formatMessage({
                                         id: "notification.title",
                                       }),
-                                      message:
-                                        "Input should be alphanumeric and have a maximum length of 4 characters.",
+                                      message: intl.formatMessage({
+                                        id: "barcode.validation.altPrefix",
+                                      }),
                                     });
                                   }
                                   if (value.length < 4) {

@@ -30,6 +30,10 @@ public class BarcodeConfigurationRestController extends BaseController {
     private static final String FWD_FAIL = "fail";
     private static final String FWD_SUCCESS_INSERT = "success_insert";
     private static final String FWD_FAIL_INSERT = "fail_insert";
+    private static final int MIN_LABEL_COUNT = 1;
+    private static final int MAX_LABEL_COUNT = 1000;
+    private static final int MAX_LABEL_FALLBACK = 10;
+    private static final int DEFAULT_LABEL_FALLBACK = 1;
 
     private static final String[] ALLOWED_FIELDS = new String[] { //
             "heightOrderLabels", "heightSpecimenLabels", "heightBlockLabels", "heightSlideLabels",
@@ -261,6 +265,7 @@ public class BarcodeConfigurationRestController extends BaseController {
     public Object barcodeConfigurationSave(HttpServletRequest request,
             @RequestBody @Valid BarcodeConfigurationForm form, BindingResult result,
             RedirectAttributes redirectAttributes) {
+        normalizeQuantityFields(form);
         if (!form.getPrePrintDontUseAltAccession()
                 && GenericValidator.isBlankOrNull(form.getPrePrintAltAccessionPrefix())) {
             result.rejectValue("prePrintAltAccessionPrefix", "error.altaccession.required");
@@ -288,6 +293,31 @@ public class BarcodeConfigurationRestController extends BaseController {
         redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
         return findForward(FWD_SUCCESS_INSERT, form);
         // return "redirect:/rest/BarcodeConfiguration";
+    }
+
+    private void normalizeQuantityFields(BarcodeConfigurationForm form) {
+        form.setNumMaxOrderLabels(normalizeLabelCount(form.getNumMaxOrderLabels(), MAX_LABEL_FALLBACK));
+        form.setNumMaxSpecimenLabels(normalizeLabelCount(form.getNumMaxSpecimenLabels(), MAX_LABEL_FALLBACK));
+        form.setNumMaxAliquotLabels(normalizeLabelCount(form.getNumMaxAliquotLabels(), MAX_LABEL_FALLBACK));
+        form.setNumMaxSlideLabels(normalizeLabelCount(form.getNumMaxSlideLabels(), MAX_LABEL_FALLBACK));
+        form.setNumMaxBlockLabels(normalizeLabelCount(form.getNumMaxBlockLabels(), MAX_LABEL_FALLBACK));
+        form.setNumMaxFreezerLabels(normalizeLabelCount(form.getNumMaxFreezerLabels(), MAX_LABEL_FALLBACK));
+
+        form.setNumDefaultOrderLabels(normalizeLabelCount(form.getNumDefaultOrderLabels(), DEFAULT_LABEL_FALLBACK));
+        form.setNumDefaultSpecimenLabels(
+                normalizeLabelCount(form.getNumDefaultSpecimenLabels(), DEFAULT_LABEL_FALLBACK));
+        form.setNumDefaultAliquotLabels(normalizeLabelCount(form.getNumDefaultAliquotLabels(), DEFAULT_LABEL_FALLBACK));
+        form.setNumDefaultSlideLabels(normalizeLabelCount(form.getNumDefaultSlideLabels(), DEFAULT_LABEL_FALLBACK));
+        form.setNumDefaultBlockLabels(normalizeLabelCount(form.getNumDefaultBlockLabels(), DEFAULT_LABEL_FALLBACK));
+        form.setNumDefaultFreezerLabels(
+                normalizeLabelCount(form.getNumDefaultFreezerLabels(), DEFAULT_LABEL_FALLBACK));
+    }
+
+    private int normalizeLabelCount(int value, int fallback) {
+        if (value < MIN_LABEL_COUNT || value > MAX_LABEL_COUNT) {
+            return fallback;
+        }
+        return value;
     }
 
     @Override

@@ -100,7 +100,9 @@ public class BarcodeConfigServiceImpl implements BarcodeConfigService {
 
         updateSiteInfo("prePrintUseAltAccession", Boolean.toString(!form.getPrePrintDontUseAltAccession()), "boolean",
                 sysUserId);
-        updateSiteInfo("prePrintAltAccessionPrefix", form.getPrePrintAltAccessionPrefix(), "text", sysUserId);
+        String altAccessionPrefix = form.getPrePrintAltAccessionPrefix() == null ? ""
+                : form.getPrePrintAltAccessionPrefix().trim();
+        updateSiteInfo("prePrintAltAccessionPrefix", altAccessionPrefix, "text", sysUserId);
     }
 
     /**

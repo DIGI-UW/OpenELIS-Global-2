@@ -7,11 +7,14 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import java.util.Locale;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.barcode.form.BarcodeConfigurationForm;
 import org.openelisglobal.barcode.service.BarcodeConfigService;
+import org.openelisglobal.barcode.util.BarcodeConfigUtil;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -99,5 +102,27 @@ public class BarcodeInformationServiceTest extends BaseWebContextSensitiveTest {
         barcodeConfigurationForm.setPrePrintDontUseAltAccession(false);
         barcodeConfigurationForm.setPrePrintAltAccessionPrefix("Before Print Form");
         return barcodeConfigurationForm;
+    }
+
+    @Test
+    public void barcodeLabelInfoMessageKeys_ShouldExistInEnAndFrBundles() {
+        String[] keys = new String[] { "barcode.label.info.blockNumber", "barcode.label.info.slideNumber",
+                "barcode.label.info.specimenType", "barcode.label.info.blockId", "barcode.label.info.caseNumber",
+                "barcode.label.info.storageLocation", "barcode.label.info.collectionDate",
+                "barcode.label.info.expiryDate" };
+
+        for (String key : keys) {
+            String enMessage = MessageUtil.getMessage(key, Locale.ENGLISH);
+            String frMessage = MessageUtil.getMessage(key, Locale.FRENCH);
+            assertFalse("English bundle missing key: " + key, MessageUtil.messageNotFound(enMessage, key));
+            assertFalse("French bundle missing key: " + key, MessageUtil.messageNotFound(frMessage, key));
+        }
+    }
+
+    @Test
+    public void barcodeConfigUtil_ShouldFallbackForMalformedNumericValues() {
+        assertEquals("Malformed integer should fallback", 10, BarcodeConfigUtil.parseIntSafe("abc", 10));
+        assertEquals("Negative integer string is still parsable", -1, BarcodeConfigUtil.parseIntSafe("-1", 10));
+        assertEquals("Malformed float should fallback", 2.0f, BarcodeConfigUtil.parseFloatSafe("xyz", 2.0f), 0.0f);
     }
 }
