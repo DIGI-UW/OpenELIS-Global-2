@@ -1,4 +1,4 @@
-# Implementation Plan: Barcode Label Quantity Management (Assessment-Driven Remediation)
+# Implementation Plan: Barcode Label Quantity Management (OGC-284)
 
 **Branch**: `feat/OGC-284-barcode-label-quantity-management` | **Date**: 2026-02-14 | **Spec**: [spec.md](./spec.md)  
 **Input**: Feature specification from `/specs/OGC-284-barcode-label-quantity-management/spec.md`  
@@ -6,121 +6,97 @@
 
 ## Summary
 
-This plan converts the current OGC-284 assessment into implementation actions
-needed to make the feature production-ready and review-ready.
+Deliver OGC-284 in implementation-ready milestones that are small, reviewable,
+and partially parallelizable:
 
-Assessment highlights addressed by this plan:
+1. stabilize admin barcode configuration and localization,
+2. harden sample/sample-item label quantity persistence,
+3. fix label generation resilience gaps (including max-limit enforcement and
+   optional-field rendering consistency),
+4. integrate, validate CI, and close review threads.
 
-1. `BlockLabel` performs unscoped per-label FHIR questionnaire lookup
-   (performance and correctness risk).
-2. Slide/freezer config flags are exposed in configuration but not fully applied
-   in rendered labels.
-3. New backend label message keys referenced in Java classes are missing in
-   backend `message_*.properties`.
-4. Review threads remain unresolved in GitHub even where code was updated.
-5. PR merge readiness is blocked by conflicts and a failing frontend QA workflow.
+This plan aligns with the latest assessment and resolves prior inconsistencies:
 
-Planned technical approach:
-
-- Keep existing OGC-284 persistence model and config expansion.
-- Introduce a service-layer context assembly for pathology label fields so label
-  objects do not perform expensive unscoped lookups.
-- Align configurable fields and rendered fields for slide/freezer labels.
-- Complete backend message bundles for newly referenced keys.
-- Add/extend tests to lock behavior and prevent regressions.
+- scope now matches `spec.md` user stories,
+- explicit max-limit enforcement (`FR-013`) is included,
+- milestones are bite-sized with parallel tracks,
+- task file paths are grounded in actual module structure.
 
 ## Technical Context
 
-**Language/Version**: Java 21 (backend), JavaScript/React 17 (frontend)  
+**Language/Version**: Java 21 (backend), React 17 (frontend)  
 **Primary Dependencies**:
 
 - Spring Framework 6.2.2 (traditional MVC), Hibernate/JPA
-- React 17 + Carbon Design System (`@carbon/react`)
-- React Intl for UI localization
+- Carbon Design System (`@carbon/react`)
+- React Intl, Jest/RTL, Cypress
 
-**Storage**: PostgreSQL (existing schema + existing OGC-284 Liquibase additions)  
+**Storage**: PostgreSQL, existing OGC-284 Liquibase changes  
 **Testing**:
 
-- JUnit 4 + Mockito for backend service tests
-- `BaseWebContextSensitiveTest` for REST integration tests
-- Jest/RTL + Cypress for frontend workflows
+- Backend: JUnit 4 + Mockito + `BaseWebContextSensitiveTest`
+- Frontend: Jest + React Testing Library
+- E2E: Cypress (individual-file runs during development)
 
-**Target Platform**: OpenELIS web application on Linux  
-**Project Type**: Web monolith (backend + frontend)  
+**Target Platform**: OpenELIS web (Linux)  
+**Project Type**: Web monolith  
 **Performance Goals**:
 
-- Avoid repeated unscoped FHIR lookups in label generation paths.
-- Keep label printing response behavior consistent with current baseline for
-  normal order volumes.
+- avoid unscoped/expensive runtime lookups in per-label render flow,
+- keep label generation stable under malformed configuration values.
 
 **Constraints**:
 
-- Preserve existing OGC-284 behavior where already validated (label count
-  persistence + admin config surfaces).
-- No direct SQL; schema work must remain Liquibase-driven.
-- Do not add `@Transactional` to controllers.
-
-**Scale/Scope**:
-
-- Medium follow-up scope on existing OGC-284 branch content.
-- Touch points expected in barcode label classes, barcode services, i18n
-  bundles, and tests.
+- transactions remain in service layer only,
+- no direct SQL / native DDL,
+- all user-facing strings via React Intl / message bundles.
 
 ## Constitution Check
 
-_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
+_GATE: Must pass before implementation. Re-check after each milestone._
 
-Verify compliance with
-[OpenELIS Global Constitution](../../.specify/memory/constitution.md):
-
-- [x] **Configuration-Driven**: Uses configurable `site_information`/properties;
-      no country-specific code branching.
-- [x] **Carbon Design System**: Existing/admin UI remains Carbon-based.
-- [x] **FHIR/IHE Compliance**: No new external-facing resource introduced; FHIR
-      use in pathology label enrichment is constrained to internal lookup logic.
-- [x] **Layered Architecture**: Changes remain in Valueholder/DAO/Service/
-      Controller/Form pattern; transaction boundaries stay in services.
-  - Valueholders use JPA annotations.
-  - No controller-level transaction annotations.
-- [x] **Test Coverage**: Unit + integration + frontend validation planned with
-      OGC-284 regression focus.
-- [x] **Schema Management**: Any additional schema change (if required) will be
-      Liquibase only; current remediation targets existing schema.
-- [x] **Internationalization**: All added/updated UI strings and backend label
-      keys use localization bundles.
-- [x] **Security & Compliance**: Input validation and bounded parsing continue
-      through safe parsing and typed form constraints.
-
-**Complexity Justification**: No constitutional violations expected.
+- [x] **Configuration-Driven** (Principle I)
+- [x] **Carbon Design System** (Principle II)
+- [x] **FHIR/IHE Compliance** (Principle III; no new external FHIR entity scope)
+- [x] **Layered Architecture** (Principle IV; no controller transactions)
+- [x] **Test-Driven Delivery** (Principle V)
+- [x] **Liquibase-only Schema Management** (Principle VI)
+- [x] **Internationalization First** (Principle VII)
+- [x] **Security/Input Validation** (Principle VIII)
+- [x] **Milestone-based Delivery** (Principle IX)
 
 ## Milestone Plan
 
-_GATE: Features >3 days MUST define milestones per Constitution Principle IX._
-
-**Estimated Total Effort**: ~2-3 days (single remediation milestone)
+_Bite-size milestones with explicit verification gates._
 
 ### Milestone Table
 
-| ID | Branch Suffix         | Scope                                                  | User Stories | Verification                                                | Depends On |
-| -- | --------------------- | ------------------------------------------------------ | ------------ | ----------------------------------------------------------- | ---------- |
-| M1 | m1-review-remediation | Resolve active review risks, finalize tests, re-open CI | US1, US2, US3 | Backend unit/integration + targeted frontend tests + CI recheck | -          |
+| ID | Branch Suffix | Scope | User Stories | Verification | Depends On |
+| -- | -- | -- | -- | -- | -- |
+| M1 | m1-config-i18n-hardening | Admin config safety, fallback/range handling, localization completeness | US1 | `BarcodeConfigurationRestControllerTest`, `BarcodeInformationServiceTest`, frontend barcode config tests | - |
+| [P] M2 | m2-persistence-upsert | Generic sample order quantity defaults + upsert/dedup reliability | US2 | `BarcodeInfoServiceImplTest` + new generic sample service tests | M1 |
+| [P] M3 | m3-label-resilience | Label rendering consistency (slide/freezer fields), BlockLabel lookup hardening, max-limit enforcement/override behavior | US3 | New label-type tests + barcode label maker tests | M1 |
+| M4 | m4-integration-ci-review | Merge tracks, CI stabilization, review-thread closure evidence | US1, US2, US3 | targeted backend/frontend/E2E + workflow reruns | M2, M3 |
 
 ### Milestone Dependency Graph
 
 ```mermaid
 graph LR
-    M1[M1: Review-Driven Remediation]
+    M1[M1: Config + i18n] --> M2[M2: Persistence]
+    M1 --> M3[M3: Label resilience]
+    M2 --> M4[M4: Integration + CI]
+    M3 --> M4
 ```
 
 ### PR Strategy
 
-- **Spec artifacts**: stay in `specs/OGC-284-barcode-label-quantity-management/`
-- **Implementation milestone branch**:
-  `feat/OGC-284-barcode-label-quantity-management-m1-review-remediation` → `develop`
+- One PR per milestone branch (`feat/...-m{N}-{desc}`).
+- M2 and M3 can proceed in parallel after M1.
+- M4 is the integration/closure milestone.
 
 ## Project Structure
 
-### Documentation (this feature)
+### Documentation
 
 ```text
 specs/OGC-284-barcode-label-quantity-management/
@@ -131,123 +107,62 @@ specs/OGC-284-barcode-label-quantity-management/
 ├── quickstart.md
 ├── contracts/
 │   └── barcode-configuration-and-generic-sample-order.openapi.yml
-└── tasks.md  # generated by /speckit.tasks (next step)
+└── tasks.md
 ```
 
-### Source Code (repository root)
+### Source Scope
 
 ```text
 src/main/java/org/openelisglobal/barcode/
-├── labeltype/
-│   ├── BlockLabel.java
-│   ├── SlideLabel.java
-│   └── FreezerLabel.java
-├── service/
-│   ├── BarcodeInfoServiceImpl.java
-│   ├── BarcodeConfigServiceImpl.java
-│   └── (new/updated service-layer helper for pathology label context)
-└── controller/rest/
-    └── BarcodeConfigurationRestController.java
+├── controller/rest/BarcodeConfigurationRestController.java
+├── service/BarcodeConfigServiceImpl.java
+├── service/BarcodeInfoServiceImpl.java
+├── labeltype/BlockLabel.java
+├── labeltype/SlideLabel.java
+├── labeltype/FreezerLabel.java
+└── BarcodeLabelMaker.java
 
-src/main/java/org/openelisglobal/genericsample/
-├── form/GenericSampleOrderForm.java
-└── service/GenericSampleOrderServiceImpl.java
-
-src/main/resources/languages/
-├── message_en.properties
-└── message_fr.properties
-
+src/main/java/org/openelisglobal/genericsample/service/GenericSampleOrderServiceImpl.java
+src/main/resources/languages/message_en.properties
+src/main/resources/languages/message_fr.properties
 frontend/src/components/admin/barcodeConfiguration/BarcodeConfiguration.js
 frontend/src/languages/en.json
 frontend/src/languages/fr.json
 
-src/test/java/org/openelisglobal/barcode/
-├── BarcodeConfigurationRestControllerTest.java
-├── BarcodeInformationServiceTest.java
-└── service/BarcodeInfoServiceImplTest.java
+src/test/java/org/openelisglobal/barcode/...
+src/test/java/org/openelisglobal/genericsample/...
+frontend/src/components/admin/barcodeConfiguration/...
 ```
-
-**Structure Decision**: Use existing module layout and extend current OGC-284
-files only; no new top-level modules.
 
 ## Testing Strategy
 
-**Reference**: [OpenELIS Testing Roadmap](../../.specify/guides/testing-roadmap.md)
+**Reference**: [Testing Roadmap](../../.specify/guides/testing-roadmap.md)
 
 ### Coverage Goals
 
-- **Backend**: >80% on touched service/label logic
-- **Frontend**: >70% on touched UI logic and localization wiring
-- **Critical Paths**: 100% for label count persistence and label configuration
-  interpretation paths
+- Backend >80% on touched service/label logic
+- Frontend >70% on touched UI/i18n logic
+- Critical paths (max-limit enforcement, upsert behavior) fully covered
 
-### Test Types
+### Required Test Types
 
-- [x] **Unit Tests**: Service-layer and label-generation behavior (JUnit 4 +
-      Mockito)
-- [ ] **DAO Tests**: Not primary for this remediation unless query changes are
-      introduced
-- [x] **Controller Tests**: Barcode configuration REST behavior and validation
-- [ ] **ORM Validation Tests**: Not required unless entity mapping changes
-- [x] **Integration Tests**: Existing context-backed tests for configuration
-      persistence and loading
-- [x] **Frontend Unit Tests**: Configuration UI behavior + i18n key mapping
-- [x] **E2E Tests**: Targeted verification for impacted barcode flows as needed
-      to close CI gaps
+- Unit tests (services + label classes)
+- Controller/integration tests for barcode configuration and sample order flow
+- Frontend unit tests for barcode config UI
+- Targeted Cypress verification for impacted print/config flows
 
-### Test Data Management
+### Checkpoint Gates
 
-- Backend integration tests continue using existing DBUnit dataset patterns.
-- Service unit tests use mocked dependencies for isolated risk areas.
-- Frontend uses existing Jest mocks + fixture setup conventions.
-- E2E/Cypress runs should be executed per-file during development.
-
-### Checkpoint Validations
-
-- [x] **After Phase 0**: All research unknowns resolved (see `research.md`)
-- [ ] **After Phase 1**: Design artifacts complete (`data-model.md`,
-      `contracts/`, `quickstart.md`)
-- [ ] **After Phase 2**: New/updated backend unit tests pass
-- [ ] **After Phase 3**: Controller/integration tests pass
-- [ ] **After Phase 4**: Frontend unit tests and targeted QA checks pass
-
-## Phase 0: Research Outcomes Applied
-
-Primary decisions to drive implementation:
-
-1. Remove per-label unscoped FHIR querying from `BlockLabel`.
-2. Build pathology label context in service layer and pass resolved values to
-   label constructors.
-3. Ensure all configuration toggles shown in admin are reflected in label output
-   behavior (or explicitly removed from UI if intentionally unsupported).
-4. Add backend localization keys for all newly introduced label field keys.
-5. Re-run and triage CI after remediation, then explicitly resolve review
-   threads.
-
-## Phase 1: Design & Contract Plan
-
-1. Model runtime flow for:
-   - config retrieval/safe parsing
-   - sample and sample-item label quantity persistence
-   - pathology label context enrichment
-2. Capture external API contracts for:
-   - `/rest/BarcodeConfiguration` GET/POST
-   - `/rest/GenericSampleOrder` POST with default field quantity inputs
-3. Define implementation quickstart with test checkpoints and review-thread
-   closure checklist.
+- **After M1**: US1 tests pass; i18n key completeness verified
+- **After M2**: US2 tests pass; upsert/default behavior verified
+- **After M3**: US3 tests pass; max-limit + override behavior verified
+- **After M4**: targeted CI checks green; review threads resolved
 
 ## Risks & Mitigations
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| Unscoped FHIR lookup in label path | Slow label generation, wrong specimen text | Move lookup to bounded service call; pass context to label |
-| UI toggles not applied in output | Admin confusion and incorrect expectations | Implement missing fields or remove toggles consistently |
-| Missing backend message keys | Raw/fallback key rendering on labels | Add/verify keys in `message_en` and `message_fr` |
-| CI instability on unrelated tests | Delayed merge despite fixes | Document baseline failures, rerun targeted jobs, isolate OGC-284 regressions |
-
-## Next Steps
-
-1. Complete `/speckit.tasks` to generate dependency-ordered implementation
-   tasks.
-2. Execute remediation in small commits grouped by risk area.
-3. Re-run CI checks and close unresolved PR review threads with evidence.
+| Risk | Mitigation |
+| --- | --- |
+| Unscoped runtime lookups in label rendering | Move resolution to bounded context before render/use deterministic inputs |
+| Config UI/options drift from rendered output | Align toggle mapping in label classes and tests |
+| Missing backend message keys | Add/verify key parity in `message_en/fr.properties` |
+| Merge friction late in cycle | Use milestone PRs with small scope and early CI reruns |

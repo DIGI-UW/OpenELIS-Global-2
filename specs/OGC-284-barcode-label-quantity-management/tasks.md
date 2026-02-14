@@ -2,17 +2,17 @@
 
 **Input**: Design documents from
 `/specs/OGC-284-barcode-label-quantity-management/`  
-**Prerequisites**: `plan.md` (required), `spec.md` (required),
-`research.md`, `data-model.md`, `contracts/`, `quickstart.md`
+**Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`,
+`contracts/`, `quickstart.md`
 
-**Organization Rule (OpenELIS Override)**: Tasks are organized by **Milestone**
-per Constitution Principle IX, with tests mandatory and ordered before
-implementation within each milestone.
+**Organization Rule (OpenELIS Override)**: Tasks are organized by milestone
+(Principle IX), and tests are mandatory before implementation tasks in each
+milestone (Principle V).
 
 ## Format: `- [ ] [ID] [P?] [Story?] Description with file path`
 
-- **[P]**: Parallelizable task (different files, no direct dependency)
-- **[Story]**: Story mapping for traceability (`[US1]`, `[US2]`, `[US3]`)
+- **[P]**: Parallelizable task (separate files, no unresolved dependency)
+- **[Story]**: Story traceability label (`[US1]`, `[US2]`, `[US3]`)
 
 ---
 
@@ -20,205 +20,186 @@ implementation within each milestone.
 
 ```mermaid
 graph LR
-    M1[M1: Review-Driven Remediation]
+    M1[M1: Config + i18n] --> M2[M2: Persistence]
+    M1 --> M3[M3: Label resilience]
+    M2 --> M4[M4: Integration + CI]
+    M3 --> M4
 ```
 
 ---
 
-## Milestone M1: Review-Driven Remediation
+## Milestone M1: Config + i18n hardening
 
-**Branch Suffix**: `m1-review-remediation`  
-**Target Branch Name**:
-`feat/OGC-284-barcode-label-quantity-management-m1-review-remediation`  
-**Scope**: Close assessment gaps (BlockLabel lookup risk, field toggle mismatch,
-backend i18n coverage, CI/review closure)  
-**User Stories Covered**: US1, US2, US3  
-**Depends On**: None
-
-### Independent Test Criteria
-
-- **US1**: Admin updates barcode quantity defaults/max values; reload returns
-  persisted values; malformed stored values fall back safely.
-- **US2**: Generic sample order saves explicit and omitted label quantities with
-  correct sample/sample-item upsert behavior.
-- **US3**: Label generation remains stable with malformed config and respects
-  enabled/disabled optional field toggles.
-
-### M1 Tasks
-
-#### M1 Setup & Branch Management
+**Branch Suffix**: `m1-config-i18n-hardening`  
+**Stories**: US1  
+**Depends On**: None  
+**Independent Test**: Admin config save/load round-trip works; malformed values
+fallback safely; localized labels render correctly.
 
 - [ ] T001 Create milestone branch
-      `feat/OGC-284-barcode-label-quantity-management-m1-review-remediation`
-      from `develop` for `/workspace`
-- [ ] T002 Rebase milestone branch onto latest `develop` and resolve conflicts
-      affecting barcode modules in `/workspace`
-- [ ] T003 Capture remediation checklist baseline from assessment in
-      `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-
-#### M1 Tests First (MANDATORY TDD)
-
-- [ ] T004 [P] [US1] Add/extend controller test for barcode configuration
-      round-trip persistence in
+      `feat/OGC-284-barcode-label-quantity-management-m1-config-i18n-hardening`
+      from `develop`
+- [ ] T002 [P] [US1] Extend configuration round-trip and malformed-value fallback
+      tests in
       `src/test/java/org/openelisglobal/barcode/BarcodeConfigurationRestControllerTest.java`
-- [ ] T005 [P] [US1] Add/extend controller test for malformed numeric fallback
-      behavior in
-      `src/test/java/org/openelisglobal/barcode/BarcodeConfigurationRestControllerTest.java`
-- [ ] T006 [P] [US1] Add/extend service test for safe integer/float parsing
-      boundaries in
+- [ ] T003 [P] [US1] Add backend message-key and safe parsing coverage in
       `src/test/java/org/openelisglobal/barcode/BarcodeInformationServiceTest.java`
-- [ ] T007 [P] [US1] Add backend localization key regression test coverage for
-      new `barcode.label.info.*` keys in
-      `src/test/java/org/openelisglobal/barcode/BarcodeInformationServiceTest.java`
-- [ ] T008 [P] [US2] Extend upsert test coverage for existing sample barcode
-      records in
-      `src/test/java/org/openelisglobal/barcode/service/BarcodeInfoServiceImplTest.java`
-- [ ] T009 [P] [US2] Extend upsert test coverage for existing sample-item barcode
-      records in
-      `src/test/java/org/openelisglobal/barcode/service/BarcodeInfoServiceImplTest.java`
-- [ ] T010 [P] [US2] Add test for default quantity application when
-      `numOrderLabels`/`numSpecimenLabels` are omitted in
-      `src/test/java/org/openelisglobal/barcode/service/BarcodeInfoServiceImplTest.java`
-- [ ] T011 [P] [US3] Create/extend test for Block label specimen-type resolution
-      without unscoped query behavior in
-      `src/test/java/org/openelisglobal/barcode/labeltype/BlockLabelTest.java`
-- [ ] T012 [P] [US3] Create/extend test for slide optional fields honoring
-      configuration toggles in
-      `src/test/java/org/openelisglobal/barcode/labeltype/SlideLabelTest.java`
-- [ ] T013 [P] [US3] Create/extend test for freezer optional fields honoring
-      configuration toggles in
-      `src/test/java/org/openelisglobal/barcode/labeltype/FreezerLabelTest.java`
-- [ ] T014 [P] [US1] Add/extend frontend unit test coverage for admin barcode
-      configuration form field behavior in
+- [ ] T004 [P] [US1] Create/extend frontend config and i18n tests in
       `frontend/src/components/admin/barcodeConfiguration/BarcodeConfiguration.test.js`
-- [ ] T015 [P] [US1] Add/extend frontend i18n key rendering test for new barcode
-      labels in
-      `frontend/src/components/admin/barcodeConfiguration/BarcodeConfiguration.test.js`
-- [ ] T016 [US1] Run targeted backend tests for configuration and barcode info
-      services, then record command/results in
-      `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T017 [US1] Run targeted frontend unit tests, then record command/results in
-      `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T018 [US1] Verify tests fail for new expectations before implementation and
-      record RED-phase evidence in
-      `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-
-#### M1 Implementation
-
-- [ ] T019 [US3] Refactor Block label lookup flow to remove unscoped
-      `QuestionnaireResponse` query from
-      `src/main/java/org/openelisglobal/barcode/labeltype/BlockLabel.java`
-- [ ] T020 [US3] Implement pathology label context resolver (or equivalent
-      helper) in
-      `src/main/java/org/openelisglobal/barcode/service/PathologyLabelContextService.java`
-- [ ] T021 [US3] Integrate pathology label context resolver into barcode service
-      pipeline in
-      `src/main/java/org/openelisglobal/barcode/BarcodeInformationService.java`
-- [ ] T022 [US3] Update block-label construction call sites to pass pre-resolved
-      specimen context in
-      `src/main/java/org/openelisglobal/barcode/labeltype/LabelFactory.java`
-- [ ] T023 [US3] Implement slide label optional-field toggle mapping in
-      `src/main/java/org/openelisglobal/barcode/labeltype/SlideLabel.java`
-- [ ] T024 [US3] Implement freezer label optional-field toggle mapping in
-      `src/main/java/org/openelisglobal/barcode/labeltype/FreezerLabel.java`
-- [ ] T025 [US1] Align backend configuration mapping for exposed toggles and
-      defaults in
-      `src/main/java/org/openelisglobal/barcode/form/BarcodeConfigurationForm.java`
-- [ ] T026 [US1] Align backend config load/save behavior for new toggle/quantity
+- [ ] T005 [US1] Implement explicit numeric range validation + fallback behavior
+      in
+      `src/main/java/org/openelisglobal/barcode/controller/rest/BarcodeConfigurationRestController.java`
+- [ ] T006 [US1] Align config load/save mapping for touched quantity and toggle
       keys in
       `src/main/java/org/openelisglobal/barcode/service/BarcodeConfigServiceImpl.java`
-- [ ] T027 [US1] Ensure safe parse + fallback utilities cover all touched numeric
-      fields in
-      `src/main/java/org/openelisglobal/barcode/util/BarcodeConfigUtil.java`
-- [ ] T028 [US2] Confirm generic sample order default label quantities are applied
-      before persistence in
-      `src/main/java/org/openelisglobal/genericsample/service/GenericSampleOrderServiceImpl.java`
-- [ ] T029 [US2] Confirm sample/sample-item barcode info upsert and dedup behavior
-      for update flows in
-      `src/main/java/org/openelisglobal/barcode/service/BarcodeInfoServiceImpl.java`
-- [ ] T030 [US2] Confirm pathology-specific quantity persistence mapping for
-      specimen/block/slide/freezer values in
-      `src/main/java/org/openelisglobal/barcode/service/BarcodeInfoServiceImpl.java`
-- [ ] T031 [US1] Add missing backend label info message keys in
+- [ ] T007 [US1] Add missing backend label info keys in
       `src/main/resources/languages/message_en.properties`
-- [ ] T032 [US1] Add matching backend label info message keys in
+- [ ] T008 [US1] Add matching backend label info keys in
       `src/main/resources/languages/message_fr.properties`
-- [ ] T033 [US1] Align frontend translation keys with updated/admin-visible
-      barcode labels in `frontend/src/languages/en.json` and
-      `frontend/src/languages/fr.json`
+- [ ] T009 [US1] Align frontend localization keys for barcode config labels in
+      `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
+- [ ] T010 [US1] Verify Carbon-only component usage for touched barcode config UI
+      in
+      `frontend/src/components/admin/barcodeConfiguration/BarcodeConfiguration.js`
+- [ ] T011 [US1] Run milestone tests and record verification evidence in
+      `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
+- [ ] T012 Create milestone PR for M1 with test evidence and scope summary
 
-#### M1 Verification, CI, and Review Closure
+---
 
-- [ ] T034 [US1] Re-run targeted backend tests and record GREEN-phase evidence in
+## Milestone [P] M2: Persistence + upsert reliability
+
+**Branch Suffix**: `m2-persistence-upsert`  
+**Stories**: US2  
+**Depends On**: M1  
+**Independent Test**: Generic sample order stores default/explicit quantities and
+updates existing barcode metadata without duplication.
+
+- [ ] T013 Create milestone branch
+      `feat/OGC-284-barcode-label-quantity-management-m2-persistence-upsert`
+      from `develop`
+- [ ] T014 [P] [US2] Extend default-value and upsert/dedup tests in
+      `src/test/java/org/openelisglobal/barcode/service/BarcodeInfoServiceImplTest.java`
+- [ ] T015 [P] [US2] Create service-level generic sample order persistence tests
+      in
+      `src/test/java/org/openelisglobal/genericsample/service/GenericSampleOrderServiceImplTest.java`
+- [ ] T016 [US2] Ensure default quantity application and null-safe handling in
+      `src/main/java/org/openelisglobal/genericsample/service/GenericSampleOrderServiceImpl.java`
+- [ ] T017 [US2] Harden sample and sample-item upsert behavior in
+      `src/main/java/org/openelisglobal/barcode/service/BarcodeInfoServiceImpl.java`
+- [ ] T018 [US2] Align form contract for label quantity fields (optional + valid
+      values) in
+      `src/main/java/org/openelisglobal/genericsample/form/GenericSampleOrderForm.java`
+- [ ] T019 [US2] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T035 [US1] Re-run targeted frontend tests and record GREEN-phase evidence in
+- [ ] T020 Create milestone PR for M2 with verification details
+
+---
+
+## Milestone [P] M3: Label resilience + max-limit enforcement
+
+**Branch Suffix**: `m3-label-resilience`  
+**Stories**: US3  
+**Depends On**: M1  
+**Independent Test**: Slide/freezer/block labels honor toggles and remain stable;
+requests above max labels are blocked unless override is enabled.
+
+- [ ] T021 Create milestone branch
+      `feat/OGC-284-barcode-label-quantity-management-m3-label-resilience` from
+      `develop`
+- [ ] T022 [P] [US3] Add block label behavior tests in
+      `src/test/java/org/openelisglobal/barcode/labeltype/BlockLabelTest.java`
+- [ ] T023 [P] [US3] Add slide label optional-field tests in
+      `src/test/java/org/openelisglobal/barcode/labeltype/SlideLabelTest.java`
+- [ ] T024 [P] [US3] Add freezer label optional-field tests in
+      `src/test/java/org/openelisglobal/barcode/labeltype/FreezerLabelTest.java`
+- [ ] T025 [P] [US3] Add max-limit and override-path tests in
+      `src/test/java/org/openelisglobal/barcode/BarcodeLabelMakerTest.java`
+- [ ] T026 [US3] Refactor block label specimen-type behavior to remove unscoped
+      runtime lookup in
+      `src/main/java/org/openelisglobal/barcode/labeltype/BlockLabel.java`
+- [ ] T027 [US3] Resolve and pass block specimen context at label construction
+      time in `src/main/java/org/openelisglobal/barcode/BarcodeLabelMaker.java`
+- [ ] T028 [US3] Implement slide optional-field rendering for configured toggles
+      in
+      `src/main/java/org/openelisglobal/barcode/labeltype/SlideLabel.java`
+- [ ] T029 [US3] Implement freezer optional-field rendering for configured
+      toggles in
+      `src/main/java/org/openelisglobal/barcode/labeltype/FreezerLabel.java`
+- [ ] T030 [US3] Enforce FR-013 max-label request behavior (block over-max unless
+      override enabled) in
+      `src/main/java/org/openelisglobal/barcode/BarcodeLabelMaker.java`
+- [ ] T031 [US3] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T036 [US3] Run impacted Cypress test file(s) individually and record output
-      review in `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T037 Re-run failing PR check workflow(s), capture job references and status
-      notes in `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T038 Resolve all open review threads with file/line evidence and capture
-      closure checklist in
+- [ ] T032 Create milestone PR for M3 with verification details
+
+---
+
+## Milestone M4: Integration, CI, and review closure
+
+**Branch Suffix**: `m4-integration-ci-review`  
+**Stories**: US1, US2, US3  
+**Depends On**: M2, M3  
+**Independent Test**: Combined milestone changes pass targeted QA checks and all
+review threads can be closed with evidence.
+
+- [ ] T033 Create milestone branch
+      `feat/OGC-284-barcode-label-quantity-management-m4-integration-ci-review`
+      from `develop`
+- [ ] T034 [P] Run combined backend verification suites for M1-M3 changes and
+      record outputs in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T039 Format touched code with Spotless + Prettier and record completion in
+- [ ] T035 [P] Run frontend unit tests and impacted Cypress spec(s) individually,
+      then record console/screenshot review notes in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T040 Create/update PR for milestone branch and include verification summary
-      from `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
+- [ ] T036 Merge M2 and M3 into M4 and resolve integration conflicts in touched
+      barcode/generic sample files
+- [ ] T037 Address open review feedback with explicit file/line references in
+      milestone PR discussion
+- [ ] T038 Re-run failed PR workflow(s) and record run IDs + final status in
+      `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
+- [ ] T039 Resolve remaining review threads after verification evidence is posted
+- [ ] T040 Create milestone PR for M4 with consolidated verification summary
 
 ---
 
 ## Dependencies & Execution Order
 
-### Milestone Dependencies
+### Milestone Order
 
-- **M1**: No prerequisite milestones; starts immediately.
+1. M1 (required foundation)
+2. M2 and M3 in parallel
+3. M4 integration and closure
 
-### Inside M1 (Strict Order)
+### Within Each Milestone
 
-1. Setup & branch tasks (T001-T003)
-2. Test creation/execution tasks (T004-T018) - **must complete before
-   implementation**
-3. Implementation tasks (T019-T033)
-4. Verification + CI + review closure tasks (T034-T040)
+1. Branch creation task first
+2. Test tasks before implementation tasks
+3. Verification tasks
+4. PR task last
 
 ---
 
 ## Parallel Opportunities
 
-The following tasks can run in parallel after setup (T001-T003):
-
-- **Backend tests in parallel**: T004, T005, T006, T007, T008, T009, T010,
-  T011, T012, T013
-- **Frontend test tasks in parallel**: T014, T015
-- **Implementation tasks in parallel by file group**:
-  - Label classes: T023, T024
-  - i18n bundles: T031, T032, T033
+- **Milestone-level**: M2 and M3 can run in parallel after M1.
+- **Task-level [P] examples**:
+  - M1: T002 + T003 + T004
+  - M2: T014 + T015
+  - M3: T022 + T023 + T024 + T025
+  - M4: T034 + T035
 
 ---
 
 ## Implementation Strategy
 
-### MVP Scope
+### MVP First
 
-MVP within this milestone is **US1 + US2 stabilization**:
+1. Deliver M1 (US1 stabilization)
+2. Deliver M2 (US2 persistence reliability)
+3. Validate before starting M3 if needed for release slicing
 
-- configuration persistence/fallback correctness,
-- generic sample order quantity persistence reliability,
-- localization coverage for new label fields.
+### Full Delivery
 
-### Full Milestone Scope
-
-After MVP stabilization, complete US3 resilience tasks:
-
-- remove unscoped BlockLabel lookup,
-- ensure slide/freezer toggle behavior matches configuration,
-- close CI and PR review threads with evidence.
-
-### Delivery Guidance
-
-- Prefer small commits grouped by risk area:
-  1. tests,
-  2. label-generation refactor,
-  3. i18n/config alignment,
-  4. CI/review closure.
-- Keep each commit independently reviewable and reversible.
+- Complete M3 for US3 resilience and explicit FR-013 enforcement.
+- Complete M4 for CI/review closure and integration readiness.

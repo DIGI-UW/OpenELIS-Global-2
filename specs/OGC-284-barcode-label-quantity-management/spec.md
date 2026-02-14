@@ -107,6 +107,8 @@ occur.
 - Existing barcode metadata exists for some sample items but not others.
 - Quantity values are omitted from incoming sample order payload.
 - Label request attempts to exceed configured maximum values.
+- Label request exceeds max values while override is disabled.
+- Label request exceeds max values while override is explicitly enabled.
 - Concurrent updates occur to barcode configuration while users are printing.
 
 ## Requirements
@@ -139,6 +141,9 @@ occur.
   optional barcode fields are disabled or unset.
 - **FR-012**: User-facing labels and descriptions for newly exposed barcode
   quantity settings MUST be localized.
+- **FR-013**: When a requested label quantity exceeds the configured maximum for
+  a label type, the system MUST prevent printing and return a validation error
+  unless an explicit override flag is enabled for that print operation.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -184,6 +189,8 @@ occur.
   available through localization message keys (including en and fr).
 - **SC-005**: New automated tests covering barcode quantity persistence and
   configuration behavior pass in CI for this feature scope.
+- **SC-006**: 100% of requests exceeding configured maximum label quantities are
+  blocked when override is disabled, and accepted when override is enabled.
 
 ## Assumptions & Constraints
 
@@ -191,6 +198,8 @@ occur.
   quantity metadata, not a redesign of barcode printing UX.
 - Existing barcode printing endpoints and route patterns remain the integration
   path for this feature.
+- Existing print workflow override controls (if enabled) are the authorized
+  mechanism for exceeding configured max-label limits.
 - Sample and sample item barcode quantity records are operational metadata and
   are not external-facing FHIR entities in this scope.
 - Any schema changes required by this feature are implemented via Liquibase and
