@@ -55,7 +55,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
-        // Read and validate header
         String headerLine = reader.readLine();
         if (headerLine == null) {
             throw new IllegalArgumentException("Dictionary configuration file " + fileName + " is empty");
@@ -64,7 +63,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
         String[] headers = parseCsvLine(headerLine);
         validateHeaders(headers, fileName);
 
-        // Get column indices
         int categoryIndex = findColumnIndex(headers, "category");
         int dictEntryIndex = findColumnIndex(headers, "dictEntry");
         int localAbbreviationIndex = findColumnIndex(headers, "localAbbreviation");
@@ -78,8 +76,8 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
 
         while ((line = reader.readLine()) != null) {
             lineNumber++;
-            // Skip empty lines
-            if (line.trim().isEmpty()) {
+            // Skip empty lines and comments (lines starting with #)
+            if (line.trim().isEmpty() || line.trim().startsWith("#")) {
                 continue;
             }
 
@@ -160,7 +158,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
     private Dictionary processCsvLine(String[] values, int categoryIndex, int dictEntryIndex,
             int localAbbreviationIndex, int isActiveIndex, int sortOrderIndex, int loincCodeIndex) {
 
-        // Get required fields
         String categoryName = getValueOrEmpty(values, categoryIndex);
         String dictEntry = getValueOrEmpty(values, dictEntryIndex);
 
@@ -174,25 +171,17 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
             return null;
         }
 
-        // Get or create category
         DictionaryCategory category = getOrCreateCategory(categoryName);
 
-        // Check if dictionary already exists in this category
-        Dictionary existingDict = dictionaryService.getDictionaryByDictEntry(dictEntry);
-        if (existingDict != null && existingDict.getDictionaryCategory() != null
-                && existingDict.getDictionaryCategory().getId().equals(category.getId())) {
-            // Update existing dictionary
+        // The same entry name CAN exist in different categories
+        Dictionary existingDict = dictionaryService.getDictionaryEntrysByNameAndCategoryDescription(dictEntry,
+                categoryName);
+        if (existingDict != null) {
             updateDictionaryFromCsv(existingDict, values, category, localAbbreviationIndex, isActiveIndex,
                     sortOrderIndex, loincCodeIndex);
             dictionaryService.update(existingDict);
             return existingDict;
-        } else if (existingDict != null) {
-            // Dictionary exists but in different category, skip
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
-                    "Dictionary entry '" + dictEntry + "' already exists in a different category. Skipping.");
-            return null;
         } else {
-            // Create new dictionary
             Dictionary newDict = new Dictionary();
             newDict.setDictEntry(dictEntry);
             updateDictionaryFromCsv(newDict, values, category, localAbbreviationIndex, isActiveIndex, sortOrderIndex,
@@ -212,11 +201,9 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
     }
 
     private DictionaryCategory getOrCreateCategory(String categoryName) {
-        // Try to find existing category by name
         DictionaryCategory category = dictionaryCategoryService.getDictionaryCategoryByName(categoryName);
 
         if (category == null) {
-            // Generate unique abbreviation and try to create category
             category = tryCreateCategoryWithUniqueAbbreviation(categoryName);
         }
 
@@ -224,7 +211,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
     }
 
     private DictionaryCategory tryCreateCategoryWithUniqueAbbreviation(String categoryName) {
-        // Generate base abbreviation from category name (first 3-5 chars, uppercase)
         String baseAbbreviation = categoryName.replaceAll("\\s+", "").toUpperCase();
         if (baseAbbreviation.length() > 5) {
             baseAbbreviation = baseAbbreviation.substring(0, 5);
@@ -233,8 +219,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
         String abbreviation = baseAbbreviation;
         int suffix = 1;
 
-        // Keep trying to create the category with different abbreviations until
-        // successful
         while (suffix <= 99) {
             try {
                 DictionaryCategory category = new DictionaryCategory();
@@ -254,7 +238,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
                 LogEvent.logDebug(this.getClass().getSimpleName(), "tryCreateCategoryWithUniqueAbbreviation",
                         "Abbreviation " + abbreviation + " already exists, trying with suffix " + suffix);
 
-                // Truncate base to make room for suffix
                 int maxBaseLength = 5 - String.valueOf(suffix).length();
                 if (maxBaseLength < 1) {
                     maxBaseLength = 1;
@@ -277,7 +260,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
 
         dictionary.setDictionaryCategory(category);
 
-        // Set optional fields
         String localAbbreviation = getValueOrEmpty(values, localAbbreviationIndex);
         if (!localAbbreviation.isEmpty()) {
             dictionary.setLocalAbbreviation(localAbbreviation);

@@ -1,0 +1,52 @@
+/**
+ * MappingPanel Component Styles
+ * Task Reference: T062
+ */
+
+.mapping-panel {
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: 4px;
+  padding: 1rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+
+.source-field-card,
+.target-field-card {
+  padding: 1rem;
+  background-color: var(--cds-layer-01);
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.source-field-card h4,
+.target-field-card h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.target-field-selector {
+  margin-bottom: 1rem;
+}
+
+.mapping-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: auto;
+}

@@ -5,6 +5,7 @@
   "subjectNumber": "001202782410",
   "nationalId": "UG-23SLHD7DBD",
   "DOB": "12/05/2001",
+  "DOBTableDisplay": "05/12/2001",
   "gender": "Male",
   "labNo": "DEV01260000000000001",
   "endLabNo": "DEV01260000000000100"
