@@ -149,8 +149,9 @@ bite-size PRs and explicit verification gates.
 - [x] T073 [P] [M4b] Add Playwright spec
       `frontend/playwright/tests/admin-barcode-core.spec.ts`
 - [x] T074 [M4b] Update parity matrix for admin-core scenario mappings
-- [ ] T075 [M4b] Test gate: run migrated admin Playwright specs and target Cypress admin specs
+- [x] T075 [M4b] Test gate: run migrated admin Playwright specs and target Cypress admin specs
 - [ ] T076 [M4b] Milestone gate: migrated admin-core parity entries move to PASS
+      (blocked in current cloud environment: `https://localhost` unavailable for both Playwright and Cypress spot-checks)
 
 ---
 

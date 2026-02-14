@@ -15,14 +15,14 @@ node scripts/e2e/validate-e2e-inventory.js
 | Framework | Specs | Active Specs | Tests Total | Tests Active | Tests Skipped | Tests Fixme |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Cypress | 48 | 47 | 440 | 429 | 11 | 0 |
-| Playwright | 10 | 9 | 37 | 36 | 1 | 0 |
-| **Total** | **58** | **56** | **477** | **465** | **12** | **0** |
+| Playwright | 13 | 12 | 42 | 41 | 1 | 0 |
+| **Total** | **61** | **59** | **482** | **470** | **12** | **0** |
 
 ## Domain Summary
 
 | Domain | Specs | Tests Total | Tests Active | Tests Skipped |
 | --- | ---: | ---: | ---: | ---: |
-| admin | 18 | 128 | 128 | 0 |
+| admin | 21 | 133 | 133 | 0 |
 | analyzer | 2 | 8 | 8 | 0 |
 | auth-nav | 5 | 22 | 21 | 1 |
 | clinical | 10 | 169 | 169 | 0 |
@@ -90,6 +90,9 @@ node scripts/e2e/validate-e2e-inventory.js
 
 | Spec | Domain | Tests (active/total) | Skipped | Status |
 | --- | --- | ---: | ---: | --- |
+| `playwright/tests/admin-barcode-core.spec.ts` | admin | 1/1 | 0 | active |
+| `playwright/tests/admin-organization-provider.spec.ts` | admin | 2/2 | 0 | active |
+| `playwright/tests/admin-user-management.spec.ts` | admin | 2/2 | 0 | active |
 | `playwright/tests/analyzer-list.spec.ts` | analyzer | 5/5 | 0 | active |
 | `playwright/tests/analyzer-navigation.spec.ts` | analyzer | 3/3 | 0 | active |
 | `playwright/tests/auth-login.spec.ts` | auth-nav | 3/3 | 0 | active |
@@ -105,7 +108,7 @@ node scripts/e2e/validate-e2e-inventory.js
 
 ```text
 $ node scripts/e2e/validate-e2e-inventory.js
-PASS: inventory covers all active specs (56 active specs).
+PASS: inventory covers all active specs (59 active specs).
 ```
 
 ## M1 Milestone Gate Status

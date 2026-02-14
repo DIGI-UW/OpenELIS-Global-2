@@ -57,3 +57,16 @@ docker compose -f build.docker-compose.yml up -d --wait --wait-timeout 600
   - Playwright setup project failed first with `net::ERR_CONNECTION_REFUSED at https://localhost/`.
   - Cypress launched successfully under xvfb, then failed baseUrl verification because
     `https://localhost` was not running.
+
+## M4b Admin-Core Spot-Check Gate Result (T075)
+
+- Playwright command:
+  - `cd frontend && TEST_USER=admin TEST_PASS=adminADMIN! npm run pw:test -- --grep "Admin user management parity migration|Admin organization and provider parity migration|Admin barcode configuration parity migration"`
+- Cypress counterpart command:
+  - `cd frontend && TEST_USER=admin TEST_PASS=adminADMIN! xvfb-run -a npm run cy:failfast:spec "cypress/e2e/AdminE2E/userManagement.cy.js,cypress/e2e/AdminE2E/organizationManagement.cy.js,cypress/e2e/AdminE2E/providerManagement.cy.js,cypress/e2e/AdminE2E/barcode.cy.js"`
+- Execution date: `2026-02-14`
+- Status: `BLOCKED_IN_ENV`
+- Observed outcome:
+  - Playwright setup project failed first with `net::ERR_CONNECTION_REFUSED at https://localhost/`.
+  - Cypress launched successfully under xvfb, then failed baseUrl verification because
+    `https://localhost` was not running.

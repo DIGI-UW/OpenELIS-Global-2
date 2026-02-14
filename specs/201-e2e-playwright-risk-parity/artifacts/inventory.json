@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-02-14T22:04:59.401Z",
+  "generatedAt": "2026-02-14T22:09:59.771Z",
   "generatedBy": "scripts/e2e/export-e2e-inventory.js",
   "sourceRoots": {
     "cypress": "frontend/cypress/e2e/**/*.cy.js",
@@ -16,10 +16,10 @@
         "testsFixme": 0
       },
       "playwright": {
-        "specs": 10,
-        "activeSpecs": 9,
-        "testsTotal": 37,
-        "testsActive": 36,
+        "specs": 13,
+        "activeSpecs": 12,
+        "testsTotal": 42,
+        "testsActive": 41,
         "testsSkipped": 1,
         "testsFixme": 0
       }
@@ -49,6 +49,12 @@
         "testsActive": 86,
         "testsSkipped": 11
       },
+      "other": {
+        "specs": 4,
+        "testsTotal": 7,
+        "testsActive": 7,
+        "testsSkipped": 0
+      },
       "analyzer": {
         "specs": 2,
         "testsTotal": 8,
@@ -66,19 +72,13 @@
         "testsTotal": 6,
         "testsActive": 6,
         "testsSkipped": 0
-      },
-      "other": {
-        "specs": 1,
-        "testsTotal": 2,
-        "testsActive": 2,
-        "testsSkipped": 0
       }
     },
     "totals": {
-      "specs": 58,
-      "activeSpecs": 56,
-      "testsTotal": 477,
-      "testsActive": 465,
+      "specs": 61,
+      "activeSpecs": 59,
+      "testsTotal": 482,
+      "testsActive": 470,
       "testsSkipped": 12,
       "testsFixme": 0
     }
@@ -655,6 +655,42 @@
       "testCounts": {
         "total": 9,
         "active": 9,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "playwright",
+      "specPath": "playwright/tests/admin-barcode-core.spec.ts",
+      "domain": "other",
+      "testCounts": {
+        "total": 1,
+        "active": 1,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "playwright",
+      "specPath": "playwright/tests/admin-organization-provider.spec.ts",
+      "domain": "other",
+      "testCounts": {
+        "total": 2,
+        "active": 2,
+        "skipped": 0,
+        "fixme": 0
+      },
+      "activeSpec": true
+    },
+    {
+      "framework": "playwright",
+      "specPath": "playwright/tests/admin-user-management.spec.ts",
+      "domain": "other",
+      "testCounts": {
+        "total": 2,
+        "active": 2,
         "skipped": 0,
         "fixme": 0
       },
