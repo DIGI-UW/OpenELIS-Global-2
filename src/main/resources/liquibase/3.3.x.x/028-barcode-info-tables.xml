@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-284: Barcode label quantities persisted per sample and sample item -->
+    <changeSet id="barcode-info-001-sample-barcode-info" author="ogc-284">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sample_barcode_info" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sample_barcode_info table and sequence for order label counts</comment>
+        <createSequence schemaName="clinlims" sequenceName="sample_barcode_info_seq" startValue="1" incrementBy="1"/>
+        <createTable tableName="sample_barcode_info" schemaName="clinlims">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="sample_barcode_info_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="numeric(10,0)">
+                <constraints nullable="false" unique="true"
+                    foreignKeyName="fk_sample_barcode_info_sample"
+                    references="sample(id)"/>
+            </column>
+            <column name="print_order_num" type="INTEGER"/>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <createIndex indexName="idx_sample_barcode_info_sample_id" tableName="sample_barcode_info" schemaName="clinlims">
+            <column name="sample_id"/>
+        </createIndex>
+        <rollback>
+            <dropIndex indexName="idx_sample_barcode_info_sample_id" tableName="sample_barcode_info" schemaName="clinlims"/>
+            <dropTable tableName="sample_barcode_info" schemaName="clinlims"/>
+            <dropSequence sequenceName="sample_barcode_info_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="barcode-info-002-sample-item-barcode-info" author="ogc-284">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sample_item_barcode_info" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sample_item_barcode_info table and sequence for specimen/block/slide/freezer label counts</comment>
+        <createSequence schemaName="clinlims" sequenceName="sample_item_barcode_info_seq" startValue="1" incrementBy="1"/>
+        <createTable tableName="sample_item_barcode_info" schemaName="clinlims">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="sample_item_barcode_info_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_item_id" type="numeric(10,0)">
+                <constraints nullable="false" unique="true"
+                    foreignKeyName="fk_sample_item_barcode_info_sample_item"
+                    references="sample_item(id)"/>
+            </column>
+            <column name="print_specimen_num" type="INTEGER"/>
+            <column name="print_block_num" type="INTEGER"/>
+            <column name="print_slide_num" type="INTEGER"/>
+            <column name="print_freezer_num" type="INTEGER"/>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <createIndex indexName="idx_sample_item_barcode_info_sample_item_id" tableName="sample_item_barcode_info" schemaName="clinlims">
+            <column name="sample_item_id"/>
+        </createIndex>
+        <rollback>
+            <dropIndex indexName="idx_sample_item_barcode_info_sample_item_id" tableName="sample_item_barcode_info" schemaName="clinlims"/>
+            <dropTable tableName="sample_item_barcode_info" schemaName="clinlims"/>
+            <dropSequence sequenceName="sample_item_barcode_info_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

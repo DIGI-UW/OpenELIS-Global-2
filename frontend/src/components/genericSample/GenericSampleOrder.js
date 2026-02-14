@@ -86,7 +86,7 @@ export default function GenericSampleOrder({
     [initialValues.notebookEntryId],
   );
 
-  // Default fields - only include standard fields that the backend expects
+  // Default fields - only include standard fields that the backend expects (OGC-284: label counts)
   const [defaultForm, setDefaultForm] = useState({
     labNo: initialValues.labNo || "",
     sampleTypeId: initialValues.sampleTypeId || "",
@@ -96,6 +96,8 @@ export default function GenericSampleOrder({
     collector: initialValues.collector || "",
     collectionDate: initialValues.collectionDate || "",
     collectionTime: initialValues.collectionTime || "",
+    numOrderLabels: initialValues.numOrderLabels ?? 1,
+    numSpecimenLabels: initialValues.numSpecimenLabels ?? 1,
   });
 
   // FHIR Questionnaire data and state

@@ -62,9 +62,8 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
             response.getWriter().println(MessageUtil.getMessage("message.error.unauthorized"));
             return;
         }
-        if ("block".equals(request.getParameter("labelType")) || "slide".equals(request.getParameter("labelType"))) {
-            printPathologyBarcodeLabel(request, response);
-        } else if ("true".equalsIgnoreCase(request.getParameter("prePrinting"))) {
+
+        if ("true".equalsIgnoreCase(request.getParameter("prePrinting"))) {
             // writes to response
             try {
                 prePrintLabels(request, response);
@@ -80,25 +79,6 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
             // writes to response
             printExistingOrder(request, response);
         }
-    }
-
-    private void printPathologyBarcodeLabel(HttpServletRequest request, HttpServletResponse response)
-            throws IOException {
-        // create requested labels as pdf stream
-        // In printPathologyBarcodeLabel method:
-        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
-        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
-        labelMaker.setSysUserId(String.valueOf(usd.getSystemUserId()));
-
-        labelMaker.generateGenericBarcodeLabel(request.getParameter("code"), request.getParameter("labelType"));
-        ByteArrayOutputStream labelAsOutputStream = labelMaker.createLabelsAsStream();
-
-        response.setContentType("application/pdf");
-        response.addHeader("Content-Disposition", "inline; filename=" + "barcode.pdf");
-        response.setContentLength(labelAsOutputStream.size());
-        labelAsOutputStream.writeTo(response.getOutputStream());
-        response.getOutputStream().flush();
-        response.getOutputStream().close();
     }
 
     /**
