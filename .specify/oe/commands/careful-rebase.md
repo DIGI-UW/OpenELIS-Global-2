@@ -11,6 +11,8 @@ careful, checkpointed rebase workflow with:
 - An **answer session** to resolve ambiguities before/while resolving conflicts
   (only if needed)
 - An **optional squash-before-rebase** step
+- A **no-loss audit** that compares pre/post rebase branch deltas and i18n key
+  sets
 - **Validation** and a **post-rebase report** (including `git range-diff`)
 
 This command is intentionally conservative: it should **plan first**, then
@@ -233,6 +235,22 @@ For base-only improvements identified in Step 3b, establish a clear policy:
 Record these decisions in the chat and apply them consistently if conflicts
 occur.
 
+#### 5c) Translation protection policy (MANDATORY)
+
+For localization files (for example `frontend/src/languages/en.json` and
+`frontend/src/languages/fr.json`), use a strict policy:
+
+- **Never resolve by taking ours/theirs wholesale** unless explicitly approved
+  by the user for that file.
+- Resolve to a **key-set union outcome** (all keys that existed before rebase
+  on our branch must still exist after rebase unless explicitly approved for
+  removal).
+- If keys are intentionally removed, record those keys in chat and pass them to
+  the no-loss audit as explicit allow-list entries.
+
+This prevents silent regressions where a rebase "looks clean" but large key
+groups disappear from translations.
+
 ### 6) Optional squash-before-rebase (checkpoint #3)
 
 Only do this if the user explicitly requested `--squash` (or answers “yes” when
@@ -278,6 +296,34 @@ Always run these:
 - `git status`
 - `git log -n 10 --oneline --decorate`
 - `git range-diff <FORK_SHA>..<backup-branch> <BASE_SHA>..HEAD`
+
+#### Post-rebase no-loss audit vs backup (MANDATORY)
+
+Run a structured no-loss audit that compares the rebased branch (`HEAD`) to the
+pre-rebase backup branch, both relative to the same base ref:
+
+```bash
+python3 .specify/scripts/python/rebase-no-loss-audit.py \
+  --base <base> \
+  --before <backup-branch> \
+  --after HEAD \
+  --i18n-file frontend/src/languages/en.json \
+  --i18n-file frontend/src/languages/fr.json \
+  --fail-on-loss
+```
+
+What this blocks by default:
+
+- **Dropped branch-delta files**: files that were part of our pre-rebase delta
+  vs base, but are no longer part of the post-rebase delta
+- **Missing translation keys**: keys present pre-rebase but missing post-rebase
+
+If the audit fails:
+
+1. Stop and report the exact dropped files / missing keys
+2. Ask the user whether each item is intentional
+3. Re-run with explicit allow-list entries only for approved removals
+4. Do not proceed to QA approval or push until audit is clean
 
 #### Post-rebase i18n duplicate key check (MANDATORY)
 
