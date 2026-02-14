@@ -40,7 +40,8 @@ async function runBasicSearch(
 
   await searchType.selectOption({ index: 1 });
   await searchField.fill(searchValue);
-  await searchButton.click();
+  // A layout overlay can temporarily intercept pointer events in CI.
+  await searchButton.click({ force: true });
   await responsePromise;
 }
 

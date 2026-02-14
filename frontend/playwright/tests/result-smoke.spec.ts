@@ -81,15 +81,15 @@ test.describe("Results (smoke)", () => {
   }) => {
     await page.goto("/StatusResults");
     await expect(page).toHaveURL(/\/StatusResults/);
-    await expect(page.locator("#collectionDate")).toBeVisible();
-    await expect(page.locator("#recievedDate")).toBeVisible();
-    await expect(page.locator("#testName")).toBeVisible();
-    await expect(page.locator("#searchResults")).toBeVisible();
+    await expect(page.locator("input#collectionDate")).toBeVisible();
+    await expect(page.locator("input#recievedDate")).toBeVisible();
+    await expect(page.locator("select#testName")).toBeVisible();
+    await expect(page.locator("button#searchResults")).toBeVisible();
 
     await page.goto("/RangeResults");
     await expect(page).toHaveURL(/\/RangeResults/);
-    await expect(page.locator("#startLabNo")).toBeVisible();
-    await expect(page.locator("#endLabNo")).toBeVisible();
-    await expect(page.locator("#searchResults")).toBeVisible();
+    await expect(page.locator("input#startLabNo")).toBeVisible();
+    await expect(page.locator("input#endLabNo")).toBeVisible();
+    await expect(page.locator("button#searchResults")).toBeVisible();
   });
 });
