@@ -55,6 +55,15 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      - name: Validate E2E remediation parity policy
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          if [ -z "$BRANCH_NAME" ]; then
+            BRANCH_NAME="${{ github.ref_name }}"
+          fi
+          node scripts/e2e-remediation-policy.mjs parity --branch "$BRANCH_NAME"
+        working-directory: frontend
+
       - name: Check Format
         run: npx prettier ./ --check
         working-directory: frontend
@@ -204,22 +213,11 @@ jobs:
             SPECS="${{ matrix.specs }}"
           fi
 
-          # Branch-local stability guardrails for long-lived rebased demo PR.
-          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.head_ref }}" = "demo/ethiopia-rebased-20260214-061956" ]; then
-            SPECS=$(echo "$SPECS" | tr ',' '\n' \
-              | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
-              | grep -v '^$' \
-              | grep -vxF "cypress/e2e/AdminE2E/userManagement.cy.js" \
-              | grep -vxF "cypress/e2e/AdminE2E/organizationManagement.cy.js" \
-              | grep -vxF "cypress/e2e/siteBranding.cy.js" \
-              | grep -vxF "cypress/e2e/AdminE2E/generalConfigurations.cy.js" \
-              | grep -vxF "cypress/e2e/orderEntity.cy.js" \
-              | grep -vxF "cypress/e2e/patientEntry.cy.js" \
-              | grep -vxF "cypress/e2e/workplan.cy.js" \
-              | grep -vxF "cypress/e2e/result.cy.js" \
-              | grep -vxF "cypress/e2e/storageSearch.cy.js" \
-              | paste -sd, -)
+          BRANCH_NAME="${{ github.head_ref }}"
+          if [ -z "$BRANCH_NAME" ]; then
+            BRANCH_NAME="${{ github.ref_name }}"
           fi
+          SPECS=$(node scripts/e2e-remediation-policy.mjs filter --branch "$BRANCH_NAME" --specs "$SPECS")
 
           if [ -z "$SPECS" ]; then
             echo "No specs selected for shard '${{ matrix.shard }}' after filtering; skipping."

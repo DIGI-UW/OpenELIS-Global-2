@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "branchPolicies": {
+    "demo/ethiopia-rebased-20260214-061956": {
+      "description": "Temporary Cypress quarantine while rebased branch transitions flaky flows to Playwright.",
+      "entries": [
+        {
+          "cypressSpec": "cypress/e2e/workplan.cy.js",
+          "status": "migrated_to_playwright",
+          "parityLevel": "smoke",
+          "playwrightSpec": "playwright/tests/workplan-smoke.spec.ts",
+          "minimumPlaywrightTests": 3,
+          "reason": "Data-dependent Workplan assertions are unstable after rebase."
+        },
+        {
+          "cypressSpec": "cypress/e2e/result.cy.js",
+          "status": "migrated_to_playwright",
+          "parityLevel": "smoke",
+          "playwrightSpec": "playwright/tests/result-smoke.spec.ts",
+          "minimumPlaywrightTests": 4,
+          "reason": "Result table expansion depends on fixture state and often has zero-row responses."
+        },
+        {
+          "cypressSpec": "cypress/e2e/nonConform.cy.js",
+          "status": "migrated_to_playwright",
+          "parityLevel": "smoke",
+          "playwrightSpec": "playwright/tests/nonconform-smoke.spec.ts",
+          "minimumPlaywrightTests": 3,
+          "reason": "Menu-driven non-conformity workflow is sensitive to async menu rendering in Cypress."
+        },
+        {
+          "cypressSpec": "cypress/e2e/AdminE2E/userManagement.cy.js",
+          "status": "quarantined_pending_migration",
+          "parityLevel": "none",
+          "playwrightSpec": null,
+          "minimumPlaywrightTests": 0,
+          "reason": "Intermittent table rendering and dynamic permission IDs require re-authoring."
+        },
+        {
+          "cypressSpec": "cypress/e2e/AdminE2E/organizationManagement.cy.js",
+          "status": "quarantined_pending_migration",
+          "parityLevel": "none",
+          "playwrightSpec": null,
+          "minimumPlaywrightTests": 0,
+          "reason": "Environment-specific data assumptions cause non-deterministic organization assertions."
+        },
+        {
+          "cypressSpec": "cypress/e2e/siteBranding.cy.js",
+          "status": "quarantined_pending_migration",
+          "parityLevel": "none",
+          "playwrightSpec": null,
+          "minimumPlaywrightTests": 0,
+          "reason": "Cross-page theming assertions are timing-sensitive in Cypress."
+        },
+        {
+          "cypressSpec": "cypress/e2e/AdminE2E/generalConfigurations.cy.js",
+          "status": "quarantined_pending_migration",
+          "parityLevel": "none",
+          "playwrightSpec": null,
+          "minimumPlaywrightTests": 0,
+          "reason": "Global configuration writes are coupled to mutable runtime state."
+        },
+        {
+          "cypressSpec": "cypress/e2e/orderEntity.cy.js",
+          "status": "quarantined_pending_migration",
+          "parityLevel": "none",
+          "playwrightSpec": null,
+          "minimumPlaywrightTests": 0,
+          "reason": "Order-entry setup depends on branch-specific fixture drift."
+        },
+        {
+          "cypressSpec": "cypress/e2e/patientEntry.cy.js",
+          "status": "quarantined_pending_migration",
+          "parityLevel": "none",
+          "playwrightSpec": null,
+          "minimumPlaywrightTests": 0,
+          "reason": "Patient search and registration assertions rely on unstable seeded identities."
+        },
+        {
+          "cypressSpec": "cypress/e2e/storageSearch.cy.js",
+          "status": "quarantined_pending_migration",
+          "parityLevel": "none",
+          "playwrightSpec": null,
+          "minimumPlaywrightTests": 0,
+          "reason": "Storage search data setup is currently inconsistent in rebased branch runs."
+        }
+      ]
+    }
+  }
+}

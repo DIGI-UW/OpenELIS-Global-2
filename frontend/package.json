@@ -73,7 +73,9 @@
     "pw:install": "playwright install chromium",
     "pw:test": "playwright test",
     "pw:test:ui": "playwright test --ui",
-    "pw:test:headed": "playwright test --headed"
+    "pw:test:headed": "playwright test --headed",
+    "e2e:policy:parity": "node scripts/e2e-remediation-policy.mjs parity",
+    "e2e:policy:filter": "node scripts/e2e-remediation-policy.mjs filter"
   },
   "jest": {
     "transformIgnorePatterns": [
