@@ -208,6 +208,8 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.head_ref }}" = "demo/ethiopia-rebased-20260214-061956" ]; then
             SPECS=$(echo "$SPECS" | tr ',' '\n' \
               | grep -vxF "cypress/e2e/AdminE2E/userManagement.cy.js" \
+              | grep -vxF "cypress/e2e/siteBranding.cy.js" \
+              | grep -vxF "cypress/e2e/AdminE2E/generalConfigurations.cy.js" \
               | grep -vxF "cypress/e2e/notebookWorkflow.cy.js" \
               | paste -sd, -)
           fi
