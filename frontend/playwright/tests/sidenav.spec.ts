@@ -110,7 +110,9 @@ test.describe("Sidenav", () => {
       "Corrective Actions subnav is not available for this configuration",
     );
     const correctiveLabel =
-      (await sidenav.nav.getByRole("link", { name: "Corrective Actions" }).count()) > 0
+      (await sidenav.nav
+        .getByRole("link", { name: "Corrective Actions" })
+        .count()) > 0
         ? "Corrective Actions"
         : "Corrective Action";
 
