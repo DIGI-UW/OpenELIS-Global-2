@@ -242,8 +242,8 @@ For localization files (for example `frontend/src/languages/en.json` and
 
 - **Never resolve by taking ours/theirs wholesale** unless explicitly approved
   by the user for that file.
-- Resolve to a **key-set union outcome** (all keys that existed before rebase
-  on our branch must still exist after rebase unless explicitly approved for
+- Resolve to a **key-set union outcome** (all keys that existed before rebase on
+  our branch must still exist after rebase unless explicitly approved for
   removal).
 - If keys are intentionally removed, record those keys in chat and pass them to
   the no-loss audit as explicit allow-list entries.
