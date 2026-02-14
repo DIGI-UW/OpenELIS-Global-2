@@ -112,10 +112,10 @@ function parityRow(entry) {
 
   const cypressTests = countSpecTests(
     cypressPath,
-    /\bit(?:\.only|\.skip)?\s*\(/g,
+    /^\s*it(?:\.only|\.skip)?\s*\(/gm,
   );
   const playwrightTests = playwrightPath
-    ? countSpecTests(playwrightPath, /\btest(?:\.only|\.skip|\.fixme)?\s*\(/g)
+    ? countSpecTests(playwrightPath, /^\s*test(?:\.only|\.fixme)?\s*\(/gm)
     : 0;
 
   const minimumPlaywrightTests = Number(entry.minimumPlaywrightTests || 0);
