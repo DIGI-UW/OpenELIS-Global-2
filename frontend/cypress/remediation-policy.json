@@ -91,6 +91,14 @@
           "playwrightSpec": null,
           "minimumPlaywrightTests": 0,
           "reason": "Dashboard validation depends on mutable pathology dashboard state and seeded order visibility."
+        },
+        {
+          "cypressSpec": "cypress/e2e/report.cy.js",
+          "status": "quarantined_pending_migration",
+          "parityLevel": "none",
+          "playwrightSpec": null,
+          "minimumPlaywrightTests": 0,
+          "reason": "Routine report assertions depend on environment-specific seeded report data visibility."
         }
       ]
     }
