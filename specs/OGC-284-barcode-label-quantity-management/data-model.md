@@ -13,12 +13,12 @@ OGC-284 and its assessment-driven remediation.
 
 **Purpose**: Stores sample-level order label quantity metadata.
 
-| Field | Type | Required | Notes |
-| ----- | ---- | -------- | ----- |
-| id | Integer | Yes | PK (sequence) |
-| sample_id | FK -> Sample.id | Yes | Unique per sample |
-| print_order_num | Integer | No | Requested order-label quantity |
-| last_updated | Timestamp | No | Audit timestamp |
+| Field           | Type            | Required | Notes                          |
+| --------------- | --------------- | -------- | ------------------------------ |
+| id              | Integer         | Yes      | PK (sequence)                  |
+| sample_id       | FK -> Sample.id | Yes      | Unique per sample              |
+| print_order_num | Integer         | No       | Requested order-label quantity |
+| last_updated    | Timestamp       | No       | Audit timestamp                |
 
 **Business Rules**:
 
@@ -32,22 +32,22 @@ OGC-284 and its assessment-driven remediation.
 
 **Purpose**: Stores sample-item-level label quantity metadata.
 
-| Field | Type | Required | Notes |
-| ----- | ---- | -------- | ----- |
-| id | Integer | Yes | PK (sequence) |
-| sample_item_id | FK -> SampleItem.id | Yes | Unique per sample item |
-| print_specimen_num | Integer | No | Requested specimen-label quantity |
-| print_block_num | Integer | No | Pathology block-label quantity |
-| print_slide_num | Integer | No | Pathology slide-label quantity |
-| print_freezer_num | Integer | No | Pathology freezer-label quantity |
-| last_updated | Timestamp | No | Audit timestamp |
+| Field              | Type                | Required | Notes                             |
+| ------------------ | ------------------- | -------- | --------------------------------- |
+| id                 | Integer             | Yes      | PK (sequence)                     |
+| sample_item_id     | FK -> SampleItem.id | Yes      | Unique per sample item            |
+| print_specimen_num | Integer             | No       | Requested specimen-label quantity |
+| print_block_num    | Integer             | No       | Pathology block-label quantity    |
+| print_slide_num    | Integer             | No       | Pathology slide-label quantity    |
+| print_freezer_num  | Integer             | No       | Pathology freezer-label quantity  |
+| last_updated       | Timestamp           | No       | Audit timestamp                   |
 
 **Business Rules**:
 
 - One `SampleItemBarcodeInfo` per `SampleItem`.
 - Upsert logic matches sample-level behavior.
-- Non-pathology workflows use specimen quantity; pathology workflows may populate
-  additional quantities.
+- Non-pathology workflows use specimen quantity; pathology workflows may
+  populate additional quantities.
 
 ---
 
@@ -62,8 +62,7 @@ Representative key groups:
   - `numMaxOrderLabels`, `numMaxSpecimenLabels`, `numMaxSlideLabels`,
     `numMaxBlockLabels`, `numMaxFreezerLabels`
   - `numDefaultOrderLabels`, `numDefaultSpecimenLabels`,
-    `numDefaultSlideLabels`, `numDefaultBlockLabels`,
-    `numDefaultFreezerLabels`
+    `numDefaultSlideLabels`, `numDefaultBlockLabels`, `numDefaultFreezerLabels`
 - Dimensions:
   - `height*Labels`, `width*Labels` (by label type)
 - Field toggles:
@@ -87,10 +86,10 @@ capture.
 
 Relevant fields for OGC-284:
 
-| Field | Type | Required | Notes |
-| ----- | ---- | -------- | ----- |
-| numOrderLabels | Integer | No | Defaults to 1 when omitted |
-| numSpecimenLabels | Integer | No | Defaults to 1 when omitted |
+| Field             | Type    | Required | Notes                      |
+| ----------------- | ------- | -------- | -------------------------- |
+| numOrderLabels    | Integer | No       | Defaults to 1 when omitted |
+| numSpecimenLabels | Integer | No       | Defaults to 1 when omitted |
 
 ---
 
@@ -150,5 +149,6 @@ SiteInformation (labels domain) supplies configuration values used by:
 ## C) Pathology label rendering lifecycle (target remediation)
 
 1. Service resolves required pathology metadata once per request/work unit.
-2. Label classes render fields based on configuration toggles and passed context.
+2. Label classes render fields based on configuration toggles and passed
+   context.
 3. No per-label unscoped FHIR search in rendering classes.

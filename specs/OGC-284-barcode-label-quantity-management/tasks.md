@@ -43,8 +43,8 @@ fallback safely; localized labels render correctly.
       `feat/284-barcode-label-quantity-management-m1-config-i18n-hardening` from
       `develop` and add worktree at
       `/workspace-worktrees/ogc-284-m1-config-i18n`
-- [x] T002 [P] [US1] Extend configuration round-trip and malformed-value fallback
-      tests in
+- [x] T002 [P] [US1] Extend configuration round-trip and malformed-value
+      fallback tests in
       `src/test/java/org/openelisglobal/barcode/BarcodeConfigurationRestControllerTest.java`
 - [x] T003 [P] [US1] Add backend message-key and safe parsing coverage in
       `src/test/java/org/openelisglobal/barcode/BarcodeInformationServiceTest.java`
@@ -62,8 +62,8 @@ fallback safely; localized labels render correctly.
       `src/main/resources/languages/message_fr.properties`
 - [x] T009 [US1] Align frontend localization keys for barcode config labels in
       `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
-- [x] T010 [US1] Verify Carbon-only component usage for touched barcode config UI
-      in
+- [x] T010 [US1] Verify Carbon-only component usage for touched barcode config
+      UI in
       `frontend/src/components/admin/barcodeConfiguration/BarcodeConfiguration.js`
 - [x] T011 [US1] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
@@ -79,8 +79,8 @@ fallback safely; localized labels render correctly.
 **Suggested Worktree**: `/workspace-worktrees/ogc-284-m2-persistence-upsert`  
 **Stories**: US2  
 **Depends On**: M1  
-**Independent Test**: Generic sample order stores default/explicit quantities and
-updates existing barcode metadata without duplication.
+**Independent Test**: Generic sample order stores default/explicit quantities
+and updates existing barcode metadata without duplication.
 
 - [ ] T013 Create milestone branch
       `feat/284-barcode-label-quantity-management-m2-persistence-upsert` from
@@ -112,8 +112,8 @@ updates existing barcode metadata without duplication.
 **Suggested Worktree**: `/workspace-worktrees/ogc-284-m3-label-resilience`  
 **Stories**: US3  
 **Depends On**: M1  
-**Independent Test**: Slide/freezer/block labels honor toggles and remain stable;
-requests above max labels are blocked unless override is enabled.
+**Independent Test**: Slide/freezer/block labels honor toggles and remain
+stable; requests above max labels are blocked unless override is enabled.
 
 - [ ] T021 Create milestone branch
       `feat/284-barcode-label-quantity-management-m3-label-resilience` from
@@ -133,13 +133,12 @@ requests above max labels are blocked unless override is enabled.
 - [ ] T027 [US3] Resolve and pass block specimen context at label construction
       time in `src/main/java/org/openelisglobal/barcode/BarcodeLabelMaker.java`
 - [ ] T028 [US3] Implement slide optional-field rendering for configured toggles
-      in
-      `src/main/java/org/openelisglobal/barcode/labeltype/SlideLabel.java`
+      in `src/main/java/org/openelisglobal/barcode/labeltype/SlideLabel.java`
 - [ ] T029 [US3] Implement freezer optional-field rendering for configured
       toggles in
       `src/main/java/org/openelisglobal/barcode/labeltype/FreezerLabel.java`
-- [ ] T030 [US3] Enforce FR-013 max-label request behavior (block over-max unless
-      override enabled) in
+- [ ] T030 [US3] Enforce FR-013 max-label request behavior (block over-max
+      unless override enabled) in
       `src/main/java/org/openelisglobal/barcode/BarcodeLabelMaker.java`
 - [ ] T031 [US3] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
@@ -152,7 +151,8 @@ requests above max labels are blocked unless override is enabled.
 **Branch Suffix**: `m4-integration-ci-review`  
 **Suggested Branch**:
 `feat/284-barcode-label-quantity-management-m4-integration-ci-review`  
-**Suggested Worktree**: `/workspace-worktrees/ogc-284-m4-integration-ci-review`  
+**Suggested Worktree**:
+`/workspace-worktrees/ogc-284-m4-integration-ci-review`  
 **Stories**: US1, US2, US3  
 **Depends On**: M2, M3  
 **Independent Test**: Combined milestone changes pass targeted QA checks and all
@@ -165,8 +165,8 @@ review threads can be closed with evidence.
 - [ ] T034 [P] Run combined backend verification suites for M1-M3 changes and
       record outputs in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T035 [P] Run frontend unit tests and impacted Cypress spec(s) individually,
-      then record console/screenshot review notes in
+- [ ] T035 [P] Run frontend unit tests and impacted Cypress spec(s)
+      individually, then record console/screenshot review notes in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
 - [ ] T036 Merge M2 and M3 into M4 and resolve integration conflicts in touched
       barcode/generic sample files
@@ -174,7 +174,8 @@ review threads can be closed with evidence.
       milestone PR discussion
 - [ ] T038 Re-run failed PR workflow(s) and record run IDs + final status in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T039 Resolve remaining review threads after verification evidence is posted
+- [ ] T039 Resolve remaining review threads after verification evidence is
+      posted
 - [ ] T040 Create milestone PR for M4 with consolidated verification summary
 
 ---

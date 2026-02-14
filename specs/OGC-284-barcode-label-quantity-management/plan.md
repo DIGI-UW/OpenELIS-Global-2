@@ -1,7 +1,9 @@
 # Implementation Plan: Barcode Label Quantity Management (OGC-284)
 
-**Branch**: `feat/284-barcode-label-quantity-management` | **Date**: 2026-02-14 | **Spec**: [spec.md](./spec.md)  
-**Input**: Feature specification from `/specs/OGC-284-barcode-label-quantity-management/spec.md`  
+**Branch**: `feat/284-barcode-label-quantity-management` | **Date**: 2026-02-14
+| **Spec**: [spec.md](./spec.md)  
+**Input**: Feature specification from
+`/specs/OGC-284-barcode-label-quantity-management/spec.md`  
 **Issue**: [OGC-284](https://uwdigi.atlassian.net/browse/OGC-284)
 
 ## Summary
@@ -71,12 +73,12 @@ _Bite-size milestones with explicit verification gates._
 
 ### Milestone Table
 
-| ID | Branch Suffix | Suggested Branch (Principle IX) | Suggested Worktree | Scope | User Stories | Verification | Depends On |
-| -- | -- | -- | -- | -- | -- | -- | -- |
-| M1 | m1-config-i18n-hardening | `feat/284-barcode-label-quantity-management-m1-config-i18n-hardening` | `/workspace-worktrees/ogc-284-m1-config-i18n` | Admin config safety, fallback/range handling, localization completeness | US1 | `BarcodeConfigurationRestControllerTest`, `BarcodeInformationServiceTest`, frontend barcode config tests | - |
-| [P] M2 | m2-persistence-upsert | `feat/284-barcode-label-quantity-management-m2-persistence-upsert` | `/workspace-worktrees/ogc-284-m2-persistence-upsert` | Generic sample order quantity defaults + upsert/dedup reliability | US2 | `BarcodeInfoServiceImplTest` + new generic sample service tests | M1 |
-| [P] M3 | m3-label-resilience | `feat/284-barcode-label-quantity-management-m3-label-resilience` | `/workspace-worktrees/ogc-284-m3-label-resilience` | Label rendering consistency (slide/freezer fields), BlockLabel lookup hardening, max-limit enforcement/override behavior | US3 | New label-type tests + barcode label maker tests | M1 |
-| M4 | m4-integration-ci-review | `feat/284-barcode-label-quantity-management-m4-integration-ci-review` | `/workspace-worktrees/ogc-284-m4-integration-ci-review` | Merge tracks, CI stabilization, review-thread closure evidence | US1, US2, US3 | targeted backend/frontend/E2E + workflow reruns | M2, M3 |
+| ID     | Branch Suffix            | Suggested Branch (Principle IX)                                       | Suggested Worktree                                      | Scope                                                                                                                    | User Stories  | Verification                                                                                             | Depends On |
+| ------ | ------------------------ | --------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------- | -------------------------------------------------------------------------------------------------------- | ---------- |
+| M1     | m1-config-i18n-hardening | `feat/284-barcode-label-quantity-management-m1-config-i18n-hardening` | `/workspace-worktrees/ogc-284-m1-config-i18n`           | Admin config safety, fallback/range handling, localization completeness                                                  | US1           | `BarcodeConfigurationRestControllerTest`, `BarcodeInformationServiceTest`, frontend barcode config tests | -          |
+| [P] M2 | m2-persistence-upsert    | `feat/284-barcode-label-quantity-management-m2-persistence-upsert`    | `/workspace-worktrees/ogc-284-m2-persistence-upsert`    | Generic sample order quantity defaults + upsert/dedup reliability                                                        | US2           | `BarcodeInfoServiceImplTest` + new generic sample service tests                                          | M1         |
+| [P] M3 | m3-label-resilience      | `feat/284-barcode-label-quantity-management-m3-label-resilience`      | `/workspace-worktrees/ogc-284-m3-label-resilience`      | Label rendering consistency (slide/freezer fields), BlockLabel lookup hardening, max-limit enforcement/override behavior | US3           | New label-type tests + barcode label maker tests                                                         | M1         |
+| M4     | m4-integration-ci-review | `feat/284-barcode-label-quantity-management-m4-integration-ci-review` | `/workspace-worktrees/ogc-284-m4-integration-ci-review` | Merge tracks, CI stabilization, review-thread closure evidence                                                           | US1, US2, US3 | targeted backend/frontend/E2E + workflow reruns                                                          | M2, M3     |
 
 ### Milestone Dependency Graph
 
@@ -172,9 +174,9 @@ frontend/src/components/admin/barcodeConfiguration/...
 
 ## Risks & Mitigations
 
-| Risk | Mitigation |
-| --- | --- |
-| Unscoped runtime lookups in label rendering | Move resolution to bounded context before render/use deterministic inputs |
-| Config UI/options drift from rendered output | Align toggle mapping in label classes and tests |
-| Missing backend message keys | Add/verify key parity in `message_en/fr.properties` |
-| Merge friction late in cycle | Use milestone PRs with small scope and early CI reruns |
+| Risk                                         | Mitigation                                                                |
+| -------------------------------------------- | ------------------------------------------------------------------------- |
+| Unscoped runtime lookups in label rendering  | Move resolution to bounded context before render/use deterministic inputs |
+| Config UI/options drift from rendered output | Align toggle mapping in label classes and tests                           |
+| Missing backend message keys                 | Add/verify key parity in `message_en/fr.properties`                       |
+| Merge friction late in cycle                 | Use milestone PRs with small scope and early CI reruns                    |

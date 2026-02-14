@@ -309,8 +309,7 @@ public class BarcodeConfigurationRestController extends BaseController {
         form.setNumDefaultAliquotLabels(normalizeLabelCount(form.getNumDefaultAliquotLabels(), DEFAULT_LABEL_FALLBACK));
         form.setNumDefaultSlideLabels(normalizeLabelCount(form.getNumDefaultSlideLabels(), DEFAULT_LABEL_FALLBACK));
         form.setNumDefaultBlockLabels(normalizeLabelCount(form.getNumDefaultBlockLabels(), DEFAULT_LABEL_FALLBACK));
-        form.setNumDefaultFreezerLabels(
-                normalizeLabelCount(form.getNumDefaultFreezerLabels(), DEFAULT_LABEL_FALLBACK));
+        form.setNumDefaultFreezerLabels(normalizeLabelCount(form.getNumDefaultFreezerLabels(), DEFAULT_LABEL_FALLBACK));
     }
 
     private int normalizeLabelCount(int value, int fallback) {

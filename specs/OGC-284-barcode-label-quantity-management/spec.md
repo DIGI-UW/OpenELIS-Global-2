@@ -3,7 +3,9 @@
 **Feature Branch**: `OGC-284-barcode-label-quantity-management`  
 **Created**: 2026-02-14  
 **Status**: Draft  
-**Input**: User description: "This is a PR for https://uwdigi.atlassian.net/browse/OGC-284. We need to generate specs properly for this feature, using the issue number as the feature id."  
+**Input**: User description: "This is a PR for
+https://uwdigi.atlassian.net/browse/OGC-284. We need to generate specs properly
+for this feature, using the issue number as the feature id."  
 **Issue**: [OGC-284](https://uwdigi.atlassian.net/browse/OGC-284)
 
 ## Overview
@@ -30,8 +32,8 @@ workflows.
 immediate operational friction and wasted consumables across all laboratories.
 
 **Independent Test**: Can be fully tested by editing barcode quantity values in
-the admin screen, saving, then reloading configuration to verify the same
-values are returned.
+the admin screen, saving, then reloading configuration to verify the same values
+are returned.
 
 **Acceptance Scenarios**:
 
@@ -137,8 +139,8 @@ occur.
 - **FR-010**: Pathology-specific barcode metadata persistence MUST support
   storing specimen, block, slide, and freezer quantities per sample item when
   provided by workflow.
-- **FR-011**: Label generation workflows MUST continue to function when
-  optional barcode fields are disabled or unset.
+- **FR-011**: Label generation workflows MUST continue to function when optional
+  barcode fields are disabled or unset.
 - **FR-012**: User-facing labels and descriptions for newly exposed barcode
   quantity settings MUST be localized.
 - **FR-013**: When a requested label quantity exceeds the configured maximum for

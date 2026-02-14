@@ -17,8 +17,8 @@ import org.openelisglobal.barcode.form.BarcodeConfigurationForm;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
-import org.springframework.http.MediaType;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
 public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensitiveTest {
@@ -159,7 +159,8 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
                 BarcodeConfigurationForm.class);
 
         assertEquals("Invalid max order should normalize to default max order", 10, saved.getNumMaxOrderLabels());
-        assertEquals("Oversized max specimen should normalize to default max value", 10, saved.getNumMaxSpecimenLabels());
+        assertEquals("Oversized max specimen should normalize to default max value", 10,
+                saved.getNumMaxSpecimenLabels());
         assertEquals("Zero default order should normalize to default quantity", 1, saved.getNumDefaultOrderLabels());
     }
 

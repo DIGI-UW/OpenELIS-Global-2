@@ -127,8 +127,7 @@ Before final review request:
 ### Test execution evidence
 
 - Frontend targeted test (PASS):
-  - Command:
-    `CI=true npm test -- BarcodeConfiguration.test.js --watchAll=false`
+  - Command: `CI=true npm test -- BarcodeConfiguration.test.js --watchAll=false`
   - Result: 1 suite, 3 tests passed.
 
 ### Environment blockers
@@ -139,8 +138,8 @@ Before final review request:
 - Backend targeted tests were invoked but blocked by infrastructure:
   - Command:
     `mvn -q test -Dtest=BarcodeConfigurationRestControllerTest,BarcodeInformationServiceTest`
-  - Failure cause: Testcontainers cannot find Docker daemon (`/var/run/docker.sock`)
-    in this execution environment.
+  - Failure cause: Testcontainers cannot find Docker daemon
+    (`/var/run/docker.sock`) in this execution environment.
 
 ### Manual follow-up commands (backend)
 

@@ -14,7 +14,8 @@ to planning
 
 **Validation Notes**:
 
-- Requirements and scenarios focus on administrator and laboratory user outcomes.
+- Requirements and scenarios focus on administrator and laboratory user
+  outcomes.
 - The specification defines behavior (what/why) rather than code-level approach.
 - Mandatory sections are complete: User Scenarios, Edge Cases, Requirements,
   Success Criteria.
