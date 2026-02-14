@@ -133,14 +133,21 @@ Before final review request:
 
 ### Environment blockers
 
-- Backend targeted Maven tests could not be executed in this environment:
-  - `mvn`: not found
-  - `docker`: not found (no containerized Maven fallback)
+- Backend dependency setup completed:
+  - `git submodule update --init --recursive`
+  - `cd dataexport && mvn clean install -DskipTests -Dmaven.test.skip=true`
+- Backend targeted tests were invoked but blocked by infrastructure:
+  - Command:
+    `mvn -q test -Dtest=BarcodeConfigurationRestControllerTest,BarcodeInformationServiceTest`
+  - Failure cause: Testcontainers cannot find Docker daemon (`/var/run/docker.sock`)
+    in this execution environment.
 
 ### Manual follow-up commands (backend)
 
-Run these in an environment with Maven installed:
+Run these in an environment with Maven + Docker available:
 
 ```bash
+git submodule update --init --recursive
+cd dataexport && mvn clean install -DskipTests -Dmaven.test.skip=true && cd ..
 mvn test -Dtest="BarcodeConfigurationRestControllerTest,BarcodeInformationServiceTest"
 ```
