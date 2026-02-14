@@ -29,7 +29,7 @@ bite-size PRs and explicit verification gates.
 | M4b       | US2, US3        | P0 admin-core Playwright migration |
 | M5        | US2, US3        | P0 clinical workflow migration |
 | M6        | US3             | Critical storage gap closure |
-| M7        | US2, US4, US5   | Dual-run CI parity comparison reporting |
+| M7        | US2, US4, US5   | Dual-run CI parity report pipeline |
 | M8        | US4, US5        | Big-bang cutover (Playwright primary, Cypress retained) |
 | M9        | US4, US5        | Stabilization and signoff packet |
 
@@ -75,6 +75,11 @@ bite-size PRs and explicit verification gates.
 - [ ] T026 [M2] Run parity mapping validator and append results to
       `specs/201-e2e-playwright-risk-parity/parity-matrix.csv` notes column
 - [ ] T027 [M2] Milestone gate: 100% P0/P1 scenarios have parity map records
+- [ ] T028 [M2] Define reliability SLO and baseline flaky scenario set in
+      `specs/201-e2e-playwright-risk-parity/baseline-flaky-scenarios.md`
+      (target: >=95% pass rate across 20 CI-equivalent runs)
+- [ ] T029 [M2] Link baseline flaky scenarios into `parity-matrix.csv` with
+      reliability tracking identifiers
 
 ---
 
@@ -96,6 +101,12 @@ bite-size PRs and explicit verification gates.
       `specs/201-e2e-playwright-risk-parity/quickstart.md`
 - [ ] T046 [M3] Test gate: run `npm run pw:test` and record baseline outcome in quickstart
 - [ ] T047 [M3] Milestone gate: existing Playwright suite remains green after foundation changes
+- [ ] T048 [M3] Add assertion-quality checklist for migrated scenarios in
+      `specs/201-e2e-playwright-risk-parity/assertion-quality-checklist.md`
+      (user-visible assertions + real-effect expectations)
+- [ ] T049 [M3] Add E2E semantics guardrail checklist in
+      `specs/201-e2e-playwright-risk-parity/e2e-semantics-checklist.md`
+      (avoid turning real E2E into mocked-backend tests)
 
 ---
 
@@ -179,7 +190,7 @@ bite-size PRs and explicit verification gates.
 
 ---
 
-## M7: Dual-Run CI Parity Comparison (Bite-size PR 7)
+## M7: Dual-Run CI Parity Report (Bite-size PR 7)
 
 **Goal**: Produce comparable, per-run Cypress vs Playwright parity output.
 
@@ -197,11 +208,20 @@ bite-size PRs and explicit verification gates.
       `.github/workflows/playwright-e2e.yml`
 - [ ] T106 [M7] Update Cypress workflow to emit normalized artifact
       `.github/workflows/frontend-qa.yml`
-- [ ] T107 [M7] Add CI comparison job/workflow that publishes markdown/json parity report
+- [ ] T107 [M7] Add CI parity-report job/workflow that publishes markdown/json parity report
       `.github/workflows/e2e-parity-report.yml`
 - [ ] T108 [M7] Add parity report output location
       `specs/201-e2e-playwright-risk-parity/artifacts/parity-report.md`
-- [ ] T109 [M7] Milestone gate: CI emits divergence report with risk labels on each run
+- [ ] T109 [M7] Milestone gate: CI emits classified parity report with risk labels on each run
+- [ ] T110 [M7] Extend parity comparison script to classify failures by
+      `failure_class` (setup/infra, assertion, parity divergence)
+- [ ] T111 [M7] Add runtime metric exporter
+      `scripts/e2e/export-runtime-metrics.js` (capture suite wall-clock per run)
+- [ ] T112 [M7] Define runtime budget in
+      `specs/201-e2e-playwright-risk-parity/runtime-budget.md`
+      (Playwright + Cypress dual-run target/bounds)
+- [ ] T113 [M7] Include failure classification and runtime budget status in
+      `artifacts/parity-report.md` for each CI run
 
 ---
 
@@ -220,6 +240,12 @@ bite-size PRs and explicit verification gates.
 - [ ] T124 [M8] Add explicit non-decommission statement in migration docs
       `specs/201-e2e-playwright-risk-parity/quickstart.md`
 - [ ] T125 [M8] Milestone gate: Playwright check is primary while Cypress still fully runs
+- [ ] T126 [M8] Verify required checks policy via GitHub CLI and record evidence
+      in `specs/201-e2e-playwright-risk-parity/signoff-summary.md`
+      (confirm Playwright primary check + Cypress comparison checks)
+- [ ] T127 [M8] Add cutover checklist artifact
+      `specs/201-e2e-playwright-risk-parity/cutover-checklist.md`
+      (checks, owners, rollback criteria)
 
 ---
 
@@ -239,6 +265,13 @@ bite-size PRs and explicit verification gates.
 - [ ] T145 [M9] Confirm explicit scope statement: Cypress retained; no retirement milestone
       `specs/201-e2e-playwright-risk-parity/signoff-summary.md`
 - [ ] T146 [M9] Milestone gate: no untriaged P0/P1 divergences at end of stabilization window
+- [ ] T147 [M9] Execute 20-run CI-equivalent reliability evaluation for baseline
+      flaky scenarios and record pass rates in
+      `specs/201-e2e-playwright-risk-parity/stabilization-report.md`
+- [ ] T148 [M9] Evaluate runtime budget compliance and record >=90% in-budget
+      result in `stabilization-report.md`
+- [ ] T149 [M9] Verify all divergence entries include owner, risk tier, and
+      `failure_class` in `divergence-triage.md`
 
 ---
 
@@ -246,9 +279,12 @@ bite-size PRs and explicit verification gates.
 
 - [ ] T160 [P] [M1-M9] Run required formatting before each commit:
       `mvn spotless:apply` and `cd frontend && npm run format`
-- [ ] T161 [P] [M1-M9] Run milestone-relevant tests before each PR
+- [ ] T161 [P] [M1-M9] Run mandatory pre-push full-suite validation before each
+      PR: `cd frontend && npm run pw:test` and `cd frontend && npm run cy:failfast`
 - [ ] T162 [P] [M1-M9] Keep `parity-matrix.csv` and `critical-gap-register.md` current
 - [ ] T163 [P] [M1-M9] Capture CI artifact links in milestone PR descriptions
+- [ ] T164 [P] [M1-M9] Attach pre-push validation evidence (commands, run IDs,
+      parity artifact links) in milestone PR description/checklist
 
 ---
 
@@ -291,5 +327,8 @@ bite-size PRs and explicit verification gates.
 - This task plan intentionally prioritizes small, testable milestones and explicit
   stop/go gates.
 - Branch naming in milestone tasks follows the plan’s `feat/201-...-mN-*` pattern.
+- Milestone branch names are logical targets for parallel development; in
+  constrained single-branch environments, preserve this naming in documentation
+  and PR titles/checklists for traceability.
 - `/speckit.implement` should execute milestones in dependency order and avoid
   skipping gates.

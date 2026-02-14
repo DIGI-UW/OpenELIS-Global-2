@@ -50,7 +50,7 @@ As a quality steward, I need critical legacy gaps addressed during migration so 
 **Acceptance Scenarios**:
 
 1. **Given** critical skipped Cypress scenarios, **When** migration work is completed, **Then** those scenarios are covered by active, passing Playwright tests.
-2. **Given** previously flaky legacy scenarios, **When** Playwright replacements are executed repeatedly, **Then** they meet agreed reliability thresholds in CI.
+2. **Given** previously flaky legacy scenarios, **When** Playwright replacements are executed repeatedly, **Then** they achieve at least a 95% pass rate over a 20-run CI-equivalent execution window.
 3. **Given** critical workflows with no prior reliable automation, **When** gap-closure scope is delivered, **Then** new Playwright scenarios are added and linked to business risk items.
 
 ---
@@ -109,6 +109,9 @@ As stakeholders, we want to keep Cypress tests intact and running with no immedi
 - **FR-008**: The project MUST generate parity comparison output per run, including scenario-level pass/fail divergence and risk impact.
 - **FR-009**: Any unresolved parity gaps after cutover MUST be tracked with owner, risk classification, and remediation target.
 - **FR-010**: Migration documentation MUST include local and CI execution guidance for dual-framework comparison mode.
+- **FR-011**: The parity reporting pipeline MUST classify failures into at least: infrastructure/setup failure, test assertion failure, and cross-framework parity divergence.
+- **FR-012**: The migration MUST define and track a dual-run runtime budget, with per-run wall-clock metrics for Playwright and Cypress and alerting when the budget is exceeded.
+- **FR-013**: During this feature, pre-push validation MUST include full-suite execution for both frameworks (Playwright full suite and Cypress full legacy comparison suite).
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -135,3 +138,6 @@ As stakeholders, we want to keep Cypress tests intact and running with no immedi
 - **SC-003**: All critical (P0/P1) coverage gaps identified at baseline are either closed with passing Playwright tests or formally documented as approved exceptions.
 - **SC-004**: Big-bang cutover is completed with Playwright as primary E2E gate while full Cypress suite remains enabled and green in comparison mode.
 - **SC-005**: For an agreed stabilization window, parity comparison reports are produced on each CI run and contain no untriaged high-risk divergences.
+- **SC-006**: Migrated scenarios flagged as flaky at baseline achieve >=95% pass rate over 20 CI-equivalent runs during stabilization.
+- **SC-007**: 100% of parity reports include failure classification (infrastructure/setup vs assertion vs parity divergence).
+- **SC-008**: Dual-run runtime metrics are captured on every CI run in stabilization and remain within the agreed runtime budget for at least 90% of runs.

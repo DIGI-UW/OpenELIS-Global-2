@@ -68,7 +68,9 @@ Verify compliance with
 **Section V.5 Compliance Notes**:
 
 - Development execution in small slices is allowed and required
-- Full-suite pre-push validation remains mandatory
+- Full-suite pre-push validation remains mandatory and must run both frameworks:
+  - `cd frontend && npm run pw:test`
+  - `cd frontend && npm run cy:failfast`
 - Playwright is preferred for new development; Cypress remains valid legacy suite
 
 ## Milestone Plan
@@ -86,7 +88,7 @@ _GATE: Feature spans >3 days; milestone breakdown required._
 | [P] M4b | m4b-core-admin   | Migrate P0 admin-critical scenarios to Playwright            | US2, US3       | New PW tests pass + linked parity entries for migrated scenarios | M3         |
 | M5      | m5-core-clinical | Migrate P0 patient/order/result/report scenarios             | US2, US3       | P0 clinical scenarios passing in PW with parity evidence         | M4a, M4b   |
 | M6      | m6-storage-gaps  | Close critical storage/skip gaps in Playwright               | US3            | Previously critical skipped/partial legacy cases covered in PW   | M5         |
-| M7      | m7-parity-ci     | Dual-run comparison reporting (PW + full Cypress)            | US2, US4, US5  | CI emits scenario divergence report with risk annotations        | M6         |
+| M7      | m7-parity-ci     | Dual-run Parity Report pipeline (PW + full Cypress)          | US2, US4, US5  | CI emits classified parity report + runtime metrics              | M6         |
 | M8      | m8-bigbang       | Big-bang cutover: Playwright primary gate, Cypress comparison | US4, US5       | Playwright primary check active; full Cypress still runs         | M7         |
 | M9      | m9-stabilization | Stabilization window + unresolved divergence triage packet    | US4, US5       | No untriaged P0/P1 divergences during agreed window              | M8         |
 
@@ -190,13 +192,15 @@ graph LR
 
 **Deliverables**
 
-- CI comparison mode output (Playwright + full Cypress)
-- Divergence report with risk labels and scenario links
+- CI Parity Report output (Playwright + full Cypress normalized results)
+- Divergence report with risk labels, scenario links, and failure classification
+- Per-run runtime metrics for both suites versus runtime budget
 
 **Testable Gate**
 
-- CI emits comparison artifact on every run
-- Divergences triaged at least to risk tier + owner
+- CI emits Parity Report artifact on every run
+- Every divergence includes `failure_class` (setup/infra, assertion, parity)
+- Runtime metrics are captured and compared to the agreed runtime budget
 
 ### M8 - Big-Bang Cutover (US4, US5)
 
@@ -209,6 +213,7 @@ graph LR
 
 - Branch protection/check naming reflects Playwright primary
 - Cypress jobs remain green/visible and non-removed
+- Required check policy is verified via `gh` output and recorded in signoff docs
 
 ### M9 - Stabilization + Decision Packet (US4, US5)
 
@@ -221,6 +226,9 @@ graph LR
 **Testable Gate**
 
 - No untriaged P0/P1 divergence at stabilization end
+- Previously flaky migrated scenarios meet the reliability SLO (>=95% pass rate
+  across 20 CI-equivalent runs)
+- Dual-run execution remains within runtime budget for >=90% of stabilization runs
 - Signoff report accepted by stakeholders
 
 ## Project Structure
@@ -267,12 +275,16 @@ scenario ownership to Playwright while preserving Cypress execution and assets.
 - **Parity Coverage**: 100% mapped P0/P1 legacy scenarios
 - **Critical Gap Closure**: 100% baseline critical gaps resolved or exceptioned
 - **Dual-Run Visibility**: 100% PR runs produce comparable E2E status artifacts
+- **Reliability SLO**: Migrated baseline-flaky scenarios achieve >=95% pass rate
+  over 20 CI-equivalent runs
+- **Runtime Budget**: Dual-run wall-clock remains within agreed budget for >=90%
+  of stabilization runs
 
 ### Test Types
 
 - [x] **Playwright E2E**: Primary migration target for new/ported scenarios
 - [x] **Cypress E2E**: Legacy comparison suite remains active
-- [x] **CI Comparison Validation**: Cross-framework divergence reporting
+- [x] **CI Parity Report Validation**: Cross-framework divergence reporting
 
 ### Test Data Management
 
@@ -280,12 +292,18 @@ scenario ownership to Playwright while preserving Cypress execution and assets.
 - Prefer deterministic API/fixture-backed setup for migration scenarios
 - Maintain real E2E semantics for tests labeled as E2E
 
+### Mandatory Pre-Push Validation (Constitution V.5)
+
+- Execute Playwright full suite: `cd frontend && npm run pw:test`
+- Execute Cypress full comparison suite: `cd frontend && npm run cy:failfast`
+- Capture and attach parity artifacts before merge/cutover decisions
+
 ### Checkpoint Validations
 
 - [x] **M1**: inventory completeness verified
 - [x] **M2**: P0/P1 parity map completeness verified
 - [x] **M3-M6**: each migration milestone passes scenario-level gates
-- [x] **M7**: dual-run comparison artifact generated in CI
+- [x] **M7**: dual-run parity report artifact generated in CI
 - [x] **M8-M9**: big-bang cutover + stabilization gates satisfied
 
 ## Risks & Mitigations
