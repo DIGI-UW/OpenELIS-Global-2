@@ -31,10 +31,10 @@ class HomePage {
       workplanPanelNav: "#menu_workplan_panel_nav",
       workplanBenchNav: "#menu_workplan_bench_nav",
       workplanPriorityNav: "#menu_workplan_priority_nav",
-      nonConformityDropdown: "span#menu_nonconformity_dropdown",
-      nonConformingReport: "span#menu_non_conforming_report",
-      nonConformingView: "span#menu_non_conforming_view",
-      nonConformingActions: "span#menu_non_conforming_corrective_actions",
+      nonConformityDropdown: "#menu_nonconformity",
+      nonConformingReport: "#menu_non_conforming_report",
+      nonConformingView: "#menu_non_conforming_view",
+      nonConformingActions: "#menu_non_conforming_corrective_actions",
       resultsMenu: "span#menu_results",
       resultsLogbook: "#menu_results_logbook_nav",
       resultsAccession: "#menu_results_accession_nav",
@@ -79,49 +79,6 @@ class HomePage {
     // Get element first, then click separately to avoid detachment issues
     cy.get(this.selectors.menuButton, { timeout: 10000 }).should("be.visible");
     cy.get(this.selectors.menuButton).click();
-  }
-
-  openNonConformityMenu() {
-    cy.get("body").then(($body) => {
-      if ($body.find(this.selectors.nonConformityDropdown).length > 0) {
-        cy.get(this.selectors.nonConformityDropdown)
-          .first()
-          .click({ force: true });
-        return;
-      }
-
-      const fallbackMenu = $body
-        .find(
-          "span[id*='nonconform'], span[id*='non_conform'], a[id*='nonconform'], a[id*='non_conform']",
-        )
-        .filter(":visible")
-        .first();
-
-      if (fallbackMenu.length > 0) {
-        cy.wrap(fallbackMenu).click({ force: true });
-      }
-    });
-  }
-
-  clickNonConformMenuItem(preferredSelector, fallbackPattern) {
-    cy.get("body").then(($body) => {
-      if ($body.find(preferredSelector).length > 0) {
-        cy.get(preferredSelector)
-          .filter(":visible")
-          .first()
-          .click({ force: true });
-        return;
-      }
-
-      const fallback = $body
-        .find("span, a")
-        .filter((_, el) => fallbackPattern.test((el.textContent || "").trim()))
-        .first();
-
-      if (fallback.length > 0) {
-        cy.wrap(fallback).click({ force: true });
-      }
-    });
   }
 
   closeNavigationMenu() {
@@ -220,31 +177,34 @@ class HomePage {
   // Non-Conforming related functions
   goToReportNCE() {
     this.openNavigationMenu();
-    this.openNonConformityMenu();
-    this.clickNonConformMenuItem(
-      this.selectors.nonConformingReport,
-      /report.*non[- ]?conform|non[- ]?conform.*report/i,
-    );
+    cy.get(this.selectors.nonConformityDropdown, { timeout: 12000 })
+      .should("be.visible")
+      .click();
+    cy.get(this.selectors.nonConformingReport, { timeout: 12000 })
+      .should("be.visible")
+      .click();
     return new NonConform();
   }
 
   goToViewNCE() {
     this.openNavigationMenu();
-    this.openNonConformityMenu();
-    this.clickNonConformMenuItem(
-      this.selectors.nonConformingView,
-      /view.*non[- ]?conform|new non conform event/i,
-    );
+    cy.get(this.selectors.nonConformityDropdown, { timeout: 12000 })
+      .should("be.visible")
+      .click();
+    cy.get(this.selectors.nonConformingView, { timeout: 12000 })
+      .should("be.visible")
+      .click();
     return new NonConform();
   }
 
   goToCorrectiveActions() {
     this.openNavigationMenu();
-    this.openNonConformityMenu();
-    this.clickNonConformMenuItem(
-      this.selectors.nonConformingActions,
-      /corrective action/i,
-    );
+    cy.get(this.selectors.nonConformityDropdown, { timeout: 12000 })
+      .should("be.visible")
+      .click();
+    cy.get(this.selectors.nonConformingActions, { timeout: 12000 })
+      .should("be.visible")
+      .click();
     return new NonConform();
   }
 
