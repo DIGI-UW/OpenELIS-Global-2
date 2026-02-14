@@ -1,0 +1,14 @@
+.custom-field-type-management {
+  padding: 1rem;
+}
+
+.custom-field-type-management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.custom-field-type-management-search {
+  margin-bottom: 1rem;
+}

@@ -1,3 +1,4 @@
+/* Sidenav style improvements — fix/011-sidenav-styles */
 .logo {
   height: 40px;
   width: auto;
@@ -47,64 +48,35 @@ li.clickableUserDetails:hover {
   margin: 0 5% 0 2%;
 }
 
-.inputText,
-.inputSearch {
-  --cds-text-primary: black;
-  --cds-text-secondary: black;
+/* -----------------------------------------------------------------------------
+ * Login page layout
+ * -----------------------------------------------------------------------------
+ * The global layout can retain a persisted LOCK sidenav mode even when the user
+ * is unauthenticated (no sidenav visible). These wrappers ensure the login form
+ * stays horizontally centered regardless of surrounding layout state.
+ */
+.oe-loginPageContent {
+  width: 100%;
 }
+
+.oe-loginPageCenter {
+  width: 100%;
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* REMOVED: Forcing black text caused dark mode input issues 
+   Carbon's <Theme theme="white"> handles this correctly */
 .inputText {
   width: 100%;
 }
 
 .inputSearch {
   width: 50%;
-  --cds-icon-primary: black;
 }
 
 .rules {
-  display: flex;
-  justify-content: space-between;
-}
-
-.first-division {
-  display: flex;
-  flex-direction: column;
-  margin: 0 5px 0.5rem 0;
-  width: 100%;
-}
-
-.second-division {
-  padding-top: 5%;
-}
-
-button {
-  background: none;
-  cursor: pointer;
-  font-weight: 500;
-  border-radius: 2px;
-  padding: 5px 10px;
-}
-
-.add_button {
-  align-self: flex-start;
-  display: flex;
-  align-items: center;
-  margin-top: 0.5rem;
-  color: rgb(0, 208, 255);
-  border-color: rgb(0, 208, 255);
-}
-
-.add_button,
-.remove-btn {
-  border: 1px solid;
-}
-
-.remove-btn {
-  color: red;
-  border-color: red;
-}
-
-.services {
   display: flex;
   justify-content: space-between;
 }
@@ -133,30 +105,6 @@ button {
 .columnBoundary {
   margin: 2%;
   width: 120%;
-}
-
-.inlineDiv {
-  display: flex;
-  margin-top: 2%;
-  margin-bottom: 3%;
-  margin-left: 1%;
-}
-.section {
-  border: 0.5px solid green;
-  border-radius: 3px;
-  margin: 0.5%;
-}
-
-.errorMessage {
-  font-size: 12px;
-  color: red;
-  width: 150px;
-  margin-top: 0.25rem;
-}
-
-.errorMessage::before {
-  content: " ";
-  font-size: 10px;
 }
 
 .inlineDivBlock > div {
@@ -232,13 +180,8 @@ button {
   margin-right: 5%;
   width: 100%;
 }
-.inputText,
-.inputSelect,
-.inputSelect2,
-.inputText2 {
-  --cds-text-primary: black;
-  --cds-text-secondary: black;
-}
+/* REMOVED: Forcing black text caused dark mode input issues 
+   Carbon's <Theme theme="white"> handles this correctly */
 .inputText,
 .inputSelect {
   width: 100%;
@@ -341,9 +284,7 @@ button {
 }
 
 .selectSampleType {
-  --cds-text-primary: black;
   width: 200px;
-  --cds-text-secondary: black;
   margin-bottom: 20px;
 }
 
@@ -429,33 +370,6 @@ button {
   display: inline-flex !important;
 }
 
-.custom-sidenav-button {
-  box-sizing: border-box;
-  margin: 0;
-  border: 0;
-  cursor: pointer;
-  display: flex;
-  visibility: visible !important;
-  align-items: center;
-  background-color: var(--cds-background-hover, #072655);
-  color: var(--cds-text-secondary, #ffffff);
-  transition:
-    color 110ms,
-    background-color 110ms,
-    outline 110ms;
-  -webkit-user-select: none;
-  user-select: none;
-  width: 100%;
-}
-
-.custom-sidenav-button {
-  pointer-events: auto;
-}
-
-.custom-sidenav-button:hover {
-  background-color: var(--cds-background, #295785);
-}
-
 .cds--side-nav__link a {
   pointer-events: auto;
   text-decoration: none !important;
@@ -469,6 +383,12 @@ button {
   padding-left: 1rem !important;
 }
 
+/* Compensate padding when active border is added */
+.reduced-padding-nav-menu-item > a.cds--side-nav__link--current,
+.reduced-padding-nav-menu-item > a.cds--side-nav__link[aria-current="page"] {
+  padding-left: calc(1rem - 4px) !important; /* Compensate for 4px border */
+}
+
 .top-level-menu-item > a {
   pointer-events: auto !important;
   text-decoration: none !important;
@@ -478,9 +398,7 @@ button {
   background-color: var(--cds-background-hover, #072655);
 }
 
-#mainHeader .cds--side-nav__link {
-  pointer-events: none;
-}
+/* Removed pointer-events: none - was blocking subnav clicks after onClick refactor */
 
 @media screen and (max-width: 792px) {
   .banner h5 {
@@ -532,4 +450,424 @@ button {
   .headerPanel {
     width: 14rem;
   }
+}
+
+/* Lock mode: Push content when sidenav is locked */
+.content-nav-locked {
+  margin-left: 16rem !important;
+  width: calc(100% - 16rem) !important;
+  transition:
+    margin-left 0.11s cubic-bezier(0.2, 0, 1, 0.9),
+    width 0.11s cubic-bezier(0.2, 0, 1, 0.9);
+}
+
+/* Responsive: Don't push content on smaller screens */
+@media screen and (max-width: 1056px) {
+  .content-nav-locked {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+}
+
+/* Allow sidenav to scroll long menus (e.g. Admin) while hiding scrollbar */
+.cds--side-nav {
+  overflow-y: auto !important;
+  overflow-x: visible !important;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.cds--side-nav__navigation {
+  overflow-y: auto !important;
+  overflow-x: visible !important;
+}
+
+.cds--side-nav::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Edge */
+}
+
+/* =============================================================================
+   SIDENAV ACTIVE/HOVER STYLES
+   
+   ARCHITECTURE:
+   - Carbon's SideNavMenuItem has isActive prop → adds .cds--side-nav__link--current
+   - Custom buttons inside have .active class for same visual
+   - Both need proper specificity to show the left border indicator
+   
+   CRITICAL: Do NOT add transparent !important on .cds--side-nav__link base class!
+   That rule KILLS all active/hover states due to CSS specificity conflicts.
+   ============================================================================= */
+
+/* Base link styles - Let Carbon handle default backgrounds (no overrides!) */
+
+/* ============================================================================
+ * UNIFIED ACTIVE/HOVER STYLES - Works for ALL levels (top-level + subnavs)
+ * ============================================================================
+ */
+
+/* Active state - Left border + background color, NO other borders */
+/* Use single selector to avoid double borders - only target links within menu items */
+.cds--side-nav__menu-item .cds--side-nav__link--current,
+.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
+  border-left: 4px solid var(--cds-link-primary, #0f62fe) !important;
+  background-color: var(
+    --cds-layer-selected-01,
+    rgba(255, 255, 255, 0.1)
+  ) !important; /* Restore active background */
+  padding-left: calc(
+    1rem - 4px
+  ) !important; /* Compensate for 4px border to prevent double border */
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure nav-scoped active background wins specificity */
+nav.cds--side-nav .cds--side-nav__link--current,
+nav.cds--side-nav .cds--side-nav__link[aria-current="page"] {
+  background-color: var(
+    --cds-layer-selected-01,
+    rgba(255, 255, 255, 0.1)
+  ) !important;
+}
+
+/* Remove any ::before pseudo-elements that might add borders */
+.cds--side-nav__menu-item .cds--side-nav__link--current::before,
+.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]::before {
+  display: none !important;
+  content: none !important;
+}
+nav.cds--side-nav .cds--side-nav__link--current::before,
+nav.cds--side-nav .cds--side-nav__link[aria-current="page"]::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* Hover state - applies to ALL links */
+.cds--side-nav__menu-item .cds--side-nav__link:hover {
+  background-color: var(
+    --cds-layer-hover-01,
+    rgba(255, 255, 255, 0.05)
+  ) !important;
+}
+
+/* Active state hover - keep active background on hover */
+.cds--side-nav__menu-item .cds--side-nav__link--current:hover,
+.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:hover {
+  background-color: var(
+    --cds-layer-selected-01,
+    rgba(255, 255, 255, 0.1)
+  ) !important; /* Keep active background on hover */
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Focus state - prevent Carbon's bright focus indicator "flash" while keeping accessibility.
+ *
+ * Key rule: DO NOT toggle background-color on generic focus; that creates flicker when
+ * focus moves between submenu buttons and links during expansion/collapse.
+ *
+ * Instead:
+ * - remove Carbon's ::before focus marker (the source of the white border flash)
+ * - add a stable outline ONLY on :focus-visible
+ */
+nav.cds--side-nav .cds--side-nav__link:focus,
+nav.cds--side-nav .cds--side-nav__link:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+nav.cds--side-nav .cds--side-nav__link:focus-visible {
+  outline: 2px solid var(--cds-focus, #0f62fe) !important;
+  outline-offset: -2px;
+  box-shadow: none !important;
+}
+
+nav.cds--side-nav .cds--side-nav__link:focus::before,
+nav.cds--side-nav .cds--side-nav__link:active::before,
+nav.cds--side-nav .cds--side-nav__link:focus-visible::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* Active + Focus state - ensure no white background */
+.cds--side-nav__menu-item .cds--side-nav__link--current:focus,
+.cds--side-nav__menu-item .cds--side-nav__link--current:active,
+.cds--side-nav__menu-item .cds--side-nav__link--current:focus-visible,
+.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:focus,
+.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:active,
+.cds--side-nav__menu-item
+  .cds--side-nav__link[aria-current="page"]:focus-visible {
+  background-color: var(
+    --cds-layer-selected-01,
+    rgba(255, 255, 255, 0.1)
+  ) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+/* Focus state for submenu toggle buttons (parents) - remove white ring and prevent persistent focus */
+nav.cds--side-nav .cds--side-nav__submenu:focus,
+nav.cds--side-nav .cds--side-nav__submenu:active,
+nav.cds--side-nav .cds--side-nav__submenu:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Provide a stable focus-visible outline for submenu toggle buttons without Carbon's flashing ::before */
+nav.cds--side-nav .cds--side-nav__submenu:focus-visible {
+  outline: 2px solid var(--cds-focus, #0f62fe) !important;
+  outline-offset: -2px;
+}
+
+nav.cds--side-nav .cds--side-nav__submenu:focus::before,
+nav.cds--side-nav .cds--side-nav__submenu:active::before,
+nav.cds--side-nav .cds--side-nav__submenu:focus-visible::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* Remove persistent focus background - only show background on hover or when actually active */
+nav.cds--side-nav
+  .cds--side-nav__submenu:focus:not(:hover):not(
+    .cds--side-nav__submenu--active
+  ) {
+  background-color: transparent !important;
+}
+
+/* Remove focus background from collapsed submenu buttons (when parent is active but submenu is not) */
+.cds--side-nav__menu-item--active
+  .cds--side-nav__submenu[aria-expanded="false"]:focus {
+  background-color: transparent !important;
+}
+
+/* Ensure focus doesn't create persistent background on menu items */
+.cds--side-nav__menu-item
+  .cds--side-nav__link:focus:not(:hover):not(.cds--side-nav__link--current) {
+  background-color: transparent !important;
+}
+
+/* HEADER ICONS (global) - remove white focus/outline ring */
+.cds--header__action:focus,
+.cds--header__action:focus-visible,
+.cds--header__action:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Icon-only buttons (Carbon) - remove white ring */
+.cds--btn--icon-only:focus,
+.cds--btn--icon-only:focus-visible,
+.cds--btn--icon-only:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Remove any :after focus indicator on header actions */
+.cds--header__action:focus:after,
+.cds--header__action:active:after,
+.cds--header__action:focus-visible:after {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Locale Select label area: match header background (transparent over blue) */
+.selectLocale .cds--label,
+.selectLocale .cds--form__helper-text {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+/* Ensure select input sits on blue header without white fill */
+.selectLocale .cds--select-input__wrapper {
+  background: transparent !important;
+}
+
+#mainHeader .headerPanel .cds--white.cds--layer-one {
+  background: transparent !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+/* Suppress Carbon's cds--side-nav__item--active styles on parent SideNavMenu items.
+ * Carbon adds this class when isActive=true or hasActiveChild && !isExpanded.
+ * We drive active visuals only via cds--side-nav__link--current / aria-current="page"
+ * on leaf items, so we neutralise the parent-level grey background and indicator.
+ */
+.cds--side-nav__item--active .cds--side-nav__submenu {
+  background-color: transparent !important;
+  border-left: none !important;
+  color: inherit !important;
+}
+
+.cds--side-nav__item--active .cds--side-nav__submenu[aria-expanded="false"] {
+  background-color: transparent !important;
+}
+
+.cds--side-nav__item--active
+  .cds--side-nav__submenu[aria-expanded="false"]::before {
+  display: none !important;
+  content: none !important;
+}
+
+.cds--side-nav__item--active .cds--side-nav__submenu:hover {
+  background-color: var(
+    --cds-background-hover,
+    rgba(255, 255, 255, 0.05)
+  ) !important;
+}
+
+/* Neutralise active styles on the <li> wrapper itself (Carbon may paint it) */
+li.cds--side-nav__item.cds--side-nav__item--active {
+  background-color: transparent !important;
+}
+
+/* Cover expanded submenu case (existing rules only handle aria-expanded="false") */
+.cds--side-nav__item--active .cds--side-nav__submenu[aria-expanded="true"] {
+  background-color: transparent !important;
+}
+
+.cds--side-nav__item--active
+  .cds--side-nav__submenu[aria-expanded="true"]::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* Suppress title bold/color flash when hasActiveChild toggles */
+.cds--side-nav__item--active .cds--side-nav__submenu-title {
+  font-weight: inherit !important;
+  color: inherit !important;
+}
+
+/* Suppress icon fill change on active parent.
+ * Use currentColor (inherits CSS `color`, white in dark nav) not `inherit`
+ * (`inherit` walks the SVG `fill` chain which defaults to black). */
+.cds--side-nav__item--active .cds--side-nav__icon > svg {
+  fill: currentColor !important;
+}
+
+/* Micro-transition: suppress 1-frame flash when Carbon toggles active classes.
+ * 50ms is imperceptible but forces the browser to interpolate from the current
+ * (transparent) value instead of snapping to Carbon's default grey for one paint.
+ * IMPORTANT: ::before elements must NOT transition — they are Carbon's left
+ * indicator bar and must snap instantly (grey→blue transition looks wrong). */
+nav.cds--side-nav .cds--side-nav__submenu,
+nav.cds--side-nav .cds--side-nav__link,
+nav.cds--side-nav .cds--side-nav__item {
+  transition:
+    background-color 50ms ease,
+    color 50ms ease !important;
+}
+
+nav.cds--side-nav .cds--side-nav__submenu::before,
+nav.cds--side-nav .cds--side-nav__link::before {
+  transition: none !important;
+}
+
+/* Subnav items (level 1+) - extra indent for visual hierarchy */
+/* Base indentation for level 1 (2nd level) */
+.reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link {
+  padding-left: 2.5rem !important; /* Extra indent for subnavs */
+}
+
+/* Subnav items that are parents (SideNavMenu renders a <button.cds--side-nav__submenu>) */
+/* Without this, nested parent menus (like "Study" under "Order") look top-level. */
+.reduced-padding-nav-menu-item .cds--side-nav__submenu {
+  padding-left: 2.5rem !important;
+}
+
+/* Progressive indentation for deeper levels using nested descendant selectors */
+/* Level 2 (3rd level in nav): items nested inside a reduced-padding item */
+.reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item
+  .cds--side-nav__submenu,
+.reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link {
+  padding-left: 4rem !important; /* 3rd level */
+}
+
+/* Level 3 (4th level in nav): items nested two levels deep */
+.reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item
+  .cds--side-nav__submenu,
+.reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link {
+  padding-left: 5.5rem !important; /* 4th level */
+}
+
+/* Level 4 (5th level in nav): items nested three levels deep */
+.reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item
+  .cds--side-nav__submenu,
+.reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link {
+  padding-left: 7rem !important; /* 5th level */
+}
+
+/* Active subnavs - compensate for border + keep progressive indent */
+/* Base level (2nd level) */
+.reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link--current,
+.reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link[aria-current="page"] {
+  padding-left: calc(
+    2.5rem - 4px
+  ) !important; /* Base indent minus 4px border */
+}
+
+/* Level 2 (3rd level) active items */
+.reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link--current,
+.reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link[aria-current="page"] {
+  padding-left: calc(4rem - 4px) !important;
+}
+
+/* Level 3 (4th level) active items */
+.reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link--current,
+.reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link[aria-current="page"] {
+  padding-left: calc(5.5rem - 4px) !important;
+}
+
+/* Level 4 (5th level) active items */
+.reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link--current,
+.reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item
+  .reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link[aria-current="page"] {
+  padding-left: calc(7rem - 4px) !important;
 }
