@@ -1443,3 +1443,66 @@ Merged PRs into `demo/madagascar` not covered by inline milestone annotations:
 
 **Submodule rename**: `tools/astm-http-bridge` →
 `tools/openelis-analyzer-bridge` (commit b71bdbfc6 on `demo/madagascar`)
+
+---
+
+## Plugin System Unification (PR #2802)
+
+**Branch**: `fix/011-sync-remediation` ->
+`feat/011-madagascar-analyzer-integration` **Status**: COMPLETE **All
+milestones**: M19-M22
+
+### [P] M19: Routing Unification (1 day)
+
+- [x] T300 [M19] Remove type-pattern matching Stage 2 from
+      InstanceAwareAnalyzerRouter
+- [x] T301 [M19] Write 8 unit tests for 2-stage router (IP match + Plugin)
+- [x] T302 [M19] Verify no `findMatchingType()` calls remain
+
+### M20: Sync Remediation — Gaps 1-4 (2 days)
+
+- [x] T303 [M20] Gap 1: Orphan deactivation at startup (later revised in M21)
+- [x] T304 [M20] Gap 2: Legacy linking — linkLegacyAnalyzersToTypes() in
+      PluginRegistryService
+- [x] T305 [M20] Gap 3: REST pluginLoaded — per-request JAR availability check
+- [x] T306 [M20] Gap 4: UI plugin health indicators in analyzer list
+- [x] T307 [M20] Write PluginRegistrySyncTest for Gaps 1-3
+
+### M21: Table Merge — analyzer_configuration into analyzer (3 days)
+
+- [x] T308 [M21] Liquibase migration: add columns, migrate data, drop
+      analyzer_configuration
+- [x] T309 [M21] Entity changes: Analyzer gains ip_address, port, status,
+      identifier_pattern, etc.
+- [x] T310 [M21] Delete AnalyzerConfiguration, AnalyzerConfigurationDAO,
+      AnalyzerConfigurationService (5 files)
+- [x] T311 [M21] Move query methods to AnalyzerDAO/AnalyzerService
+      (getByIpAddress, findByIdentifierPatternMatch)
+- [x] T312 [M21] Update 16 consumer files: AnalyzerConfiguration -> Analyzer
+      type changes
+- [x] T313 [M21] Update InstanceAwareAnalyzerRouter: IP lookup via
+      analyzerService.getByIpAddress()
+- [x] T314 [M21] Update AnalyzerRestController: single-table reads/writes,
+      remove config service
+- [x] T315 [M21] Remove orphan deactivation/reactivation from
+      PluginRegistryService (Phase 4)
+- [x] T316 [M21] Update/rewrite all test files for merged model (8 test files)
+- [x] T317 [M21] Fix stale DELETE FROM analyzer_configuration in 5 integration
+      tests
+- [x] T318 [M21] Fix FK ordering bug in AnalyzerRestControllerTest cleanup
+- [x] T319 [M21] Fix OptimisticLockException in
+      AnalyzerFieldMappingServiceIntegrationTest
+- [x] T320 [M21] Verify 431 backend tests pass
+
+### M22: UI Plugin Flow — Phase 5 (1 day)
+
+- [x] T321 [M22] Add pluginTypeId field to AnalyzerForm.java
+- [x] T322 [M22] Wire pluginTypeId in AnalyzerRestController
+      create/update/response
+- [x] T323 [M22] Frontend: conditional rendering — generic plugins show
+      identifierPattern + default configs
+- [x] T324 [M22] Add i18n keys (en.json + fr.json) for identifierPattern
+- [x] T325 [M22] Update AnalyzerForm.defaultConfigs.test for conditional
+      dropdown
+- [x] T326 [M22] Update InstanceAwareAnalyzerRouterTest for merged model
+      (stacked PR fix)

@@ -459,4 +459,4 @@ strategy.
 - `tools/analyzer-mock-server/templates/README.md`
 - `plugins/analyzers/*/README.md`
 - `plugins/analyzers/INVENTORY.md` (Global plugin list)
-- `analyzer-defaults/README.md` (Default config templates)
+- `projects/analyzer-defaults/README.md` (Default config templates)
