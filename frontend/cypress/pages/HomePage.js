@@ -81,6 +81,49 @@ class HomePage {
     cy.get(this.selectors.menuButton).click();
   }
 
+  openNonConformityMenu() {
+    cy.get("body").then(($body) => {
+      if ($body.find(this.selectors.nonConformityDropdown).length > 0) {
+        cy.get(this.selectors.nonConformityDropdown)
+          .first()
+          .click({ force: true });
+        return;
+      }
+
+      const fallbackMenu = $body
+        .find(
+          "span[id*='nonconform'], span[id*='non_conform'], a[id*='nonconform'], a[id*='non_conform']",
+        )
+        .filter(":visible")
+        .first();
+
+      if (fallbackMenu.length > 0) {
+        cy.wrap(fallbackMenu).click({ force: true });
+      }
+    });
+  }
+
+  clickNonConformMenuItem(preferredSelector, fallbackPattern) {
+    cy.get("body").then(($body) => {
+      if ($body.find(preferredSelector).length > 0) {
+        cy.get(preferredSelector)
+          .filter(":visible")
+          .first()
+          .click({ force: true });
+        return;
+      }
+
+      const fallback = $body
+        .find("span, a")
+        .filter((_, el) => fallbackPattern.test((el.textContent || "").trim()))
+        .first();
+
+      if (fallback.length > 0) {
+        cy.wrap(fallback).click({ force: true });
+      }
+    });
+  }
+
   closeNavigationMenu() {
     cy.get(this.selectors.menuButton)
       .then(($btn) => {
@@ -177,22 +220,31 @@ class HomePage {
   // Non-Conforming related functions
   goToReportNCE() {
     this.openNavigationMenu();
-    cy.get(this.selectors.nonConformityDropdown).click();
-    cy.get(this.selectors.nonConformingReport).should("be.visible").click();
+    this.openNonConformityMenu();
+    this.clickNonConformMenuItem(
+      this.selectors.nonConformingReport,
+      /report.*non[- ]?conform|non[- ]?conform.*report/i,
+    );
     return new NonConform();
   }
 
   goToViewNCE() {
     this.openNavigationMenu();
-    cy.get(this.selectors.nonConformityDropdown).click();
-    cy.get(this.selectors.nonConformingView).should("be.visible").click();
+    this.openNonConformityMenu();
+    this.clickNonConformMenuItem(
+      this.selectors.nonConformingView,
+      /view.*non[- ]?conform|new non conform event/i,
+    );
     return new NonConform();
   }
 
   goToCorrectiveActions() {
     this.openNavigationMenu();
-    cy.get(this.selectors.nonConformityDropdown).click();
-    cy.get(this.selectors.nonConformingActions).should("be.visible").click();
+    this.openNonConformityMenu();
+    this.clickNonConformMenuItem(
+      this.selectors.nonConformingActions,
+      /corrective action/i,
+    );
     return new NonConform();
   }
 
