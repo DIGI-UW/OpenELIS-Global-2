@@ -42,6 +42,24 @@ cd /home/ubuntu/OpenELIS-Global-2
 ./src/test/resources/load-analyzer-test-data.sh --dataset-011
 ```
 
+## Hot reload (after backend code changes)
+
+The harness mounts `../../target/OpenELIS-Global.war` into the `oe` container.
+After changing Java code, rebuild the WAR and **force-recreate** the container
+(Tomcat caches the exploded WAR; a plain `restart` will serve stale classes):
+
+```bash
+# From repo root
+mvn clean install -DskipTests -Dmaven.test.skip=true
+
+# From harness directory — force-recreate clears the Tomcat WAR cache
+cd projects/analyzer-harness
+docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml \
+  -f docker-compose.letsencrypt.yml up -d --force-recreate oe
+```
+
+Frontend changes hot-reload automatically (mounted volume).
+
 ## Resetting the test environment
 
 From this directory (or repo root), run:
