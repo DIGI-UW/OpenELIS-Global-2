@@ -23,7 +23,6 @@ import org.openelisglobal.analyzer.service.BidirectionalAnalyzer;
 import org.openelisglobal.analyzerimport.analyzerreaders.ASTMAnalyzerReader;
 import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerReader;
 import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerReaderFactory;
-import org.openelisglobal.analyzerimport.analyzerreaders.HL7AnalyzerReader;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.PluginAnalyzerService;
@@ -105,10 +104,7 @@ public class AnalyzerImportController implements IActionConstants {
                     response.setStatus(HttpServletResponse.SC_OK);
                     return;
                 } else {
-                    if (reader.getError() != null) {
-                        response.getWriter().print(reader.getError());
-                    }
-                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                     return;
                 }
             } else {
@@ -120,39 +116,6 @@ public class AnalyzerImportController implements IActionConstants {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
-    }
-
-    /**
-     * HTTP endpoint for HL7 ORU^R01 messages (e.g. from mock server or HL7 bridge).
-     * Body is raw HL7 message; analyzer is identified from MSH segment.
-     */
-    @PostMapping("/analyzer/hl7")
-    public void doPostHl7(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-
-        response.setContentType("text/plain;charset=UTF-8");
-        HL7AnalyzerReader reader = (HL7AnalyzerReader) AnalyzerReaderFactory.getReaderFor("hl7");
-        if (reader == null) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "HL7 reader not available");
-            return;
-        }
-        boolean read = reader.readStream(request.getInputStream());
-        if (!read) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST,
-                    reader.getError() != null ? reader.getError() : "HL7 read failed");
-            return;
-        }
-        String userId = getSysUserId(request);
-        if (userId == null) {
-            userId = "1";
-        }
-        boolean success = reader.insertAnalyzerData(userId);
-        if (success) {
-            response.setStatus(HttpServletResponse.SC_OK);
-            return;
-        }
-        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                reader.getError() != null ? reader.getError() : "HL7 insert failed");
     }
 
     @PostMapping("/analyzer/runAction")

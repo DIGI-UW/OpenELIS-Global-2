@@ -32,17 +32,11 @@ class MenuConfigPage {
   }
 
   turnOffToggleSwitch() {
-    cy.get(this.selectors.toggleOff)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    cy.get(this.selectors.toggleOff).click();
   }
 
   turnOnToggleSwitch() {
-    cy.get(this.selectors.toggleOn)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    cy.get(this.selectors.toggleOn).should("be.visible").click();
   }
 
   validateToggleStatus(value) {
@@ -50,10 +44,7 @@ class MenuConfigPage {
   }
 
   uncheckNonConform() {
-    cy.contains("span", this.selectors.nonConformCheck)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    cy.contains("span", this.selectors.nonConformCheck).click();
   }
 
   validateNonConformOff() {
@@ -61,20 +52,14 @@ class MenuConfigPage {
   }
 
   validateNonConformOn() {
-    cy.get(this.selectors.nonConformMenu)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    cy.get(this.selectors.nonConformMenu).click();
     cy.get(this.selectors.nonConformReport).should("exist");
     cy.get(this.selectors.nonConformView).should("exist");
     cy.get(this.selectors.correctiveAction).should("exist");
   }
 
   uncheckPatientMenu() {
-    cy.contains("span", this.selectors.patientCheck)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    cy.contains("span", this.selectors.patientCheck).click();
   }
 
   validatePatientMenuOff() {
@@ -82,10 +67,7 @@ class MenuConfigPage {
   }
 
   validatePatientMenuOn() {
-    cy.get(this.selectors.patientMenu)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    cy.get(this.selectors.patientMenu).click();
     cy.get(this.selectors.addEditPatient).should("exist");
     cy.get(this.selectors.patientHistory).should("exist");
     cy.get(this.selectors.studyPatient).should("exist");
@@ -104,17 +86,11 @@ class MenuConfigPage {
   }
 
   uncheckBillingMenu() {
-    cy.contains("span", this.selectors.billingMenuCheck)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    cy.contains("span", this.selectors.billingMenuCheck).click();
   }
 
   submitButton() {
-    cy.contains("button", "Submit")
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    cy.contains("button", "Submit").click();
   }
 
   checkMenuItem = function (menuItem) {

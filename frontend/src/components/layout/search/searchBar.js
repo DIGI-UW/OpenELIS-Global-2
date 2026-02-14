@@ -8,7 +8,6 @@ import {
   Column,
   Loading,
   Tag,
-  Theme,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import SearchOutput from "./searchOutput";
@@ -87,24 +86,21 @@ const SearchBar = (props) => {
     <Grid className="main">
       <Column sm={4} md={8} lg={16}>
         <div className="search-bar-container">
-          {/* Theme wrapper ONLY around Search input to make it light */}
-          <Theme theme="white">
-            <Search
-              size="sm"
-              placeholder={intl.formatMessage({ id: "label.button.search" })}
-              labelText={intl.formatMessage({ id: "label.button.search" })}
-              closeButtonLabelText={intl.formatMessage({
-                id: "label.button.clear",
-              })}
-              id="searchItem"
-              value={textValue}
-              onChange={handleChange}
-              onKeyDown={handleAutocompleteKeyDown}
-              onClear={handleClearSearch}
-              className="search-input"
-              autoComplete="on"
-            />
-          </Theme>
+          <Search
+            size="sm"
+            placeholder={intl.formatMessage({ id: "label.button.search" })}
+            labelText={intl.formatMessage({ id: "label.button.search" })}
+            closeButtonLabelText={intl.formatMessage({
+              id: "label.button.clear",
+            })}
+            id="searchItem"
+            value={textValue}
+            onChange={handleChange}
+            onKeyDown={handleAutocompleteKeyDown}
+            onClear={handleClearSearch}
+            className="search-input"
+            autoComplete
+          />
           <Button
             id="patientSearch"
             size="sm"

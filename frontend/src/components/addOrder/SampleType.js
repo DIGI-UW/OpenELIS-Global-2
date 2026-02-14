@@ -504,7 +504,6 @@ const SampleType = (props) => {
             options={rejectSampleReasons}
             disabled={rejectionReasonsDisabled}
             defaultSelect={defaultSelect}
-            value={sampleXml.rejectionReason}
             onChange={(e) => handleReasons(e)}
           />
         )}

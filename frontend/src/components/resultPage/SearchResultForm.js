@@ -38,8 +38,6 @@ import CustomDatePicker from "../common/CustomDatePicker";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 import CompactFileInput from "./fileUpload/FileInput";
 import StorageLocationSelector from "../storage/StorageLocationSelector";
-import ResultMultiSelect from "../common/multiSelect";
-import CascadingMultiSelect from "../common/cascadingMultiSelect";
 
 function ResultSearchPage() {
   const [originalResultForm, setOriginalResultForm] = useState({
@@ -969,7 +967,7 @@ export function SearchResults(props) {
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "20rem",
+      width: "12rem",
     },
     {
       id: "currentResult",
@@ -1145,6 +1143,8 @@ export function SearchResults(props) {
 
       case "result":
         switch (row.resultType) {
+          case "M":
+          case "C":
           case "D":
             return (
               <Select
@@ -1167,28 +1167,6 @@ export function SearchResults(props) {
                   ),
                 )}
               </Select>
-            );
-
-          case "M":
-            return (
-              <ResultMultiSelect
-                id={`multiResultValue${row.id}`}
-                name={`testResult[${row.id}].multiSelectResultValues`}
-                dictionaryValues={row.dictionaryResults}
-                value={row.multiSelectResultValues}
-                onChange={(e) => handleChange(e, row.id)}
-              />
-            );
-
-          case "C":
-            return (
-              <CascadingMultiSelect
-                id={`multiResult${row.id}`}
-                name={`testResult[${row.id}].multiSelectResultValues`}
-                dictionaryValues={row.dictionaryResults}
-                value={row.multiSelectResultValues}
-                onChange={(e) => handleChange(e, row.id)}
-              />
             );
 
           case "N":

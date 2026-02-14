@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useContext,
-  useMemo,
-} from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import {
   Button,
   Loading,
@@ -24,7 +18,7 @@ import {
   TextInput,
 } from "@carbon/react";
 import { Notification } from "@carbon/icons-react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, injectIntl } from "react-intl";
 import { fetchAlertConfig, saveAlertConfig } from "../api";
 import {
   AlertDialog,
@@ -33,35 +27,29 @@ import {
 import { NotificationContext } from "../../layout/Layout";
 
 // Map UI alert types to backend NotificationNature enum values
-const getAlertTypes = (intl) => [
+const ALERT_TYPES = [
   {
     id: "temperature-alerts",
-    alertType: intl.formatMessage({ id: "coldStorage.alert.temperature" }),
-    description: intl.formatMessage({
-      id: "coldStorage.alert.temperature.description",
-    }),
+    alertType: "Temperature Alerts",
+    description:
+      "Alerts triggered when freezer temperature exceeds defined thresholds",
     nature: "FREEZER_TEMPERATURE_ALERT",
   },
   {
     id: "equipment-failure",
-    alertType: intl.formatMessage({ id: "coldStorage.alert.equipment" }),
-    description: intl.formatMessage({
-      id: "coldStorage.alert.equipment.description",
-    }),
+    alertType: "Equipment Failure",
+    description: "Alerts for equipment malfunctions or connectivity issues",
     nature: "EQUIPMENT_ALERT",
   },
   {
     id: "inventory-alerts",
-    alertType: intl.formatMessage({ id: "coldStorage.alert.inventory" }),
-    description: intl.formatMessage({
-      id: "coldStorage.alert.inventory.description",
-    }),
+    alertType: "Inventory Alerts",
+    description: "Alerts for low inventory or stock management",
     nature: "INVENTORY_ALERT",
   },
 ];
 
-function AlertSettings() {
-  const intl = useIntl();
+function AlertSettings({ intl }) {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const notify = useCallback(
@@ -77,26 +65,18 @@ function AlertSettings() {
     [addNotification, setNotificationVisible],
   );
 
-  const alertTypes = useMemo(() => getAlertTypes(intl), [intl]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [preferences, setPreferences] = useState([]);
+  const [preferences, setPreferences] = useState(
+    ALERT_TYPES.map((type) => ({
+      ...type,
+      email: false,
+      sms: false,
+    })),
+  );
   const [escalationEnabled, setEscalationEnabled] = useState(false);
   const [escalationDelayMinutes, setEscalationDelayMinutes] = useState(15);
   const [supervisorEmail, setSupervisorEmail] = useState("");
-
-  // Initialize preferences when alertTypes are available
-  useEffect(() => {
-    if (alertTypes.length > 0 && preferences.length === 0) {
-      setPreferences(
-        alertTypes.map((type) => ({
-          ...type,
-          email: false,
-          sms: false,
-        })),
-      );
-    }
-  }, [alertTypes, preferences.length]);
 
   const loadConfig = useCallback(async () => {
     try {
@@ -123,19 +103,18 @@ function AlertSettings() {
       console.warn("Alert config not found, using defaults:", err);
       notify({
         kind: NotificationKinds.info,
-        title: intl.formatMessage({ id: "coldStorage.noConfigFound" }),
-        subtitle: intl.formatMessage({ id: "coldStorage.usingDefaults" }),
+        title: "No Configuration Found",
+        subtitle:
+          "Using default notification settings. Save to create configuration.",
       });
     } finally {
       setLoading(false);
     }
-  }, [notify, intl]);
+  }, [notify]);
 
   useEffect(() => {
-    if (preferences.length > 0) {
-      loadConfig();
-    }
-  }, [loadConfig, preferences.length]);
+    loadConfig();
+  }, [loadConfig]);
 
   const handleToggle = (id, field, value) => {
     setPreferences((prev) =>
@@ -168,18 +147,18 @@ function AlertSettings() {
 
       notify({
         kind: NotificationKinds.success,
-        title: intl.formatMessage({ id: "notification.success" }),
-        subtitle: intl.formatMessage({ id: "coldStorage.alert.saveSuccess" }),
+        title: "Success",
+        subtitle:
+          "Notification preferences saved successfully. Each alert type will use its configured notification methods.",
       });
 
       await loadConfig();
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "error.title" }),
+        title: "Error",
         subtitle:
-          intl.formatMessage({ id: "coldStorage.alert.saveFailed" }) +
-          (err.message || ""),
+          "Failed to save notification preferences: " + (err.message || ""),
       });
     } finally {
       setSaving(false);
@@ -187,24 +166,14 @@ function AlertSettings() {
   };
 
   const headers = [
-    {
-      key: "alertType",
-      header: intl.formatMessage({ id: "coldStorage.alert.type" }),
-    },
-    {
-      key: "description",
-      header: intl.formatMessage({ id: "coldStorage.description" }),
-    },
-    { key: "email", header: intl.formatMessage({ id: "coldStorage.email" }) },
-    { key: "sms", header: intl.formatMessage({ id: "coldStorage.sms" }) },
+    { key: "alertType", header: "Alert Type" },
+    { key: "description", header: "Description" },
+    { key: "email", header: "Email" },
+    { key: "sms", header: "SMS" },
   ];
 
   if (loading) {
-    return (
-      <Loading
-        description={intl.formatMessage({ id: "coldStorage.loadingPrefs" })}
-      />
-    );
+    return <Loading description="Loading notification preferences..." />;
   }
 
   return (
@@ -221,22 +190,16 @@ function AlertSettings() {
           }}
         >
           <Notification size={24} />
-          <Heading>
-            <FormattedMessage id="coldStorage.alertConfiguration" />
-          </Heading>
+          <Heading>Alert Configuration</Heading>
         </div>
 
         <Heading style={{ marginBottom: "1rem", fontSize: "1.125rem" }}>
-          <FormattedMessage id="coldStorage.emailSmsNotifications" />
+          Email Notifications & SMS Notifications
         </Heading>
         <InlineNotification
           kind="info"
-          title={intl.formatMessage({
-            id: "coldStorage.granularNotificationControl",
-          })}
-          subtitle={intl.formatMessage({
-            id: "coldStorage.granularNotificationControlDesc",
-          })}
+          title="Granular Notification Control"
+          subtitle="Configure email and SMS notifications for each alert type independently. Enable the notification methods you want for each specific alert category."
           lowContrast
           hideCloseButton
           style={{ marginBottom: "1.5rem" }}
@@ -305,15 +268,11 @@ function AlertSettings() {
         </DataTable>
 
         <div style={{ marginTop: "2rem", marginBottom: "2rem" }}>
-          <Heading style={{ marginBottom: "1rem" }}>
-            <FormattedMessage id="coldStorage.escalationRules" />
-          </Heading>
+          <Heading style={{ marginBottom: "1rem" }}>Escalation Rules</Heading>
           <div style={{ marginBottom: "1rem" }}>
             <Toggle
               id="escalation-enabled"
-              labelText={intl.formatMessage({
-                id: "coldStorage.autoEscalate",
-              })}
+              labelText="Automatically escalate unresolved alerts"
               toggled={escalationEnabled}
               onToggle={(checked) => setEscalationEnabled(checked)}
             />
@@ -330,12 +289,8 @@ function AlertSettings() {
             >
               <NumberInput
                 id="escalation-delay"
-                label={intl.formatMessage({
-                  id: "coldStorage.escalationDelay",
-                })}
-                helperText={intl.formatMessage({
-                  id: "coldStorage.escalationDelayHelper",
-                })}
+                label="Escalation Delay (minutes)"
+                helperText="Time to wait before escalating an unresolved alert"
                 value={escalationDelayMinutes}
                 min={1}
                 max={1440}
@@ -344,17 +299,11 @@ function AlertSettings() {
               />
               <TextInput
                 id="supervisor-email"
-                labelText={intl.formatMessage({
-                  id: "coldStorage.supervisorEmail",
-                })}
-                helperText={intl.formatMessage({
-                  id: "coldStorage.supervisorEmailHelper",
-                })}
+                labelText="Supervisor Email"
+                helperText="Email address to send escalated alerts"
                 value={supervisorEmail}
                 onChange={(e) => setSupervisorEmail(e.target.value)}
-                placeholder={intl.formatMessage({
-                  id: "coldStorage.supervisorEmailPlaceholder",
-                })}
+                placeholder="supervisor@lab.com"
               />
             </div>
           )}
@@ -363,12 +312,8 @@ function AlertSettings() {
         <div style={{ marginTop: "1.5rem" }}>
           <InlineNotification
             kind="warning"
-            title={intl.formatMessage({
-              id: "coldStorage.howNotificationsWork",
-            })}
-            subtitle={intl.formatMessage({
-              id: "coldStorage.howNotificationsWorkDesc",
-            })}
+            title="How Notifications Work"
+            subtitle="When an alert is triggered (temperature threshold violation, equipment failure, etc.), the system will:"
             lowContrast
             hideCloseButton
           />
@@ -380,18 +325,14 @@ function AlertSettings() {
               fontSize: "0.875rem",
             }}
           >
+            <li>Create an alert record in the system (visible in Dashboard)</li>
             <li>
-              <FormattedMessage id="coldStorage.notification.createRecord" />
+              Send EMAIL notifications if enabled (to configured recipients)
             </li>
             <li>
-              <FormattedMessage id="coldStorage.notification.sendEmail" />
+              Send SMS notifications if enabled (to configured phone numbers)
             </li>
-            <li>
-              <FormattedMessage id="coldStorage.notification.sendSms" />
-            </li>
-            <li>
-              <FormattedMessage id="coldStorage.notification.logAttempt" />
-            </li>
+            <li>Log the notification attempt for audit trail purposes</li>
           </ul>
         </div>
 
@@ -401,9 +342,7 @@ function AlertSettings() {
           disabled={saving}
           style={{ marginTop: "1.5rem", width: "100%", maxWidth: "none" }}
         >
-          {saving
-            ? intl.formatMessage({ id: "coldStorage.saving" })
-            : intl.formatMessage({ id: "coldStorage.saveNotificationPrefs" })}
+          {saving ? "Saving..." : "Save Notification Preferences"}
         </Button>
       </Section>
     </div>

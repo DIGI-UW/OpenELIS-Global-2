@@ -178,7 +178,7 @@ function ProgramManagement() {
             <Column lg={8} md={4} sm={2}>
               <Select
                 id="additionalQuestionsSelect"
-                labelText={intl.formatMessage({ id: "program.name.program" })}
+                labelText="Program"
                 onChange={handleProgramSelection}
               >
                 <SelectItem
@@ -236,7 +236,7 @@ function ProgramManagement() {
                 type="text"
                 name="program.code"
                 id="program.code"
-                labelText={intl.formatMessage({ id: "program.name.code" })}
+                labelText="Code"
                 maxLength="10"
                 value={programValues.program.code}
                 onChange={handleFieldChange}

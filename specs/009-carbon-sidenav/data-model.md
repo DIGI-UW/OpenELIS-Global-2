@@ -14,18 +14,25 @@ data consumed from existing APIs.
 ### TwoModeLayout State
 
 ```typescript
-// Tri-state sidenav mode
-type SideNavMode = "show" | "lock" | "close";
-
 interface TwoModeLayoutState {
-  // Sidenav mode state (tri-state)
-  mode: SideNavMode;
-  // Derived: isExpanded = mode !== 'close'
-  isExpanded: boolean;
+  // Sidenav expansion state
+  isSideNavExpanded: boolean;
+
+  // Panel states (for header actions)
+  switchCollapsed: boolean; // User panel expanded/collapsed
+  searchBar: boolean; // Search bar visible
+  notificationsOpen: boolean; // Notifications panel open
+  helpOpen: boolean; // Help panel open
 
   // Menu data (from API)
   menus: MenuState;
-  loadingMenus: boolean;
+
+  // Notifications (from API)
+  notifications: Notification[];
+  unReadNotifications: Notification[];
+  readNotifications: Notification[];
+  loading: boolean;
+  showRead: boolean;
 }
 
 interface MenuState {
@@ -33,8 +40,6 @@ interface MenuState {
   menu_billing: MenuItem[]; // Billing submenu (optional)
   menu_nonconformity: MenuItem[]; // Non-conformity submenu (optional)
 }
-
-// Note: Panel states (notifications, user, search) are managed in the Header component
 ```
 
 ### MenuItem Structure (from /rest/menu API)
@@ -72,8 +77,6 @@ interface Notification {
 ### TwoModeLayout Props
 
 ```typescript
-type SideNavMode = "show" | "lock" | "close";
-
 interface TwoModeLayoutProps {
   /**
    * Child content to render in the main content area
@@ -81,55 +84,32 @@ interface TwoModeLayoutProps {
   children: React.ReactNode;
 
   /**
-   * Header actions (user menu, notifications, search, language, help)
-   * Rendered in HeaderGlobalBar position
-   * @see HeaderActions component
+   * Callback when user changes language
    */
-  headerActions?: React.ReactNode;
+  onChangeLanguage?: (locale: string) => void;
 
   /**
-   * Default sidenav mode for this layout (before user preference is loaded)
-   * - 'show': Sidenav expanded, overlays content
-   * - 'lock': Sidenav expanded, pushes content (margin-left: 16rem)
-   * - 'close': Sidenav collapsed to rail (48px)
-   * @default 'close'
-   */
-  defaultMode?: SideNavMode;
-
-  /**
-   * @deprecated Use defaultMode instead
-   * Maps to: true → 'lock', false → 'close'
+   * Default sidenav state for this layout (before user preference is loaded)
+   * @default false (collapsed)
    */
   defaultExpanded?: boolean;
 
   /**
    * Unique identifier for localStorage key
-   * Full key will be: `${storageKeyPrefix}SideNavMode`
+   * Full key will be: `${storageKeyPrefix}SideNavExpanded`
    * @default 'default'
    */
   storageKeyPrefix?: string;
-
-  /**
-   * Optional menu data (for testing). If provided, bypasses API fetch.
-   */
-  menus?: MenuState;
 }
 ```
 
 ### useSideNavPreference Hook
 
 ```typescript
-type SideNavMode = "show" | "lock" | "close";
-
 interface UseSideNavPreferenceOptions {
   /**
-   * Default mode when no preference is stored
-   * @default 'close'
-   */
-  defaultMode?: SideNavMode;
-
-  /**
-   * @deprecated Use defaultMode instead
+   * Default state when no preference is stored
+   * @default false
    */
   defaultExpanded?: boolean;
 
@@ -142,30 +122,25 @@ interface UseSideNavPreferenceOptions {
 
 interface UseSideNavPreferenceReturn {
   /**
-   * Current sidenav mode (tri-state)
-   */
-  mode: SideNavMode;
-
-  /**
-   * Derived: true if mode !== 'close'
+   * Current sidenav expansion state
    */
   isExpanded: boolean;
 
   /**
-   * Cycle through modes: close → show → lock → close
+   * Toggle function (also persists to localStorage)
    */
   toggle: () => void;
 
   /**
-   * Programmatically set mode (also persists to localStorage)
+   * Programmatically set state (also persists to localStorage)
    */
-  setMode: (mode: SideNavMode) => void;
+  setExpanded: (expanded: boolean) => void;
 }
 
 // Usage
-const { mode, isExpanded, toggle, setMode } = useSideNavPreference({
-  defaultMode: "lock",
-  storageKeyPrefix: "storage",
+const { isExpanded, toggle, setExpanded } = useSideNavPreference({
+  defaultExpanded: true,
+  storageKeyPrefix: "analyzer",
 });
 ```
 
@@ -174,65 +149,46 @@ const { mode, isExpanded, toggle, setMode } = useSideNavPreference({
 ### Key Format
 
 ```
-{storageKeyPrefix}SideNavMode
+{storageKeyPrefix}SideNavExpanded
 ```
 
 ### Examples
 
-| Context        | Key                  | Value                             |
-| -------------- | -------------------- | --------------------------------- |
-| Storage pages  | `storageSideNavMode` | `"show"` or `"lock"` or `"close"` |
-| Default layout | `defaultSideNavMode` | `"show"` or `"lock"` or `"close"` |
-| Admin pages    | `adminSideNavMode`   | `"show"` or `"lock"` or `"close"` |
+| Context        | Key                       | Value                 |
+| -------------- | ------------------------- | --------------------- |
+| Analyzer pages | `analyzerSideNavExpanded` | `"true"` or `"false"` |
+| Default layout | `defaultSideNavExpanded`  | `"true"` or `"false"` |
+| Admin pages    | `adminSideNavExpanded`    | `"true"` or `"false"` |
 
 ### Value Type
 
-- Stored as string: `"show"` | `"lock"` | `"close"`
-- Parsed on read: direct string comparison
-- Invalid values fall back to defaultMode
+- Stored as string: `"true"` or `"false"`
+- Parsed on read: `saved === "true"`
 
 ## CSS Class Model
 
 ### Layout Container Classes
 
 ```css
-/* Applied to content wrapper div based on mode */
-
-/* LOCK mode: sidenav expanded, content pushed right */
-.content-locked {
+/* Applied to content wrapper div */
+.content-expanded {
   margin-left: 16rem; /* 256px - Carbon SideNav expanded width */
   width: calc(100% - 16rem);
   transition: margin-left 0.11s cubic-bezier(0.2, 0, 1, 0.9), width 0.11s
       cubic-bezier(0.2, 0, 1, 0.9);
 }
 
-/* SHOW mode: sidenav expanded, overlays content (no push) */
-.content-overlay {
-  margin-left: 0;
-  width: 100%;
-  transition: margin-left 0.11s cubic-bezier(0.2, 0, 1, 0.9), width 0.11s
-      cubic-bezier(0.2, 0, 1, 0.9);
-}
-
-/* CLOSE mode: sidenav collapsed to rail */
-.content-rail {
+.content-collapsed {
   margin-left: 3rem; /* 48px - Carbon SideNav rail width */
   width: calc(100% - 3rem);
   transition: margin-left 0.11s cubic-bezier(0.2, 0, 1, 0.9), width 0.11s
       cubic-bezier(0.2, 0, 1, 0.9);
 }
 
-/* Active menu item styling (left border indicator) */
-.cds--side-nav__link[aria-current="page"] {
-  border-left: 4px solid var(--cds-link-primary);
-  background-color: var(--cds-layer-selected-01);
-}
-
 /* Responsive override - below Carbon lg breakpoint */
 @media (max-width: 1056px) {
-  .content-locked,
-  .content-overlay,
-  .content-rail {
+  .content-expanded,
+  .content-collapsed {
     margin-left: 0;
     width: 100%;
   }
@@ -241,32 +197,18 @@ const { mode, isExpanded, toggle, setMode } = useSideNavPreference({
 
 ## State Transitions
 
-### Sidenav Toggle (Tri-State Cycle)
+### Sidenav Toggle
 
 ```
 User clicks HeaderMenuButton
     ↓
-toggle() - cycles through modes: close → show → lock → close
+handleSideNavToggle()
     ↓
-setMode(nextMode)
+setIsSideNavExpanded(!current)
     ↓
-localStorage.setItem(key, nextMode)
+localStorage.setItem(key, newValue)
     ↓
-Re-render with new margin class (content-rail / content-overlay / content-locked)
-```
-
-### Click Outside (SHOW mode only)
-
-```
-User clicks outside sidenav (while in SHOW mode)
-    ↓
-handleClickOutside event listener
-    ↓
-setMode('close')
-    ↓
-localStorage.setItem(key, 'close')
-    ↓
-Re-render with content-rail class
+Re-render with new margin class
 ```
 
 ### Route Change (Auto-Expand)
@@ -294,10 +236,10 @@ useState initializer runs
     ↓
 localStorage.getItem(key)
     ↓
-If found: parse and use stored value (must be 'show'|'lock'|'close')
-If not found or invalid: use defaultMode prop (default: 'close')
+If found: parse and use stored value
+If not found: use defaultExpanded prop
     ↓
-Initial render with correct mode
+Initial render with correct state
 ```
 
 ## No Database Changes

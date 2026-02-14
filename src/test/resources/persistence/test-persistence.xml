@@ -5,8 +5,7 @@
     version="2.2">
 
     <persistence-unit
-        name="OpenELIS-Global-persistence-unit"
-        exclude-unlisted-classes="true">
+        name="OpenELIS-Global-persistence-unit">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
         <!-- converters -->
@@ -96,33 +95,8 @@
         <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
 
-        <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
-        <!-- All analyzer entities use JPA annotations -->
-        <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerField</class>
-        <!-- AnalyzerConfiguration removed: merged into Analyzer entity -->
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
-        <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping</class>
-        <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
-        <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
-        <class>org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration</class>
-        <class>org.openelisglobal.analyzer.valueholder.FileImportConfiguration</class>
-        <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
-        <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerType</class>
-
-        <!-- RS232 Serial Port Configuration entity (011-madagascar-analyzer-integration
-            M2) -->
-        <class>org.openelisglobal.analyzer.valueholder.SerialPortConfiguration</class>
-
         <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
         <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>
-
-        <!-- Site Branding entity (001-site-branding) -->
-        <class>org.openelisglobal.sitebranding.valueholder.SiteBranding</class>
-        <!-- Generic Reporting Framework entities (reporting-framework) -->
-        <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
 
         <properties>
             <property name="hibernate.ejb.cfgfile"
@@ -136,6 +110,7 @@
             <property
                 name="jakarta.persistence.schema-generation.database.action"
                 value="update" />
+
         </properties>
 
     </persistence-unit>

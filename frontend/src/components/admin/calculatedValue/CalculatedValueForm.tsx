@@ -961,9 +961,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                             <AutoComplete
                               id={index + "_finalresult"}
                               class="inputText"
-                              label={
-                                <FormattedMessage id="testcalculation.label.finalresult" />
-                              }
+                              label="Final Result"
                               name="testName"
                               onSelect={(id) => handleTestSelection(id, index)}
                               value={calculation.testId}

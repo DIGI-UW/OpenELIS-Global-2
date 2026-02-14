@@ -128,16 +128,8 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
 
         try {
             IGenericClient localFhirClient = fhirUtil.getFhirClient(localFhirPath);
-            Bundle bundle;
-            if (StringUtils.isNotBlank(configuredFacilityId)) {
-                bundle = localFhirClient.search().forResource(Organization.class).returnBundle(Bundle.class)
-                        .where(Organization.IDENTIFIER.exactly().systemAndCode(getFacilityIdentifierSystem(),
-                                configuredFacilityId))
-                        .execute();
-            } else {
-                bundle = localFhirClient.search().forResource(Organization.class).returnBundle(Bundle.class)
-                        .where(Organization.IDENTIFIER.hasSystemWithAnyCode(getFacilityIdentifierSystem())).execute();
-            }
+            Bundle bundle = localFhirClient.search().forResource(Organization.class).returnBundle(Bundle.class)
+                    .where(Organization.IDENTIFIER.hasSystemWithAnyCode(getFacilityIdentifierSystem())).execute();
 
             if (bundle.hasEntry() && !bundle.getEntry().isEmpty()) {
                 Organization existingOrg = (Organization) bundle.getEntryFirstRep().getResource();

@@ -107,25 +107,6 @@ mvn clean install -DskipTests
 - **Node.js 16+**: Frontend development
 - **Git with submodules**: `git submodule update --init --recursive`
 
-### Environment Configuration (.env file) - CRITICAL
-
-**IMPORTANT:** Before running any `docker compose` command, you MUST create a
-`.env` file:
-
-```bash
-cp .env.example .env
-```
-
-Then customize `.env` for your environment (database passwords, domain, etc.).
-
-**Why this matters:**
-
-- `.env` is in `.gitignore` (contains secrets and server-specific settings)
-- **`.env` is intentionally NOT tracked in git** - each developer/server needs
-  their own
-- Docker Compose uses `.env` for `${VAR}` substitution in compose files
-- Missing `.env` causes authentication failures and SSL certificate errors
-
 ---
 
 ## Technology Stack
@@ -194,8 +175,7 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 
 **Testing:**
 
-- **Cypress 12.17.3** (E2E tests - existing)
-- **Playwright 1.57.0** (E2E tests - recommended for new tests)
+- **Cypress 12.17.3** (E2E tests)
 - **Jest + React Testing Library** (unit tests)
 
 **Code Quality:**
@@ -498,9 +478,7 @@ delay feedback. Milestone-based delivery enables manageable code reviews.
 # Clone repository with submodules
 git clone https://github.com/DIGI-UW/OpenELIS-Global-2.git
 cd OpenELIS-Global-2
-
-# Run workspace setup (initializes submodules, hooks, .env)
-bash scripts/setup-workspace.sh
+git submodule update --init --recursive
 
 # Verify Java version
 java -version  # Must be Java 21
@@ -536,22 +514,33 @@ every stage.
 Before using SpecKit commands, install them to your AI agent's command
 directory. This is the **single entry point** for SpecKit setup:
 
-**Cross-platform (Python 3.7+):**
+**Bash (Linux/macOS):**
 
 ```bash
 # Install commands for all supported AI agents (Cursor + Claude Code)
-python scripts/install-speckit-commands.py
+./.specify/scripts/bash/install-commands.sh
 
 # Or install for specific agent only
-python scripts/install-speckit-commands.py cursor   # Cursor IDE
-python scripts/install-speckit-commands.py claude   # Claude Code CLI
+./.specify/scripts/bash/install-commands.sh cursor   # Cursor IDE
+./.specify/scripts/bash/install-commands.sh claude   # Claude Code CLI
 
 # Skip confirmation prompt (for automation/CI)
-python scripts/install-speckit-commands.py -y all
+./.specify/scripts/bash/install-commands.sh -y all
 ```
 
-> **Note:** A `.python-version` file is provided for version managers (pyenv,
-> asdf, uv). If you use one, it will automatically select Python 3.11.
+**PowerShell (Windows):**
+
+```powershell
+# Install commands for all supported AI agents
+.\.specify\scripts\powershell\install-commands.ps1
+
+# Or install for specific agent only
+.\.specify\scripts\powershell\install-commands.ps1 -Target cursor
+.\.specify\scripts\powershell\install-commands.ps1 -Target claude
+
+# Skip confirmation prompt
+.\.specify\scripts\powershell\install-commands.ps1 -Yes -Target all
+```
 
 This compiles command definitions from `.specify/core/commands/` (upstream
 SpecKit) and `.specify/oe/commands/` (OpenELIS extensions) into agent-specific
@@ -1412,46 +1401,18 @@ common patterns and cheat sheets.
 [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
 for E2E testing requirements.
 
-**CRITICAL - Environment Note:**
-
-In Claude Code CLI environment (and some CI environments),
-`ELECTRON_RUN_AS_NODE=1` is set, which breaks Cypress. All `npm run cy:*`
-scripts include `unset ELECTRON_RUN_AS_NODE` to work around this. **ALWAYS use
-the npm scripts.**
-
 **Execution Strategy (Constitution V.5):**
 
-1. **During Development:** Run individual tests for fast feedback
-2. **Before Pushing (MANDATORY):** Run full suite with fail-fast
-3. **In CI/CD:** Automatic via GitHub Actions
-
-**Available npm Scripts (use these, NOT direct cypress commands):**
+- **Development:** Run INDIVIDUAL test files (max 5-10 test cases)
+- **CI/CD:** Run full suite
 
 ```bash
-# Run specific test file
-npm run cy:spec "cypress/e2e/home.cy.js"
+# Development (CORRECT - run individual test)
+npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
 
-# Run all admin tests
-npm run cy:admin
-
-# Run all analyzer tests
-npm run cy:analyzer
-
-# Run full suite (development)
+# CI/CD only (NOT during development)
 npm run cy:run
-
-# Run full suite with fail-fast (stops on first failure) - USE BEFORE PUSHING
-npm run cy:failfast
-
-# Run specific test with fail-fast
-npm run cy:failfast:spec "cypress/e2e/AdminE2E/organizationManagement.cy.js"
-
-# Open Cypress UI (interactive mode)
-npm run cy:open
 ```
-
-**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
-This wastes 60+ minutes of CI time.
 
 **Configuration (`cypress.config.js`):**
 
@@ -1733,37 +1694,24 @@ import { Grid, Column } from "@carbon/react"; // ✅ CORRECT
 </Grid>;
 ```
 
-### Running Full E2E Suite During Development (Without Pre-Push Validation)
+### Running Full E2E Suite During Development
 
-**Symptom:** CI failures that could have been caught locally, wasted CI time
+**Symptom:** Slow feedback (>15 minutes), difficult debugging
 
-**Cause:** Running only individual tests during development, then pushing
-without validating the full suite
+**Cause:** Running all E2E tests instead of individual test files
 
-**Wrong Workflow:**
-
-```bash
-# 1. Run individual test (passes)
-npm run cy:spec "cypress/e2e/home.cy.js"
-# 2. Push without running full suite
-git push  # CI fails 60 minutes later
-```
-
-**Correct Workflow:**
+**Wrong:**
 
 ```bash
-# 1. Run individual tests during development
-npm run cy:spec "cypress/e2e/home.cy.js"
-
-# 2. BEFORE PUSHING: Run full suite with fail-fast (MANDATORY)
-npm run cy:failfast
-
-# 3. Only push if full suite passes
-git push
+npm run cy:run  # Runs ALL tests (60+ test cases)
 ```
 
-**Note:** In Claude Code CLI environment, `ELECTRON_RUN_AS_NODE=1` breaks
-Cypress. Always use `npm run cy:*` scripts, NOT direct `npx cypress` commands.
+**Correct:**
+
+```bash
+# Run individual test file (5-10 test cases)
+npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
+```
 
 ### javax.persistence vs jakarta.persistence
 
@@ -1962,12 +1910,8 @@ mvn spotless:apply && cd frontend && npm run format && cd ..
 mvn clean install -DskipTests -Dmaven.test.skip=true
 docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
 
-# E2E tests - ALWAYS use npm scripts (unset ELECTRON_RUN_AS_NODE is required)
-npm run cy:spec "cypress/e2e/{feature}.cy.js"  # Individual test (development)
-npm run cy:admin                                # All admin tests
-npm run cy:analyzer                             # All analyzer tests
-npm run cy:failfast                             # Full suite with fail-fast (BEFORE PUSHING)
-npm run cy:failfast:spec "cypress/e2e/..."      # Specific test with fail-fast
+# Run individual E2E test (development)
+npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"
 
 # Verify Java version
 java -version  # Must be 21.x.x
@@ -1993,11 +1937,10 @@ sdk env        # SDKMAN auto-switch
 - ✅ React Intl for ALL strings (NO hardcoded text)
 - ✅ Liquibase for ALL schema changes
 - ✅ Format before commit (spotless + prettier)
-- ✅ E2E: Use npm scripts (NOT direct cypress commands)
-- ✅ E2E: Run `npm run cy:failfast` BEFORE pushing
+- ✅ Individual E2E tests during dev (NOT full suite)
 
 ---
 
-**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0 **Maintained By:**
+**Last Updated:** 2025-12-04 **Constitution Version:** 1.8.0 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

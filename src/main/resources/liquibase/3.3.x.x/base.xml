@@ -6,9 +6,9 @@
 
   <!-- Sample Storage Management POC (001-sample-storage) -->
   <!-- Clean consolidated migrations - assumes no storage management data exists -->
-  <include relativeToChangelogFile="true" file="001-create-storage-hierarchy-tables.xml"/>
-  <include relativeToChangelogFile="true" file="002-create-assignment-tables.xml"/>
-  <include relativeToChangelogFile="true" file="003-create-indexes.xml"/>
+  <include relativeToChangelogFile="true" file="001-create-storage-hierarchy-tables.xml" />
+  <include relativeToChangelogFile="true" file="002-create-assignment-tables.xml" />
+  <include relativeToChangelogFile="true" file="003-create-indexes.xml" />
   <!-- NOTE: Storage test fixtures are loaded via DBUnit datasets in tests.
        Keep Liquibase focused on schema migrations; do not seed storage hierarchy
        test data here to avoid dual sources of truth. -->
@@ -30,26 +30,17 @@
   <include relativeToChangelogFile="true" file="020-storage-box-use-code-not-short-code.xml"/>
   <include relativeToChangelogFile="true" file="021-add-patient-merge-menu-item.xml"/>
   <include relativeToChangelogFile="true" file="022-add-patient-merge-menu-localization.xml"/>
-
-
-  <!-- Generic Reporting Framework (reporting-framework) -->
-  <include relativeToChangelogFile="true" file="028-create-report-definition-table.xml"/>
-
   <!-- Add device connectivity fields for network-connected storage equipment -->
   <include relativeToChangelogFile="true" file="023-storage-device-connectivity.xml"/>
-  <!-- Freezer monitoring: creates menu_storage_management and cold storage under menu_storage -->
+  <!-- Freezer monitoring - formerly 011 (renumbered to avoid duplicate sequence) -->
   <include relativeToChangelogFile="true" file="024-freezer-monitoring-schema.xml"/>
-  <!-- Add storage subnav items (Samples, Rooms, Devices, etc.) under menu_storage_management -->
-  <include relativeToChangelogFile="true" file="029-add-storage-subnav-items.xml"/>
   <include relativeToChangelogFile="true" file="generic-program-menu.xml"/>
   <!-- Freezer audit trail - formerly 012 (renumbered to avoid duplicate sequence) -->
   <include relativeToChangelogFile="true" file="025-register-freezer-audit-trail.xml"/>
   <!-- Patient Merge (008-patient-merge) - formerly 019/020 (renumbered to avoid duplicate sequence) -->
   <include relativeToChangelogFile="true" file="026-patient-merge-create-audit-table.xml"/>
   <include relativeToChangelogFile="true" file="027-patient-merge-alter-patient-table.xml"/>
-
-  <!-- Site Branding / White Labeling (001-site-branding) -->
-  <include relativeToChangelogFile="true" file="028-create-site-branding-table.xml"/>
-
-  <!-- NOTE: Analyzer-related changesets have been moved to 3.4.x.x/base.xml -->
+  <!-- OGC-284: Barcode expansion (labels domain + sample/sample_item barcode info) -->
+  <include relativeToChangelogFile="true" file="barcode_expansion.xml"/>
+  <include relativeToChangelogFile="true" file="028-barcode-info-tables.xml"/>
 </databaseChangeLog>

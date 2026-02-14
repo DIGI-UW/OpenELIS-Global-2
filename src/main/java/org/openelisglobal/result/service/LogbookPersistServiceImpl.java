@@ -63,15 +63,20 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
             noteService.insert(note);
         }
 
+        List<org.openelisglobal.result.valueholder.Result> checkResult = null;
+        Analysis checkAnalysis = null;
         for (ResultSet resultSet : actionDataSet.getNewResults()) {
             resultSet.result.setResultEvent(Event.PRELIMINARY_RESULT);
             resultSet.result.setFhirUuid(UUID.randomUUID());
             String resultId;
 
+            checkAnalysis = resultSet.result.getAnalysis();
+
             // Check if result already exists for this specific Analysis (not Sample+Test)
             // This allows different aliquots (SampleItems) of the same sample to have
             // results for the same test type, since each aliquot has its own Analysis
-            if (resultSet.result.getId() == null) {
+            checkResult = resultService.getResultsByAnalysis(checkAnalysis);
+            if (checkResult.size() == 0) {
                 resultId = resultService.insert(resultSet.result);
             } else {
                 continue;

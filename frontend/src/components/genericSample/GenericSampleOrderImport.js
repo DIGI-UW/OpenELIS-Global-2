@@ -107,7 +107,7 @@ export default function GenericSampleOrderImport({
 
   const handleValidate = () => {
     if (!file) {
-      setError(intl.formatMessage({ id: "import.error.selectFile" }));
+      setError("Please select a file first");
       return;
     }
 
@@ -130,7 +130,7 @@ export default function GenericSampleOrderImport({
       .then((data) => {
         setValidating(false);
         if (data && data.errors && data.errors.length > 0) {
-          setError(intl.formatMessage({ id: "import.error.validationFailed" }));
+          setError("Validation failed. Please check the errors below.");
         }
         setValidationResult(data);
         if (onValidationComplete) {
@@ -139,21 +139,18 @@ export default function GenericSampleOrderImport({
       })
       .catch((error) => {
         setValidating(false);
-        setError(
-          error?.message ||
-            intl.formatMessage({ id: "import.error.validateFile" }),
-        );
+        setError(error?.message || "Failed to validate file");
       });
   };
 
   const handleImport = () => {
     if (!file) {
-      setError(intl.formatMessage({ id: "import.error.selectFile" }));
+      setError("Please select a file first");
       return;
     }
 
     if (!validationResult || !validationResult.valid) {
-      setError(intl.formatMessage({ id: "import.error.validateFirst" }));
+      setError("Please validate the file first and fix any errors");
       return;
     }
 
@@ -181,8 +178,7 @@ export default function GenericSampleOrderImport({
             onImportSuccess(data);
           }
         } else {
-          const errorMsg =
-            data?.error || intl.formatMessage({ id: "import.error.failed" });
+          const errorMsg = data?.error || "Import failed";
           setError(errorMsg);
           if (onImportError) {
             onImportError(errorMsg);
@@ -191,9 +187,7 @@ export default function GenericSampleOrderImport({
       })
       .catch((error) => {
         setImporting(false);
-        const errorMsg =
-          error?.message ||
-          intl.formatMessage({ id: "import.error.importFile" });
+        const errorMsg = error?.message || "Failed to import file";
         setError(errorMsg);
         if (onImportError) {
           onImportError(errorMsg);
@@ -202,40 +196,19 @@ export default function GenericSampleOrderImport({
   };
 
   const getErrorTableHeaders = () => [
-    {
-      key: "rowNumber",
-      header: intl.formatMessage({ id: "import.header.row" }),
-    },
-    { key: "field", header: intl.formatMessage({ id: "import.header.field" }) },
-    {
-      key: "message",
-      header: intl.formatMessage({ id: "import.header.errorMessage" }),
-    },
+    { key: "rowNumber", header: "Row" },
+    { key: "field", header: "Field" },
+    { key: "message", header: "Error Message" },
   ];
 
   const defaultGetPreviewTableHeaders = () => [
-    {
-      key: "rowNumber",
-      header: intl.formatMessage({ id: "import.header.row" }),
-    },
-    { key: "labNo", header: intl.formatMessage({ id: "import.header.labNo" }) },
-    {
-      key: "sampleType",
-      header: intl.formatMessage({ id: "import.header.sampleType" }),
-    },
-    {
-      key: "quantity",
-      header: intl.formatMessage({ id: "import.header.quantity" }),
-    },
-    { key: "from", header: intl.formatMessage({ id: "import.header.from" }) },
-    {
-      key: "collectionDate",
-      header: intl.formatMessage({ id: "import.header.collectionDate" }),
-    },
-    {
-      key: "sampleQuantity",
-      header: intl.formatMessage({ id: "import.header.samplesToCreate" }),
-    },
+    { key: "rowNumber", header: "Row" },
+    { key: "labNo", header: "Lab No" },
+    { key: "sampleType", header: "Sample Type" },
+    { key: "quantity", header: "Quantity" },
+    { key: "from", header: "From" },
+    { key: "collectionDate", header: "Collection Date" },
+    { key: "sampleQuantity", header: "Samples to Create" },
   ];
 
   const getPreviewTableHeaders =
@@ -268,12 +241,9 @@ export default function GenericSampleOrderImport({
           <Grid fullWidth style={{ marginTop: "2rem" }}>
             <Column lg={16} md={8} sm={4}>
               <FileUploader
-                labelTitle={intl.formatMessage({ id: "import.uploadFile" })}
-                labelDescription={intl.formatMessage(
-                  { id: "import.uploadFileDesc" },
-                  { types: acceptedFileTypes.join(", ") },
-                )}
-                buttonLabel={intl.formatMessage({ id: "import.selectFile" })}
+                labelTitle="Upload File"
+                labelDescription={`Upload CSV or Excel file (${acceptedFileTypes.join(", ")})`}
+                buttonLabel="Select file"
                 filenameStatus="edit"
                 accept={acceptedFileTypes}
                 multiple={false}
@@ -290,11 +260,7 @@ export default function GenericSampleOrderImport({
                 disabled={!file || validating}
               >
                 {validating ? (
-                  <InlineLoading
-                    description={intl.formatMessage({
-                      id: "import.validating",
-                    })}
-                  />
+                  <InlineLoading description="Validating..." />
                 ) : (
                   <FormattedMessage id="label.button.validate" />
                 )}
@@ -311,9 +277,7 @@ export default function GenericSampleOrderImport({
                 style={{ marginLeft: "1rem" }}
               >
                 {importing ? (
-                  <InlineLoading
-                    description={intl.formatMessage({ id: "import.importing" })}
-                  />
+                  <InlineLoading description="Importing..." />
                 ) : (
                   <FormattedMessage id="label.button.import" />
                 )}
@@ -326,7 +290,7 @@ export default function GenericSampleOrderImport({
               <Column lg={16} md={8} sm={4}>
                 <InlineNotification
                   kind="error"
-                  title={intl.formatMessage({ id: "error.title" })}
+                  title="Error"
                   subtitle={error}
                   lowContrast
                 />
@@ -342,41 +306,25 @@ export default function GenericSampleOrderImport({
                 </Heading>
                 <div style={{ marginTop: "1rem" }}>
                   <p>
-                    <strong>
-                      <FormattedMessage id="import.totalRows" />:
-                    </strong>{" "}
-                    {validationResult.totalRows}
+                    <strong>Total Rows:</strong> {validationResult.totalRows}
                   </p>
                   <p>
-                    <strong>
-                      <FormattedMessage id="import.validRows" />:
-                    </strong>{" "}
-                    {validationResult.validRows}
+                    <strong>Valid Rows:</strong> {validationResult.validRows}
                   </p>
                   <p>
-                    <strong>
-                      <FormattedMessage id="import.invalidRows" />:
-                    </strong>{" "}
+                    <strong>Invalid Rows:</strong>{" "}
                     {validationResult.invalidRows}
                   </p>
                   <p>
-                    <strong>
-                      <FormattedMessage id="import.totalSamplesToCreate" />:
-                    </strong>{" "}
+                    <strong>Total Samples to Create:</strong>{" "}
                     {validationResult.totalSamplesToCreate}
                   </p>
                   <p>
-                    <strong>
-                      <FormattedMessage id="import.validationStatus" />:
-                    </strong>{" "}
+                    <strong>Validation Status:</strong>{" "}
                     {validationResult.valid ? (
-                      <span style={{ color: "green" }}>
-                        <FormattedMessage id="import.status.valid" />
-                      </span>
+                      <span style={{ color: "green" }}>Valid</span>
                     ) : (
-                      <span style={{ color: "red" }}>
-                        <FormattedMessage id="import.status.invalid" />
-                      </span>
+                      <span style={{ color: "red" }}>Invalid</span>
                     )}
                   </p>
                 </div>
@@ -438,11 +386,7 @@ export default function GenericSampleOrderImport({
                           const defaultRow = {
                             id: index,
                             rowNumber: row.rowNumber,
-                            labNo:
-                              row.defaultFields?.labNo ||
-                              intl.formatMessage({
-                                id: "import.autoGenerated",
-                              }),
+                            labNo: row.defaultFields?.labNo || "Auto-generated",
                             sampleType: row.defaultFields?.sampleTypeId || "-",
                             quantity: row.defaultFields?.quantity || "-",
                             from: row.defaultFields?.from || "-",
@@ -496,15 +440,12 @@ export default function GenericSampleOrderImport({
                 <InlineNotification
                   kind={importResult.success ? "success" : "error"}
                   title={
-                    importResult.success
-                      ? intl.formatMessage({ id: "import.success" })
-                      : intl.formatMessage({ id: "import.failed" })
+                    importResult.success ? "Import Successful" : "Import Failed"
                   }
                   subtitle={
                     importResult.success
-                      ? `${importResult.message || ""} ${intl.formatMessage({ id: "import.created" })}: ${importResult.totalCreated}, ${intl.formatMessage({ id: "import.failedCount" })}: ${importResult.totalFailed}`
-                      : importResult.error ||
-                        intl.formatMessage({ id: "import.failed" })
+                      ? `${importResult.message || ""} Created: ${importResult.totalCreated}, Failed: ${importResult.totalFailed}`
+                      : importResult.error || "Import failed"
                   }
                   lowContrast
                 />

@@ -15,9 +15,6 @@ for OpenELIS Global 2
 3. [Test Pyramid and Coverage Goals](#test-pyramid-and-coverage-goals)
 4. [Backend Testing](#backend-testing)
 5. [Frontend Testing](#frontend-testing)
-   - [Jest + React Testing Library](#jest--react-testing-library-unit-tests)
-   - [Cypress E2E Testing](#cypress-e2e-testing)
-   - [Playwright E2E Testing](#playwright-e2e-testing)
 6. [Test Data Management](#test-data-management)
 7. [SDD Integration](#sdd-integration)
 8. [Quick Reference](#quick-reference)
@@ -300,14 +297,14 @@ tests and use DBUnit Flat XML datasets for DB-backed tests via
 1. **Testing REST controller HTTP layer only?** → Use
    `BaseWebContextSensitiveTest` ✅
 
-   - Full Spring context loaded
+   - Medium speed (full application context)
    - Mock services with `@MockBean`
    - Focus on request/response mapping, status codes, JSON serialization
 
 2. **Testing DAO/repository persistence layer only?** → Use
    `BaseWebContextSensitiveTest` ✅
 
-   - Full Spring context loaded
+   - Medium speed (full application context)
    - Use `JdbcTemplate` or `EntityManager` for test data setup
    - Focus on HQL queries, CRUD operations, relationships
 
@@ -2078,144 +2075,6 @@ module.exports = defineConfig({
 });
 ```
 
-### Playwright E2E Testing
-
-**Reference**:
-[Playwright Best Practices Guide](.specify/guides/playwright-best-practices.md)
-for comprehensive patterns and examples.
-
-Playwright is the recommended E2E testing framework for new test development. It
-offers modern async/await patterns, auto-waiting, and better debugging tools.
-
-#### When to Use Playwright vs Cypress
-
-| Scenario                 | Recommended    | Reason                         |
-| ------------------------ | -------------- | ------------------------------ |
-| New E2E tests            | **Playwright** | Modern API, better debugging   |
-| Existing Cypress tests   | Cypress        | Don't migrate unnecessarily    |
-| Complex multi-tab/window | **Playwright** | Native support                 |
-| Visual regression        | **Playwright** | Built-in screenshot comparison |
-| API testing alongside UI | **Playwright** | First-class request API        |
-
-#### Quick Start
-
-```bash
-cd frontend
-
-# Install Playwright (first time)
-npm run pw:install
-
-# Run all tests
-npm run pw:test
-
-# Run with UI debugger
-npm run pw:test:ui
-
-# Run specific test file
-npx playwright test sidenav.spec.ts
-```
-
-#### Key Patterns
-
-**1. Setup Project for Authentication**
-
-Authenticate once, reuse session for all tests:
-
-```typescript
-// playwright/tests/auth.setup.ts
-import { test as setup, expect } from "@playwright/test";
-
-setup("authenticate", async ({ page }) => {
-  await page.goto("/");
-  await page.getByLabel("Username").fill("admin");
-  await page.getByLabel("Password").fill("adminADMIN!");
-  await page.getByRole("button", { name: "Login" }).click();
-  await expect(page.locator('[data-cy="menuButton"]')).toBeVisible();
-  await page.context().storageState({ path: "playwright/.auth/user.json" });
-});
-```
-
-**2. Page Object Model**
-
-Encapsulate interactions in reusable classes:
-
-```typescript
-// playwright/fixtures/sidenav.ts
-export class Sidenav {
-  constructor(private page: Page) {}
-
-  async expectExpanded() {
-    await expect(this.page.locator(".cds--side-nav")).toHaveClass(
-      /cds--side-nav--expanded/
-    );
-  }
-
-  async toggle() {
-    await this.page.locator('[data-cy="menuButton"]').click();
-  }
-}
-```
-
-**3. Use Auto-Retrying Assertions (NO waitForTimeout)**
-
-```typescript
-// ❌ BAD
-await page.waitForTimeout(2000);
-
-// ✅ GOOD
-await expect(element).toBeVisible(); // Auto-retries
-```
-
-**4. Semantic Selectors for Carbon Components**
-
-```typescript
-// Prefer role-based selectors
-page.getByRole("button", { name: "Submit" });
-page.getByLabel("Username");
-
-// Use exact: true for substring conflicts
-page.getByRole("button", { name: "Storage", exact: true });
-
-// Carbon structural elements (acceptable)
-page.locator(".cds--side-nav");
-```
-
-#### Configuration (`playwright.config.ts`)
-
-```typescript
-export default defineConfig({
-  testDir: "./playwright/tests",
-  timeout: 30_000,
-  expect: { timeout: 5_000 },
-  use: {
-    baseURL: process.env.BASE_URL || "https://localhost",
-    ignoreHTTPSErrors: true,
-    trace: "on-first-retry",
-    screenshot: "only-on-failure",
-  },
-  projects: [
-    { name: "setup", testMatch: /.*\.setup\.ts/ },
-    {
-      name: "chromium",
-      use: { storageState: "playwright/.auth/user.json" },
-      dependencies: ["setup"],
-    },
-  ],
-});
-```
-
-#### File Structure
-
-```
-frontend/playwright/
-├── .auth/user.json          # Cached auth (gitignored)
-├── fixtures/
-│   └── sidenav.ts           # Page Objects
-└── tests/
-    ├── auth.setup.ts        # Auth setup
-    └── sidenav.spec.ts      # Test specs
-```
-
 ---
 
 ## Test Data Management
@@ -2460,25 +2319,17 @@ mvn verify
 ### Frontend Test Commands
 
 ```bash
-cd frontend
+# Unit tests
+npm run test:unit
 
-# Unit tests (Jest)
-npm test                    # Run all
-npm test -- --watch         # Watch mode
-npm test -- --coverage      # With coverage report
+# E2E tests (individual file - development)
+npm run test:e2e:single -- --spec "cypress/e2e/storageAssignment.cy.js"
 
-# Cypress E2E (development: individual files)
-npm run cy:run -- --spec "cypress/e2e/feature.cy.js"
+# E2E tests (full suite - CI/CD only)
+npm run test:e2e:full
 
-# Cypress E2E (CI only: full suite)
-npm run cy:run
-
-# Playwright E2E (recommended for new tests)
-npm run pw:install          # First time: install browsers
-npm run pw:test             # Run all tests
-npm run pw:test:ui          # Interactive UI debugger
-npm run pw:test:headed      # See browser window
-npx playwright test file.spec.ts  # Run specific file
+# Coverage report
+npm test -- --coverage
 ```
 
 ### Test Template Locations
@@ -2489,9 +2340,7 @@ npx playwright test file.spec.ts  # Run specific file
 - Backend DAO: `.specify/templates/testing/DataJpaTestDao.java.template`
 - Frontend Component:
   `.specify/templates/testing/JestComponent.test.jsx.template`
-- Frontend E2E (Cypress): `.specify/templates/testing/CypressE2E.cy.js.template`
-- Frontend E2E (Playwright):
-  [Playwright Best Practices](.specify/guides/playwright-best-practices.md)
+- Frontend E2E: `.specify/templates/testing/CypressE2E.cy.js.template`
 
 ### Common Anti-Patterns
 
@@ -2505,10 +2354,9 @@ npx playwright test file.spec.ts  # Run specific file
 
 **Frontend**:
 
-- ❌ Using CSS selectors in Cypress/Playwright (use data-testid or ARIA roles)
-- ❌ UI-based test data setup (use `cy.request()` / `page.request`)
+- ❌ Using CSS selectors in Cypress (use data-testid or ARIA roles)
+- ❌ UI-based test data setup (use `cy.request()`)
 - ❌ Using `setTimeout` in Jest tests (use `waitFor`)
-- ❌ Using `waitForTimeout()` in Playwright (use auto-retrying assertions)
 - ❌ Running full E2E suite during development (run individual files)
 
 ---

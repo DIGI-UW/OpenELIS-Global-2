@@ -49,7 +49,7 @@ export const RoutineReports = (props) => {
         (report === "activityReportByTest" ||
           report === "activityReportByPanel" ||
           report === "activityReportByTestSection") && (
-          <ReportByDate key={report} report={report} />
+          <ReportByDate report={report} />
         )}
 
       {type === "indicator" && report === "statisticsReport" && (

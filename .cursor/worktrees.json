@@ -1,6 +1,0 @@
-{
-  "setup-worktree": [
-    "./.githooks/setup.sh",
-    "python scripts/install-speckit-commands.py -y all"
-  ]
-}

@@ -1,5 +1,5 @@
 # pull official base image
-FROM node:20.20-alpine
+FROM node:18-alpine
 
 RUN apk update; \
     apk upgrade; \

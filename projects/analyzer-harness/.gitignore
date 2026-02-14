@@ -1,7 +1,0 @@
-# Local runtime data (contains secrets, logs, DB init)
-volume/
-
-# Optional local env overrides
-.env
-.env.*
-

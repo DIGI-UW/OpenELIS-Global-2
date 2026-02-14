@@ -44,7 +44,6 @@ import {
 } from "@carbon/react";
 import { CommonProperties } from "./menu/CommonProperties";
 import ConfigMenuDisplay from "./generalConfig/common/ConfigMenuDisplay";
-import SiteBrandingConfig from "./generalConfig/siteBranding/SiteBrandingConfig";
 import ProviderMenu from "./ProviderMenu/ProviderMenu";
 import BarcodeConfiguration from "./barcodeConfiguration/BarcodeConfiguration";
 import AnalyzerTestName from "./analyzerTestName/AnalyzerTestName.js";
@@ -282,12 +281,6 @@ function Admin() {
               <FormattedMessage id="sidenav.label.admin.formEntry.siteInfoconfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
-              data-cy="siteBrandingMenu"
-              onClick={handleNavigation(`${path}/SiteBrandingMenu`)}
-            >
-              <FormattedMessage id="sidenav.label.admin.formEntry.siteBranding" />
-            </SideNavMenuItem>
-            <SideNavMenuItem
               data-cy="resultConfigMenu"
               onClick={handleNavigation(`${path}/ResultConfigurationMenu`)}
             >
@@ -405,10 +398,6 @@ function Admin() {
         <Route
           path={`${path}/billingMenuManagement`}
           component={BillingMenuManagement}
-        />
-        <Route
-          path={`${path}/SiteBrandingMenu`}
-          component={SiteBrandingConfig}
         />
         <Route
           path={`${path}/nonConformityMenuManagement`}

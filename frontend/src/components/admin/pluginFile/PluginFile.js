@@ -12,7 +12,7 @@ import {
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../utils/Utils.js";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
-import { FormattedMessage, useIntl } from "react-intl";
+import { FormattedMessage } from "react-intl";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -24,7 +24,6 @@ let breadcrumbs = [
 ];
 
 function PluginList() {
-  const intl = useIntl();
   const [plugins, setPlugins] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,12 +38,7 @@ function PluginList() {
     getFromOpenElisServer("/rest/ListPlugins", handlePlugins);
   }, []);
 
-  const headers = [
-    {
-      key: "pluginName",
-      header: intl.formatMessage({ id: "plugin.name" }),
-    },
-  ];
+  const headers = [{ key: "pluginName", header: "Plugin Name" }];
 
   const rows = plugins.map((plugin, index) => ({
     id: String(index),
@@ -60,7 +54,7 @@ function PluginList() {
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
 
       <div className="orderLegendBody">
-        <TableContainer title={intl.formatMessage({ id: "plugin.files" })}>
+        <TableContainer title="Plugin Files">
           {plugins.length === 0 ? (
             <p>
               <FormattedMessage id="message.noPluginFound" />

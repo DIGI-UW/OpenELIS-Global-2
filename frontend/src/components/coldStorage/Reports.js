@@ -539,10 +539,7 @@ function Reports({ devices = [] }) {
             onChange={({ selectedItem }) => setFormat(selectedItem)}
           />
         </Column>
-      </Grid>
-
-      <Grid fullWidth className="reports-form">
-        <Column lg={4} md={4} sm={4}>
+        <Column lg={2} md={2} sm={4}>
           <DatePicker
             datePickerType="single"
             onChange={(dates) => {
@@ -561,7 +558,7 @@ function Reports({ devices = [] }) {
             />
           </DatePicker>
         </Column>
-        <Column lg={4} md={4} sm={4}>
+        <Column lg={2} md={2} sm={4}>
           <DatePicker
             datePickerType="single"
             onChange={(dates) => {

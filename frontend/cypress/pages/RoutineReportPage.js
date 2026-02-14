@@ -1,77 +1,65 @@
 class RoutineReportPage {
-  /**
-   * Idempotent expand: only clicks the Carbon SideNavMenu toggle if it is
-   * currently collapsed (aria-expanded !== "true"). This avoids the
-   * toggle-trap where a second click collapses an already-open menu.
-   */
-  ensureSidenavMenuExpanded(menuId) {
-    cy.get(menuId, { timeout: 15000 })
-      .find("button[aria-expanded]")
-      .first()
-      .then(($btn) => {
-        if ($btn.attr("aria-expanded") !== "true") {
-          cy.wrap($btn).click();
-        }
-      });
-    // Verify expansion completed (retries until true)
-    cy.get(menuId).find('button[aria-expanded="true"]').first().should("exist");
-  }
-
-  /**
-   * Click a sidenav leaf item's <a> link via native DOM click.
-   *
-   * Carbon's SideNavMenu wraps children in a <span> with an onClick that
-   * calls stopPropagation(). Cypress's coordinate-based .click() can
-   * hit that blocker span instead of the inner <a>. Using the native
-   * HTMLElement.click() dispatches directly from the <a> element,
-   * guaranteeing the React onClick handler (handleLabelClick) fires.
-   */
-  clickNavLink(selector) {
-    cy.get(selector, { timeout: 15000 })
-      .find("a")
-      .first()
-      .scrollIntoView()
-      .should("exist")
-      .then(($a) => {
-        $a[0].click();
-      });
-  }
-
   aggregateReports() {
-    this.ensureSidenavMenuExpanded("#menu_reports_aggregate");
+    cy.get("#menu_reports_aggregate", { timeout: 15000 })
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
 
   selectStatistics() {
-    this.clickNavLink("#menu_reports_aggregate_statistics");
+    cy.get("#menu_reports_aggregate_statistics", { timeout: 15000 })
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
 
   allReportsSummary() {
-    this.clickNavLink("#menu_reports_aggregate_all");
+    cy.get("#menu_reports_aggregate_all_nav", { timeout: 15000 })
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
 
   summaryTestHIV() {
-    this.clickNavLink("#menu_reports_aggregate_hiv");
+    cy.get("#menu_reports_aggregate_hiv_nav")
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
 
   navigateToManagementReports() {
-    this.ensureSidenavMenuExpanded("#menu_reports_management");
+    cy.get("#menu_reports_management", { timeout: 15000 })
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
   selectRejectionReport() {
-    this.clickNavLink("#menu_reports_management_rejection");
+    cy.get("#menu_reports_management_rejection_nav", { timeout: 15000 })
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
 
   navigateToReportsActivity() {
-    this.ensureSidenavMenuExpanded("#menu_reports_activity");
+    cy.get("#menu_reports_activity", { timeout: 15000 })
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
   selectByTestType() {
-    this.clickNavLink("#menu_activity_report_test");
+    cy.get("#menu_activity_report_test")
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
   validatePageHeader(expectedText) {
     cy.get("section > h3, h1").should("have.text", expectedText);
   }
 
   selectByPanel() {
-    this.clickNavLink("#menu_activity_report_panel");
+    cy.get("#menu_activity_report_panel")
+      .scrollIntoView({ behavior: "smooth" })
+      .click();
   }
 
   validateFieldVisibility(selector) {
@@ -79,26 +67,44 @@ class RoutineReportPage {
   }
 
   selectByUnit() {
-    this.clickNavLink("#menu_activity_report_bench");
+    cy.get("#menu_activity_report_bench")
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
   selectReferredOutTestReport() {
-    this.clickNavLink("#menu_reports_referred");
+    cy.get("#menu_reports_referred")
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
 
   navigateToNCReports() {
-    this.ensureSidenavMenuExpanded("#menu_reports_nonconformity");
+    cy.get("#menu_reports_nonconformity")
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
 
   selectNCReportByUnit() {
-    this.clickNavLink("#menu_reports_nonconformity_section");
+    cy.get("#menu_reports_nonconformity_section")
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
 
   selectNCReportByDate() {
-    this.clickNavLink("#menu_reports_nonconformity_date");
+    cy.get("#menu_reports_nonconformity_date")
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
 
   navigateToRoutineCSVReport() {
-    this.clickNavLink("#menu_reports_export_routine");
+    cy.get("#menu_reports_export_routine")
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
   validateButtonDisabled(selector) {
     cy.get(selector).should("be.disabled");
@@ -110,15 +116,16 @@ class RoutineReportPage {
 
   visitRoutineReports() {
     cy.get("[data-cy='sidenav-button-menu_reports_routine']")
-      .scrollIntoView()
+      .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();
   }
 
   selectPatientStatusReport() {
-    this.ensureSidenavMenuExpanded("#menu_reports");
-    this.ensureSidenavMenuExpanded("#menu_reports_routine");
-    this.clickNavLink("#menu_reports_status_patient");
+    cy.get("#menu_reports_status_patient", { timeout: 15000 })
+      .scrollIntoView({ behavior: "smooth" })
+      .should("be.visible")
+      .click();
   }
 
   toggleAccordion(accordionNumber) {
