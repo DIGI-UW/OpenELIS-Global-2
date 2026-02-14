@@ -143,3 +143,17 @@ PASS: inventory covers all active specs (59 active specs).
   - `LEG-CYP-001` (`barcode.cy.js`) -> status `PARTIAL`
 - These rows will move to `PASS` after M4b gate validation (T075/T076).
 
+## M5 Migration Evidence Notes (Clinical P0)
+
+- Added Playwright specs:
+  - `frontend/playwright/tests/clinical-patient-order.spec.ts`
+  - `frontend/playwright/tests/clinical-result-validation.spec.ts`
+  - `frontend/playwright/tests/clinical-report-workplan.spec.ts`
+  - `frontend/playwright/tests/clinical-nonconform.spec.ts`
+- Parity matrix updates (implementation-complete, gate pending):
+  - `LEG-CYP-019`, `LEG-CYP-025`, `LEG-CYP-027`, `LEG-CYP-028` -> status `PARTIAL`
+  - `LEG-CYP-031`, `LEG-CYP-047` -> status `PARTIAL`
+  - `LEG-CYP-030`, `LEG-CYP-048` -> status `PARTIAL`
+  - `LEG-CYP-026` -> status `PARTIAL`
+- These rows will move to `PASS` after M5 gate validation (T086/T087).
+

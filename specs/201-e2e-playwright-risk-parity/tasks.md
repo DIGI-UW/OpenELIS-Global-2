@@ -159,17 +159,18 @@ bite-size PRs and explicit verification gates.
 
 **Goal**: Port critical clinical workflows (patient/order/result/report).
 
-- [ ] T080 [M5] Create milestone branch
+- [x] T080 [M5] Create milestone branch
       `feat/201-e2e-playwright-risk-parity-m5-core-clinical`
-- [ ] T081 [P] [M5] Add Playwright spec
+      (tracked on `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch constraint)
+- [x] T081 [P] [M5] Add Playwright spec
       `frontend/playwright/tests/clinical-patient-order.spec.ts`
-- [ ] T082 [P] [M5] Add Playwright spec
+- [x] T082 [P] [M5] Add Playwright spec
       `frontend/playwright/tests/clinical-result-validation.spec.ts`
-- [ ] T083 [P] [M5] Add Playwright spec
+- [x] T083 [P] [M5] Add Playwright spec
       `frontend/playwright/tests/clinical-report-workplan.spec.ts`
-- [ ] T084 [P] [M5] Add Playwright spec
+- [x] T084 [P] [M5] Add Playwright spec
       `frontend/playwright/tests/clinical-nonconform.spec.ts`
-- [ ] T085 [M5] Update parity matrix for clinical P0 scenarios
+- [x] T085 [M5] Update parity matrix for clinical P0 scenarios
 - [ ] T086 [M5] Test gate: run clinical Playwright specs + targeted Cypress references
 - [ ] T087 [M5] Milestone gate: no unresolved blocking P0 clinical gaps
 
