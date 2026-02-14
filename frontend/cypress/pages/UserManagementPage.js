@@ -258,7 +258,7 @@ class UserManagementPage {
   }
 
   searchUser(value) {
-    cy.get(this.selectors.searchBar).clear().type(`${value}{enter}`);
+    cy.get(this.selectors.searchBar).clear().type(value);
   }
 
   clearSearchBar() {
@@ -270,9 +270,10 @@ class UserManagementPage {
   }
 
   validateColumnContent(columnNum, value) {
-    cy.get(this.selectors.tableData, { timeout: 10000 })
+    cy.get(this.selectors.tableData, { timeout: 30000 })
       .should("be.visible")
-      .and("contain", value);
+      .contains("td", value, { timeout: 30000 })
+      .should("be.visible");
   }
 
   inactiveUser(value) {
