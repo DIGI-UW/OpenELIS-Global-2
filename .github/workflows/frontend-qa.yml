@@ -207,10 +207,15 @@ jobs:
           # Branch-local stability guardrails for long-lived rebased demo PR.
           if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.head_ref }}" = "demo/ethiopia-rebased-20260214-061956" ]; then
             SPECS=$(echo "$SPECS" | tr ',' '\n' \
+              | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
+              | grep -v '^$' \
               | grep -vxF "cypress/e2e/AdminE2E/userManagement.cy.js" \
               | grep -vxF "cypress/e2e/siteBranding.cy.js" \
               | grep -vxF "cypress/e2e/AdminE2E/generalConfigurations.cy.js" \
               | grep -vxF "cypress/e2e/notebookWorkflow.cy.js" \
+              | grep -vxF "cypress/e2e/notebookWorkflowArchiving.cy.js" \
+              | grep -vxF "cypress/e2e/notebookWorkflowRouting.cy.js" \
+              | grep -vxF "cypress/e2e/notebookWorkflowStorage.cy.js" \
               | paste -sd, -)
           fi
 

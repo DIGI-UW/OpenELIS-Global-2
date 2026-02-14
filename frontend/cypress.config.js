@@ -496,6 +496,18 @@ module.exports = defineConfig({
       });
 
       try {
+        const hasExplicitSpecArg = process.argv.some(
+          (arg) => arg === "--spec" || arg.startsWith("--spec="),
+        );
+        if (hasExplicitSpecArg) {
+          // Respect CLI --spec so CI shard filtering is not overridden.
+          console.log(
+            "Detected explicit --spec CLI argument; preserving config.specPattern:",
+            config.specPattern,
+          );
+          return config;
+        }
+
         const e2eFolder = path.join(__dirname, "cypress/e2e");
 
         // Define the first four prioritized tests
