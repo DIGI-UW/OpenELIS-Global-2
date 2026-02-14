@@ -56,6 +56,7 @@ The following specs remain quarantined and require dedicated migration work:
 - `orderEntity.cy.js`
 - `patientEntry.cy.js`
 - `storageSearch.cy.js`
+- `dashboard.cy.js`
 
 ## Next Iteration (recommended)
 

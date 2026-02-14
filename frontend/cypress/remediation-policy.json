@@ -83,6 +83,14 @@
           "playwrightSpec": null,
           "minimumPlaywrightTests": 0,
           "reason": "Storage search data setup is currently inconsistent in rebased branch runs."
+        },
+        {
+          "cypressSpec": "cypress/e2e/dashboard.cy.js",
+          "status": "quarantined_pending_migration",
+          "parityLevel": "none",
+          "playwrightSpec": null,
+          "minimumPlaywrightTests": 0,
+          "reason": "Dashboard validation depends on mutable pathology dashboard state and seeded order visibility."
         }
       ]
     }
