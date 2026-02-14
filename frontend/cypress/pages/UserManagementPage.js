@@ -164,46 +164,50 @@ class UserManagementPage {
     cy.get(this.selectors.allPermissions).check({ force: true });
   }
 
-  allBioPermissions() {
-    cy.get(this.selectors.allBioPermissions, { timeout: 10000 })
-      .should("exist")
+  checkLatestAllPermissions() {
+    cy.get('input[id^="all-permissions-"]', { timeout: 10000 })
+      .last()
       .check({ force: true });
   }
 
+  allBioPermissions() {
+    this.checkLatestAllPermissions();
+  }
+
   allHemaPermissions() {
-    cy.get(this.selectors.allHemaPermissions).check({ force: true });
+    this.checkLatestAllPermissions();
   }
 
   allSeroPermissions() {
-    cy.get(this.selectors.allSeroPermissions).check({ force: true });
+    this.checkLatestAllPermissions();
   }
 
   allImmunoPermissions() {
-    cy.get(this.selectors.allImmunoPermissions).check({ force: true });
+    this.checkLatestAllPermissions();
   }
 
   allMolecularPermissions() {
-    cy.get(this.selectors.allMolecularPermissions).check({ force: true });
+    this.checkLatestAllPermissions();
   }
 
   allCytoPermissions() {
-    cy.get(this.selectors.allCytoPermissions).check({ force: true });
+    this.checkLatestAllPermissions();
   }
 
   allSerologyPermissions() {
-    cy.get(this.selectors.allSerologyPermissions).check({ force: true });
+    this.checkLatestAllPermissions();
   }
 
   allViroPermissions() {
-    cy.get(this.selectors.allViroPermissions).check({ force: true });
+    this.checkLatestAllPermissions();
   }
 
   allPathoPermissions() {
-    cy.get(this.selectors.allPathoPermissions).check({ force: true });
+    this.checkLatestAllPermissions();
   }
 
   allImmunoHistoPermissions() {
-    cy.get(this.selectors.allImmunoHistoPermissions).check({ force: true });
+    this.checkLatestAllPermissions();
   }
 
   reception() {

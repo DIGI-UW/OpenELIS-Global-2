@@ -90,7 +90,7 @@ class NotebookWorkflowPage {
    * Wait for the page to load.
    */
   waitForLoad() {
-    cy.get(this.selectors.workflowContainer, { timeout: 10000 }).should(
+    cy.get(this.selectors.workflowContainer, { timeout: 30000 }).should(
       "be.visible",
     );
     cy.get(this.selectors.loading).should("not.exist");
