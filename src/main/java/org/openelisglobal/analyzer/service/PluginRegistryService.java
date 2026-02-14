@@ -14,7 +14,9 @@
 package org.openelisglobal.analyzer.service;
 
 import jakarta.annotation.PostConstruct;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
@@ -131,35 +133,74 @@ public class PluginRegistryService {
     }
 
     /**
-     * Gap 2: Link legacy analyzer rows to their analyzer_type.
+     * Link legacy analyzer rows to their analyzer_type using name-based matching.
      *
      * <p>
-     * Legacy connect() creates analyzer rows without setting analyzer_type_id. This
-     * method iterates all analyzers, finds those without a type, looks up their
-     * plugin, and links them to the matching AnalyzerType by pluginClassName.
+     * Legacy plugin connect() creates analyzer rows via addAnalyzerDatabaseParts()
+     * without setting analyzer_type_id. This method matches analyzer names against
+     * AnalyzerType plugin class names using two strategies:
+     *
+     * <ol>
+     * <li>Exact match: analyzer.name == simple class name (e.g.,
+     * "SysmexXNLAnalyzer")
+     * <li>Suffix-stripped match: analyzer.name == class name without "Analyzer"
+     * suffix (e.g., "Mindray" matches "MindrayAnalyzer")
+     * <li>Prefix match: for plugins that create multiple analyzers (e.g., Cobas4800
+     * creates "Cobas4800VLAnalyzer" and "Cobas4800EIDAnalyzer")
+     * </ol>
      */
     void linkLegacyAnalyzersToTypes() {
         List<Analyzer> allAnalyzers = analyzerService.getAll();
+        List<AnalyzerType> allTypes = analyzerTypeService.getAll();
         int linked = 0;
+
+        // Build lookup maps from plugin class simple names to AnalyzerType
+        Map<String, AnalyzerType> nameToType = new HashMap<>();
+        for (AnalyzerType type : allTypes) {
+            if (type.getPluginClassName() == null) {
+                continue;
+            }
+            String simpleName = type.getPluginClassName().substring(type.getPluginClassName().lastIndexOf('.') + 1);
+            nameToType.put(simpleName, type);
+            String stripped = simpleName.replaceAll("Analyzer$", "");
+            if (!stripped.equals(simpleName)) {
+                nameToType.put(stripped, type);
+            }
+        }
 
         for (Analyzer analyzer : allAnalyzers) {
             if (analyzer.getAnalyzerType() != null) {
-                continue; // already linked
+                continue;
             }
 
-            AnalyzerImporterPlugin plugin = pluginAnalyzerService.getPluginByAnalyzerId(analyzer.getId());
-            if (plugin == null) {
-                continue; // no plugin registered for this analyzer
+            String analyzerName = analyzer.getName();
+            AnalyzerType matched = nameToType.get(analyzerName);
+
+            // Prefix match for multi-analyzer plugins (e.g., Cobas4800 →
+            // Cobas4800VLAnalyzer)
+            if (matched == null) {
+                String strippedAnalyzerName = analyzerName.replaceAll("Analyzer$", "");
+                int bestLen = 0;
+                for (AnalyzerType type : allTypes) {
+                    if (type.getPluginClassName() == null) {
+                        continue;
+                    }
+                    String simpleName = type.getPluginClassName()
+                            .substring(type.getPluginClassName().lastIndexOf('.') + 1);
+                    String base = simpleName.replaceAll("Analyzer$", "");
+                    if (strippedAnalyzerName.startsWith(base) && base.length() > bestLen) {
+                        matched = type;
+                        bestLen = base.length();
+                    }
+                }
             }
 
-            String pluginClassName = plugin.getClass().getName();
-            Optional<AnalyzerType> typeOpt = analyzerTypeService.getByPluginClassName(pluginClassName);
-            if (typeOpt.isPresent()) {
-                analyzer.setAnalyzerType(typeOpt.get());
+            if (matched != null) {
+                analyzer.setAnalyzerType(matched);
                 analyzer.setSysUserId("1");
                 analyzerService.save(analyzer);
                 LogEvent.logInfo(this.getClass().getName(), "linkLegacyAnalyzersToTypes",
-                        "Linked analyzer '" + analyzer.getName() + "' to type '" + typeOpt.get().getName() + "'");
+                        "Linked analyzer '" + analyzerName + "' to type '" + matched.getName() + "'");
                 linked++;
             }
         }

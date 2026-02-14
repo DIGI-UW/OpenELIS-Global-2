@@ -87,7 +87,7 @@ public class AnalyzerRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> getAnalyzers(@RequestParam(required = false) String status,
             @RequestParam(required = false) String search) {
         try {
-            List<Analyzer> analyzers = analyzerService.getAll();
+            List<Analyzer> analyzers = analyzerService.getAllWithTypes();
             Set<String> loadedPlugins = getLoadedPluginClassNames();
             List<Map<String, Object>> analyzerList = new ArrayList<>();
 
@@ -316,13 +316,13 @@ public class AnalyzerRestController extends BaseRestController {
     @GetMapping("/analyzers/{id}")
     public ResponseEntity<Map<String, Object>> getAnalyzer(@PathVariable String id) {
         try {
-            Analyzer analyzer = analyzerService.get(id);
-            if (analyzer == null) {
+            Optional<Analyzer> opt = analyzerService.getWithType(id);
+            if (opt.isEmpty()) {
                 Map<String, Object> error = new LinkedHashMap<>();
                 error.put("error", "Analyzer not found: " + id);
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
-            Map<String, Object> response = analyzerToMap(analyzer, getLoadedPluginClassNames());
+            Map<String, Object> response = analyzerToMap(opt.get(), getLoadedPluginClassNames());
             return ResponseEntity.ok(response);
         } catch (org.hibernate.ObjectNotFoundException e) {
             // Hibernate may throw instead of returning null for missing IDs
@@ -509,6 +509,17 @@ public class AnalyzerRestController extends BaseRestController {
             pluginLoaded = className != null && loadedPlugins.contains(className);
         } else {
             pluginLoaded = pluginAnalyzerService.getPluginByAnalyzerId(analyzer.getId()) != null;
+            if (!pluginLoaded) {
+                // Fallback: match analyzer name against loaded plugin class simple names.
+                // Handles analyzers not yet linked to an AnalyzerType (e.g., fixture data
+                // inserted after startup, or multi-analyzer plugins like Cobas4800).
+                String analyzerName = analyzer.getName();
+                pluginLoaded = loadedPlugins.stream().anyMatch(cn -> {
+                    String simpleName = cn.substring(cn.lastIndexOf('.') + 1);
+                    return simpleName.equals(analyzerName) || simpleName.equals(analyzerName + "Analyzer")
+                            || analyzerName.startsWith(simpleName.replaceAll("Analyzer$", ""));
+                });
+            }
         }
         map.put("pluginLoaded", pluginLoaded);
 

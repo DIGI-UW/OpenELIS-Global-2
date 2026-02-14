@@ -24,6 +24,18 @@ RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
 RESET=false
 VERIFY=true
 
+# SQL to link fixture analyzers (IDs 2000-2012) to their AnalyzerType records.
+# AnalyzerType IDs are auto-generated at startup by PluginRegistryService, so we
+# match by plugin_class_name (stable) rather than by ID (auto-generated).
+LINK_ANALYZER_TYPES_SQL="
+SET search_path TO clinlims;
+-- Correct fixture analyzer → AnalyzerType links (overrides auto-linking if needed)
+UPDATE analyzer SET analyzer_type_id = (SELECT id FROM analyzer_type WHERE plugin_class_name = 'oe.plugin.analyzer.GeneXpertAnalyzer' LIMIT 1) WHERE id = 2002;
+UPDATE analyzer SET analyzer_type_id = (SELECT id FROM analyzer_type WHERE plugin_class_name = 'oe.plugin.analyzer.QuantStudio7FlexAnalyzer' LIMIT 1) WHERE id = 2009;
+UPDATE analyzer SET analyzer_type_id = (SELECT id FROM analyzer_type WHERE plugin_class_name = 'uw.edu.itech.StagoSTart4.StagoSTart4Analyzer' LIMIT 1) WHERE id = 2010;
+UPDATE analyzer SET analyzer_type_id = (SELECT id FROM analyzer_type WHERE plugin_class_name = 'oe.plugin.analyzer.SysmexXNLAnalyzer' LIMIT 1) WHERE id = 2011;
+"
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -349,6 +361,11 @@ if [ "$USE_DOCKER" = true ]; then
         else
             echo "⚠️  WARNING: Analyzer fixture loading failed (non-fatal; manually load if needed: $ANALYZER_E2E_SQL)"
         fi
+
+        # Link fixture analyzers to their AnalyzerType records
+        echo "Linking fixture analyzers to plugin types..."
+        echo "$LINK_ANALYZER_TYPES_SQL" | docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims 2>/dev/null
+        echo "✅ Fixture analyzers linked to plugin types"
         echo ""
     fi
 
@@ -444,6 +461,11 @@ else
         else
             echo "⚠️  WARNING: Analyzer fixture loading failed (non-fatal)"
         fi
+
+        # Link fixture analyzers to their AnalyzerType records
+        echo "Linking fixture analyzers to plugin types..."
+        echo "$LINK_ANALYZER_TYPES_SQL" | psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" 2>/dev/null
+        echo "✅ Fixture analyzers linked to plugin types"
         echo ""
     fi
 

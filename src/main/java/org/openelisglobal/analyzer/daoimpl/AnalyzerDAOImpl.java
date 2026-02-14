@@ -74,4 +74,22 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
         Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
         return query.list();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analyzer> findAllWithTypes() {
+        String hql = "SELECT a FROM Analyzer a LEFT JOIN FETCH a.analyzerType";
+        Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByIdWithType(String id) {
+        String hql = "SELECT a FROM Analyzer a LEFT JOIN FETCH a.analyzerType WHERE a.id = :id";
+        Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
+        query.setParameter("id", Integer.valueOf(id));
+        Analyzer result = query.uniqueResult();
+        return Optional.ofNullable(result);
+    }
 }

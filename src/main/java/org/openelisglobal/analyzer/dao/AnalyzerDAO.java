@@ -25,4 +25,8 @@ public interface AnalyzerDAO extends BaseDAO<Analyzer, String> {
     Optional<Analyzer> findByName(String name);
 
     List<Analyzer> findGenericAnalyzersWithPatterns();
+
+    List<Analyzer> findAllWithTypes();
+
+    Optional<Analyzer> findByIdWithType(String id);
 }

@@ -50,6 +50,18 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     @Override
     @Transactional(readOnly = true)
+    public List<Analyzer> getAllWithTypes() {
+        return baseObjectDAO.findAllWithTypes();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> getWithType(String id) {
+        return baseObjectDAO.findByIdWithType(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Analyzer getAnalyzerByName(String name) {
         return getMatch("name", name).orElse(null);
     }

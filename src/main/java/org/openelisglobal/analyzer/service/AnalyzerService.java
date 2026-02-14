@@ -8,6 +8,10 @@ import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.common.service.BaseObjectService;
 
 public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
+    List<Analyzer> getAllWithTypes();
+
+    Optional<Analyzer> getWithType(String id);
+
     Analyzer getAnalyzerByName(String name);
 
     void persistData(Analyzer analyzer, List<AnalyzerTestMapping> testMappings,
