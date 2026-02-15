@@ -337,9 +337,9 @@ comparison.
       `feat/201-e2e-playwright-risk-parity-m8-bigbang` (tracked on
       `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch
       constraint)
-- [ ] T121 [M8] Update E2E workflow orchestration to make Playwright the primary
+- [x] T121 [M8] Update E2E workflow orchestration to make Playwright the primary
       gate check `.github/workflows/playwright-e2e.yml`
-- [ ] T122 [M8] Keep Cypress full-suite workflow active and explicit as
+- [x] T122 [M8] Keep Cypress full-suite workflow active and explicit as
       comparison suite `.github/workflows/frontend-qa.yml`
 - [x] T123 [M8] Add/adjust aggregate check naming and documentation for primary
       vs comparison roles `specs/201-e2e-playwright-risk-parity/quickstart.md`
@@ -351,7 +351,9 @@ comparison.
       fully runs
 - [ ] T126 [M8] Verify required checks policy via GitHub CLI and record evidence
       in `specs/201-e2e-playwright-risk-parity/signoff-summary.md` (confirm
-      Playwright primary check + Cypress comparison checks)
+      Playwright primary check + Cypress comparison checks) (currently blocked:
+      `gh api .../branches/develop/protection` returns HTTP 403 in this cloud
+      integration context)
 - [x] T127 [M8] Add cutover checklist artifact
       `specs/201-e2e-playwright-risk-parity/cutover-checklist.md` (checks,
       owners, rollback criteria)

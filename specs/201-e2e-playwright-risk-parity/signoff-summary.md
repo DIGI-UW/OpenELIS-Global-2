@@ -43,3 +43,12 @@
 ## M9 Migration Closure and Sunset Recommendation
 
 _To be completed in M9._
+
+## Branch Protection Evidence (T126)
+
+- Attempted command:
+  - `gh api repos/DIGI-UW/OpenELIS-Global-2/branches/develop/protection`
+- Current result: `HTTP 403 Resource not accessible by integration`
+- Impact: Required-check policy verification is currently blocked in this cloud
+  environment and must be verified via a token/context with branch protection
+  read access.
