@@ -60,6 +60,7 @@ jobs:
           echo "Application is ready"
 
       - name: Run Playwright tests
+        id: run_playwright
         run: npm run pw:test -- --shard=${{ matrix.shard }}/3
         working-directory: frontend
         env:
@@ -67,6 +68,47 @@ jobs:
           BASE_URL: https://localhost
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS || 'adminADMIN!' }}
+
+      - name: Export normalized Playwright results
+        if: always()
+        run: |
+          mkdir -p frontend/test-results
+          if [ -f frontend/playwright-report/results.json ]; then
+            node scripts/e2e/export-playwright-results.js \
+              --input frontend/playwright-report/results.json \
+              --output frontend/test-results/playwright-normalized-${{ matrix.shard }}.json \
+              --shard ${{ matrix.shard }}
+          else
+            echo "Playwright JSON results were not produced; writing fallback normalized record."
+            node -e "const fs=require('fs');const p='frontend/test-results/playwright-normalized-${{ matrix.shard }}.json';fs.writeFileSync(p, JSON.stringify({generatedAt:new Date().toISOString(),generatedBy:'playwright-e2e.yml:fallback',framework:'playwright',shard:'${{ matrix.shard }}',summary:{total:0,passed:0,failed:0,skipped:0,flaky:0,unknown:1,durationMs:0},tests:[]},null,2)+'\\n');"
+          fi
+
+      - name: Upload normalized Playwright results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-normalized-${{ matrix.shard }}
+          path: frontend/test-results/playwright-normalized-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload Playwright JSON report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-json-${{ matrix.shard }}
+          path: frontend/playwright-report/results.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Playwright blob report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-blob-report-${{ matrix.shard }}
+          path: frontend/blob-report/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload Playwright HTML report
         if: failure()
@@ -108,6 +150,47 @@ jobs:
     runs-on: ubuntu-latest
     name: Run Playwright E2E Tests
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Download blob reports from shards
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          pattern: playwright-blob-report-*
+          merge-multiple: true
+          path: frontend/blob-report
+
+      - name: Merge shard blob reports into HTML
+        if: always()
+        run: |
+          if [ -d frontend/blob-report ] && [ -n "$(ls -A frontend/blob-report 2>/dev/null)" ]; then
+            cd frontend
+            npx playwright merge-reports --reporter html ./blob-report
+          else
+            echo "No blob reports found to merge."
+          fi
+
+      - name: Upload merged Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-merged-report
+          path: frontend/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Check shard results
         run: |
           if [[ "${{ needs.playwright-tests.result }}" != "success" ]]; then

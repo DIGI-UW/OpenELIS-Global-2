@@ -147,3 +147,39 @@ docker compose -f build.docker-compose.yml up -d --wait --wait-timeout 600
 - Gap register check:
   - `critical-gap-register.md` has **zero** `Open` entries targeting milestone
     `M6` after this update.
+
+## M7 Dual-Run Parity CI Tooling (T101-T113)
+
+Implemented artifacts and workflows:
+
+- Scripts:
+  - `scripts/e2e/export-playwright-results.js`
+  - `scripts/e2e/export-cypress-results.js`
+  - `scripts/e2e/compare-e2e-results.js`
+  - `scripts/e2e/export-runtime-metrics.js`
+- CI workflows:
+  - `.github/workflows/playwright-e2e.yml` (normalized Playwright artifacts +
+    blob merge)
+  - `.github/workflows/frontend-qa.yml` (normalized Cypress artifacts)
+  - `.github/workflows/e2e-parity-report.yml` (cross-workflow parity report
+    generation)
+- Contracts/docs:
+  - `contracts/parity-report.schema.json`
+  - `runtime-budget.md`
+  - `artifacts/parity-report.md`
+
+Local validation commands run:
+
+```bash
+node --check scripts/e2e/export-playwright-results.js
+node --check scripts/e2e/export-cypress-results.js
+node --check scripts/e2e/compare-e2e-results.js
+node --check scripts/e2e/export-runtime-metrics.js
+cd frontend && npm run pw:test -- --list
+```
+
+Status:
+
+- Script syntax validation: `PASS`
+- Playwright config/reporter validation (`--list`): `PASS`
+- CI milestone gate T109: `PENDING_CI_CONFIRMATION`

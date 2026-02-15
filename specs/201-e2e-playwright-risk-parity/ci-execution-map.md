@@ -6,6 +6,7 @@ This document maps E2E specs to their current CI execution points.
 
 - `.github/workflows/frontend-qa.yml` (Cypress)
 - `.github/workflows/playwright-e2e.yml` (Playwright)
+- `.github/workflows/e2e-parity-report.yml` (cross-workflow parity report)
 
 ## Cypress CI Mapping (`frontend-qa.yml`)
 
@@ -16,6 +17,11 @@ This document maps E2E specs to their current CI execution points.
 | `static-checks`          | frontend formatting + unit test checks | Runs before E2E Cypress                           |
 | `e2e-cypress`            | matrix Cypress execution               | Shards: `core`, `storage`, `admin`, `independent` |
 | `build-and-run-qa-tests` | fan-in status gate                     | Consolidated branch-protection check name         |
+
+Each `e2e-cypress` shard now emits:
+
+- Raw JSON reporter artifact: `cypress-raw-json-<shard>`
+- Normalized results artifact: `cypress-normalized-<shard>`
 
 ### Matrix Shard Summary
 
@@ -101,7 +107,30 @@ Current resolved set:
 | Job                | Command                          | Scope                                                                               |
 | ------------------ | -------------------------------- | ----------------------------------------------------------------------------------- |
 | `playwright-tests` | `npm run pw:test -- --shard=x/3` | Executes Playwright projects from `frontend/playwright.config.ts` via matrix shards |
-| `playwright-e2e`   | fan-in result check              | Consolidates shard outcome into stable branch-protection check                      |
+| `playwright-e2e`   | fan-in + blob merge              | Consolidates shard outcome and merges blob reports into a single HTML artifact      |
+
+Each `playwright-tests` shard now emits:
+
+- Normalized results artifact: `playwright-normalized-<shard>`
+- JSON artifact: `playwright-json-<shard>`
+- Blob report artifact: `playwright-blob-report-<shard>`
+
+Fan-in job emits:
+
+- Merged Playwright report artifact: `playwright-merged-report`
+
+## Parity Report Workflow (`e2e-parity-report.yml`)
+
+### Trigger + Output
+
+- Triggered by completion of either E2E workflow (`workflow_run`) and by manual
+  dispatch.
+- Resolves latest completed Cypress + Playwright runs for the same head SHA.
+- Downloads normalized artifacts and generates:
+  - `artifacts/runtime-metrics.json`
+  - `artifacts/parity-report.json`
+  - `artifacts/parity-report.md`
+- Publishes artifact bundle: `e2e-parity-report-<sha>`
 
 ### Project -> Spec Mapping
 
@@ -113,6 +142,7 @@ Current resolved set:
 ## Notes for Migration Planning
 
 - Cypress CI currently runs via matrix sharding plus a dynamic catch-all shard.
-- Playwright CI runs as matrix shards (`1/3`, `2/3`, `3/3`) plus fan-in check.
+- Playwright CI runs as matrix shards (`1/3`, `2/3`, `3/3`) plus fan-in merge.
+- Parity reporting is now artifact-driven and cross-workflow.
 - For parity work, this mapping can be used to identify where migrated specs
   should be added and where legacy comparisons are still executed.

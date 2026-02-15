@@ -266,33 +266,35 @@ bite-size PRs and explicit verification gates.
 
 **Goal**: Produce comparable, per-run Cypress vs Playwright parity output.
 
-- [ ] T100 [M7] Create milestone branch
-      `feat/201-e2e-playwright-risk-parity-m7-parity-ci`
-- [ ] T101 [P] [M7] Add normalized Playwright result exporter
+- [x] T100 [M7] Create milestone branch
+      `feat/201-e2e-playwright-risk-parity-m7-parity-ci` (tracked on
+      `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch
+      constraint)
+- [x] T101 [P] [M7] Add normalized Playwright result exporter
       `scripts/e2e/export-playwright-results.js`
-- [ ] T102 [P] [M7] Add normalized Cypress result exporter
+- [x] T102 [P] [M7] Add normalized Cypress result exporter
       `scripts/e2e/export-cypress-results.js`
-- [ ] T103 [M7] Add comparison script `scripts/e2e/compare-e2e-results.js`
-- [ ] T104 [M7] Add parity report schema
+- [x] T103 [M7] Add comparison script `scripts/e2e/compare-e2e-results.js`
+- [x] T104 [M7] Add parity report schema
       `specs/201-e2e-playwright-risk-parity/contracts/parity-report.schema.json`
-- [ ] T105 [M7] Update Playwright workflow to emit normalized artifact
+- [x] T105 [M7] Update Playwright workflow to emit normalized artifact
       `.github/workflows/playwright-e2e.yml`
-- [ ] T106 [M7] Update Cypress workflow to emit normalized artifact
+- [x] T106 [M7] Update Cypress workflow to emit normalized artifact
       `.github/workflows/frontend-qa.yml`
-- [ ] T107 [M7] Add CI parity-report job/workflow that publishes markdown/json
+- [x] T107 [M7] Add CI parity-report job/workflow that publishes markdown/json
       parity report `.github/workflows/e2e-parity-report.yml`
-- [ ] T108 [M7] Add parity report output location
+- [x] T108 [M7] Add parity report output location
       `specs/201-e2e-playwright-risk-parity/artifacts/parity-report.md`
 - [ ] T109 [M7] Milestone gate: CI emits classified parity report with risk
-      labels on each run
-- [ ] T110 [M7] Extend parity comparison script to classify failures by
+      labels on each run (pending CI execution confirmation)
+- [x] T110 [M7] Extend parity comparison script to classify failures by
       `failure_class` (setup/infra, assertion, parity divergence)
-- [ ] T111 [M7] Add runtime metric exporter
+- [x] T111 [M7] Add runtime metric exporter
       `scripts/e2e/export-runtime-metrics.js` (capture suite wall-clock per run)
-- [ ] T112 [M7] Define runtime budget in
+- [x] T112 [M7] Define runtime budget in
       `specs/201-e2e-playwright-risk-parity/runtime-budget.md` (Playwright +
       Cypress dual-run target/bounds)
-- [ ] T113 [M7] Include failure classification and runtime budget status in
+- [x] T113 [M7] Include failure classification and runtime budget status in
       `artifacts/parity-report.md` for each CI run
 
 ---

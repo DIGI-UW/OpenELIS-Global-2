@@ -1,0 +1,124 @@
+name: E2E Parity Report
+
+on:
+  workflow_run:
+    workflows:
+      - Playwright E2E Tests
+      - OpenELIS Frontend QA framework workflow
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      head_sha:
+        description: Optional SHA override for artifact lookup
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  parity-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Resolve target SHA
+        id: sha
+        run: |
+          if [ -n "${{ inputs.head_sha }}" ]; then
+            TARGET_SHA="${{ inputs.head_sha }}"
+          elif [ -n "${{ github.event.workflow_run.head_sha }}" ]; then
+            TARGET_SHA="${{ github.event.workflow_run.head_sha }}"
+          else
+            TARGET_SHA="${{ github.sha }}"
+          fi
+          echo "sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
+          echo "Target SHA: $TARGET_SHA"
+
+      - name: Resolve latest workflow run IDs for target SHA
+        id: runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          set -euo pipefail
+          PLAYWRIGHT_RUN_ID=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/playwright-e2e.yml/runs?head_sha=${TARGET_SHA}&status=completed&per_page=1" --jq '.workflow_runs[0].id // ""')
+          CYPRESS_RUN_ID=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/frontend-qa.yml/runs?head_sha=${TARGET_SHA}&status=completed&per_page=1" --jq '.workflow_runs[0].id // ""')
+          echo "playwright_run_id=$PLAYWRIGHT_RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "cypress_run_id=$CYPRESS_RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "Playwright run: ${PLAYWRIGHT_RUN_ID:-none}"
+          echo "Cypress run: ${CYPRESS_RUN_ID:-none}"
+
+      - name: Download normalized artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLAYWRIGHT_RUN_ID: ${{ steps.runs.outputs.playwright_run_id }}
+          CYPRESS_RUN_ID: ${{ steps.runs.outputs.cypress_run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p parity-input/playwright parity-input/cypress
+
+          if [ -n "$PLAYWRIGHT_RUN_ID" ]; then
+            gh run download "$PLAYWRIGHT_RUN_ID" --dir parity-input/playwright || true
+          fi
+
+          if [ -n "$CYPRESS_RUN_ID" ]; then
+            gh run download "$CYPRESS_RUN_ID" --dir parity-input/cypress || true
+          fi
+
+      - name: Generate parity report artifacts
+        run: |
+          set -euo pipefail
+          PLAYWRIGHT_FILES=$(find parity-input/playwright -name 'playwright-normalized-*.json' -type f | sort | paste -sd, -)
+          CYPRESS_FILES=$(find parity-input/cypress -name 'cypress-normalized-*.json' -type f | sort | paste -sd, -)
+
+          mkdir -p specs/201-e2e-playwright-risk-parity/artifacts
+
+          if [ -z "$PLAYWRIGHT_FILES" ] || [ -z "$CYPRESS_FILES" ]; then
+            cat > specs/201-e2e-playwright-risk-parity/artifacts/parity-report.md <<'EOF'
+          # E2E Parity Report
+
+          Status: blocked (normalized artifacts missing for one or both frameworks).
+
+          The parity report workflow requires:
+
+          - `playwright-normalized-*.json` artifacts from Playwright workflow
+          - `cypress-normalized-*.json` artifacts from Cypress workflow
+          EOF
+            echo '{"status":"blocked","reason":"normalized-artifacts-missing"}' > specs/201-e2e-playwright-risk-parity/artifacts/parity-report.json
+            echo '{"status":"blocked","reason":"normalized-artifacts-missing"}' > specs/201-e2e-playwright-risk-parity/artifacts/runtime-metrics.json
+            exit 0
+          fi
+
+          node scripts/e2e/export-runtime-metrics.js \
+            --input "$PLAYWRIGHT_FILES,$CYPRESS_FILES" \
+            --output specs/201-e2e-playwright-risk-parity/artifacts/runtime-metrics.json \
+            --budget-ms-playwright 2100000 \
+            --budget-ms-cypress 3300000
+
+          node scripts/e2e/compare-e2e-results.js \
+            --playwright "$PLAYWRIGHT_FILES" \
+            --cypress "$CYPRESS_FILES" \
+            --parity-matrix specs/201-e2e-playwright-risk-parity/parity-matrix.csv \
+            --runtime-metrics specs/201-e2e-playwright-risk-parity/artifacts/runtime-metrics.json \
+            --output-json specs/201-e2e-playwright-risk-parity/artifacts/parity-report.json \
+            --output-md specs/201-e2e-playwright-risk-parity/artifacts/parity-report.md
+
+      - name: Upload parity report artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-parity-report-${{ steps.sha.outputs.sha }}
+          path: |
+            specs/201-e2e-playwright-risk-parity/artifacts/parity-report.md
+            specs/201-e2e-playwright-risk-parity/artifacts/parity-report.json
+            specs/201-e2e-playwright-risk-parity/artifacts/runtime-metrics.json
+          if-no-files-found: error
+          retention-days: 7

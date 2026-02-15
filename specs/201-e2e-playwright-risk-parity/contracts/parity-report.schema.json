@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openelis.org/specs/201-e2e-playwright-risk-parity/contracts/parity-report.schema.json",
+  "title": "E2E Parity Report",
+  "type": "object",
+  "required": [
+    "generatedAt",
+    "generatedBy",
+    "inputs",
+    "summary",
+    "scenarioComparisons"
+  ],
+  "properties": {
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "generatedBy": {
+      "type": "string"
+    },
+    "inputs": {
+      "type": "object",
+      "required": [
+        "parityMatrix",
+        "cypress",
+        "playwright",
+        "runtimeMetrics"
+      ],
+      "properties": {
+        "parityMatrix": {
+          "type": "string"
+        },
+        "cypress": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "playwright": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "runtimeMetrics": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "scenarios",
+        "divergent",
+        "missingInPlaywright",
+        "missingInCypress",
+        "failureClassCounts",
+        "byRiskTier"
+      ],
+      "properties": {
+        "scenarios": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "divergent": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingInPlaywright": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingInCypress": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failureClassCounts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "byRiskTier": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "total",
+              "divergent"
+            ],
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "divergent": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "scenarioComparisons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "scenarioId",
+          "riskTier",
+          "domain",
+          "legacySpec",
+          "playwrightSpec",
+          "parityStatusBaseline",
+          "cypressStatus",
+          "playwrightStatus",
+          "failureClass",
+          "isDivergent"
+        ],
+        "properties": {
+          "scenarioId": {
+            "type": "string"
+          },
+          "riskTier": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "legacySpec": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "playwrightSpec": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parityStatusBaseline": {
+            "type": "string"
+          },
+          "cypressStatus": {
+            "type": "string"
+          },
+          "playwrightStatus": {
+            "type": "string"
+          },
+          "cypressMessages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "playwrightMessages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "failureClass": {
+            "type": "string"
+          },
+          "isDivergent": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}

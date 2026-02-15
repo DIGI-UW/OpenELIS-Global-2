@@ -204,7 +204,25 @@ jobs:
             SPECS="${{ matrix.specs }}"
           fi
           echo "Running specs: $SPECS"
-          npx cypress run --browser chrome --headless --spec "$SPECS"
+          mkdir -p cypress/results
+
+          if [ -z "$SPECS" ]; then
+            echo "No specs assigned to shard ${{ matrix.shard }}."
+            node -e "const fs=require('fs');const p='cypress/results/cypress-normalized-${{ matrix.shard }}.json';fs.writeFileSync(p, JSON.stringify({generatedAt:new Date().toISOString(),generatedBy:'frontend-qa.yml:empty-shard',framework:'cypress',shard:'${{ matrix.shard }}',summary:{total:0,passed:0,failed:0,skipped:0,flaky:0,unknown:0,durationMs:0},tests:[]},null,2)+'\\n');"
+            exit 0
+          fi
+
+          set +e
+          npx cypress run --browser chrome --headless --reporter json --spec "$SPECS" > cypress/results/cypress-raw-${{ matrix.shard }}.json
+          CYPRESS_EXIT=$?
+          set -e
+
+          node ../scripts/e2e/export-cypress-results.js \
+            --input cypress/results/cypress-raw-${{ matrix.shard }}.json \
+            --output cypress/results/cypress-normalized-${{ matrix.shard }}.json \
+            --shard ${{ matrix.shard }}
+
+          exit $CYPRESS_EXIT
         working-directory: frontend
         env:
           E2E_FAIL_FAST: "true"
@@ -214,6 +232,24 @@ jobs:
           LANG: en_US.UTF-8
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS || 'adminADMIN!' }}
+
+      - name: Upload Cypress raw JSON (${{ matrix.shard }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-raw-json-${{ matrix.shard }}
+          path: frontend/cypress/results/cypress-raw-${{ matrix.shard }}.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload normalized Cypress results (${{ matrix.shard }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-normalized-${{ matrix.shard }}
+          path: frontend/cypress/results/cypress-normalized-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Upload Cypress screenshots (${{ matrix.shard }})
         if: always()

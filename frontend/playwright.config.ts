@@ -23,6 +23,7 @@ export default defineConfig({
   reporter: process.env.CI
     ? [
         ["github"],
+        ["blob", { outputDir: "blob-report" }],
         ["json", { outputFile: "playwright-report/results.json" }],
         ["html", { outputFolder: "playwright-report", open: "never" }],
       ]
