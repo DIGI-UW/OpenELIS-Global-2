@@ -9,13 +9,13 @@ LEG-CYP-007,P2,admin,cypress/e2e/AdminE2E/MenuConfig/globalMenuConfig.cy.js,play
 LEG-CYP-008,P2,admin,cypress/e2e/AdminE2E/MenuConfig/nonConformMenuConfig.cy.js,playwright/tests/admin-menu-nonconform.spec.ts,PARTIAL,NONE,qa-e2e,M9,NA,m2-baseline|migrated-menu-nonconform-2026-02-15
 LEG-CYP-009,P2,admin,cypress/e2e/AdminE2E/MenuConfig/patientMenuConfig.cy.js,playwright/tests/admin-menu-patient.spec.ts,PARTIAL,NONE,qa-e2e,M9,NA,m2-baseline|migrated-menu-patient-2026-02-15
 LEG-CYP-010,P2,admin,cypress/e2e/AdminE2E/MenuConfig/studyMenuConfig.cy.js,playwright/tests/admin-menu-study.spec.ts,PARTIAL,NONE,qa-e2e,M9,NA,m2-baseline|migrated-menu-study-2026-02-15
-LEG-CYP-011,P2,admin,cypress/e2e/AdminE2E/notifyUser.cy.js,playwright/tests/admin-notify-user.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M9,NA,m2-baseline
+LEG-CYP-011,P2,admin,cypress/e2e/AdminE2E/notifyUser.cy.js,playwright/tests/admin-notify-user.spec.ts,PARTIAL,NONE,qa-e2e,M9,NA,m2-baseline|migrated-notify-user-2026-02-15
 LEG-CYP-012,P0,admin,cypress/e2e/AdminE2E/organizationManagement.cy.js,playwright/tests/admin-organization-provider.spec.ts,PARTIAL,NONE,qa-e2e,M4b,NA,m2-baseline|T026_PASS_2026-02-14|m4b-impl
 LEG-CYP-013,P1,admin,cypress/e2e/AdminE2E/programEntry.cy.js,playwright/tests/admin-program-entry.spec.ts,PARTIAL,NONE,qa-e2e,M9,NA,m2-baseline|T026_PASS_2026-02-14|migrated-program-entry-2026-02-15
 LEG-CYP-014,P0,admin,cypress/e2e/AdminE2E/providerManagement.cy.js,playwright/tests/admin-organization-provider.spec.ts,PARTIAL,NONE,qa-e2e,M4b,NA,m2-baseline|T026_PASS_2026-02-14|m4b-impl
-LEG-CYP-015,P2,admin,cypress/e2e/AdminE2E/reflexTestsManagement.cy.js,playwright/tests/admin-reflex-tests.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M9,NA,m2-baseline
-LEG-CYP-016,P2,admin,cypress/e2e/AdminE2E/resultReportingConfig.cy.js,playwright/tests/admin-result-reporting-config.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M9,NA,m2-baseline
-LEG-CYP-017,P2,admin,cypress/e2e/AdminE2E/testManagement.cy.js,playwright/tests/admin-test-management.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M9,NA,m2-baseline
+LEG-CYP-015,P2,admin,cypress/e2e/AdminE2E/reflexTestsManagement.cy.js,playwright/tests/admin-reflex-tests.spec.ts,PARTIAL,NONE,qa-e2e,M9,NA,m2-baseline|migrated-reflex-tests-2026-02-15
+LEG-CYP-016,P2,admin,cypress/e2e/AdminE2E/resultReportingConfig.cy.js,playwright/tests/admin-result-reporting-config.spec.ts,PARTIAL,NONE,qa-e2e,M9,NA,m2-baseline|migrated-result-reporting-2026-02-15
+LEG-CYP-017,P2,admin,cypress/e2e/AdminE2E/testManagement.cy.js,playwright/tests/admin-test-management.spec.ts,PARTIAL,NONE,qa-e2e,M9,NA,m2-baseline|migrated-test-management-2026-02-15
 LEG-CYP-018,P0,admin,cypress/e2e/AdminE2E/userManagement.cy.js,playwright/tests/admin-user-management.spec.ts,PARTIAL,NONE,qa-e2e,M4b,NA,m2-baseline|T026_PASS_2026-02-14|m4b-impl
 LEG-CYP-019,P0,clinical,cypress/e2e/batchOrderEntry.cy.js,playwright/tests/clinical-patient-order.spec.ts,PARTIAL,NONE,qa-e2e,M5,NA,m2-baseline|T026_PASS_2026-02-14|m5-impl
 LEG-CYP-020,P1,core,cypress/e2e/dashboard.cy.js,playwright/tests/dashboard-smoke.spec.ts,PARTIAL,NONE,qa-e2e,M4a,NA,m2-baseline|T026_PASS_2026-02-14|m4a-impl
