@@ -36,10 +36,10 @@ LEG-CYP-034,P0,storage,cypress/e2e/storageBoxCRUD-integration.cy.js,playwright/t
 LEG-CYP-035,P0,storage,cypress/e2e/storageBoxCRUD.cy.js,playwright/tests/storage-box-crud-critical.spec.ts,PARTIAL,SKIP_HEAVY,qa-e2e,M6,RLY-003,m2-baseline|T026_PASS_2026-02-14|m6-impl
 LEG-CYP-036,P1,storage,cypress/e2e/storageDashboard.cy.js,playwright/tests/storage-dashboard.spec.ts,PARTIAL,NONE,qa-e2e,M6,NA,m2-baseline|T026_PASS_2026-02-14|migrated-storage-dashboard-2026-02-15
 LEG-CYP-037,P1,storage,cypress/e2e/storageDashboardMetrics.cy.js,playwright/tests/storage-dashboard-metrics.spec.ts,PARTIAL,NONE,qa-e2e,M6,NA,m2-baseline|T026_PASS_2026-02-14|migrated-storage-dashboard-metrics-2026-02-15
-LEG-CYP-038,P1,storage,cypress/e2e/storageDisposal.cy.js,playwright/tests/storage-disposal.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M6,NA,m2-baseline|T026_PASS_2026-02-14
+LEG-CYP-038,P1,storage,cypress/e2e/storageDisposal.cy.js,playwright/tests/storage-disposal.spec.ts,PARTIAL,NONE,qa-e2e,M6,NA,m2-baseline|T026_PASS_2026-02-14|migrated-storage-disposal-2026-02-15
 LEG-CYP-039,P1,storage,cypress/e2e/storageFilters.cy.js,playwright/tests/storage-filters.spec.ts,PARTIAL,NONE,qa-e2e,M6,NA,m2-baseline|T026_PASS_2026-02-14|migrated-storage-filters-2026-02-15
 LEG-CYP-040,P0,storage,cypress/e2e/storageLocationCRUD-integration.cy.js,playwright/tests/storage-view-edit-critical.spec.ts,PARTIAL,NONE,qa-e2e,M6,NA,m2-baseline|T026_PASS_2026-02-14|m6-impl
-LEG-CYP-041,P1,storage,cypress/e2e/storageLocationCRUD-smoke.cy.js,playwright/tests/storage-location-smoke.spec.ts,LEGACY_ONLY,NONE,qa-e2e,M6,NA,m2-baseline|T026_PASS_2026-02-14
+LEG-CYP-041,P1,storage,cypress/e2e/storageLocationCRUD-smoke.cy.js,playwright/tests/storage-location-smoke.spec.ts,PARTIAL,NONE,qa-e2e,M6,NA,m2-baseline|T026_PASS_2026-02-14|migrated-storage-location-smoke-2026-02-15
 LEG-CYP-042,P0,storage,cypress/e2e/storageLocationCRUD.cy.js,playwright/tests/storage-view-edit-critical.spec.ts,PARTIAL,SKIP_HEAVY,qa-e2e,M6,RLY-004,m2-baseline|T026_PASS_2026-02-14|m6-impl
 LEG-CYP-043,P1,storage,cypress/e2e/storageLocationExpandableRows.cy.js,playwright/tests/storage-location-expandable.spec.ts,PARTIAL,NONE,qa-e2e,M6,NA,m2-baseline|T026_PASS_2026-02-14|migrated-storage-expandable-2026-02-15
 LEG-CYP-044,P1,storage,cypress/e2e/storageSamplesTable.cy.js,playwright/tests/storage-samples-visibility.spec.ts,PARTIAL,NO_ACTIVE_LEGACY,qa-e2e,M6,RLY-006,m2-baseline|T026_PASS_2026-02-14|m6-impl
