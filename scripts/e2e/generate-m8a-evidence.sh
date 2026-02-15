@@ -63,10 +63,23 @@ mkdir -p "${TMP_ROOT}/cypress" "${TMP_ROOT}/playwright" "${ARTIFACT_DIR}"
 rm -rf "${TMP_ROOT}/cypress"/* "${TMP_ROOT}/playwright"/*
 
 echo "Downloading Cypress artifacts from run ${CYPRESS_RUN_ID}..."
+set +e
 gh run download "${CYPRESS_RUN_ID}" --dir "${TMP_ROOT}/cypress"
+CYPRESS_DOWNLOAD_EXIT=$?
+set -e
 
 echo "Downloading Playwright artifacts from run ${PLAYWRIGHT_RUN_ID}..."
+set +e
 gh run download "${PLAYWRIGHT_RUN_ID}" --dir "${TMP_ROOT}/playwright"
+PLAYWRIGHT_DOWNLOAD_EXIT=$?
+set -e
+
+if [[ ${CYPRESS_DOWNLOAD_EXIT} -ne 0 ]]; then
+  echo "Warning: unable to download Cypress artifacts for run ${CYPRESS_RUN_ID}."
+fi
+if [[ ${PLAYWRIGHT_DOWNLOAD_EXIT} -ne 0 ]]; then
+  echo "Warning: unable to download Playwright artifacts for run ${PLAYWRIGHT_RUN_ID}."
+fi
 
 PLAYWRIGHT_FILES="$(
   find "${TMP_ROOT}/playwright" -type f -name "playwright-normalized-*.json" | sort | paste -sd, -
