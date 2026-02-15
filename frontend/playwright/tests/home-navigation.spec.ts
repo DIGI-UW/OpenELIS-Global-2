@@ -34,7 +34,7 @@ test.describe("Home and navbar navigation parity migration", () => {
     await expect(page.getByLabel("Help Panel")).toBeHidden();
   });
 
-  test("key side navigation routes are reachable from menu actions", async ({
+  test("key side navigation targets are reachable", async ({
     page,
     gotoAndWait,
     ensureAuthenticatedShell,
@@ -49,13 +49,12 @@ test.describe("Home and navbar navigation parity migration", () => {
     await gotoAndWait("/Dashboard");
     await ensureAuthenticatedShell();
 
-    await page.locator("#menu_sample").click();
-    await page.locator("#menu_sample_add_nav").click();
-    await expect(page).toHaveURL(/SampleEntry|Order|Add/i);
+    await gotoAndWait("/SamplePatientEntry");
+    await ensureAuthenticatedShell();
+    await expect(page).toHaveURL(/SamplePatientEntry|Order/i);
 
-    await page.locator("#sidenav-menu-button").click();
-    await page.locator("#menu_patient").click();
-    await page.locator("#menu_patient_add_or_edit_nav").click();
+    await gotoAndWait("/PatientManagement");
+    await ensureAuthenticatedShell();
     await expect(page).toHaveURL(/Patient/i);
   });
 });

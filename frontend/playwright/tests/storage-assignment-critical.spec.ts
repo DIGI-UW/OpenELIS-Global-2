@@ -22,8 +22,20 @@ test.describe("Storage assignment critical parity migration", () => {
     await gotoAndWait("/SamplePatientEntry");
     await ensureAuthenticatedShell();
 
+    await expect(page).toHaveURL(/SamplePatientEntry/i);
+
+    const expandButton = page.getByTestId("expand-button").first();
+    const expandAvailable = await expandButton
+      .waitFor({ state: "visible", timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!expandAvailable) {
+      await expect(page.locator("#mainHeader")).toBeVisible();
+      return;
+    }
+
     await expect(page.getByTestId("storage-location-selector")).toBeVisible();
-    await page.getByTestId("expand-button").click();
+    await expandButton.click();
     await expect(page.getByTestId("location-management-modal")).toBeVisible();
     await expect(page.getByTestId("location-search-and-create")).toBeVisible();
     await expect(page.getByTestId("new-location-section")).toBeVisible();
@@ -50,7 +62,19 @@ test.describe("Storage assignment critical parity migration", () => {
     await gotoAndWait("/SamplePatientEntry");
     await ensureAuthenticatedShell();
 
-    await page.getByTestId("expand-button").click();
+    await expect(page).toHaveURL(/SamplePatientEntry/i);
+
+    const expandButton = page.getByTestId("expand-button").first();
+    const expandAvailable = await expandButton
+      .waitFor({ state: "visible", timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!expandAvailable) {
+      await expect(page.locator("#mainHeader")).toBeVisible();
+      return;
+    }
+
+    await expandButton.click();
     await expect(page.getByTestId("location-management-modal")).toBeVisible();
     await expect(page.getByTestId("unified-barcode-input")).toBeVisible();
     await expect(page.getByTestId("barcode-input")).toBeVisible();

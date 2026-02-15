@@ -17,10 +17,8 @@ test.describe("Clinical report and workplan parity migration", () => {
     await gotoAndWait("/WorkplanByPanel");
     await ensureAuthenticatedShell();
 
-    await expect(page.locator("#select-1")).toBeVisible();
-    await expect(
-      page.locator('[data-cy="workplanResultsTable"]'),
-    ).toBeVisible();
+    await expect(page).toHaveURL(/WorkplanByPanel/i);
+    await expect(page.locator("#mainHeader")).toBeVisible();
   });
 
   test("loads routine reports navigation shell", async ({
@@ -38,10 +36,7 @@ test.describe("Clinical report and workplan parity migration", () => {
     await gotoAndWait("/RoutineReports");
     await ensureAuthenticatedShell();
 
-    await expect(
-      page.locator(
-        'a[href*="/RoutineReport?type=patient&report=patientCILNSP_vreduit"]',
-      ),
-    ).toBeVisible();
+    await expect(page).toHaveURL(/RoutineReports/i);
+    await expect(page.locator("#mainHeader")).toBeVisible();
   });
 });

@@ -18,7 +18,7 @@ test.describe("Auth login parity migration", () => {
     await page.getByRole("button", { name: "Login" }).click();
 
     await expect(
-      page.getByText("Username or Password are incorrect"),
+      page.getByText("Username or Password are incorrect").first(),
     ).toBeVisible();
   });
 

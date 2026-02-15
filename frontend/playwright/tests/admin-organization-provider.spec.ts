@@ -50,9 +50,9 @@ test.describe("Admin organization and provider parity migration", () => {
       page.getByRole("heading", { name: "Provider Management" }),
     ).toBeVisible();
 
-    await page.locator('[data-cy="add-Button"]').click();
-    await expect(page.locator("#lastName")).toBeVisible();
-    await expect(page.locator("#firstName")).toBeVisible();
-    await page.getByRole("button", { name: "Cancel" }).click();
+    await page.locator('[data-cy="add-Button"]').first().click();
+    await expect(page.locator("#lastName").first()).toBeVisible();
+    await expect(page.locator("#firstName").first()).toBeVisible();
+    await page.getByRole("button", { name: "Cancel" }).first().click();
   });
 });

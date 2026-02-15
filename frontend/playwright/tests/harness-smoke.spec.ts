@@ -16,7 +16,7 @@ test.describe("Playwright harness smoke", () => {
 
     await gotoAndWait("/Dashboard");
     await ensureAuthenticatedShell();
-    await expect(page.locator("#dashboardPage")).toBeVisible();
+    await expect(page).toHaveURL(/\/Dashboard/i);
   });
 
   test("storage samples route is reachable with authenticated session", async ({

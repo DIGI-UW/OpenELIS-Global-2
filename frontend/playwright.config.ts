@@ -17,7 +17,7 @@ export default defineConfig({
 
   // Timeouts
   timeout: 30_000,
-  expect: { timeout: 5_000 },
+  expect: { timeout: 10_000 },
 
   // Reporting
   reporter: process.env.CI

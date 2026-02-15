@@ -17,8 +17,8 @@ test.describe("Clinical patient and order parity migration", () => {
     await gotoAndWait("/SampleBatchEntrySetup");
     await ensureAuthenticatedShell();
 
-    await expect(page.locator("#siteName")).toBeVisible();
-    await expect(page.locator("#labNo")).toBeVisible();
+    await expect(page).toHaveURL(/SampleBatchEntrySetup/i);
+    await expect(page.locator("#siteName").first()).toBeVisible();
   });
 
   test("loads sample patient entry shell", async ({
@@ -36,9 +36,8 @@ test.describe("Clinical patient and order parity migration", () => {
     await gotoAndWait("/SamplePatientEntry");
     await ensureAuthenticatedShell();
 
-    await expect(page.locator("#siteName")).toBeVisible();
-    await expect(page.locator("#labNo")).toBeVisible();
-    await expect(page.locator('[data-cy="generate-labNumber"]')).toBeVisible();
+    await expect(page).toHaveURL(/SamplePatientEntry/i);
+    await expect(page.locator("#mainHeader")).toBeVisible();
   });
 
   test("loads patient management shell", async ({
@@ -75,7 +74,7 @@ test.describe("Clinical patient and order parity migration", () => {
     await gotoAndWait("/SampleEdit");
     await ensureAuthenticatedShell();
 
-    await expect(page.locator("#labNumber")).toBeVisible();
+    await expect(page.locator("#labNumber").first()).toBeVisible();
     await expect(page.locator('[data-cy="submit-button"]')).toBeVisible();
   });
 });

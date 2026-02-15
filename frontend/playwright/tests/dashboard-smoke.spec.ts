@@ -17,7 +17,7 @@ test.describe("Dashboard critical navigation smoke", () => {
     await gotoAndWait("/Dashboard");
     await ensureAuthenticatedShell();
 
-    await expect(page.locator("#maximizeIcon")).toBeVisible();
+    await expect(page.locator("#maximizeIcon").first()).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Ready For Validation" }),
     ).toBeVisible();
