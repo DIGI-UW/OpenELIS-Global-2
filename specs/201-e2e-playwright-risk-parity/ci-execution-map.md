@@ -98,9 +98,10 @@ Current resolved set:
 
 ### Job Structure
 
-| Job                | Command           | Scope                                                             |
-| ------------------ | ----------------- | ----------------------------------------------------------------- |
-| `playwright-tests` | `npm run pw:test` | Executes Playwright projects from `frontend/playwright.config.ts` |
+| Job                | Command                          | Scope                                                                               |
+| ------------------ | -------------------------------- | ----------------------------------------------------------------------------------- |
+| `playwright-tests` | `npm run pw:test -- --shard=x/3` | Executes Playwright projects from `frontend/playwright.config.ts` via matrix shards |
+| `playwright-e2e`   | fan-in result check              | Consolidates shard outcome into stable branch-protection check                      |
 
 ### Project -> Spec Mapping
 
@@ -112,7 +113,6 @@ Current resolved set:
 ## Notes for Migration Planning
 
 - Cypress CI currently runs via matrix sharding plus a dynamic catch-all shard.
-- Playwright CI currently runs as a single job with project-level setup/auth
-  dependency.
+- Playwright CI runs as matrix shards (`1/3`, `2/3`, `3/3`) plus fan-in check.
 - For parity work, this mapping can be used to identify where migrated specs
   should be added and where legacy comparisons are still executed.

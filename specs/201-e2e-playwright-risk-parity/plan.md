@@ -1,4 +1,4 @@
-# Implementation Plan: E2E Test Battery Revamp to Playwright with Risk-Based Parity
+# Implementation Plan: Full E2E Migration to Playwright with Fixture Refactor
 
 **Branch**: `201-e2e-playwright-risk-parity` | **Date**: 2026-02-14 | **Spec**:
 [spec.md](spec.md)  
@@ -7,18 +7,18 @@
 
 ## Summary
 
-Migrate E2E testing to Playwright as the **primary** framework using
-**risk-based parity** with legacy Cypress while preserving full Cypress
-execution for comparison. Implementation will proceed through **bite-size,
-testable milestones** that each deliver reviewable artifacts, passing checks,
-and clear go/no-go criteria.
+Migrate E2E testing to Playwright as the **final** framework using **risk-based
+parity** plus fixture/data refactoring so migration is complete and stable.
+Implementation proceeds through **bite-size, testable milestones** that deliver
+reviewable artifacts, passing checks, and clear go/no-go criteria.
 
 This plan explicitly includes:
 
 1. Evidence-first inventory and parity mapping
 2. Critical gap closure (not just parity by count)
-3. Big-bang primary-framework cutover
-4. Ongoing full Cypress execution (no decommission in this feature)
+3. Unified fixture/data management refactor for deterministic E2E
+4. Big-bang primary-framework cutover
+5. Controlled Cypress decommission from required gate checks
 
 ## Milestone Sizing Policy (Bite-Size Rule)
 
@@ -42,10 +42,10 @@ suite)
 **Project Type**: Web application (React frontend + Java backend)  
 **Performance Goals**: Keep CI E2E wall-clock reasonable while running dual
 suites; maintain deterministic results in critical paths  
-**Constraints**: No Cypress removal in this feature; maintain dual-run
-comparability; preserve constitutional E2E workflow  
+**Constraints**: Maintain dual-run comparability during migration window; keep
+constitutional E2E workflow; enforce deterministic fixture behavior  
 **Scale/Scope**: Full Cypress inventory, P0/P1 parity and critical gap closure,
-CI cutover with side-by-side execution
+CI cutover, stabilization, and Cypress gate retirement
 
 ## Constitution Check
 
@@ -72,8 +72,8 @@ Verify compliance with
 - Full-suite pre-push validation remains mandatory and must run both frameworks:
   - `cd frontend && npm run pw:test`
   - `cd frontend && npm run cy:failfast`
-- Playwright is preferred for new development; Cypress remains valid legacy
-  suite
+- Playwright is preferred for new development and final signoff
+- Cypress remains valid only during migration/comparison window
 
 ## Milestone Plan
 
@@ -81,18 +81,19 @@ _GATE: Feature spans >3 days; milestone breakdown required._
 
 ### Milestone Table
 
-| ID      | Branch Suffix    | Scope (Bite-Size)                                             | User Stories  | Verification Gate                                                | Depends On |
-| ------- | ---------------- | ------------------------------------------------------------- | ------------- | ---------------------------------------------------------------- | ---------- |
-| M1      | m1-inventory     | Authoritative inventory artifacts from current Cypress/PW     | US1           | Inventory files generated; 100% active specs accounted for       | -          |
-| M2      | m2-risk-model    | Risk rubric + scenario tiering (P0/P1/P2) + parity map shell  | US1, US2      | All P0/P1 legacy scenarios mapped to parity records              | M1         |
-| M3      | m3-pw-foundation | Stabilize Playwright harness/fixtures/reporting for migration | US2           | Existing PW suite green locally/CI; reusable fixtures in place   | M2         |
-| [P] M4a | m4a-core-authnav | Migrate P0 auth/nav core scenarios to Playwright              | US2, US3      | New PW tests pass + linked parity entries for migrated scenarios | M3         |
-| [P] M4b | m4b-core-admin   | Migrate P0 admin-critical scenarios to Playwright             | US2, US3      | New PW tests pass + linked parity entries for migrated scenarios | M3         |
-| M5      | m5-core-clinical | Migrate P0 patient/order/result/report scenarios              | US2, US3      | P0 clinical scenarios passing in PW with parity evidence         | M4a, M4b   |
-| M6      | m6-storage-gaps  | Close critical storage/skip gaps in Playwright                | US3           | Previously critical skipped/partial legacy cases covered in PW   | M5         |
-| M7      | m7-parity-ci     | Dual-run Parity Report pipeline (PW + full Cypress)           | US2, US4, US5 | CI emits classified parity report + runtime metrics              | M6         |
-| M8      | m8-bigbang       | Big-bang cutover: Playwright primary gate, Cypress comparison | US4, US5      | Playwright primary check active; full Cypress still runs         | M7         |
-| M9      | m9-stabilization | Stabilization window + unresolved divergence triage packet    | US4, US5      | No untriaged P0/P1 divergences during agreed window              | M8         |
+| ID      | Branch Suffix    | Scope (Bite-Size)                                               | User Stories | Verification Gate                                                 | Depends On |
+| ------- | ---------------- | --------------------------------------------------------------- | ------------ | ----------------------------------------------------------------- | ---------- |
+| M1      | m1-inventory     | Authoritative inventory artifacts from current Cypress/PW       | US1          | Inventory files generated; 100% active specs accounted for        | -          |
+| M2      | m2-risk-model    | Risk rubric + scenario tiering (P0/P1/P2) + parity map shell    | US1, US2     | All P0/P1 legacy scenarios mapped to parity records               | M1         |
+| M3      | m3-pw-foundation | Stabilize Playwright harness + unified fixture contract         | US2          | Existing PW suite green locally/CI; reusable fixtures in place    | M2         |
+| [P] M4a | m4a-core-authnav | Migrate P0 auth/nav core scenarios to Playwright                | US2, US3     | New PW tests pass + linked parity entries for migrated scenarios  | M3         |
+| [P] M4b | m4b-core-admin   | Migrate P0 admin-critical scenarios to Playwright               | US2, US3     | New PW tests pass + linked parity entries for migrated scenarios  | M3         |
+| M5      | m5-core-clinical | Migrate P0 patient/order/result/report scenarios                | US2, US3     | P0 clinical scenarios passing in PW with parity evidence          | M4a, M4b   |
+| M6      | m6-storage-gaps  | Close critical storage/skip gaps in Playwright                  | US3          | Previously critical skipped/partial legacy cases covered in PW    | M5         |
+| M7      | m7-parity-ci     | Dual-run parity CI + merged shard reporting + runtime budgets   | US2, US4     | CI emits classified parity report + merged artifacts + budgets    | M6         |
+| M8      | m8-bigbang       | Big-bang cutover: Playwright primary, Cypress temporary compare | US4          | Playwright primary check active; Cypress comparison window active | M7         |
+| M9      | m9-stabilization | Stabilization + full-parity closure packet                      | US3, US4     | No untriaged P0/P1 divergence; parity closure targets satisfied   | M8         |
+| M10     | m10-cy-retire    | Cypress gate retirement + archival handoff                      | US4          | Cypress removed from required checks per approved policy          | M9         |
 
 ### Milestone Dependency Graph
 
@@ -108,6 +109,7 @@ graph LR
     M6 --> M7[M7 Parity CI]
     M7 --> M8[M8 Big-Bang Cutover]
     M8 --> M9[M9 Stabilization]
+    M9 --> M10[M10 Cypress Gate Retirement]
 ```
 
 ### PR Strategy
@@ -148,6 +150,7 @@ graph LR
 **Deliverables**
 
 - Reusable auth/session fixture strategy
+- Unified fixture contract for Cypress-to-Playwright migration window
 - Common page objects/fixtures conventions
 - Reporting conventions for parity evidence
 
@@ -190,40 +193,42 @@ graph LR
 - Critical storage gap list reduced to zero open P0/P1 entries (or approved
   exception records)
 
-### M7 - Dual-Run Parity CI (US2, US4, US5)
+### M7 - Dual-Run Parity CI (US2, US4)
 
 **Deliverables**
 
-- CI Parity Report output (Playwright + full Cypress normalized results)
+- CI Parity Report output (Playwright + Cypress normalized results)
 - Divergence report with risk labels, scenario links, and failure classification
 - Per-run runtime metrics for both suites versus runtime budget
+- Merged Playwright shard artifacts (blob merge -> single report)
 
 **Testable Gate**
 
 - CI emits Parity Report artifact on every run
 - Every divergence includes `failure_class` (setup/infra, assertion, parity)
 - Runtime metrics are captured and compared to the agreed runtime budget
+- Sharded Playwright output is merged and reviewable as a single artifact
 
-### M8 - Big-Bang Cutover (US4, US5)
+### M8 - Big-Bang Cutover (US4)
 
 **Deliverables**
 
 - Playwright configured as primary E2E gate
-- Cypress full suite still configured and executed for comparison
+- Cypress full suite still configured and executed for temporary comparison
 
 **Testable Gate**
 
 - Branch protection/check naming reflects Playwright primary
-- Cypress jobs remain green/visible and non-removed
+- Cypress jobs remain visible during agreed transition window
 - Required check policy is verified via `gh` output and recorded in signoff docs
 
-### M9 - Stabilization + Decision Packet (US4, US5)
+### M9 - Stabilization + Full-Migration Decision Packet (US3, US4)
 
 **Deliverables**
 
 - Time-boxed stabilization report
 - Final parity and divergence status summary
-- Explicit statement: Cypress retained; no retirement scope in this feature
+- Explicit migration closure statement and Cypress retirement readiness decision
 
 **Testable Gate**
 
@@ -233,6 +238,20 @@ graph LR
 - Dual-run execution remains within runtime budget for >=90% of stabilization
   runs
 - Signoff report accepted by stakeholders
+
+### M10 - Cypress Gate Retirement + Archival Handoff (US4)
+
+**Deliverables**
+
+- Required-check policy updated to Playwright-only E2E gate
+- Cypress comparison mode switched to non-required/archival policy
+- Archived legacy evidence index (run links, known caveats, retention target)
+
+**Testable Gate**
+
+- `gh` evidence confirms Cypress is no longer required for merge
+- Playwright remains green and required
+- Legacy artifacts remain discoverable per retention policy
 
 ## Project Structure
 
@@ -256,7 +275,7 @@ frontend/
 │   ├── tests/           # migrated scenarios
 │   └── fixtures/        # shared fixtures/page objects
 ├── cypress/
-│   └── e2e/             # retained for comparison in this feature
+│   └── e2e/             # retained during migration/comparison window
 ├── playwright.config.ts
 └── package.json
 
@@ -265,8 +284,9 @@ frontend/
 └── frontend-qa.yml
 ```
 
-**Structure Decision**: Keep both frameworks active; progressively migrate
-scenario ownership to Playwright while preserving Cypress execution and assets.
+**Structure Decision**: Keep both frameworks active during migration and
+stabilization; complete feature with Playwright-only required gate and Cypress
+archival mode.
 
 ## Testing Strategy
 
@@ -282,6 +302,7 @@ scenario ownership to Playwright while preserving Cypress execution and assets.
   over 20 CI-equivalent runs
 - **Runtime Budget**: Dual-run wall-clock remains within agreed budget for >=90%
   of stabilization runs
+- **Migration Completion**: P0 all `PASS`; P1 all `PASS` or approved exceptions
 
 ### Test Types
 
@@ -291,9 +312,10 @@ scenario ownership to Playwright while preserving Cypress execution and assets.
 
 ### Test Data Management
 
-- Reuse existing fixture loaders and environment setup scripts
+- Reuse and normalize existing fixture loaders into a single contract
 - Prefer deterministic API/fixture-backed setup for migration scenarios
 - Maintain real E2E semantics for tests labeled as E2E
+- Require explicit separation of baseline fixtures vs test-created data
 
 ### Mandatory Pre-Push Validation (Constitution V.5)
 
@@ -310,8 +332,8 @@ scenario ownership to Playwright while preserving Cypress execution and assets.
       execution)
 - [ ] **M7**: dual-run parity report artifact generated in CI (pending
       implementation)
-- [ ] **M8-M9**: big-bang cutover + stabilization gates satisfied (pending M7
-      through M9 completion)
+- [ ] **M8-M10**: cutover, stabilization, and Cypress retirement gates satisfied
+      (pending M7 through M10 completion)
 
 ## Risks & Mitigations
 
@@ -321,9 +343,11 @@ scenario ownership to Playwright while preserving Cypress execution and assets.
 | CI runtime increase during dual-run window | Medium | Maintain shard strategy and fail-fast where appropriate                    |
 | Divergence noise obscures true regressions | High   | Risk-tiered reporting with owner assignment and triage SLA                 |
 | Migration stalls on large monolithic specs | Medium | Bite-size milestone slicing + P0-first decomposition before long-tail work |
+| Fixture drift causes flaky parity signals  | High   | Enforce unified fixture contract, reset/load/verify workflow, and evidence |
+| Scope ambiguity on Cypress end-state       | Medium | Time-box dual-run, define explicit retirement gate and retention policy    |
 
 ## Next Steps
 
-1. Use `/speckit.tasks` to generate milestone-ordered implementation tasks
-2. Start with M1 inventory artifact generation
+1. Regenerate `/speckit.tasks` from this updated clarify scope
+2. Prioritize fixture contract hardening and parity closure over net-new breadth
 3. Enforce milestone gate checks before entering each subsequent milestone

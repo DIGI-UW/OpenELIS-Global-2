@@ -4,6 +4,12 @@
 **Input**: Design documents from `/specs/201-e2e-playwright-risk-parity/`  
 **Prerequisites**: `spec.md` and `plan.md` (present)
 
+> **Scope Update (2026-02-15, `/speckit.clarify`)**: Feature goal is now full
+> migration + full E2E battery refactor (including fixture/data stabilization
+> and Cypress gate retirement). Existing tasks in this file are retained as the
+> executed migration log for M1-M9 planning baseline; task regeneration is
+> required to add/align post-clarify milestones (including M10).
+
 **Tests**: Mandatory. This feature is itself E2E-focused; milestones include
 test artifacts, parity validation checks, and CI comparison verification.
 
@@ -20,18 +26,18 @@ bite-size PRs and explicit verification gates.
 
 ## Milestone to Story Mapping
 
-| Milestone | Primary Stories | Scope                                                   |
-| --------- | --------------- | ------------------------------------------------------- |
-| M1        | US1             | Coverage inventory and CI execution map                 |
-| M2        | US1, US2        | Risk model + parity map skeleton                        |
-| M3        | US2             | Playwright migration foundation hardening               |
-| M4a       | US2, US3        | P0 auth/nav Playwright migration                        |
-| M4b       | US2, US3        | P0 admin-core Playwright migration                      |
-| M5        | US2, US3        | P0 clinical workflow migration                          |
-| M6        | US3             | Critical storage gap closure                            |
-| M7        | US2, US4, US5   | Dual-run CI parity report pipeline                      |
-| M8        | US4, US5        | Big-bang cutover (Playwright primary, Cypress retained) |
-| M9        | US4, US5        | Stabilization and signoff packet                        |
+| Milestone | Primary Stories | Scope                                                            |
+| --------- | --------------- | ---------------------------------------------------------------- |
+| M1        | US1             | Coverage inventory and CI execution map                          |
+| M2        | US1, US2        | Risk model + parity map skeleton                                 |
+| M3        | US2             | Playwright migration foundation hardening                        |
+| M4a       | US2, US3        | P0 auth/nav Playwright migration                                 |
+| M4b       | US2, US3        | P0 admin-core Playwright migration                               |
+| M5        | US2, US3        | P0 clinical workflow migration                                   |
+| M6        | US3             | Critical storage gap closure                                     |
+| M7        | US2, US4        | Dual-run CI parity report pipeline                               |
+| M8        | US4             | Big-bang cutover (Playwright primary, Cypress transition window) |
+| M9        | US3, US4        | Stabilization and migration signoff packet                       |
 
 ---
 
@@ -307,8 +313,8 @@ comparison.
       assignment
 - [ ] T144 [M9] Create final signoff summary
       `specs/201-e2e-playwright-risk-parity/signoff-summary.md`
-- [ ] T145 [M9] Confirm explicit scope statement: Cypress retained; no
-      retirement milestone
+- [ ] T145 [M9] Confirm explicit migration closure statement and Cypress
+      retirement readiness in
       `specs/201-e2e-playwright-risk-parity/signoff-summary.md`
 - [ ] T146 [M9] Milestone gate: no untriaged P0/P1 divergences at end of
       stabilization window

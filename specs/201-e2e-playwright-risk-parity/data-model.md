@@ -38,18 +38,19 @@ Characteristics:
 
 ### P2 (Long Tail)
 
-Lower-impact or specialized flows suitable for deferred migration tracking.
+Lower-impact or specialized flows that may be sequenced later than P0/P1.
 
 Characteristics:
 
 - Limited blast radius.
-- Can remain as documented backlog while Cypress comparison continues.
+- May be deferred only with explicit milestone assignment or approved exception.
 
 ## Parity Status Values
 
 - `LEGACY_ONLY`: Legacy scenario exists; no Playwright parity yet.
 - `GAP`: Coverage gap exists (e.g., mostly skipped/inactive legacy scenario).
-- `PARTIAL`: Initial migration exists but parity incomplete.
+- `PARTIAL`: Initial migration exists but parity incomplete (not acceptable as
+  final status for P0 at signoff).
 - `PASS`: Scenario migrated and parity-verified.
 - `EXCEPTION_APPROVED`: Exception documented and accepted.
 
@@ -66,7 +67,8 @@ Characteristics:
 - `owner` identifies accountable team role (`qa-e2e` at baseline).
 - `milestone_target` aligns migration with plan milestones:
   - `M4a`, `M4b`, `M5`, `M6` for migration waves
-  - `M9` for deferred/long-tail stabilization tracking
+  - `M9` for stabilization/parity closure
+  - `M10` for final Cypress gate retirement/archival handoff
 
 ## Reliability Tracking
 
