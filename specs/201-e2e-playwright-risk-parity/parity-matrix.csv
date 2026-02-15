@@ -27,7 +27,7 @@ LEG-CYP-025,P0,clinical,cypress/e2e/modifyOrder.cy.js,playwright/tests/clinical-
 LEG-CYP-026,P0,clinical,cypress/e2e/nonConform.cy.js,playwright/tests/clinical-nonconform.spec.ts,PARTIAL,NONE,qa-e2e,M5,NA,m2-baseline|T026_PASS_2026-02-14|m5-impl
 LEG-CYP-027,P0,clinical,cypress/e2e/orderEntity.cy.js,playwright/tests/clinical-patient-order.spec.ts,PARTIAL,NONE,qa-e2e,M5,NA,m2-baseline|T026_PASS_2026-02-14|m5-impl
 LEG-CYP-028,P0,clinical,cypress/e2e/patientEntry.cy.js,playwright/tests/clinical-patient-order.spec.ts,PARTIAL,NONE,qa-e2e,M5,NA,m2-baseline|T026_PASS_2026-02-14|m5-impl
-LEG-CYP-029,P1,clinical,cypress/e2e/patientMerge.cy.js,playwright/tests/patient-merge.spec.ts,LEGACY_ONLY,ASSERTION_REVIEW,qa-e2e,M9,NA,m2-baseline|T026_PASS_2026-02-14
+LEG-CYP-029,P1,clinical,cypress/e2e/patientMerge.cy.js,playwright/tests/patient-merge.spec.ts,PARTIAL,ASSERTION_REVIEW,qa-e2e,M9,NA,m2-baseline|T026_PASS_2026-02-14|migrated-patient-merge-2026-02-15
 LEG-CYP-030,P0,clinical,cypress/e2e/report.cy.js,playwright/tests/clinical-report-workplan.spec.ts,PARTIAL,NONE,qa-e2e,M5,NA,m2-baseline|T026_PASS_2026-02-14|m5-impl
 LEG-CYP-031,P0,clinical,cypress/e2e/result.cy.js,playwright/tests/clinical-result-validation.spec.ts,PARTIAL,NONE,qa-e2e,M5,NA,m2-baseline|T026_PASS_2026-02-14|m5-impl
 LEG-CYP-032,P1,core,cypress/e2e/siteBranding.cy.js,playwright/tests/site-branding.spec.ts,PARTIAL,NONE,qa-e2e,M9,RLY-007,m2-baseline|T026_PASS_2026-02-14|migrated-site-branding-2026-02-15
