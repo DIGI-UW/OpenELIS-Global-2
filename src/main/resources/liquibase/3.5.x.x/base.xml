@@ -80,4 +80,11 @@
 
     <!-- M13: Backfill historical data from history table to notebook_audit -->
 
+    <!-- ======================================================== -->
+    <!-- Electronic Signature (21 CFR Part 11 Compliance)         -->
+    <!-- Legally-binding signatures for result entry/validation   -->
+    <!-- ======================================================== -->
+
+    <include file="liquibase/3.5.x.x/029-electronic-signature.xml"/>
+
 </databaseChangeLog>

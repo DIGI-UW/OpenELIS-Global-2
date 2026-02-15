@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Grid,
   Column,
   Button,
   TextInput,
   TextArea,
-  Dropdown,
   Select,
   SelectItem,
   DatePicker,
@@ -33,6 +32,13 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * PharmaceuticalTestingPage - Page 4: Assay & Test Execution
@@ -73,31 +79,69 @@ function PharmaceuticalTestingPage({
   const [reagents, setReagents] = useState([]);
   const [loadingReagents, setLoadingReagents] = useState(false);
 
-  // Assay recording modal state
-  const [showAssayModal, setShowAssayModal] = useState(false);
-  const [assayData, setAssayData] = useState({
+  // Test Execution modal state (Phase 1)
+  const [showExecutionModal, setShowExecutionModal] = useState(false);
+  const [testExecutionData, setTestExecutionData] = useState({
     assayCategory: "",
     testType: "",
     operator: "",
-    results: "",
-    notes: "",
     performedDate: new Date().toISOString().split("T")[0],
-    // Instruments and reagents used for testing
-    selectedInstruments: [],
-    selectedReagents: [],
+    instrumentsUsed: [],
+    reagentsUsed: [],
     // QC fields
-    positiveControlResult: "",
-    negativeControlResult: "",
-    internalStandardUsed: false,
-    replicateCount: 2,
-    acceptanceCriteria: "",
-    rsdValue: "",
+    qcData: {
+      positiveControlResult: "",
+      negativeControlResult: "",
+      internalStandardUsed: false,
+      replicateCount: 2,
+      acceptanceCriteria: "",
+      rsdValue: "",
+    },
     // Deviation fields
     hasDeviation: false,
-    deviationDescription: "",
-    rootCause: "",
-    capaAction: "",
+    deviation: null,
   });
+
+  // Result Entry modal state (Phase 2 - Universal Structure)
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [testResultData, setTestResultData] = useState({
+    value: "",
+    unit: "",
+    outcome: "", // PASS | FAIL | INCONCLUSIVE
+    notes: "",
+    recordedBy: "",
+  });
+
+  // Outcome options for result entry
+  const outcomeOptions = [
+    { id: "PASS", text: "Pass" },
+    { id: "FAIL", text: "Fail" },
+    { id: "INCONCLUSIVE", text: "Inconclusive" },
+  ];
+
+  // Common units for pharmaceutical testing results
+  const unitOptions = [
+    { id: "%", text: "% (Percentage)" },
+    { id: "mg/mL", text: "mg/mL" },
+    { id: "mg/g", text: "mg/g" },
+    { id: "µg/mL", text: "µg/mL" },
+    { id: "ng/mL", text: "ng/mL" },
+    { id: "mg", text: "mg" },
+    { id: "µg", text: "µg" },
+    { id: "IU/mL", text: "IU/mL" },
+    { id: "CFU/g", text: "CFU/g" },
+    { id: "CFU/mL", text: "CFU/mL" },
+    { id: "EU/mL", text: "EU/mL (Endotoxin)" },
+    { id: "ppm", text: "ppm" },
+    { id: "ppb", text: "ppb" },
+    { id: "min", text: "min (Minutes)" },
+    { id: "sec", text: "sec (Seconds)" },
+    { id: "N", text: "N (Newtons)" },
+    { id: "kP", text: "kP (Kiloponds)" },
+    { id: "mPa·s", text: "mPa·s (Viscosity)" },
+    { id: "pH", text: "pH" },
+    { id: "mS/cm", text: "mS/cm (Conductivity)" },
+  ];
 
   // Assay category and test types for pharmaceuticals
   const assayCategories = [
@@ -165,7 +209,26 @@ function PharmaceuticalTestingPage({
   };
 
   // Get test types based on selected category
-  const availableTestTypes = testTypesByCategory[assayData.assayCategory] || [];
+  const availableTestTypes =
+    testTypesByCategory[testExecutionData.assayCategory] || [];
+
+  // Check if all selected samples are awaiting results (for "Record Results" button)
+  const allSelectedAwaitingResults = useCallback(() => {
+    if (selectedIds.length === 0) return false;
+    return selectedIds.every((id) => {
+      const sample = samples.find((s) => s.id === id);
+      return sample?.testStatus === "EXECUTED";
+    });
+  }, [selectedIds, samples]);
+
+  // Check if all selected samples have results recorded (for "Mark Complete" button)
+  const allSelectedHaveResults = useCallback(() => {
+    if (selectedIds.length === 0) return false;
+    return selectedIds.every((id) => {
+      const sample = samples.find((s) => s.id === id);
+      return sample?.testStatus === "RESULTS_RECORDED";
+    });
+  }, [selectedIds, samples]);
 
   // Load instruments from template or inventory
   const loadInstruments = useCallback(() => {
@@ -236,14 +299,6 @@ function PharmaceuticalTestingPage({
     return category ? category.text : categoryId;
   }, []);
 
-  // Helper to get test type display text from ID
-  const getTestTypeDisplayText = useCallback((categoryId, testTypeValue) => {
-    if (!testTypeValue) return "";
-    // testType is stored as the display text (e.g., "HPLC (High-Performance Liquid Chromatography)")
-    // so we can return it directly
-    return testTypeValue;
-  }, []);
-
   // Load samples for this specific page
   const loadSamples = useCallback(() => {
     if (!pageData?.id || String(pageData.id).startsWith("default-")) {
@@ -260,19 +315,23 @@ function PharmaceuticalTestingPage({
         if (componentMounted.current) {
           if (response && Array.isArray(response)) {
             const transformedSamples = response.map((sample) => {
-              const categoryId = sample.data?.assayCategory || "";
-              const testTypeValue = sample.data?.testType || "";
+              // Read from new structure (testExecution / testResult)
+              const testExecution = sample.data?.testExecution;
+              const testResult = sample.data?.testResult;
+              const testStatus = sample.data?.testStatus || null;
+
+              const categoryId = testExecution?.assayCategory || "";
+              const testTypeValue = testExecution?.testType || "";
 
               return {
                 id: String(sample.id || sample.sampleItemId),
-                sampleItemId: sample.sampleItemId, // Keep sampleItemId for backend API calls
+                sampleItemId: sample.sampleItemId,
                 externalId: sample.externalId,
                 accessionNumber: sample.accessionNumber,
                 sampleType:
                   sample.sampleType || sample.typeOfSample?.description,
                 collectionDate: sample.collectionDate,
                 status: sample.pageStatus || "PENDING",
-                // Category and lot can come from multiple sources
                 sampleCategory:
                   sample.data?.sampleCategory ||
                   sample.sampleCategory ||
@@ -283,15 +342,20 @@ function PharmaceuticalTestingPage({
                   sample.lotNumber ||
                   sample.batchNumber ||
                   "",
-                // Assay-specific data - store both ID and display value
+                // Test execution data (new structure)
+                testExecution: testExecution || null,
+                testResult: testResult || null,
+                testStatus: testStatus,
+                // Display fields
                 assayCategory: categoryId,
                 assayCategoryDisplay: getCategoryDisplayText(categoryId),
                 assayTestType: testTypeValue,
-                assayTestTypeDisplay: testTypeValue, // Already stored as display text
-                assayOperator: sample.data?.operator || "",
-                assayResults: sample.data?.results || "",
-                assayDate: sample.data?.performedDate || "",
-                hasDeviation: sample.data?.hasDeviation || false,
+                assayTestTypeDisplay: testTypeValue,
+                assayOperator: testExecution?.operator || "",
+                // Result display
+                resultValue: testResult?.value || "",
+                resultOutcome: testResult?.outcome || "",
+                hasDeviation: testExecution?.hasDeviation || false,
               };
             });
             setSamples(transformedSamples);
@@ -356,42 +420,65 @@ function PharmaceuticalTestingPage({
     [pageData?.id, intl, loadSamples, onProgressUpdate],
   );
 
-  const handleRecordAssay = () => {
+  // Handler for opening Test Execution modal (Phase 1)
+  const handleRecordExecution = () => {
     if (selectedIds.length === 0) {
       setError(
         intl.formatMessage({
           id: "notebook.pharma.testing.noSamplesSelected",
-          defaultMessage: "Please select samples to record test data",
+          defaultMessage: "Please select samples to record test execution",
         }),
       );
       return;
     }
-    // Reset form
-    setAssayData({
+    // Reset execution form
+    setTestExecutionData({
       assayCategory: "",
       testType: "",
       operator: "",
-      results: "",
-      notes: "",
       performedDate: new Date().toISOString().split("T")[0],
-      selectedInstruments: [],
-      selectedReagents: [],
-      positiveControlResult: "",
-      negativeControlResult: "",
-      internalStandardUsed: false,
-      replicateCount: 2,
-      acceptanceCriteria: "",
-      rsdValue: "",
+      instrumentsUsed: [],
+      reagentsUsed: [],
+      qcData: {
+        positiveControlResult: "",
+        negativeControlResult: "",
+        internalStandardUsed: false,
+        replicateCount: 2,
+        acceptanceCriteria: "",
+        rsdValue: "",
+      },
       hasDeviation: false,
-      deviationDescription: "",
-      rootCause: "",
-      capaAction: "",
+      deviation: null,
     });
-    setShowAssayModal(true);
+    setShowExecutionModal(true);
   };
 
-  const handleSaveAssayData = () => {
-    if (!assayData.assayCategory || !assayData.testType) {
+  // Handler for opening Result Entry modal (Phase 2)
+  const handleRecordResults = () => {
+    if (!allSelectedAwaitingResults()) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.pharma.testing.noExecutedSamples",
+          defaultMessage:
+            "All selected samples must have test execution recorded",
+        }),
+      );
+      return;
+    }
+    // Reset result form
+    setTestResultData({
+      value: "",
+      unit: "",
+      outcome: "",
+      notes: "",
+      recordedBy: "",
+    });
+    setShowResultModal(true);
+  };
+
+  // Save Test Execution data (Phase 1)
+  const handleSaveExecution = () => {
+    if (!testExecutionData.assayCategory || !testExecutionData.testType) {
       setError(
         intl.formatMessage({
           id: "notebook.pharma.testing.categoryAndTestRequired",
@@ -402,7 +489,7 @@ function PharmaceuticalTestingPage({
     }
 
     if (!pageData?.id || String(pageData.id).startsWith("default-")) {
-      setShowAssayModal(false);
+      setShowExecutionModal(false);
       return;
     }
 
@@ -414,30 +501,34 @@ function PharmaceuticalTestingPage({
       })
       .filter((id) => id != null);
 
+    // Build the test execution object with timestamp
+    const executionPayload = {
+      testExecution: {
+        assayCategory: testExecutionData.assayCategory,
+        testType: testExecutionData.testType,
+        operator: testExecutionData.operator,
+        performedDate: testExecutionData.performedDate,
+        instrumentsUsed: testExecutionData.instrumentsUsed,
+        reagentsUsed: testExecutionData.reagentsUsed,
+        qcData: testExecutionData.qcData,
+        hasDeviation: testExecutionData.hasDeviation,
+        deviation: testExecutionData.hasDeviation
+          ? {
+              description: testExecutionData.deviation?.description || "",
+              rootCause: testExecutionData.deviation?.rootCause || "",
+              capaAction: testExecutionData.deviation?.capaAction || "",
+            }
+          : null,
+        executedAt: new Date().toISOString(),
+      },
+      testStatus: "EXECUTED",
+    };
+
     postToOpenElisServer(
       `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
       JSON.stringify({
         sampleIds: sampleItemIds,
-        data: {
-          assayCategory: assayData.assayCategory,
-          testType: assayData.testType,
-          operator: assayData.operator,
-          results: assayData.results,
-          notes: assayData.notes,
-          performedDate: assayData.performedDate,
-          selectedInstruments: assayData.selectedInstruments,
-          selectedReagents: assayData.selectedReagents,
-          positiveControlResult: assayData.positiveControlResult,
-          negativeControlResult: assayData.negativeControlResult,
-          internalStandardUsed: assayData.internalStandardUsed,
-          replicateCount: assayData.replicateCount,
-          acceptanceCriteria: assayData.acceptanceCriteria,
-          rsdValue: assayData.rsdValue,
-          hasDeviation: assayData.hasDeviation,
-          deviationDescription: assayData.deviationDescription,
-          rootCause: assayData.rootCause,
-          capaAction: assayData.capaAction,
-        },
+        data: executionPayload,
       }),
       (response) => {
         if (componentMounted.current) {
@@ -453,13 +544,14 @@ function PharmaceuticalTestingPage({
                 setSuccess(
                   intl.formatMessage(
                     {
-                      id: "notebook.pharma.testing.dataSaved",
-                      defaultMessage: "Test data saved for {count} samples",
+                      id: "notebook.pharma.testing.executionSaved",
+                      defaultMessage:
+                        "Test execution recorded for {count} samples",
                     },
                     { count: selectedIds.length },
                   ),
                 );
-                setShowAssayModal(false);
+                setShowExecutionModal(false);
                 setSelectedIds([]);
                 loadSamples();
                 if (onProgressUpdate) {
@@ -468,12 +560,205 @@ function PharmaceuticalTestingPage({
               },
             );
           } else {
-            setError(response?.error || "Failed to save test data");
+            setError(response?.error || "Failed to save test execution");
           }
         }
       },
     );
   };
+
+  // Check if result form is valid (no side effects - safe to call during render)
+  const isResultFormValid = useCallback(() => {
+    if (!testResultData.value || !testResultData.outcome) {
+      return false;
+    }
+
+    if (!pageData?.id || String(pageData.id).startsWith("default-")) {
+      return false;
+    }
+
+    // Check if there are executed samples
+    const hasExecutedSamples = selectedIds.some((id) => {
+      const sample = samples.find((s) => s.id === id);
+      return sample?.testStatus === "EXECUTED";
+    });
+
+    return hasExecutedSamples;
+  }, [testResultData, pageData?.id, selectedIds, samples]);
+
+  // Get executed sample IDs for e-signature record linking
+  const getExecutedSampleIds = useCallback(() => {
+    return selectedIds
+      .map((id) => {
+        const sample = samples.find((s) => s.id === id);
+        if (sample?.testStatus === "EXECUTED") {
+          return sample?.sampleItemId;
+        }
+        return null;
+      })
+      .filter((id) => id != null);
+  }, [selectedIds, samples]);
+
+  // Get sample IDs with results recorded for validation e-signature
+  const getResultsRecordedSampleIds = useCallback(() => {
+    return selectedIds
+      .map((id) => {
+        const sample = samples.find((s) => s.id === id);
+        if (sample?.testStatus === "RESULTS_RECORDED") {
+          return sample?.sampleItemId;
+        }
+        return null;
+      })
+      .filter((id) => id != null);
+  }, [selectedIds, samples]);
+
+  // Save Test Results (Phase 2) - called after successful e-signature
+  const handleSaveResults = useCallback(
+    (signature) => {
+      if (!pageData?.id || String(pageData.id).startsWith("default-")) {
+        setShowResultModal(false);
+        return;
+      }
+
+      const executedSampleItemIds = getExecutedSampleIds();
+
+      if (executedSampleItemIds.length === 0) {
+        setError(
+          intl.formatMessage({
+            id: "notebook.pharma.testing.noExecutedSamples",
+            defaultMessage: "No executed samples selected for result entry",
+          }),
+        );
+        return;
+      }
+
+      // Build the test result object with timestamp and e-signature reference
+      const resultPayload = {
+        testResult: {
+          value: testResultData.value,
+          unit: testResultData.unit,
+          outcome: testResultData.outcome,
+          notes: testResultData.notes,
+          recordedBy: testResultData.recordedBy,
+          recordedAt: new Date().toISOString(),
+          // Include e-signature reference for 21 CFR Part 11 compliance
+          electronicSignature: signature
+            ? {
+                signatureId: signature.signatureId,
+                signerId: signature.signerId,
+                signerName: signature.signerNamePrinted,
+                signatureMeaning: signature.signatureMeaning,
+                signedAt: signature.signedAt,
+              }
+            : null,
+        },
+        testStatus: "RESULTS_RECORDED",
+      };
+
+      postToOpenElisServer(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+        JSON.stringify({
+          sampleIds: executedSampleItemIds,
+          data: resultPayload,
+        }),
+        (response) => {
+          if (componentMounted.current) {
+            if (response && !response.error) {
+              setSuccess(
+                intl.formatMessage(
+                  {
+                    id: "notebook.pharma.testing.resultsSaved",
+                    defaultMessage: "Test results recorded for {count} samples",
+                  },
+                  { count: executedSampleItemIds.length },
+                ),
+              );
+              setShowResultModal(false);
+              setSelectedIds([]);
+              loadSamples();
+              if (onProgressUpdate) {
+                onProgressUpdate();
+              }
+            } else {
+              setError(response?.error || "Failed to save test results");
+            }
+          }
+        },
+      );
+    },
+    [
+      pageData?.id,
+      getExecutedSampleIds,
+      testResultData,
+      intl,
+      loadSamples,
+      onProgressUpdate,
+    ],
+  );
+
+  // Handle e-signature success - validate first, then save
+  const handleSignAndSaveResults = useCallback(
+    (signature) => {
+      // Signature can be null if e-signatures are disabled
+      handleSaveResults(signature);
+    },
+    [handleSaveResults],
+  );
+
+  // Handle e-signature success for Mark Complete (validation action)
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      // Signature is already stored in the electronic_signature table via useESign hook
+      // Just update the status using existing handler
+      handleStatusChange(selectedIds, "COMPLETED");
+      setSelectedIds([]);
+    },
+    [handleStatusChange, selectedIds],
+  );
+
+  // E-Signature hook for result entry (AUTHORED meaning)
+  const { openSignatureModal, signatureModalProps, isCheckingEnabled } =
+    useESign({
+      meaning: SignatureMeaning.AUTHORED,
+      context: intl.formatMessage(
+        {
+          id: "notebook.pharma.testing.esigContext",
+          defaultMessage: "Sign {count} test result(s) as authored",
+        },
+        { count: getExecutedSampleIds().length },
+      ),
+      recordType: "NOTEBOOK_PAGE_SAMPLE",
+      recordId: pageData?.id || 0,
+      onSuccess: handleSignAndSaveResults,
+      onCancel: () => setShowResultModal(true), // Reopen result modal on cancel
+    });
+
+  // E-Signature hook for validation/completion (VALIDATED_AND_RELEASED meaning)
+  const {
+    openSignatureModal: openValidationSignatureModal,
+    signatureModalProps: validationSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.pharma.testing.validationEsigContext",
+        defaultMessage:
+          "Validate and release {count} test result(s) as complete",
+      },
+      { count: getResultsRecordedSampleIds().length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {}, // No modal to reopen
+  });
+
+  // Handle "Save Results" button click - close result modal, then open e-sig
+  const handleSaveResultsClick = useCallback(() => {
+    setShowResultModal(false);
+    openSignatureModal();
+  }, [openSignatureModal]);
 
   const handleMarkComplete = () => {
     if (selectedIds.length === 0) {
@@ -485,8 +770,8 @@ function PharmaceuticalTestingPage({
       );
       return;
     }
-    handleStatusChange(selectedIds, "COMPLETED");
-    setSelectedIds([]);
+    // Open validation signature modal - actual status change happens after successful e-signature
+    openValidationSignatureModal();
   };
 
   // Calculate stats
@@ -497,7 +782,7 @@ function PharmaceuticalTestingPage({
   ).length;
   const deviationCount = samples.filter((s) => s.hasDeviation).length;
 
-  // Render status with color-coded tags
+  // Render page status with color-coded tags
   const renderStatus = (status) => {
     const statusConfig = {
       COMPLETED: { type: "green", label: "Completed" },
@@ -513,6 +798,74 @@ function PharmaceuticalTestingPage({
       <Tag type={config.type} size="sm">
         {config.label}
       </Tag>
+    );
+  };
+
+  // Render test status (EXECUTED or RESULTS_RECORDED)
+  const renderTestStatus = (sample) => {
+    if (!sample.testStatus) {
+      return (
+        <span style={{ color: "#8d8d8d", fontSize: "12px" }}>
+          <FormattedMessage
+            id="notebook.pharma.testing.notExecuted"
+            defaultMessage="Not Executed"
+          />
+        </span>
+      );
+    }
+
+    if (sample.testStatus === "EXECUTED") {
+      return (
+        <Tag type="blue" size="sm">
+          <FormattedMessage
+            id="notebook.pharma.testing.awaitingResults"
+            defaultMessage="Awaiting Results"
+          />
+        </Tag>
+      );
+    }
+
+    if (sample.testStatus === "RESULTS_RECORDED") {
+      return (
+        <Tag type="green" size="sm">
+          <FormattedMessage
+            id="notebook.pharma.testing.resultsRecorded"
+            defaultMessage="Results Recorded"
+          />
+        </Tag>
+      );
+    }
+
+    return <Tag size="sm">{sample.testStatus}</Tag>;
+  };
+
+  // Render result value with outcome indicator
+  const renderResultValue = (sample) => {
+    if (!sample.testResult) {
+      return <span style={{ color: "#8d8d8d" }}>-</span>;
+    }
+
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+        <span>
+          {sample.resultValue}
+          {sample.testResult?.unit ? ` ${sample.testResult.unit}` : ""}
+        </span>
+        {sample.resultOutcome && (
+          <Tag
+            type={
+              sample.resultOutcome === "PASS"
+                ? "green"
+                : sample.resultOutcome === "FAIL"
+                  ? "red"
+                  : "gray"
+            }
+            size="sm"
+          >
+            {sample.resultOutcome}
+          </Tag>
+        )}
+      </div>
     );
   };
 
@@ -655,12 +1008,12 @@ function PharmaceuticalTestingPage({
           kind="primary"
           size="sm"
           renderIcon={Add}
-          onClick={handleRecordAssay}
+          onClick={handleRecordExecution}
           disabled={selectedIds.length === 0}
         >
           <FormattedMessage
-            id="notebook.pharma.testing.recordTest"
-            defaultMessage="Record Test Data ({count})"
+            id="notebook.pharma.testing.recordExecution"
+            defaultMessage="Record Test Execution ({count})"
             values={{ count: selectedIds.length }}
           />
         </Button>
@@ -669,21 +1022,35 @@ function PharmaceuticalTestingPage({
           kind="secondary"
           size="sm"
           renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={selectedIds.length === 0}
+          onClick={handleRecordResults}
+          disabled={!allSelectedAwaitingResults()}
         >
           <FormattedMessage
-            id="notebook.pharma.testing.markComplete"
-            defaultMessage="Mark Complete"
+            id="notebook.pharma.testing.recordResults"
+            defaultMessage="Record Results ({count})"
+            values={{ count: selectedIds.length }}
           />
         </Button>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Renew}
-          onClick={loadSamples}
+        <PermissionGate
+          roles={Permissions.VALIDATE_RESULTS}
+          disabledTooltip="You need validation permission to mark results as complete"
         >
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={!allSelectedHaveResults()}
+          >
+            <FormattedMessage
+              id="notebook.pharma.testing.markComplete"
+              defaultMessage="Mark Complete"
+            />
+          </Button>
+        </PermissionGate>
+
+        <Button kind="ghost" size="sm" renderIcon={Renew} onClick={loadSamples}>
           <FormattedMessage
             id="notebook.pharma.testing.refresh"
             defaultMessage="Refresh"
@@ -717,13 +1084,24 @@ function PharmaceuticalTestingPage({
               render: (value) => value || "-",
             },
             {
-              key: "assayResults",
-              header: "Result",
-              render: (value) => value || "-",
+              key: "testStatus",
+              header: intl.formatMessage({
+                id: "notebook.pharma.testing.testStatusHeader",
+                defaultMessage: "Test Status",
+              }),
+              render: (_, sample) => renderTestStatus(sample),
+            },
+            {
+              key: "result",
+              header: intl.formatMessage({
+                id: "notebook.pharma.testing.resultHeader",
+                defaultMessage: "Result",
+              }),
+              render: (_, sample) => renderResultValue(sample),
             },
             {
               key: "status",
-              header: "Status",
+              header: "Page Status",
               render: (value) => renderStatus(value),
             },
           ]}
@@ -734,7 +1112,7 @@ function PharmaceuticalTestingPage({
                 id: "notebook.pharma.testing.testInfo",
                 defaultMessage: "Test Info",
               }),
-              render: (value, sample) => renderTestInfo(sample),
+              render: (_, sample) => renderTestInfo(sample),
             },
           ]}
         />
@@ -752,18 +1130,18 @@ function PharmaceuticalTestingPage({
         </div>
       )}
 
-      {/* Record Test Modal */}
+      {/* Test Execution Modal (Phase 1) */}
       <Modal
-        open={showAssayModal}
-        onRequestClose={() => setShowAssayModal(false)}
-        onRequestSubmit={handleSaveAssayData}
+        open={showExecutionModal}
+        onRequestClose={() => setShowExecutionModal(false)}
+        onRequestSubmit={handleSaveExecution}
         modalHeading={intl.formatMessage({
-          id: "notebook.pharma.testing.recordTestTitle",
-          defaultMessage: "Record Assay / Test Data",
+          id: "notebook.pharma.testing.recordExecutionTitle",
+          defaultMessage: "Record Test Execution",
         })}
         primaryButtonText={intl.formatMessage({
-          id: "notebook.pharma.testing.save",
-          defaultMessage: "Save",
+          id: "notebook.pharma.testing.saveExecution",
+          defaultMessage: "Save Execution",
         })}
         secondaryButtonText={intl.formatMessage({
           id: "notebook.pharma.testing.cancel",
@@ -774,8 +1152,8 @@ function PharmaceuticalTestingPage({
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <p style={{ color: "#525252" }}>
             <FormattedMessage
-              id="notebook.pharma.testing.applyToSelected"
-              defaultMessage="Recording test data for {count} selected samples."
+              id="notebook.pharma.testing.executionDescription"
+              defaultMessage="Recording test execution details for {count} selected samples."
               values={{ count: selectedIds.length }}
             />
           </p>
@@ -789,10 +1167,10 @@ function PharmaceuticalTestingPage({
                   id: "notebook.pharma.testing.category",
                   defaultMessage: "Assay Category",
                 })}
-                value={assayData.assayCategory}
+                value={testExecutionData.assayCategory}
                 onChange={(e) =>
-                  setAssayData({
-                    ...assayData,
+                  setTestExecutionData({
+                    ...testExecutionData,
                     assayCategory: e.target.value,
                     testType: "",
                   })
@@ -811,11 +1189,14 @@ function PharmaceuticalTestingPage({
                   id: "notebook.pharma.testing.testType",
                   defaultMessage: "Test Type",
                 })}
-                value={assayData.testType}
+                value={testExecutionData.testType}
                 onChange={(e) =>
-                  setAssayData({ ...assayData, testType: e.target.value })
+                  setTestExecutionData({
+                    ...testExecutionData,
+                    testType: e.target.value,
+                  })
                 }
-                disabled={!assayData.assayCategory}
+                disabled={!testExecutionData.assayCategory}
               >
                 <SelectItem value="" text="Select test type..." />
                 {availableTestTypes.map((test) => (
@@ -838,9 +1219,12 @@ function PharmaceuticalTestingPage({
                   id: "notebook.pharma.testing.operator",
                   defaultMessage: "Operator / Analyst",
                 })}
-                value={assayData.operator}
+                value={testExecutionData.operator}
                 onChange={(e) =>
-                  setAssayData({ ...assayData, operator: e.target.value })
+                  setTestExecutionData({
+                    ...testExecutionData,
+                    operator: e.target.value,
+                  })
                 }
               />
             </Column>
@@ -848,8 +1232,8 @@ function PharmaceuticalTestingPage({
               <DatePicker
                 datePickerType="single"
                 onChange={([date]) =>
-                  setAssayData({
-                    ...assayData,
+                  setTestExecutionData({
+                    ...testExecutionData,
                     performedDate: date?.toISOString().split("T")[0] || "",
                   })
                 }
@@ -865,21 +1249,6 @@ function PharmaceuticalTestingPage({
               </DatePicker>
             </Column>
           </Grid>
-
-          {/* Results */}
-          <TextArea
-            id="results"
-            labelText={intl.formatMessage({
-              id: "notebook.pharma.testing.results",
-              defaultMessage: "Results",
-            })}
-            value={assayData.results}
-            onChange={(e) =>
-              setAssayData({ ...assayData, results: e.target.value })
-            }
-            placeholder="Enter test results..."
-            rows={3}
-          />
 
           {/* Reagent & Instrument Selection */}
           <div style={{ marginTop: "1rem" }}>
@@ -914,12 +1283,12 @@ function PharmaceuticalTestingPage({
                   items={reagents}
                   itemToString={(item) => (item ? item.label : "")}
                   selectedItems={reagents.filter((r) =>
-                    assayData.selectedReagents.includes(r.id),
+                    testExecutionData.reagentsUsed.includes(r.id),
                   )}
                   onChange={({ selectedItems }) =>
-                    setAssayData({
-                      ...assayData,
-                      selectedReagents: selectedItems.map((r) => r.id),
+                    setTestExecutionData({
+                      ...testExecutionData,
+                      reagentsUsed: selectedItems.map((r) => r.id),
                     })
                   }
                   disabled={loadingReagents}
@@ -939,12 +1308,12 @@ function PharmaceuticalTestingPage({
                   items={instruments}
                   itemToString={(item) => (item ? item.label : "")}
                   selectedItems={instruments.filter((i) =>
-                    assayData.selectedInstruments.includes(i.id),
+                    testExecutionData.instrumentsUsed.includes(i.id),
                   )}
                   onChange={({ selectedItems }) =>
-                    setAssayData({
-                      ...assayData,
-                      selectedInstruments: selectedItems.map((i) => i.id),
+                    setTestExecutionData({
+                      ...testExecutionData,
+                      instrumentsUsed: selectedItems.map((i) => i.id),
                     })
                   }
                   disabled={loadingInstruments}
@@ -969,11 +1338,14 @@ function PharmaceuticalTestingPage({
                   id: "notebook.pharma.testing.positiveControl",
                   defaultMessage: "Positive Control",
                 })}
-                value={assayData.positiveControlResult}
+                value={testExecutionData.qcData.positiveControlResult}
                 onChange={(e) =>
-                  setAssayData({
-                    ...assayData,
-                    positiveControlResult: e.target.value,
+                  setTestExecutionData({
+                    ...testExecutionData,
+                    qcData: {
+                      ...testExecutionData.qcData,
+                      positiveControlResult: e.target.value,
+                    },
                   })
                 }
                 placeholder="Pass/Fail"
@@ -986,11 +1358,14 @@ function PharmaceuticalTestingPage({
                   id: "notebook.pharma.testing.negativeControl",
                   defaultMessage: "Negative Control",
                 })}
-                value={assayData.negativeControlResult}
+                value={testExecutionData.qcData.negativeControlResult}
                 onChange={(e) =>
-                  setAssayData({
-                    ...assayData,
-                    negativeControlResult: e.target.value,
+                  setTestExecutionData({
+                    ...testExecutionData,
+                    qcData: {
+                      ...testExecutionData.qcData,
+                      negativeControlResult: e.target.value,
+                    },
                   })
                 }
                 placeholder="Pass/Fail"
@@ -1003,9 +1378,15 @@ function PharmaceuticalTestingPage({
                   id: "notebook.pharma.testing.replicates",
                   defaultMessage: "Replicates",
                 })}
-                value={assayData.replicateCount}
-                onChange={(e, { value }) =>
-                  setAssayData({ ...assayData, replicateCount: value })
+                value={testExecutionData.qcData.replicateCount}
+                onChange={(_, { value }) =>
+                  setTestExecutionData({
+                    ...testExecutionData,
+                    qcData: {
+                      ...testExecutionData.qcData,
+                      replicateCount: value,
+                    },
+                  })
                 }
                 min={1}
                 max={10}
@@ -1018,9 +1399,15 @@ function PharmaceuticalTestingPage({
                   id: "notebook.pharma.testing.rsd",
                   defaultMessage: "%RSD / CV",
                 })}
-                value={assayData.rsdValue}
+                value={testExecutionData.qcData.rsdValue}
                 onChange={(e) =>
-                  setAssayData({ ...assayData, rsdValue: e.target.value })
+                  setTestExecutionData({
+                    ...testExecutionData,
+                    qcData: {
+                      ...testExecutionData.qcData,
+                      rsdValue: e.target.value,
+                    },
+                  })
                 }
                 placeholder="e.g., 2.5%"
               />
@@ -1033,9 +1420,15 @@ function PharmaceuticalTestingPage({
               id: "notebook.pharma.testing.internalStandard",
               defaultMessage: "Internal Standard Used",
             })}
-            checked={assayData.internalStandardUsed}
+            checked={testExecutionData.qcData.internalStandardUsed}
             onChange={(_, { checked }) =>
-              setAssayData({ ...assayData, internalStandardUsed: checked })
+              setTestExecutionData({
+                ...testExecutionData,
+                qcData: {
+                  ...testExecutionData.qcData,
+                  internalStandardUsed: checked,
+                },
+              })
             }
           />
 
@@ -1045,9 +1438,15 @@ function PharmaceuticalTestingPage({
               id: "notebook.pharma.testing.acceptanceCriteria",
               defaultMessage: "Acceptance Criteria",
             })}
-            value={assayData.acceptanceCriteria}
+            value={testExecutionData.qcData.acceptanceCriteria}
             onChange={(e) =>
-              setAssayData({ ...assayData, acceptanceCriteria: e.target.value })
+              setTestExecutionData({
+                ...testExecutionData,
+                qcData: {
+                  ...testExecutionData.qcData,
+                  acceptanceCriteria: e.target.value,
+                },
+              })
             }
             placeholder="e.g., 95.0% - 105.0% of label claim"
           />
@@ -1066,13 +1465,19 @@ function PharmaceuticalTestingPage({
               id: "notebook.pharma.testing.hasDeviation",
               defaultMessage: "Log a Deviation for this test",
             })}
-            checked={assayData.hasDeviation}
+            checked={testExecutionData.hasDeviation}
             onChange={(_, { checked }) =>
-              setAssayData({ ...assayData, hasDeviation: checked })
+              setTestExecutionData({
+                ...testExecutionData,
+                hasDeviation: checked,
+                deviation: checked
+                  ? { description: "", rootCause: "", capaAction: "" }
+                  : null,
+              })
             }
           />
 
-          {assayData.hasDeviation && (
+          {testExecutionData.hasDeviation && (
             <>
               <TextArea
                 id="deviation-description"
@@ -1080,11 +1485,14 @@ function PharmaceuticalTestingPage({
                   id: "notebook.pharma.testing.deviationDescription",
                   defaultMessage: "Deviation Description",
                 })}
-                value={assayData.deviationDescription}
+                value={testExecutionData.deviation?.description || ""}
                 onChange={(e) =>
-                  setAssayData({
-                    ...assayData,
-                    deviationDescription: e.target.value,
+                  setTestExecutionData({
+                    ...testExecutionData,
+                    deviation: {
+                      ...testExecutionData.deviation,
+                      description: e.target.value,
+                    },
                   })
                 }
                 placeholder="Describe what went wrong..."
@@ -1096,9 +1504,15 @@ function PharmaceuticalTestingPage({
                   id: "notebook.pharma.testing.rootCause",
                   defaultMessage: "Root Cause",
                 })}
-                value={assayData.rootCause}
+                value={testExecutionData.deviation?.rootCause || ""}
                 onChange={(e) =>
-                  setAssayData({ ...assayData, rootCause: e.target.value })
+                  setTestExecutionData({
+                    ...testExecutionData,
+                    deviation: {
+                      ...testExecutionData.deviation,
+                      rootCause: e.target.value,
+                    },
+                  })
                 }
               />
               <TextArea
@@ -1107,31 +1521,175 @@ function PharmaceuticalTestingPage({
                   id: "notebook.pharma.testing.capaAction",
                   defaultMessage: "CAPA (Corrective and Preventive Action)",
                 })}
-                value={assayData.capaAction}
+                value={testExecutionData.deviation?.capaAction || ""}
                 onChange={(e) =>
-                  setAssayData({ ...assayData, capaAction: e.target.value })
+                  setTestExecutionData({
+                    ...testExecutionData,
+                    deviation: {
+                      ...testExecutionData.deviation,
+                      capaAction: e.target.value,
+                    },
+                  })
                 }
                 placeholder="Describe corrective actions taken..."
                 rows={2}
               />
             </>
           )}
-
-          {/* Notes */}
-          <TextArea
-            id="notes"
-            labelText={intl.formatMessage({
-              id: "notebook.pharma.testing.notes",
-              defaultMessage: "Additional Notes",
-            })}
-            value={assayData.notes}
-            onChange={(e) =>
-              setAssayData({ ...assayData, notes: e.target.value })
-            }
-            rows={2}
-          />
         </div>
       </Modal>
+
+      {/* Result Entry Modal (Phase 2) - With Electronic Signature */}
+      <Modal
+        open={showResultModal}
+        onRequestClose={() => setShowResultModal(false)}
+        modalHeading={intl.formatMessage({
+          id: "notebook.pharma.testing.recordResultsTitle",
+          defaultMessage: "Record Test Results",
+        })}
+        passiveModal
+        size="md"
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <p style={{ color: "#525252" }}>
+            <FormattedMessage
+              id="notebook.pharma.testing.resultsDescription"
+              defaultMessage="Recording results for {count} selected samples."
+              values={{ count: selectedIds.length }}
+            />
+          </p>
+
+          <Grid fullWidth narrow>
+            <Column lg={8} md={4} sm={4}>
+              <TextInput
+                id="result-value"
+                labelText={intl.formatMessage({
+                  id: "notebook.pharma.testing.resultValue",
+                  defaultMessage: "Result Value",
+                })}
+                value={testResultData.value}
+                onChange={(e) =>
+                  setTestResultData({
+                    ...testResultData,
+                    value: e.target.value,
+                  })
+                }
+                placeholder="e.g., 98.5"
+                required
+              />
+            </Column>
+            <Column lg={8} md={4} sm={4}>
+              <Select
+                id="result-unit"
+                labelText={intl.formatMessage({
+                  id: "notebook.pharma.testing.resultUnit",
+                  defaultMessage: "Unit",
+                })}
+                value={testResultData.unit}
+                onChange={(e) =>
+                  setTestResultData({
+                    ...testResultData,
+                    unit: e.target.value,
+                  })
+                }
+              >
+                <SelectItem value="" text="Select unit..." />
+                {unitOptions.map((opt) => (
+                  <SelectItem key={opt.id} value={opt.id} text={opt.text} />
+                ))}
+              </Select>
+            </Column>
+          </Grid>
+
+          <Select
+            id="result-outcome"
+            labelText={intl.formatMessage({
+              id: "notebook.pharma.testing.resultOutcome",
+              defaultMessage: "Outcome",
+            })}
+            value={testResultData.outcome}
+            onChange={(e) =>
+              setTestResultData({
+                ...testResultData,
+                outcome: e.target.value,
+              })
+            }
+          >
+            <SelectItem value="" text="Select outcome..." />
+            {outcomeOptions.map((opt) => (
+              <SelectItem key={opt.id} value={opt.id} text={opt.text} />
+            ))}
+          </Select>
+
+          <TextArea
+            id="result-notes"
+            labelText={intl.formatMessage({
+              id: "notebook.pharma.testing.resultNotes",
+              defaultMessage: "Notes",
+            })}
+            value={testResultData.notes}
+            onChange={(e) =>
+              setTestResultData({
+                ...testResultData,
+                notes: e.target.value,
+              })
+            }
+            placeholder="Additional observations..."
+            rows={3}
+          />
+
+          <TextInput
+            id="recorded-by"
+            labelText={intl.formatMessage({
+              id: "notebook.pharma.testing.recordedBy",
+              defaultMessage: "Recorded By",
+            })}
+            value={testResultData.recordedBy}
+            onChange={(e) =>
+              setTestResultData({
+                ...testResultData,
+                recordedBy: e.target.value,
+              })
+            }
+            required
+          />
+
+          {/* Modal Footer with E-Signature Button */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: "1rem",
+              marginTop: "1rem",
+              paddingTop: "1rem",
+              borderTop: "1px solid #e0e0e0",
+            }}
+          >
+            <Button kind="secondary" onClick={() => setShowResultModal(false)}>
+              <FormattedMessage
+                id="notebook.pharma.testing.cancel"
+                defaultMessage="Cancel"
+              />
+            </Button>
+            <Button
+              kind="primary"
+              onClick={handleSaveResultsClick}
+              disabled={!isResultFormValid() || isCheckingEnabled}
+            >
+              <FormattedMessage
+                id="notebook.pharma.testing.saveResults"
+                defaultMessage="Save Results"
+              />
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* E-Signature Modal for Result Entry (AUTHORED) */}
+      <ESignatureModal {...signatureModalProps} />
+
+      {/* E-Signature Modal for Validation/Completion (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...validationSignatureModalProps} />
     </div>
   );
 }

@@ -10,6 +10,9 @@
  *   <PermissionGate roles={Permissions.CREATE_OR_EDIT_NOTEBOOK}>
  *     <AddButton />
  *   </PermissionGate>
+ *
+ * FIXME: These role-to-feature mappings are hardcoded. Ideally, this should be
+ * configurable via backend configuration properties
  */
 
 /**
@@ -43,6 +46,47 @@ export const Roles = {
   PHARMACIST: "Pharmacist",
   STUDY_DIRECTOR: "Study Director",
   QA_AUDITOR: "QA Auditor",
+
+  // ==========================================================================
+  // AHRI Lab Roles - Granular privilege-based roles
+  // These map to the role matrix defined in ahri_lab_roles.csv
+  // ==========================================================================
+
+  // Job Title / Persona Groupings (for reference, typically not used directly)
+  SAMPLE_COLLECTOR: "Sample Collector",
+  LABORATORY_TECHNICIAN: "Laboratory Technician",
+  JUNIOR_SENIOR_RESEARCHER: "Junior Senior Researcher",
+  LAB_MANAGER_SUPERVISOR: "Lab Manager Supervisor",
+
+  // Sample Registration Privileges
+  REGISTER_SAMPLES: "Register Samples",
+  UPDATE_SAMPLES: "Update Samples",
+
+  // Sample Processing / Analysis Privileges
+  VIEW_PROCESSING_WORKFLOWS: "View Processing Workflows",
+  UPDATE_PROCESSING_WORKFLOWS: "Update Processing Workflows",
+  FULL_PROCESSING_ACCESS: "Full Processing Access",
+
+  // Record Editing Privileges
+  EDIT_OWN_RECORDS: "Edit Own Records",
+  EDIT_PROCESSING_DATA: "Edit Processing Data",
+  EDIT_ALL_RECORDS: "Edit All Records",
+
+  // Result Review & Validation Privileges
+  VALIDATE_RESULTS: "Validate Results",
+  REVIEW_RESULTS: "Review Results",
+  FULL_VALIDATION_ACCESS: "Full Validation Access",
+
+  // Data Analysis & Reporting Privileges
+  VIEW_OWN_REPORTS: "View Own Reports",
+  AGGREGATE_ANALYZE_DATA: "Aggregate Analyze Data",
+  FULL_REPORTING_ACCESS: "Full Reporting Access",
+
+  // Equipment Management Privileges
+  MANAGE_EQUIPMENT: "Manage Equipment",
+
+  // Quality Assurance Privileges
+  MANAGE_QA: "Manage QA",
 };
 
 /**
@@ -98,10 +142,30 @@ export const Permissions = {
   // ========== Results Permissions ==========
 
   // Can enter results
-  ENTER_RESULTS: [Roles.RESULTS, Roles.TECHNICIAN, Roles.SUPERVISOR],
+  ENTER_RESULTS: [
+    Roles.RESULTS,
+    Roles.TECHNICIAN,
+    Roles.SUPERVISOR,
+    Roles.LABORATORY_TECHNICIAN,
+    Roles.EDIT_PROCESSING_DATA,
+  ],
 
   // Can validate results
-  VALIDATE_RESULTS: [Roles.VALIDATION, Roles.SUPERVISOR, Roles.PATHOLOGIST],
+  VALIDATE_RESULTS: [
+    Roles.VALIDATION,
+    Roles.SUPERVISOR,
+    Roles.PATHOLOGIST,
+    Roles.VALIDATE_RESULTS,
+    Roles.FULL_VALIDATION_ACCESS,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
+
+  // Can review results (without validation authority)
+  REVIEW_RESULTS: [
+    Roles.REVIEW_RESULTS,
+    Roles.JUNIOR_SENIOR_RESEARCHER,
+    Roles.SUPERVISOR,
+  ],
 
   // Can view results
   VIEW_RESULTS: [
@@ -111,20 +175,125 @@ export const Permissions = {
     Roles.CYTOPATHOLOGIST,
     Roles.SUPERVISOR,
     Roles.REPORTS,
+    Roles.REVIEW_RESULTS,
+    Roles.VIEW_OWN_REPORTS,
   ],
 
   // ========== Sample Permissions ==========
 
-  // Can receive/register samples
-  RECEIVE_SAMPLES: [Roles.RECEPTION, Roles.TECHNICIAN, Roles.SUPERVISOR],
+  // Can register new samples
+  REGISTER_SAMPLES: [
+    Roles.RECEPTION,
+    Roles.SUPERVISOR,
+    Roles.REGISTER_SAMPLES,
+    Roles.SAMPLE_COLLECTOR,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
+
+  // Can update existing samples
+  UPDATE_SAMPLES: [
+    Roles.RECEPTION,
+    Roles.TECHNICIAN,
+    Roles.SUPERVISOR,
+    Roles.UPDATE_SAMPLES,
+    Roles.SAMPLE_COLLECTOR,
+    Roles.LABORATORY_TECHNICIAN,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
+
+  // Can receive/register samples (legacy - use REGISTER_SAMPLES)
+  RECEIVE_SAMPLES: [
+    Roles.RECEPTION,
+    Roles.TECHNICIAN,
+    Roles.SUPERVISOR,
+    Roles.REGISTER_SAMPLES,
+    Roles.SAMPLE_COLLECTOR,
+  ],
 
   // Can process samples
-  PROCESS_SAMPLES: [Roles.TECHNICIAN, Roles.SUPERVISOR],
+  PROCESS_SAMPLES: [
+    Roles.TECHNICIAN,
+    Roles.SUPERVISOR,
+    Roles.FULL_PROCESSING_ACCESS,
+    Roles.UPDATE_PROCESSING_WORKFLOWS,
+    Roles.LABORATORY_TECHNICIAN,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
+
+  // Can view processing workflows (read-only)
+  VIEW_PROCESSING: [
+    Roles.TECHNICIAN,
+    Roles.SUPERVISOR,
+    Roles.VIEW_PROCESSING_WORKFLOWS,
+    Roles.SAMPLE_COLLECTOR,
+    Roles.LABORATORY_TECHNICIAN,
+    Roles.JUNIOR_SENIOR_RESEARCHER,
+  ],
+
+  // ========== Record Editing Permissions ==========
+
+  // Can edit own records only
+  EDIT_OWN_RECORDS: [
+    Roles.TECHNICIAN,
+    Roles.EDIT_OWN_RECORDS,
+    Roles.SAMPLE_COLLECTOR,
+    Roles.LABORATORY_TECHNICIAN,
+  ],
+
+  // Can edit all records
+  EDIT_ALL_RECORDS: [
+    Roles.SUPERVISOR,
+    Roles.GLOBAL_ADMIN,
+    Roles.EDIT_ALL_RECORDS,
+    Roles.LAB_MANAGER_SUPERVISOR,
+    Roles.JUNIOR_SENIOR_RESEARCHER,
+  ],
 
   // ========== Report Permissions ==========
 
+  // Can view own reports only
+  VIEW_OWN_REPORTS: [
+    Roles.TECHNICIAN,
+    Roles.VIEW_OWN_REPORTS,
+    Roles.LABORATORY_TECHNICIAN,
+  ],
+
+  // Can aggregate and analyze data
+  AGGREGATE_DATA: [
+    Roles.SUPERVISOR,
+    Roles.REPORTS,
+    Roles.AGGREGATE_ANALYZE_DATA,
+    Roles.JUNIOR_SENIOR_RESEARCHER,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
+
   // Can generate reports
-  GENERATE_REPORTS: [Roles.REPORTS, Roles.SUPERVISOR, Roles.GLOBAL_ADMIN],
+  GENERATE_REPORTS: [
+    Roles.REPORTS,
+    Roles.SUPERVISOR,
+    Roles.GLOBAL_ADMIN,
+    Roles.FULL_REPORTING_ACCESS,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
+
+  // ========== Equipment & QA Permissions ==========
+
+  // Can manage equipment
+  MANAGE_EQUIPMENT: [
+    Roles.SUPERVISOR,
+    Roles.GLOBAL_ADMIN,
+    Roles.MANAGE_EQUIPMENT,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
+
+  // Can manage quality assurance
+  MANAGE_QA: [
+    Roles.SUPERVISOR,
+    Roles.GLOBAL_ADMIN,
+    Roles.MANAGE_QA,
+    Roles.QA_AUDITOR,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
 
   // ========== Admin Permissions ==========
 
@@ -225,6 +394,13 @@ export const RoleGroups = {
     Roles.PHARMACIST,
     Roles.STUDY_DIRECTOR,
     Roles.QA_AUDITOR,
+  ],
+  // AHRI Lab Role Groups
+  AHRI_LAB_ROLES: [
+    Roles.SAMPLE_COLLECTOR,
+    Roles.LABORATORY_TECHNICIAN,
+    Roles.JUNIOR_SENIOR_RESEARCHER,
+    Roles.LAB_MANAGER_SUPERVISOR,
   ],
 };
 

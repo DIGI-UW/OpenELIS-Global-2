@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- Electronic Signature for 21 CFR Part 11 Compliance       -->
+    <!-- Enables legally-binding electronic signatures for        -->
+    <!-- result entry and validation workflows                    -->
+    <!-- ======================================================== -->
+
+    <!-- ======================== -->
+    <!-- electronic_signature     -->
+    <!-- ======================== -->
+
+    <changeSet id="esig-001-create-electronic-signature-table" author="openelisdev">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="electronic_signature" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create electronic_signature table for 21 CFR Part 11 compliant signatures</comment>
+
+        <createTable tableName="electronic_signature" schemaName="clinlims">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <!-- Signer identification -->
+            <column name="signer_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="signer_name_printed" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Signature meaning (§11.50) -->
+            <column name="signature_meaning" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Values: AUTHORED, VALIDATED_AND_RELEASED, REJECTED -->
+
+            <!-- Timestamp -->
+            <column name="signed_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Signed record reference -->
+            <column name="record_type" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="record_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Rejection reason (required when signature_meaning = REJECTED) -->
+            <column name="rejection_reason" type="TEXT"/>
+
+            <!-- Session tracking (§11.200) -->
+            <column name="session_signing_sequence" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Authentication method -->
+            <column name="auth_method" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Values: LOCAL, KEYCLOAK -->
+
+            <!-- Client metadata -->
+            <column name="client_ip" type="VARCHAR(45)"/>
+            <column name="user_agent" type="VARCHAR(500)"/>
+
+            <!-- Standard audit fields -->
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <addDefaultValue tableName="electronic_signature"
+                        columnName="last_updated"
+                        defaultValueComputed="CURRENT_TIMESTAMP"
+                        schemaName="clinlims"/>
+    </changeSet>
+
+    <changeSet id="esig-002-create-electronic-signature-sequence" author="openelisdev">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="electronic_signature_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sequence for electronic_signature primary keys</comment>
+
+        <createSequence sequenceName="electronic_signature_seq"
+                       schemaName="clinlims"
+                       startValue="1"
+                       incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="esig-003-create-electronic-signature-indexes" author="openelisdev">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="electronic_signature" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Create indexes for efficient querying of signatures</comment>
+
+        <!-- Lookup signatures by signed record -->
+        <createIndex indexName="idx_esig_record"
+                    tableName="electronic_signature"
+                    schemaName="clinlims">
+            <column name="record_type"/>
+            <column name="record_id"/>
+        </createIndex>
+
+        <!-- Lookup signatures by signer -->
+        <createIndex indexName="idx_esig_signer"
+                    tableName="electronic_signature"
+                    schemaName="clinlims">
+            <column name="signer_id"/>
+            <column name="signed_at"/>
+        </createIndex>
+
+        <!-- Time-based queries -->
+        <createIndex indexName="idx_esig_signed_at"
+                    tableName="electronic_signature"
+                    schemaName="clinlims">
+            <column name="signed_at"/>
+        </createIndex>
+
+        <!-- Signature meaning queries (e.g., find all rejections) -->
+        <createIndex indexName="idx_esig_meaning"
+                    tableName="electronic_signature"
+                    schemaName="clinlims">
+            <column name="signature_meaning"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="esig-004-add-electronic-signature-immutability-trigger" author="openelisdev">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="electronic_signature" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Create trigger to enforce immutability (signatures cannot be modified or deleted)</comment>
+
+        <sql splitStatements="false">
+            CREATE OR REPLACE FUNCTION clinlims.prevent_electronic_signature_modification()
+            RETURNS TRIGGER AS $BODY$
+            BEGIN
+                IF (TG_OP = 'UPDATE' OR TG_OP = 'DELETE') THEN
+                    RAISE EXCEPTION 'Electronic signatures are immutable and cannot be modified or deleted (21 CFR Part 11)';
+                END IF;
+                RETURN NEW;
+            END;
+            $BODY$ LANGUAGE plpgsql;
+        </sql>
+
+        <sql>
+            CREATE TRIGGER electronic_signature_immutability_check
+            BEFORE UPDATE OR DELETE ON clinlims.electronic_signature
+            FOR EACH ROW EXECUTE FUNCTION clinlims.prevent_electronic_signature_modification();
+        </sql>
+    </changeSet>
+
+    <!-- ================================ -->
+    <!-- esig_first_use_certification     -->
+    <!-- ================================ -->
+
+    <changeSet id="esig-005-create-first-use-certification-table" author="openelisdev">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="esig_first_use_certification" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create table for first-use certification per 21 CFR Part 11 §11.100(c)</comment>
+
+        <createTable tableName="esig_first_use_certification" schemaName="clinlims">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <!-- User who certified (one certification per user) -->
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false" unique="true"/>
+            </column>
+
+            <!-- When they certified -->
+            <column name="certified_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Exact legal text they agreed to -->
+            <column name="certification_text" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Client metadata -->
+            <column name="client_ip" type="VARCHAR(45)"/>
+            <column name="user_agent" type="VARCHAR(500)"/>
+
+            <!-- Standard audit fields -->
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <addDefaultValue tableName="esig_first_use_certification"
+                        columnName="last_updated"
+                        defaultValueComputed="CURRENT_TIMESTAMP"
+                        schemaName="clinlims"/>
+    </changeSet>
+
+    <changeSet id="esig-006-create-first-use-certification-sequence" author="openelisdev">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="esig_first_use_certification_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sequence for esig_first_use_certification primary keys</comment>
+
+        <createSequence sequenceName="esig_first_use_certification_seq"
+                       schemaName="clinlims"
+                       startValue="1"
+                       incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="esig-007-create-first-use-certification-index" author="openelisdev">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="esig_first_use_certification" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Create index for user lookup</comment>
+
+        <createIndex indexName="idx_esig_cert_user"
+                    tableName="esig_first_use_certification"
+                    schemaName="clinlims">
+            <column name="user_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ================================ -->
+    <!-- Register in reference_tables     -->
+    <!-- ================================ -->
+
+    <changeSet id="esig-008-register-electronic-signature-reference-table" author="openelisdev">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'ELECTRONIC_SIGNATURE'
+            </sqlCheck>
+        </preConditions>
+        <comment>Register electronic_signature in reference_tables for audit trail support</comment>
+
+        <sql>
+            INSERT INTO clinlims.reference_tables (id, name, keep_history, is_hl7_encoded, lastupdated)
+            VALUES (
+                (SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims.reference_tables),
+                'ELECTRONIC_SIGNATURE',
+                'Y',
+                'N',
+                CURRENT_TIMESTAMP
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="esig-009-register-first-use-certification-reference-table" author="openelisdev">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'ESIG_FIRST_USE_CERTIFICATION'
+            </sqlCheck>
+        </preConditions>
+        <comment>Register esig_first_use_certification in reference_tables for audit trail support</comment>
+
+        <sql>
+            INSERT INTO clinlims.reference_tables (id, name, keep_history, is_hl7_encoded, lastupdated)
+            VALUES (
+                (SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims.reference_tables),
+                'ESIG_FIRST_USE_CERTIFICATION',
+                'Y',
+                'N',
+                CURRENT_TIMESTAMP
+            );
+        </sql>
+    </changeSet>
+
+    <!-- ================================ -->
+    <!-- Site Configuration Setting       -->
+    <!-- ================================ -->
+
+    <changeSet id="esig-010-add-site-information-toggle" author="openelisdev">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.site_information WHERE name = 'electronicSignatureEnabled'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add site configuration setting to enable/disable electronic signatures</comment>
+
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="electronicSignatureEnabled" />
+            <column name="value" value="true" />
+            <column name="description" value="Enable 21 CFR Part 11 compliant electronic signatures for result entry and validation workflows" />
+            <column name="value_type" value="boolean" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
+            <column name="lastupdated" valueComputed="CURRENT_TIMESTAMP" />
+        </insert>
+    </changeSet>
+
+    <!-- ================================ -->
+    <!-- Table and column comments        -->
+    <!-- ================================ -->
+
+    <changeSet id="esig-011-add-table-comments" author="openelisdev">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="electronic_signature" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add documentation comments to tables and columns</comment>
+
+        <sql>
+            COMMENT ON TABLE clinlims.electronic_signature IS
+            '21 CFR Part 11 compliant electronic signatures.
+            Each record represents a legally-binding signature event.
+            Table is append-only (enforced by trigger) - records cannot be modified or deleted.';
+        </sql>
+
+        <sql>
+            COMMENT ON COLUMN clinlims.electronic_signature.signer_name_printed IS
+            'Full name of signer at time of signing. Denormalized so name changes do not alter historical records.';
+        </sql>
+
+        <sql>
+            COMMENT ON COLUMN clinlims.electronic_signature.signature_meaning IS
+            'Legal meaning per §11.50. Values: AUTHORED (data entry), VALIDATED_AND_RELEASED (approval), REJECTED (rejection).';
+        </sql>
+
+        <sql>
+            COMMENT ON COLUMN clinlims.electronic_signature.session_signing_sequence IS
+            'Position in signing session. 1 = full auth (user ID + password), 2+ = password-only per §11.200(a)(1)(i).';
+        </sql>
+
+        <sql>
+            COMMENT ON COLUMN clinlims.electronic_signature.auth_method IS
+            'Authentication provider used. Values: LOCAL (OpenELIS database), KEYCLOAK (SSO).';
+        </sql>
+
+        <sql>
+            COMMENT ON TABLE clinlims.esig_first_use_certification IS
+            'First-use certification per 21 CFR Part 11 §11.100(c).
+            Users must certify that their e-signature is legally binding before first use.
+            One record per user. Admin can revoke (delete) to force re-certification.';
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

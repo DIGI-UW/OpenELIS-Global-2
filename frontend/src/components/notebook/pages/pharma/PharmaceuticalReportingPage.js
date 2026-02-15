@@ -401,33 +401,48 @@ function PharmaceuticalReportingPage({
       (response) => {
         if (componentMounted.current) {
           if (response && Array.isArray(response)) {
-            const transformedSamples = response.map((sample) => ({
-              id: String(sample.id || sample.sampleItemId),
-              externalId: sample.externalId,
-              accessionNumber: sample.accessionNumber,
-              sampleType: sample.sampleType || sample.typeOfSample?.description,
-              collectionDate: sample.collectionDate,
-              status: sample.pageStatus || "PENDING",
-              // Pharmaceutical data
-              sampleCategory: sample.data?.sampleCategory,
-              chemicalName: sample.data?.chemicalName,
-              lotNumber: sample.data?.lotNumber,
-              grade: sample.data?.grade,
-              // QC and testing data from previous pages
-              qcResult: sample.data?.qcResult,
-              testType: sample.data?.testType,
-              assayResults: sample.data?.results || sample.data?.assayResults,
-              hasDeviation: sample.data?.hasDeviation || false,
-              // Validation/Reporting data
-              validationStatus: sample.data?.validationStatus || "PENDING",
-              reviewer: sample.data?.reviewer || "",
-              reviewDate: sample.data?.reviewDate || "",
-              oosInvestigation: sample.data?.oosInvestigation || false,
-              oosRootCause: sample.data?.oosRootCause || "",
-              correctiveAction: sample.data?.correctiveAction || "",
-              coaGenerated: sample.data?.coaGenerated || false,
-              comments: sample.data?.comments || "",
-            }));
+            const transformedSamples = response.map((sample) => {
+              // Read from new structure (testExecution / testResult)
+              const testExecution = sample.data?.testExecution;
+              const testResult = sample.data?.testResult;
+              const testStatus = sample.data?.testStatus;
+
+              return {
+                id: String(sample.id || sample.sampleItemId),
+                externalId: sample.externalId,
+                accessionNumber: sample.accessionNumber,
+                sampleType:
+                  sample.sampleType || sample.typeOfSample?.description,
+                collectionDate: sample.collectionDate,
+                status: sample.pageStatus || "PENDING",
+                // Pharmaceutical data
+                sampleCategory: sample.data?.sampleCategory,
+                chemicalName: sample.data?.chemicalName,
+                lotNumber: sample.data?.lotNumber,
+                grade: sample.data?.grade,
+                // QC and testing data from previous pages (new structure)
+                qcResult: sample.data?.qcResult,
+                testType: testExecution?.testType || sample.data?.testType,
+                assayCategory: testExecution?.assayCategory,
+                assayResults:
+                  testResult?.value ||
+                  sample.data?.results ||
+                  sample.data?.assayResults,
+                resultOutcome: testResult?.outcome,
+                resultUnit: testResult?.unit,
+                hasDeviation: testExecution?.hasDeviation || false,
+                testStatus: testStatus,
+                // Validation/Reporting data
+                validationStatus: sample.data?.validationStatus || "PENDING",
+                reviewer: sample.data?.reviewer || "",
+                reviewDate: sample.data?.reviewDate || "",
+                oosInvestigation: sample.data?.oosInvestigation || false,
+                oosRootCause: sample.data?.oosRootCause || "",
+                correctiveAction: sample.data?.correctiveAction || "",
+                coaGenerated: sample.data?.coaGenerated || false,
+                comments: sample.data?.comments || "",
+              };
+            });
             setSamples(transformedSamples);
             calculateMetrics(transformedSamples);
             calculateValidationSummary(transformedSamples);
