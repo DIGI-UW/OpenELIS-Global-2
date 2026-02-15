@@ -214,3 +214,12 @@ node scripts/e2e/check-m8a-parity-gate.js \
   - Gate pass: `false`
   - Blocking rows: `47`
   - Blocking status counts: `LEGACY_ONLY=24`, `PARTIAL=22`, `GAP=1`
+
+### One-command M8a Evidence Generation (CI artifacts)
+
+```bash
+bash scripts/e2e/generate-m8a-evidence.sh \
+  --cypress-run-id <cypress_run_id> \
+  --playwright-run-id <playwright_run_id> \
+  --head-sha <sha>
+```
