@@ -125,12 +125,15 @@ archival/non-gating mode.
 
 **Acceptance Scenarios**:
 
-1. **Given** parity and reliability gates are met, **When** cutover occurs,
+1. **Given** current Cypress and Playwright run side by side, **When** the
+   pre-cutover parity milestone is executed, **Then** all currently active
+   Cypress scenarios have passing Playwright parity coverage in CI.
+2. **Given** parity and reliability gates are met, **When** cutover occurs,
    **Then** Playwright is the required E2E gate and emits merged shard reports.
-2. **Given** a temporary dual-run window, **When** stabilization completes,
+3. **Given** a temporary dual-run window, **When** stabilization completes,
    **Then** Cypress is removed from required gate checks per approved cutover
    policy.
-3. **Given** historical comparison needs, **When** migration closes, **Then**
+4. **Given** historical comparison needs, **When** migration closes, **Then**
    legacy Cypress artifacts/links are preserved according to retention policy.
 
 ---
@@ -187,6 +190,12 @@ archival/non-gating mode.
   are met.
 - **FR-016**: Migration documentation MUST define post-migration artifact
   retention policy for legacy Cypress evidence.
+- **FR-017**: The cutover sequence MUST include a dedicated side-by-side parity
+  milestone where the current active Cypress battery and Playwright battery run
+  together in CI and parity is verified before enabling cutover.
+- **FR-018**: The side-by-side parity milestone MUST have zero active
+  `LEGACY_ONLY`, `GAP`, or `PARTIAL` parity statuses for the current active
+  Cypress scenario set.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -236,6 +245,8 @@ archival/non-gating mode.
   per CI run with trace/screenshot evidence on failures.
 - **SC-008**: Playwright is the required E2E gate at completion, and Cypress is
   retired from required checks per approved migration policy.
+- **SC-009**: A pre-cutover side-by-side parity milestone is completed and
+  evidenced in CI, with full parity across the current active Cypress battery.
 
 ## Clarification Questions (`/speckit.clarify`)
 

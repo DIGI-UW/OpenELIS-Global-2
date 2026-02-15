@@ -17,8 +17,9 @@ This plan explicitly includes:
 1. Evidence-first inventory and parity mapping
 2. Critical gap closure (not just parity by count)
 3. Unified fixture/data management refactor for deterministic E2E
-4. Big-bang primary-framework cutover
-5. Controlled Cypress decommission from required gate checks
+4. Full side-by-side parity milestone before cutover
+5. Big-bang primary-framework cutover
+6. Controlled Cypress decommission from required gate checks
 
 ## Milestone Sizing Policy (Bite-Size Rule)
 
@@ -91,7 +92,8 @@ _GATE: Feature spans >3 days; milestone breakdown required._
 | M5      | m5-core-clinical | Migrate P0 patient/order/result/report scenarios                | US2, US3     | P0 clinical scenarios passing in PW with parity evidence          | M4a, M4b   |
 | M6      | m6-storage-gaps  | Close critical storage/skip gaps in Playwright                  | US3          | Previously critical skipped/partial legacy cases covered in PW    | M5         |
 | M7      | m7-parity-ci     | Dual-run parity CI + merged shard reporting + runtime budgets   | US2, US4     | CI emits classified parity report + merged artifacts + budgets    | M6         |
-| M8      | m8-bigbang       | Big-bang cutover: Playwright primary, Cypress temporary compare | US4          | Playwright primary check active; Cypress comparison window active | M7         |
+| M8a     | m8a-full-parity  | Full parity gate with Cypress + Playwright side-by-side         | US3, US4     | Current active Cypress battery has full passing Playwright parity | M7         |
+| M8      | m8-bigbang       | Big-bang cutover: Playwright primary, Cypress temporary compare | US4          | Playwright primary check active; Cypress comparison window active | M8a        |
 | M9      | m9-stabilization | Stabilization + full-parity closure packet                      | US3, US4     | No untriaged P0/P1 divergence; parity closure targets satisfied   | M8         |
 | M10     | m10-cy-retire    | Cypress gate retirement + archival handoff                      | US4          | Cypress removed from required checks per approved policy          | M9         |
 
@@ -107,7 +109,8 @@ graph LR
     M4b --> M5
     M5 --> M6[M6 Storage Gaps]
     M6 --> M7[M7 Parity CI]
-    M7 --> M8[M8 Big-Bang Cutover]
+    M7 --> M8a[M8a Full Parity Side-by-Side]
+    M8a --> M8[M8 Big-Bang Cutover]
     M8 --> M9[M9 Stabilization]
     M9 --> M10[M10 Cypress Gate Retirement]
 ```
@@ -208,6 +211,21 @@ graph LR
 - Every divergence includes `failure_class` (setup/infra, assertion, parity)
 - Runtime metrics are captured and compared to the agreed runtime budget
 - Sharded Playwright output is merged and reviewable as a single artifact
+
+### M8a - Full Parity Side-by-Side Gate (US3, US4)
+
+**Deliverables**
+
+- Side-by-side parity evidence package generated from current active Cypress
+  scope and mapped Playwright scope
+- Updated `parity-matrix.csv` with full active-set parity outcomes
+- Explicit list of any approved exceptions (if policy allows exceptions)
+
+**Testable Gate**
+
+- Current active Cypress battery executes in CI side by side with Playwright
+- No active parity rows remain in `LEGACY_ONLY`, `GAP`, or `PARTIAL` state
+- Parity evidence links are recorded in milestone signoff artifacts
 
 ### M8 - Big-Bang Cutover (US4)
 
@@ -332,8 +350,8 @@ archival mode.
       execution)
 - [ ] **M7**: dual-run parity report artifact generated in CI (pending
       implementation)
-- [ ] **M8-M10**: cutover, stabilization, and Cypress retirement gates satisfied
-      (pending M7 through M10 completion)
+- [ ] **M8a-M10**: full side-by-side parity, cutover, stabilization, and Cypress
+      retirement gates satisfied (pending M7 through M10 completion)
 
 ## Risks & Mitigations
 
