@@ -6,8 +6,8 @@ This register tracks high-risk gaps identified during parity baseline work.
 
 Current status summary:
 
-- `Open`: `GAP-007` (target milestone `M9`)
-- `In Progress`: `GAP-001` through `GAP-006` (target milestone `M6`)
+- `Open`: none
+- `In Progress`: `GAP-001` through `GAP-007`
 
 | Gap ID  | Legacy Spec                                    | Risk | Gap Type         | Evidence                                             | Status      | Target Milestone | Owner  | Notes                                                                |
 | ------- | ---------------------------------------------- | ---- | ---------------- | ---------------------------------------------------- | ----------- | ---------------- | ------ | -------------------------------------------------------------------- |
@@ -17,7 +17,7 @@ Current status summary:
 | GAP-004 | `cypress/e2e/storageLocationCRUD.cy.js`        | P0   | skip-heavy       | 1 skipped case in inventory baseline                 | In Progress | M6               | qa-e2e | Linked reliability ID `RLY-004`; Playwright target added (`PARTIAL`) |
 | GAP-005 | `cypress/e2e/storageSamplesTable.cy.js`        | P1   | no-active-legacy | 0 active tests and 2 skipped tests                   | In Progress | M6               | qa-e2e | Linked reliability ID `RLY-006`; Playwright target added (`PARTIAL`) |
 | GAP-006 | `cypress/e2e/storageViewStorage.cy.js`         | P0   | skip-heavy       | 1 skipped case in inventory baseline                 | In Progress | M6               | qa-e2e | Linked reliability ID `RLY-005`; Playwright target added (`PARTIAL`) |
-| GAP-007 | `cypress/e2e/siteBranding.cy.js`               | P1   | coverage-hole    | Low active coverage and known commented legacy scope | Open        | M9               | qa-e2e | Linked reliability ID `RLY-007`                                      |
+| GAP-007 | `cypress/e2e/siteBranding.cy.js`               | P1   | coverage-hole    | Low active coverage and known commented legacy scope | In Progress | M9               | qa-e2e | Playwright target now added (`PARTIAL`); continue toward `PASS`      |
 
 ## Update Rules
 
