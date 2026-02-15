@@ -51,12 +51,47 @@ function extractJsonPayload(rawText) {
     throw new Error("Unable to locate Cypress JSON payload in reporter output.");
   }
 
-  const end = rawText.lastIndexOf("}");
-  if (end < start) {
-    throw new Error("Malformed Cypress reporter output: closing brace not found.");
+  let depth = 0;
+  let inString = false;
+  let escaping = false;
+
+  for (let index = start; index < rawText.length; index += 1) {
+    const char = rawText[index];
+
+    if (inString) {
+      if (escaping) {
+        escaping = false;
+        continue;
+      }
+      if (char === "\\") {
+        escaping = true;
+        continue;
+      }
+      if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return rawText.slice(start, index + 1);
+      }
+    }
   }
 
-  return rawText.slice(start, end + 1);
+  throw new Error("Malformed Cypress reporter output: closing brace not found.");
 }
 
 function readCypressReporterOutput(filePath) {
@@ -131,9 +166,24 @@ function summarizeTests(tests) {
 
 function normalizeResults(raw, metadata) {
   const tests = [];
-  pushTests(tests, raw.passes, "passed");
-  pushTests(tests, raw.failures, "failed");
-  pushTests(tests, raw.pending, "skipped");
+  if (raw.__parseError) {
+    tests.push({
+      id: "cypress-export::parse-error",
+      framework: "cypress",
+      file: null,
+      title: "Unable to parse Cypress reporter output",
+      status: "unknown",
+      durationMs: 0,
+      legacyScenarioId: null,
+      riskTier: null,
+      domain: null,
+      failureMessage: raw.__parseError,
+    });
+  } else {
+    pushTests(tests, raw.passes, "passed");
+    pushTests(tests, raw.failures, "failed");
+    pushTests(tests, raw.pending, "skipped");
+  }
 
   return {
     generatedAt: new Date().toISOString(),
@@ -148,6 +198,7 @@ function normalizeResults(raw, metadata) {
       sha: process.env.GITHUB_SHA || null,
     },
     cypressStats: raw.stats || null,
+    parseError: raw.__parseError || null,
     summary: summarizeTests(tests),
     tests,
   };
@@ -164,7 +215,21 @@ if (require.main === module) {
   const outputPath = args.output ? path.resolve(args.output) : DEFAULT_OUTPUT;
   const shard = args.shard || null;
 
-  const raw = readCypressReporterOutput(inputPath);
+  let raw;
+  try {
+    raw = readCypressReporterOutput(inputPath);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown parse failure";
+    console.warn(`WARNING: failed to parse Cypress reporter output: ${message}`);
+    raw = {
+      stats: null,
+      passes: [],
+      failures: [],
+      pending: [],
+      __parseError: message,
+    };
+  }
   const normalized = normalizeResults(raw, { inputPath, shard });
   writeOutput(outputPath, normalized);
 
