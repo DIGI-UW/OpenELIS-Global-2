@@ -201,3 +201,16 @@ node scripts/e2e/check-m8a-parity-gate.js \
   --cutoff specs/201-e2e-playwright-risk-parity/artifacts/cutoff-scope.json \
   --output specs/201-e2e-playwright-risk-parity/artifacts/m8a-gate-check.md
 ```
+
+### Latest M8a Freeze Attempt
+
+- Execution date: `2026-02-15`
+- Commit SHA: `01f70c7758cc7ecf1bc15348990a8845f2504c9b`
+- Referenced run IDs:
+  - Cypress: `22042226792`
+  - Playwright: `22042226797`
+- Output summary:
+  - Scoped scenarios: `47`
+  - Gate pass: `false`
+  - Blocking rows: `47`
+  - Blocking status counts: `LEGACY_ONLY=24`, `PARTIAL=22`, `GAP=1`

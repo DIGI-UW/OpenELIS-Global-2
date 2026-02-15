@@ -1,0 +1,513 @@
+{
+  "frozenAt": "2026-02-15T20:07:54.298Z",
+  "generatedBy": "scripts/e2e/freeze-m8a-cutoff.js",
+  "cutoffPolicy": "Current non-skipped Cypress coverage scope based on active Cypress specs in inventory artifact.",
+  "commitSha": "01f70c7758cc7ecf1bc15348990a8845f2504c9b",
+  "runReferences": {
+    "cypress": {
+      "runId": "22042226792",
+      "url": "https://github.com/DIGI-UW/OpenELIS-Global-2/actions/runs/22042226792"
+    },
+    "playwright": {
+      "runId": "22042226797",
+      "url": "https://github.com/DIGI-UW/OpenELIS-Global-2/actions/runs/22042226797"
+    }
+  },
+  "scope": {
+    "activeCypressSpecs": [
+      "cypress/e2e/AdminE2E/barcode.cy.js",
+      "cypress/e2e/AdminE2E/batchTestReassignmentandCancelation.cy.js",
+      "cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js",
+      "cypress/e2e/AdminE2E/dictionaryMenu.cy.js",
+      "cypress/e2e/AdminE2E/generalConfigurations.cy.js",
+      "cypress/e2e/AdminE2E/MenuConfig/billingMenuConfig.cy.js",
+      "cypress/e2e/AdminE2E/MenuConfig/globalMenuConfig.cy.js",
+      "cypress/e2e/AdminE2E/MenuConfig/nonConformMenuConfig.cy.js",
+      "cypress/e2e/AdminE2E/MenuConfig/patientMenuConfig.cy.js",
+      "cypress/e2e/AdminE2E/MenuConfig/studyMenuConfig.cy.js",
+      "cypress/e2e/AdminE2E/notifyUser.cy.js",
+      "cypress/e2e/AdminE2E/organizationManagement.cy.js",
+      "cypress/e2e/AdminE2E/programEntry.cy.js",
+      "cypress/e2e/AdminE2E/providerManagement.cy.js",
+      "cypress/e2e/AdminE2E/reflexTestsManagement.cy.js",
+      "cypress/e2e/AdminE2E/resultReportingConfig.cy.js",
+      "cypress/e2e/AdminE2E/testManagement.cy.js",
+      "cypress/e2e/AdminE2E/userManagement.cy.js",
+      "cypress/e2e/batchOrderEntry.cy.js",
+      "cypress/e2e/dashboard.cy.js",
+      "cypress/e2e/help.cy.js",
+      "cypress/e2e/home.cy.js",
+      "cypress/e2e/labNumberManagement.cy.js",
+      "cypress/e2e/login.cy.js",
+      "cypress/e2e/modifyOrder.cy.js",
+      "cypress/e2e/nonConform.cy.js",
+      "cypress/e2e/orderEntity.cy.js",
+      "cypress/e2e/patientEntry.cy.js",
+      "cypress/e2e/patientMerge.cy.js",
+      "cypress/e2e/report.cy.js",
+      "cypress/e2e/result.cy.js",
+      "cypress/e2e/siteBranding.cy.js",
+      "cypress/e2e/storageAssignment.cy.js",
+      "cypress/e2e/storageBoxCRUD-integration.cy.js",
+      "cypress/e2e/storageBoxCRUD.cy.js",
+      "cypress/e2e/storageDashboard.cy.js",
+      "cypress/e2e/storageDashboardMetrics.cy.js",
+      "cypress/e2e/storageDisposal.cy.js",
+      "cypress/e2e/storageFilters.cy.js",
+      "cypress/e2e/storageLocationCRUD-integration.cy.js",
+      "cypress/e2e/storageLocationCRUD-smoke.cy.js",
+      "cypress/e2e/storageLocationCRUD.cy.js",
+      "cypress/e2e/storageLocationExpandableRows.cy.js",
+      "cypress/e2e/storageSearch.cy.js",
+      "cypress/e2e/storageViewStorage.cy.js",
+      "cypress/e2e/validation.cy.js",
+      "cypress/e2e/workplan.cy.js"
+    ],
+    "scenarioCount": 47,
+    "scenarioIds": [
+      "LEG-CYP-001",
+      "LEG-CYP-002",
+      "LEG-CYP-003",
+      "LEG-CYP-004",
+      "LEG-CYP-005",
+      "LEG-CYP-006",
+      "LEG-CYP-007",
+      "LEG-CYP-008",
+      "LEG-CYP-009",
+      "LEG-CYP-010",
+      "LEG-CYP-011",
+      "LEG-CYP-012",
+      "LEG-CYP-013",
+      "LEG-CYP-014",
+      "LEG-CYP-015",
+      "LEG-CYP-016",
+      "LEG-CYP-017",
+      "LEG-CYP-018",
+      "LEG-CYP-019",
+      "LEG-CYP-020",
+      "LEG-CYP-021",
+      "LEG-CYP-022",
+      "LEG-CYP-023",
+      "LEG-CYP-024",
+      "LEG-CYP-025",
+      "LEG-CYP-026",
+      "LEG-CYP-027",
+      "LEG-CYP-028",
+      "LEG-CYP-029",
+      "LEG-CYP-030",
+      "LEG-CYP-031",
+      "LEG-CYP-032",
+      "LEG-CYP-033",
+      "LEG-CYP-034",
+      "LEG-CYP-035",
+      "LEG-CYP-036",
+      "LEG-CYP-037",
+      "LEG-CYP-038",
+      "LEG-CYP-039",
+      "LEG-CYP-040",
+      "LEG-CYP-041",
+      "LEG-CYP-042",
+      "LEG-CYP-043",
+      "LEG-CYP-045",
+      "LEG-CYP-046",
+      "LEG-CYP-047",
+      "LEG-CYP-048"
+    ],
+    "statusCounts": {
+      "PARTIAL": 22,
+      "LEGACY_ONLY": 24,
+      "GAP": 1
+    },
+    "riskCounts": {
+      "P0": 22,
+      "P1": 16,
+      "P2": 9
+    }
+  },
+  "gateEvaluation": {
+    "pass": false,
+    "blockingStatusSet": [
+      "LEGACY_ONLY",
+      "GAP",
+      "PARTIAL"
+    ],
+    "blockingRows": [
+      {
+        "scenarioId": "LEG-CYP-001",
+        "riskTier": "P0",
+        "domain": "admin",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/AdminE2E/barcode.cy.js",
+        "playwrightSpec": "playwright/tests/admin-barcode-core.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-002",
+        "riskTier": "P1",
+        "domain": "admin",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/AdminE2E/batchTestReassignmentandCancelation.cy.js",
+        "playwrightSpec": "playwright/tests/admin-batch-reassignment.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-003",
+        "riskTier": "P1",
+        "domain": "admin",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js",
+        "playwrightSpec": "playwright/tests/admin-calculated-values.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-004",
+        "riskTier": "P1",
+        "domain": "admin",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/AdminE2E/dictionaryMenu.cy.js",
+        "playwrightSpec": "playwright/tests/admin-dictionary-menu.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-005",
+        "riskTier": "P1",
+        "domain": "admin",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/AdminE2E/generalConfigurations.cy.js",
+        "playwrightSpec": "playwright/tests/admin-general-config.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-006",
+        "riskTier": "P2",
+        "domain": "admin",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/AdminE2E/MenuConfig/billingMenuConfig.cy.js",
+        "playwrightSpec": "playwright/tests/admin-menu-billing.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-007",
+        "riskTier": "P2",
+        "domain": "admin",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/AdminE2E/MenuConfig/globalMenuConfig.cy.js",
+        "playwrightSpec": "playwright/tests/admin-menu-global.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-008",
+        "riskTier": "P2",
+        "domain": "admin",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/AdminE2E/MenuConfig/nonConformMenuConfig.cy.js",
+        "playwrightSpec": "playwright/tests/admin-menu-nonconform.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-009",
+        "riskTier": "P2",
+        "domain": "admin",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/AdminE2E/MenuConfig/patientMenuConfig.cy.js",
+        "playwrightSpec": "playwright/tests/admin-menu-patient.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-010",
+        "riskTier": "P2",
+        "domain": "admin",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/AdminE2E/MenuConfig/studyMenuConfig.cy.js",
+        "playwrightSpec": "playwright/tests/admin-menu-study.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-011",
+        "riskTier": "P2",
+        "domain": "admin",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/AdminE2E/notifyUser.cy.js",
+        "playwrightSpec": "playwright/tests/admin-notify-user.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-012",
+        "riskTier": "P0",
+        "domain": "admin",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/AdminE2E/organizationManagement.cy.js",
+        "playwrightSpec": "playwright/tests/admin-organization-provider.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-013",
+        "riskTier": "P1",
+        "domain": "admin",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/AdminE2E/programEntry.cy.js",
+        "playwrightSpec": "playwright/tests/admin-program-entry.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-014",
+        "riskTier": "P0",
+        "domain": "admin",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/AdminE2E/providerManagement.cy.js",
+        "playwrightSpec": "playwright/tests/admin-organization-provider.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-015",
+        "riskTier": "P2",
+        "domain": "admin",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/AdminE2E/reflexTestsManagement.cy.js",
+        "playwrightSpec": "playwright/tests/admin-reflex-tests.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-016",
+        "riskTier": "P2",
+        "domain": "admin",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/AdminE2E/resultReportingConfig.cy.js",
+        "playwrightSpec": "playwright/tests/admin-result-reporting-config.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-017",
+        "riskTier": "P2",
+        "domain": "admin",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/AdminE2E/testManagement.cy.js",
+        "playwrightSpec": "playwright/tests/admin-test-management.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-018",
+        "riskTier": "P0",
+        "domain": "admin",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/AdminE2E/userManagement.cy.js",
+        "playwrightSpec": "playwright/tests/admin-user-management.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-019",
+        "riskTier": "P0",
+        "domain": "clinical",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/batchOrderEntry.cy.js",
+        "playwrightSpec": "playwright/tests/clinical-patient-order.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-020",
+        "riskTier": "P1",
+        "domain": "core",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/dashboard.cy.js",
+        "playwrightSpec": "playwright/tests/dashboard-smoke.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-021",
+        "riskTier": "P1",
+        "domain": "core",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/help.cy.js",
+        "playwrightSpec": "playwright/tests/help-navigation.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-022",
+        "riskTier": "P0",
+        "domain": "core",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/home.cy.js",
+        "playwrightSpec": "playwright/tests/home-navigation.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-023",
+        "riskTier": "P1",
+        "domain": "core",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/labNumberManagement.cy.js",
+        "playwrightSpec": "playwright/tests/lab-number-management.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-024",
+        "riskTier": "P0",
+        "domain": "core",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/login.cy.js",
+        "playwrightSpec": "playwright/tests/auth-login.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-025",
+        "riskTier": "P0",
+        "domain": "clinical",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/modifyOrder.cy.js",
+        "playwrightSpec": "playwright/tests/clinical-patient-order.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-026",
+        "riskTier": "P0",
+        "domain": "clinical",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/nonConform.cy.js",
+        "playwrightSpec": "playwright/tests/clinical-nonconform.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-027",
+        "riskTier": "P0",
+        "domain": "clinical",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/orderEntity.cy.js",
+        "playwrightSpec": "playwright/tests/clinical-patient-order.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-028",
+        "riskTier": "P0",
+        "domain": "clinical",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/patientEntry.cy.js",
+        "playwrightSpec": "playwright/tests/clinical-patient-order.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-029",
+        "riskTier": "P1",
+        "domain": "clinical",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/patientMerge.cy.js",
+        "playwrightSpec": "playwright/tests/patient-merge.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-030",
+        "riskTier": "P0",
+        "domain": "clinical",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/report.cy.js",
+        "playwrightSpec": "playwright/tests/clinical-report-workplan.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-031",
+        "riskTier": "P0",
+        "domain": "clinical",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/result.cy.js",
+        "playwrightSpec": "playwright/tests/clinical-result-validation.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-032",
+        "riskTier": "P1",
+        "domain": "core",
+        "parityStatus": "GAP",
+        "legacySpec": "cypress/e2e/siteBranding.cy.js",
+        "playwrightSpec": "playwright/tests/site-branding.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-033",
+        "riskTier": "P0",
+        "domain": "storage",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/storageAssignment.cy.js",
+        "playwrightSpec": "playwright/tests/storage-assignment-critical.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-034",
+        "riskTier": "P0",
+        "domain": "storage",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/storageBoxCRUD-integration.cy.js",
+        "playwrightSpec": "playwright/tests/storage-box-crud-critical.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-035",
+        "riskTier": "P0",
+        "domain": "storage",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/storageBoxCRUD.cy.js",
+        "playwrightSpec": "playwright/tests/storage-box-crud-critical.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-036",
+        "riskTier": "P1",
+        "domain": "storage",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/storageDashboard.cy.js",
+        "playwrightSpec": "playwright/tests/storage-dashboard.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-037",
+        "riskTier": "P1",
+        "domain": "storage",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/storageDashboardMetrics.cy.js",
+        "playwrightSpec": "playwright/tests/storage-dashboard-metrics.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-038",
+        "riskTier": "P1",
+        "domain": "storage",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/storageDisposal.cy.js",
+        "playwrightSpec": "playwright/tests/storage-disposal.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-039",
+        "riskTier": "P1",
+        "domain": "storage",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/storageFilters.cy.js",
+        "playwrightSpec": "playwright/tests/storage-filters.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-040",
+        "riskTier": "P0",
+        "domain": "storage",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/storageLocationCRUD-integration.cy.js",
+        "playwrightSpec": "playwright/tests/storage-view-edit-critical.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-041",
+        "riskTier": "P1",
+        "domain": "storage",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/storageLocationCRUD-smoke.cy.js",
+        "playwrightSpec": "playwright/tests/storage-location-smoke.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-042",
+        "riskTier": "P0",
+        "domain": "storage",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/storageLocationCRUD.cy.js",
+        "playwrightSpec": "playwright/tests/storage-view-edit-critical.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-043",
+        "riskTier": "P1",
+        "domain": "storage",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/storageLocationExpandableRows.cy.js",
+        "playwrightSpec": "playwright/tests/storage-location-expandable.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-045",
+        "riskTier": "P0",
+        "domain": "storage",
+        "parityStatus": "LEGACY_ONLY",
+        "legacySpec": "cypress/e2e/storageSearch.cy.js",
+        "playwrightSpec": "playwright/tests/storage-search.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-046",
+        "riskTier": "P0",
+        "domain": "storage",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/storageViewStorage.cy.js",
+        "playwrightSpec": "playwright/tests/storage-view-edit-critical.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-047",
+        "riskTier": "P0",
+        "domain": "clinical",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/validation.cy.js",
+        "playwrightSpec": "playwright/tests/clinical-result-validation.spec.ts"
+      },
+      {
+        "scenarioId": "LEG-CYP-048",
+        "riskTier": "P0",
+        "domain": "clinical",
+        "parityStatus": "PARTIAL",
+        "legacySpec": "cypress/e2e/workplan.cy.js",
+        "playwrightSpec": "playwright/tests/clinical-report-workplan.spec.ts"
+      }
+    ]
+  }
+}

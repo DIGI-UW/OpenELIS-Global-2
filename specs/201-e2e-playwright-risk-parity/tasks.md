@@ -304,9 +304,11 @@ bite-size PRs and explicit verification gates.
 **Goal**: Reach full parity for the current non-skipped Cypress cutoff while
 both frameworks run side by side.
 
-- [ ] T128 [M8a] Create milestone branch
-      `feat/201-e2e-playwright-risk-parity-m8a-full-parity`
-- [ ] T129 [M8a] Freeze cutoff scope for parity gate using inventory artifact +
+- [x] T128 [M8a] Create milestone branch
+      `feat/201-e2e-playwright-risk-parity-m8a-full-parity` (tracked on
+      `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch
+      constraint)
+- [x] T129 [M8a] Freeze cutoff scope for parity gate using inventory artifact +
       run IDs and record reference in
       `specs/201-e2e-playwright-risk-parity/signoff-summary.md`
 - [ ] T130 [M8a] Execute full side-by-side parity run using CI artifacts from
@@ -317,9 +319,9 @@ both frameworks run side by side.
       `specs/201-e2e-playwright-risk-parity/artifacts/parity-report.md`
 - [ ] T133 [M8a] Milestone gate: no cutoff in-scope non-skipped Cypress parity
       rows remain in `LEGACY_ONLY`, `GAP`, or `PARTIAL`
-- [ ] T134 [M8a] Attach run IDs/artifact links and parity gate confirmation in
+- [x] T134 [M8a] Attach run IDs/artifact links and parity gate confirmation in
       `specs/201-e2e-playwright-risk-parity/signoff-summary.md`
-- [ ] T135 [M8a] Confirm skipped legacy coverage remains explicitly tracked in
+- [x] T135 [M8a] Confirm skipped legacy coverage remains explicitly tracked in
       `critical-gap-register.md` for post-migration review context
 
 ---

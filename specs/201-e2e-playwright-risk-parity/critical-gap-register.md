@@ -27,3 +27,15 @@ When updating a gap:
 2. Add owner and milestone target before changing status to `In Progress`.
 3. Only mark `Closed` when Playwright parity status is `PASS` or approved
    exception is recorded.
+
+## M8a Skipped Legacy Tracking Confirmation (T135)
+
+Skipped/weak legacy coverage remains explicitly tracked for post-migration
+review in this register:
+
+- `GAP-001` through `GAP-006`: storage `skip-heavy` / `no-active-legacy` entries
+  (target `M6`, currently `In Progress`)
+- `GAP-007`: core `coverage-hole` entry (target `M9`, currently `Open`)
+
+This preserves visibility of skipped legacy behavior while M8a parity gate
+focuses on current non-skipped Cypress cutoff scope.
