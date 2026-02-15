@@ -67,8 +67,8 @@ Characteristics:
 - `owner` identifies accountable team role (`qa-e2e` at baseline).
 - `milestone_target` aligns migration with plan milestones:
   - `M4a`, `M4b`, `M5`, `M6` for migration waves
-  - `M9` for stabilization/parity closure
-  - `M10` for final Cypress gate retirement/archival handoff
+  - `M8a` for full side-by-side parity gate
+  - `M9` for stabilization/parity closure and sunset recommendation handoff
 
 ## Reliability Tracking
 

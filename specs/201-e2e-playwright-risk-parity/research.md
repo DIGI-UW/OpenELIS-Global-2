@@ -88,7 +88,7 @@ refactor.
 ## 3) Decisions Applied to Updated Specs
 
 1. Replace "indefinite Cypress retention" assumption with a **full migration**
-   endpoint that includes controlled Cypress gate retirement.
+   endpoint that includes a formal Cypress sunset recommendation handoff.
 2. Elevate fixture/data management to first-class scope: deterministic contract,
    reset/load/verify policy, and test-created data boundaries.
 3. Tighten parity acceptance:
@@ -99,7 +99,8 @@ refactor.
 5. Preserve migration safety via time-boxed dual-run stabilization before
    decommission decision.
 
-## 4) Open Clarifications Required
+## 4) Strategy Clarifications Resolved
 
-See `spec.md` section **Clarification Questions (`/speckit.clarify`)** for the
-five decisions that still require explicit product-owner confirmation.
+See `spec.md` section **Strategy Decisions Locked for Implementation** for the
+resolved decisions now governing cutover scope, parity gating, Cypress sunset
+timing, and fixture strategy selection.

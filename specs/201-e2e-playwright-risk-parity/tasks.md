@@ -6,15 +6,15 @@
 
 > **Scope Update (2026-02-15, `/speckit.clarify`)**: Feature goal is now full
 > migration + full E2E battery refactor (including fixture/data stabilization
-> and Cypress gate retirement). Existing tasks in this file are retained as the
+> and Cypress sunset planning). Existing tasks in this file are retained as the
 > executed migration log for M1-M9 planning baseline; this file now includes an
-> explicit pre-cutover full-parity side-by-side milestone (`M8a`) and requires
-> full task regeneration to align all post-clarify milestones (including M10).
+> explicit pre-cutover full-parity side-by-side milestone (`M8a`). Cypress
+> sunset execution is deferred to a follow-on feature after migration review.
 
 **Tests**: Mandatory. This feature is itself E2E-focused; milestones include
 test artifacts, parity validation checks, and CI comparison verification.
 
-**Organization**: Tasks are grouped by **milestone** (M1-M10) per plan.md, with
+**Organization**: Tasks are grouped by **milestone** (M1-M9) per plan.md, with
 bite-size PRs and explicit verification gates.
 
 ## Format: `[ID] [P?] [M#] Description`
@@ -27,19 +27,19 @@ bite-size PRs and explicit verification gates.
 
 ## Milestone to Story Mapping
 
-| Milestone | Primary Stories | Scope                                                         |
-| --------- | --------------- | ------------------------------------------------------------- |
-| M1        | US1             | Coverage inventory and CI execution map                       |
-| M2        | US1, US2        | Risk model + parity map skeleton                              |
-| M3        | US2             | Playwright migration foundation hardening                     |
-| M4a       | US2, US3        | P0 auth/nav Playwright migration                              |
-| M4b       | US2, US3        | P0 admin-core Playwright migration                            |
-| M5        | US2, US3        | P0 clinical workflow migration                                |
-| M6        | US3             | Critical storage gap closure                                  |
-| M7        | US2, US4        | Dual-run CI parity report pipeline                            |
-| M8a       | US3, US4        | Full parity side-by-side gate (current Cypress vs Playwright) |
-| M8        | US4             | Big-bang cutover after parity gate                            |
-| M9        | US3, US4        | Stabilization and migration signoff packet                    |
+| Milestone | Primary Stories | Scope                                                              |
+| --------- | --------------- | ------------------------------------------------------------------ |
+| M1        | US1             | Coverage inventory and CI execution map                            |
+| M2        | US1, US2        | Risk model + parity map skeleton                                   |
+| M3        | US2             | Playwright migration foundation hardening                          |
+| M4a       | US2, US3        | P0 auth/nav Playwright migration                                   |
+| M4b       | US2, US3        | P0 admin-core Playwright migration                                 |
+| M5        | US2, US3        | P0 clinical workflow migration                                     |
+| M6        | US3             | Critical storage gap closure                                       |
+| M7        | US2, US4        | Dual-run CI parity report pipeline                                 |
+| M8a       | US3, US4        | Full parity side-by-side gate (current Cypress vs Playwright)      |
+| M8        | US4             | Big-bang cutover after parity gate (Cypress side-by-side retained) |
+| M9        | US3, US4        | Stabilization and migration signoff packet                         |
 
 ---
 
@@ -132,6 +132,15 @@ bite-size PRs and explicit verification gates.
 - [x] T049 [M3] Add E2E semantics guardrail checklist in
       `specs/201-e2e-playwright-risk-parity/e2e-semantics-checklist.md` (avoid
       turning real E2E into mocked-backend tests)
+- [ ] T050 [M3] Evaluate fixture strategy alternatives and record selection in
+      `specs/201-e2e-playwright-risk-parity/fixture-strategy.md` (criteria:
+      atomic/independent behavior, best-practice alignment, runtime impact)
+- [ ] T051 [M3] Apply selected fixture strategy defaults to
+      `frontend/cypress.config.js`,
+      `frontend/playwright/fixtures/storage-fixtures.ts`, and shared fixture
+      helpers
+- [ ] T052 [M3] Milestone gate: fixture strategy is selected, documented, and
+      validated against performance + isolation acceptance criteria
 
 ---
 
@@ -277,21 +286,26 @@ bite-size PRs and explicit verification gates.
 
 ## M8a: Full Parity Side-by-Side Gate (Bite-size PR 8a)
 
-**Goal**: Reach full parity for the current active Cypress battery while both
-frameworks run side by side.
+**Goal**: Reach full parity for the current non-skipped Cypress cutoff while
+both frameworks run side by side.
 
 - [ ] T128 [M8a] Create milestone branch
       `feat/201-e2e-playwright-risk-parity-m8a-full-parity`
-- [ ] T129 [M8a] Execute full side-by-side parity run using CI artifacts from
-      Playwright and Cypress workflows
-- [ ] T130 [M8a] Update `parity-matrix.csv` so all current active Cypress rows
-      are `PASS` (or explicitly approved exception per policy)
-- [ ] T131 [M8a] Record side-by-side full parity evidence in
-      `specs/201-e2e-playwright-risk-parity/artifacts/parity-report.md`
-- [ ] T132 [M8a] Milestone gate: no current active Cypress parity rows remain in
-      `LEGACY_ONLY`, `GAP`, or `PARTIAL`
-- [ ] T133 [M8a] Attach run IDs/artifact links and parity gate confirmation in
+- [ ] T129 [M8a] Freeze cutoff scope for parity gate using inventory artifact +
+      run IDs and record reference in
       `specs/201-e2e-playwright-risk-parity/signoff-summary.md`
+- [ ] T130 [M8a] Execute full side-by-side parity run using CI artifacts from
+      Playwright and Cypress workflows for the frozen cutoff scope
+- [ ] T131 [M8a] Update `parity-matrix.csv` so all cutoff in-scope non-skipped
+      Cypress rows are `PASS` (or explicitly approved exception per policy)
+- [ ] T132 [M8a] Record side-by-side full parity evidence in
+      `specs/201-e2e-playwright-risk-parity/artifacts/parity-report.md`
+- [ ] T133 [M8a] Milestone gate: no cutoff in-scope non-skipped Cypress parity
+      rows remain in `LEGACY_ONLY`, `GAP`, or `PARTIAL`
+- [ ] T134 [M8a] Attach run IDs/artifact links and parity gate confirmation in
+      `specs/201-e2e-playwright-risk-parity/signoff-summary.md`
+- [ ] T135 [M8a] Confirm skipped legacy coverage remains explicitly tracked in
+      `critical-gap-register.md` for post-migration review context
 
 ---
 
@@ -336,8 +350,8 @@ comparison.
       assignment
 - [ ] T144 [M9] Create final signoff summary
       `specs/201-e2e-playwright-risk-parity/signoff-summary.md`
-- [ ] T145 [M9] Confirm explicit migration closure statement and Cypress
-      retirement readiness in
+- [ ] T145 [M9] Confirm explicit migration closure statement and Cypress sunset
+      recommendation handoff in
       `specs/201-e2e-playwright-risk-parity/signoff-summary.md`
 - [ ] T146 [M9] Milestone gate: no untriaged P0/P1 divergences at end of
       stabilization window
@@ -396,8 +410,8 @@ comparison.
 2. **P0 first**: migrate highest-risk scenarios before long-tail coverage
 3. **Gap closure over raw parity count**: skipped/weak legacy areas are upgraded
 4. **Full parity before cutover**: satisfy side-by-side parity gate (`M8a`)
-5. **Controlled migration completion**: retire Cypress checks only after
-   cutover/stabilization gates pass
+5. **Controlled migration completion**: keep Cypress side-by-side in this
+   feature and hand off sunset recommendation (execution deferred)
 
 ---
 

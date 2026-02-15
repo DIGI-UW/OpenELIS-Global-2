@@ -110,31 +110,29 @@ scenarios are `PASS` or explicitly exceptioned with approval records.
 
 ---
 
-### User Story 4 - Cut Over to Playwright and Finalize Full Migration (Priority: P1)
+### User Story 4 - Cut Over to Playwright with Cypress Side-by-Side (Priority: P1)
 
-As stakeholders, we need Playwright to become the sole required E2E gate after
-stabilization, with Cypress retired from active gate duty in a controlled
-manner.
+As stakeholders, we need Playwright to become the primary migration target while
+full Cypress wiring stays active side by side until migration results are
+reviewed.
 
-**Why this priority**: The updated goal is full migration and refactoring, not
-indefinite dual-framework operation.
+**Why this priority**: We need strict migration quality gates now, while
+deferring Cypress sunset execution to a later follow-on decision.
 
-**Independent Test**: CI required checks and project guidance reflect Playwright
-as the final E2E framework, with Cypress status explicitly transitioned to
-archival/non-gating mode.
+**Independent Test**: CI runs show pre-cutover parity completion and Playwright
+primary execution, while Cypress full battery still runs side by side.
 
 **Acceptance Scenarios**:
 
 1. **Given** current Cypress and Playwright run side by side, **When** the
-   pre-cutover parity milestone is executed, **Then** all currently active
-   Cypress scenarios have passing Playwright parity coverage in CI.
+   pre-cutover parity milestone is executed, **Then** all currently non-skipped
+   Cypress coverage in scope has passing Playwright parity coverage in CI.
 2. **Given** parity and reliability gates are met, **When** cutover occurs,
-   **Then** Playwright is the required E2E gate and emits merged shard reports.
-3. **Given** a temporary dual-run window, **When** stabilization completes,
-   **Then** Cypress is removed from required gate checks per approved cutover
-   policy.
-4. **Given** historical comparison needs, **When** migration closes, **Then**
-   legacy Cypress artifacts/links are preserved according to retention policy.
+   **Then** Playwright is the primary E2E check and emits merged shard reports.
+3. **Given** migration review is pending, **When** pull requests run, **Then**
+   the full Cypress battery remains wired and executed in CI side by side.
+4. **Given** migration closes, **When** signoff docs are prepared, **Then** a
+   Cypress sunset recommendation is documented for a later follow-on feature.
 
 ---
 
@@ -185,17 +183,21 @@ archival/non-gating mode.
   infrastructure/setup, test assertion, and cross-framework parity divergence.
 - **FR-014**: Runtime metrics MUST be collected per run and evaluated against an
   agreed migration/runtime budget.
-- **FR-015**: Feature completion MUST include controlled Cypress gate retirement
-  (decommission from required CI checks) after cutover/stabilization criteria
-  are met.
+- **FR-015**: This feature MUST keep full Cypress CI wiring active through the
+  migration and stabilization milestones.
 - **FR-016**: Migration documentation MUST define post-migration artifact
   retention policy for legacy Cypress evidence.
 - **FR-017**: The cutover sequence MUST include a dedicated side-by-side parity
   milestone where the current active Cypress battery and Playwright battery run
   together in CI and parity is verified before enabling cutover.
 - **FR-018**: The side-by-side parity milestone MUST have zero active
-  `LEGACY_ONLY`, `GAP`, or `PARTIAL` parity statuses for the current active
-  Cypress scenario set.
+  `LEGACY_ONLY`, `GAP`, or `PARTIAL` parity statuses for current **non-skipped**
+  Cypress coverage in the cutoff scope.
+- **FR-019**: The parity scope for cutover MUST be frozen to a documented
+  Cypress coverage cutoff snapshot (inventory artifact + run IDs) before M8a.
+- **FR-020**: Fixture strategy MUST be explicitly evaluated and selected during
+  implementation using criteria that balance atomic/independent test behavior,
+  best-practice isolation, and CI/runtime performance.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -208,9 +210,9 @@ archival/non-gating mode.
   user-observable assertions per testing roadmap and Playwright guidance.
 - **CR-004**: CI/CD changes MUST produce auditable artifacts
   (logs/screenshots/traces/parity reports) for triage and compliance evidence.
-- **CR-005**: Framework policy for this feature MUST transition from
-  dual-framework migration mode to Playwright-final mode, with Cypress archived
-  per approved migration policy.
+- **CR-005**: Framework policy for this feature MUST keep dual-framework
+  migration mode active (Playwright primary + full Cypress side by side), with
+  Cypress sunset execution deferred to a follow-on scope.
 
 ### Key Entities _(include if feature involves data)_
 
@@ -223,7 +225,7 @@ archival/non-gating mode.
 - **Reliability Evaluation Record**: Run-level pass/fail and classification data
   for baseline-flaky migrated scenarios.
 - **Cutover Readiness Gate**: Aggregated criteria object for migration
-  completion and Cypress gate retirement decision.
+  completion and Cypress sunset recommendation decision.
 
 ## Success Criteria _(mandatory)_
 
@@ -243,24 +245,21 @@ archival/non-gating mode.
   clean-run validations with stable outcome classification.
 - **SC-007**: Playwright shard results are merged into a single report artifact
   per CI run with trace/screenshot evidence on failures.
-- **SC-008**: Playwright is the required E2E gate at completion, and Cypress is
-  retired from required checks per approved migration policy.
+- **SC-008**: Playwright is primary for migration cutover while full Cypress
+  wiring remains active side by side for review.
 - **SC-009**: A pre-cutover side-by-side parity milestone is completed and
-  evidenced in CI, with full parity across the current active Cypress battery.
+  evidenced in CI, with full parity for the current non-skipped Cypress coverage
+  cutoff.
+- **SC-010**: A documented fixture strategy decision (with rationale and chosen
+  mode) is produced and adopted for remaining implementation milestones.
 
-## Clarification Questions (`/speckit.clarify`)
+## Strategy Decisions Locked for Implementation
 
-1. **Cypress end-state policy**: After Playwright signoff, do you want Cypress
-   to be:
-   - A) fully removed from CI and repository,
-   - B) removed from required checks but retained in repo (archived),
-   - C) retained as optional scheduled run?
-2. **Parity threshold for completion**: Must **all P2** also be migrated in this
-   feature, or can P2 remain as approved deferred backlog?
-3. **Fixture reset policy in CI**: Should every shard/run enforce a hard
-   `--reset` fixture load, or allow reuse when verification passes?
-4. **Account isolation strategy**: For mutating tests in parallel, should we
-   require one account per worker now, or allow serial execution with shared
-   account until account pool automation is ready?
-5. **Dual-run stabilization window**: What is the target duration/number of runs
-   before Cypress decommission decision (for example, N consecutive green runs)?
+1. **Cypress coverage cutoff is frozen** for migration parity scope.
+2. **Anything currently non-skipped in Cypress must pass** in Playwright parity
+   before cutover (`M8a` gate).
+3. **Full Cypress wiring remains active side by side** through this feature;
+   sunset execution is deferred until after migration review.
+4. **Fixture strategy is an implementation deliverable**: evaluate options and
+   pick a best-practice approach that preserves atomic/independent testing
+   behavior without sacrificing runtime performance.
