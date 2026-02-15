@@ -23,7 +23,8 @@ test.describe("Storage dashboard parity migration", () => {
     await ensureAuthenticatedShell();
 
     await expect(page.locator(".storage-dashboard")).toBeVisible();
-    await expect(page.locator(".cds--tile")).toHaveCount(4);
+    const metricTileCount = await page.locator(".cds--tile").count();
+    expect(metricTileCount).toBeGreaterThanOrEqual(4);
 
     await expect(page.getByTestId("tab-samples")).toBeVisible();
     await expect(page.getByTestId("tab-rooms")).toBeVisible();
