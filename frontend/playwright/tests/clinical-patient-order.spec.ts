@@ -33,8 +33,8 @@ test.describe("Clinical patient and order parity migration", () => {
       notes: "M5 order entry shell parity smoke",
     });
 
-    await gotoAndWait("/SamplePatientEntry");
     await ensureAuthForScenario("mutating");
+    await gotoAndWait("/SamplePatientEntry");
 
     await expect(page).toHaveURL(/SamplePatientEntry/i);
     await expect(page.locator("#mainHeader")).toBeVisible();
