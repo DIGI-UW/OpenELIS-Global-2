@@ -9,7 +9,9 @@ jobs:
   playwright-tests:
     name: Run Playwright E2E Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Docker image build + container startup + full Playwright suite regularly
+    # exceeds 15 minutes in CI; keep enough budget for deterministic completion.
+    timeout-minutes: 45
     
     steps:
       - name: Checkout code
