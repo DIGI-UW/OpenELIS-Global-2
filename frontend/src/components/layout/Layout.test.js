@@ -195,7 +195,7 @@ describe("Layout", () => {
       const NotificationConsumer = () => {
         const notificationCtx = useContext(NotificationContext);
         return (
-          <div data-testid="notification-consumer">
+          <div data-testid="notification-consumer-1">
             {notificationCtx ? "context-available" : "no-context"}
           </div>
         );
@@ -207,7 +207,7 @@ describe("Layout", () => {
         </Layout>,
       );
 
-      expect(screen.getByTestId("notification-consumer").textContent).toBe(
+      expect(screen.getByTestId("notification-consumer-1").textContent).toBe(
         "context-available",
       );
     });
@@ -219,7 +219,7 @@ describe("Layout", () => {
       const NotificationConsumer = () => {
         const notificationCtx = useContext(NotificationContext);
         return (
-          <div data-testid="notification-consumer">
+          <div data-testid="notification-consumer-2">
             {typeof notificationCtx?.addNotification === "function"
               ? "has-add"
               : "no-add"}
@@ -233,7 +233,7 @@ describe("Layout", () => {
         </Layout>,
       );
 
-      expect(screen.getByTestId("notification-consumer").textContent).toBe(
+      expect(screen.getByTestId("notification-consumer-2").textContent).toBe(
         "has-add",
       );
     });
