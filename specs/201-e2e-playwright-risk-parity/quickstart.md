@@ -183,3 +183,21 @@ Status:
 - Script syntax validation: `PASS`
 - Playwright config/reporter validation (`--list`): `PASS`
 - CI milestone gate T109: `PENDING_CI_CONFIRMATION`
+
+## M8a Cutoff Freeze + Gate Commands
+
+```bash
+# 1) Freeze cutoff scope from inventory + parity matrix + run IDs
+node scripts/e2e/freeze-m8a-cutoff.js \
+  --inventory specs/201-e2e-playwright-risk-parity/artifacts/inventory.json \
+  --parity-matrix specs/201-e2e-playwright-risk-parity/parity-matrix.csv \
+  --head-sha <sha> \
+  --cypress-run-id <cypress_run_id> \
+  --playwright-run-id <playwright_run_id> \
+  --output specs/201-e2e-playwright-risk-parity/artifacts/cutoff-scope.json
+
+# 2) Evaluate M8a gate (exit non-zero when blocking rows remain)
+node scripts/e2e/check-m8a-parity-gate.js \
+  --cutoff specs/201-e2e-playwright-risk-parity/artifacts/cutoff-scope.json \
+  --output specs/201-e2e-playwright-risk-parity/artifacts/m8a-gate-check.md
+```
