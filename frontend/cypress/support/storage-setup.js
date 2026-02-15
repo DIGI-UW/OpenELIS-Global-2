@@ -1,9 +1,35 @@
 import LoginPage from "../pages/LoginPage";
 
+const FLOW_READ = "read";
+const FLOW_MUTATING = "mutating";
+
+function resolveFixtureMode(flowType = FLOW_READ) {
+  const strategyMode = Cypress.env("FIXTURE_STRATEGY_MODE") || "hybrid";
+
+  if (strategyMode === "verify-reuse") {
+    return "verify-reuse";
+  }
+
+  if (strategyMode === "reset-load-verify") {
+    return "reset-load-verify";
+  }
+
+  if (strategyMode === "skip") {
+    return "skip";
+  }
+
+  // Hybrid defaults by flow type.
+  if (flowType === FLOW_MUTATING) {
+    return Cypress.env("FIXTURE_MUTATING_MODE") || "reset-load-verify";
+  }
+
+  return Cypress.env("FIXTURE_READ_MODE") || "verify-reuse";
+}
+
 /**
  * Common setup for all storage E2E tests
  * Consolidates login, fixture loading, and API readiness checks
- * Usage: cy.setupStorageTests()
+ * Usage: cy.setupStorageTests({ flowType: "read" | "mutating" })
  *
  * Environment variables (set via CYPRESS_* prefix):
  * - SKIP_FIXTURES=true: Skip fixture loading entirely (assumes fixtures exist)
@@ -25,7 +51,11 @@ import LoginPage from "../pages/LoginPage";
  *   # Clean up after tests
  *   CYPRESS_CLEANUP_FIXTURES=true npm run cy:run -- --spec "cypress/e2e/storage*.cy.js"
  */
-Cypress.Commands.add("setupStorageTests", () => {
+Cypress.Commands.add("setupStorageTests", (options = {}) => {
+  const flowType =
+    options.flowType === FLOW_MUTATING ? FLOW_MUTATING : FLOW_READ;
+  const fixtureMode = resolveFixtureMode(flowType);
+
   // Wait for backend API to be available
   cy.waitForBackend("/rest/storage/samples");
 
@@ -34,27 +64,42 @@ Cypress.Commands.add("setupStorageTests", () => {
   loginPage.visit();
   const homePage = loginPage.goToHomePage();
 
-  // Smart fixture loading based on env vars and existence check
+  // Smart fixture loading based on strategy mode, env vars, and existence check.
   const skipFixtures = Cypress.env("SKIP_FIXTURES") === true;
   const forceFixtures = Cypress.env("FORCE_FIXTURES") === true;
 
-  if (skipFixtures) {
+  if (skipFixtures || fixtureMode === "skip") {
     cy.log(
-      "Skipping fixture loading (SKIP_FIXTURES=true) - assuming fixtures exist",
+      `Skipping fixture loading (mode=${fixtureMode}, SKIP_FIXTURES=${skipFixtures})`,
     );
-  } else if (forceFixtures) {
+  } else if (forceFixtures || fixtureMode === "reset-load-verify") {
     cy.log(
-      "Force loading fixtures (FORCE_FIXTURES=true) - reloading even if exist",
+      `Reloading fixtures (mode=${fixtureMode}, FORCE_FIXTURES=${forceFixtures})`,
     );
+    if (fixtureMode === "reset-load-verify") {
+      cy.cleanStorageFixtures();
+    }
     cy.loadStorageFixtures();
+    cy.checkStorageFixturesExist().then((fixturesExist) => {
+      expect(fixturesExist).to.eq(
+        true,
+        "Storage fixtures should exist after reset/load step",
+      );
+    });
   } else {
-    // Check if fixtures already exist before loading
+    // Verify-and-reuse baseline fixtures for read-oriented flows.
     cy.checkStorageFixturesExist().then((fixturesExist) => {
       if (fixturesExist) {
-        cy.log("Fixtures already exist - skipping load for faster iteration");
+        cy.log("Fixtures already exist - reusing verified baseline");
       } else {
-        cy.log("Fixtures not found - loading test data");
+        cy.log("Fixtures not found - loading baseline data");
         cy.loadStorageFixtures();
+        cy.checkStorageFixturesExist().then((verifyAfterLoad) => {
+          expect(verifyAfterLoad).to.eq(
+            true,
+            "Storage fixtures should exist after baseline load",
+          );
+        });
       }
     });
   }
@@ -65,16 +110,23 @@ Cypress.Commands.add("setupStorageTests", () => {
 
 /**
  * Cleanup after storage tests
- * Usage: cy.cleanupStorageTests()
+ * Usage: cy.cleanupStorageTests({ flowType: "read" | "mutating" })
  *
  * Only cleans up if CLEANUP_FIXTURES=true (default: false for faster iteration)
  * Set CYPRESS_CLEANUP_FIXTURES=true to enable cleanup
  */
-Cypress.Commands.add("cleanupStorageTests", () => {
-  const shouldCleanup = Cypress.env("CLEANUP_FIXTURES") === true;
+Cypress.Commands.add("cleanupStorageTests", (options = {}) => {
+  const flowType =
+    options.flowType === FLOW_MUTATING ? FLOW_MUTATING : FLOW_READ;
+  const shouldCleanup =
+    Cypress.env("CLEANUP_FIXTURES") === true || flowType === FLOW_MUTATING;
 
   if (shouldCleanup) {
-    cy.log("Cleaning up fixtures (CLEANUP_FIXTURES=true)");
+    cy.log(
+      `Cleaning up fixtures (CLEANUP_FIXTURES=${Cypress.env(
+        "CLEANUP_FIXTURES",
+      )}, flowType=${flowType})`,
+    );
     cy.cleanStorageFixtures();
   } else {
     cy.log(

@@ -115,6 +115,21 @@ module.exports = defineConfig({
     // Set CYPRESS_FORCE_FIXTURES=true to always reload
     // Default: false (check existence first)
     FORCE_FIXTURES: process.env.CYPRESS_FORCE_FIXTURES === "true",
+
+    // Fixture strategy contract (M3): hybrid by scope.
+    // - verify-reuse for read/non-mutating
+    // - reset-load-verify for mutating flows
+    FIXTURE_STRATEGY_MODE: process.env.CYPRESS_FIXTURE_STRATEGY || "hybrid",
+    FIXTURE_READ_MODE: process.env.CYPRESS_FIXTURE_READ_MODE || "verify-reuse",
+    FIXTURE_MUTATING_MODE:
+      process.env.CYPRESS_FIXTURE_MUTATING_MODE || "reset-load-verify",
+
+    // Auth strategy contract (M3): shared session for read flows,
+    // isolated workflow setup for mutating flows.
+    AUTH_STRATEGY_MODE: process.env.CYPRESS_AUTH_STRATEGY || "hybrid",
+    AUTH_READ_MODE: process.env.CYPRESS_AUTH_READ_MODE || "shared-session",
+    AUTH_MUTATING_MODE:
+      process.env.CYPRESS_AUTH_MUTATING_MODE || "isolated-session",
   },
   e2e: {
     setupNodeEvents(on, config) {

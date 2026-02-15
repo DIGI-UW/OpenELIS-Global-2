@@ -47,6 +47,48 @@ docker compose -f build.docker-compose.yml up -d --wait --wait-timeout 600
 - Artifact path from failed run:
   - `frontend/test-results/playwright/auth.setup.ts-authenticate-setup/test-failed-1.png`
 
+## M3 Fixture Strategy Gate Result (T052)
+
+- Selected strategy: `hybrid`
+  - Read/non-mutating: `verify-reuse`
+  - Mutating: `reset-load-verify`
+- Implementation touchpoints:
+  - `frontend/cypress.config.js`
+  - `frontend/cypress/support/storage-setup.js`
+  - `frontend/playwright/fixtures/storage-fixtures.ts`
+  - `frontend/playwright/fixtures/e2e-base.ts`
+- Representative commands attempted:
+  - Playwright mutating-flow storage fixture command:
+    `cd frontend && TEST_USER=admin TEST_PASS=adminADMIN! PW_LOAD_STORAGE_FIXTURES=true PW_FIXTURE_STRATEGY_MODE=hybrid PW_FIXTURE_MUTATING_MODE=reset-load-verify npm run pw:test -- --grep "Storage box CRUD critical parity migration"`
+  - Cypress storage fixture strategy command:
+    `cd frontend && TEST_USER=admin TEST_PASS=adminADMIN! CYPRESS_FIXTURE_STRATEGY=hybrid CYPRESS_FIXTURE_MUTATING_MODE=reset-load-verify xvfb-run -a npm run cy:failfast:spec "cypress/e2e/storageBoxCRUD.cy.js"`
+- Execution date: `2026-02-15`
+- Status: `BLOCKED_IN_ENV`
+- Observed outcome:
+  - Playwright setup project failed first with
+    `net::ERR_CONNECTION_REFUSED at https://localhost/`.
+  - Cypress launched under xvfb but failed baseUrl verification because
+    `https://localhost` was not reachable.
+
+## M3 Auth Strategy Gate Result (T055)
+
+- Auth strategy contract:
+  - Read/non-mutating default: `shared-session`
+  - Mutating default: `worker-isolated` (worker credential override supported)
+- Representative commands attempted:
+  - Read-flow command:
+    `cd frontend && TEST_USER=admin TEST_PASS=adminADMIN! PW_AUTH_STRATEGY_MODE=hybrid PW_AUTH_READ_MODE=shared-session npm run pw:test -- --grep "Home and navbar navigation parity migration"`
+  - Mutating-flow command:
+    `cd frontend && TEST_USER=admin TEST_PASS=adminADMIN! PW_AUTH_STRATEGY_MODE=hybrid PW_AUTH_MUTATING_MODE=worker-isolated npm run pw:test -- --grep "Clinical patient and order parity migration"`
+- Execution date: `2026-02-15`
+- Status: `BLOCKED_IN_ENV`
+- Observed outcome:
+  - Both commands failed in setup with
+    `net::ERR_CONNECTION_REFUSED at https://localhost/` before app-level auth
+    behavior could be exercised.
+  - Fixture/auth contract implementation is complete in code, but runtime
+    validation requires reachable OpenELIS environment.
+
 ## M4a Auth/Nav Spot-Check Gate Result (T066)
 
 - Playwright command:

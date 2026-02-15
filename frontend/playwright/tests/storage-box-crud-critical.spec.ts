@@ -4,7 +4,7 @@ import { test, expect } from "../fixtures/e2e-base";
 
 test.describe("Storage box CRUD critical parity migration", () => {
   test.beforeAll(() => {
-    ensureStorageFixturesLoaded();
+    ensureStorageFixturesLoaded({ flowType: "mutating" });
   });
 
   test("boxes tab exposes add-box gate based on rack selection state", async ({

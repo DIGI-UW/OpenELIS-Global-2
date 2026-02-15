@@ -132,24 +132,28 @@ bite-size PRs and explicit verification gates.
 - [x] T049 [M3] Add E2E semantics guardrail checklist in
       `specs/201-e2e-playwright-risk-parity/e2e-semantics-checklist.md` (avoid
       turning real E2E into mocked-backend tests)
-- [ ] T050 [M3] Evaluate fixture strategy alternatives and record selection in
+- [x] T050 [M3] Evaluate fixture strategy alternatives and record selection in
       `specs/201-e2e-playwright-risk-parity/fixture-strategy.md` (criteria:
       atomic/independent behavior, best-practice alignment, runtime impact)
-- [ ] T051 [M3] Apply selected fixture strategy defaults to
+- [x] T051 [M3] Apply selected fixture strategy defaults to
       `frontend/cypress.config.js`,
       `frontend/playwright/fixtures/storage-fixtures.ts`, and shared fixture
       helpers
 - [ ] T052 [M3] Milestone gate: fixture strategy is selected, documented, and
-      validated against performance + isolation acceptance criteria
-- [ ] T053 [M3] Define explicit auth strategy contract (shared-account for
+      validated against performance + isolation acceptance criteria (runtime
+      execution blocked in current cloud environment: `https://localhost`
+      unavailable for Playwright/Cypress verification runs)
+- [x] T053 [M3] Define explicit auth strategy contract (shared-account for
       read-only/non-mutating flows; worker/account isolation for mutating flows)
       in `specs/201-e2e-playwright-risk-parity/fixture-strategy.md`
-- [ ] T054 [M3] Implement auth strategy defaults in
+- [x] T054 [M3] Implement auth strategy defaults in
       `frontend/playwright/fixtures/e2e-base.ts` (and related helper modules if
       needed) so mutating parallel flows can run with isolated accounts
 - [ ] T055 [M3] Milestone gate: validate auth strategy with representative
       read-only and mutating flows and record evidence in
-      `specs/201-e2e-playwright-risk-parity/quickstart.md`
+      `specs/201-e2e-playwright-risk-parity/quickstart.md` (runtime execution
+      blocked in current cloud environment: `https://localhost` unavailable for
+      Playwright verification runs)
 
 ---
 

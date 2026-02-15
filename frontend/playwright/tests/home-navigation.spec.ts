@@ -5,7 +5,7 @@ test.describe("Home and navbar navigation parity migration", () => {
   test("search, notifications, and help interactions work from dashboard", async ({
     page,
     gotoAndWait,
-    ensureAuthenticatedShell,
+    ensureAuthForScenario,
   }, testInfo) => {
     addParityAnnotations(testInfo, {
       legacyScenarioId: "LEG-CYP-022",
@@ -15,7 +15,7 @@ test.describe("Home and navbar navigation parity migration", () => {
     });
 
     await gotoAndWait("/Dashboard");
-    await ensureAuthenticatedShell();
+    await ensureAuthForScenario("read");
 
     await page.locator("#search-Icon").click();
     await expect(page.locator("#searchItem")).toBeVisible();

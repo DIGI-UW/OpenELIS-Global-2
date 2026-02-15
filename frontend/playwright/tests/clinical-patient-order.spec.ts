@@ -24,7 +24,7 @@ test.describe("Clinical patient and order parity migration", () => {
   test("loads sample patient entry shell", async ({
     page,
     gotoAndWait,
-    ensureAuthenticatedShell,
+    ensureAuthForScenario,
   }, testInfo) => {
     addParityAnnotations(testInfo, {
       legacyScenarioId: "LEG-CYP-027",
@@ -34,7 +34,7 @@ test.describe("Clinical patient and order parity migration", () => {
     });
 
     await gotoAndWait("/SamplePatientEntry");
-    await ensureAuthenticatedShell();
+    await ensureAuthForScenario("mutating");
 
     await expect(page).toHaveURL(/SamplePatientEntry/i);
     await expect(page.locator("#mainHeader")).toBeVisible();
