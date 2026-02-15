@@ -182,7 +182,8 @@ primary execution, while Cypress full battery still runs side by side.
 - **FR-013**: Failure classification MUST include at least:
   infrastructure/setup, test assertion, and cross-framework parity divergence.
 - **FR-014**: Runtime metrics MUST be collected per run and evaluated against an
-  agreed migration/runtime budget.
+  explicit runtime-budget contract documented in project artifacts (thresholds,
+  owner, and approval point).
 - **FR-015**: This feature MUST keep full Cypress CI wiring active through the
   migration and stabilization milestones.
 - **FR-016**: Migration documentation MUST define post-migration artifact
@@ -192,7 +193,8 @@ primary execution, while Cypress full battery still runs side by side.
   together in CI and parity is verified before enabling cutover.
 - **FR-018**: The side-by-side parity milestone MUST have zero active
   `LEGACY_ONLY`, `GAP`, or `PARTIAL` parity statuses for current **non-skipped**
-  Cypress coverage in the cutoff scope.
+  Cypress coverage in the cutoff scope, and those rows MUST be `PASS` (no
+  `EXCEPTION_APPROVED` permitted for non-skipped cutoff rows at M8a).
 - **FR-019**: The parity scope for cutover MUST be frozen to a documented
   Cypress coverage cutoff snapshot (inventory artifact + run IDs) before M8a.
 - **FR-020**: Fixture strategy MUST be explicitly evaluated and selected during

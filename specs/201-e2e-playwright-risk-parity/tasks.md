@@ -141,6 +141,15 @@ bite-size PRs and explicit verification gates.
       helpers
 - [ ] T052 [M3] Milestone gate: fixture strategy is selected, documented, and
       validated against performance + isolation acceptance criteria
+- [ ] T053 [M3] Define explicit auth strategy contract (shared-account for
+      read-only/non-mutating flows; worker/account isolation for mutating flows)
+      in `specs/201-e2e-playwright-risk-parity/fixture-strategy.md`
+- [ ] T054 [M3] Implement auth strategy defaults in
+      `frontend/playwright/fixtures/e2e-base.ts` (and related helper modules if
+      needed) so mutating parallel flows can run with isolated accounts
+- [ ] T055 [M3] Milestone gate: validate auth strategy with representative
+      read-only and mutating flows and record evidence in
+      `specs/201-e2e-playwright-risk-parity/quickstart.md`
 
 ---
 
@@ -297,7 +306,7 @@ both frameworks run side by side.
 - [ ] T130 [M8a] Execute full side-by-side parity run using CI artifacts from
       Playwright and Cypress workflows for the frozen cutoff scope
 - [ ] T131 [M8a] Update `parity-matrix.csv` so all cutoff in-scope non-skipped
-      Cypress rows are `PASS` (or explicitly approved exception per policy)
+      Cypress rows are `PASS` (no `EXCEPTION_APPROVED` allowed for this gate)
 - [ ] T132 [M8a] Record side-by-side full parity evidence in
       `specs/201-e2e-playwright-risk-parity/artifacts/parity-report.md`
 - [ ] T133 [M8a] Milestone gate: no cutoff in-scope non-skipped Cypress parity
@@ -362,6 +371,11 @@ comparison.
       result in `stabilization-report.md`
 - [ ] T149 [M9] Verify all divergence entries include owner, risk tier, and
       `failure_class` in `divergence-triage.md`
+- [ ] T150 [M9] Create legacy Cypress artifact retention policy
+      `specs/201-e2e-playwright-risk-parity/artifact-retention-policy.md`
+      (artifact scope, storage location, retention duration, and owner)
+- [ ] T151 [M9] Link and confirm retention policy adoption in
+      `specs/201-e2e-playwright-risk-parity/signoff-summary.md`
 
 ---
 

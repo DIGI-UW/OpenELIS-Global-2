@@ -151,6 +151,8 @@ graph LR
 **Deliverables**
 
 - Reusable auth/session fixture strategy
+- Auth strategy contract that classifies scenarios as shared-account
+  (read-only/non-mutating) or worker/account-isolated (mutating/parallel)
 - Unified fixture contract for Cypress-to-Playwright migration window
 - Fixture strategy decision record with tradeoffs for isolation vs performance
   (selected implementation mode for this feature)
@@ -163,6 +165,8 @@ graph LR
 - New foundation does not regress current suite
 - Fixture strategy is documented and selected using explicit criteria:
   atomic/independent test behavior, best-practice alignment, and runtime impact
+- Auth strategy contract is documented and validated against at least one
+  representative mutating flow and one read-only flow
 
 ### M4a/M4b - P0 Migration Waves (US2, US3)
 
@@ -204,6 +208,7 @@ graph LR
 
 - CI Parity Report output (Playwright + Cypress normalized results)
 - Divergence report with risk labels, scenario links, and failure classification
+- Runtime budget contract artifact (thresholds, owner, approval point)
 - Per-run runtime metrics for both suites versus runtime budget
 - Merged Playwright shard artifacts (blob merge -> single report)
 
@@ -223,7 +228,7 @@ graph LR
 - Frozen cutoff reference (inventory snapshot + run IDs) used as M8a parity
   acceptance scope
 - Updated `parity-matrix.csv` with full active-set parity outcomes
-- Explicit list of any approved exceptions (if policy allows exceptions)
+- Explicit confirmation that all cutoff non-skipped rows are `PASS`
 
 **Testable Gate**
 
@@ -251,6 +256,8 @@ graph LR
 
 - Time-boxed stabilization report
 - Final parity and divergence status summary
+- Legacy Cypress artifact retention policy (what to retain, where, for how long,
+  and owner)
 - Explicit migration closure statement and Cypress sunset recommendation handoff
 
 **Testable Gate**
@@ -359,6 +366,7 @@ sunset execution is deferred to follow-on scope.
 
 ## Next Steps
 
-1. Regenerate `/speckit.tasks` from this updated clarify scope
+1. Keep `tasks.md` as the single authoritative implementation tracker and update
+   it as remediation decisions are applied
 2. Prioritize fixture contract hardening and parity closure over net-new breadth
 3. Enforce milestone gate checks before entering each subsequent milestone
