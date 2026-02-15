@@ -145,6 +145,7 @@ export default function Layout(props) {
             >
               {children}
             </Content>
+            <div className="quick-nav-content" />
           </Theme>
           <Footer />
           <QuickNavFooter />
