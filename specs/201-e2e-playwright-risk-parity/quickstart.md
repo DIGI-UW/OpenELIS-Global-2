@@ -230,3 +230,18 @@ Current result against run IDs `22042226792` + `22042226797`:
 - Message: "no valid artifacts found to download" (both frameworks)
 - Interpretation: side-by-side runs must complete and publish artifacts before
   T130/T132 evidence generation can finalize.
+
+## M8 Cutover Orientation (Prework)
+
+Primary vs comparison check alignment:
+
+- Playwright primary check: `Run Playwright E2E Tests`
+  (`.github/workflows/playwright-e2e.yml` fan-in job)
+- Cypress comparison check: `build-and-run-qa-tests`
+  (`.github/workflows/frontend-qa.yml` fan-in job)
+
+Cutover checklist artifact:
+
+- `specs/201-e2e-playwright-risk-parity/cutover-checklist.md`
+
+Important: M8 execution remains gated by M8a parity pass.

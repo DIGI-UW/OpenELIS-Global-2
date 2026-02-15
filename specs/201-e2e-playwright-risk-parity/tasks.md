@@ -333,23 +333,26 @@ both frameworks run side by side.
 **Goal**: Make Playwright primary E2E gate while keeping full Cypress
 comparison.
 
-- [ ] T120 [M8] Create milestone branch
-      `feat/201-e2e-playwright-risk-parity-m8-bigbang`
+- [x] T120 [M8] Create milestone branch
+      `feat/201-e2e-playwright-risk-parity-m8-bigbang` (tracked on
+      `cursor/e2e-test-revamp-investigation-e1a2` due cloud single-branch
+      constraint)
 - [ ] T121 [M8] Update E2E workflow orchestration to make Playwright the primary
       gate check `.github/workflows/playwright-e2e.yml`
 - [ ] T122 [M8] Keep Cypress full-suite workflow active and explicit as
       comparison suite `.github/workflows/frontend-qa.yml`
-- [ ] T123 [M8] Add/adjust aggregate check naming and documentation for primary
+- [x] T123 [M8] Add/adjust aggregate check naming and documentation for primary
       vs comparison roles `specs/201-e2e-playwright-risk-parity/quickstart.md`
-- [ ] T124 [M8] Add explicit note in migration docs that `M8a` full parity gate
+- [x] T124 [M8] Add explicit note in migration docs that `M8a` full parity gate
       was satisfied before enabling cutover
-      `specs/201-e2e-playwright-risk-parity/quickstart.md`
+      `specs/201-e2e-playwright-risk-parity/quickstart.md` (note: currently
+      documented as a prerequisite; gate not yet satisfied)
 - [ ] T125 [M8] Milestone gate: Playwright check is primary while Cypress still
       fully runs
 - [ ] T126 [M8] Verify required checks policy via GitHub CLI and record evidence
       in `specs/201-e2e-playwright-risk-parity/signoff-summary.md` (confirm
       Playwright primary check + Cypress comparison checks)
-- [ ] T127 [M8] Add cutover checklist artifact
+- [x] T127 [M8] Add cutover checklist artifact
       `specs/201-e2e-playwright-risk-parity/cutover-checklist.md` (checks,
       owners, rollback criteria)
 
