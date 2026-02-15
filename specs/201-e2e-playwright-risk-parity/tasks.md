@@ -312,7 +312,9 @@ both frameworks run side by side.
       run IDs and record reference in
       `specs/201-e2e-playwright-risk-parity/signoff-summary.md`
 - [ ] T130 [M8a] Execute full side-by-side parity run using CI artifacts from
-      Playwright and Cypress workflows for the frozen cutoff scope
+      Playwright and Cypress workflows for the frozen cutoff scope (currently
+      blocked: normalized artifacts unavailable while referenced runs are still
+      in progress/not finalized)
 - [ ] T131 [M8a] Update `parity-matrix.csv` so all cutoff in-scope non-skipped
       Cypress rows are `PASS` (no `EXCEPTION_APPROVED` allowed for this gate)
 - [ ] T132 [M8a] Record side-by-side full parity evidence in

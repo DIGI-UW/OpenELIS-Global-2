@@ -20,6 +20,9 @@
 - Parity report artifact: `artifacts/parity-report.md`
 - Runtime metrics artifact: `artifacts/runtime-metrics.json`
 - M8a gate artifact: `artifacts/m8a-gate-check.md`
+- Artifact pull status: `BLOCKED_IN_CI`
+  - `scripts/e2e/generate-m8a-evidence.sh` currently reports "no valid artifacts
+    found to download" for both run IDs above while runs are not finalized.
 
 ### Gate Status (T133)
 

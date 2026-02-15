@@ -223,3 +223,10 @@ bash scripts/e2e/generate-m8a-evidence.sh \
   --playwright-run-id <playwright_run_id> \
   --head-sha <sha>
 ```
+
+Current result against run IDs `22042226792` + `22042226797`:
+
+- Status: `BLOCKED_IN_CI`
+- Message: "no valid artifacts found to download" (both frameworks)
+- Interpretation: side-by-side runs must complete and publish artifacts before
+  T130/T132 evidence generation can finalize.
