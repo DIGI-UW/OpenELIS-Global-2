@@ -37,6 +37,16 @@ jobs:
       - name: Prepare .env from template
         run: cp .env.example .env
 
+      - name: Free disk space before Docker build
+        run: |
+          echo "=== Disk usage before cleanup ==="
+          df -h
+          echo "=== Cleaning Docker cache ==="
+          docker system prune -af --volumes || true
+          docker builder prune -af || true
+          echo "=== Disk usage after cleanup ==="
+          df -h
+
       - name: Build OpenELIS containers
         run: docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
 
