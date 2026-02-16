@@ -1,0 +1,56 @@
+# ASTM LIS2-A2 Sample: Unmapped/Unknown Fields
+# Purpose: Test error dashboard and unmapped field handling (User Story 3)
+# Reference: specs/004-astm-analyzer-mapping/spec.md FR-011, FR-016, FR-017
+#
+# This sample contains fields that are NOT configured in the mapping:
+# - RETICULOCYTES (not in standard CBC mapping)
+# - FERRITIN (not configured)
+# - PROCALCITONIN (specialty test)
+# - UNKNOWN_FIELD (invalid test code)
+#
+# These should trigger errors visible in the error dashboard for:
+# - Manual mapping creation (FR-011)
+# - Error acknowledgment (FR-016)
+# - Reprocessing after mapping (FR-017)
+
+H|\^&|||Sysmex^XN-1000^V1.0|||||||LIS2-A2|20250115110000
+P|1||PAT-2025-005|Brown^David^K||M|19780630|WHITE|555 Cedar Ln^^Hilltown^ST^77889
+O|1|SAMPLE-2025-0005^LAB|SPEC^Specialty Panel||20250115105500||||||||||||||||||||
+
+# Standard fields that should map successfully
+R|1|^^^WBC^White Blood Cell Count|7.2|10^3/μL|4.5-11.0|N||F|20250115110100
+R|2|^^^RBC^Red Blood Cell Count|4.85|10^6/μL|4.5-5.5|N||F|20250115110100
+R|3|^^^HGB^Hemoglobin|15.1|g/dL|13.5-17.5|N||F|20250115110100
+
+# Unmapped fields - should trigger errors
+R|4|^^^RETICULOCYTES^Reticulocyte Count|1.8|%|0.5-2.5|N||F|20250115110100
+R|5|^^^RETIC_ABS^Absolute Reticulocyte Count|88.2|10^3/μL|25-125|N||F|20250115110100
+R|6|^^^IRF^Immature Reticulocyte Fraction|12.5|%|2.5-17.0|N||F|20250115110100
+R|7|^^^NRBC^Nucleated Red Blood Cells|0|/100 WBC|0|N||F|20250115110100
+
+L|1|N
+
+# Second message with more unmapped specialty tests
+H|\^&|||Roche^Cobas^e801|||||||LIS2-A2|20250115120000
+P|1||PAT-2025-006|Taylor^Sarah^E||F|19650115|WHITE|888 Maple Dr^^Greenville^ST^99001
+O|1|SAMPLE-2025-0006^LAB|INFLAM^Inflammatory Markers||20250115115500||||||||||||||||||||
+
+# Unmapped inflammatory markers
+R|1|^^^PROCALCITONIN^Procalcitonin|0.25|ng/mL|<0.5|N||F|20250115120100
+R|2|^^^IL6^Interleukin-6|8.5|pg/mL|<7|H||F|20250115120100
+R|3|^^^FERRITIN^Ferritin|185|ng/mL|12-150|H||F|20250115120100
+R|4|^^^DDIMER^D-Dimer|0.45|μg/mL|<0.5|N||F|20250115120100
+R|5|^^^FIBRINOGEN^Fibrinogen|320|mg/dL|200-400|N||F|20250115120100
+
+# Completely unknown/invalid field
+R|6|^^^UNKNOWN_FIELD^Invalid Test|999||Unknown|X||F|20250115120100
+
+L|1|N
+
+
+
+
+
+
+
+

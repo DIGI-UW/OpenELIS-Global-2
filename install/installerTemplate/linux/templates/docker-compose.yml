@@ -133,41 +133,6 @@ services:
       interval: 30s
       retries: 3
       start_period: 2m
-        
-#astm  astm-http-bridge.openelis.org:
-#astm    container_name: astm-http-bridge 
-#astm    image: ctsteele/astm-http-bridge:latest
-#astm    ports:
-#astm      - "8442:8443"
-#astm      - "12000:12001"
-#astm    volumes:
-#astm      - /var/lib/openelis-global/astmbridge/configuration.yml:/app/configuration.yml
-#astm      - /home/caleb/projects/UW-Projects/OpenELIS-Global-2/dev/https/int.caleb.dev.openelisci.org.truststore.p12:/etc/truststore 
-#astm    secrets:
-#astm      - source: truststore
-#astm      - source: keystore
-#astm    environment:
-#astm      server.ssl.keyStorePath: /run/secrets/keystore
-#astm      server.ssl.keyStorePassword: [% keystore_password %] 
-#astm      server.ssl.keyStoreType: PKCS12
-#astm      TZ: [% timezone %]
-#astm      LOGGING_LEVEL_ORG_ITECH: DEBUG
-#astm      JAVA_OPTS: "-Djavax.net.ssl.trustStore=/run/secrets/truststore 
-#astm            -Djavax.net.ssl.trustStorePassword=[% truststore_password %] 
-#astm            -Djavax.net.ssl.trustStoreType=pkcs12 
-#astm            -Djavax.net.ssl.keyStore=/run/secrets/keystore 
-#astm            -Djavax.net.ssl.keyStorePassword=[% keystore_password %] 
-#astm            -Djavax.net.ssl.keyStoreType=pkcs12"
-#astm    networks:
-#astm      - openelis-network
-#astm    logging: *local-logging
-#astm#    logging: *loki-logging
-#astm    healthcheck:
-#astm      test: ["CMD", "/app/healthcheck.sh"]
-#astm      timeout: 10s
-#astm      interval: 30s
-#astm      retries: 3
-#astm      start_period: 2m
 
   proxy.openelis.org:
     container_name: [% nginx_name %]

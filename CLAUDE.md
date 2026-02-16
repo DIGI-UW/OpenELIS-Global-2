@@ -96,19 +96,46 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 2. **Green:** Write minimal code to make test pass
 3. **Refactor:** Improve code quality while keeping tests green
 
-### Individual E2E Test Execution (Constitution V.5)
+### Cypress E2E Test Execution (CRITICAL for Claude Code Environment)
 
-**Development:** Run tests INDIVIDUALLY (NOT full suite)
+**IMPORTANT:** In Claude Code CLI environment, `ELECTRON_RUN_AS_NODE=1` is set,
+which breaks Cypress. All `npm run cy:*` scripts include
+`unset ELECTRON_RUN_AS_NODE` to work around this. **ALWAYS use the npm scripts,
+NOT direct `npx cypress` commands.**
+
+**Available Scripts (use these, not direct cypress commands):**
 
 ```bash
-# CORRECT (individual test file during development)
-npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"
+# Run specific test file
+npm run cy:spec "cypress/e2e/home.cy.js"
 
-# WRONG (full suite, only for CI/CD)
+# Run all admin tests
+npm run cy:admin
+
+# Run all analyzer tests
+npm run cy:analyzer
+
+# Run full suite (development)
 npm run cy:run
+
+# Run full suite with fail-fast (stops on first failure)
+npm run cy:failfast
+
+# Run specific test with fail-fast
+npm run cy:failfast:spec "cypress/e2e/AdminE2E/organizationManagement.cy.js"
+
+# Open Cypress UI (interactive mode)
+npm run cy:open
 ```
 
-**Why?** Faster feedback (5 minutes vs 15+ minutes), easier debugging
+**Three-Phase Workflow (Constitution V.5):**
+
+1. **During Development:** Run individual tests (`npm run cy:spec "..."`)
+2. **Before Pushing (MANDATORY):** Run full suite (`npm run cy:failfast`)
+3. **In CI/CD:** Automatic via GitHub Actions
+
+**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
+This wastes 60+ minutes of CI time.
 
 ---
 
@@ -124,4 +151,4 @@ npm run cy:run
 
 ---
 
-**Last Updated:** 2025-11-09 **Constitution Version:** 1.7.0
+**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0

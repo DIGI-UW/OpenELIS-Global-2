@@ -37,9 +37,11 @@ import org.dom4j.Element;
 import org.hibernate.InstantiationException;
 import org.openelisglobal.common.exception.LIMSException;
 import org.openelisglobal.common.log.LogEvent;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 
 @Component
+@DependsOn({ "pluginMenuService", "pluginAnalyzerService" })
 public class PluginLoader {
     public static final String PLUGIN_ANALYZER = "/var/lib/openelis-global/plugins/";
     public static final String VERSION = "version";
