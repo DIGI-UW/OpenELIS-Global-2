@@ -22,18 +22,22 @@ import {
   GroupPresentation,
   Add,
   ChartBar,
+  InProgress,
 } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
+import { useHistory } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 const STATUS_TAG_MAP = {
   DRAFT: { color: "gray", label: "draft" },
+  PREPARED: { color: "blue", label: "prepared" },
   SHIPPED: { color: "purple", label: "shipped" },
   COMPLETED: { color: "green", label: "completed" },
 };
 
 const EQADistributionDashboard = () => {
   const intl = useIntl();
+  const history = useHistory();
   const [shipments, setShipments] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [summary, setSummary] = useState({
@@ -180,8 +184,19 @@ const EQADistributionDashboard = () => {
         </Button>
       );
     }
+    if (row.status === "PREPARED") {
+      return (
+        <Button kind="primary" size="sm" renderIcon={SendFilled}>
+          {intl.formatMessage({ id: "eqa.distribution.action.ship" })}
+        </Button>
+      );
+    }
     return (
-      <Button kind="primary" size="sm">
+      <Button
+        kind="primary"
+        size="sm"
+        onClick={() => history.push(`/EQADistribution/create?id=${row.id}`)}
+      >
         {intl.formatMessage({ id: "eqa.distribution.action.continue" })}
       </Button>
     );
@@ -264,6 +279,12 @@ const EQADistributionDashboard = () => {
               })}
             />
             <SelectItem
+              value="PREPARED"
+              text={intl.formatMessage({
+                id: "eqa.distribution.status.prepared",
+              })}
+            />
+            <SelectItem
               value="SHIPPED"
               text={intl.formatMessage({
                 id: "eqa.distribution.status.shipped",
@@ -278,7 +299,12 @@ const EQADistributionDashboard = () => {
           </Select>
         </div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
-          <Button kind="primary" size="md" renderIcon={Add}>
+          <Button
+            kind="primary"
+            size="md"
+            renderIcon={Add}
+            onClick={() => history.push("/EQADistribution/create")}
+          >
             {intl.formatMessage({ id: "eqa.distribution.createShipment" })}
           </Button>
           <Button kind="secondary" size="md" renderIcon={GroupPresentation}>

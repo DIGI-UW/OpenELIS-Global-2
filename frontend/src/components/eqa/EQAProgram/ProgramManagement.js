@@ -25,7 +25,7 @@ import {
   Edit,
   TrashCan,
   DataCheck,
-  UserMultiple,
+  GroupPresentation,
   ChartBar,
   Settings,
 } from "@carbon/icons-react";
@@ -33,6 +33,8 @@ import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ProgramForm from "./ProgramForm";
+import ParticipantsTab from "./ParticipantsTab";
+import SystemSettingsTab from "./SystemSettingsTab";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -198,8 +200,10 @@ const ProgramManagement = () => {
                 fontSize: "0.875rem",
               }}
             >
-              <UserMultiple size={16} />
-              {intl.formatMessage({ id: "eqa.admin.tile.systemUsers" })}
+              <GroupPresentation size={16} />
+              {intl.formatMessage({
+                id: "eqa.admin.tile.enrolledParticipants",
+              })}
             </div>
             <div
               style={{ fontSize: "2rem", fontWeight: 700, margin: "0.25rem 0" }}
@@ -207,7 +211,7 @@ const ProgramManagement = () => {
               —
             </div>
             <div style={{ fontSize: "0.75rem", color: "#0043ce" }}>
-              {intl.formatMessage({ id: "eqa.admin.tile.canManageEqa" })}
+              {intl.formatMessage({ id: "eqa.admin.tile.acrossAllPrograms" })}
             </div>
           </ClickableTile>
         </Column>
@@ -260,8 +264,8 @@ const ProgramManagement = () => {
             <Tab renderIcon={DataCheck}>
               {intl.formatMessage({ id: "eqa.admin.tab.programs" })}
             </Tab>
-            <Tab renderIcon={UserMultiple}>
-              {intl.formatMessage({ id: "eqa.admin.tab.userManagement" })}
+            <Tab renderIcon={GroupPresentation}>
+              {intl.formatMessage({ id: "eqa.admin.tab.participants" })}
             </Tab>
             <Tab renderIcon={Settings}>
               {intl.formatMessage({ id: "eqa.admin.tab.systemSettings" })}
@@ -411,32 +415,14 @@ const ProgramManagement = () => {
               )}
             </TabPanel>
 
-            {/* User Management Tab */}
+            {/* Participants Tab */}
             <TabPanel>
-              <div style={{ padding: "2rem 0" }}>
-                <h4>
-                  {intl.formatMessage({ id: "eqa.admin.tab.userManagement" })}
-                </h4>
-                <p style={{ color: "#525252", marginTop: "0.5rem" }}>
-                  {intl.formatMessage({
-                    id: "eqa.admin.userManagement.placeholder",
-                  })}
-                </p>
-              </div>
+              <ParticipantsTab programs={programs} />
             </TabPanel>
 
             {/* System Settings Tab */}
             <TabPanel>
-              <div style={{ padding: "2rem 0" }}>
-                <h4>
-                  {intl.formatMessage({ id: "eqa.admin.tab.systemSettings" })}
-                </h4>
-                <p style={{ color: "#525252", marginTop: "0.5rem" }}>
-                  {intl.formatMessage({
-                    id: "eqa.admin.systemSettings.placeholder",
-                  })}
-                </p>
-              </div>
+              <SystemSettingsTab />
             </TabPanel>
           </TabPanels>
         </Tabs>

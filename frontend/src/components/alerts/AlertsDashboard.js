@@ -5,6 +5,7 @@ import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
 import AlertSummaryTiles from "./AlertSummaryTiles";
 import AlertsTable from "./AlertsTable";
 import AlertAcknowledgeModal from "./AlertAcknowledgeModal";
+import EQADeadlineSummary from "./EQADeadlineSummary";
 
 const AUTO_REFRESH_INTERVAL = 60000;
 
@@ -189,6 +190,15 @@ const AlertsDashboard = () => {
         pageSize={pageSize}
         onPageChange={handlePageChange}
         onAcknowledge={handleAcknowledge}
+      />
+
+      <EQADeadlineSummary
+        alerts={alerts}
+        onFilterByProvider={(provider) => {
+          setTypeFilter("EQA_DEADLINE");
+          setSearchText(provider);
+          setPage(0);
+        }}
       />
 
       <AlertAcknowledgeModal

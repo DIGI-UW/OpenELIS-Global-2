@@ -15,6 +15,7 @@ import {
   SelectItem,
   Button,
   ProgressBar,
+  Search,
 } from "@carbon/react";
 import {
   Time,
@@ -23,8 +24,11 @@ import {
   SendFilled,
   Upload,
   ChartBar,
+  Add,
+  WarningAlt,
 } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
+import { useHistory } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 const STATUS_TAG_MAP = {
@@ -32,12 +36,15 @@ const STATUS_TAG_MAP = {
   IN_PROGRESS: { color: "blue", icon: InProgress },
   COMPLETED: { color: "green", icon: CheckmarkFilled },
   SUBMITTED: { color: "teal", icon: SendFilled },
+  OVERDUE: { color: "red", icon: WarningAlt },
 };
 
 const EQAManagementDashboard = () => {
   const intl = useIntl();
+  const history = useHistory();
   const [samples, setSamples] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
+  const [searchText, setSearchText] = useState("");
   const [summary, setSummary] = useState({
     pending: 0,
     inProgress: 0,
@@ -140,7 +147,22 @@ const EQAManagementDashboard = () => {
     },
   ];
 
-  const rows = samples.map((s) => ({
+  const filteredSamples = searchText
+    ? samples.filter(
+        (s) =>
+          (s.accessionNumber || "")
+            .toLowerCase()
+            .includes(searchText.toLowerCase()) ||
+          (s.programName || "")
+            .toLowerCase()
+            .includes(searchText.toLowerCase()) ||
+          (s.providerName || "")
+            .toLowerCase()
+            .includes(searchText.toLowerCase()),
+      )
+    : samples;
+
+  const rows = filteredSamples.map((s) => ({
     id: String(s.id || s.accessionNumber),
     accessionNumber: s.accessionNumber,
     providerProgram: s.providerName || "",
@@ -159,9 +181,21 @@ const EQAManagementDashboard = () => {
       ? new Date(row.deadline).toLocaleDateString()
       : "";
     const daysLeft = row.daysLeft;
+    const isOverdue = daysLeft != null && daysLeft < 0;
     return (
       <div>
-        <div>{date}</div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.25rem",
+            color: isOverdue ? "#da1e28" : undefined,
+            fontWeight: isOverdue ? 600 : undefined,
+          }}
+        >
+          {isOverdue && <WarningAlt size={14} />}
+          {date}
+        </div>
         {daysLeft != null && (
           <div
             style={{
@@ -169,7 +203,9 @@ const EQAManagementDashboard = () => {
               color: daysLeft <= 3 ? "#da1e28" : "#198038",
             }}
           >
-            {daysLeft} {intl.formatMessage({ id: "eqa.management.daysLeft" })}
+            {isOverdue
+              ? intl.formatMessage({ id: "eqa.management.overdue" })
+              : `${daysLeft} ${intl.formatMessage({ id: "eqa.management.daysLeft" })}`}
           </div>
         )}
       </div>
@@ -179,13 +215,29 @@ const EQAManagementDashboard = () => {
   const getActionButton = (row) => {
     if (row.status === "COMPLETED") {
       return (
-        <Button kind="primary" size="sm">
+        <Button
+          kind="primary"
+          size="sm"
+          onClick={() =>
+            history.push(
+              `/result?accessionNumber=${encodeURIComponent(row.accessionNumber)}`,
+            )
+          }
+        >
           {intl.formatMessage({ id: "eqa.management.action.submit" })}
         </Button>
       );
     }
     return (
-      <Button kind="primary" size="sm">
+      <Button
+        kind="primary"
+        size="sm"
+        onClick={() =>
+          history.push(
+            `/result?accessionNumber=${encodeURIComponent(row.accessionNumber)}`,
+          )
+        }
+      >
         {intl.formatMessage({ id: "eqa.management.action.enterResults" })}
       </Button>
     );
@@ -193,10 +245,27 @@ const EQAManagementDashboard = () => {
 
   return (
     <div style={{ padding: "1rem" }}>
-      <h2>{intl.formatMessage({ id: "eqa.management.title" })}</h2>
-      <p style={{ color: "#525252", marginBottom: "1.5rem" }}>
-        {intl.formatMessage({ id: "eqa.management.subtitle" })}
-      </p>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: "1.5rem",
+        }}
+      >
+        <div>
+          <h2>{intl.formatMessage({ id: "eqa.management.title" })}</h2>
+          <p style={{ color: "#525252" }}>
+            {intl.formatMessage({ id: "eqa.management.subtitle" })}
+          </p>
+        </div>
+        <Button
+          renderIcon={Add}
+          onClick={() => history.push("/SampleAdd?isEQA=true")}
+        >
+          {intl.formatMessage({ id: "eqa.tests.enterNew" })}
+        </Button>
+      </div>
 
       {/* Summary Tiles */}
       <Grid condensed style={{ marginBottom: "1.5rem" }}>
@@ -246,46 +315,68 @@ const EQAManagementDashboard = () => {
           padding: "1rem",
           backgroundColor: "#f4f4f4",
           borderRadius: "8px",
+          gap: "1rem",
+          flexWrap: "wrap",
         }}
       >
-        <div style={{ width: "200px" }}>
-          <Select
-            id="eqa-sample-filter"
-            labelText=""
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <SelectItem
-              value=""
-              text={intl.formatMessage({
-                id: "eqa.management.filter.allSamples",
+        <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end" }}>
+          <div style={{ width: "200px" }}>
+            <Select
+              id="eqa-sample-filter"
+              labelText=""
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <SelectItem
+                value=""
+                text={intl.formatMessage({
+                  id: "eqa.management.filter.allSamples",
+                })}
+              />
+              <SelectItem
+                value="PENDING"
+                text={intl.formatMessage({
+                  id: "eqa.management.status.pending",
+                })}
+              />
+              <SelectItem
+                value="IN_PROGRESS"
+                text={intl.formatMessage({
+                  id: "eqa.management.status.inProgress",
+                })}
+              />
+              <SelectItem
+                value="COMPLETED"
+                text={intl.formatMessage({
+                  id: "eqa.management.status.completed",
+                })}
+              />
+              <SelectItem
+                value="SUBMITTED"
+                text={intl.formatMessage({
+                  id: "eqa.management.status.submitted",
+                })}
+              />
+              <SelectItem
+                value="OVERDUE"
+                text={intl.formatMessage({
+                  id: "eqa.management.status.overdue",
+                })}
+              />
+            </Select>
+          </div>
+          <div style={{ width: "280px" }}>
+            <Search
+              id="eqa-sample-search"
+              labelText=""
+              placeholder={intl.formatMessage({
+                id: "eqa.tests.searchPlaceholder",
               })}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              size="md"
             />
-            <SelectItem
-              value="PENDING"
-              text={intl.formatMessage({
-                id: "eqa.management.status.pending",
-              })}
-            />
-            <SelectItem
-              value="IN_PROGRESS"
-              text={intl.formatMessage({
-                id: "eqa.management.status.inProgress",
-              })}
-            />
-            <SelectItem
-              value="COMPLETED"
-              text={intl.formatMessage({
-                id: "eqa.management.status.completed",
-              })}
-            />
-            <SelectItem
-              value="SUBMITTED"
-              text={intl.formatMessage({
-                id: "eqa.management.status.submitted",
-              })}
-            />
-          </Select>
+          </div>
         </div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <Button kind="secondary" size="md" renderIcon={Upload}>
@@ -318,7 +409,7 @@ const EQAManagementDashboard = () => {
           {intl.formatMessage({ id: "eqa.management.samples.subtitle" })}
         </p>
 
-        {samples.length === 0 ? (
+        {filteredSamples.length === 0 ? (
           <p style={{ color: "#525252" }}>
             {intl.formatMessage({ id: "eqa.management.samples.empty" })}
           </p>
