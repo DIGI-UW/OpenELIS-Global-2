@@ -11,7 +11,6 @@ import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.IdType;
-import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
@@ -40,7 +39,7 @@ public class PractitionerProvider implements IResourceProvider {
     }
 
     @Create
-    public MethodOutcome create(@ResourceParam Practitioner practitioner) {
+    public MethodOutcome create(@ResourceParam Practitioner practitioner) throws FhirLocalPersistingException {
 
         String method = "create";
         LogEvent.logDebug(this.getClass().getSimpleName(), method, "Received FHIR CREATE request for Practitioner");
@@ -49,17 +48,20 @@ public class PractitionerProvider implements IResourceProvider {
 
             if (practitioner == null) {
                 LogEvent.logError(this.getClass().getSimpleName(), method, "Practitioner resource is null");
-
                 throw new InvalidRequestException("Practitioner resource cannot be null");
             }
 
             Provider provider = fhirTransformService.transformToProviderForPersistance(practitioner);
-
             providerService.insert(provider);
 
             practitioner.setId(new IdType("Practitioner", provider.getFhirUuidAsString()));
 
-            fhirPersistenceService.updateFhirResourceInFhirStore(practitioner);
+            try {
+                fhirPersistenceService.updateFhirResourceInFhirStore(practitioner);
+            } catch (Exception syncEx) {
+                LogEvent.logError(this.getClass().getSimpleName(), method,
+                        "FHIR store sync failed (continuing anyway): " + syncEx.getMessage());
+            }
 
             LogEvent.logInfo(this.getClass().getSimpleName(), method,
                     "Successfully created Practitioner with UUID: " + provider.getFhirUuidAsString());
@@ -72,12 +74,8 @@ public class PractitionerProvider implements IResourceProvider {
 
             return outcome;
 
-        } catch (FhirLocalPersistingException e) {
-
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Persistence error while creating Practitioner: " + e.getMessage());
-
-            throw buildUnprocessableEntity("Failed to persist Practitioner: " + e.getMessage());
+        } catch (UnprocessableEntityException | InvalidRequestException e) {
+            throw e;
 
         } catch (Exception e) {
 
@@ -89,7 +87,8 @@ public class PractitionerProvider implements IResourceProvider {
     }
 
     @Update
-    public MethodOutcome update(@IdParam IdType theId, @ResourceParam Practitioner practitioner) {
+    public MethodOutcome update(@IdParam IdType theId, @ResourceParam Practitioner practitioner)
+            throws FhirLocalPersistingException {
 
         String method = "update";
         LogEvent.logDebug(this.getClass().getSimpleName(), method,
@@ -107,10 +106,14 @@ public class PractitionerProvider implements IResourceProvider {
             practitioner.setId(theId);
 
             Provider provider = fhirTransformService.transformToProviderForUpdate(practitioner);
-
             providerService.save(provider);
 
-            fhirPersistenceService.updateFhirResourceInFhirStore(practitioner);
+            try {
+                fhirPersistenceService.updateFhirResourceInFhirStore(practitioner);
+            } catch (Exception syncEx) {
+                LogEvent.logError(this.getClass().getSimpleName(), method,
+                        "FHIR store sync failed during update (continuing anyway): " + syncEx.getMessage());
+            }
 
             LogEvent.logInfo(this.getClass().getSimpleName(), method,
                     "Successfully updated Practitioner with ID: " + theId.getIdPart());
@@ -123,12 +126,8 @@ public class PractitionerProvider implements IResourceProvider {
 
             return outcome;
 
-        } catch (FhirLocalPersistingException e) {
-
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Persistence error while updating Practitioner: " + e.getMessage());
-
-            throw buildUnprocessableEntity("Failed to update Practitioner: " + e.getMessage());
+        } catch (UnprocessableEntityException | InvalidRequestException e) {
+            throw e;
 
         } catch (Exception e) {
 
@@ -139,12 +138,4 @@ public class PractitionerProvider implements IResourceProvider {
         }
     }
 
-    private UnprocessableEntityException buildUnprocessableEntity(String message) {
-
-        OperationOutcome outcome = new OperationOutcome();
-        outcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
-                .setCode(OperationOutcome.IssueType.PROCESSING).setDiagnostics(message);
-
-        return new UnprocessableEntityException(message, outcome);
-    }
 }
