@@ -31,7 +31,7 @@ class HomePage {
       workplanPanelNav: "#menu_workplan_panel_nav",
       workplanBenchNav: "#menu_workplan_bench_nav",
       workplanPriorityNav: "#menu_workplan_priority_nav",
-      nonConformityDropdown: "span#menu_nonconformity_dropdown",
+      nonConformityDropdown: "span#menu_nonconformity",
       nonConformingReport: "span#menu_non_conforming_report",
       nonConformingView: "span#menu_non_conforming_view",
       nonConformingActions: "span#menu_non_conforming_corrective_actions",
