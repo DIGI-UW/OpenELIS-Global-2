@@ -1,0 +1,7 @@
+MSH|^~\&|SYSMEX|LAB|OpenELIS|LAB|20260123120500||ORU^R01|SYSMEX001|P|2.5.1|||||||
+PID|1||PAT002^^^HOSPITAL||SMITH^JANE||19900520|F||||||||||||||||||||
+ORC|RE|PLACER456|FILLER789|||||||||||||||||||||||||
+OBR|1|PLACER456|FILLER789|1|^^^CBC^CBC WITH DIFF|||20260123103000|||||||||||||||||||||||F|||||||||||||||||||||||||
+OBX|1|NM|^^^WBC^WBC||8.2|10*3/uL|||||F||||||
+OBX|2|NM|^^^RBC^RBC||4.5|10*6/uL|||||F||||||
+OBX|3|NM|^^^PLT^PLATELET||250|10*3/uL|||||F||||||
