@@ -1,0 +1,28 @@
+name,description,displayKey,active,editable,isGroupingRole,groupingParent
+Sample Collector,Staff responsible for sample collection and initial registration,role.ahri.sample.collector,Y,Y,Y,Lab Unit Roles
+Laboratory Technician,Technical staff performing lab processing and analysis,role.ahri.lab.technician,Y,Y,Y,Lab Unit Roles
+Junior Senior Researcher,Research staff conducting analysis and reporting,role.ahri.researcher,Y,Y,Y,Lab Unit Roles
+Lab Manager Supervisor,Management staff with full system access,role.ahri.supervisor,Y,Y,Y,Lab Unit Roles
+Sample Registration,Grouping for sample registration privileges,role.ahri.sample.registration,Y,N,Y,Lab Unit Roles
+Register Samples,Can create and register new sample records,role.ahri.register.samples,Y,Y,N,Sample Registration
+Update Samples,Can update existing sample records,role.ahri.update.samples,Y,Y,N,Sample Registration
+Sample Processing Analysis,Grouping for sample processing privileges,role.ahri.sample.processing,Y,N,Y,Lab Unit Roles
+View Processing Workflows,Can view sample processing workflows (read-only),role.ahri.view.processing,Y,Y,N,Sample Processing Analysis
+Update Processing Workflows,Can update processing and assay metadata,role.ahri.update.processing,Y,Y,N,Sample Processing Analysis
+Full Processing Access,Full access to all processing workflows,role.ahri.full.processing,Y,Y,N,Sample Processing Analysis
+Record Editing,Grouping for record editing privileges,role.ahri.record.editing,Y,N,Y,Lab Unit Roles
+Edit Own Records,Can modify only own record entries,role.ahri.edit.own.records,Y,Y,N,Record Editing
+Edit Processing Data,Can edit processing data records,role.ahri.edit.processing.data,Y,Y,N,Record Editing
+Edit All Records,Can edit any record in the system,role.ahri.edit.all.records,Y,Y,N,Record Editing
+Result Review Validation,Grouping for result validation privileges,role.ahri.result.validation,Y,N,Y,Lab Unit Roles
+Validate Results,Can validate test results,role.ahri.validate.results,Y,Y,N,Result Review Validation
+Review Results,Can review results without validation authority,role.ahri.review.results,Y,Y,N,Result Review Validation
+Full Validation Access,Full access to result review and validation,role.ahri.full.validation,Y,Y,N,Result Review Validation
+Data Analysis Reporting,Grouping for reporting privileges,role.ahri.data.reporting,Y,N,Y,Lab Unit Roles
+View Own Reports,Can view reports for own test runs only,role.ahri.view.own.reports,Y,Y,N,Data Analysis Reporting
+Aggregate Analyze Data,Can aggregate and analyze data across runs,role.ahri.aggregate.data,Y,Y,N,Data Analysis Reporting
+Full Reporting Access,Full access to all reporting features,role.ahri.full.reporting,Y,Y,N,Data Analysis Reporting
+Equipment Management,Grouping for equipment privileges,role.ahri.equipment.mgmt,Y,N,Y,Lab Unit Roles
+Manage Equipment,Can manage laboratory equipment,role.ahri.manage.equipment,Y,Y,N,Equipment Management
+Quality Assurance EQA,Grouping for QA privileges,role.ahri.qa,Y,N,Y,Lab Unit Roles
+Manage QA,Can manage quality assurance and EQA activities,role.ahri.manage.qa,Y,Y,N,Quality Assurance EQA

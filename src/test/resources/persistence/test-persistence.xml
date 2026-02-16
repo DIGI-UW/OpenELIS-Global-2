@@ -139,6 +139,10 @@
         <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
         <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>
 
+        <!-- Electronic Signature entities (21 CFR Part 11) -->
+        <class>org.openelisglobal.esig.valueholder.ElectronicSignature</class>
+        <class>org.openelisglobal.esig.valueholder.EsigFirstUseCertification</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />
