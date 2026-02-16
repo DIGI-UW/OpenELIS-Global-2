@@ -65,6 +65,15 @@ class HomePage {
       maximizeIcon: "#maximizeIcon",
       link: "a.cds--link",
     };
+    this.navigationReadySelectors = [
+      this.selectors.sampleMenu,
+      this.selectors.patientMenu,
+      this.selectors.workplanMenu,
+      this.selectors.resultsMenu,
+      this.selectors.validationMenu,
+      this.selectors.reportsMenu,
+      this.selectors.administrationMenu,
+    ];
   }
 
   visit() {
@@ -76,20 +85,23 @@ class HomePage {
   }
 
   openNavigationMenu() {
-    cy.get(this.selectors.menuButton)
-      .should("be.visible")
-      .then(($btn) => {
-        const ariaLabel = ($btn.attr("aria-label") || "").toLowerCase();
-        if (ariaLabel.includes("open")) {
-          cy.wrap($btn).click({ force: true });
-        }
-      });
+    cy.get("body").then(($body) => {
+      const navAlreadyVisible = this.navigationReadySelectors.some(
+        (selector) => $body.find(`${selector}:visible`).length > 0,
+      );
 
-    cy.get(this.selectors.menuButton).should(($btn) => {
-      const ariaLabel = ($btn.attr("aria-label") || "").toLowerCase();
-      if (ariaLabel) {
-        expect(ariaLabel).to.include("close");
+      if (!navAlreadyVisible) {
+        cy.get(this.selectors.menuButton)
+          .should("be.visible")
+          .click({ force: true });
       }
+    });
+
+    cy.get("body").should(($body) => {
+      const hasVisibleNavItem = this.navigationReadySelectors.some(
+        (selector) => $body.find(`${selector}:visible`).length > 0,
+      );
+      expect(hasVisibleNavItem).to.be.true;
     });
   }
 
