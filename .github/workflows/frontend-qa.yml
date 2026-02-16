@@ -207,6 +207,9 @@ jobs:
           else
             SPECS="${{ matrix.specs }}"
           fi
+          # Normalize comma-separated spec list to avoid leading-space patterns
+          # being treated as non-matching paths by Cypress.
+          SPECS="$(echo "$SPECS" | tr -d '\n' | sed 's/[[:space:]]*,[[:space:]]*/,/g; s/^[[:space:]]*//; s/[[:space:]]*$//')"
           echo "Running specs: $SPECS"
           mkdir -p cypress/results
 

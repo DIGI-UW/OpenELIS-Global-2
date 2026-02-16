@@ -94,6 +94,27 @@ function extractJsonPayload(rawText) {
   throw new Error("Malformed Cypress reporter output: closing brace not found.");
 }
 
+function parseSpecOrder(rawText) {
+  const match = rawText.match(/Running tests in custom order:\s*\[([\s\S]*?)\]\s*/);
+  if (!match?.[1]) {
+    return [];
+  }
+
+  const specPaths = [];
+  const seen = new Set();
+  const regex = /'([^']+)'/g;
+  let token;
+  while ((token = regex.exec(match[1])) !== null) {
+    const normalized = normalizeSpecPath(token[1]);
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    specPaths.push(normalized);
+  }
+  return specPaths;
+}
+
 function readCypressReporterOutput(filePath) {
   if (!fs.existsSync(filePath)) {
     throw new Error(`Cypress raw reporter output not found: ${filePath}`);
@@ -101,7 +122,9 @@ function readCypressReporterOutput(filePath) {
 
   const rawText = fs.readFileSync(filePath, "utf8");
   const jsonPayload = extractJsonPayload(rawText);
-  return JSON.parse(jsonPayload);
+  const parsed = JSON.parse(jsonPayload);
+  parsed.__specOrder = parseSpecOrder(rawText);
+  return parsed;
 }
 
 function normalizeSpecPath(value) {
@@ -139,6 +162,20 @@ function pushTests(target, tests, status) {
       failureMessage: status === "failed" ? test.err?.message || null : null,
     });
   }
+}
+
+function buildSpecCoverage(raw) {
+  const specPaths = Array.isArray(raw?.__specOrder) ? raw.__specOrder : [];
+  if (specPaths.length === 0) {
+    return [];
+  }
+
+  const shardStatus = Number(raw?.stats?.failures || 0) > 0 ? "failed" : "passed";
+  return specPaths.map((file) => ({
+    file,
+    status: shardStatus,
+    failureMessage: null,
+  }));
 }
 
 function summarizeTests(tests) {
@@ -185,6 +222,8 @@ function normalizeResults(raw, metadata) {
     pushTests(tests, raw.pending, "skipped");
   }
 
+  const specCoverage = buildSpecCoverage(raw);
+
   return {
     generatedAt: new Date().toISOString(),
     generatedBy: "scripts/e2e/export-cypress-results.js",
@@ -199,6 +238,7 @@ function normalizeResults(raw, metadata) {
     },
     cypressStats: raw.stats || null,
     parseError: raw.__parseError || null,
+    specCoverage,
     summary: summarizeTests(tests),
     tests,
   };

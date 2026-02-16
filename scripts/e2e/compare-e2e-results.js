@@ -113,6 +113,21 @@ function aggregateSpecStatus(normalizedRuns) {
       }
       testsBySpec.get(specPath).push(test);
     }
+
+    const specCoverage = Array.isArray(run?.specCoverage) ? run.specCoverage : [];
+    for (const coverage of specCoverage) {
+      const specPath = normalizePath(coverage?.file);
+      if (!specPath) {
+        continue;
+      }
+      if (!testsBySpec.has(specPath)) {
+        testsBySpec.set(specPath, []);
+      }
+      testsBySpec.get(specPath).push({
+        status: coverage?.status || "unknown",
+        failureMessage: coverage?.failureMessage || null,
+      });
+    }
   }
 
   const summaryBySpec = {};
@@ -155,6 +170,50 @@ function aggregateSpecStatus(normalizedRuns) {
   }
 
   return summaryBySpec;
+}
+
+function aggregateScenarioStatus(normalizedRuns) {
+  const testsByScenario = new Map();
+
+  for (const run of normalizedRuns) {
+    const tests = Array.isArray(run?.tests) ? run.tests : [];
+    for (const test of tests) {
+      const scenarioId = test?.legacyScenarioId;
+      if (!scenarioId) {
+        continue;
+      }
+      if (!testsByScenario.has(scenarioId)) {
+        testsByScenario.set(scenarioId, []);
+      }
+      testsByScenario.get(scenarioId).push(test);
+    }
+  }
+
+  const summaryByScenario = {};
+  for (const [scenarioId, tests] of testsByScenario.entries()) {
+    let resolvedStatus = "unknown";
+    let maxRank = -1;
+    const failureMessages = [];
+
+    for (const test of tests) {
+      const status = (test.status || "unknown").toLowerCase();
+      const rank = statusRank(status);
+      if (rank > maxRank) {
+        maxRank = rank;
+        resolvedStatus = status;
+      }
+      if (test.failureMessage) {
+        failureMessages.push(String(test.failureMessage));
+      }
+    }
+
+    summaryByScenario[scenarioId] = {
+      status: resolvedStatus,
+      failureMessages,
+    };
+  }
+
+  return summaryByScenario;
 }
 
 function parseCsvRows(csvText) {
@@ -200,15 +259,44 @@ function classifyFailure(row) {
   return "none";
 }
 
-function compareFromMatrix(rows, cypressBySpec, playwrightBySpec) {
+function resolveSpecSummary(specPath, summaryBySpec) {
+  if (!specPath) {
+    return null;
+  }
+
+  if (summaryBySpec[specPath]) {
+    return summaryBySpec[specPath];
+  }
+
+  const basename = specPath.split("/").pop();
+  if (basename && summaryBySpec[basename]) {
+    return summaryBySpec[basename];
+  }
+
+  if (!basename) {
+    return null;
+  }
+
+  const matches = Object.entries(summaryBySpec).filter(([key]) =>
+    key.endsWith(`/${basename}`),
+  );
+  if (matches.length === 1) {
+    return matches[0][1];
+  }
+
+  return null;
+}
+
+function compareFromMatrix(rows, cypressBySpec, playwrightBySpec, playwrightByScenario) {
   const comparisons = [];
   for (const row of rows) {
     const legacySpec = normalizePath(row.legacy_spec);
     const playwrightSpec = normalizePath(row.playwright_target_spec);
 
-    const cypressSummary = (legacySpec && cypressBySpec[legacySpec]) || null;
+    const cypressSummary = resolveSpecSummary(legacySpec, cypressBySpec);
     const playwrightSummary =
-      (playwrightSpec && playwrightBySpec[playwrightSpec]) || null;
+      playwrightByScenario[row.scenario_id] ||
+      resolveSpecSummary(playwrightSpec, playwrightBySpec);
 
     const comparison = {
       scenarioId: row.scenario_id,
@@ -392,9 +480,15 @@ if (require.main === module) {
 
   const cypressBySpec = aggregateSpecStatus(cypressRuns);
   const playwrightBySpec = aggregateSpecStatus(playwrightRuns);
+  const playwrightByScenario = aggregateScenarioStatus(playwrightRuns);
 
   const matrixRows = parseCsvRows(fs.readFileSync(parityMatrixPath, "utf8"));
-  const comparisons = compareFromMatrix(matrixRows, cypressBySpec, playwrightBySpec);
+  const comparisons = compareFromMatrix(
+    matrixRows,
+    cypressBySpec,
+    playwrightBySpec,
+    playwrightByScenario,
+  );
   const summary = summarizeComparisons(comparisons);
   const runtimeMetrics = readRuntimeMetrics(args["runtime-metrics"]);
 
@@ -433,4 +527,5 @@ module.exports = {
   compareFromMatrix,
   summarizeComparisons,
   aggregateSpecStatus,
+  aggregateScenarioStatus,
 };
