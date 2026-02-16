@@ -65,15 +65,6 @@ class HomePage {
       maximizeIcon: "#maximizeIcon",
       link: "a.cds--link",
     };
-    this.navigationReadySelectors = [
-      this.selectors.sampleMenu,
-      this.selectors.patientMenu,
-      this.selectors.workplanMenu,
-      this.selectors.resultsMenu,
-      this.selectors.validationMenu,
-      this.selectors.reportsMenu,
-      this.selectors.administrationMenu,
-    ];
   }
 
   visit() {
@@ -85,24 +76,35 @@ class HomePage {
   }
 
   openNavigationMenu() {
-    cy.get("body").then(($body) => {
-      const navAlreadyVisible = this.navigationReadySelectors.some(
-        (selector) => $body.find(`${selector}:visible`).length > 0,
-      );
+    cy.get(this.selectors.menuButton)
+      .should("be.visible")
+      .then(($btn) => {
+        const menuLabel = ($btn.attr("aria-label") || "").toLowerCase();
+        if (menuLabel.includes("open")) {
+          cy.wrap($btn).click({ force: true });
+        }
+      });
 
-      if (!navAlreadyVisible) {
-        cy.get(this.selectors.menuButton)
-          .should("be.visible")
-          .click({ force: true });
-      }
-    });
+    // SHOW mode keeps submenu children hidden unless the menu is pinned.
+    cy.get(this.selectors.menuButton)
+      .should("be.visible")
+      .then(($btn) => {
+        const menuLabel = ($btn.attr("aria-label") || "").toLowerCase();
+        if (menuLabel.includes("pin")) {
+          cy.wrap($btn).click({ force: true });
+        }
+      })
+      .invoke("attr", "aria-label")
+      .then((menuLabel) => {
+        if (menuLabel) {
+          expect(menuLabel.toLowerCase()).to.include("close");
+        }
+      });
 
-    cy.get("body").should(($body) => {
-      const hasVisibleNavItem = this.navigationReadySelectors.some(
-        (selector) => $body.find(`${selector}:visible`).length > 0,
-      );
-      expect(hasVisibleNavItem).to.be.true;
-    });
+    cy.get(".cds--side-nav", { timeout: 10000 }).should(
+      "have.class",
+      "cds--side-nav--expanded",
+    );
   }
 
   clickNavigationItem(selector) {
