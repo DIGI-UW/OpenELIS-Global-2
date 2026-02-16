@@ -70,6 +70,8 @@ public interface FhirTransformService {
 
     Practitioner transformProviderToPractitioner(Provider provider);
 
+    Provider transformToProvider(Practitioner practitioner);
+
     Provider transformToProviderForUpdate(Practitioner practitioner);
 
     Provider transformToProviderForPersistance(Practitioner practitioner);

@@ -1738,6 +1738,19 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     }
 
     @Override
+    public Provider transformToProvider(Practitioner practitioner) {
+        Provider provider = new Provider();
+        provider.setActive(practitioner.getActive());
+        provider.setFhirUuid(UUID.fromString(practitioner.getIdElement().getIdPart()));
+
+        provider.setPerson(new Person());
+        addHumanNameToPerson(practitioner.getNameFirstRep(), provider.getPerson());
+        addTelecomToPerson(practitioner.getTelecom(), provider.getPerson());
+
+        return provider;
+    }
+
+    @Override
     public Provider transformToProviderForUpdate(Practitioner practitioner) {
 
         String method = "transformToProviderForUpdate";
