@@ -118,8 +118,17 @@ class HomePage {
   expandResultsMenu() {
     cy.get(this.selectors.resultsMenuButton)
       .should("be.visible")
-      .click({ force: true })
-      .should("have.attr", "aria-expanded", "true");
+      .then(($submenuButton) => {
+        if ($submenuButton.attr("aria-expanded") !== "true") {
+          cy.wrap($submenuButton).click({ force: true });
+        }
+      });
+
+    cy.get(this.selectors.resultsMenuButton).should(
+      "have.attr",
+      "aria-expanded",
+      "true",
+    );
   }
 
   closeNavigationMenu() {
