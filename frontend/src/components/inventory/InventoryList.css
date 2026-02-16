@@ -71,5 +71,88 @@
 
 /* Fix dropdown alignment in toolbar */
 .cds--toolbar-content .cds--dropdown {
+  min-width: 200px;
+}
+
+.inventory-toolbar-content {
+  flex-wrap: wrap !important;
+  height: auto !important;
+  padding: 0.5rem 0;
+  gap: 0.75rem !important;
+  min-width: 0;
+  width: 100%;
+}
+
+.inventory-toolbar-content>* {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  min-width: 0;
+
+}
+
+.inventory-toolbar-content .cds--toolbar-search-container-expandable {
   min-width: 150px;
+}
+
+@media (max-width: 992px) {
+  .inventory-toolbar-content {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: space-between !important;
+    height: auto !important;
+  }
+
+
+  .inventory-toolbar-content .cds--toolbar-search-container-expandable,
+  .inventory-toolbar-content .cds--search {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-right: 0 !important;
+    margin-bottom: 0.5rem !important;
+    order: 1;
+  }
+
+  .inventory-toolbar-content .cds--search-input {
+    width: 100% !important;
+  }
+
+  .inventory-toolbar-content .cds--dropdown {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-right: 0 !important;
+    margin-bottom: 0.5rem !important;
+    order: 2;
+  }
+
+
+  .inventory-toolbar-content .cds--dropdown .cds--list-box {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .inventory-toolbar-content .cds--btn {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    justify-content: center;
+    margin-top: 0.5rem !important;
+    order: 3;
+    margin-right: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .inventory-toolbar-content .cds--dropdown {
+    min-width: 100% !important;
+  }
+
+  .inventory-toolbar-content .cds--dropdown .cds--list-box__label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }

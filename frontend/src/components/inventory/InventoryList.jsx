@@ -481,7 +481,7 @@ const InventoryList = () => {
                   {...getTableContainerProps()}
                 >
                   <TableToolbar>
-                    <TableToolbarContent>
+                    <TableToolbarContent className="inventory-toolbar-content">
                       <TableToolbarSearch
                         placeholder={intl.formatMessage({
                           id: "inventory.search.placeholder",

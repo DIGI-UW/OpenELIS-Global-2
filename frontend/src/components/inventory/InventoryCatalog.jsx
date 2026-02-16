@@ -279,7 +279,7 @@ const InventoryCatalog = () => {
         }) => (
           <TableContainer title="" description="" {...getTableContainerProps()}>
             <TableToolbar>
-              <TableToolbarContent>
+              <TableToolbarContent className="inventory-toolbar-content">
                 <TableToolbarSearch
                   placeholder={intl.formatMessage({
                     id: "catalog.search.placeholder",

@@ -425,7 +425,7 @@ const InventoryDashboard = () => {
         }) => (
           <TableContainer title="" description="" {...getTableContainerProps()}>
             <TableToolbar>
-              <TableToolbarContent>
+              <TableToolbarContent className="inventory-toolbar-content">
                 <TableToolbarSearch
                   placeholder={intl.formatMessage({
                     id: "inventory.search.placeholder",
