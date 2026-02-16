@@ -36,6 +36,7 @@ class HomePage {
       nonConformingView: "span#menu_non_conforming_view",
       nonConformingActions: "span#menu_non_conforming_corrective_actions",
       resultsMenu: "span#menu_results",
+      resultsMenuButton: "#menu_results .cds--side-nav__submenu",
       resultsLogbook: "#menu_results_logbook_nav",
       resultsAccession: "#menu_results_accession_nav",
       resultsPatient: "#menu_results_patient",
@@ -112,6 +113,13 @@ class HomePage {
       .should("be.visible")
       .scrollIntoView()
       .click({ force: true });
+  }
+
+  expandResultsMenu() {
+    cy.get(this.selectors.resultsMenuButton)
+      .should("be.visible")
+      .click({ force: true })
+      .should("have.attr", "aria-expanded", "true");
   }
 
   closeNavigationMenu() {
@@ -232,42 +240,42 @@ class HomePage {
   // Results related functions
   goToResultsByUnit() {
     this.openNavigationMenu();
-    this.clickNavigationItem(this.selectors.resultsMenu);
+    this.expandResultsMenu();
     this.clickNavigationItem(this.selectors.resultsLogbook);
     return new Result();
   }
 
   goToResultsByOrder() {
     this.openNavigationMenu();
-    this.clickNavigationItem(this.selectors.resultsMenu);
+    this.expandResultsMenu();
     this.clickNavigationItem(this.selectors.resultsAccession);
     return new Result();
   }
 
   goToResultsByPatient() {
     this.openNavigationMenu();
-    this.clickNavigationItem(this.selectors.resultsMenu);
+    this.expandResultsMenu();
     this.clickNavigationItem(this.selectors.resultsPatient);
     return new Result();
   }
 
   goToResultsForRefferedOut() {
     this.openNavigationMenu();
-    this.clickNavigationItem(this.selectors.resultsMenu);
+    this.expandResultsMenu();
     this.clickNavigationItem(this.selectors.resultsReferred);
     return new Result();
   }
 
   goToResultsByRangeOrder() {
     this.openNavigationMenu();
-    this.clickNavigationItem(this.selectors.resultsMenu);
+    this.expandResultsMenu();
     this.clickNavigationItem(this.selectors.resultsRange);
     return new Result();
   }
 
   goToResultsByTestAndStatus() {
     this.openNavigationMenu();
-    this.clickNavigationItem(this.selectors.resultsMenu);
+    this.expandResultsMenu();
     this.clickNavigationItem(this.selectors.resultsStatus);
     return new Result();
   }
