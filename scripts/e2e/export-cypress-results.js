@@ -32,25 +32,7 @@ function parseArgs(argv) {
   return args;
 }
 
-function extractJsonPayload(rawText) {
-  const trimmed = rawText.trim();
-  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-    return trimmed;
-  }
-
-  const markers = ['{"stats"', '{\n  "stats"'];
-  let start = -1;
-  for (const marker of markers) {
-    start = rawText.indexOf(marker);
-    if (start >= 0) {
-      break;
-    }
-  }
-
-  if (start < 0) {
-    throw new Error("Unable to locate Cypress JSON payload in reporter output.");
-  }
-
+function findJsonBlockEnd(rawText, start) {
   let depth = 0;
   let inString = false;
   let escaping = false;
@@ -86,12 +68,41 @@ function extractJsonPayload(rawText) {
     if (char === "}") {
       depth -= 1;
       if (depth === 0) {
-        return rawText.slice(start, index + 1);
+        return index;
       }
     }
   }
 
   throw new Error("Malformed Cypress reporter output: closing brace not found.");
+}
+
+function extractJsonPayloads(rawText) {
+  const payloads = [];
+  const seenStarts = new Set();
+  const startRegex = /\{\s*"stats"/g;
+  let match;
+
+  while ((match = startRegex.exec(rawText)) !== null) {
+    const start = match.index;
+    if (seenStarts.has(start)) {
+      continue;
+    }
+    seenStarts.add(start);
+
+    const end = findJsonBlockEnd(rawText, start);
+    payloads.push(rawText.slice(start, end + 1));
+    startRegex.lastIndex = end + 1;
+  }
+
+  return payloads;
+}
+
+function extractJsonPayload(rawText) {
+  const payloads = extractJsonPayloads(rawText);
+  if (payloads.length === 0) {
+    throw new Error("Unable to locate Cypress JSON payload in reporter output.");
+  }
+  return payloads[0];
 }
 
 function parseSpecOrder(rawText) {
@@ -121,10 +132,46 @@ function readCypressReporterOutput(filePath) {
   }
 
   const rawText = fs.readFileSync(filePath, "utf8");
-  const jsonPayload = extractJsonPayload(rawText);
-  const parsed = JSON.parse(jsonPayload);
-  parsed.__specOrder = parseSpecOrder(rawText);
-  return parsed;
+  const jsonPayloads = extractJsonPayloads(rawText);
+  if (jsonPayloads.length === 0) {
+    throw new Error("Unable to locate Cypress JSON payload in reporter output.");
+  }
+
+  const parsedPayloads = jsonPayloads.map((payload) => JSON.parse(payload));
+  const aggregate = {
+    stats: null,
+    tests: [],
+    pending: [],
+    failures: [],
+    passes: [],
+  };
+
+  for (const payload of parsedPayloads) {
+    aggregate.tests.push(...(Array.isArray(payload?.tests) ? payload.tests : []));
+    aggregate.pending.push(...(Array.isArray(payload?.pending) ? payload.pending : []));
+    aggregate.failures.push(...(Array.isArray(payload?.failures) ? payload.failures : []));
+    aggregate.passes.push(...(Array.isArray(payload?.passes) ? payload.passes : []));
+  }
+
+  const firstStats = parsedPayloads[0]?.stats || {};
+  const lastStats = parsedPayloads[parsedPayloads.length - 1]?.stats || {};
+  const duration = parsedPayloads.reduce(
+    (sum, payload) => sum + (Number.isFinite(payload?.stats?.duration) ? payload.stats.duration : 0),
+    0,
+  );
+  aggregate.stats = {
+    suites: parsedPayloads.length,
+    tests: aggregate.tests.length,
+    passes: aggregate.passes.length,
+    pending: aggregate.pending.length,
+    failures: aggregate.failures.length,
+    start: firstStats.start || null,
+    end: lastStats.end || null,
+    duration,
+  };
+
+  aggregate.__specOrder = parseSpecOrder(rawText);
+  return aggregate;
 }
 
 function normalizeSpecPath(value) {
@@ -288,4 +335,5 @@ module.exports = {
   normalizeResults,
   readCypressReporterOutput,
   extractJsonPayload,
+  extractJsonPayloads,
 };

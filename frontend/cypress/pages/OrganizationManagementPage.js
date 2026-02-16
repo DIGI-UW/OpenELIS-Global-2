@@ -24,14 +24,16 @@ class OrganizationManagementPage {
   addOrgName() {
     cy.get(this.selectors.orgName)
       .should("be.visible")
-      .type(TEST_ORG_NAME)
+      .clear({ force: true })
+      .type(TEST_ORG_NAME, { force: true })
       .should("have.value", TEST_ORG_NAME);
   }
 
   addInstituteName() {
     cy.get(this.selectors.orgName)
       .should("be.visible")
-      .type(TEST_LAB_NAME)
+      .clear({ force: true })
+      .type(TEST_LAB_NAME, { force: true })
       .should("have.value", TEST_LAB_NAME);
   }
 
@@ -65,7 +67,8 @@ class OrganizationManagementPage {
   addParentOrg() {
     cy.get(this.selectors.parentOrgName)
       .should("be.visible")
-      .type(TEST_ORG_NAME)
+      .clear({ force: true })
+      .type(TEST_ORG_NAME, { force: true })
       .should("have.value", TEST_ORG_NAME);
   }
 
