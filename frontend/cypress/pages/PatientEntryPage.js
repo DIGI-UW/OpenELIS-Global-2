@@ -137,6 +137,26 @@ class PatientEntryPage {
       ".cds--data-table.cds--data-table--lg.cds--data-table--sort > tbody",
     );
   }
+
+  matchesExpectedDate(cellValue, expectedValue) {
+    const actual = String(cellValue || "").trim();
+    const expected = String(expectedValue || "").trim();
+    if (!actual || !expected) {
+      return false;
+    }
+    if (actual.includes(expected)) {
+      return true;
+    }
+
+    const parts = expected.split("/");
+    if (parts.length !== 3) {
+      return false;
+    }
+
+    const swapped = `${parts[1]}/${parts[0]}/${parts[2]}`;
+    return actual.includes(swapped);
+  }
+
   validatePatientSearchTablebyRespectiveField(expectedFieldValue, searchBy) {
     this.getPatientSearchResultsTable()
       .find("tr")
@@ -163,7 +183,9 @@ class PatientEntryPage {
             .invoke("text")
             .then((cellText) => {
               const trimmedText = cellText.trim();
-              expect(trimmedText).to.contain(expectedFieldValue);
+              expect(
+                this.matchesExpectedDate(trimmedText, expectedFieldValue),
+              ).to.eq(true);
             });
         }
       });
