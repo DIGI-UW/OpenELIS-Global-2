@@ -22,6 +22,7 @@ EOF
 CYPRESS_RUN_ID=""
 PLAYWRIGHT_RUN_ID=""
 HEAD_SHA=""
+REPO_SLUG=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -59,18 +60,58 @@ if [[ -z "${HEAD_SHA}" ]]; then
   HEAD_SHA="$(git -C "${REPO_ROOT}" rev-parse HEAD)"
 fi
 
+REPO_SLUG="$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null || true)"
+if [[ -z "${REPO_SLUG}" ]]; then
+  REPO_SLUG="DIGI-UW/OpenELIS-Global-2"
+fi
+
 mkdir -p "${TMP_ROOT}/cypress" "${TMP_ROOT}/playwright" "${ARTIFACT_DIR}"
 rm -rf "${TMP_ROOT}/cypress"/* "${TMP_ROOT}/playwright"/*
 
-echo "Downloading Cypress artifacts from run ${CYPRESS_RUN_ID}..."
+download_normalized_artifacts() {
+  local run_id="$1"
+  local framework="$2"
+  local output_dir="$3"
+  local downloaded=0
+  local artifact_names=""
+
+  set +e
+  artifact_names="$(
+    gh api "repos/${REPO_SLUG}/actions/runs/${run_id}/artifacts" --jq '.artifacts[].name'
+  )"
+  local list_exit=$?
+  set -e
+  if [[ ${list_exit} -ne 0 || -z "${artifact_names}" ]]; then
+    return 1
+  fi
+
+  while IFS= read -r artifact_name; do
+    [[ -n "${artifact_name}" ]] || continue
+    if [[ "${artifact_name}" != "${framework}-normalized-"* ]]; then
+      continue
+    fi
+    echo "Downloading ${framework} artifact ${artifact_name} from run ${run_id}..."
+    set +e
+    gh run download "${run_id}" --name "${artifact_name}" --dir "${output_dir}"
+    local download_exit=$?
+    set -e
+    if [[ ${download_exit} -eq 0 ]]; then
+      downloaded=$((downloaded + 1))
+    fi
+  done <<< "${artifact_names}"
+
+  [[ ${downloaded} -gt 0 ]]
+}
+
+echo "Downloading Cypress normalized artifacts from run ${CYPRESS_RUN_ID}..."
 set +e
-gh run download "${CYPRESS_RUN_ID}" --dir "${TMP_ROOT}/cypress"
+download_normalized_artifacts "${CYPRESS_RUN_ID}" "cypress" "${TMP_ROOT}/cypress"
 CYPRESS_DOWNLOAD_EXIT=$?
 set -e
 
-echo "Downloading Playwright artifacts from run ${PLAYWRIGHT_RUN_ID}..."
+echo "Downloading Playwright normalized artifacts from run ${PLAYWRIGHT_RUN_ID}..."
 set +e
-gh run download "${PLAYWRIGHT_RUN_ID}" --dir "${TMP_ROOT}/playwright"
+download_normalized_artifacts "${PLAYWRIGHT_RUN_ID}" "playwright" "${TMP_ROOT}/playwright"
 PLAYWRIGHT_DOWNLOAD_EXIT=$?
 set -e
 
@@ -82,10 +123,10 @@ if [[ ${PLAYWRIGHT_DOWNLOAD_EXIT} -ne 0 ]]; then
 fi
 
 PLAYWRIGHT_FILES="$(
-  find "${TMP_ROOT}/playwright" -type f -name "playwright-normalized-*.json" | sort | paste -sd, -
+  rg --files "${TMP_ROOT}/playwright" -g "**/playwright-normalized-*.json" | sort | paste -sd, -
 )"
 CYPRESS_FILES="$(
-  find "${TMP_ROOT}/cypress" -type f -name "cypress-normalized-*.json" | sort | paste -sd, -
+  rg --files "${TMP_ROOT}/cypress" -g "**/cypress-normalized-*.json" | sort | paste -sd, -
 )"
 
 if [[ -z "${PLAYWRIGHT_FILES}" || -z "${CYPRESS_FILES}" ]]; then

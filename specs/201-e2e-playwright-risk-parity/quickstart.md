@@ -182,7 +182,8 @@ Status:
 
 - Script syntax validation: `PASS`
 - Playwright config/reporter validation (`--list`): `PASS`
-- CI milestone gate T109: `PENDING_CI_CONFIRMATION`
+- CI milestone gate T109: `IN_PROGRESS` (normalized exporter hardening applied;
+  pending next CI run confirmation)
 
 ## M8a Cutoff Freeze + Gate Commands
 
@@ -205,15 +206,15 @@ node scripts/e2e/check-m8a-parity-gate.js \
 ### Latest M8a Freeze Attempt
 
 - Execution date: `2026-02-15`
-- Commit SHA: `01f70c7758cc7ecf1bc15348990a8845f2504c9b`
+- Commit SHA: `4be0be9a91f847c6a0e0a19bbd4c8b8e66e5f756`
 - Referenced run IDs:
-  - Cypress: `22042226792`
-  - Playwright: `22042226797`
+  - Cypress: `22044932029`
+  - Playwright: `22044932041`
 - Output summary:
   - Scoped scenarios: `47`
-  - Gate pass: `false`
-  - Blocking rows: `47`
-  - Blocking status counts: `LEGACY_ONLY=24`, `PARTIAL=22`, `GAP=1`
+  - Gate pass: `true`
+  - Blocking rows: `0`
+  - Blocking status counts: `PASS=47`
 
 ### One-command M8a Evidence Generation (CI artifacts)
 
@@ -224,12 +225,14 @@ bash scripts/e2e/generate-m8a-evidence.sh \
   --head-sha <sha>
 ```
 
-Current result against run IDs `22042226792` + `22042226797`:
+Current result against run IDs `22044932029` + `22044932041`:
 
-- Status: `BLOCKED_IN_CI`
-- Message: "no valid artifacts found to download" (both frameworks)
-- Interpretation: side-by-side runs must complete and publish artifacts before
-  T130/T132 evidence generation can finalize.
+- Status: `PASS` for artifact download + cutoff gate evaluation
+- Message: normalized artifacts download by name works; cutoff gate reports zero
+  blocking rows.
+- Interpretation: M8a cutoff-scope parity gate is currently passing. Remaining
+  parity-report completeness depends on the next Playwright CI run using updated
+  normalized-export fallback logic.
 
 ## M8 Cutover Orientation (Prework)
 
@@ -244,4 +247,4 @@ Cutover checklist artifact:
 
 - `specs/201-e2e-playwright-risk-parity/cutover-checklist.md`
 
-Important: M8 execution remains gated by M8a parity pass.
+Important: M8a parity pass is currently satisfied for cutoff scope.

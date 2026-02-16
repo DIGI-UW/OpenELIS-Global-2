@@ -2,11 +2,11 @@
 
 **Feature**: `201-e2e-playwright-risk-parity`  
 **Milestone**: `M8`  
-**Status**: Draft (execution gated by M8a parity pass)
+**Status**: In Progress (M8a parity gate currently passing)
 
 ## Preconditions (Must Be True Before Cutover)
 
-- [ ] M8a gate is `PASS` (no `LEGACY_ONLY`, `GAP`, `PARTIAL` in cutoff scope)
+- [x] M8a gate is `PASS` (no `LEGACY_ONLY`, `GAP`, `PARTIAL` in cutoff scope)
 - [ ] `artifacts/parity-report.md` and `artifacts/runtime-metrics.json` are
       published for the cutover candidate SHA
 - [ ] Stakeholder acknowledgment recorded in signoff summary

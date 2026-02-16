@@ -77,9 +77,22 @@ jobs:
         if: always()
         run: |
           mkdir -p frontend/test-results
+          mkdir -p frontend/playwright-report
+
+          SOURCE_JSON=""
           if [ -f frontend/playwright-report/results.json ]; then
+            SOURCE_JSON="frontend/playwright-report/results.json"
+          elif [ -d frontend/blob-report ] && [ -n "$(ls -A frontend/blob-report 2>/dev/null)" ]; then
+            echo "Direct Playwright JSON report missing, deriving JSON from blob report."
+            (cd frontend && npx playwright merge-reports --reporter json ./blob-report > playwright-report/merged-results.json)
+            if [ -s frontend/playwright-report/merged-results.json ]; then
+              SOURCE_JSON="frontend/playwright-report/merged-results.json"
+            fi
+          fi
+
+          if [ -n "${SOURCE_JSON}" ]; then
             node scripts/e2e/export-playwright-results.js \
-              --input frontend/playwright-report/results.json \
+              --input "${SOURCE_JSON}" \
               --output frontend/test-results/playwright-normalized-${{ matrix.shard }}.json \
               --shard ${{ matrix.shard }}
           else
@@ -101,7 +114,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-json-${{ matrix.shard }}
-          path: frontend/playwright-report/results.json
+          path: |
+            frontend/playwright-report/results.json
+            frontend/playwright-report/merged-results.json
           if-no-files-found: ignore
           retention-days: 7
 

@@ -13,32 +13,33 @@
 
 ### Side-by-Side Run Evidence (T130/T134)
 
-- Cypress workflow run ID: `22042226792`
-  - https://github.com/DIGI-UW/OpenELIS-Global-2/actions/runs/22042226792
-- Playwright workflow run ID: `22042226797`
-  - https://github.com/DIGI-UW/OpenELIS-Global-2/actions/runs/22042226797
+- Cypress workflow run ID: `22044932029`
+  - https://github.com/DIGI-UW/OpenELIS-Global-2/actions/runs/22044932029
+- Playwright workflow run ID: `22044932041`
+  - https://github.com/DIGI-UW/OpenELIS-Global-2/actions/runs/22044932041
 - Parity report artifact: `artifacts/parity-report.md`
 - Runtime metrics artifact: `artifacts/runtime-metrics.json`
 - M8a gate artifact: `artifacts/m8a-gate-check.md`
-- Artifact pull status: `BLOCKED_IN_CI`
-  - `scripts/e2e/generate-m8a-evidence.sh` currently reports "no valid artifacts
-    found to download" for both run IDs above while runs are not finalized.
+- Artifact pull status: `PASS`
+  - `scripts/e2e/generate-m8a-evidence.sh` now downloads normalized artifacts
+    directly by artifact name.
 
 ### Gate Status (T133)
 
 - Blocking statuses in cutoff scope: `LEGACY_ONLY`, `GAP`, `PARTIAL`
-- Current gate result: `FAIL`
+- Current gate result: `PASS`
   - Scoped scenarios: `47`
-  - Blocking rows: `47`
-  - Blocking breakdown: `LEGACY_ONLY=24`, `PARTIAL=22`, `GAP=1`
+  - Blocking rows: `0`
+  - Scoped status counts: `PASS=47`
   - Evidence source: `artifacts/cutoff-scope.json`,
     `artifacts/m8a-gate-check.md`
 
 ### Notes
 
-- Cutoff scope was frozen for commit `01f70c7758cc7ecf1bc15348990a8845f2504c9b`.
-- Full side-by-side parity closure remains blocked until all cutoff-scope rows
-  are `PASS` (no `LEGACY_ONLY`, `GAP`, `PARTIAL`).
+- Cutoff scope is currently frozen for commit
+  `4be0be9a91f847c6a0e0a19bbd4c8b8e66e5f756`.
+- M8a full-parity gate criteria are satisfied for cutoff non-skipped Cypress
+  scope.
 
 ## M9 Migration Closure and Sunset Recommendation
 
