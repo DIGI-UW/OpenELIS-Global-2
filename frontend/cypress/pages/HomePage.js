@@ -39,7 +39,7 @@ class HomePage {
       resultsMenuButton: "#menu_results .cds--side-nav__submenu",
       resultsLogbook: "#menu_results_logbook_nav",
       resultsAccession: "#menu_results_accession_nav",
-      resultsPatient: "#menu_results_patient",
+      resultsPatient: "#menu_results_patient_nav",
       resultsReferred: "#menu_results_referred_nav",
       resultsRange: "#menu_results_range_nav",
       resultsStatus: "#menu_results_status_nav",
