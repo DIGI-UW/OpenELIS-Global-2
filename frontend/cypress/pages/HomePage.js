@@ -76,7 +76,28 @@ class HomePage {
   }
 
   openNavigationMenu() {
-    cy.get(this.selectors.menuButton).click();
+    cy.get(this.selectors.menuButton)
+      .should("be.visible")
+      .then(($btn) => {
+        const ariaLabel = ($btn.attr("aria-label") || "").toLowerCase();
+        if (ariaLabel.includes("open")) {
+          cy.wrap($btn).click({ force: true });
+        }
+      });
+
+    cy.get(this.selectors.menuButton).should(($btn) => {
+      const ariaLabel = ($btn.attr("aria-label") || "").toLowerCase();
+      if (ariaLabel) {
+        expect(ariaLabel).to.include("close");
+      }
+    });
+  }
+
+  clickNavigationItem(selector) {
+    cy.get(selector)
+      .should("be.visible")
+      .scrollIntoView()
+      .click({ force: true });
   }
 
   closeNavigationMenu() {
@@ -197,43 +218,43 @@ class HomePage {
   // Results related functions
   goToResultsByUnit() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsLogbook).should("be.visible").click();
+    this.clickNavigationItem(this.selectors.resultsMenu);
+    this.clickNavigationItem(this.selectors.resultsLogbook);
     return new Result();
   }
 
   goToResultsByOrder() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsAccession).click();
+    this.clickNavigationItem(this.selectors.resultsMenu);
+    this.clickNavigationItem(this.selectors.resultsAccession);
     return new Result();
   }
 
   goToResultsByPatient() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsPatient).click();
+    this.clickNavigationItem(this.selectors.resultsMenu);
+    this.clickNavigationItem(this.selectors.resultsPatient);
     return new Result();
   }
 
   goToResultsForRefferedOut() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsReferred).click();
+    this.clickNavigationItem(this.selectors.resultsMenu);
+    this.clickNavigationItem(this.selectors.resultsReferred);
     return new Result();
   }
 
   goToResultsByRangeOrder() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsRange).click();
+    this.clickNavigationItem(this.selectors.resultsMenu);
+    this.clickNavigationItem(this.selectors.resultsRange);
     return new Result();
   }
 
   goToResultsByTestAndStatus() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsStatus).click();
+    this.clickNavigationItem(this.selectors.resultsMenu);
+    this.clickNavigationItem(this.selectors.resultsStatus);
     return new Result();
   }
 

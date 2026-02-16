@@ -18,6 +18,17 @@ Cypress.getBasicAuth = () => ({
   password: Cypress.env("PASSWORD"),
 });
 
+function typeIntoStableField(selector, value) {
+  cy.get(selector, { timeout: 20000 })
+    .should("be.visible")
+    .and("not.be.disabled");
+  cy.get(selector, { timeout: 20000 }).clear({ force: true });
+  cy.get(selector, { timeout: 20000 })
+    .should("be.visible")
+    .and("not.be.disabled")
+    .type(value, { force: true, delay: 0 });
+}
+
 /**
  * Login command with session caching for faster tests
  * Uses cy.session() to cache login state across tests
@@ -28,10 +39,8 @@ Cypress.Commands.add("login", (username, password) => {
     [username, password],
     () => {
       cy.visit("/login");
-      cy.get("#loginName", { timeout: 10000 })
-        .should("be.visible")
-        .type(username);
-      cy.get("#password").should("be.visible").type(password);
+      typeIntoStableField("#loginName", username);
+      typeIntoStableField("#password", password);
       cy.get("[data-cy='loginButton']").should("be.visible").click();
       // Wait for successful login - should redirect away from login page
       cy.url({ timeout: 15000 }).should("not.include", "/login");
