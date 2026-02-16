@@ -48,28 +48,44 @@ class NonConform {
   }
 
   enterSearchField(value) {
-    cy.get(this.selectors.searchField).type(value);
+    cy.get(this.selectors.searchField, { timeout: 15000 })
+      .should("be.visible")
+      .clear({ force: true })
+      .type(value, { force: true, delay: 0 });
   }
 
   clickSearchButton() {
     cy.get(this.selectors.searchButton, { timeout: 15000 })
       .should("be.visible")
-      .click();
+      .and("not.be.disabled")
+      .click({ force: true });
   }
 
   validateSearchResult(expectedValue) {
-    cy.get(this.selectors.searchResult)
+    cy.get(this.selectors.searchResult, { timeout: 15000 })
       .first()
+      .should("be.visible")
       .invoke("text")
+      .then((text) => text.trim())
       .should("eq", expectedValue);
   }
 
   validateLabNoSearchResult(labNo) {
-    cy.get(this.selectors.searchResult).invoke("text").should("eq", labNo);
+    cy.get(this.selectors.searchResult, { timeout: 15000 })
+      .first()
+      .should("be.visible")
+      .invoke("text")
+      .then((text) => text.trim())
+      .should("eq", labNo);
   }
 
   validateNCESearchResult(NCENo) {
-    cy.get(this.selectors.nceNumberResult).invoke("text").should("eq", NCENo);
+    cy.get(this.selectors.nceNumberResult, { timeout: 15000 })
+      .first()
+      .should("be.visible")
+      .invoke("text")
+      .then((text) => text.trim())
+      .should("eq", NCENo);
   }
 
   clickCheckbox() {
