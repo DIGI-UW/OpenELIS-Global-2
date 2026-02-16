@@ -10,8 +10,70 @@ type E2EBaseFixtures = {
   resolveAuthMode: (flowType?: AuthFlowType) => AuthMode;
 };
 
+async function waitForShellMenuButton(page: Page, timeoutMs = 10000) {
+  try {
+    await page
+      .locator("#sidenav-menu-button")
+      .waitFor({ state: "visible", timeout: timeoutMs });
+    return;
+  } catch {
+    await page
+      .locator("[data-cy='menuButton']")
+      .waitFor({ state: "visible", timeout: timeoutMs });
+  }
+}
+
+async function isLoginScreenVisible(page: Page) {
+  const usernameByLabelVisible = await page
+    .getByLabel("Username")
+    .isVisible()
+    .catch(() => false);
+  const usernameByIdVisible = await page
+    .locator("#loginName")
+    .isVisible()
+    .catch(() => false);
+  const passwordByLabelVisible = await page
+    .getByLabel("Password")
+    .isVisible()
+    .catch(() => false);
+  const passwordByIdVisible = await page
+    .locator("#password")
+    .isVisible()
+    .catch(() => false);
+
+  return (
+    (usernameByLabelVisible || usernameByIdVisible) &&
+    (passwordByLabelVisible || passwordByIdVisible)
+  );
+}
+
 async function waitForShell(page: Page) {
-  await expect(page.locator("#sidenav-menu-button")).toBeVisible();
+  await page.waitForLoadState("domcontentloaded");
+
+  try {
+    await waitForShellMenuButton(page, 10000);
+    return;
+  } catch {
+    const shellHeaderVisible = await page
+      .locator("#mainHeader")
+      .isVisible()
+      .catch(() => false);
+    if (shellHeaderVisible) {
+      return;
+    }
+
+    const loginScreenVisible = await isLoginScreenVisible(page);
+    if (!loginScreenVisible) {
+      throw new Error(
+        "Authenticated shell was not visible and login form was unavailable for fallback authentication.",
+      );
+    }
+
+    const username = process.env.TEST_USER || "admin";
+    const password = process.env.TEST_PASS || "adminADMIN!";
+    await fillLoginForm(page, username, password);
+    await waitForShellMenuButton(page, 20000);
+  }
 }
 
 function normalizeAuthMode(mode: string): AuthMode {

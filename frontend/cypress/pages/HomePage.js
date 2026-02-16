@@ -36,7 +36,6 @@ class HomePage {
       nonConformingView: "span#menu_non_conforming_view",
       nonConformingActions: "span#menu_non_conforming_corrective_actions",
       resultsMenu: "span#menu_results",
-      resultsMenuButton: "#menu_results .cds--side-nav__submenu",
       resultsLogbook: "#menu_results_logbook_nav",
       resultsAccession: "#menu_results_accession_nav",
       resultsPatient: "#menu_results_patient_nav",
@@ -48,10 +47,8 @@ class HomePage {
       rangeOrderValidation: "#menu_accession_validation_range",
       accessionValidation: "#menu_accession_validation",
       reportsMenu: "#menu_reports",
-      reportsMenuButton: "#menu_reports .cds--side-nav__submenu",
       reportsRoutine: "#menu_reports_routine",
       reportsStudy: "#menu_reports_study",
-      reportsStudyButton: "#menu_reports_study .cds--side-nav__submenu",
       pathologyNav: "#menu_pathology_nav",
       immunochemMenu: "#menu_immunochem",
       cytologyMenu: "#menu_cytology",
@@ -117,16 +114,23 @@ class HomePage {
       .click({ force: true });
   }
 
-  expandResultsMenu() {
-    cy.get(this.selectors.resultsMenuButton)
+  getSubmenuToggle(menuSelector) {
+    return cy
+      .get(menuSelector)
       .should("be.visible")
-      .then(($submenuButton) => {
-        if ($submenuButton.attr("aria-expanded") !== "true") {
-          cy.wrap($submenuButton).click({ force: true });
-        }
-      });
+      .find("button.cds--side-nav__submenu")
+      .first()
+      .should("exist");
+  }
 
-    cy.get(this.selectors.resultsMenuButton).should(
+  expandResultsMenu() {
+    this.getSubmenuToggle(this.selectors.resultsMenu).then(($submenuButton) => {
+      if ($submenuButton.attr("aria-expanded") !== "true") {
+        cy.wrap($submenuButton).click({ force: true });
+      }
+    });
+
+    this.getSubmenuToggle(this.selectors.resultsMenu).should(
       "have.attr",
       "aria-expanded",
       "true",
@@ -134,15 +138,13 @@ class HomePage {
   }
 
   expandReportsMenu() {
-    cy.get(this.selectors.reportsMenuButton)
-      .should("be.visible")
-      .then(($submenuButton) => {
-        if ($submenuButton.attr("aria-expanded") !== "true") {
-          cy.wrap($submenuButton).click({ force: true });
-        }
-      });
+    this.getSubmenuToggle(this.selectors.reportsMenu).then(($submenuButton) => {
+      if ($submenuButton.attr("aria-expanded") !== "true") {
+        cy.wrap($submenuButton).click({ force: true });
+      }
+    });
 
-    cy.get(this.selectors.reportsMenuButton).should(
+    this.getSubmenuToggle(this.selectors.reportsMenu).should(
       "have.attr",
       "aria-expanded",
       "true",
@@ -340,13 +342,11 @@ class HomePage {
   goToStudyReports() {
     this.openNavigationMenu();
     this.expandReportsMenu();
-    cy.get(this.selectors.reportsStudyButton)
-      .should("be.visible")
-      .then(($studySubmenu) => {
-        if ($studySubmenu.attr("aria-expanded") !== "true") {
-          cy.wrap($studySubmenu).click({ force: true });
-        }
-      });
+    this.getSubmenuToggle(this.selectors.reportsStudy).then(($studySubmenu) => {
+      if ($studySubmenu.attr("aria-expanded") !== "true") {
+        cy.wrap($studySubmenu).click({ force: true });
+      }
+    });
     return new StudyReportPage();
   }
 
