@@ -36,7 +36,7 @@ class HomePage {
       nonConformingView: "span#menu_non_conforming_view",
       nonConformingActions: "span#menu_non_conforming_corrective_actions",
       resultsMenu: "span#menu_results",
-      resultsMenuButton: "#menu_results > .cds--side-nav__submenu",
+      resultsMenuButton: "#menu_results .cds--side-nav__submenu",
       resultsLogbook: "#menu_results_logbook_nav",
       resultsAccession: "#menu_results_accession_nav",
       resultsPatient: "#menu_results_patient_nav",
