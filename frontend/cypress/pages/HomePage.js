@@ -48,8 +48,10 @@ class HomePage {
       rangeOrderValidation: "#menu_accession_validation_range",
       accessionValidation: "#menu_accession_validation",
       reportsMenu: "#menu_reports",
+      reportsMenuButton: "#menu_reports .cds--side-nav__submenu",
       reportsRoutine: "#menu_reports_routine",
-      reportsStudy: "[data-cy='sidenav-button-menu_reports_study']",
+      reportsStudy: "#menu_reports_study",
+      reportsStudyButton: "#menu_reports_study .cds--side-nav__submenu",
       pathologyNav: "#menu_pathology_nav",
       immunochemMenu: "#menu_immunochem",
       cytologyMenu: "#menu_cytology",
@@ -125,6 +127,22 @@ class HomePage {
       });
 
     cy.get(this.selectors.resultsMenuButton).should(
+      "have.attr",
+      "aria-expanded",
+      "true",
+    );
+  }
+
+  expandReportsMenu() {
+    cy.get(this.selectors.reportsMenuButton)
+      .should("be.visible")
+      .then(($submenuButton) => {
+        if ($submenuButton.attr("aria-expanded") !== "true") {
+          cy.wrap($submenuButton).click({ force: true });
+        }
+      });
+
+    cy.get(this.selectors.reportsMenuButton).should(
       "have.attr",
       "aria-expanded",
       "true",
@@ -314,15 +332,21 @@ class HomePage {
   // Reports related functions
   goToRoutineReports() {
     this.openNavigationMenu();
-    cy.get(this.selectors.reportsMenu).click();
+    this.expandReportsMenu();
     cy.get(this.selectors.reportsRoutine).should("be.visible").click();
     return new RoutineReportPage();
   }
 
   goToStudyReports() {
     this.openNavigationMenu();
-    cy.get(this.selectors.reportsMenu).click();
-    cy.get(this.selectors.reportsStudy).should("be.visible").click();
+    this.expandReportsMenu();
+    cy.get(this.selectors.reportsStudyButton)
+      .should("be.visible")
+      .then(($studySubmenu) => {
+        if ($studySubmenu.attr("aria-expanded") !== "true") {
+          cy.wrap($studySubmenu).click({ force: true });
+        }
+      });
     return new StudyReportPage();
   }
 

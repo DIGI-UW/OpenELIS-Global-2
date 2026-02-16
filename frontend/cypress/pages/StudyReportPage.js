@@ -86,9 +86,7 @@ class StudyReportPage {
   }
 
   visitStudyReports() {
-    cy.get("[data-cy='sidenav-button-menu_reports_study']")
-      .scrollIntoView()
-      .click();
+    cy.get("#menu_reports_study").scrollIntoView().click();
   }
 
   /**
