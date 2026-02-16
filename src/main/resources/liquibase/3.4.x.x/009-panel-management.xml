@@ -199,4 +199,37 @@
         </rollback>
     </changeSet>
 
+    <!-- ========================================================= -->
+     <!-- panel-008: create PANEL_LAB_UNIT_SEQ -->
+    <!-- ========================================================= -->
+
+
+    <changeSet id="panel-008-create-panel-lab-unit-seq" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><sequenceExists sequenceName="panel_lab_unit_seq"/></not>
+        </preConditions>
+        <createSequence sequenceName="panel_lab_unit_seq" startValue="1" incrementBy="1"/>
+        <rollback><dropSequence sequenceName="panel_lab_unit_seq"/></rollback>
+    </changeSet>
+
+    <!-- panel-009: create PANEL_IMPORT_LOG_SEQ -->
+    <changeSet id="panel-009-create-panel-import-log-seq" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><sequenceExists sequenceName="panel_import_log_seq"/></not>
+        </preConditions>
+        <createSequence sequenceName="panel_import_log_seq" startValue="1" incrementBy="1"/>
+        <rollback><dropSequence sequenceName="panel_import_log_seq"/></rollback>
+    </changeSet>
+
+    <!-- panel-010: add lastupdated to panel_lab_unit -->
+    <changeSet id="panel-010-add-lastupdated-to-panel-lab-unit" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="panel_lab_unit" columnName="lastupdated"/></not>
+        </preConditions>
+        <addColumn tableName="panel_lab_unit">
+            <column name="lastupdated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </addColumn>
+        <rollback><dropColumn tableName="panel_lab_unit" columnName="lastupdated"/></rollback>
+    </changeSet>
+
 </databaseChangeLog>

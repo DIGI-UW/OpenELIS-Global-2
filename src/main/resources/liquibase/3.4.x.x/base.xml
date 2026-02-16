@@ -25,6 +25,6 @@
   <include relativeToChangelogFile="true" file="018-uom-type-mapping-table.xml"/>
 
   <!-- Panel management enhancements -->
-  <include relativeToChangelogFile="true" file="01-panel-management.xml"/>
+  <include relativeToChangelogFile="true" file="009-panel-management.xml"/>
 
 </databaseChangeLog>

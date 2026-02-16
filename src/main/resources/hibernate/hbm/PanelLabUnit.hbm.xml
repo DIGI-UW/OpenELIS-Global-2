@@ -14,6 +14,8 @@
                 <param name="sequence_name">PANEL_LAB_UNIT_SEQ</param>
             </generator>
         </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
 
         <property name="panelId"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">

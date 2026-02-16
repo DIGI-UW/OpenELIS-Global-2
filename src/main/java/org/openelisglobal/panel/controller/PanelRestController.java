@@ -10,6 +10,7 @@ import org.openelisglobal.panel.form.PanelImportRequest;
 import org.openelisglobal.panel.form.PanelTestForm;
 import org.openelisglobal.panel.service.PanelService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -43,7 +44,7 @@ public class PanelRestController extends BaseRestController {
     @PostMapping
     public ResponseEntity<PanelForm> create(@Validated @RequestBody PanelCreateForm request) {
         PanelForm created = panelService.createForm(request);
-        return ResponseEntity.ok(created);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PutMapping("/{id}")
