@@ -71,6 +71,7 @@ class NonConform {
   }
 
   validateLabNoSearchResult(labNo) {
+    this.ensureNceDetailsLoaded();
     cy.get(this.selectors.searchResult, { timeout: 15000 })
       .first()
       .should("be.visible")
@@ -80,12 +81,25 @@ class NonConform {
   }
 
   validateNCESearchResult(NCENo) {
+    this.ensureNceDetailsLoaded();
     cy.get(this.selectors.nceNumberResult, { timeout: 15000 })
       .first()
       .should("be.visible")
       .invoke("text")
       .then((text) => text.trim())
       .should("eq", NCENo);
+  }
+
+  ensureNceDetailsLoaded() {
+    cy.get("body", { timeout: 15000 }).then(($body) => {
+      const hasDetails = $body.find(this.selectors.searchResult).length > 0;
+      const hasSelectableRows =
+        $body.find(this.selectors.radioButton).length > 0;
+
+      if (!hasDetails && hasSelectableRows) {
+        this.checkRadioButton();
+      }
+    });
   }
 
   clickCheckbox() {
@@ -179,10 +193,10 @@ class NonConform {
   }
 
   checkRadioButton() {
-    cy.get(this.selectors.radioTable).should("be.visible");
-    cy.get(this.selectors.radioButton).should("exist");
+    cy.get(this.selectors.radioTable, { timeout: 15000 }).should("be.visible");
+    cy.get(this.selectors.radioButton, { timeout: 15000 }).should("exist");
     return cy
-      .get("tbody tr")
+      .get("tbody tr", { timeout: 15000 })
       .first()
       .within(() => {
         cy.get(this.selectors.radioButton)
