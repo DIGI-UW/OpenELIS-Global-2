@@ -66,6 +66,9 @@
 
         <!-- Site Branding entity (001-site-branding) -->
         <class>org.openelisglobal.sitebranding.valueholder.SiteBranding</class>
+
+        <!-- DocumentType migrated from HBM XML to JPA annotations (issue #2276) -->
+        <class>org.openelisglobal.reports.valueholder.DocumentType</class>
         <!-- Generic Reporting Framework entities (reporting-framework) -->
         <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
 

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Rename lastupdated to last_updated to match BaseObject @Column annotation -->
+    <changeSet id="2276-001-01-rename-lastupdated-document-type" author="issue-2276-xml-to-jpa">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="document_type" columnName="lastupdated"/>
+        </preConditions>
+        <comment>Rename lastupdated to last_updated in document_type table to match BaseObject JPA convention</comment>
+        <renameColumn tableName="document_type"
+                      oldColumnName="lastupdated"
+                      newColumnName="last_updated"
+                      columnDataType="TIMESTAMP WITH TIME ZONE"/>
+        <rollback>
+            <renameColumn tableName="document_type"
+                          oldColumnName="last_updated"
+                          newColumnName="lastupdated"
+                          columnDataType="TIMESTAMP WITH TIME ZONE"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

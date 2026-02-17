@@ -129,7 +129,7 @@
         <mapping resource="hibernate/hbm/ReportQueueType.hbm.xml" />
         <mapping resource="hibernate/hbm/ReportExternalImport.hbm.xml" />
         <mapping resource="hibernate/hbm/DocumentTrack.hbm.xml" />
-        <mapping resource="hibernate/hbm/DocumentType.hbm.xml" />
+        <!-- DocumentType migrated to JPA annotations (issue #2276) -->
         <mapping resource="hibernate/hbm/QaObservationType.hbm.xml" />
         <mapping resource="hibernate/hbm/QaObservation.hbm.xml" />
         <mapping resource="hibernate/hbm/ElectronicOrder.hbm.xml" />
