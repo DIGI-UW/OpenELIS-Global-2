@@ -19,7 +19,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.hibernate.converter.URIConverter;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.localization.valueholder.Localization;
-
+import jakarta.validation.constraints.NotNull;
 @Entity
 @Table(name = "external_connection")
 public class ExternalConnection extends BaseObject<Integer> {
@@ -81,6 +81,7 @@ public class ExternalConnection extends BaseObject<Integer> {
     @Column
     private Boolean active;
 
+    @NotNull(message = "Connection URI is required")
     @Convert(converter = URIConverter.class)
     @Column
     private URI uri;
