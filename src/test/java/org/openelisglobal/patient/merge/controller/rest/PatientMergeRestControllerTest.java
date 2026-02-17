@@ -17,7 +17,6 @@ import org.openelisglobal.patient.dao.PatientDAO;
 import org.openelisglobal.patient.merge.dto.PatientMergeRequestDTO;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
-import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
@@ -52,7 +51,7 @@ public class PatientMergeRestControllerTest extends BaseWebContextSensitiveTest 
         objectMapper = new ObjectMapper();
 
         // Load system user dataset for audit
-        executeDataSetWithStateManagement("testdata/system-user.xml");
+        executeDataSetWithStateManagement("testdata/patient-merge-testdata.xml");
 
         // Set up authenticated session with Global Admin user (system_user id=1)
         UserSessionData userSessionData = new UserSessionData();
@@ -60,35 +59,12 @@ public class PatientMergeRestControllerTest extends BaseWebContextSensitiveTest 
         mockSession = new MockHttpSession();
         mockSession.setAttribute(IActionConstants.USER_SESSION_DATA, userSessionData);
 
-        // Create test patients
-        Person person1 = new Person();
-        person1.setFirstName("John");
-        person1.setLastName("Doe");
-        String person1Id = personService.insert(person1);
-        person1.setId(person1Id);
-
-        Person person2 = new Person();
-        person2.setFirstName("Jon");
-        person2.setLastName("Doe");
-        String person2Id = personService.insert(person2);
-        person2.setId(person2Id);
-
-        patient1 = new Patient();
-        patient1.setPerson(person1);
-        patient1.setNationalId("CTRL-TEST-P1-" + System.currentTimeMillis());
-        patient1.setIsMerged(false);
-        String patient1Id = patientDAO.insert(patient1);
-        patient1.setId(patient1Id);
-
-        patient2 = new Patient();
-        patient2.setPerson(person2);
-        patient2.setNationalId("CTRL-TEST-P2-" + System.currentTimeMillis());
-        patient2.setIsMerged(false);
-        String patient2Id = patientDAO.insert(patient2);
-        patient2.setId(patient2Id);
+        // Retrieve test patients from the loaded dataset
+        patient1 = patientDAO.get("9001")
+                .orElseThrow(() -> new AssertionError("Patient 9001 should be loaded from dataset"));
+        patient2 = patientDAO.get("9002")
+                .orElseThrow(() -> new AssertionError("Patient 9002 should be loaded from dataset"));
     }
-
-    // ========== GET /rest/patient/merge/details/{patientId} Tests ==========
 
     /**
      * Test: GET merge details for existing patient returns 200 OK. Business Rule:
