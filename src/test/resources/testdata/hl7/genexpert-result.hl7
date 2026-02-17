@@ -1,0 +1,6 @@
+MSH|^~\&|GENEXPERT|CEPHEID|OpenELIS|LAB|20260201143000||ORU^R01|GX001|P|2.5.1||||||||
+PID|1||PAT-GX001^^^HOSPITAL||DOE^JANE||19850320|F||||||||||||||||||||
+ORC|RE|GX-ORDER-001|GX-FILLER-001|||||||||||||||||||||||||
+OBR|1|GX-ORDER-001|GX-FILLER-001|94500-6^SARS-CoV-2 RNA^LN|||20260201140000|||||||||||||||||||||||F|||||||||||||||||||||||||
+OBX|1|CE|94500-6^SARS-CoV-2 RNA^LN||260415000^Not detected^SCT||||||F||||||
+OBX|2|NM|94745-7^Ct value^LN||28.5|Ct|||||F||||||
