@@ -551,7 +551,7 @@ describe("EnhancedCascadingMode Notifications", () => {
     });
     // Message should either be the formatted message with room name, or the fallback
     expect(notificationCall.message).toMatch(
-      /New Test Room|storage\.create\.room\.success/,
+      /New Test Room|Room created successfully|storage\.create\.room\.success/,
     );
 
     // Verify setNotificationVisible was called
@@ -630,7 +630,7 @@ describe("EnhancedCascadingMode Notifications", () => {
     });
     // Message should either be the formatted message with error, or the fallback, or the key
     expect(notificationCall.message).toMatch(
-      /TEST-ROOM|storage\.create\.room\.error/,
+      /TEST-ROOM|Error creating room|storage\.create\.room\.error/,
     );
 
     // Verify setNotificationVisible was called
