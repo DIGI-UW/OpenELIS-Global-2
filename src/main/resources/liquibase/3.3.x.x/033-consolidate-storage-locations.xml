@@ -20,6 +20,8 @@
     -->
 
     <changeSet id="consolidate-storage-001" author="claude-code">
+        <validCheckSum>8:0e3ddb96013e977e8e0efa0b292b9007</validCheckSum>
+        <validCheckSum>8:1e28642b8ca315dccb9d879694e18a5a</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <columnExists tableName="inventory_item" columnName="storage_location" schemaName="clinlims"/>
         </preConditions>
