@@ -3,7 +3,6 @@ import {
   Checkbox,
   Column,
   Link,
-  Grid,
   Select,
   SelectItem,
   TextInput,
@@ -11,8 +10,8 @@ import {
 } from "@carbon/react";
 import { React, useEffect, useState, useContext } from "react";
 import CustomDatePicker from "../common/CustomDatePicker";
-import { Minimize, Maximize, ArrowLeft, ArrowRight } from "@carbon/react/icons";
-import { FormattedMessage, useIntl, injectIntl } from "react-intl";
+import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
+import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds, AlertDialog } from "../common/CustomNotification";
@@ -40,6 +39,7 @@ const EOrderSearch = ({
   const [currentApiPage, setCurrentApiPage] = useState(null);
   const [totalApiPages, setTotalApiPages] = useState(null);
   const [loading, setLoading] = useState(false);
+
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -130,7 +130,7 @@ const EOrderSearch = ({
         behavior: "smooth",
       });
     }
-    if (response.eOrders.length == 0) {
+    if (response.eOrders.length === 0) {
       addNotification({
         kind: NotificationKinds.warning,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -162,20 +162,20 @@ const EOrderSearch = ({
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
+
+      {/* SECTION 1: SEARCH BY IDENTIFIER */}
       <Column lg={16} md={8} sm={4}>
-        <FormattedMessage id="eorder.search1.text" />
+        <div style={{ marginBottom: "1rem", marginTop: "1rem" }}>
+          <FormattedMessage id="eorder.search1.text" />
+        </div>
       </Column>
-      <Column lg={16} md={8} sm={4}>
-        <br></br>
-      </Column>
-      <Column lg={9} md={4} sm={4}>
+
+      <Column lg={9} md={8} sm={4} style={{ marginBottom: "1rem" }}>
         <TextInput
           id="searchValue"
           labelText={intl.formatMessage({ id: "eorder.searchValue" })}
           value={searchValue}
-          onChange={(e) => {
-            setSearchValue(e.target.value);
-          }}
+          onChange={(e) => setSearchValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               searchByIdentifier();
@@ -183,35 +183,48 @@ const EOrderSearch = ({
           }}
         />
       </Column>
-      <Column lg={2}>
-        <div className="bottomAlign">
+
+      <Column lg={3} md={4} sm={4} style={{ marginBottom: "1rem" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            height: "100%",
+            paddingBottom: "0.5rem",
+          }}
+        >
           <Checkbox
             id="allInfo1"
             labelText={intl.formatMessage({ id: "eorder.allInfo" })}
             checked={allInfo}
-            onChange={(e) => {
-              setAllInfo(e.currentTarget.checked);
-            }}
+            onChange={(e) => setAllInfo(e.currentTarget.checked)}
           />
         </div>
       </Column>
-      <Column lg={1}></Column>
-      <Column lg={4}>
-        <Button onClick={searchByIdentifier}>
-          <FormattedMessage id="label.button.search" />
-        </Button>
+
+      <Column lg={4} md={4} sm={4} style={{ marginBottom: "1rem" }}>
+        <div
+          style={{ display: "flex", alignItems: "flex-end", height: "100%" }}
+        >
+          <Button onClick={searchByIdentifier}>
+            <FormattedMessage id="label.button.search" />
+          </Button>
+        </div>
       </Column>
 
+      {/* DIVIDER */}
       <Column lg={16} md={8} sm={4}>
-        <hr></hr>
+        <hr style={{ margin: "2rem 0" }} />
       </Column>
+
+      {/* SECTION 2: SEARCH BY DATE AND STATUS */}
       <Column lg={16} md={8} sm={4}>
-        <FormattedMessage id="eorder.search2.text" />
+        <div style={{ marginBottom: "1rem" }}>
+          <FormattedMessage id="eorder.search2.text" />
+        </div>
       </Column>
-      <Column lg={16} md={8} sm={4}>
-        <br></br>
-      </Column>
-      <Column lg={3} md={2} sm={2}>
+
+      <Column lg={3} md={4} sm={4} style={{ marginBottom: "1rem" }}>
         <CustomDatePicker
           id={"eOrder_startDate"}
           labelText={intl.formatMessage({ id: "eorder.date.start" })}
@@ -220,23 +233,23 @@ const EOrderSearch = ({
           onChange={(date) => setStartDate(date)}
         />
       </Column>
-      <Column lg={3} md={2} sm={2}>
+
+      <Column lg={3} md={4} sm={4} style={{ marginBottom: "1rem" }}>
         <CustomDatePicker
-          id={"eOrder_startDate"}
+          id={"eOrder_endDate"}
           labelText={intl.formatMessage({ id: "eorder.date.end" })}
-          value={startDate}
+          value={endDate}
           className="inputDate"
           onChange={(date) => setEndDate(date)}
         />
       </Column>
-      <Column lg={3} md={2} sm={2}>
+
+      <Column lg={4} md={8} sm={4} style={{ marginBottom: "1rem" }}>
         <Select
           id="statusId"
           labelText={intl.formatMessage({ id: "eorder.status" })}
           value={statusId}
-          onChange={(e) => {
-            setStatusId(e.target.value);
-          }}
+          onChange={(e) => setStatusId(e.target.value)}
         >
           <SelectItem value="" text="All Statuses" />
           {statusOptions.map((statusOption, index) => {
@@ -250,44 +263,60 @@ const EOrderSearch = ({
           })}
         </Select>
       </Column>
-      <Column lg={2}>
-        <div className="bottomAlign">
+
+      <Column lg={3} md={4} sm={4} style={{ marginBottom: "1rem" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            height: "100%",
+            paddingBottom: "0.5rem",
+          }}
+        >
           <Checkbox
             id="allInfo2"
             labelText={intl.formatMessage({ id: "eorder.allInfo" })}
             checked={allInfo2}
-            onChange={(e) => {
-              setAllInfo2(e.currentTarget.checked);
-            }}
+            onChange={(e) => setAllInfo2(e.currentTarget.checked)}
           />
         </div>
       </Column>
-      <Column lg={1}></Column>
-      <Column lg={4} md={4} sm={2}>
-        <Button onClick={searchByDateAndStatus}>
-          <FormattedMessage id="label.button.search" />
-        </Button>
+
+      <Column lg={3} md={4} sm={4} style={{ marginBottom: "1rem" }}>
+        <div
+          style={{ display: "flex", alignItems: "flex-end", height: "100%" }}
+        >
+          <Button onClick={searchByDateAndStatus}>
+            <FormattedMessage id="label.button.search" />
+          </Button>
+        </div>
       </Column>
 
+      {/* RESULTS / LOADING / PAGINATION */}
       {searchCompleted && !hasEOrders && (
         <Column lg={16} md={8} sm={4}>
-          <FormattedMessage id="eorder.search.noresults" />
+          <div style={{ marginTop: "1rem" }}>
+            <FormattedMessage id="eorder.search.noresults" />
+          </div>
         </Column>
       )}
+
       <Column lg={16} md={8} sm={4}>
         {loading && <Loading description="Loading Orders..." small={true} />}
       </Column>
 
       <>
-        <Column lg={14} />
+        <Column lg={14} md={6} sm={2} />
         <Column
           lg={2}
+          md={2}
+          sm={2}
           style={{
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             gap: "10px",
-            width: "110%",
+            marginTop: "1rem",
           }}
         >
           {pagination && (
@@ -300,18 +329,18 @@ const EOrderSearch = ({
                   hasIconOnly
                   id="loadpreviousresults"
                   onClick={loadPreviousResultsPage}
-                  disabled={previousPage != null ? false : true}
+                  disabled={previousPage == null}
                   renderIcon={ArrowLeft}
                   iconDescription="previous"
-                ></Button>
+                />
                 <Button
                   hasIconOnly
                   id="loadnextresults"
                   onClick={loadNextResultsPage}
-                  disabled={nextPage != null ? false : true}
+                  disabled={nextPage == null}
                   renderIcon={ArrowRight}
                   iconDescription="next"
-                ></Button>
+                />
               </div>
             </>
           )}
