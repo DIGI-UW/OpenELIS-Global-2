@@ -20,8 +20,8 @@ import org.openelisglobal.patient.service.PatientService;
 import org.springframework.test.context.junit4.SpringRunner;
 
 /**
- * Unit tests for PatientManagementRestController service interactions.
- * Tests controller service delegation and error handling without HTTP dependencies.
+ * Unit tests for PatientManagementRestController service interactions. Tests
+ * controller service delegation and error handling without HTTP dependencies.
  * No Docker/TestContainers required - focuses on service layer testing.
  */
 @RunWith(SpringRunner.class)
@@ -47,7 +47,8 @@ public class PatientManagementRestControllerTest {
 
     @Test
     public void patientService_SavePatientData_ShouldAcceptValidData() {
-        // Test that patientService.persistPatientData accepts valid data without throwing
+        // Test that patientService.persistPatientData accepts valid data without
+        // throwing
         PatientManagementInfo patientInfo = new PatientManagementInfo();
         patientInfo.setFirstName("John");
         patientInfo.setLastName("Doe");
@@ -67,8 +68,8 @@ public class PatientManagementRestControllerTest {
         patientInfo.setFirstName("John");
         patientInfo.setLastName("Doe");
 
-        doThrow(new RuntimeException("Database connection failed"))
-            .when(patientService).persistPatientData(any(PatientManagementInfo.class), any(), anyString());
+        doThrow(new RuntimeException("Database connection failed")).when(patientService)
+            .persistPatientData(any(PatientManagementInfo.class), any(), anyString());
 
         try {
             patientService.persistPatientData(patientInfo, null, "testUser");
@@ -121,7 +122,8 @@ public class PatientManagementRestControllerTest {
 
     @Test
     public void controller_ServiceInjection_ShouldWorkCorrectly() {
-        // Test that controller has proper service injection (critical for controller functionality)
+        // Test that controller has proper service injection (critical for controller
+        // functionality)
         assertNotNull("Controller should have patientService injected", controller.patientService);
         assertNotNull("Controller should have photoService injected", controller.photoService);
 
