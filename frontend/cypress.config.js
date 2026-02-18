@@ -1,18 +1,106 @@
 const { defineConfig } = require("cypress");
 const fs = require("fs");
 const path = require("path");
+const { execSync } = require("child_process");
 
 // Get project root - cypress.config.js is in frontend/, so go up one level
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 
+/**
+ * Auto-detect base URL for cross-environment testing (localhost vs subdomains).
+ * Three-tier fallback:
+ * 1. CYPRESS_BASE_URL env override (highest priority)
+ * 2. LETSENCRYPT_DOMAIN from Docker proxy container
+ * 3. .env file in project root
+ * 4. Default to localhost (fallback)
+ *
+ * @returns {string} The detected base URL (e.g., "https://localhost" or "https://analyzers.openelis-global.org")
+ */
+function detectBaseUrl() {
+  // 1. Check CYPRESS_BASE_URL override (highest priority)
+  if (process.env.CYPRESS_BASE_URL) {
+    console.log(`🔧 Using CYPRESS_BASE_URL: ${process.env.CYPRESS_BASE_URL}`);
+    return process.env.CYPRESS_BASE_URL;
+  }
+
+  // 2. Detect from Let's Encrypt domain (Docker proxy container)
+  try {
+    const domain = execSync(
+      "docker exec openelisglobal-proxy env 2>/dev/null | grep LETSENCRYPT_DOMAIN | cut -d= -f2",
+      { encoding: "utf-8", timeout: 5000, stdio: ["pipe", "pipe", "pipe"] },
+    ).trim();
+
+    if (domain && domain !== "") {
+      console.log(
+        `🌐 Detected subdomain from LETSENCRYPT_DOMAIN: https://${domain}`,
+      );
+      return `https://${domain}`;
+    }
+  } catch (e) {
+    // Docker not running or proxy container not found - continue to fallback
+  }
+
+  // 3. Fallback to .env file in project root
+  try {
+    const envPath = path.join(PROJECT_ROOT, ".env");
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, "utf-8");
+      const match = envContent.match(/LETSENCRYPT_DOMAIN=(.+)/);
+      if (match && match[1]) {
+        const domain = match[1].trim();
+        console.log(`🌐 Detected from .env: https://${domain}`);
+        return `https://${domain}`;
+      }
+    }
+  } catch (e) {
+    // .env not found or unreadable - continue to default
+  }
+
+  // 4. Default to localhost
+  console.log("🏠 Using default: https://localhost");
+  return "https://localhost";
+}
+
+// E2E credentials: in CI require env vars (fail fast); locally allow fallbacks
+const isCI = process.env.CI === "true";
+let cypressUsername, cypressPassword;
+if (isCI) {
+  cypressUsername = process.env.CYPRESS_USERNAME || process.env.TEST_USER;
+  cypressPassword = process.env.CYPRESS_PASSWORD || process.env.TEST_PASS;
+  if (!cypressUsername || !cypressPassword) {
+    throw new Error(
+      "In CI, CYPRESS_USERNAME/CYPRESS_PASSWORD or TEST_USER/TEST_PASS must be set for E2E tests.",
+    );
+  }
+} else {
+  cypressUsername =
+    process.env.CYPRESS_USERNAME || process.env.TEST_USER || "admin";
+  cypressPassword =
+    process.env.CYPRESS_PASSWORD || process.env.TEST_PASS || "adminADMIN!";
+}
+
 module.exports = defineConfig({
   defaultCommandTimeout: 3000, // 3 seconds - use Cypress retry-ability instead of long timeouts
+  pageLoadTimeout: 120000, // 2 minutes for development mode with large unminified bundle.js (25MB)
   viewportWidth: 1920, // Large desktop for full modal visibility (including warnings/checkboxes)
   viewportHeight: 1080,
   video: false, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
   watchForFileChanges: false,
   screenshotOnRunFailure: true, // Take screenshots on failure (required per Constitution V.5)
+  // Stop on first spec failure when E2E_FAIL_FAST is set (e.g. in CI)
+  bail: process.env.E2E_FAIL_FAST === "true" ? 1 : false,
   env: {
+    // E2E test credentials - CI: required via env; local: fallback to admin/adminADMIN!
+    USERNAME: cypressUsername,
+    PASSWORD: cypressPassword,
+
+    // Env-controlled fail-fast using cypress-fail-fast plugin
+    // Set E2E_FAIL_FAST=true to stop on first failure (saves CI time)
+    // Set E2E_FAIL_FAST=false or unset to run all tests (default)
+    // Usage: E2E_FAIL_FAST=true npm run cy:run
+    FAIL_FAST_ENABLED: process.env.E2E_FAIL_FAST === "true",
+    FAIL_FAST_STRATEGY: "spec", // Stop after first failing spec file
+
     // Control whether test fixtures are cleaned up after tests
     // Set CYPRESS_CLEANUP_FIXTURES=false to keep fixtures for manual testing/debugging
     // Default: false (cleanup disabled for faster iteration)
@@ -30,6 +118,10 @@ module.exports = defineConfig({
   },
   e2e: {
     setupNodeEvents(on, config) {
+      // Register cypress-fail-fast plugin for fail-fast support
+      // Controlled by FAIL_FAST_ENABLED env variable
+      require("cypress-fail-fast/plugin")(on, config);
+
       // NOTE: Storage E2E tests (001-sample-storage) are currently disabled
       // Storage tests excluded via excludeSpecPattern in e2e config
       // Storage support imports commented out in e2e.js
@@ -39,6 +131,63 @@ module.exports = defineConfig({
       // Register all Cypress tasks in ONE handler (Cypress does not merge task handlers).
       // This keeps logging/diagnostics and fixture utilities available across specs.
       on("task", {
+        // Poll backend until it responds (retries on connection errors - CI reliability)
+        // cy.request() fails immediately on ECONNREFUSED; this task retries with backoff
+        waitForBackendReady({ path }) {
+          const baseUrl = config.baseUrl || "https://localhost";
+          const url = new URL(path, baseUrl).href;
+          const maxAttempts = 15;
+          const delayMs = 2000;
+
+          const attempt = (attemptNum) =>
+            new Promise((resolve, reject) => {
+              const lib = url.startsWith("https")
+                ? require("https")
+                : require("http");
+              const parsed = new URL(url);
+              const isLocalhost = ["localhost", "127.0.0.1"].includes(
+                parsed.hostname,
+              );
+              const opts =
+                url.startsWith("https") && isLocalhost
+                  ? { rejectUnauthorized: false }
+                  : {};
+              const req = lib.get(url, opts, (res) => {
+                res.resume(); // drain response to avoid socket leaks
+                if (typeof res.statusCode === "number") {
+                  console.log(
+                    `Backend ready: ${path} responded with status ${res.statusCode}`,
+                  );
+                  resolve(true);
+                } else {
+                  reject(new Error("No status code in response"));
+                }
+              });
+              req.on("error", (err) => {
+                if (attemptNum >= maxAttempts) {
+                  reject(
+                    new Error(
+                      `Backend did not become ready after ${maxAttempts} attempts: ${err.message}`,
+                    ),
+                  );
+                } else {
+                  console.log(
+                    `Backend not ready (attempt ${attemptNum}/${maxAttempts}), retrying in ${delayMs}ms...`,
+                  );
+                  setTimeout(
+                    () =>
+                      attempt(attemptNum + 1)
+                        .then(resolve)
+                        .catch(reject),
+                    delayMs,
+                  );
+                }
+              });
+            });
+
+          return attempt(1);
+        },
+
         // Log messages to the Node process stdout (captured by CI/tee logs)
         log(message, options = {}) {
           if (options.log !== false) {
@@ -394,7 +543,7 @@ module.exports = defineConfig({
         return config;
       }
     },
-    baseUrl: "https://localhost",
+    baseUrl: detectBaseUrl(),
     testIsolation: false,
     // Storage tests are now enabled for M2 frontend verification
     // No excludeSpecPattern - all storage tests should run
