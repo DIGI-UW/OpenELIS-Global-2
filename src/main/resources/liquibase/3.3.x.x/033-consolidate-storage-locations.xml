@@ -20,10 +20,13 @@
     -->
 
     <changeSet id="consolidate-storage-001" author="claude-code">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="inventory_item" columnName="storage_location" schemaName="clinlims"/>
+        </preConditions>
         <comment>Remove redundant catalog-level storage fields from inventory_item table</comment>
 
         <!-- Drop indexes first -->
-        <dropIndex tableName="inventory_item" schemaName="clinlims" indexName="idx_inventory_item_storage_location"/>
+        <sql>DROP INDEX IF EXISTS clinlims.idx_inventory_item_storage_location;</sql>
 
         <!-- Remove catalog-level received_by field (should only be at lot level) -->
         <dropColumn tableName="inventory_item" schemaName="clinlims">
