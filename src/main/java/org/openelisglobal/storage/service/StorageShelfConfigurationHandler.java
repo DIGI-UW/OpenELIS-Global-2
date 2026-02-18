@@ -180,6 +180,16 @@ public class StorageShelfConfigurationHandler implements DomainConfigurationHand
             return false;
         }
 
+        // Check if shelf with same label in this device already exists (unique
+        // constraint)
+        StorageShelf existingByLabelAndDevice = storageShelfDAO.findByLabelAndParentDevice(label, parentDevice);
+        if (existingByLabelAndDevice != null) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "processStorageShelfLine",
+                    "Storage shelf with label '" + label + "' already exists in device '" + parentDevice.getName()
+                            + "'. Skipping line " + lineNumber);
+            return false;
+        }
+
         // Create new storage shelf
         try {
             StorageShelf shelf = new StorageShelf();
