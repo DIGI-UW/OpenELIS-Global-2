@@ -105,64 +105,197 @@ export const validateProjectSelection = (formData) => {
 };
 
 /**
- * Validates test selection - at least one test must be selected
+ * Validates test selection - at least one test must be selected,
+ * and each selected specimen container must have at least one
+ * corresponding test selected (tube/test coherence).
+ *
+ * These groupings mirror the backend ARVFormMapper / EIDFormMapper logic:
+ *   dryTubeTaken  → serologyHIVTest | glycemiaTest | creatinineTest | transaminaseTest
+ *   edtaTubeTaken → nfsTest | cd4cd8Test | viralLoadTest | genotypingTest
+ *   dbsTaken      → dnaPCR
+ *   dbsvlTaken    → viralLoadTest
+ *   pscvlTaken    → viralLoadTest
+ *   plasmaTaken   → asanteTest
+ *   serumTaken    → asanteTest
  */
 export const validateTestSelection = (projectData) => {
   const errors = [];
 
-  // Check if at least one test is selected
-  const hasAnyTest =
-    projectData.dryTubeTaken ||
-    projectData.edtaTubeTaken ||
-    projectData.dbsTaken ||
-    projectData.dbsvlTaken ||
-    projectData.pscvlTaken ||
-    projectData.plasmaTaken ||
-    projectData.serumTaken ||
-    projectData.serologyHIVTest ||
-    projectData.murexTest ||
-    projectData.integralTest ||
-    projectData.genscreenTest ||
-    projectData.genieIITest ||
-    projectData.vironostikaTest ||
-    projectData.genieII100Test ||
-    projectData.genieII10Test ||
-    projectData.WB1Test ||
-    projectData.WB2Test ||
-    projectData.p24AgTest ||
-    projectData.innoliaTest ||
-    projectData.cd4cd8Test ||
-    projectData.cd4CountTest ||
-    projectData.cd3CountTest ||
-    projectData.viralLoadTest ||
-    projectData.genotypingTest ||
-    projectData.dnaPCR ||
-    projectData.hpvTest ||
-    projectData.asanteTest ||
-    projectData.glycemiaTest ||
-    projectData.creatinineTest ||
-    projectData.transaminaseTest ||
-    projectData.transaminaseALTLTest ||
-    projectData.transaminaseASTLTest ||
-    projectData.nfsTest ||
-    projectData.gbTest ||
-    projectData.neutTest ||
-    projectData.lymphTest ||
-    projectData.monoTest ||
-    projectData.eoTest ||
-    projectData.basoTest ||
-    projectData.grTest ||
-    projectData.hbTest ||
-    projectData.hctTest ||
-    projectData.vgmTest ||
-    projectData.tcmhTest ||
-    projectData.ccmhTest ||
-    projectData.plqTest;
-
-  if (!hasAnyTest) {
+  // Safety check: ensure projectData exists
+  if (!projectData || typeof projectData !== "object") {
     errors.push({
       field: "tests",
-      message: "At least one test or sample type must be selected",
+      message:
+        "Select at least one specimen container (e.g. Dry Tube) and at least one test",
+    });
+    return errors;
+  }
+
+  // Specimen-container fields (these are NOT tests – they represent tubes/containers).
+  const specimenFields = [
+    "dryTubeTaken",
+    "edtaTubeTaken",
+    "dbsTaken",
+    "dbsvlTaken",
+    "pscvlTaken",
+    "plasmaTaken",
+    "serumTaken",
+    "preservCytTaken",
+  ];
+
+  // Actual test fields that the backend mapper will resolve to DB tests.
+  // Groups mirror ARVFormMapper, EIDFormMapper, RecencyFormMapper, HPVFormMapper.
+  const dryTubeTestFields = [
+    "serologyHIVTest",
+    "glycemiaTest",
+    "creatinineTest",
+    "transaminaseTest",
+    "transaminaseALTLTest",
+    "transaminaseASTLTest",
+    // individual HIV sub-tests (legacy / IND forms)
+    "murexTest",
+    "integralTest",
+    "genscreenTest",
+    "genieIITest",
+    "vironostikaTest",
+    "genieII100Test",
+    "genieII10Test",
+    "wb1Test",
+    "wb2Test",
+    "p24AgTest",
+    "innoliaTest",
+  ];
+
+  const edtaTubeTestFields = [
+    "nfsTest",
+    "cd4cd8Test",
+    "cd4CountTest",
+    "cd3CountTest",
+    "viralLoadTest",
+    "genotypingTest",
+    // individual NFS sub-tests (if user checks them directly)
+    "gbTest",
+    "neutTest",
+    "lymphTest",
+    "monoTest",
+    "eoTest",
+    "basoTest",
+    "grTest",
+    "hbTest",
+    "hctTest",
+    "vgmTest",
+    "tcmhTest",
+    "ccmhTest",
+    "plqTest",
+  ];
+
+  const dbsTestFields = ["dnaPCR"];
+  const dbsvlTestFields = ["viralLoadTest"];
+  const pscvlTestFields = ["viralLoadTest"];
+  const plasmaSerumTestFields = ["asanteTest"];
+
+  // All actual test fields (union of all groups above plus HPV/recency)
+  const allTestFields = [
+    ...new Set([
+      ...dryTubeTestFields,
+      ...edtaTubeTestFields,
+      ...dbsTestFields,
+      "hpvTest",
+      "abbottOrRocheAnalysis",
+      "geneXpertAnalysis",
+      "asanteTest",
+    ]),
+  ];
+
+  const hasSpecimen = specimenFields.some((f) => projectData[f] === true);
+  const hasTest = allTestFields.some((f) => projectData[f] === true);
+
+  // Require BOTH specimen container AND test
+  if (!hasSpecimen && !hasTest) {
+    errors.push({
+      field: "tests",
+      message:
+        "Select at least one specimen container (e.g. Dry Tube) and at least one test",
+    });
+    return errors;
+  }
+
+  if (!hasSpecimen) {
+    errors.push({
+      field: "tests",
+      message:
+        "Select at least one specimen container (e.g. Dry Tube, EDTA Tube)",
+    });
+    return errors;
+  }
+
+  if (!hasTest) {
+    errors.push({
+      field: "tests",
+      message:
+        "Select at least one test (e.g. Serology HIV Test, Glycemia Test, DNA PCR)",
+    });
+    return errors;
+  }
+
+  // --- Tube / test coherence checks ---
+  // If a container is ticked but none of its associated tests are ticked,
+  // the backend will receive an empty test list for that sample item and
+  // reject with errors.no.sample.
+
+  if (
+    projectData.dryTubeTaken &&
+    !dryTubeTestFields.some((f) => projectData[f])
+  ) {
+    errors.push({
+      field: "dryTubeTaken",
+      message:
+        "Dry Tube is selected but no Dry Tube tests are selected " +
+        "(e.g. Serology HIV, Glycémie, Créatininémie, Transaminases)",
+    });
+  }
+
+  if (
+    projectData.edtaTubeTaken &&
+    !edtaTubeTestFields.some((f) => projectData[f])
+  ) {
+    errors.push({
+      field: "edtaTubeTaken",
+      message:
+        "EDTA Tube is selected but no EDTA tests are selected " +
+        "(e.g. NFS, CD4/CD8, Viral Load, Génotypage)",
+    });
+  }
+
+  if (projectData.dbsTaken && !dbsTestFields.some((f) => projectData[f])) {
+    errors.push({
+      field: "dbsTaken",
+      message: "DBS is selected but DNA PCR is not checked",
+    });
+  }
+
+  if (projectData.dbsvlTaken && !dbsvlTestFields.some((f) => projectData[f])) {
+    errors.push({
+      field: "dbsvlTaken",
+      message: "DBS VL is selected but Viral Load test is not checked",
+    });
+  }
+
+  if (projectData.pscvlTaken && !pscvlTestFields.some((f) => projectData[f])) {
+    errors.push({
+      field: "pscvlTaken",
+      message: "PSC VL is selected but Viral Load test is not checked",
+    });
+  }
+
+  if (
+    (projectData.plasmaTaken || projectData.serumTaken) &&
+    !plasmaSerumTestFields.some((f) => projectData[f])
+  ) {
+    errors.push({
+      field: "plasmaTaken",
+      message:
+        "Plasma/Serum is selected but no Recency test (Asante) is checked",
     });
   }
 
@@ -185,9 +318,9 @@ export const validateARVSection = (projectData, selectedProject) => {
   }
 
   // ARV center is required for ARV projects
-  if (!projectData.ARVcenterName) {
+  if (!projectData.arvcenterName) {
     errors.push({
-      field: "ARVcenterName",
+      field: "arvcenterName",
       message: "ARV center is required for ARV projects",
     });
   }
@@ -207,9 +340,9 @@ export const validateEIDSection = (projectData, selectedProject) => {
   }
 
   // EID site is required
-  if (!projectData.EIDsiteName) {
+  if (!projectData.eidsiteName) {
     errors.push({
-      field: "EIDsiteName",
+      field: "eidsiteName",
       message: "EID site is required for EID projects",
     });
   }
@@ -285,13 +418,7 @@ export const validateRTNSection = (projectData, selectedProject) => {
     return errors;
   }
 
-  // RTN site is required
-  if (!projectData.RTNsiteName) {
-    errors.push({
-      field: "RTNsiteName",
-      message: "RTN site is required for RTN projects",
-    });
-  }
+  // RTN validation - currently no required fields
 
   return errors;
 };
@@ -341,9 +468,9 @@ export const validateIndeterminateSection = (projectData, selectedProject) => {
   }
 
   // Site is required
-  if (!projectData.INDsiteName) {
+  if (!projectData.indsiteName) {
     errors.push({
-      field: "INDsiteName",
+      field: "indsiteName",
       message: "Site is required for indeterminate results",
     });
   }

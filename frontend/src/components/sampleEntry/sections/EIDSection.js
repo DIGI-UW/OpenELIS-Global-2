@@ -86,7 +86,7 @@ const EIDSection = ({
   // Handle EID site name selection and auto-populate code
   const handleSiteNameChange = (event) => {
     const selectedSiteId = event.target.value;
-    onInputChange("EIDsiteName", selectedSiteId);
+    onInputChange("eidsiteName", selectedSiteId);
 
     // Auto-populate site code based on name selection
     if (selectedSiteId && eidSitesByCode.length > 0) {
@@ -94,7 +94,7 @@ const EIDSection = ({
         (site) => site.id === selectedSiteId,
       );
       if (selectedSite) {
-        onInputChange("EIDsiteCode", selectedSite.id);
+        onInputChange("eidsiteCode", selectedSite.id);
       }
     }
   };
@@ -102,7 +102,7 @@ const EIDSection = ({
   // Handle EID site code selection and auto-populate name
   const handleSiteCodeChange = (event) => {
     const selectedSiteId = event.target.value;
-    onInputChange("EIDsiteCode", selectedSiteId);
+    onInputChange("eidsiteCode", selectedSiteId);
 
     // Auto-populate site name based on code selection
     if (selectedSiteId && eidSitesByName.length > 0) {
@@ -110,7 +110,7 @@ const EIDSection = ({
         (site) => site.id === selectedSiteId,
       );
       if (selectedSite) {
-        onInputChange("EIDsiteName", selectedSite.id);
+        onInputChange("eidsiteName", selectedSite.id);
       }
     }
   };
@@ -160,7 +160,7 @@ const EIDSection = ({
         {/* EID Site Name */}
         <Column lg={8} md={4} sm={4}>
           <Select
-            id="EIDsiteName"
+            id="eidsiteName"
             labelText={
               <>
                 <span className="required-field">*</span>{" "}
@@ -170,7 +170,7 @@ const EIDSection = ({
                 })}
               </>
             }
-            value={projectData.EIDsiteName || ""}
+            value={projectData.eidsiteName || ""}
             onChange={handleSiteNameChange}
           >
             <SelectItem text="" value="" />
@@ -187,7 +187,7 @@ const EIDSection = ({
         {/* EID Site Code */}
         <Column lg={8} md={4} sm={4}>
           <Select
-            id="EIDsiteCode"
+            id="eidsiteCode"
             labelText={
               <>
                 <span className="required-field">*</span>{" "}
@@ -197,7 +197,7 @@ const EIDSection = ({
                 })}
               </>
             }
-            value={projectData.EIDsiteCode || ""}
+            value={projectData.eidsiteCode || ""}
             onChange={handleSiteCodeChange}
           >
             <SelectItem text="" value="" />

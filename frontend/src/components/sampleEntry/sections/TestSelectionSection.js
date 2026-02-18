@@ -9,6 +9,159 @@ const TestSelectionSection = ({
 }) => {
   const intl = useIntl();
 
+  const resolveChecked = (event, data) => {
+    // Carbon v11 signature: (event, { checked, id })
+    if (data && typeof data.checked === "boolean") {
+      return data.checked;
+    }
+    // Carbon v10 signature: (checked, id, event) - first arg is boolean
+    if (typeof event === "boolean") {
+      return event;
+    }
+    // Fallback: read from event.target.checked
+    if (event?.target && typeof event.target.checked === "boolean") {
+      return event.target.checked;
+    }
+    // Default to false
+    return false;
+  };
+
+  const setIfNotSelected = (field) => {
+    if (!projectData?.[field]) {
+      onTestChange(field, true);
+    }
+  };
+
+  const ensureAnySelected = (fields, fallbackField) => {
+    const hasAny = fields.some((field) => projectData?.[field]);
+    if (!hasAny && fallbackField) {
+      setIfNotSelected(fallbackField);
+    }
+  };
+
+  const autoSelectSpecimen = (field, checked) => {
+    if (!checked) {
+      return;
+    }
+
+    const specimenFields = [
+      "dryTubeTaken",
+      "edtaTubeTaken",
+      "dbsTaken",
+      "dbsvlTaken",
+      "pscvlTaken",
+      "plasmaTaken",
+      "serumTaken",
+      "preservCytTaken",
+      "abbottOrRocheAnalysis",
+      "geneXpertAnalysis",
+    ];
+
+    if (specimenFields.includes(field)) {
+      return;
+    }
+
+    const dryTubeTests = [
+      "serologyHIVTest",
+      "glycemiaTest",
+      "creatinineTest",
+      "transaminaseTest",
+      "transaminaseALTLTest",
+      "transaminaseASTLTest",
+      "murexTest",
+      "integralTest",
+      "genscreenTest",
+      "genieIITest",
+      "vironostikaTest",
+      "genieII100Test",
+      "genieII10Test",
+      "wb1Test",
+      "wb2Test",
+      "p24AgTest",
+      "innoliaTest",
+    ];
+
+    const edtaTests = [
+      "nfsTest",
+      "gbTest",
+      "neutTest",
+      "lymphTest",
+      "monoTest",
+      "eoTest",
+      "basoTest",
+      "grTest",
+      "hbTest",
+      "hctTest",
+      "vgmTest",
+      "tcmhTest",
+      "ccmhTest",
+      "plqTest",
+      "cd4cd8Test",
+      "cd3CountTest",
+      "cd4CountTest",
+      "viralLoadTest",
+      "genotypingTest",
+    ];
+
+    if (isARVProject || isSpecialRequestProject) {
+      if (dryTubeTests.includes(field)) {
+        setIfNotSelected("dryTubeTaken");
+      }
+      if (edtaTests.includes(field)) {
+        setIfNotSelected("edtaTubeTaken");
+      }
+      if (field === "dnaPCR") {
+        setIfNotSelected("dbsTaken");
+      }
+    }
+
+    if (isRTNProject || isIndeterminateProject) {
+      if (field === "serologyHIVTest") {
+        setIfNotSelected("dryTubeTaken");
+      }
+    }
+
+    if (isEIDProject) {
+      if (field === "dnaPCR") {
+        setIfNotSelected("dbsTaken");
+      }
+    }
+
+    if (
+      selectedProject?.includes("VL") ||
+      selectedProject === "ARV_VIRAL_LOAD"
+    ) {
+      if (field === "viralLoadTest") {
+        ensureAnySelected(
+          ["edtaTubeTaken", "dbsvlTaken", "pscvlTaken"],
+          "edtaTubeTaken",
+        );
+      }
+    }
+
+    if (isRecencyProject) {
+      if (field === "asanteTest") {
+        ensureAnySelected(["plasmaTaken", "serumTaken"], "plasmaTaken");
+      }
+    }
+
+    if (isHPVProject) {
+      if (field === "hpvTest") {
+        setIfNotSelected("preservCytTaken");
+        ensureAnySelected(
+          ["abbottOrRocheAnalysis", "geneXpertAnalysis"],
+          "abbottOrRocheAnalysis",
+        );
+      }
+    }
+  };
+
+  const onCheckboxChange = (field) => (event, data) => {
+    const checked = resolveChecked(event, data);
+    onTestChange(field, checked);
+    autoSelectSpecimen(field, checked);
+  };
+
   // Determine which test set to show based on project
   const isARVProject =
     selectedProject?.includes("ARV") ||
@@ -59,7 +212,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Dry Tube Taken",
                 })}
                 checked={projectData.dryTubeTaken || false}
-                onChange={(e) => onTestChange("dryTubeTaken", e.target.checked)}
+                onChange={onCheckboxChange("dryTubeTaken")}
               />
             </Column>
 
@@ -71,9 +224,7 @@ const TestSelectionSection = ({
                   defaultMessage: "EDTA Tube Taken",
                 })}
                 checked={projectData.edtaTubeTaken || false}
-                onChange={(e) =>
-                  onTestChange("edtaTubeTaken", e.target.checked)
-                }
+                onChange={onCheckboxChange("edtaTubeTaken")}
               />
             </Column>
 
@@ -95,9 +246,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Serology HIV Test",
                 })}
                 checked={projectData.serologyHIVTest || false}
-                onChange={(e) =>
-                  onTestChange("serologyHIVTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("serologyHIVTest")}
               />
             </Column>
 
@@ -109,7 +258,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Glycemia Test",
                 })}
                 checked={projectData.glycemiaTest || false}
-                onChange={(e) => onTestChange("glycemiaTest", e.target.checked)}
+                onChange={onCheckboxChange("glycemiaTest")}
               />
             </Column>
 
@@ -121,9 +270,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Creatinine Test",
                 })}
                 checked={projectData.creatinineTest || false}
-                onChange={(e) =>
-                  onTestChange("creatinineTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("creatinineTest")}
               />
             </Column>
 
@@ -135,9 +282,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Transaminase Test",
                 })}
                 checked={projectData.transaminaseTest || false}
-                onChange={(e) =>
-                  onTestChange("transaminaseTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("transaminaseTest")}
               />
             </Column>
 
@@ -159,7 +304,7 @@ const TestSelectionSection = ({
                   defaultMessage: "NFS Test",
                 })}
                 checked={projectData.nfsTest || false}
-                onChange={(e) => onTestChange("nfsTest", e.target.checked)}
+                onChange={onCheckboxChange("nfsTest")}
               />
             </Column>
 
@@ -171,7 +316,7 @@ const TestSelectionSection = ({
                   defaultMessage: "CD4/CD8 Test",
                 })}
                 checked={projectData.cd4cd8Test || false}
-                onChange={(e) => onTestChange("cd4cd8Test", e.target.checked)}
+                onChange={onCheckboxChange("cd4cd8Test")}
               />
             </Column>
 
@@ -193,9 +338,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Viral Load Test",
                 })}
                 checked={projectData.viralLoadTest || false}
-                onChange={(e) =>
-                  onTestChange("viralLoadTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("viralLoadTest")}
               />
             </Column>
 
@@ -207,9 +350,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Genotyping Test",
                 })}
                 checked={projectData.genotypingTest || false}
-                onChange={(e) =>
-                  onTestChange("genotypingTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("genotypingTest")}
               />
             </Column>
           </>
@@ -236,7 +377,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Dry Tube Taken",
                 })}
                 checked={projectData.dryTubeTaken || false}
-                onChange={(e) => onTestChange("dryTubeTaken", e.target.checked)}
+                onChange={onCheckboxChange("dryTubeTaken")}
               />
             </Column>
 
@@ -248,7 +389,7 @@ const TestSelectionSection = ({
                   defaultMessage: "DBS (Dry Blood Spot)",
                 })}
                 checked={projectData.dbsTaken || false}
-                onChange={(e) => onTestChange("dbsTaken", e.target.checked)}
+                onChange={onCheckboxChange("dbsTaken")}
               />
             </Column>
 
@@ -270,7 +411,7 @@ const TestSelectionSection = ({
                   defaultMessage: "DNA PCR",
                 })}
                 checked={projectData.dnaPCR || false}
-                onChange={(e) => onTestChange("dnaPCR", e.target.checked)}
+                onChange={onCheckboxChange("dnaPCR")}
               />
             </Column>
           </>
@@ -296,7 +437,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Dry Tube Taken",
                 })}
                 checked={projectData.dryTubeTaken || false}
-                onChange={(e) => onTestChange("dryTubeTaken", e.target.checked)}
+                onChange={onCheckboxChange("dryTubeTaken")}
               />
             </Column>
 
@@ -317,9 +458,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Serology HIV Test",
                 })}
                 checked={projectData.serologyHIVTest || false}
-                onChange={(e) =>
-                  onTestChange("serologyHIVTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("serologyHIVTest")}
               />
             </Column>
           </>
@@ -345,7 +484,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Dry Tube Taken",
                 })}
                 checked={projectData.dryTubeTaken || false}
-                onChange={(e) => onTestChange("dryTubeTaken", e.target.checked)}
+                onChange={onCheckboxChange("dryTubeTaken")}
               />
             </Column>
 
@@ -366,9 +505,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Serology HIV Test",
                 })}
                 checked={projectData.serologyHIVTest || false}
-                onChange={(e) =>
-                  onTestChange("serologyHIVTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("serologyHIVTest")}
               />
             </Column>
           </>
@@ -394,7 +531,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Dry Tube Taken",
                 })}
                 checked={projectData.dryTubeTaken || false}
-                onChange={(e) => onTestChange("dryTubeTaken", e.target.checked)}
+                onChange={onCheckboxChange("dryTubeTaken")}
               />
             </Column>
 
@@ -406,9 +543,7 @@ const TestSelectionSection = ({
                   defaultMessage: "EDTA Tube Taken",
                 })}
                 checked={projectData.edtaTubeTaken || false}
-                onChange={(e) =>
-                  onTestChange("edtaTubeTaken", e.target.checked)
-                }
+                onChange={onCheckboxChange("edtaTubeTaken")}
               />
             </Column>
 
@@ -420,7 +555,7 @@ const TestSelectionSection = ({
                   defaultMessage: "DBS (Dry Blood Spot)",
                 })}
                 checked={projectData.dbsTaken || false}
-                onChange={(e) => onTestChange("dbsTaken", e.target.checked)}
+                onChange={onCheckboxChange("dbsTaken")}
               />
             </Column>
 
@@ -442,7 +577,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Murex Test",
                 })}
                 checked={projectData.murexTest || false}
-                onChange={(e) => onTestChange("murexTest", e.target.checked)}
+                onChange={onCheckboxChange("murexTest")}
               />
             </Column>
 
@@ -454,9 +589,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Genscreen Test",
                 })}
                 checked={projectData.genscreenTest || false}
-                onChange={(e) =>
-                  onTestChange("genscreenTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("genscreenTest")}
               />
             </Column>
 
@@ -468,9 +601,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Vironostika Test",
                 })}
                 checked={projectData.vironostikaTest || false}
-                onChange={(e) =>
-                  onTestChange("vironostikaTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("vironostikaTest")}
               />
             </Column>
 
@@ -482,7 +613,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Innolia Test",
                 })}
                 checked={projectData.innoliaTest || false}
-                onChange={(e) => onTestChange("innoliaTest", e.target.checked)}
+                onChange={onCheckboxChange("innoliaTest")}
               />
             </Column>
 
@@ -494,7 +625,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Glycemia Test",
                 })}
                 checked={projectData.glycemiaTest || false}
-                onChange={(e) => onTestChange("glycemiaTest", e.target.checked)}
+                onChange={onCheckboxChange("glycemiaTest")}
               />
             </Column>
 
@@ -506,9 +637,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Creatinine Test",
                 })}
                 checked={projectData.creatinineTest || false}
-                onChange={(e) =>
-                  onTestChange("creatinineTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("creatinineTest")}
               />
             </Column>
 
@@ -520,9 +649,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Transaminase Test",
                 })}
                 checked={projectData.transaminaseTest || false}
-                onChange={(e) =>
-                  onTestChange("transaminaseTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("transaminaseTest")}
               />
             </Column>
 
@@ -534,9 +661,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Transaminase ALTL Test",
                 })}
                 checked={projectData.transaminaseALTLTest || false}
-                onChange={(e) =>
-                  onTestChange("transaminaseALTLTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("transaminaseALTLTest")}
               />
             </Column>
 
@@ -548,9 +673,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Transaminase ASTL Test",
                 })}
                 checked={projectData.transaminaseASTLTest || false}
-                onChange={(e) =>
-                  onTestChange("transaminaseASTLTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("transaminaseASTLTest")}
               />
             </Column>
 
@@ -572,7 +695,7 @@ const TestSelectionSection = ({
                   defaultMessage: "NFS Test",
                 })}
                 checked={projectData.nfsTest || false}
-                onChange={(e) => onTestChange("nfsTest", e.target.checked)}
+                onChange={onCheckboxChange("nfsTest")}
               />
             </Column>
 
@@ -584,7 +707,7 @@ const TestSelectionSection = ({
                   defaultMessage: "GB Test",
                 })}
                 checked={projectData.gbTest || false}
-                onChange={(e) => onTestChange("gbTest", e.target.checked)}
+                onChange={onCheckboxChange("gbTest")}
               />
             </Column>
 
@@ -596,7 +719,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Lymph Test",
                 })}
                 checked={projectData.lymphTest || false}
-                onChange={(e) => onTestChange("lymphTest", e.target.checked)}
+                onChange={onCheckboxChange("lymphTest")}
               />
             </Column>
 
@@ -608,7 +731,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Mono Test",
                 })}
                 checked={projectData.monoTest || false}
-                onChange={(e) => onTestChange("monoTest", e.target.checked)}
+                onChange={onCheckboxChange("monoTest")}
               />
             </Column>
 
@@ -620,7 +743,7 @@ const TestSelectionSection = ({
                   defaultMessage: "EO Test",
                 })}
                 checked={projectData.eoTest || false}
-                onChange={(e) => onTestChange("eoTest", e.target.checked)}
+                onChange={onCheckboxChange("eoTest")}
               />
             </Column>
 
@@ -632,7 +755,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Baso Test",
                 })}
                 checked={projectData.basoTest || false}
-                onChange={(e) => onTestChange("basoTest", e.target.checked)}
+                onChange={onCheckboxChange("basoTest")}
               />
             </Column>
 
@@ -644,7 +767,7 @@ const TestSelectionSection = ({
                   defaultMessage: "GR Test",
                 })}
                 checked={projectData.grTest || false}
-                onChange={(e) => onTestChange("grTest", e.target.checked)}
+                onChange={onCheckboxChange("grTest")}
               />
             </Column>
 
@@ -656,7 +779,7 @@ const TestSelectionSection = ({
                   defaultMessage: "HB Test",
                 })}
                 checked={projectData.hbTest || false}
-                onChange={(e) => onTestChange("hbTest", e.target.checked)}
+                onChange={onCheckboxChange("hbTest")}
               />
             </Column>
 
@@ -668,7 +791,7 @@ const TestSelectionSection = ({
                   defaultMessage: "HCT Test",
                 })}
                 checked={projectData.hctTest || false}
-                onChange={(e) => onTestChange("hctTest", e.target.checked)}
+                onChange={onCheckboxChange("hctTest")}
               />
             </Column>
 
@@ -680,7 +803,7 @@ const TestSelectionSection = ({
                   defaultMessage: "VGM Test",
                 })}
                 checked={projectData.vgmTest || false}
-                onChange={(e) => onTestChange("vgmTest", e.target.checked)}
+                onChange={onCheckboxChange("vgmTest")}
               />
             </Column>
 
@@ -692,7 +815,7 @@ const TestSelectionSection = ({
                   defaultMessage: "TCMH Test",
                 })}
                 checked={projectData.tcmhTest || false}
-                onChange={(e) => onTestChange("tcmhTest", e.target.checked)}
+                onChange={onCheckboxChange("tcmhTest")}
               />
             </Column>
 
@@ -704,7 +827,7 @@ const TestSelectionSection = ({
                   defaultMessage: "CCMH Test",
                 })}
                 checked={projectData.ccmhTest || false}
-                onChange={(e) => onTestChange("ccmhTest", e.target.checked)}
+                onChange={onCheckboxChange("ccmhTest")}
               />
             </Column>
 
@@ -716,7 +839,7 @@ const TestSelectionSection = ({
                   defaultMessage: "PLQ Test",
                 })}
                 checked={projectData.plqTest || false}
-                onChange={(e) => onTestChange("plqTest", e.target.checked)}
+                onChange={onCheckboxChange("plqTest")}
               />
             </Column>
 
@@ -728,7 +851,7 @@ const TestSelectionSection = ({
                   defaultMessage: "CD4/CD8 Test",
                 })}
                 checked={projectData.cd4cd8Test || false}
-                onChange={(e) => onTestChange("cd4cd8Test", e.target.checked)}
+                onChange={onCheckboxChange("cd4cd8Test")}
               />
             </Column>
 
@@ -740,7 +863,7 @@ const TestSelectionSection = ({
                   defaultMessage: "CD3 Count Test",
                 })}
                 checked={projectData.cd3CountTest || false}
-                onChange={(e) => onTestChange("cd3CountTest", e.target.checked)}
+                onChange={onCheckboxChange("cd3CountTest")}
               />
             </Column>
 
@@ -752,7 +875,7 @@ const TestSelectionSection = ({
                   defaultMessage: "CD4 Count Test",
                 })}
                 checked={projectData.cd4CountTest || false}
-                onChange={(e) => onTestChange("cd4CountTest", e.target.checked)}
+                onChange={onCheckboxChange("cd4CountTest")}
               />
             </Column>
 
@@ -774,7 +897,7 @@ const TestSelectionSection = ({
                   defaultMessage: "DNA PCR",
                 })}
                 checked={projectData.dnaPCR || false}
-                onChange={(e) => onTestChange("dnaPCR", e.target.checked)}
+                onChange={onCheckboxChange("dnaPCR")}
               />
             </Column>
 
@@ -786,9 +909,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Viral Load Test",
                 })}
                 checked={projectData.viralLoadTest || false}
-                onChange={(e) =>
-                  onTestChange("viralLoadTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("viralLoadTest")}
               />
             </Column>
 
@@ -800,9 +921,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Genotyping Test",
                 })}
                 checked={projectData.genotypingTest || false}
-                onChange={(e) =>
-                  onTestChange("genotypingTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("genotypingTest")}
               />
             </Column>
           </>
@@ -828,9 +947,7 @@ const TestSelectionSection = ({
                   defaultMessage: "PreservCyt Sample Taken",
                 })}
                 checked={projectData.preservCytTaken || false}
-                onChange={(e) =>
-                  onTestChange("preservCytTaken", e.target.checked)
-                }
+                onChange={onCheckboxChange("preservCytTaken")}
               />
             </Column>
 
@@ -851,7 +968,7 @@ const TestSelectionSection = ({
                   defaultMessage: "HPV Kit",
                 })}
                 checked={projectData.hpvTest || false}
-                onChange={(e) => onTestChange("hpvTest", e.target.checked)}
+                onChange={onCheckboxChange("hpvTest")}
               />
             </Column>
 
@@ -863,9 +980,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Abbott/Roche Analysis",
                 })}
                 checked={projectData.abbottOrRocheAnalysis || false}
-                onChange={(e) =>
-                  onTestChange("abbottOrRocheAnalysis", e.target.checked)
-                }
+                onChange={onCheckboxChange("abbottOrRocheAnalysis")}
               />
             </Column>
 
@@ -877,9 +992,7 @@ const TestSelectionSection = ({
                   defaultMessage: "GeneXpert Analysis",
                 })}
                 checked={projectData.geneXpertAnalysis || false}
-                onChange={(e) =>
-                  onTestChange("geneXpertAnalysis", e.target.checked)
-                }
+                onChange={onCheckboxChange("geneXpertAnalysis")}
               />
             </Column>
           </>
@@ -905,7 +1018,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Plasma",
                 })}
                 checked={projectData.plasmaTaken || false}
-                onChange={(e) => onTestChange("plasmaTaken", e.target.checked)}
+                onChange={onCheckboxChange("plasmaTaken")}
               />
             </Column>
 
@@ -917,7 +1030,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Serum",
                 })}
                 checked={projectData.serumTaken || false}
-                onChange={(e) => onTestChange("serumTaken", e.target.checked)}
+                onChange={onCheckboxChange("serumTaken")}
               />
             </Column>
 
@@ -938,7 +1051,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Asante Kit",
                 })}
                 checked={projectData.asanteTest || false}
-                onChange={(e) => onTestChange("asanteTest", e.target.checked)}
+                onChange={onCheckboxChange("asanteTest")}
               />
             </Column>
           </>
@@ -965,9 +1078,7 @@ const TestSelectionSection = ({
                   defaultMessage: "EDTA Tube Taken",
                 })}
                 checked={projectData.edtaTubeTaken || false}
-                onChange={(e) =>
-                  onTestChange("edtaTubeTaken", e.target.checked)
-                }
+                onChange={onCheckboxChange("edtaTubeTaken")}
               />
             </Column>
 
@@ -979,7 +1090,7 @@ const TestSelectionSection = ({
                   defaultMessage: "DBS (Dry Blood Spot)",
                 })}
                 checked={projectData.dbsvlTaken || false}
-                onChange={(e) => onTestChange("dbsvlTaken", e.target.checked)}
+                onChange={onCheckboxChange("dbsvlTaken")}
               />
             </Column>
 
@@ -991,7 +1102,7 @@ const TestSelectionSection = ({
                   defaultMessage: "PSC",
                 })}
                 checked={projectData.pscvlTaken || false}
-                onChange={(e) => onTestChange("pscvlTaken", e.target.checked)}
+                onChange={onCheckboxChange("pscvlTaken")}
               />
             </Column>
 
@@ -1012,9 +1123,7 @@ const TestSelectionSection = ({
                   defaultMessage: "Viral Load Test",
                 })}
                 checked={projectData.viralLoadTest || false}
-                onChange={(e) =>
-                  onTestChange("viralLoadTest", e.target.checked)
-                }
+                onChange={onCheckboxChange("viralLoadTest")}
               />
             </Column>
           </>

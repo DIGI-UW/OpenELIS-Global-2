@@ -37,8 +37,8 @@ const IndeterminateSection = ({
   // Handle IND site selection
   const handleSiteChange = (event) => {
     const selectedSiteId = event.target.value;
-    onInputChange("INDsiteName", selectedSiteId);
-    onInputChange("INDsiteCode", selectedSiteId);
+    onInputChange("indsiteName", selectedSiteId);
+    onInputChange("indsiteCode", selectedSiteId);
   };
 
   // Check if under investigation comment should be shown
@@ -70,7 +70,7 @@ const IndeterminateSection = ({
         {/* Site Name */}
         <Column lg={8} md={4} sm={4}>
           <Select
-            id="INDsiteName"
+            id="indsiteName"
             labelText={
               <>
                 <span className="required-field">*</span>{" "}
@@ -80,7 +80,7 @@ const IndeterminateSection = ({
                 })}
               </>
             }
-            value={projectData.INDsiteName || ""}
+            value={projectData.indsiteName || ""}
             onChange={handleSiteChange}
           >
             <SelectItem text="" value="" />

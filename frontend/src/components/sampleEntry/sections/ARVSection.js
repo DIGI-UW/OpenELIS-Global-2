@@ -94,7 +94,7 @@ const ARVSection = ({
   // Handle ARV center name selection and auto-populate code
   const handleCenterNameChange = (event) => {
     const selectedCenterId = event.target.value;
-    onInputChange("ARVcenterName", selectedCenterId);
+    onInputChange("arvcenterName", selectedCenterId);
 
     // Auto-populate center code based on name selection
     if (selectedCenterId && arvCentersByCode.length > 0) {
@@ -102,7 +102,7 @@ const ARVSection = ({
         (center) => center.id === selectedCenterId,
       );
       if (selectedCenter) {
-        onInputChange("ARVcenterCode", selectedCenter.id);
+        onInputChange("arvcenterCode", selectedCenter.id);
       }
     }
   };
@@ -110,7 +110,7 @@ const ARVSection = ({
   // Handle ARV center code selection and auto-populate name
   const handleCenterCodeChange = (event) => {
     const selectedCenterId = event.target.value;
-    onInputChange("ARVcenterCode", selectedCenterId);
+    onInputChange("arvcenterCode", selectedCenterId);
 
     // Auto-populate center name based on code selection
     if (selectedCenterId && arvCentersByName.length > 0) {
@@ -118,7 +118,7 @@ const ARVSection = ({
         (center) => center.id === selectedCenterId,
       );
       if (selectedCenter) {
-        onInputChange("ARVcenterName", selectedCenter.id);
+        onInputChange("arvcenterName", selectedCenter.id);
       }
     }
   };
@@ -153,7 +153,7 @@ const ARVSection = ({
         {/* ARV Center Name */}
         <Column lg={8} md={4} sm={4}>
           <Select
-            id="ARVcenterName"
+            id="arvcenterName"
             labelText={
               <>
                 <span className="required-field">*</span>{" "}
@@ -163,7 +163,7 @@ const ARVSection = ({
                 })}
               </>
             }
-            value={projectData.ARVcenterName || ""}
+            value={projectData.arvcenterName || ""}
             onChange={handleCenterNameChange}
           >
             <SelectItem text="" value="" />
@@ -180,7 +180,7 @@ const ARVSection = ({
         {/* ARV Center Code */}
         <Column lg={8} md={4} sm={4}>
           <Select
-            id="ARVcenterCode"
+            id="arvcenterCode"
             labelText={
               <>
                 <span className="required-field">*</span>{" "}
@@ -190,7 +190,7 @@ const ARVSection = ({
                 })}
               </>
             }
-            value={projectData.ARVcenterCode || ""}
+            value={projectData.arvcenterCode || ""}
             onChange={handleCenterCodeChange}
           >
             <SelectItem text="" value="" />

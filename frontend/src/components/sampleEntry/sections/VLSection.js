@@ -524,11 +524,17 @@ const VLSection = ({
                 id: "sample.entry.project.arv.treatment.regimen",
                 defaultMessage: "Current ARV Treatment Regimen (INNs)",
               })}
-              value={observations.currentARVTreatmentINNsList || ""}
+              value={
+                Array.isArray(observations.currentARVTreatmentINNsList)
+                  ? observations.currentARVTreatmentINNsList.join(", ")
+                  : observations.currentARVTreatmentINNsList || ""
+              }
               onChange={(e) =>
                 onObservationChange(
                   "currentARVTreatmentINNsList",
-                  e.target.value,
+                  e.target.value
+                    ? e.target.value.split(",").map((s) => s.trim())
+                    : [],
                 )
               }
               placeholder={intl.formatMessage({

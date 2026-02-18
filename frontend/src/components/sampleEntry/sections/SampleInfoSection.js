@@ -65,6 +65,8 @@ const SampleInfoSection = ({ formData, onInputChange }) => {
             onChange={(e) =>
               onInputChange("receivedTimeForDisplay", e.target.value)
             }
+            pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
+            placeholder="hh:mm"
           >
             <TimePickerSelect
               id="receivedTimeForDisplay-select"
@@ -101,6 +103,8 @@ const SampleInfoSection = ({ formData, onInputChange }) => {
             })}
             value={formData.interviewTime || ""}
             onChange={(e) => onInputChange("interviewTime", e.target.value)}
+            pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
+            placeholder="hh:mm"
           >
             <TimePickerSelect
               id="interviewTime-select"

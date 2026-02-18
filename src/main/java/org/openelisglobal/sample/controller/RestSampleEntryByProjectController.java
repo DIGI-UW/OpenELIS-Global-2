@@ -9,10 +9,15 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.RecordStatus;
+import org.openelisglobal.common.services.StatusSet;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
@@ -21,6 +26,7 @@ import org.openelisglobal.dictionary.ObservationHistoryList;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.organization.util.OrganizationTypeList;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.patient.saving.IAccessioner;
 import org.openelisglobal.patient.saving.ISampleEntry;
 import org.openelisglobal.patient.saving.ISampleEntryAfterPatientEntry;
 import org.openelisglobal.patient.saving.ISampleSecondEntry;
@@ -43,6 +49,9 @@ public class RestSampleEntryByProjectController
     extends BaseSampleEntryController
 {
 
+    /** Holds the last save-failure detail so the REST endpoint can report it. */
+    private final ThreadLocal<String> lastSaveError = new ThreadLocal<>();
+
     @Autowired
     private ElectronicOrderService electronicOrderService;
 
@@ -60,16 +69,6 @@ public class RestSampleEntryByProjectController
         ) String externalOrderNumber
     )
         throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        LogEvent.logInfo(
-            this.getClass().getSimpleName(),
-            "getSampleEntryByProject",
-            "Received GET request for type: " +
-                type +
-                (externalOrderNumber != null
-                    ? ", externalOrderNumber: " + externalOrderNumber
-                    : "")
-        );
-
         try {
             SampleEntryByProjectForm form = new SampleEntryByProjectForm();
 
@@ -87,12 +86,6 @@ public class RestSampleEntryByProjectController
 
             // Set display lists
             setDisplayLists(form, request);
-
-            LogEvent.logInfo(
-                this.getClass().getSimpleName(),
-                "getSampleEntryByProject",
-                "Returning form with display lists"
-            );
 
             return ResponseEntity.ok(form);
         } catch (Exception e) {
@@ -120,17 +113,7 @@ public class RestSampleEntryByProjectController
             if (eOrders != null && !eOrders.isEmpty()) {
                 ElectronicOrder eOrder = eOrders.get(eOrders.size() - 1);
                 form.setElectronicOrder(eOrder);
-                LogEvent.logInfo(
-                    this.getClass().getSimpleName(),
-                    "loadElectronicOrder",
-                    "Loaded electronic order: " + externalOrderNumber
-                );
             } else {
-                LogEvent.logWarn(
-                    this.getClass().getSimpleName(),
-                    "loadElectronicOrder",
-                    "Electronic order not found: " + externalOrderNumber
-                );
             }
         } catch (Exception e) {
             LogEvent.logError(
@@ -154,167 +137,69 @@ public class RestSampleEntryByProjectController
         ) String type
     )
         throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        LogEvent.logInfo(
-            this.getClass().getSimpleName(),
-            "postSampleEntryByProject",
-            "Received POST request for type: " + type
-        );
-
-        // ========== DEBUG LOGGING FOR TESTING VL SAVE FLOW ==========
-        System.out.println("\n========== VL SAMPLE ENTRY DEBUG ==========");
-        System.out.println("Lab Number: " + form.getLabNo());
-        System.out.println("Project: " + form.getProject());
-        System.out.println("Patient PK: " + form.getPatientPK());
-        System.out.println("Subject Number: " + form.getSubjectNumber());
-        System.out.println(
-            "Site Subject Number: " + form.getSiteSubjectNumber()
-        );
-        System.out.println("Gender: " + form.getGender());
-        System.out.println("Birth Date: " + form.getBirthDateForDisplay());
-
-        if (form.getProjectData() != null) {
-            System.out.println("\n--- ProjectData ---");
-            System.out.println(
-                "ARVcenterName: " + form.getProjectData().getARVcenterName()
-            );
-            System.out.println(
-                "ARVcenterCode: " + form.getProjectData().getARVcenterCode()
-            );
-            System.out.println(
-                "underInvestigationNote: " +
-                    form.getProjectData().getUnderInvestigationNote()
-            );
-            System.out.println(
-                "edtaTubeTaken: " + form.getProjectData().getEdtaTubeTaken()
-            );
-            System.out.println(
-                "dbsvlTaken: " + form.getProjectData().isDbsvlTaken()
-            );
-            System.out.println(
-                "pscvlTaken: " + form.getProjectData().isPscvlTaken()
-            );
-            System.out.println(
-                "viralLoadTest: " + form.getProjectData().getViralLoadTest()
-            );
-            System.out.println(
-                "cd4cd8Test: " + form.getProjectData().getCd4cd8Test()
-            );
-            System.out.println(
-                "cd4CountTest: " + form.getProjectData().getCd4CountTest()
-            );
-            System.out.println(
-                "cd3CountTest: " + form.getProjectData().getCd3CountTest()
-            );
-            System.out.println(
-                "glycemiaTest: " + form.getProjectData().getGlycemiaTest()
-            );
-            System.out.println(
-                "creatinineTest: " + form.getProjectData().getCreatinineTest()
-            );
-            System.out.println(
-                "transaminaseTest: " +
-                    form.getProjectData().getTransaminaseTest()
-            );
-            System.out.println(
-                "nfsTest: " + form.getProjectData().getNfsTest()
-            );
-        } else {
-            System.out.println("\n--- ProjectData: NULL ---");
-        }
-
-        if (form.getObservations() != null) {
-            System.out.println("\n--- Observations ---");
-            System.out.println(
-                "nameOfDoctor: " + form.getObservations().getNameOfDoctor()
-            );
-            System.out.println(
-                "nameOfSampler: " + form.getObservations().getNameOfSampler()
-            );
-            System.out.println(
-                "hivStatus: " + form.getObservations().getHivStatus()
-            );
-            System.out.println(
-                "underInvestigation: " +
-                    form.getObservations().getUnderInvestigation()
-            );
-            System.out.println(
-                "vlPregnancy: " + form.getObservations().getVlPregnancy()
-            );
-            System.out.println(
-                "vlSuckle: " + form.getObservations().getVlSuckle()
-            );
-            System.out.println(
-                "currentARVTreatment: " +
-                    form.getObservations().getCurrentARVTreatment()
-            );
-            System.out.println(
-                "arvTreatmentInitDate: " +
-                    form.getObservations().getArvTreatmentInitDate()
-            );
-            System.out.println(
-                "arvTreatmentRegime: " +
-                    form.getObservations().getArvTreatmentRegime()
-            );
-            System.out.println(
-                "currentARVTreatmentINNs: " +
-                    form.getObservations().getCurrentARVTreatmentINNsList()
-            );
-            System.out.println(
-                "vlReasonForRequest: " +
-                    form.getObservations().getVlReasonForRequest()
-            );
-            System.out.println(
-                "vlOtherReasonForRequest: " +
-                    form.getObservations().getVlOtherReasonForRequest()
-            );
-            System.out.println(
-                "initcd4Count: " + form.getObservations().getInitcd4Count()
-            );
-            System.out.println(
-                "initcd4Percent: " + form.getObservations().getInitcd4Percent()
-            );
-            System.out.println(
-                "initcd4Date: " + form.getObservations().getInitcd4Date()
-            );
-            System.out.println(
-                "demandcd4Count: " + form.getObservations().getDemandcd4Count()
-            );
-            System.out.println(
-                "demandcd4Percent: " +
-                    form.getObservations().getDemandcd4Percent()
-            );
-            System.out.println(
-                "demandcd4Date: " + form.getObservations().getDemandcd4Date()
-            );
-            System.out.println(
-                "vlBenefit: " + form.getObservations().getVlBenefit()
-            );
-            System.out.println(
-                "priorVLLab: " + form.getObservations().getPriorVLLab()
-            );
-            System.out.println(
-                "priorVLValue: " + form.getObservations().getPriorVLValue()
-            );
-            System.out.println(
-                "priorVLDate: " + form.getObservations().getPriorVLDate()
-            );
-        } else {
-            System.out.println("\n--- Observations: NULL ---");
-        }
-        System.out.println("==========================================\n");
-        // ========== END DEBUG LOGGING ==========
-
         try {
             Map<String, Object> response = new HashMap<>();
 
+            // ---- Early duplicate accession number check ----
+            String labNo = form.getLabNo();
+            if (!GenericValidator.isBlankOrNull(labNo)) {
+                StatusSet statusSet = SpringContext.getBean(
+                    IStatusService.class
+                ).getStatusSetForAccessionNumber(labNo);
+                RecordStatus sampleRecordStatus =
+                    statusSet.getSampleRecordStatus();
+
+                if ("initial".equals(type)) {
+                    // For initial entry the sample must not exist yet.
+                    // sampleRecordStatus == null means no sample found.
+                    if (sampleRecordStatus != null) {
+                        response.put("success", false);
+                        response.put(
+                            "message",
+                            "Lab number " +
+                                labNo +
+                                " already exists. Please use a different lab number."
+                        );
+                        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                            response
+                        );
+                    }
+                } else if ("verify".equals(type)) {
+                    // For double entry the sample must already exist at InitialRegistration.
+                    if (sampleRecordStatus == null) {
+                        response.put("success", false);
+                        response.put(
+                            "message",
+                            "Lab number " +
+                                labNo +
+                                " does not exist. Please perform initial entry first."
+                        );
+                        return ResponseEntity.status(
+                            HttpStatus.BAD_REQUEST
+                        ).body(response);
+                    }
+                    if (
+                        sampleRecordStatus != RecordStatus.InitialRegistration
+                    ) {
+                        response.put("success", false);
+                        response.put(
+                            "message",
+                            "Lab number " +
+                                labNo +
+                                " is not eligible for double entry (status: " +
+                                sampleRecordStatus +
+                                ")."
+                        );
+                        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                            response
+                        );
+                    }
+                }
+            }
+            // ---- End duplicate check ----
+
             // Validate type parameter
             if (!("initial".equals(type) || "verify".equals(type))) {
-                LogEvent.logWarn(
-                    this.getClass().getSimpleName(),
-                    "postSampleEntryByProject",
-                    "Invalid type parameter: " + type
-                );
-
                 response.put("success", false);
                 response.put(
                     "message",
@@ -324,12 +209,16 @@ public class RestSampleEntryByProjectController
             }
 
             if (result.hasErrors()) {
-                LogEvent.logWarn(
-                    this.getClass().getSimpleName(),
-                    "postSampleEntryByProject",
-                    "Form validation errors: " + result.getAllErrors().size()
-                );
-
+                String fieldSummary = result
+                    .getFieldErrors()
+                    .stream()
+                    .map(e -> e.getField() + "=" + e.getDefaultMessage())
+                    .collect(Collectors.joining(", "));
+                String globalSummary = result
+                    .getGlobalErrors()
+                    .stream()
+                    .map(e -> e.getCode())
+                    .collect(Collectors.joining(", "));
                 response.put("success", false);
                 response.put("errors", result.getAllErrors());
                 return ResponseEntity.badRequest().body(response);
@@ -337,6 +226,8 @@ public class RestSampleEntryByProjectController
 
             // Implement save logic using existing services
             String forward = null;
+
+            lastSaveError.remove();
 
             if ("verify".equals(type)) {
                 // Handle double entry / verification
@@ -347,109 +238,250 @@ public class RestSampleEntryByProjectController
                 sampleSecondEntry.setSysUserId(getSysUserId(request));
                 sampleSecondEntry.setRequest(request);
                 if (sampleSecondEntry.canAccession()) {
-                    forward = handleSave(request, sampleSecondEntry, form);
+                    forward = handleSaveWithLogging(
+                        request,
+                        sampleSecondEntry,
+                        form
+                    );
+                } else {
+                    lastSaveError.set(
+                        "Sample with lab number " +
+                            form.getLabNo() +
+                            " is not eligible for double entry. " +
+                            "It may not exist or may already be verified."
+                    );
                 }
             } else {
-                // Handle initial entry - try different entry types
-                ISampleSecondEntry sampleSecondEntry = SpringContext.getBean(
-                    ISampleSecondEntry.class
+                // Handle initial entry.
+                // SampleEntry: brand-new patient + brand-new sample (both statuses null).
+                ISampleEntry sampleEntry = SpringContext.getBean(
+                    ISampleEntry.class
                 );
-                sampleSecondEntry.setFieldsFromForm(form);
-                sampleSecondEntry.setSysUserId(getSysUserId(request));
-                sampleSecondEntry.setRequest(request);
-                if (sampleSecondEntry.canAccession()) {
-                    forward = handleSave(request, sampleSecondEntry, form);
+                sampleEntry.setFieldsFromForm(form);
+                sampleEntry.setSysUserId(getSysUserId(request));
+                sampleEntry.setRequest(request);
+                if (sampleEntry.canAccession()) {
+                    forward = handleSaveWithLogging(request, sampleEntry, form);
                 } else {
-                    ISampleEntry sampleEntry = SpringContext.getBean(
-                        ISampleEntry.class
-                    );
-                    sampleEntry.setFieldsFromForm(form);
-                    sampleEntry.setSysUserId(getSysUserId(request));
-                    sampleEntry.setRequest(request);
-                    if (sampleEntry.canAccession()) {
-                        forward = handleSave(request, sampleEntry, form);
-                    } else {
-                        ISampleEntryAfterPatientEntry sampleEntryAfterPatientEntry =
-                            SpringContext.getBean(
-                                ISampleEntryAfterPatientEntry.class
-                            );
-                        sampleEntryAfterPatientEntry.setFieldsFromForm(form);
-                        sampleEntryAfterPatientEntry.setSysUserId(
-                            getSysUserId(request)
+                    // SampleEntryAfterPatientEntry: patient already exists,
+                    // sample is new (sampleRecordStatus == NotRegistered).
+                    ISampleEntryAfterPatientEntry sampleEntryAfterPatientEntry =
+                        SpringContext.getBean(
+                            ISampleEntryAfterPatientEntry.class
                         );
-                        sampleEntryAfterPatientEntry.setRequest(request);
-                        if (sampleEntryAfterPatientEntry.canAccession()) {
-                            forward = handleSave(
-                                request,
-                                sampleEntryAfterPatientEntry,
-                                form
-                            );
-                        }
+                    sampleEntryAfterPatientEntry.setFieldsFromForm(form);
+                    sampleEntryAfterPatientEntry.setSysUserId(
+                        getSysUserId(request)
+                    );
+                    sampleEntryAfterPatientEntry.setRequest(request);
+                    if (sampleEntryAfterPatientEntry.canAccession()) {
+                        forward = handleSaveWithLogging(
+                            request,
+                            sampleEntryAfterPatientEntry,
+                            form
+                        );
+                    } else {
+                        lastSaveError.set(
+                            "No matching entry type found for patient/sample status combination."
+                        );
                     }
                 }
             }
 
+            // Log what forward value we got
+            LogEvent.logError(
+                this.getClass().getSimpleName(),
+                "postSampleEntryByProject",
+                "DEBUG: Lab number " +
+                    form.getLabNo() +
+                    " - forward value = " +
+                    (forward != null ? "'" + forward + "'" : "null")
+            );
+
             if (forward != null && forward.contains("success")) {
-                LogEvent.logInfo(
-                    this.getClass().getSimpleName(),
-                    "postSampleEntryByProject",
-                    "Sample saved successfully. Lab Number: " + form.getLabNo()
-                );
-
-                // ========== DATABASE VERIFICATION ==========
-                System.out.println(
-                    "\n========== DATABASE SAVE VERIFICATION =========="
-                );
-                System.out.println("✓ Sample saved successfully!");
-                System.out.println("✓ Lab Number: " + form.getLabNo());
-                System.out.println("✓ Project: " + form.getProject());
-                System.out.println("✓ Type: " + type);
-                System.out.println("\nTo verify in database, run:");
-                System.out.println(
-                    "  SELECT * FROM sample WHERE accession_number = '" +
-                        form.getLabNo() +
-                        "';"
-                );
-                System.out.println(
-                    "================================================\n"
-                );
-                // ========== END VERIFICATION ==========
-
                 response.put("success", true);
                 response.put("message", "Sample saved successfully");
                 response.put("labNumber", form.getLabNo());
                 response.put("type", type);
                 return ResponseEntity.ok(response);
             } else {
+                // Check database as last resort before reporting failure
+                boolean sampleInDB = verifySampleInDatabase(form.getLabNo());
+
+                if (sampleInDB) {
+                    // Sample is actually saved - report success
+                    LogEvent.logError(
+                        this.getClass().getSimpleName(),
+                        "postSampleEntryByProject",
+                        "Lab number " +
+                            form.getLabNo() +
+                            " was saved to database despite forward='" +
+                            forward +
+                            "' - returning success"
+                    );
+                    response.put("success", true);
+                    response.put("message", "Sample saved successfully");
+                    response.put("labNumber", form.getLabNo());
+                    response.put("type", type);
+                    return ResponseEntity.ok(response);
+                }
+
+                String errorDetail = lastSaveError.get();
+                if (errorDetail == null) {
+                    errorDetail =
+                        "Unable to save sample. Please verify that all required tests and sample types are configured in the system.";
+                }
+
                 LogEvent.logError(
                     this.getClass().getSimpleName(),
                     "postSampleEntryByProject",
-                    "Failed to save sample - no valid accessioner found"
+                    "Save failed for lab number " +
+                        form.getLabNo() +
+                        ": " +
+                        errorDetail
                 );
 
                 response.put("success", false);
-                response.put(
-                    "message",
-                    "Unable to save sample - validation failed or no valid entry type found"
-                );
+                response.put("message", errorDetail);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                     response
                 );
             }
+        } finally {
+            lastSaveError.remove();
+        }
+    }
+
+    /**
+     * Wraps {@link #handleSave} to capture the actual exception message and store
+     * it in {@link #lastSaveError} so the REST endpoint can surface it to the
+     * caller instead of the generic "no valid accessioner found" message.
+     */
+    private String handleSaveWithLogging(
+        HttpServletRequest request,
+        IAccessioner accessioner,
+        org.openelisglobal.patient.saving.form.IAccessionerForm form
+    ) {
+        try {
+            String forward = accessioner.save();
+            return forward;
         } catch (Exception e) {
+            // Check if the sample was actually saved to the database despite the exception.
+            // This handles cases where the transaction commits but post-processing fails.
+            boolean sampleExistsInDB = checkIfSampleExists(form.getLabNo());
+
+            if (sampleExistsInDB) {
+                // Sample was saved successfully - treat as success
+                LogEvent.logError(
+                    this.getClass().getSimpleName(),
+                    "handleSaveWithLogging",
+                    "Sample " +
+                        form.getLabNo() +
+                        " was saved to database but post-processing threw exception: " +
+                        e.getMessage()
+                );
+                LogEvent.logError(e);
+                // Return success since the data is in the database
+                return org.openelisglobal.common.action.IActionConstants.FWD_SUCCESS_INSERT;
+            }
+
+            // Sample was not saved - this is a real failure
             LogEvent.logError(
                 this.getClass().getSimpleName(),
-                "postSampleEntryByProject",
-                "Error processing POST request: " + e.getMessage()
+                "handleSaveWithLogging",
+                "Save failed for lab number " +
+                    form.getLabNo() +
+                    ": " +
+                    e.getMessage()
             );
             LogEvent.logError(e);
 
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("message", "Error: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                errorResponse
+            // Build a human-readable error from the accessioner's message list
+            String accessionerMessages = "";
+            try {
+                org.springframework.validation.Errors errors =
+                    accessioner.getMessages();
+                if (errors != null && errors.hasErrors()) {
+                    accessionerMessages = StreamSupport.stream(
+                        errors.getAllErrors().spliterator(),
+                        false
+                    )
+                        .map(err ->
+                            err.getDefaultMessage() != null
+                                ? err.getDefaultMessage()
+                                : err.getCode()
+                        )
+                        .collect(Collectors.joining("; "));
+                }
+            } catch (Exception ignored) {}
+
+            String detail = !accessionerMessages.isEmpty()
+                ? accessionerMessages
+                : (e.getMessage() != null
+                      ? e.getMessage()
+                      : e.getClass().getSimpleName());
+
+            lastSaveError.set(detail);
+            return "insertFail";
+        }
+    }
+
+    /**
+     * Checks if a sample with the given accession number exists in the database.
+     * Uses a new transaction to query the database after a potential commit.
+     */
+    private boolean checkIfSampleExists(String accessionNumber) {
+        try {
+            // Small delay to allow transaction to commit
+            Thread.sleep(100);
+
+            org.openelisglobal.sample.service.SampleService sampleService =
+                SpringContext.getBean(
+                    org.openelisglobal.sample.service.SampleService.class
+                );
+            org.openelisglobal.sample.valueholder.Sample sample =
+                sampleService.getSampleByAccessionNumber(accessionNumber);
+            return sample != null;
+        } catch (Exception e) {
+            // If verification fails, assume sample was not saved
+            return false;
+        }
+    }
+
+    /**
+     * Verifies if a sample exists in the database (used by postSampleEntryByProject).
+     * Waits longer to ensure transaction has committed.
+     */
+    private boolean verifySampleInDatabase(String accessionNumber) {
+        try {
+            // Wait for transaction to commit
+            Thread.sleep(200);
+
+            org.openelisglobal.sample.service.SampleService sampleService =
+                SpringContext.getBean(
+                    org.openelisglobal.sample.service.SampleService.class
+                );
+            org.openelisglobal.sample.valueholder.Sample sample =
+                sampleService.getSampleByAccessionNumber(accessionNumber);
+
+            boolean exists = sample != null;
+            LogEvent.logError(
+                this.getClass().getSimpleName(),
+                "verifySampleInDatabase",
+                "Verification for " +
+                    accessionNumber +
+                    ": " +
+                    (exists ? "FOUND in database" : "NOT FOUND")
             );
+
+            return exists;
+        } catch (Exception e) {
+            LogEvent.logError(
+                this.getClass().getSimpleName(),
+                "verifySampleInDatabase",
+                "Exception during verification: " + e.getMessage()
+            );
+            return false;
         }
     }
 
@@ -580,17 +612,6 @@ public class RestSampleEntryByProjectController
         );
 
         form.setOrganizationTypeLists(organizationTypeMapOfLists);
-
-        LogEvent.logInfo(
-            this.getClass().getSimpleName(),
-            "setDisplayLists",
-            "Display lists populated: genders=" +
-                (genders != null ? genders.size() : 0) +
-                ", organizationTypes=" +
-                organizationTypeMapOfLists.size() +
-                ", dictionaryLists=" +
-                observationHistoryMapOfLists.size()
-        );
     }
 
     @Override

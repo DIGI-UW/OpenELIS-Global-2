@@ -12,11 +12,12 @@ import {
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
+import { getFromOpenElisServer } from "../utils/Utils";
 import {
   validateEntireForm,
   formatValidationErrors,
 } from "./utils/formValidation";
+import { normalizeTimeTo24Hour } from "./utils/formHelpers";
 import PatientInfoSection from "./sections/PatientInfoSection";
 import SampleInfoSection from "./sections/SampleInfoSection";
 import ProjectSelectionSection from "./sections/ProjectSelectionSection";
@@ -66,6 +67,7 @@ const StudyInitialEntry = () => {
 
     // Observations (patient observations like HIV status, under investigation, etc.)
     observations: {
+      projectFormName: "",
       nameOfDoctor: "",
       hivStatus: "",
       underInvestigation: "",
@@ -109,7 +111,7 @@ const StudyInitialEntry = () => {
       currentARVTreatment: "",
       arvTreatmentInitDate: "",
       arvTreatmentRegime: "",
-      currentARVTreatmentINNsList: "",
+      currentARVTreatmentINNsList: [],
       vlReasonForRequest: "",
       vlOtherReasonForRequest: "",
       initcd4Count: "",
@@ -127,29 +129,22 @@ const StudyInitialEntry = () => {
     // Project Data (tests and study-specific fields)
     projectData: {
       // ARV specific
-      ARVcenterName: "",
-      ARVcenterCode: "",
+      arvcenterName: "",
+      arvcenterCode: "",
       doctor: "",
 
       // EID specific
-      EIDsiteName: "",
-      EIDsiteCode: "",
+      eidsiteName: "",
+      eidsiteCode: "",
       dbsInfantNumber: "",
       dbsSiteInfantNumber: "",
       eidWhichPCR: "",
       eidSecondPCRReason: "",
       requester: "",
 
-      // RTN specific
-      RTNsiteName: "",
-      RTNsiteCode: "",
-      rtnReferenceNumber: "",
-      rtnNotes: "",
-
       // Indeterminate specific
-      INDsiteName: "",
-      INDsiteCode: "",
-      indeterminateContext: "",
+      indsiteName: "",
+      indsiteCode: "",
 
       // Test selections
       dryTubeTaken: false,
@@ -169,8 +164,8 @@ const StudyInitialEntry = () => {
       vironostikaTest: false,
       genieII100Test: false,
       genieII10Test: false,
-      WB1Test: false,
-      WB2Test: false,
+      wb1Test: false,
+      wb2Test: false,
       p24AgTest: false,
       innoliaTest: false,
 
@@ -244,18 +239,17 @@ const StudyInitialEntry = () => {
       "/rest/SampleEntryByProject?type=initial",
       (response) => {
         if (response) {
-          // Set current date
-          const currentDate = new Date()
-            .toISOString()
-            .split("T")[0]
-            .split("-")
-            .reverse()
-            .join("/");
+          const currentDate =
+            response.currentDate ||
+            response.receivedDateForDisplay ||
+            response.interviewDate ||
+            "";
           setFormData((prev) => ({
             ...prev,
             currentDate: currentDate,
-            receivedDateForDisplay: currentDate,
-            interviewDate: currentDate,
+            receivedDateForDisplay:
+              response.receivedDateForDisplay || currentDate,
+            interviewDate: response.interviewDate || currentDate,
           }));
 
           // Set display lists
@@ -311,10 +305,29 @@ const StudyInitialEntry = () => {
 
   const handleProjectChange = useCallback(
     (projectId) => {
+      const projectFormNameMap = {
+        ARV_INITIAL: "InitialARV_Id",
+        ARV_FOLLOWUP: "FollowUpARV_Id",
+        ARV_VIRAL_LOAD: "VL_Id",
+        RTN: "RTN_Id",
+        EID: "EID_Id",
+        INDETERMINATE: "Indeterminate_Id",
+        SPECIAL_REQUEST: "Special_Request_Id",
+        RECENCY_TESTING: "Recency_Id",
+        HPV_TESTING: "HPV_Id",
+      };
+      const projectFormName = projectFormNameMap[projectId] || "";
       setSelectedProject(projectId);
-      handleInputChange("project", projectId);
+      setFormData((prev) => ({
+        ...prev,
+        project: projectId,
+        observations: {
+          ...prev.observations,
+          projectFormName,
+        },
+      }));
     },
-    [handleInputChange],
+    [setFormData],
   );
 
   const validateForm = () => {
@@ -331,6 +344,9 @@ const StudyInitialEntry = () => {
 
   const handleSave = async (event) => {
     event.preventDefault();
+    if (saving) {
+      return;
+    }
 
     const errors = validateForm();
     if (errors.length > 0) {
@@ -343,14 +359,64 @@ const StudyInitialEntry = () => {
       return;
     }
 
+    const projectPrefixMap = {
+      ARV_INITIAL: "LARC",
+      ARV_FOLLOWUP: "LARC",
+      ARV_VIRAL_LOAD: "LARC",
+      RTN: "LRTN",
+      EID: "LDBS",
+      INDETERMINATE: "LIND",
+      SPECIAL_REQUEST: "LSPE",
+      RECENCY_TESTING: "RTRI",
+      HPV_TESTING: "HPVT",
+    };
+    const projectKey = formData.project || selectedProject;
+    const prefix = projectPrefixMap[projectKey] || "";
+    const trimmedLabNo = (formData.labNo || "").trim();
+    let normalizedLabNo = trimmedLabNo.toUpperCase();
+    if (prefix) {
+      const programPattern = new RegExp(`^${prefix}\\d{5}$`);
+      if (programPattern.test(normalizedLabNo)) {
+        // already valid format
+      } else if (/^\d{5}$/.test(trimmedLabNo)) {
+        normalizedLabNo = `${prefix}${trimmedLabNo}`;
+      } else {
+        const digitsOnly = trimmedLabNo.replace(/\D/g, "");
+        if (digitsOnly.length >= 5) {
+          normalizedLabNo = `${prefix}${digitsOnly.slice(-5)}`;
+        }
+      }
+    }
+
     setSaving(true);
     try {
-      const response = await postToOpenElisServer(
-        "/rest/SampleEntryByProject",
-        JSON.stringify(formData),
+      const normalizedReceivedTime = normalizeTimeTo24Hour(
+        formData.receivedTimeForDisplay,
+      );
+      const normalizedInterviewTime = normalizeTimeTo24Hour(
+        formData.interviewTime,
+      );
+      const rawResponse = await fetch(
+        "/api/OpenELIS-Global/rest/SampleEntryByProject?type=initial",
+        {
+          credentials: "include",
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+          body: JSON.stringify({
+            ...formData,
+            labNo: normalizedLabNo,
+            receivedTimeForDisplay: normalizedReceivedTime,
+            interviewTime: normalizedInterviewTime,
+          }),
+        },
       );
 
-      if (response) {
+      const responseBody = await rawResponse.json().catch(() => ({}));
+
+      if (rawResponse.ok && responseBody.success !== false) {
         addNotification({
           kind: NotificationKinds.success,
           title: intl.formatMessage({ id: "notification.title" }),
@@ -365,6 +431,19 @@ const StudyInitialEntry = () => {
         setTimeout(() => {
           window.location.href = "/StudyInitialEntry?type=initial";
         }, 2000);
+      } else {
+        const serverMessage =
+          responseBody.message ||
+          intl.formatMessage({
+            id: "error.save.study.entry",
+            defaultMessage: "Error saving study entry",
+          });
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: serverMessage,
+        });
+        setNotificationVisible(true);
       }
     } catch (error) {
       console.error("Error saving study entry:", error);
@@ -572,11 +651,7 @@ const StudyInitialEntry = () => {
                         marginTop: "2rem",
                       }}
                     >
-                      <Button
-                        type="submit"
-                        disabled={saving}
-                        onClick={handleSave}
-                      >
+                      <Button type="submit" disabled={saving}>
                         {saving ? (
                           <FormattedMessage
                             id="label.button.saving"

@@ -48,7 +48,11 @@ public class SampleEntry extends Accessioner implements ISampleEntry {
     protected IAccessionerForm form;
     protected HttpServletRequest request;
 
-    public SampleEntry(IAccessionerForm form, String sysUserId, HttpServletRequest request) {
+    public SampleEntry(
+        IAccessionerForm form,
+        String sysUserId,
+        HttpServletRequest request
+    ) {
         this();
         setFieldsFromForm(form);
         this.request = request;
@@ -67,14 +71,16 @@ public class SampleEntry extends Accessioner implements ISampleEntry {
     }
 
     @Override
-    public final void setFieldsFromForm(IAccessionerForm form) throws LIMSRuntimeException {
+    public final void setFieldsFromForm(IAccessionerForm form)
+        throws LIMSRuntimeException {
         setAccessionNumber(form.getLabNo());
         setPatientIdentifier(form.getSubjectNumber());
         setProjectFormMapperFromForm(form);
         this.form = form;
     }
 
-    public void setProjectFormMapperFromForm(IAccessionerForm form) throws LIMSRuntimeException {
+    public void setProjectFormMapperFromForm(IAccessionerForm form)
+        throws LIMSRuntimeException {
         projectFormMapper = getProjectFormMapper(form);
         projectFormMapper.setPatientForm(false);
         projectForm = projectFormMapper.getProjectForm();
@@ -83,15 +89,24 @@ public class SampleEntry extends Accessioner implements ISampleEntry {
 
     @Override
     public boolean canAccession() {
-        return (statusSet.getPatientRecordStatus() == null && statusSet.getSampleRecordStatus() == null);
+        return (
+            statusSet.getPatientRecordStatus() == null &&
+            statusSet.getSampleRecordStatus() == null
+        );
     }
 
     @Override
     protected void populateSampleData() throws LIMSException {
-        Timestamp receivedDate = DateUtil.convertStringDateStringTimeToTimestamp(projectFormMapper.getReceivedDate(),
-                projectFormMapper.getReceivedTime());
-        Timestamp collectionDate = DateUtil.convertStringDateStringTimeToTimestamp(
-                projectFormMapper.getCollectionDate(), projectFormMapper.getCollectionTime());
+        Timestamp receivedDate =
+            DateUtil.convertStringDateStringTimeToTimestamp(
+                projectFormMapper.getReceivedDate(),
+                projectFormMapper.getReceivedTime()
+            );
+        Timestamp collectionDate =
+            DateUtil.convertStringDateStringTimeToTimestamp(
+                projectFormMapper.getCollectionDate(),
+                projectFormMapper.getCollectionTime()
+            );
         populateSample(receivedDate, collectionDate);
         populateSampleProject();
         populateSampleOrganization(projectFormMapper.getOrganizationId());
@@ -99,27 +114,57 @@ public class SampleEntry extends Accessioner implements ISampleEntry {
     }
 
     protected void populateSampleItems() throws LIMSException {
-        List<TypeOfSampleTests> typeofSampleTestList = projectFormMapper.getTypeOfSampleTests();
+        List<TypeOfSampleTests> typeofSampleTestList =
+            projectFormMapper.getTypeOfSampleTests();
 
         boolean testSampleMismatch = false;
-        testSampleMismatch = (null == typeofSampleTestList) || (typeofSampleTestList.isEmpty());
+        String mismatchDetail = "";
 
-        if (!((null == typeofSampleTestList) || (typeofSampleTestList.isEmpty()))) {
+        if (
+            (null == typeofSampleTestList) || (typeofSampleTestList.isEmpty())
+        ) {
+            testSampleMismatch = true;
+            mismatchDetail =
+                "No specimen type was selected (dryTubeTaken / edtaTubeTaken / dbsTaken / etc. " +
+                "are all false, so getTypeOfSampleTests() returned an empty list). " +
+                "Select at least one specimen container and one test.";
+        } else {
             for (TypeOfSampleTests typeOfSampleTest : typeofSampleTestList) {
                 if (typeOfSampleTest.tests.isEmpty()) {
                     testSampleMismatch = true;
+                    String specimenDesc = (typeOfSampleTest.typeOfSample !=
+                        null)
+                        ? typeOfSampleTest.typeOfSample.getDescription()
+                        : "<unknown specimen>";
+                    mismatchDetail =
+                        "Specimen type '" +
+                        specimenDesc +
+                        "' was selected but no tests resolved for it. " +
+                        "Either the corresponding test checkboxes are unchecked, " +
+                        "or the required tests (Vironostika / Murex Combinaison / Genscreen / etc.) " +
+                        "are missing, inactive, or non-orderable in the database.";
                     break;
                 }
             }
         }
 
         if (testSampleMismatch) {
-            messages.reject("errors.no.sample");
-            throw new LIMSException("Mis-match between tests and sample types.");
+            org.openelisglobal.common.log.LogEvent.logError(
+                this.getClass().getSimpleName(),
+                "populateSampleItems",
+                "errors.no.sample triggered: " + mismatchDetail
+            );
+            messages.reject("errors.no.sample", mismatchDetail);
+            throw new LIMSException(
+                "Mis-match between tests and sample types. " + mismatchDetail
+            );
         }
 
-        Timestamp collectionDate = DateUtil.convertStringDateStringTimeToTimestamp(
-                projectFormMapper.getCollectionDate(), projectFormMapper.getCollectionTime());
+        Timestamp collectionDate =
+            DateUtil.convertStringDateStringTimeToTimestamp(
+                projectFormMapper.getCollectionDate(),
+                projectFormMapper.getCollectionTime()
+            );
         populateSampleItems(typeofSampleTestList, collectionDate);
         cleanupSampleItemsAndAnalysis();
     }
@@ -150,21 +195,27 @@ public class SampleEntry extends Accessioner implements ISampleEntry {
         if (!submittedProjectData.getDryTubeTaken()) {
             cleanupSampleAndAnalysis(sampleId, "Dry Tube");
         } else {
-            ProjectData tProjectData = buildProjectDataTestsReversed(submittedProjectData);
+            ProjectData tProjectData = buildProjectDataTestsReversed(
+                submittedProjectData
+            );
             tProjectData.setDryTubeTaken(true);
             cleanupExistingAnalysis(projectForm, sampleId, tProjectData);
         }
         if (!submittedProjectData.getEdtaTubeTaken()) {
             cleanupSampleAndAnalysis(sampleId, "EDTA Tube");
         } else {
-            ProjectData tProjectData = buildProjectDataTestsReversed(submittedProjectData);
+            ProjectData tProjectData = buildProjectDataTestsReversed(
+                submittedProjectData
+            );
             tProjectData.setEdtaTubeTaken(true);
             cleanupExistingAnalysis(projectForm, sampleId, tProjectData);
         }
         if (!submittedProjectData.getDbsTaken()) {
             cleanupSampleAndAnalysis(sampleId, "DBS");
         } else {
-            ProjectData tProjectData = buildProjectDataTestsReversed(submittedProjectData);
+            ProjectData tProjectData = buildProjectDataTestsReversed(
+                submittedProjectData
+            );
             tProjectData.setDbsTaken(true);
             cleanupExistingAnalysis(projectForm, sampleId, tProjectData);
         }
@@ -178,10 +229,17 @@ public class SampleEntry extends Accessioner implements ISampleEntry {
      * @param typeName
      */
     private void cleanupSampleAndAnalysis(String sampleId, String typeName) {
-        TypeOfSample typeOfSample = BaseProjectFormMapper.getTypeOfSampleByDescription(typeName);
-        List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleIdAndType(sampleId, typeOfSample);
+        TypeOfSample typeOfSample =
+            BaseProjectFormMapper.getTypeOfSampleByDescription(typeName);
+        List<SampleItem> sampleItems =
+            sampleItemService.getSampleItemsBySampleIdAndType(
+                sampleId,
+                typeOfSample
+            );
         for (SampleItem sampleItem : sampleItems) {
-            List<Analysis> analyses = analysisService.getAnalysesBySampleItem(sampleItem);
+            List<Analysis> analyses = analysisService.getAnalysesBySampleItem(
+                sampleItem
+            );
             if (cleanupExistingAnalysis(analyses).size() != 0) {
                 sampleItem.setSysUserId(sysUserId);
                 sampleItemsToDelete.add(sampleItem);
@@ -202,19 +260,29 @@ public class SampleEntry extends Accessioner implements ISampleEntry {
      *                      choices
      * @return
      */
-    private Map<String, SampleItem> cleanupExistingAnalysis(ProjectForm projectForm, String sampleId,
-            ProjectData tProjectData) {
+    private Map<String, SampleItem> cleanupExistingAnalysis(
+        ProjectForm projectForm,
+        String sampleId,
+        ProjectData tProjectData
+    ) {
         try {
-            List<Analysis> analysisList = SampleItemTestProvider.findAnalysis(sampleId, projectForm.getProjectFormId(),
-                    tProjectData);
+            List<Analysis> analysisList = SampleItemTestProvider.findAnalysis(
+                sampleId,
+                projectForm.getProjectFormId(),
+                tProjectData
+            );
             return cleanupExistingAnalysis(analysisList);
         } catch (IllegalArgumentException e) {
             return null; // reversing the test boxes resulted in NO valid resuest, so we can move on.
         }
     }
 
-    private Map<String, SampleItem> cleanupExistingAnalysis(List<Analysis> analysisList) {
-        String canceledId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled);
+    private Map<String, SampleItem> cleanupExistingAnalysis(
+        List<Analysis> analysisList
+    ) {
+        String canceledId = SpringContext.getBean(
+            IStatusService.class
+        ).getStatusID(AnalysisStatus.Canceled);
         Map<String, SampleItem> sampleItemsToDelete = new HashMap<>();
         // first we assume we'll delete them all
         for (Analysis analysis : analysisList) {
@@ -222,28 +290,29 @@ public class SampleEntry extends Accessioner implements ISampleEntry {
             sampleItemsToDelete.put(sampleItem.getId(), sampleItem);
         }
         for (Analysis analysis : analysisList) {
-            AnalysisStatus analysisStatus = SpringContext.getBean(IStatusService.class)
-                    .getAnalysisStatusForID(analysis.getStatusId());
+            AnalysisStatus analysisStatus = SpringContext.getBean(
+                IStatusService.class
+            ).getAnalysisStatusForID(analysis.getStatusId());
             switch (analysisStatus) {
-            case NotStarted:
-                // deletable => leave sampleItem in the Delete list
-                analysis.setSysUserId(sysUserId);
-                analysisToDelete.add(analysis);
-                break;
-            case NonConforming_depricated:
-                // not deletable => remove the sampleItem from the delete list
-                SampleItem sampleItem = analysis.getSampleItem();
-                sampleItemsToDelete.remove(sampleItem.getId());
-                break;
-            default:
-                // not deletable => remove the sampleItem from the delete list
-                sampleItem = analysis.getSampleItem();
-                sampleItemsToDelete.remove(sampleItem.getId());
-                // save this analysis for later updating
-                analysis.setStatusId(canceledId);
-                analysis.setSysUserId(sysUserId);
-                analysisToUpdate.add(analysis);
-                break;
+                case NotStarted:
+                    // deletable => leave sampleItem in the Delete list
+                    analysis.setSysUserId(sysUserId);
+                    analysisToDelete.add(analysis);
+                    break;
+                case NonConforming_depricated:
+                    // not deletable => remove the sampleItem from the delete list
+                    SampleItem sampleItem = analysis.getSampleItem();
+                    sampleItemsToDelete.remove(sampleItem.getId());
+                    break;
+                default:
+                    // not deletable => remove the sampleItem from the delete list
+                    sampleItem = analysis.getSampleItem();
+                    sampleItemsToDelete.remove(sampleItem.getId());
+                    // save this analysis for later updating
+                    analysis.setStatusId(canceledId);
+                    analysis.setSysUserId(sysUserId);
+                    analysisToUpdate.add(analysis);
+                    break;
             }
         }
         return sampleItemsToDelete;

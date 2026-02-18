@@ -44,6 +44,41 @@ export const formatTimeForDisplay = (time) => {
 };
 
 /**
+ * Normalizes time input to 24-hour HH:mm format.
+ * Accepts "HH:mm", "H:mm", "HH:mm AM/PM", "H:mmAM/PM".
+ */
+export const normalizeTimeTo24Hour = (timeValue) => {
+  if (!timeValue) return timeValue;
+
+  const trimmed = String(timeValue).trim();
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?$/);
+  if (!match) {
+    return trimmed;
+  }
+
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2];
+  const period = match[3] ? match[3].toUpperCase() : null;
+
+  if (period) {
+    if (hours > 12) {
+      return `${String(hours).padStart(2, "0")}:${minutes}`;
+    }
+    if (hours === 12) {
+      hours = period === "AM" ? 0 : 12;
+    } else if (period === "PM") {
+      hours += 12;
+    }
+  }
+
+  if (hours < 0 || hours > 23) {
+    return trimmed;
+  }
+
+  return `${String(hours).padStart(2, "0")}:${minutes}`;
+};
+
+/**
  * Gets current date in dd/mm/yyyy format
  */
 export const getCurrentDateForDisplay = () => {
@@ -77,8 +112,8 @@ export const hasAnyTestSelected = (projectData) => {
     "vironostikaTest",
     "genieII100Test",
     "genieII10Test",
-    "WB1Test",
-    "WB2Test",
+    "wb1Test",
+    "wb2Test",
     "p24AgTest",
     "innoliaTest",
     "cd4cd8Test",
@@ -134,8 +169,8 @@ export const getSelectedTestNames = (projectData) => {
     vironostikaTest: "Vironostika",
     genieII100Test: "Genie II 1/100",
     genieII10Test: "Genie II 1/10",
-    WB1Test: "Western Blot 1",
-    WB2Test: "Western Blot 2",
+    wb1Test: "Western Blot 1",
+    wb2Test: "Western Blot 2",
     p24AgTest: "P24 Ag",
     innoliaTest: "Innolia",
     cd4cd8Test: "CD4/CD8",
@@ -234,29 +269,22 @@ export const cleanFormDataForSubmission = (formData) => {
 export const getInitialProjectData = () => {
   return {
     // ARV specific
-    ARVcenterName: "",
-    ARVcenterCode: "",
+    arvcenterName: "",
+    arvcenterCode: "",
     doctor: "",
 
     // EID specific
-    EIDsiteName: "",
-    EIDsiteCode: "",
+    eidsiteName: "",
+    eidsiteCode: "",
     dbsInfantNumber: "",
     dbsSiteInfantNumber: "",
     eidWhichPCR: "",
     eidSecondPCRReason: "",
     requester: "",
 
-    // RTN specific
-    RTNsiteName: "",
-    RTNsiteCode: "",
-    rtnReferenceNumber: "",
-    rtnNotes: "",
-
     // Indeterminate specific
-    INDsiteName: "",
-    INDsiteCode: "",
-    indeterminateContext: "",
+    indsiteName: "",
+    indsiteCode: "",
 
     // Test selections
     dryTubeTaken: false,
@@ -276,8 +304,8 @@ export const getInitialProjectData = () => {
     vironostikaTest: false,
     genieII100Test: false,
     genieII10Test: false,
-    WB1Test: false,
-    WB2Test: false,
+    wb1Test: false,
+    wb2Test: false,
     p24AgTest: false,
     innoliaTest: false,
 
