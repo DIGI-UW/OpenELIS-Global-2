@@ -13,6 +13,8 @@
 
     <!-- ROLE 1: Bioanalytical Sample Receiver - Receives and registers biological samples -->
     <changeSet id="add-bioanalytical-sample-receiver-role" author="openelis-bioanalytical">
+        <validCheckSum>8:1a343536a2ff603f70203284c1171ce6</validCheckSum>
+        <validCheckSum>8:b3fc64d554791dd7db6e1bf5dc506507</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="system_role" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -34,6 +36,8 @@
 
     <!-- ROLE 2: Bioanalytical Chemical Analyst - Performs chemical analysis and method validation -->
     <changeSet id="add-bioanalytical-chemical-analyst-role" author="openelis-bioanalytical">
+        <validCheckSum>8:68e5e90eca36d446c45d27e5d7525edb</validCheckSum>
+        <validCheckSum>8:f713bb69dda2485f71ccbe7e037894ce</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="system_role" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -55,6 +59,8 @@
 
     <!-- ROLE 3: Bioanalytical Pharmacist - Validates pharmaceutical quality and bioequivalence -->
     <changeSet id="add-bioanalytical-pharmacist-role" author="openelis-bioanalytical">
+        <validCheckSum>8:fb3df268dbe9498167e65639f63bd3c2</validCheckSum>
+        <validCheckSum>8:4fb5adc342bd310588b48d1da8a93f90</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="system_role" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -76,6 +82,8 @@
 
     <!-- ROLE 4: Bioanalytical Researcher - Conducts research and method development -->
     <changeSet id="add-bioanalytical-researcher-role" author="openelis-bioanalytical">
+        <validCheckSum>8:35fa8697de8fecfbf8d255ac2f22bec6</validCheckSum>
+        <validCheckSum>8:6bf76f0dffc5e5aa8cbcc9112a357ce9</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="system_role" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -97,6 +105,8 @@
 
     <!-- ROLE 5: Bioanalytical Lab Supervisor - Oversees laboratory operations and approves work -->
     <changeSet id="add-bioanalytical-lab-supervisor-role" author="openelis-bioanalytical">
+        <validCheckSum>8:b4b886626561302322a3e38c6e77bd5a</validCheckSum>
+        <validCheckSum>8:016f2b71c5d3a51cfda1753117840a11</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="system_role" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -118,6 +128,8 @@
 
     <!-- ROLE 6: Bioanalytical Study Director - Manages and approves bioequivalence studies -->
     <changeSet id="add-bioanalytical-study-director-role" author="openelis-bioanalytical">
+        <validCheckSum>8:29fa685c17857fe4323e76c7ee2676b2</validCheckSum>
+        <validCheckSum>8:2f7abc3c36aea04a353e42ce035c21c3</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="system_role" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -139,6 +151,8 @@
 
     <!-- ROLE 7: Bioanalytical QA Officer - Ensures quality assurance and regulatory compliance -->
     <changeSet id="add-bioanalytical-qa-officer-role" author="openelis-bioanalytical">
+        <validCheckSum>8:3d9508763fc1258697941e2b2b4860f7</validCheckSum>
+        <validCheckSum>8:fa63f0e52a76dd2439215de98a93ed73</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="system_role" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -160,6 +174,8 @@
 
     <!-- ROLE 8: Bioanalytical Data Manager - Manages analytical data, exports, and reporting -->
     <changeSet id="add-bioanalytical-data-manager-role" author="openelis-bioanalytical">
+        <validCheckSum>8:9a40f94438bd8e8b11b4daebd363fd5e</validCheckSum>
+        <validCheckSum>8:4bc745d4f7aa1ee2fc414fe47b4a11a0</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="system_role" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">

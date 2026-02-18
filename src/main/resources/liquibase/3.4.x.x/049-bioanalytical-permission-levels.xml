@@ -32,6 +32,8 @@
 
     <!-- Sample Receiver: Can register/import samples -->
     <changeSet id="page1-sample-receiver-permission" author="openelis-bioanalytical">
+        <validCheckSum>8:9bcb486bae0ff8f0620414d9c7fda30e</validCheckSum>
+        <validCheckSum>8:36b7c0d53dfdcd60efacb1465625f28a</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
@@ -51,6 +53,8 @@
 
     <!-- Chemical Analyst: Can update/edit sample fields -->
     <changeSet id="page1-chemical-analyst-permission" author="openelis-bioanalytical">
+        <validCheckSum>8:a113d265a658e93bee80ca4ff9ab33a6</validCheckSum>
+        <validCheckSum>8:51027b2bc32ae3bb92e5d76fc9a348f3</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
@@ -70,6 +74,8 @@
 
     <!-- Pharmacist: Can update/edit sample fields -->
     <changeSet id="page1-pharmacist-permission" author="openelis-bioanalytical">
+        <validCheckSum>8:284197ecb9d85ef85f2b5f11ad91ce5b</validCheckSum>
+        <validCheckSum>8:40a7cc560607071270577a241b716ee1</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
@@ -89,6 +95,8 @@
 
     <!-- Lab Supervisor: Full control on PAGE 1 -->
     <changeSet id="page1-lab-supervisor-permission" author="openelis-bioanalytical">
+        <validCheckSum>8:8a0009c0a6545b1b4da9a841ea200938</validCheckSum>
+        <validCheckSum>8:1a974eced733afd333a785c0c4f20c1f</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
@@ -108,6 +116,8 @@
 
     <!-- Study Director: View only on PAGE 1 -->
     <changeSet id="page1-study-director-permission" author="openelis-bioanalytical">
+        <validCheckSum>8:ea0dfd7bc1a2df869025338031a59c6a</validCheckSum>
+        <validCheckSum>8:28296952a46fafdece62aa53549efa8e</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
@@ -127,6 +137,8 @@
 
     <!-- QA Officer: View only on PAGE 1 -->
     <changeSet id="page1-qa-officer-permission" author="openelis-bioanalytical">
+        <validCheckSum>8:b21855b6850097a4d005ca758ec45b52</validCheckSum>
+        <validCheckSum>8:1f955c7981a15504e159bee6c039ed9c</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
@@ -146,6 +158,8 @@
 
     <!-- Researcher: View only on PAGE 1 -->
     <changeSet id="page1-researcher-permission" author="openelis-bioanalytical">
+        <validCheckSum>8:73161e2a9edf6b8b50f86fcd9326980f</validCheckSum>
+        <validCheckSum>8:62d5295327af95c0a18130b39b1c42b3</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
@@ -169,6 +183,8 @@
 
     <!-- Chemical Analyst: View only on PAGE 2 -->
     <changeSet id="page2-chemical-analyst-permission" author="openelis-bioanalytical">
+        <validCheckSum>8:cfd002bce3760c80ef9ce3f6cee42529</validCheckSum>
+        <validCheckSum>8:fbe4981e99debc91129fe352647da726</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
@@ -188,6 +204,8 @@
 
     <!-- Pharmacist: Full control on PAGE 2 -->
     <changeSet id="page2-pharmacist-permission" author="openelis-bioanalytical">
+        <validCheckSum>8:54be7fabaff01fe83df2990cf43009a3</validCheckSum>
+        <validCheckSum>8:41f33146adefe71f37e36bdc26dee7ae</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
@@ -207,6 +225,8 @@
 
     <!-- Lab Supervisor: Full control on PAGE 2 -->
     <changeSet id="page2-lab-supervisor-permission" author="openelis-bioanalytical">
+        <validCheckSum>8:568bc6d84e546afbb74ecaf8f15cdbb1</validCheckSum>
+        <validCheckSum>8:4a05efb47667f547c53059fdc20425cb</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
@@ -226,6 +246,8 @@
 
     <!-- Study Director: View only on PAGE 2 -->
     <changeSet id="page2-study-director-permission" author="openelis-bioanalytical">
+        <validCheckSum>8:637b54e21f78d9b17a10f8692e11ad27</validCheckSum>
+        <validCheckSum>8:bd0d6f9aa51b54d22626ff3424481ce3</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
@@ -245,6 +267,8 @@
 
     <!-- QA Officer: View only on PAGE 2 -->
     <changeSet id="page2-qa-officer-permission" author="openelis-bioanalytical">
+        <validCheckSum>8:4bf15edcb06034375ca9343e3220d623</validCheckSum>
+        <validCheckSum>8:e555ea3109dc74f82afe5374159f51d2</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
@@ -264,6 +288,8 @@
 
     <!-- Researcher: View only on PAGE 2 -->
     <changeSet id="page2-researcher-permission" author="openelis-bioanalytical">
+        <validCheckSum>8:d07a8bdfa6b6c0ab7526ca58e35571ec</validCheckSum>
+        <validCheckSum>8:683da8c55172d448db04ff0dce675016</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles

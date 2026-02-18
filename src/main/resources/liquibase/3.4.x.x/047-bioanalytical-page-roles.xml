@@ -12,6 +12,8 @@
 
     <!-- PAGE 1: Sample Reception & Registration - Per test.pdf Section 11: Sample Receivers (Yes), Chemical Analysts (Update), Pharmacists (Update), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Researchers (View) -->
     <changeSet id="add-bioanalytical-page-1-roles" author="openelis-bioanalytical">
+        <validCheckSum>8:3e7cdeacc091a3cab1ec695de13f03cd</validCheckSum>
+        <validCheckSum>8:3210ef1cbaec2656579694acec8c9abd</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
@@ -78,6 +80,8 @@
 
     <!-- PAGE 2: Test Assignment & Preparation - Per test.pdf Section 11: Chemical Analysts (View), Pharmacists (Full), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Researchers (View) -->
     <changeSet id="add-bioanalytical-page-2-roles" author="openelis-bioanalytical">
+        <validCheckSum>8:f67b7b590cec373003ca63f98910a5c3</validCheckSum>
+        <validCheckSum>8:fa68ea3534eba53c04dc6a1816e8623e</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
@@ -138,6 +142,8 @@
 
     <!-- PAGE 3: Analytical Test Execution - Per test.pdf Section 11: Chemical Analysts (Full), Pharmacists (Full), Lab Supervisors (Full), Study Directors (View), QA Officers (View), Researchers (View) -->
     <changeSet id="add-bioanalytical-page-3-roles" author="openelis-bioanalytical">
+        <validCheckSum>8:a9bedf9e9041d546c30c52fcca753ff2</validCheckSum>
+        <validCheckSum>8:dd58c7d5e222de56e8d501df704ebc3f</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
@@ -198,6 +204,8 @@
 
     <!-- PAGE 4: Reporting & Release - Per test.pdf Section 11: Chemical Analysts (Limited), Pharmacists (Full), Lab Supervisors (Full), Study Directors (Full), QA Officers (Full), Researchers (Project-specific), Data Managers (Full Analytics) -->
     <changeSet id="add-bioanalytical-page-4-roles" author="openelis-bioanalytical">
+        <validCheckSum>8:78e573b995a7c84b63c55bfd0a8d92fd</validCheckSum>
+        <validCheckSum>8:cc0df45e3cf99e47a041f43c5d1ac34f</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
@@ -264,6 +272,8 @@
 
     <!-- PAGE 5: Post-Test Storage & Archiving - Per test.pdf Section 11: Sample Receivers (No), Lab Supervisors (Approve), Study Directors (Approve), QA Officers (No) -->
     <changeSet id="add-bioanalytical-page-5-roles" author="openelis-bioanalytical">
+        <validCheckSum>8:2c97d1c852c234255bc9296a0744d547</validCheckSum>
+        <validCheckSum>8:28818079c6b6e27a11a6cbae199ecc53</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
