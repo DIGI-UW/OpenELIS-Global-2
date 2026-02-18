@@ -334,6 +334,11 @@
     </changeSet>
 
     <changeSet id="add-freezer-storage-device-fk" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="freezer" columnName="storage_device_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
         <comment>Link Freezer to StorageDevice as parent entity</comment>
 
         <addColumn schemaName="clinlims" tableName="freezer">
@@ -360,6 +365,14 @@
     </changeSet>
 
     <changeSet id="add-unique-constraint-freezer-storage-device" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="freezer" columnName="storage_device_id" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE constraint_name = 'uk_freezer_storage_device'
+                AND table_schema = 'clinlims'
+            </sqlCheck>
+        </preConditions>
         <comment>One-to-one relationship: one StorageDevice can have at most one Freezer monitoring config</comment>
 
         <addUniqueConstraint
