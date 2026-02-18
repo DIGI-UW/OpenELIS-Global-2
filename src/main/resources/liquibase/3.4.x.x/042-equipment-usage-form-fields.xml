@@ -5,6 +5,11 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <changeSet author="claude" id="add-equipment-usage-form-fields">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="inventory_usage" columnName="operator_name" schemaName="clinlims"/>
+            </not>
+        </preConditions>
         <comment>Add columns to inventory_usage table to store equipment usage form fields
             (operator name, activities, equipment status, approval info, etc.)
         </comment>

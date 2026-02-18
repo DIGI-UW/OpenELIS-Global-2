@@ -8,6 +8,11 @@
     <!-- Unify inventory storage with sample storage hierarchy -->
     <!-- Add polymorphic location fields to inventory_lot table -->
     <changeSet id="add-unified-storage-to-inventory-lot" author="storage-unification">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="inventory_lot" columnName="location_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
         <comment>
             Add unified storage location fields to inventory_lot table.
             This allows inventory lots to use the same storage hierarchy

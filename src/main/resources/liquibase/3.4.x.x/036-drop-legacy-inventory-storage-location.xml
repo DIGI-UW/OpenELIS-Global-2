@@ -9,6 +9,9 @@
     <!-- Now that inventory uses the unified storage hierarchy (room > device > shelf > rack > box) -->
     <!-- the legacy inventory_storage_location reference is no longer needed -->
     <changeSet id="drop-legacy-storage-location-from-inventory-lot" author="storage-unification">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="inventory_lot" columnName="storage_location_id" schemaName="clinlims"/>
+        </preConditions>
         <comment>
             Drop the legacy storage_location_id column and foreign key from inventory_lot table.
             Inventory lots now use the unified storage hierarchy via location_id and location_type
@@ -42,6 +45,9 @@
     <!-- Drop the entire inventory_storage_location table -->
     <!-- This table is no longer needed since inventory now uses the unified storage hierarchy -->
     <changeSet id="drop-inventory-storage-location-table" author="storage-unification">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="inventory_storage_location" schemaName="clinlims"/>
+        </preConditions>
         <comment>
             Drop the legacy inventory_storage_location table.
             Inventory now uses the unified storage hierarchy (storage_room, storage_device,

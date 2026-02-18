@@ -9,6 +9,11 @@
     <!-- These fields are inherited by child instances from parent templates -->
 
     <changeSet id="1" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="notebook" columnName="principal_investigator" schemaName="clinlims"/>
+            </not>
+        </preConditions>
         <comment>Add principal investigator field to notebook</comment>
         <addColumn tableName="notebook">
             <column name="principal_investigator" type="VARCHAR(255)">
@@ -18,6 +23,11 @@
     </changeSet>
 
     <changeSet id="2" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="notebook" columnName="funding_source" schemaName="clinlims"/>
+            </not>
+        </preConditions>
         <comment>Add funding source field to notebook</comment>
         <addColumn tableName="notebook">
             <column name="funding_source" type="VARCHAR(255)">
@@ -27,6 +37,11 @@
     </changeSet>
 
     <changeSet id="3" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="notebook" columnName="budget" schemaName="clinlims"/>
+            </not>
+        </preConditions>
         <comment>Add budget field to notebook (currency precision)</comment>
         <addColumn tableName="notebook">
             <column name="budget" type="NUMERIC(15,2)">
@@ -36,6 +51,11 @@
     </changeSet>
 
     <changeSet id="4" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="notebook" columnName="project_timeline" schemaName="clinlims"/>
+            </not>
+        </preConditions>
         <comment>Add project timeline field to notebook</comment>
         <addColumn tableName="notebook">
             <column name="project_timeline" type="VARCHAR(255)">
