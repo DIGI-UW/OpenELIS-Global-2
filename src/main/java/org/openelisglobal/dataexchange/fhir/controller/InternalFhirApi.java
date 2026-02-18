@@ -1,7 +1,10 @@
 package org.openelisglobal.dataexchange.fhir.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Base64;
 import org.apache.http.HttpHeaders;
@@ -47,43 +50,59 @@ public class InternalFhirApi {
 
     @GetMapping("/**")
     public ResponseEntity<Object> recieveGetFhirRequests(HttpServletRequest request) {
+        return forwardGetRequest(request);
+    }
 
-        String method = "recieveGetFhirRequests";
+    @PostMapping("/**")
+    public void receivePostFhirRequest(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        forwardToFacade(request, response);
+    }
 
+    @PutMapping("/{resourceType}/**")
+    public void receivePutFhirRequest(@PathVariable("resourceType") ResourceType resourceType,
+            HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        forwardToFacade(request, response);
+    }
+
+    private String extractFhirPath(HttpServletRequest request) {
+        String requestUri = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        String path = requestUri.substring(contextPath.length());
+        return path.replaceFirst("/fhir", "");
+    }
+
+    private String buildQueryPath(String base, String fhirPath, String queryString) {
+        StringBuilder url = new StringBuilder(base);
+        if (!base.endsWith("/") && !fhirPath.startsWith("/")) {
+            url.append("/");
+        }
+        url.append(fhirPath);
+        if (queryString != null && !queryString.isBlank()) {
+            url.append("?").append(queryString);
+        }
+        return url.toString();
+    }
+
+    private ResponseEntity<Object> forwardGetRequest(HttpServletRequest request) {
+        String method = "forwardGetRequest";
         try {
-
-            String requestUri = request.getRequestURI();
-            String contextPath = request.getContextPath();
-            String path = requestUri.substring(contextPath.length());
-            String fhirPath = path.replaceFirst("/fhir", "");
-
+            String fhirPath = extractFhirPath(request);
             LogEvent.logDebug(this.getClass().getSimpleName(), method,
                     "Received GET FHIR request for path: " + fhirPath);
 
-            StringBuilder targetUrl = new StringBuilder(fhirConfig.getLocalFhirStorePath());
+            String targetUrl = buildQueryPath(fhirConfig.getLocalFhirStorePath(), fhirPath, request.getQueryString());
 
-            if (!fhirConfig.getLocalFhirStorePath().endsWith("/") && !fhirPath.startsWith("/")) {
-                targetUrl.append("/");
-            }
-            targetUrl.append(fhirPath);
-
-            if (request.getQueryString() != null) {
-                targetUrl.append("?").append(request.getQueryString());
-            }
-
-            HttpGet httpGet = new HttpGet(targetUrl.toString());
+            HttpGet httpGet = new HttpGet(targetUrl);
             String username = fhirConfig.getUsername();
             String password = fhirConfig.getPassword();
-
             if (username != null && !username.isBlank()) {
                 String encoding = Base64.getEncoder().encodeToString((username + ":" + password).getBytes());
                 httpGet.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + encoding);
             }
-
             httpGet.setHeader(HttpHeaders.ACCEPT, "application/json");
 
             try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
-
                 int statusCode = response.getStatusLine().getStatusCode();
                 String body = EntityUtils.toString(response.getEntity());
 
@@ -95,66 +114,37 @@ public class InternalFhirApi {
 
                 return ResponseEntity.status(statusCode).contentType(MediaType.APPLICATION_JSON).body(json);
             }
-
         } catch (IOException e) {
-
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "I/O error while calling local FHIR store: " + e.getMessage());
-
             return ResponseEntity.internalServerError().body("Error communicating with FHIR store");
-
         } catch (Exception e) {
-
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error in GET FHIR request: " + e.getMessage());
-
             return ResponseEntity.internalServerError().body("Unexpected server error");
         }
     }
 
-    @PostMapping(value = "/**")
-    public String receivePostFhirRequest(HttpServletRequest request) {
-
-        String method = "receivePostFhirRequest";
-
-        LogEvent.logDebug(this.getClass().getSimpleName(), method, "Forwarding POST FHIR request");
-
-        String queryString = request.getQueryString() != null ? "?" + request.getQueryString() : "";
-
-        return "forward:" + request.getServletPath().replaceFirst("fhir", "fhir/facade")
-                + (request.getPathInfo() != null ? request.getPathInfo() : "") + queryString;
-    }
-
-    @PutMapping(value = "/{resourceType}/**")
-    public ResponseEntity<String> receiveFhirRequest(@PathVariable("resourceType") ResourceType resourceType) {
-
-        String method = "receiveFhirRequest";
-
+    private void forwardToFacade(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        String method = "forwardToFacade";
         try {
+            String fhirPath = extractFhirPath(request);
+            LogEvent.logDebug(this.getClass().getSimpleName(), method, "Forwarding FHIR request for path: " + fhirPath);
 
-            LogEvent.logDebug(this.getClass().getSimpleName(), method,
-                    "Received workflow notification for resource type: " + resourceType);
+            String targetUrl = buildQueryPath("/fhir/facade", fhirPath, request.getQueryString());
 
-            if (resourceType == null) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), method, "Forwarding to: " + targetUrl);
 
-                LogEvent.logError(this.getClass().getSimpleName(), method, "ResourceType is null");
-
-                return ResponseEntity.badRequest().body("ResourceType must be provided");
-            }
-
-            fhirApiWorkflowService.processWorkflow(resourceType);
-
-            LogEvent.logInfo(this.getClass().getSimpleName(), method,
-                    "Workflow successfully triggered for resource type: " + resourceType);
-
-            return ResponseEntity.ok("");
-
+            RequestDispatcher dispatcher = request.getRequestDispatcher(targetUrl);
+            dispatcher.forward(request, response);
         } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method, "Error forwarding request: " + e.getMessage());
 
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Error processing workflow for resource type " + resourceType + ": " + e.getMessage());
-
-            return ResponseEntity.internalServerError().body("Error processing workflow");
+            if (!response.isCommitted()) {
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                        "Error processing FHIR request: " + e.getMessage());
+            }
         }
     }
 }
