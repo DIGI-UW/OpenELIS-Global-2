@@ -1,0 +1,18 @@
+/**
+ * OpenELISFieldSelector Component Styles
+ * Task Reference: T061
+ */
+
+.openelis-field-selector {
+  width: 100%;
+}
+
+.openelis-field-selector-header {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.openelis-field-selector-header .cds--combo-box {
+  flex: 1;
+}
