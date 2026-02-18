@@ -12,6 +12,8 @@
 
     <!-- PAGE 1: Sample Reception - Sample Receivers, Chemical Analysts, Pharmacists, Lab Supervisors, Study Directors, QA Officers, Researchers -->
     <changeSet id="add-bioequivalence-page-1-roles" author="openelis-bioequivalence">
+        <validCheckSum>8:55cba7aefeed041d6304b4e44a7ce485</validCheckSum>
+        <validCheckSum>8:1c69844ff7f5857f0fc0ab7f2adaab58</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
@@ -78,6 +80,8 @@
 
     <!-- PAGE 2: Test Assignment - Chemical Analysts, Pharmacists, Lab Supervisors, Study Directors, QA Officers, Researchers -->
     <changeSet id="add-bioequivalence-page-2-roles" author="openelis-bioequivalence">
+        <validCheckSum>8:10e54e5b1978b1371abc435c88d62c64</validCheckSum>
+        <validCheckSum>8:71783c08ec9f2ca551f1c540fac865eb</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
@@ -138,6 +142,8 @@
 
     <!-- PAGE 3: Analytical Execution - Chemical Analysts, Pharmacists, Lab Supervisors, Study Directors, QA Officers, Researchers -->
     <changeSet id="add-bioequivalence-page-3-roles" author="openelis-bioequivalence">
+        <validCheckSum>8:5d3807839bceffbc44a0eea9d18156f4</validCheckSum>
+        <validCheckSum>8:f46db39da34800e59eca42235f44dd27</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
@@ -198,6 +204,8 @@
 
     <!-- PAGE 4: Reporting & Release - Pharmacists, Lab Supervisors, Study Directors, QA Officers -->
     <changeSet id="add-bioequivalence-page-4-roles" author="openelis-bioequivalence">
+        <validCheckSum>8:f6ef4f01965e47cdbb17f19bb4a87bb4</validCheckSum>
+        <validCheckSum>8:2d92148be61343b5b3e8485dea6848a0</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
@@ -246,6 +254,8 @@
 
     <!-- PAGE 5: Post-Test Storage & Archiving - Lab Supervisors, Study Directors, QA Officers -->
     <changeSet id="add-bioequivalence-page-5-roles" author="openelis-bioequivalence">
+        <validCheckSum>8:273511572cfc7d58ee59273e4c90304a</validCheckSum>
+        <validCheckSum>8:2db5323bfe93955a2680ac012300cbe3</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
