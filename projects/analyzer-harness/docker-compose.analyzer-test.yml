@@ -1,0 +1,70 @@
+services:
+  astm-simulator:
+    build:
+      context: ../../tools/analyzer-mock-server
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - ASTM_PORT=5000
+      - ANALYZER_TYPE=HEMATOLOGY
+      - RESPONSE_DELAY_MS=100
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 5000)); s.close()",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  openelis-analyzer-bridge:
+    build:
+      context: ../../tools/openelis-analyzer-bridge
+      dockerfile: Dockerfile
+    image: itechuw/openelis-analyzer-bridge:latest
+    ports:
+      - "8442:8443" # HTTPS API port
+      - "12000:12001" # ASTM listen port
+    volumes:
+      - ../../volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - LOGGING_LEVEL_ORG_ITECH=INFO
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe:8443/api/OpenELIS-Global/analyzer/astm
+      - ORG_ITECH_AHB_LISTEN_ASTM_SERVER_PORT=12001
+      - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_HOST_NAME=astm-simulator
+      - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_PORT=5000
+    depends_on:
+      astm-simulator:
+        condition: service_healthy
+    restart: unless-stopped
+
+  virtual-serial:
+    image: alpine/socat
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        socat -d -d pty,raw,echo=0,link=/serial/ttyVUSB0 pty,raw,echo=0,link=/serial/ttyVUSB0-peer &
+        socat -d -d pty,raw,echo=0,link=/serial/ttyVUSB1 pty,raw,echo=0,link=/serial/ttyVUSB1-peer &
+        socat -d -d pty,raw,echo=0,link=/serial/ttyVUSB2 pty,raw,echo=0,link=/serial/ttyVUSB2-peer &
+        socat -d -d pty,raw,echo=0,link=/serial/ttyVUSB3 pty,raw,echo=0,link=/serial/ttyVUSB3-peer &
+        socat -d -d pty,raw,echo=0,link=/serial/ttyVUSB4 pty,raw,echo=0,link=/serial/ttyVUSB4-peer &
+        wait
+    volumes:
+      - serial-vol:/serial
+    restart: unless-stopped
+
+  oe:
+    volumes:
+      - serial-vol:/dev/serial
+
+volumes:
+  serial-vol:
+    driver: local
+

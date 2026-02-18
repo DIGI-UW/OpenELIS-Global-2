@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Global Analyzer Inventory Test Data (DBUnit Flat XML Dataset) Purpose:
+    Complete inventory of all 36 analyzer plugins supported by OpenELIS Global
+    Usage: Load with --all-plugins flag: ./load-analyzer-test-data.sh --all-plugins
+    ID Range: 3000-3035 (reserved for global inventory to avoid conflicts) Categories:
+    - 3000-3011: Hematology (12 plugins) - 3012-3021: Molecular (10 plugins,
+    includes QuantStudio7Flex from PR #42) - 3022-3026: Chemistry (5 plugins)
+    - 3027-3030: Flow Cytometry (4 plugins) - 3031: Immunology (1 plugin) - 3032:
+    Coagulation (1 plugin) - 3033-3034: Generic (2 plugins) - 3035: Template
+    (1 plugin) Reference: plugins/analyzers/INVENTORY.md -->
+<dataset>
+    <!-- ================================================================= -->
+    <!-- HEMATOLOGY ANALYZERS (12 plugins, IDs 3000-3011) -->
+    <!-- ================================================================= -->
+
+    <!-- ID 3000: Horiba Micros 60 -->
+    <analyzer id="3000" name="Horiba ABX Micros 60"
+        analyzer_type="HEMATOLOGY"
+        description="ASTM LIS2-A2 over RS232 Serial" is_active="true"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3001: Horiba Pentra 60 -->
+    <analyzer id="3001" name="Horiba ABX Pentra 60 C+"
+        analyzer_type="HEMATOLOGY"
+        description="ASTM LIS2-A2 over RS232 Serial" is_active="true"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3002: Mindray BC-5380 -->
+    <analyzer id="3002" name="Mindray BC-5380"
+        analyzer_type="HEMATOLOGY" description="HL7 v2.3.1 over TCP/IP (MLLP)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3003: Mindray BC2000 -->
+    <analyzer id="3003" name="Mindray BC2000"
+        analyzer_type="HEMATOLOGY" description="HL7 v2.3.1 over TCP/IP (MLLP)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3004: pocH-100i -->
+    <analyzer id="3004" name="Horiba ABX pocH-100i"
+        analyzer_type="HEMATOLOGY" description="ASTM over RS232/TCP"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3005: Sysmex 2000i -->
+    <analyzer id="3005" name="Sysmex XT-2000i"
+        analyzer_type="HEMATOLOGY" description="FILE-based import (CSV)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3006: Sysmex 4000i -->
+    <analyzer id="3006" name="Sysmex XT-4000i"
+        analyzer_type="HEMATOLOGY" description="FILE-based import (CSV)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3007: Sysmex KX21 -->
+    <analyzer id="3007" name="Sysmex KX-21"
+        analyzer_type="HEMATOLOGY" description="FILE-based import (Semicolon)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3008: Sysmex XT -->
+    <analyzer id="3008" name="Sysmex XT"
+        analyzer_type="HEMATOLOGY" description="FILE-based import (CSV)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3009: Sysmex XN-L -->
+    <analyzer id="3009" name="Sysmex XN-L Series"
+        analyzer_type="HEMATOLOGY" description="ASTM E1381-02 over RS232/TCP"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3010: Sysmex XN1000 -->
+    <analyzer id="3010" name="Sysmex XN-1000"
+        analyzer_type="HEMATOLOGY" description="FILE-based import (CSV)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3011: Sysmex XP -->
+    <analyzer id="3011" name="Sysmex XP-100"
+        analyzer_type="HEMATOLOGY" description="ASTM over RS232/TCP"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- MOLECULAR ANALYZERS (10 plugins, IDs 3012-3021) -->
+    <!-- ================================================================= -->
+
+    <!-- ID 3012: AB7500Fast -->
+    <analyzer id="3012" name="Applied Biosystems 7500 Fast"
+        analyzer_type="MOLECULAR" description="FILE-based import (CSV)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3013: QuantStudio7Flex (NEW - PR #42) -->
+    <analyzer id="3013" name="Thermo Fisher QuantStudio 7 Flex"
+        analyzer_type="MOLECULAR"
+        description="FILE-based import (Tab-delimited)" is_active="true"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3014: QuantStudio3 -->
+    <analyzer id="3014" name="Applied Biosystems QuantStudio 3"
+        analyzer_type="MOLECULAR" description="FILE-based import (CSV)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3015: Cobas4800 -->
+    <analyzer id="3015" name="Roche Cobas 4800"
+        analyzer_type="MOLECULAR" description="FILE-based import (CSV)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3016: Cobas6800VL -->
+    <analyzer id="3016" name="Roche Cobas 6800 Viral Load"
+        analyzer_type="MOLECULAR" description="HL7 v2.x over TCP/IP"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3017: CobasTaqMan48DBS -->
+    <analyzer id="3017" name="Roche CobasTaqMan 48 DBS"
+        analyzer_type="MOLECULAR" description="FILE-based import (Tab)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3018: CobasTaqMan48VL -->
+    <analyzer id="3018" name="Roche CobasTaqMan 48 VL"
+        analyzer_type="MOLECULAR" description="FILE-based import (Tab)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3019: CobasTaqman96VL -->
+    <analyzer id="3019" name="Roche CobasTaqman 96 VL"
+        analyzer_type="MOLECULAR" description="FILE-based import (Tab)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3020: CobasTaqMan96DBS -->
+    <analyzer id="3020" name="Roche CobasTaqMan 96 DBS"
+        analyzer_type="MOLECULAR" description="FILE-based import (Tab)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3021: FluoroCycler XT -->
+    <analyzer id="3021" name="Hain FluoroCycler XT"
+        analyzer_type="MOLECULAR"
+        description="FILE-based import (multi-delimiter)" is_active="true"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- CHEMISTRY ANALYZERS (5 plugins, IDs 3022-3026) -->
+    <!-- ================================================================= -->
+
+    <!-- ID 3022: Mindray BA-88A -->
+    <analyzer id="3022" name="Mindray BA-88A"
+        analyzer_type="CHEMISTRY"
+        description="ASTM over RS232 Serial (via GenericASTM)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3023: Mindray BS-360E -->
+    <analyzer id="3023" name="Mindray BS-360E"
+        analyzer_type="CHEMISTRY" description="HL7 v2.3.1 or ASTM E1381-95"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3024: Cobas C111 -->
+    <analyzer id="3024" name="Roche Cobas C111"
+        analyzer_type="CHEMISTRY" description="FILE-based import (Semicolon)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3025: Cobas Integra 400 -->
+    <analyzer id="3025" name="Roche Cobas Integra 400"
+        analyzer_type="CHEMISTRY"
+        description="FILE-based import (Space-delimited)" is_active="true"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3026: Fully -->
+    <analyzer id="3026" name="Fully Analyzer"
+        analyzer_type="CHEMISTRY" description="FILE-based import (Tab)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- FLOW CYTOMETRY ANALYZERS (4 plugins, IDs 3027-3030) -->
+    <!-- ================================================================= -->
+
+    <!-- ID 3027: FACS Calibur -->
+    <analyzer id="3027" name="BD FACS Calibur"
+        analyzer_type="FLOW_CYTOMETRY"
+        description="FILE-based import (CSV - MultiSET)" is_active="true"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3028: FACS Canto II -->
+    <analyzer id="3028" name="BD FACS Canto II"
+        analyzer_type="FLOW_CYTOMETRY"
+        description="FILE-based import (CSV - TRITEST)" is_active="true"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3029: FACS Presto -->
+    <analyzer id="3029" name="BD FACS Presto"
+        analyzer_type="FLOW_CYTOMETRY" description="FILE-based import (CSV)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3030: Weber Analyzer -->
+    <analyzer id="3030" name="Weber Analyzer"
+        analyzer_type="FLOW_CYTOMETRY"
+        description="FILE-based import (CSV - MugelSET)" is_active="true"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- IMMUNOLOGY ANALYZER (1 plugin, ID 3031) -->
+    <!-- ================================================================= -->
+
+    <!-- ID 3031: Abbott Architect -->
+    <analyzer id="3031" name="Abbott Architect"
+        analyzer_type="IMMUNOLOGY" description="HL7 v2.5.1 over RS232/TCP"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- COAGULATION ANALYZER (1 plugin, ID 3032) -->
+    <!-- ================================================================= -->
+
+    <!-- ID 3032: Stago STart 4 -->
+    <analyzer id="3032" name="Stago STart 4"
+        analyzer_type="COAGULATION"
+        description="ASTM/HL7 dual protocol over RS232" is_active="true"
+        last_updated="2026-02-02 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- GENERIC PLUGINS (2 plugins, IDs 3033-3034) -->
+    <!-- ================================================================= -->
+
+    <!-- ID 3033: GenericASTM -->
+    <analyzer id="3033" name="Generic ASTM Analyzer"
+        analyzer_type="GENERIC"
+        description="Database-driven ASTM analyzer (configurable)"
+        is_active="true" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ID 3034: GenericHL7 (M19 - Future) -->
+    <analyzer id="3034" name="Generic HL7 Analyzer"
+        analyzer_type="GENERIC"
+        description="Database-driven HL7 analyzer (configurable)"
+        is_active="false" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- TEMPLATE (1 plugin, ID 3035) -->
+    <!-- ================================================================= -->
+
+    <!-- ID 3035: Template -->
+    <analyzer id="3035" name="Plugin Development Template"
+        analyzer_type="TEMPLATE"
+        description="Template for new analyzer plugin development"
+        is_active="false" last_updated="2026-02-02 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- NOTE: GeneXpert variants (3 plugins) are included in Madagascar -->
+    <!-- fixture (ID 2002) and not duplicated here to avoid conflicts -->
+    <!-- ================================================================= -->
+
+</dataset>

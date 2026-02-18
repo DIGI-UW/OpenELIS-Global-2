@@ -48,6 +48,7 @@ volume/logs/*
 volume/ocl/*
 volume/odoo/*
 .specify/temp/
+.specify/audit-reports/*.md
 volume/branding/*
 volume/lucene/*
 
@@ -95,3 +96,5 @@ cypress-screenshots/
 cypress-videos/
 # Vendor documentation (too large for git - 100MB+ PDFs)
 specs/*/research/AnalyzerDocs/
+
+# Miscellaneous dev artifacts
