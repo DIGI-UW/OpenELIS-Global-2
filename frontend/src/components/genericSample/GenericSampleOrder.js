@@ -474,9 +474,7 @@ export default function GenericSampleOrder({
                 </div>
               </div>
 
-              <div
-                style={{ display: "flex", gap: "1rem", marginTop: "0.5rem" }}
-              >
+              <div className="success-action-buttons">
                 <Button
                   kind="primary"
                   renderIcon={Printer}

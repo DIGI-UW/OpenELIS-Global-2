@@ -870,4 +870,11 @@ nav.cds--side-nav .cds--side-nav__link::before {
   .reduced-padding-nav-menu-item.cds--side-nav__menu-item
   .cds--side-nav__link[aria-current="page"] {
   padding-left: calc(7rem - 4px) !important;
+  }
+/* Breadcrumb flexbox styles - Override Carbon Design System */
+.cds--breadcrumb {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
 }

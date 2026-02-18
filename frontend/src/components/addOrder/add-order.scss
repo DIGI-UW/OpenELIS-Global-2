@@ -182,3 +182,20 @@
 #order_nextVisitDate {
   width: 438px !important;
 }
+
+.success-action-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  justify-content: center;
+
+  @media (max-width: 672px) {
+    flex-direction: column;
+    align-items: stretch;
+
+    /* force all buttons to same width */
+    button {
+      width: 100%;
+    }
+  }
+}
