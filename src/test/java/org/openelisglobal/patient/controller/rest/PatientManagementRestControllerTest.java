@@ -69,7 +69,7 @@ public class PatientManagementRestControllerTest {
         patientInfo.setLastName("Doe");
 
         doThrow(new RuntimeException("Database connection failed")).when(patientService)
-            .persistPatientData(any(PatientManagementInfo.class), any(), anyString());
+                .persistPatientData(any(PatientManagementInfo.class), any(), anyString());
 
         try {
             patientService.persistPatientData(patientInfo, null, "testUser");
