@@ -1,0 +1,555 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Analyzer Mapping Test Data (DBUnit Flat XML Dataset) Feature: specs/004-astm-analyzer-mapping
+    Usage: executeDataSetWithStateManagement("testdata/analyzer-mapping-test-data.xml")
+    Contents: - 5 Analyzers (IDs 1000-1004) - 5 Analyzer Configurations - 27
+    Analyzer Fields (distributed across analyzers) - 24 Analyzer Field Mappings
+    - 33 Qualitative Result Mappings - 9 Unit Mappings - 13 Analyzer Errors (various
+    statuses and types) Note: Analyzer 1000 (ASTM Simulator) starts with NO fields/mappings
+    to simulate a newly-added analyzer for testing the complete workflow. -->
+<dataset>
+    <!-- ================================================================= -->
+    <!-- ANALYZERS (legacy table, IDs 1000+ to avoid conflicts) -->
+    <!-- ================================================================= -->
+    <analyzer id="1000"
+        name="Mock Hematology Analyzer (ASTM Simulator)"
+        analyzer_type="HEMATOLOGY" is_active="true"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer id="1001" name="Chemistry Analyzer 1"
+        analyzer_type="CHEMISTRY" is_active="true"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer id="1002" name="Immunology Analyzer 1"
+        analyzer_type="IMMUNOLOGY" is_active="true"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer id="1003" name="Microbiology Analyzer 1"
+        analyzer_type="MICROBIOLOGY" is_active="true"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer id="1004" name="Hematology Analyzer 2 (Inactive)"
+        analyzer_type="HEMATOLOGY" is_active="false"
+        last_updated="2025-01-01 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- ANALYZER CONFIGURATIONS -->
+    <!-- Status: INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE -->
+    <!-- ================================================================= -->
+    <analyzer_configuration id="CONFIG-001"
+        analyzer_id="1000" ip_address="172.20.1.100" port="5000"
+        protocol_version="ASTM LIS2-A2" test_unit_ids="1,2,3" status="SETUP"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_configuration id="CONFIG-002"
+        analyzer_id="1001" ip_address="192.168.1.101" port="8081"
+        protocol_version="ASTM LIS2-A2" test_unit_ids="1,2"
+        status="ERROR_PENDING" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_configuration id="CONFIG-003"
+        analyzer_id="1002" ip_address="192.168.1.102" port="8082"
+        protocol_version="ASTM LIS2-A2" test_unit_ids="1,2,3,4"
+        status="VALIDATION" sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_configuration id="CONFIG-004"
+        analyzer_id="1003" ip_address="192.168.1.103" port="8083"
+        protocol_version="ASTM LIS2-A2" test_unit_ids="1,2" status="SETUP"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_configuration id="CONFIG-005"
+        analyzer_id="1004" ip_address="192.168.1.104" port="8084"
+        protocol_version="ASTM LIS2-A2" status="INACTIVE" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- ANALYZER FIELDS -->
+    <!-- field_type: TEXT, NUMERIC, QUALITATIVE -->
+    <!-- Note: Analyzer 1000 has NO fields (newly-added state) -->
+    <!-- ================================================================= -->
+    <!-- Analyzer 1001 (Chemistry) - 10 fields -->
+    <analyzer_field id="FIELD-011" analyzer_id="1001"
+        field_name="Sample ID" astm_ref="H|1" field_type="TEXT"
+        is_active="true" sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-012" analyzer_id="1001"
+        field_name="Patient ID" astm_ref="P|1" field_type="TEXT"
+        is_active="true" sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-013" analyzer_id="1001"
+        field_name="Test Code" astm_ref="O|1|" field_type="TEXT"
+        is_active="true" sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-014" analyzer_id="1001"
+        field_name="Glucose" astm_ref="R|1|^^^GLUCOSE" field_type="NUMERIC"
+        unit="mg/dL" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-015" analyzer_id="1001"
+        field_name="Creatinine" astm_ref="R|1|^^^CREATININE"
+        field_type="NUMERIC" unit="mg/dL" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-016" analyzer_id="1001"
+        field_name="Urea" astm_ref="R|1|^^^UREA" field_type="NUMERIC"
+        unit="mg/dL" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-017" analyzer_id="1001"
+        field_name="Total Cholesterol" astm_ref="R|1|^^^CHOLESTEROL"
+        field_type="NUMERIC" unit="mg/dL" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-018" analyzer_id="1001"
+        field_name="Triglycerides" astm_ref="R|1|^^^TRIGLYCERIDES"
+        field_type="NUMERIC" unit="mg/dL" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-019" analyzer_id="1001"
+        field_name="ALT" astm_ref="R|1|^^^ALT" field_type="NUMERIC"
+        unit="IU/L" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-020" analyzer_id="1001"
+        field_name="AST" astm_ref="R|1|^^^AST" field_type="NUMERIC"
+        unit="IU/L" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+
+    <!-- Analyzer 1002 (Immunology) - 8 fields -->
+    <analyzer_field id="FIELD-021" analyzer_id="1002"
+        field_name="Sample ID" astm_ref="H|1" field_type="TEXT"
+        is_active="true" sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-022" analyzer_id="1002"
+        field_name="Patient ID" astm_ref="P|1" field_type="TEXT"
+        is_active="true" sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-023" analyzer_id="1002"
+        field_name="Test Code" astm_ref="O|1|" field_type="TEXT"
+        is_active="true" sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-024" analyzer_id="1002"
+        field_name="HIV Antibody" astm_ref="R|1|^^^HIV"
+        field_type="QUALITATIVE" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-025" analyzer_id="1002"
+        field_name="HBsAg" astm_ref="R|1|^^^HBSAG" field_type="QUALITATIVE"
+        is_active="true" sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-026" analyzer_id="1002"
+        field_name="HCV Antibody" astm_ref="R|1|^^^HCV"
+        field_type="QUALITATIVE" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-027" analyzer_id="1002"
+        field_name="Syphilis RPR" astm_ref="R|1|^^^SYPHILIS"
+        field_type="QUALITATIVE" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-028" analyzer_id="1002"
+        field_name="CD4 Count" astm_ref="R|1|^^^CD4" field_type="NUMERIC"
+        unit="cells/μL" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+
+    <!-- Analyzer 1003 (Microbiology) - 6 fields -->
+    <analyzer_field id="FIELD-029" analyzer_id="1003"
+        field_name="Sample ID" astm_ref="H|1" field_type="TEXT"
+        is_active="true" sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-030" analyzer_id="1003"
+        field_name="Patient ID" astm_ref="P|1" field_type="TEXT"
+        is_active="true" sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-031" analyzer_id="1003"
+        field_name="Test Code" astm_ref="O|1|" field_type="TEXT"
+        is_active="true" sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-032" analyzer_id="1003"
+        field_name="Culture Result" astm_ref="R|1|^^^CULTURE"
+        field_type="TEXT" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-033" analyzer_id="1003"
+        field_name="Antibiotic Sensitivity" astm_ref="R|1|^^^SENSITIVITY"
+        field_type="TEXT" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-034" analyzer_id="1003"
+        field_name="Organism ID" astm_ref="R|1|^^^ORGANISM" field_type="TEXT"
+        is_active="true" sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+
+    <!-- Analyzer 1004 (Inactive) - 3 fields -->
+    <analyzer_field id="FIELD-035" analyzer_id="1004"
+        field_name="Sample ID" astm_ref="H|1" field_type="TEXT"
+        is_active="true" sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-036" analyzer_id="1004"
+        field_name="Test Code" astm_ref="O|1|" field_type="TEXT"
+        is_active="true" sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field id="FIELD-037" analyzer_id="1004"
+        field_name="Result Value" astm_ref="R|1|" field_type="NUMERIC"
+        unit="mg/dL" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- ANALYZER FIELD MAPPINGS -->
+    <!-- mapping_type: TEST_LEVEL, RESULT_LEVEL, METADATA -->
+    <!-- openelis_field_type: TEST, PANEL, RESULT, ORDER, SAMPLE, QC, METADATA,
+        UNIT -->
+    <!-- Note: Analyzer 1000 has NO mappings (newly-added state) -->
+    <!-- ================================================================= -->
+    <!-- Analyzer 1001 (Chemistry) mappings -->
+    <analyzer_field_mapping id="MAPPING-011"
+        analyzer_id="1001" analyzer_field_id="FIELD-011"
+        openelis_field_id="sample.accession_number"
+        openelis_field_type="SAMPLE" mapping_type="METADATA"
+        is_required="true" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-012"
+        analyzer_id="1001" analyzer_field_id="FIELD-012"
+        openelis_field_id="patient.id" openelis_field_type="METADATA"
+        mapping_type="METADATA" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-013"
+        analyzer_id="1001" analyzer_field_id="FIELD-013"
+        openelis_field_id="test.code" openelis_field_type="TEST"
+        mapping_type="TEST_LEVEL" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-014"
+        analyzer_id="1001" analyzer_field_id="FIELD-014"
+        openelis_field_id="result.glucose" openelis_field_type="RESULT"
+        mapping_type="RESULT_LEVEL" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-015"
+        analyzer_id="1001" analyzer_field_id="FIELD-015"
+        openelis_field_id="result.creatinine" openelis_field_type="RESULT"
+        mapping_type="RESULT_LEVEL" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-016"
+        analyzer_id="1001" analyzer_field_id="FIELD-016"
+        openelis_field_id="result.urea" openelis_field_type="RESULT"
+        mapping_type="RESULT_LEVEL" is_required="true" is_active="false"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-017"
+        analyzer_id="1001" analyzer_field_id="FIELD-017"
+        openelis_field_id="result.cholesterol" openelis_field_type="RESULT"
+        mapping_type="RESULT_LEVEL" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-018"
+        analyzer_id="1001" analyzer_field_id="FIELD-018"
+        openelis_field_id="result.triglycerides" openelis_field_type="RESULT"
+        mapping_type="RESULT_LEVEL" is_required="false" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-019"
+        analyzer_id="1001" analyzer_field_id="FIELD-019"
+        openelis_field_id="result.alt" openelis_field_type="RESULT"
+        mapping_type="RESULT_LEVEL" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-020"
+        analyzer_id="1001" analyzer_field_id="FIELD-020"
+        openelis_field_id="result.ast" openelis_field_type="RESULT"
+        mapping_type="RESULT_LEVEL" is_required="true" is_active="false"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+
+    <!-- Analyzer 1002 (Immunology) mappings -->
+    <analyzer_field_mapping id="MAPPING-021"
+        analyzer_id="1002" analyzer_field_id="FIELD-021"
+        openelis_field_id="sample.accession_number"
+        openelis_field_type="SAMPLE" mapping_type="METADATA"
+        is_required="true" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-022"
+        analyzer_id="1002" analyzer_field_id="FIELD-022"
+        openelis_field_id="patient.id" openelis_field_type="METADATA"
+        mapping_type="METADATA" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-023"
+        analyzer_id="1002" analyzer_field_id="FIELD-023"
+        openelis_field_id="test.code" openelis_field_type="TEST"
+        mapping_type="TEST_LEVEL" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-024"
+        analyzer_id="1002" analyzer_field_id="FIELD-024"
+        openelis_field_id="result.hiv" openelis_field_type="RESULT"
+        mapping_type="RESULT_LEVEL" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-025"
+        analyzer_id="1002" analyzer_field_id="FIELD-025"
+        openelis_field_id="result.hbsag" openelis_field_type="RESULT"
+        mapping_type="RESULT_LEVEL" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-026"
+        analyzer_id="1002" analyzer_field_id="FIELD-026"
+        openelis_field_id="result.hcv" openelis_field_type="RESULT"
+        mapping_type="RESULT_LEVEL" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-027"
+        analyzer_id="1002" analyzer_field_id="FIELD-027"
+        openelis_field_id="result.syphilis" openelis_field_type="RESULT"
+        mapping_type="RESULT_LEVEL" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-028"
+        analyzer_id="1002" analyzer_field_id="FIELD-028"
+        openelis_field_id="result.cd4" openelis_field_type="RESULT"
+        mapping_type="RESULT_LEVEL" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+
+    <!-- Analyzer 1003 (Microbiology) mappings -->
+    <analyzer_field_mapping id="MAPPING-029"
+        analyzer_id="1003" analyzer_field_id="FIELD-029"
+        openelis_field_id="sample.accession_number"
+        openelis_field_type="SAMPLE" mapping_type="METADATA"
+        is_required="true" is_active="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-030"
+        analyzer_id="1003" analyzer_field_id="FIELD-030"
+        openelis_field_id="patient.id" openelis_field_type="METADATA"
+        mapping_type="METADATA" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-031"
+        analyzer_id="1003" analyzer_field_id="FIELD-031"
+        openelis_field_id="test.code" openelis_field_type="TEST"
+        mapping_type="TEST_LEVEL" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-032"
+        analyzer_id="1003" analyzer_field_id="FIELD-032"
+        openelis_field_id="result.culture" openelis_field_type="RESULT"
+        mapping_type="RESULT_LEVEL" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-033"
+        analyzer_id="1003" analyzer_field_id="FIELD-033"
+        openelis_field_id="result.sensitivity" openelis_field_type="RESULT"
+        mapping_type="RESULT_LEVEL" is_required="false" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_field_mapping id="MAPPING-034"
+        analyzer_id="1003" analyzer_field_id="FIELD-034"
+        openelis_field_id="result.organism" openelis_field_type="RESULT"
+        mapping_type="RESULT_LEVEL" is_required="true" is_active="true"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- QUALITATIVE RESULT MAPPINGS -->
+    <!-- Maps analyzer qualitative values to OpenELIS codes -->
+    <!-- ================================================================= -->
+    <!-- HIV Antibody mappings (FIELD-024) -->
+    <qualitative_result_mapping id="QUAL-001"
+        analyzer_field_id="FIELD-024" analyzer_value="POS"
+        openelis_code="POSITIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-002"
+        analyzer_field_id="FIELD-024" analyzer_value="POSITIVE"
+        openelis_code="POSITIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-003"
+        analyzer_field_id="FIELD-024" analyzer_value="REACTIVE"
+        openelis_code="POSITIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-004"
+        analyzer_field_id="FIELD-024" analyzer_value="+"
+        openelis_code="POSITIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-005"
+        analyzer_field_id="FIELD-024" analyzer_value="NEG"
+        openelis_code="NEGATIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-006"
+        analyzer_field_id="FIELD-024" analyzer_value="NEGATIVE"
+        openelis_code="NEGATIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-007"
+        analyzer_field_id="FIELD-024" analyzer_value="NON-REACTIVE"
+        openelis_code="NEGATIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-008"
+        analyzer_field_id="FIELD-024" analyzer_value="-"
+        openelis_code="NEGATIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-009"
+        analyzer_field_id="FIELD-024" analyzer_value="IND"
+        openelis_code="INDETERMINATE" is_default="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-010"
+        analyzer_field_id="FIELD-024" analyzer_value="INDETERMINATE"
+        openelis_code="INDETERMINATE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-011"
+        analyzer_field_id="FIELD-024" analyzer_value="EQUIVOCAL"
+        openelis_code="INDETERMINATE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+
+    <!-- HBsAg mappings (FIELD-025) -->
+    <qualitative_result_mapping id="QUAL-012"
+        analyzer_field_id="FIELD-025" analyzer_value="POS"
+        openelis_code="POSITIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-013"
+        analyzer_field_id="FIELD-025" analyzer_value="POSITIVE"
+        openelis_code="POSITIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-014"
+        analyzer_field_id="FIELD-025" analyzer_value="REACTIVE"
+        openelis_code="POSITIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-015"
+        analyzer_field_id="FIELD-025" analyzer_value="NEG"
+        openelis_code="NEGATIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-016"
+        analyzer_field_id="FIELD-025" analyzer_value="NEGATIVE"
+        openelis_code="NEGATIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-017"
+        analyzer_field_id="FIELD-025" analyzer_value="NON-REACTIVE"
+        openelis_code="NEGATIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-018"
+        analyzer_field_id="FIELD-025" analyzer_value="IND"
+        openelis_code="INDETERMINATE" is_default="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+
+    <!-- HCV Antibody mappings (FIELD-026) -->
+    <qualitative_result_mapping id="QUAL-019"
+        analyzer_field_id="FIELD-026" analyzer_value="POS"
+        openelis_code="POSITIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-020"
+        analyzer_field_id="FIELD-026" analyzer_value="POSITIVE"
+        openelis_code="POSITIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-021"
+        analyzer_field_id="FIELD-026" analyzer_value="REACTIVE"
+        openelis_code="POSITIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-022"
+        analyzer_field_id="FIELD-026" analyzer_value="NEG"
+        openelis_code="NEGATIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-023"
+        analyzer_field_id="FIELD-026" analyzer_value="NEGATIVE"
+        openelis_code="NEGATIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-024"
+        analyzer_field_id="FIELD-026" analyzer_value="NON-REACTIVE"
+        openelis_code="NEGATIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-025"
+        analyzer_field_id="FIELD-026" analyzer_value="IND"
+        openelis_code="INDETERMINATE" is_default="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+
+    <!-- Syphilis RPR mappings (FIELD-027) -->
+    <qualitative_result_mapping id="QUAL-026"
+        analyzer_field_id="FIELD-027" analyzer_value="POS"
+        openelis_code="POSITIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-027"
+        analyzer_field_id="FIELD-027" analyzer_value="POSITIVE"
+        openelis_code="POSITIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-028"
+        analyzer_field_id="FIELD-027" analyzer_value="REACTIVE"
+        openelis_code="POSITIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-029"
+        analyzer_field_id="FIELD-027" analyzer_value="NEG"
+        openelis_code="NEGATIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-030"
+        analyzer_field_id="FIELD-027" analyzer_value="NEGATIVE"
+        openelis_code="NEGATIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-031"
+        analyzer_field_id="FIELD-027" analyzer_value="NON-REACTIVE"
+        openelis_code="NEGATIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-032"
+        analyzer_field_id="FIELD-027" analyzer_value="WEAKLY REACTIVE"
+        openelis_code="WEAK_POSITIVE" is_default="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <qualitative_result_mapping id="QUAL-033"
+        analyzer_field_id="FIELD-027" analyzer_value="IND"
+        openelis_code="INDETERMINATE" is_default="true" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- UNIT MAPPINGS -->
+    <!-- Maps analyzer units to OpenELIS units with conversion factors -->
+    <!-- ================================================================= -->
+    <unit_mapping id="UNIT-001" analyzer_field_id="FIELD-014"
+        analyzer_unit="mg/dL" openelis_unit="mg/dL" conversion_factor="1.0"
+        reject_if_mismatch="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <unit_mapping id="UNIT-002" analyzer_field_id="FIELD-014"
+        analyzer_unit="mmol/L" openelis_unit="mg/dL"
+        conversion_factor="18.0182" reject_if_mismatch="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <unit_mapping id="UNIT-004" analyzer_field_id="FIELD-015"
+        analyzer_unit="mg/dL" openelis_unit="mg/dL" conversion_factor="1.0"
+        reject_if_mismatch="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <unit_mapping id="UNIT-005" analyzer_field_id="FIELD-015"
+        analyzer_unit="μmol/L" openelis_unit="mg/dL"
+        conversion_factor="0.0113" reject_if_mismatch="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <unit_mapping id="UNIT-015" analyzer_field_id="FIELD-017"
+        analyzer_unit="mg/dL" openelis_unit="mg/dL" conversion_factor="1.0"
+        reject_if_mismatch="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <unit_mapping id="UNIT-016" analyzer_field_id="FIELD-017"
+        analyzer_unit="mmol/L" openelis_unit="mg/dL" conversion_factor="38.67"
+        reject_if_mismatch="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <unit_mapping id="UNIT-018" analyzer_field_id="FIELD-028"
+        analyzer_unit="cells/μL" openelis_unit="cells/μL"
+        conversion_factor="1.0" reject_if_mismatch="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <unit_mapping id="UNIT-019" analyzer_field_id="FIELD-028"
+        analyzer_unit="cells/mm3" openelis_unit="cells/μL"
+        conversion_factor="1.0" reject_if_mismatch="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <unit_mapping id="UNIT-020" analyzer_field_id="FIELD-028"
+        analyzer_unit="x10^6/L" openelis_unit="cells/μL"
+        conversion_factor="1.0" reject_if_mismatch="false" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+
+    <!-- ================================================================= -->
+    <!-- ANALYZER ERRORS -->
+    <!-- error_type: MAPPING, VALIDATION, CONNECTION, PROTOCOL -->
+    <!-- severity: CRITICAL, ERROR, WARNING -->
+    <!-- status: UNACKNOWLEDGED, ACKNOWLEDGED, RESOLVED -->
+    <!-- ================================================================= -->
+    <analyzer_error id="ERR-001" analyzer_id="1001"
+        error_type="MAPPING" severity="ERROR"
+        error_message="Unknown test code: XYZ123"
+        raw_message="R|1|^^^XYZ123|45.2|mg/dL" status="UNACKNOWLEDGED"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_error id="ERR-002" analyzer_id="1001"
+        error_type="MAPPING" severity="ERROR"
+        error_message="No mapping found for field: UNKNOWN_FIELD"
+        raw_message="R|1|^^^UNKNOWN|12.5" status="UNACKNOWLEDGED"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_error id="ERR-003" analyzer_id="1001"
+        error_type="VALIDATION" severity="WARNING"
+        error_message="Value out of range for Glucose: 999"
+        raw_message="R|1|^^^GLUCOSE|999|mg/dL" status="UNACKNOWLEDGED"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_error id="ERR-004" analyzer_id="1001"
+        error_type="VALIDATION" severity="WARNING"
+        error_message="Invalid numeric value: ABC"
+        raw_message="R|1|^^^CREATININE|ABC|mg/dL" status="ACKNOWLEDGED"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_error id="ERR-005" analyzer_id="1002"
+        error_type="MAPPING" severity="ERROR"
+        error_message="Unmapped qualitative result: BORDERLINE"
+        raw_message="R|1|^^^HIV|BORDERLINE" status="UNACKNOWLEDGED"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_error id="ERR-006" analyzer_id="1002"
+        error_type="MAPPING" severity="ERROR"
+        error_message="Multiple mappings found for: HBV_SURFACE"
+        raw_message="R|1|^^^HBV_SURFACE|POS" status="UNACKNOWLEDGED"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_error id="ERR-007" analyzer_id="1002"
+        error_type="CONNECTION" severity="CRITICAL"
+        error_message="Connection timeout after 30 seconds" status="RESOLVED"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_error id="ERR-008" analyzer_id="1002"
+        error_type="CONNECTION" severity="CRITICAL"
+        error_message="Connection refused: 192.168.1.102:8082"
+        status="UNACKNOWLEDGED" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_error id="ERR-009" analyzer_id="1003"
+        error_type="PROTOCOL" severity="ERROR"
+        error_message="Invalid ASTM message format: missing terminator"
+        raw_message="H|\\^&amp;||" status="UNACKNOWLEDGED" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_error id="ERR-010" analyzer_id="1003"
+        error_type="MAPPING" severity="ERROR"
+        error_message="Culture result code not found: STAPH_AUREUS"
+        raw_message="R|1|^^^CULTURE|STAPH_AUREUS" status="UNACKNOWLEDGED"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <analyzer_error id="ERR-011" analyzer_id="1003"
+        error_type="VALIDATION" severity="WARNING"
+        error_message="Sample ID not found in system: UNKNOWN-001"
+        raw_message="H|1|UNKNOWN-001" status="UNACKNOWLEDGED" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_error id="ERR-012" analyzer_id="1003"
+        error_type="VALIDATION" severity="WARNING"
+        error_message="Patient ID mismatch: expected P001, got P999"
+        raw_message="P|1|P999" status="UNACKNOWLEDGED" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <analyzer_error id="ERR-013" analyzer_id="1001"
+        error_type="MAPPING" severity="ERROR"
+        error_message="Unit conversion failed: unknown unit 'mg/L'"
+        raw_message="R|1|^^^GLUCOSE|100|mg/L" status="UNACKNOWLEDGED"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+</dataset>
