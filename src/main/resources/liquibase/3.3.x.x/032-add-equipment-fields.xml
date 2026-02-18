@@ -20,6 +20,11 @@
     -->
 
     <changeSet id="add-equipment-fields-001" author="claude-code">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="inventory_item" columnName="equipment_condition" schemaName="clinlims"/>
+            </not>
+        </preConditions>
         <comment>Add equipment-specific fields to inventory_item table</comment>
 
         <!-- Equipment condition (functional/non-functional) -->
@@ -116,6 +121,12 @@
     </changeSet>
 
     <changeSet id="add-equipment-fields-002-indexes" author="claude-code">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="inventory_item" columnName="equipment_condition" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_inventory_item_equipment_condition" schemaName="clinlims"/>
+            </not>
+        </preConditions>
         <comment>Add indexes for new equipment fields</comment>
 
         <createIndex tableName="inventory_item" schemaName="clinlims" indexName="idx_inventory_item_equipment_condition">
@@ -140,6 +151,11 @@
     </changeSet>
 
     <changeSet id="add-lot-specific-fields-001" author="claude-code">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="inventory_lot" columnName="received_by" schemaName="clinlims"/>
+            </not>
+        </preConditions>
         <comment>Add lot-specific storage fields to inventory_lot table</comment>
 
         <!-- Received by (person who received this specific lot) -->
