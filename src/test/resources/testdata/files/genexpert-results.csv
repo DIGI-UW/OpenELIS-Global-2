@@ -1,0 +1,37 @@
+GeneXpert Dx System Export File
+Export Date,2026-02-01
+Export Time,14:30:00
+
+ASSAY INFORMATION
+Assay Name,Xpert Xpress SARS-CoV-2
+Assay Version,1.0
+Assay Type,Qualitative
+Disclaimer,For In Vitro Diagnostic Use
+
+RESULT TABLE
+Sample ID,SAMP-GX-001
+Patient ID,PAT-GX-001
+Assay,Xpert Xpress SARS-CoV-2
+Assay Version,1.0
+Assay Type,Qualitative
+Test Type,SARS-CoV-2
+Sample Type,Nasopharyngeal Swab
+Notes,
+Test Result,SARS-CoV-2 NEGATIVE
+
+ASSAY INFORMATION
+Assay Name,Xpert HBV Viral Load
+Assay Version,2.1
+Assay Type,Quantitative
+Disclaimer,For In Vitro Diagnostic Use
+
+RESULT TABLE
+Sample ID,SAMP-GX-002
+Patient ID,PAT-GX-002
+Assay,Xpert HBV Viral Load
+Assay Version,2.1
+Assay Type,Quantitative
+Test Type,HBV Viral Load
+Sample Type,Plasma
+Notes,
+Test Result,1.5E+04 IU/mL

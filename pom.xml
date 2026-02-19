@@ -54,7 +54,7 @@
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
             <artifactId>hapi-fhir-structures-r4</artifactId>
-            <version>6.6.2</version>
+            <version>7.0.2</version>
             <exclusions>
                 <exclusion>
                     <groupId>xpp3</groupId>
@@ -65,7 +65,13 @@
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
             <artifactId>hapi-fhir-client</artifactId>
-            <version>6.6.2</version>
+            <version>7.0.2</version>
+        </dependency>
+        <dependency>
+            <groupId>ca.uhn.hapi.fhir</groupId>
+            <artifactId>hapi-fhir-server</artifactId>
+            <version>7.0.2</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
@@ -80,7 +86,7 @@
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
             <artifactId>hapi-fhir-base</artifactId>
-            <version>6.6.2</version>
+            <version>7.0.2</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -707,6 +713,10 @@
             <artifactId>xmlrpc-common</artifactId>
             <version>3.1.3</version>
         </dependency>
+        <!-- Plugin dependencies are defined in the 'with-plugins' profile below
+            to avoid chicken-and-egg: main project needs plugins, but plugins need main
+            JAR. CI builds main JAR first (without plugins), then plugins, then main
+            with tests. -->
     </dependencies>
     <repositories>
         <repository>
@@ -940,6 +950,9 @@
                 <version>3.2.5</version>
                 <configuration>
                     <skipTests>${skipTests}</skipTests>
+                    <environmentVariables>
+                        <ANALYZER_DEFAULTS_DIR>${project.basedir}/projects/analyzer-defaults</ANALYZER_DEFAULTS_DIR>
+                    </environmentVariables>
                 </configuration>
             </plugin>
             <plugin>
@@ -1016,4 +1029,5 @@
         </dependencies>
 
     </dependencyManagement>
+
 </project>

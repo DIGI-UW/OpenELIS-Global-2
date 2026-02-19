@@ -1,0 +1,9 @@
+Well	Well Position	Sample Name	Target	Task	Reporter	Quencher	Amp Status	CT	Ct Mean	Ct SD	Quantity	Quantity Mean	Quantity SD
+1	A1	SAMPLE-001	SARS-CoV-2	UNKNOWN	FAM	NFQ	Positive	24.567	24.567	0.00	0	0	0
+2	A2	SAMPLE-002	SARS-CoV-2	UNKNOWN	FAM	NFQ	Positive	26.123	26.123	0.00	0	0	0
+3	A3	SAMPLE-003	SARS-CoV-2	UNKNOWN	FAM	NFQ	Negative	Undetermined	Undetermined	0.00	0	0	0
+4	A4	CPOS	SARS-CoV-2	Control	FAM	NFQ	Positive	18.456	18.456	0.00	0	0	0
+5	A5	CNEG	SARS-CoV-2	Control	FAM	NFQ	Negative	Undetermined	Undetermined	0.00	0	0	0
+6	A6	SAMPLE-004	SARS-CoV-2	UNKNOWN	FAM	NFQ	Positive	22.891	22.891	0.00	0	0	0
+7	A7	SAMPLE-005	IC	UNKNOWN	VIC	NFQ	Positive	28.345	28.345	0.00	0	0	0
+8	A8	SAMPLE-001	IC	UNKNOWN	VIC	NFQ	Positive	29.012	29.012	0.00	0	0	0

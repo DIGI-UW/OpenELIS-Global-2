@@ -5,12 +5,18 @@ import Footer from "./Footer";
 import { Content, Theme } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getFromOpenElisServer } from "../utils/Utils";
+import { useSideNavPreference } from "./useSideNavPreference";
 
 export const ConfigurationContext = createContext(null);
 export const NotificationContext = createContext(null);
 
 export default function Layout(props) {
-  const { children } = props;
+  const {
+    children,
+    defaultMode: pageDefaultMode,
+    storageKeyPrefix: pageStorageKeyPrefix,
+  } = props;
+  const location = useLocation();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const [resetConfig, setResetConfig] = useState(false);
   const [configurationProperties, setConfigurationProperties] = useState({});
@@ -83,9 +89,25 @@ export default function Layout(props) {
         }}
       >
         <div className="d-flex flex-column min-vh-100">
-          <Header onChangeLanguage={props.onChangeLanguage} />
+          <Header
+            onChangeLanguage={props.onChangeLanguage}
+            mode={mode}
+            isExpanded={isExpanded}
+            toggleSideNav={toggle}
+            setMode={setMode}
+            SIDENAV_MODES={SIDENAV_MODES}
+            defaultMode={layoutConfig.defaultMode}
+            storageKeyPrefix={layoutConfig.storageKeyPrefix}
+          />
+          {/* Theme wrapper creates white theme zone for content area */}
+          {/* Global SCSS theme = blue header/nav, this = light content */}
           <Theme theme="white">
-            <Content>{children}</Content>
+            <Content
+              data-testid="content-wrapper"
+              className={isLocked ? "content-nav-locked" : ""}
+            >
+              {children}
+            </Content>
           </Theme>
           <Footer />
         </div>
