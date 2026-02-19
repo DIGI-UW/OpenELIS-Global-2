@@ -7,28 +7,19 @@ import {
   Button,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import PropTypes from "prop-types";
 
-/**
- * PrintLabelConfirmationDialog - Confirmation dialog for label printing
- * Shows: "Print label for [Location Name] ([Location Code])?"
- *
- * Props:
- * - open: boolean - Whether dialog is open
- * - locationName: string - Location name
- * - locationCode: string - Location code
- * - onConfirm: function - Callback when user confirms
- * - onCancel: function - Callback when user cancels
- */
-const PrintLabelConfirmationDialog = ({
-  open,
-  locationName,
-  locationCode,
-  onConfirm,
-  onCancel,
-}) => {
+interface PrintLabelConfirmationDialogProps {
+  open: boolean;
+  locationName?: string;
+  locationCode?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+const PrintLabelConfirmationDialog: React.FC<
+  PrintLabelConfirmationDialogProps
+> = ({ open, locationName = "", locationCode = "", onConfirm, onCancel }) => {
   const intl = useIntl();
-
   const displayName = locationName || locationCode || "this location";
   const displayCode = locationCode ? ` (${locationCode})` : "";
 
@@ -77,19 +68,6 @@ const PrintLabelConfirmationDialog = ({
       </ModalFooter>
     </ComposedModal>
   );
-};
-
-PrintLabelConfirmationDialog.propTypes = {
-  open: PropTypes.bool.isRequired,
-  locationName: PropTypes.string,
-  locationCode: PropTypes.string,
-  onConfirm: PropTypes.func.isRequired,
-  onCancel: PropTypes.func.isRequired,
-};
-
-PrintLabelConfirmationDialog.defaultProps = {
-  locationName: "",
-  locationCode: "",
 };
 
 export default PrintLabelConfirmationDialog;
