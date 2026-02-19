@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Value and unit mapping tables for analyzer result translation -->
+
+    <!-- qualitative_result_mapping: maps analyzer-specific qualitative values to OpenELIS codes -->
+    <changeSet id="011-004-01-create-qualitative-result-mapping-table" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="qualitative_result_mapping"/>
+            </not>
+        </preConditions>
+        <comment>Create qualitative_result_mapping table for analyzer-to-OpenELIS value mappings</comment>
+        <createTable tableName="qualitative_result_mapping">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_field_id" type="VARCHAR(36)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_qualitative_mapping_field"
+                    references="analyzer_field(id)"/>
+            </column>
+            <column name="analyzer_value" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="openelis_code" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_default" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="qualitative_result_mapping"
+            columnNames="analyzer_field_id, analyzer_value"
+            constraintName="uk_qualitative_mapping_field_value"/>
+        <rollback>
+            <dropTable tableName="qualitative_result_mapping"/>
+        </rollback>
+    </changeSet>
+
+    <!-- unit_mapping: maps analyzer units to OpenELIS units with conversion factors -->
+    <changeSet id="011-004-02-create-unit-mapping-table" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="unit_mapping"/>
+            </not>
+        </preConditions>
+        <comment>Create unit_mapping table for analyzer-to-OpenELIS unit conversion</comment>
+        <createTable tableName="unit_mapping">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_field_id" type="VARCHAR(36)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_unit_mapping_field"
+                    references="analyzer_field(id)"/>
+            </column>
+            <column name="analyzer_unit" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="openelis_unit" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="conversion_factor" type="DECIMAL(10,6)"/>
+            <column name="reject_if_mismatch" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="unit_mapping"
+            columnNames="analyzer_field_id, analyzer_unit"
+            constraintName="uk_unit_mapping_field_unit"/>
+        <rollback>
+            <dropTable tableName="unit_mapping"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
