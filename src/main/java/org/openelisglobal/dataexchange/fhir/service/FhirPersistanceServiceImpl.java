@@ -195,16 +195,32 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @Override
     public Optional<Patient> getPatientByUuid(String uuid) {
-        Bundle bundle = localFhirClient.search() //
-                .forResource(Patient.class) //
-                .returnBundle(Bundle.class) //
-                .where(Patient.IDENTIFIER.exactly().systemAndIdentifier(fhirConfig.getOeFhirSystem() + "/pat_uuid",
-                        uuid)) //
-                .execute();
-        if (bundle.hasEntry()) {
-            return Optional.of((Patient) bundle.getEntryFirstRep().getResource());
+
+        try {
+
+            if (localFhirClient == null) {
+                LogEvent.logError(this.getClass().getSimpleName(), "getPatientByUuid",
+                        "Local FHIR client is null — store unavailable");
+                return Optional.empty();
+            }
+
+            Bundle bundle = localFhirClient.search().forResource(Patient.class).returnBundle(Bundle.class).where(
+                    Patient.IDENTIFIER.exactly().systemAndIdentifier(fhirConfig.getOeFhirSystem() + "/pat_uuid", uuid))
+                    .execute();
+
+            if (bundle != null && bundle.hasEntry()) {
+                return Optional.of((Patient) bundle.getEntryFirstRep().getResource());
+            }
+
+            return Optional.empty();
+
+        } catch (Exception e) {
+
+            LogEvent.logError(this.getClass().getSimpleName(), "getPatientByUuid",
+                    "Local FHIR store unavailable for uuid=" + uuid + " : " + e.getMessage());
+
+            return Optional.empty();
         }
-        return Optional.empty();
     }
 
     @Override
