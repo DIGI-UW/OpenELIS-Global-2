@@ -238,6 +238,7 @@ public abstract class ConfigurationProperties {
         GPS_ENABLED("gpsCoordinatesEnabled", "text"), // if true, GPS coordinate fields are displayed in order entry
         GPS_ACCURACY_METERS("gpsRequiredAccuracyMeters", "text"), // maximum acceptable GPS accuracy in meters
         GPS_TIMEOUT_SECONDS("gpsTimeoutSeconds", "text"); // timeout in seconds for GPS location requests
+        USE_NEW_ADDRESS_HIERARCHY("useNewAddressHierarchy", "text"); // if true, use new configurable address hierarchy
 
         // visible on
         // the ui

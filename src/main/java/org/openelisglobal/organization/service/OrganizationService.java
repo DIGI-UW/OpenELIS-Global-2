@@ -54,4 +54,6 @@ public interface OrganizationService extends BaseObjectService<Organization, Str
     List<Organization> getActiveOrganizations();
 
     Organization getOrganizationByFhirId(String idPart);
+
+    Organization getOrganizationByCode(String code);
 }

@@ -1,0 +1,5 @@
+level,typeName,displayKey,sortOrder,defaultValue
+1,Province,address.level.province,1,
+2,District,address.level.district,2,
+3,Sub-District,address.level.subdistrict,3,
+4,Village,address.level.village,4,

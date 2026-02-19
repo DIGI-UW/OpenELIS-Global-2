@@ -545,4 +545,28 @@ public class OrganizationDAOImpl extends BaseDAOImpl<Organization, String> imple
 
         return null;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Organization getOrganizationByCode(String code) {
+        if (GenericValidator.isBlankOrNull(code)) {
+            return null;
+        }
+
+        String sql = "from Organization o where o.code = :code";
+
+        try {
+            Query<Organization> query = entityManager.unwrap(Session.class).createQuery(sql, Organization.class);
+            query.setParameter("code", code);
+            List<Organization> list = query.list();
+            if (!list.isEmpty()) {
+                return list.get(0);
+            }
+            return null;
+        } catch (HibernateException e) {
+            handleException(e, "getOrganizationByCode");
+        }
+
+        return null;
+    }
 }

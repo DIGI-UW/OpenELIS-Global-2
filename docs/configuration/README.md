@@ -30,6 +30,16 @@ Configure FHIR Questionnaire resources for data collection forms.
 - **Features:** FHIR-compliant questionnaires, automatic UUID assignment,
   checksum tracking
 
+### [Address Hierarchy Configuration](address-hierarchy-configuration.md)
+
+Configure hierarchical geographic/administrative divisions (e.g., Province →
+District → Sub-District → Village).
+
+- **Location:** `configuration/backend/address-hierarchy/`
+- **Format:** CSV
+- **Features:** Configurable hierarchy levels, parent-child relationships,
+  backward compatible with Health Region/District
+
 ## How Configuration Loading Works
 
 Configuration files are loaded automatically during application startup:

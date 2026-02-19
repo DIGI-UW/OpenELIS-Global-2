@@ -226,4 +226,10 @@ public class OrganizationServiceImpl extends AuditableBaseObjectServiceImpl<Orga
     public Organization getOrganizationByFhirId(String uuid) {
         return baseObjectDAO.getOrganizationByFhirId(uuid);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Organization getOrganizationByCode(String code) {
+        return baseObjectDAO.getOrganizationByCode(code);
+    }
 }

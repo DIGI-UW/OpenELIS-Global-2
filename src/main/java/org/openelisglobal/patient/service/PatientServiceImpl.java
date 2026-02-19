@@ -676,6 +676,29 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
         persistIdentityType(patientInfo.getHealthRegion(), "HEALTH REGION", patientInfo, patient, sysUserId);
         persistIdentityType(patientInfo.getOtherNationality(), "OTHER NATIONALITY", patientInfo, patient, sysUserId);
         persistIdentityType(patientInfo.getGuid(), "GUID", patientInfo, patient, sysUserId);
+
+        // Persist dynamic address hierarchy values (addressHierarchy_0,
+        // addressHierarchy_1, etc.)
+        System.out
+                .println("DEBUG SAVE PatientServiceImpl: Address hierarchy map: " + patientInfo.getAddressHierarchy());
+        if (patientInfo.getAddressHierarchy() != null && !patientInfo.getAddressHierarchy().isEmpty()) {
+            System.out.println(
+                    "DEBUG SAVE PatientServiceImpl: Map has " + patientInfo.getAddressHierarchy().size() + " entries");
+            for (Map.Entry<String, String> entry : patientInfo.getAddressHierarchy().entrySet()) {
+                System.out.println("DEBUG SAVE PatientServiceImpl: Processing entry: key=" + entry.getKey() + ", value="
+                        + entry.getValue());
+                if (entry.getKey() != null && entry.getValue() != null && !entry.getValue().isEmpty()) {
+                    // Convert key like "addressHierarchy_0" to identity type "ADDRESS_HIERARCHY_0"
+                    String identityType = entry.getKey().toUpperCase().replace("ADDRESSHIERARCHY", "ADDRESS_HIERARCHY");
+                    System.out.println("DEBUG SAVE PatientServiceImpl: Persisting identity type: " + identityType
+                            + " with value: " + entry.getValue());
+                    persistIdentityType(entry.getValue(), identityType, patientInfo, patient, sysUserId);
+                    System.out.println("DEBUG SAVE PatientServiceImpl: Successfully persisted " + identityType);
+                }
+            }
+        } else {
+            System.out.println("DEBUG SAVE PatientServiceImpl: Address hierarchy map is null or empty!");
+        }
     }
 
     private void persistExtraPatientAddressInfo(PatientManagementInfo patientInfo, Patient patient, String sysUserId) {
