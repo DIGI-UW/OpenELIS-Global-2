@@ -123,7 +123,10 @@ public class WHONetReportServiceImpl implements WHONetReportService {
                                             reflexAnalysis.getTest().getName(),
                                             resultService.getSimpleResultValue(triggerResult), "",
                                             reflexAnalysis.getMethod() == null ? ""
-                                                    : reflexAnalysis.getMethod().getLocalizedValue()));
+                                                    : reflexAnalysis.getMethod().getLocalizedValue(),
+                                            sample.getGpsLatitude() != null ? sample.getGpsLatitude().toString() : "",
+                                            sample.getGpsLongitude() != null ? sample.getGpsLongitude().toString()
+                                                    : ""));
                                 } else {
                                     // else add the info of both tests/results
                                     for (Result reflexResult : reflexResults) {
@@ -137,7 +140,11 @@ public class WHONetReportServiceImpl implements WHONetReportService {
                                                 resultService.getSimpleResultValue(triggerResult),
                                                 resultService.getSimpleResultValue(reflexResult),
                                                 reflexAnalysis.getMethod() == null ? ""
-                                                        : reflexAnalysis.getMethod().getLocalizedValue()));
+                                                        : reflexAnalysis.getMethod().getLocalizedValue(),
+                                                sample.getGpsLatitude() != null ? sample.getGpsLatitude().toString()
+                                                        : "",
+                                                sample.getGpsLongitude() != null ? sample.getGpsLongitude().toString()
+                                                        : ""));
                                     }
                                 }
                             }

@@ -1,0 +1,37 @@
+# Mindray BA-88A Biochemistry Analyzer ASTM LIS2-A2 Test Fixture
+# Feature: 011-madagascar-analyzer-integration, Milestone: M6
+# Protocol: ASTM LIS2-A2 over RS232 (via openelis-analyzer-bridge)
+# Analyzer: Mindray BA-88A Semi-automatic Biochemistry Analyzer
+#
+# This fixture simulates a typical biochemistry result message from the BA-88A.
+# The BA-88A outputs ASTM-formatted messages containing liver function and
+# lipid panel test results.
+#
+# ASTM Segment Structure:
+# H - Header (analyzer identification)
+# P - Patient information
+# O - Order (specimen/accession number)
+# R - Result (test code, value, units)
+# L - Terminator
+#
+# RS232 Configuration for BA-88A:
+# - Baud Rate: 9600
+# - Data Bits: 8
+# - Parity: None
+# - Stop Bits: 1
+# - Flow Control: None
+
+H|\^&|||Mindray^BA-88A^1.0|||||LIS2-A2||P|1|20260202120000
+P|1||PATIENT001||Doe^John||19800115|M|||||||||||||||||||
+O|1|ACC-2026-001^LAB||^^^CHEM||||20260202115500|||A||||||||||||||Q
+R|1|^^^ALT|35.2|U/L|10-40|N||F||20260202115530||
+R|2|^^^AST|28.7|U/L|10-40|N||F||20260202115535||
+R|3|^^^ALP|82.1|U/L|40-130|N||F||20260202115540||
+R|4|^^^T-Bil|0.9|mg/dL|0.1-1.2|N||F||20260202115545||
+R|5|^^^D-Bil|0.2|mg/dL|0-0.3|N||F||20260202115550||
+R|6|^^^TC|195.0|mg/dL|125-200|N||F||20260202115555||
+R|7|^^^TG|145.0|mg/dL|50-150|N||F||20260202115600||
+R|8|^^^HDL-C|52.0|mg/dL|40-60|N||F||20260202115605||
+R|9|^^^CREA|1.1|mg/dL|0.7-1.3|N||F||20260202115610||
+R|10|^^^TP|7.2|g/dL|6.0-8.0|N||F||20260202115615||
+L|1|N
