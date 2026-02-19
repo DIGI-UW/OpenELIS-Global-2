@@ -133,7 +133,7 @@ li.clickableUserDetails:hover {
   font-size: 10px;
 }
 
-.inlineDivBlock>div {
+.inlineDivBlock > div {
   display: inline-block;
   margin-right: 1rem;
 }
@@ -433,16 +433,16 @@ button {
   background-color: var(--cds-background, #295785);
 }
 
-.reduced-padding-nav-menu-item>a.cds--side-nav__link {
+.reduced-padding-nav-menu-item > a.cds--side-nav__link {
   padding-left: 1rem !important;
 }
 
-.top-level-menu-item>a {
+.top-level-menu-item > a {
   pointer-events: auto !important;
   text-decoration: none !important;
 }
 
-.top-level-menu-item>a:hover {
+.top-level-menu-item > a:hover {
   background-color: var(--cds-background-hover, #072655);
 }
 
