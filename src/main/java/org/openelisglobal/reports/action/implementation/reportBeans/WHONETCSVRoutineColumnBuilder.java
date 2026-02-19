@@ -46,12 +46,14 @@ public class WHONETCSVRoutineColumnBuilder {
         private String organism;
         private String result;
         private String method;
+        private String latitude;
+        private String longitude;
 
-        private String delimeter = "\t";
+        private String delimiter = ",";
 
         public WHONetRow(String nationalId, String firstName, String lastName, String sex, String birthdate,
                 String enteredDate, String labNo, String collectionDate, String sampleType, String antibiotic,
-                String organism, String result, String method) {
+                String organism, String result, String method, String latitude, String longitude) {
             this.nationalId = nationalId;
             this.firstName = firstName;
             this.lastName = lastName;
@@ -65,12 +67,28 @@ public class WHONETCSVRoutineColumnBuilder {
             this.organism = organism;
             this.result = result;
             this.method = method;
+            this.latitude = latitude;
+            this.longitude = longitude;
         }
 
         public String getRow() {
-            List<String> rowValues = Arrays.asList(nationalId, firstName, lastName, sex, birthdate, enteredDate, labNo,
-                    collectionDate, sampleType, antibiotic, organism, result, method);
-            return String.join(delimeter, rowValues);
+            List<String> rowValues = Arrays.asList(csvQuote(nationalId), csvQuote(firstName), csvQuote(lastName),
+                    csvQuote(sex), csvQuote(birthdate), csvQuote(enteredDate), csvQuote(labNo),
+                    csvQuote(collectionDate), csvQuote(sampleType), csvQuote(antibiotic), csvQuote(organism),
+                    csvQuote(result), csvQuote(method), csvQuote(latitude), csvQuote(longitude));
+            return String.join(delimiter, rowValues);
+        }
+
+        /**
+         * Properly quotes CSV fields to ensure correct parsing in Excel and other
+         * applications. Always quotes fields to maintain consistent column alignment.
+         */
+        private String csvQuote(String value) {
+            if (value == null || value.isEmpty()) {
+                return "\"\"";
+            }
+            // Always quote to ensure consistent column alignment in Excel
+            return "\"" + value.replace("\"", "\"\"") + "\"";
         }
     }
 
@@ -107,10 +125,9 @@ public class WHONETCSVRoutineColumnBuilder {
      * @return one string with all names.
      */
     public String getColumnNamesLine() {
-        return new StringBuilder().append(
-                new WHONetRow("NATIONAL ID", "FIRST NAME", "LAST NAME", "SEX", "BIRTHDATE", "DATE ENTERED", "LABNO",
-                        "DATE COLLECTED", "SPECIMEN TYPE", "ANTIBIOTIC", "ORGANISM", "RESULT", "METHOD").getRow())
-                .append(eol).toString();
+        return new StringBuilder().append(new WHONetRow("NATIONAL_ID", "FIRST_NAME", "LAST_NAME", "SEX", "BIRTH_DATE",
+                "DATE_ENTERED", "LAB_NUMBER", "COLLECTION_DATE", "SPECIMEN_TYPE", "ANTIBIOTIC", "ORGANISM", "RESULT",
+                "TEST_METHOD", "GPS_LATITUDE", "GPS_LONGITUDE").getRow()).append(eol).toString();
     }
 
     /**
