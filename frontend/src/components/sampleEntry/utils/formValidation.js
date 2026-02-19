@@ -3,11 +3,18 @@
 /**
  * Validates patient information fields
  */
-export const validatePatientInfo = (formData) => {
+export const validatePatientInfo = (formData, selectedProject = "") => {
   const errors = [];
 
-  // At least one patient identifier is required
+  // RTN and EID projects do not use patient identifier fields (subjectNumber,
+  // siteSubjectNumber, upidCode) – they identify patients via lab number only,
+  // so skip the identifier check for those projects.
+  const isRTNProject = selectedProject && selectedProject.includes("RTN");
+  const isEIDProject = selectedProject && selectedProject.includes("EID");
+
   if (
+    !isRTNProject &&
+    !isEIDProject &&
     !formData.subjectNumber &&
     !formData.siteSubjectNumber &&
     !formData.upidCode
@@ -118,7 +125,7 @@ export const validateProjectSelection = (formData) => {
  *   plasmaTaken   → asanteTest
  *   serumTaken    → asanteTest
  */
-export const validateTestSelection = (projectData) => {
+export const validateTestSelection = (projectData, selectedProject = "") => {
   const errors = [];
 
   // Safety check: ensure projectData exists
@@ -207,8 +214,15 @@ export const validateTestSelection = (projectData) => {
     ]),
   ];
 
+  const isEIDProject = selectedProject && selectedProject.includes("EID");
+
   const hasSpecimen = specimenFields.some((f) => projectData[f] === true);
-  const hasTest = allTestFields.some((f) => projectData[f] === true);
+
+  // For EID: dryTubeTaken has no required test, dbsTaken requires dnaPCR.
+  // So "has test" for EID means dnaPCR is checked (or dryTubeTaken alone is ok).
+  const hasTest = isEIDProject
+    ? projectData.dnaPCR === true || projectData.dryTubeTaken === true
+    : allTestFields.some((f) => projectData[f] === true);
 
   // Require BOTH specimen container AND test
   if (!hasSpecimen && !hasTest) {
@@ -232,8 +246,9 @@ export const validateTestSelection = (projectData) => {
   if (!hasTest) {
     errors.push({
       field: "tests",
-      message:
-        "Select at least one test (e.g. Serology HIV Test, Glycemia Test, DNA PCR)",
+      message: isEIDProject
+        ? "Select at least one test (DNA PCR) or specimen (Dry Tube)"
+        : "Select at least one test (e.g. Serology HIV Test, Glycemia Test, DNA PCR)",
     });
     return errors;
   }
@@ -243,7 +258,9 @@ export const validateTestSelection = (projectData) => {
   // the backend will receive an empty test list for that sample item and
   // reject with errors.no.sample.
 
+  // For EID, dryTubeTaken has no required associated tests — skip coherence check
   if (
+    !isEIDProject &&
     projectData.dryTubeTaken &&
     !dryTubeTestFields.some((f) => projectData[f])
   ) {
@@ -331,7 +348,11 @@ export const validateARVSection = (projectData, selectedProject) => {
 /**
  * Validates EID section fields
  */
-export const validateEIDSection = (projectData, selectedProject) => {
+export const validateEIDSection = (
+  projectData,
+  selectedProject,
+  observations = {},
+) => {
   const errors = [];
 
   // Only validate if EID project is selected
@@ -347,21 +368,11 @@ export const validateEIDSection = (projectData, selectedProject) => {
     });
   }
 
-  // Infant number is required for EID
-  if (!projectData.dbsInfantNumber) {
-    errors.push({
-      field: "dbsInfantNumber",
-      message: "Infant number is required for EID projects",
-    });
-  }
+  // Infant number (dbsInfantNumber) is optional in old JSP (marked with +, not *)
+  // so we do NOT enforce it here.
 
-  // PCR type is required
-  if (!projectData.eidWhichPCR) {
-    errors.push({
-      field: "eidWhichPCR",
-      message: "PCR type is required for EID projects",
-    });
-  }
+  // whichPCR lives in observations, not projectData
+  // It is optional (not marked required in old JSP), so we do NOT enforce it here.
 
   return errors;
 };
@@ -496,15 +507,21 @@ export const validateEntireForm = (formData, selectedProject) => {
   let allErrors = [];
 
   // Validate each section
-  allErrors = allErrors.concat(validatePatientInfo(formData));
+  allErrors = allErrors.concat(validatePatientInfo(formData, selectedProject));
   allErrors = allErrors.concat(validateSampleInfo(formData));
   allErrors = allErrors.concat(validateProjectSelection(formData));
-  allErrors = allErrors.concat(validateTestSelection(formData.projectData));
+  allErrors = allErrors.concat(
+    validateTestSelection(formData.projectData, selectedProject),
+  );
   allErrors = allErrors.concat(
     validateARVSection(formData.projectData, selectedProject),
   );
   allErrors = allErrors.concat(
-    validateEIDSection(formData.projectData, selectedProject),
+    validateEIDSection(
+      formData.projectData,
+      selectedProject,
+      formData.observations,
+    ),
   );
   allErrors = allErrors.concat(
     validateSpecialRequestSection(formData.projectData, selectedProject),

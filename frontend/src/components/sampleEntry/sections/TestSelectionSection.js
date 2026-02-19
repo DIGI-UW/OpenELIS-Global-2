@@ -167,7 +167,8 @@ const TestSelectionSection = ({
     selectedProject?.includes("ARV") ||
     selectedProject?.includes("Initial") ||
     selectedProject?.includes("Follow");
-  const isEIDProject = selectedProject?.includes("EID");
+  const isEIDProject =
+    selectedProject?.includes("EID") && !selectedProject?.includes("ARIEL");
   const isRTNProject = selectedProject?.includes("RTN");
   const isIndeterminateProject =
     selectedProject?.includes("Indeterminate") ||

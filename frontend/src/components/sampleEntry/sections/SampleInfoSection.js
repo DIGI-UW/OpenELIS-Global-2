@@ -26,22 +26,6 @@ const SampleInfoSection = ({ formData, onInputChange }) => {
 
       <Grid fullWidth={true}>
         <Column lg={8} md={4} sm={4}>
-          <TextInput
-            id="labNo"
-            labelText={intl.formatMessage({
-              id: "sample.entry.lab.number",
-              defaultMessage: "Lab Number",
-            })}
-            value={formData.labNo || ""}
-            onChange={(e) => onInputChange("labNo", e.target.value)}
-            placeholder={intl.formatMessage({
-              id: "sample.entry.lab.number.placeholder",
-              defaultMessage: "Enter lab number",
-            })}
-          />
-        </Column>
-
-        <Column lg={8} md={4} sm={4}>
           <CustomDatePicker
             id="receivedDateForDisplay"
             labelText={intl.formatMessage({

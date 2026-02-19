@@ -17,6 +17,22 @@ const PatientInfoSection = ({
   genders,
   selectedProject,
 }) => {
+  // Map project key to lab number prefix (mirrors StudyInitialEntry.js projectPrefixMap)
+  const projectPrefixMap = {
+    ARV_INITIAL: "LARC",
+    ARV_FOLLOWUP: "LARC",
+    ARV_VIRAL_LOAD: "LARC",
+    RTN: "LRTN",
+    EID: "LDBS",
+    INDETERMINATE: "LIND",
+    SPECIAL_REQUEST: "LSPE",
+    RECENCY_TESTING: "RTRI",
+    HPV_TESTING: "HPVT",
+  };
+
+  const labNoPrefix = selectedProject
+    ? projectPrefixMap[selectedProject] || ""
+    : "";
   const intl = useIntl();
   const [calculatedAge, setCalculatedAge] = useState("");
 
@@ -255,14 +271,30 @@ const PatientInfoSection = ({
                   id: "quick.entry.accession.number",
                   defaultMessage: "Lab Number",
                 })}
+                {labNoPrefix && (
+                  <span
+                    style={{
+                      fontWeight: "normal",
+                      marginLeft: "0.5rem",
+                      color: "#525252",
+                    }}
+                  >
+                    ({labNoPrefix} + 5 digits)
+                  </span>
+                )}
               </>
             }
             value={formData.labNo || ""}
             onChange={(e) => onInputChange("labNo", e.target.value)}
-            placeholder={intl.formatMessage({
-              id: "sample.entry.lab.number.placeholder",
-              defaultMessage: "Enter lab number",
-            })}
+            placeholder={
+              labNoPrefix
+                ? `${labNoPrefix}XXXXX`
+                : intl.formatMessage({
+                    id: "sample.entry.lab.number.placeholder",
+                    defaultMessage: "Enter lab number",
+                  })
+            }
+            maxLength={labNoPrefix ? labNoPrefix.length + 5 : undefined}
           />
         </Column>
 
