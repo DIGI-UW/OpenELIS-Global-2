@@ -1476,6 +1476,7 @@
   "menu.validation.date": "按日期",
   "message.method.activation": "在至少分配一个检测之前，此方法单元不会激活。",
   "message.noPluginFound": "未找到插件",
+  "message.propertiesupdate.success": "Properties updated successfully",
   "method.browse.title": "方法部门",
   "method.methodName": "方法名称",
   "modal.add.method": "添加新方法",

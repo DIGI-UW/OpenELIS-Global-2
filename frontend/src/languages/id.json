@@ -1476,6 +1476,7 @@
   "menu.validation.date": "Berdasarkan Tanggal",
   "message.method.activation": "Unit metode ini tidak aktif kecuali setidaknya satu pemeriksaan ditugaskan",
   "message.noPluginFound": "Tidak ada plugin ditemukan",
+  "message.propertiesupdate.success": "Properties updated successfully",
   "method.browse.title": "Bagian Metode",
   "method.methodName": "Nama Metode",
   "modal.add.method": "Tambah Metode Baru",
