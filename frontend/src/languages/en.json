@@ -1476,6 +1476,7 @@
   "menu.validation.date": "By Date",
   "message.method.activation": "This method unit will not be active until at least one test has been assigned to it.",
   "message.noPluginFound": "No plugins Found",
+  "message.propertiesupdate.success": "Properties updated successfully",
   "method.browse.title": "Method Section",
   "method.methodName": "Method Name",
   "modal.add.method": "Add New Method",
