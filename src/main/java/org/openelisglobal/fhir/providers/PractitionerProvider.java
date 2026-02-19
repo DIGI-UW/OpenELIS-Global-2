@@ -72,8 +72,6 @@ public class PractitionerProvider implements IResourceProvider {
 
             Practitioner practitionerToSave = fhirTransformService.transformProviderToPractitioner(providerTosave);
 
-            practitionerToSave.setId(new IdType("Practitioner", provider.getFhirUuidAsString()));
-
             try {
                 fhirPersistenceService.updateFhirResourceInFhirStore(practitionerToSave);
             } catch (Exception syncEx) {
