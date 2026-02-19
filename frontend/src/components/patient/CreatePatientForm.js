@@ -225,7 +225,7 @@ function CreatePatientForm(props) {
     const { id, value } = e.target;
     getFromOpenElisServer(
       "/rest/PhoneNumberValidationProvider?fieldId=patientPhone&value=" +
-        encodeURIComponent(value),
+      encodeURIComponent(value),
       (resp) => {
         const validation = { ...phoneValidation };
         validation[id] = resp;
@@ -300,7 +300,7 @@ function CreatePatientForm(props) {
       if (props.selectedPatient.healthRegion != null) {
         getFromOpenElisServer(
           "/rest/health-districts-for-region?regionId=" +
-            props.selectedPatient.healthRegion,
+          props.selectedPatient.healthRegion,
           fetchHealthDistrictsCallback,
         );
       } else {
@@ -481,6 +481,12 @@ function CreatePatientForm(props) {
       });
     }
   };
+  function handleChange(path) {
+    props.setChanged({
+      ...props.changed,
+      [path]: true,
+    });
+  }
 
   return (
     <>
@@ -586,10 +592,13 @@ function CreatePatientForm(props) {
                       }
                       id={field.name}
                       invalid={
-                        props.error
-                          ? props.error("patientProperties.nationalId")
-                            ? true
-                            : false
+                        // props.error
+                        //   ? props.error("patientProperties.nationalId")
+                        //     ? true
+                        //     : false
+                        props.changed["patientProperties.nationalId"] &&
+                          props.error("patientProperties.nationalId")
+                          ? true
                           : false
                       }
                       invalidText={
@@ -597,6 +606,10 @@ function CreatePatientForm(props) {
                           ? props.error("patientProperties.nationalId")
                           : ""
                       }
+                      onClick={() =>
+                        handleChange("patientProperties.nationalId")
+                      }
+
                       onMouseOut={() => {
                         handleSubjectNoValidation(
                           "nationalId",
@@ -1036,7 +1049,7 @@ function CreatePatientForm(props) {
                               labelText={intl.formatMessage({
                                 id: "patient.address.healthdistrict",
                               })}
-                              onChange={() => {}}
+                              onChange={() => { }}
                               helperText={intl.formatMessage({
                                 id: "patient.emergency.additional.district",
                               })}
@@ -1067,7 +1080,7 @@ function CreatePatientForm(props) {
                               labelText={intl.formatMessage({
                                 id: "patient.eduction",
                               })}
-                              onChange={() => {}}
+                              onChange={() => { }}
                               helperText={intl.formatMessage({
                                 id: "patient.emergency.additional.education",
                               })}
@@ -1094,7 +1107,7 @@ function CreatePatientForm(props) {
                               labelText={intl.formatMessage({
                                 id: "patient.maritalstatus",
                               })}
-                              onChange={() => {}}
+                              onChange={() => { }}
                               helperText={intl.formatMessage({
                                 id: "patient.emergency.additional.maritalstatus",
                               })}
@@ -1125,7 +1138,7 @@ function CreatePatientForm(props) {
                               labelText={intl.formatMessage({
                                 id: "patient.nationality",
                               })}
-                              onChange={() => {}}
+                              onChange={() => { }}
                               helperText={intl.formatMessage({
                                 id: "patient.emergency.additional.nationnality",
                               })}
