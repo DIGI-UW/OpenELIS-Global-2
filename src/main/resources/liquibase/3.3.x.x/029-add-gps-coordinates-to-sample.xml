@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- GPS Coordinates Capture for Order Entry -->
+    <changeSet id="OGC-300-2026-02-11-1" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="sample" columnName="gps_latitude"/>
+            </not>
+        </preConditions>
+
+        <!-- Add GPS coordinate columns to sample table -->
+        <addColumn tableName="sample">
+            <column name="gps_latitude" type="DECIMAL(9,6)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sample">
+            <column name="gps_longitude" type="DECIMAL(9,6)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sample">
+            <column name="gps_accuracy_meters" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sample">
+            <column name="gps_capture_method" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sample">
+            <column name="gps_capture_timestamp" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Add constraints for GPS data integrity -->
+        <sql><![CDATA[
+            ALTER TABLE sample
+            ADD CONSTRAINT chk_gps_latitude_range
+            CHECK (gps_latitude IS NULL OR (gps_latitude >= -90 AND gps_latitude <= 90));
+        ]]></sql>
+
+        <sql><![CDATA[
+            ALTER TABLE sample
+            ADD CONSTRAINT chk_gps_longitude_range
+            CHECK (gps_longitude IS NULL OR (gps_longitude >= -180 AND gps_longitude <= 180));
+        ]]></sql>
+
+        <sql><![CDATA[
+            ALTER TABLE sample
+            ADD CONSTRAINT chk_gps_accuracy_positive
+            CHECK (gps_accuracy_meters IS NULL OR gps_accuracy_meters > 0);
+        ]]></sql>
+
+        <sql><![CDATA[
+            ALTER TABLE sample
+            ADD CONSTRAINT chk_gps_capture_method_values
+            CHECK (gps_capture_method IS NULL OR gps_capture_method IN ('AUTO', 'MANUAL'));
+        ]]></sql>
+
+        <sql><![CDATA[
+            ALTER TABLE sample
+            ADD CONSTRAINT chk_gps_coordinate_consistency
+            CHECK ((gps_latitude IS NULL AND gps_longitude IS NULL)
+                OR (gps_latitude IS NOT NULL AND gps_longitude IS NOT NULL));
+        ]]></sql>
+
+        <!-- Add index for GPS queries -->
+        <createIndex tableName="sample" indexName="idx_sample_gps_coordinates">
+            <column name="gps_latitude"/>
+            <column name="gps_longitude"/>
+        </createIndex>
+
+        <createIndex tableName="sample" indexName="idx_sample_gps_capture_method">
+            <column name="gps_capture_method"/>
+        </createIndex>
+
+        <!-- Rollback -->
+        <rollback>
+            <dropIndex tableName="sample" indexName="idx_sample_gps_capture_method"/>
+            <dropIndex tableName="sample" indexName="idx_sample_gps_coordinates"/>
+            <sql><![CDATA[ALTER TABLE sample DROP CONSTRAINT IF EXISTS chk_gps_coordinate_consistency;]]></sql>
+            <sql><![CDATA[ALTER TABLE sample DROP CONSTRAINT IF EXISTS chk_gps_capture_method_values;]]></sql>
+            <sql><![CDATA[ALTER TABLE sample DROP CONSTRAINT IF EXISTS chk_gps_accuracy_positive;]]></sql>
+            <sql><![CDATA[ALTER TABLE sample DROP CONSTRAINT IF EXISTS chk_gps_longitude_range;]]></sql>
+            <sql><![CDATA[ALTER TABLE sample DROP CONSTRAINT IF EXISTS chk_gps_latitude_range;]]></sql>
+            <dropColumn tableName="sample" columnName="gps_capture_timestamp"/>
+            <dropColumn tableName="sample" columnName="gps_capture_method"/>
+            <dropColumn tableName="sample" columnName="gps_accuracy_meters"/>
+            <dropColumn tableName="sample" columnName="gps_longitude"/>
+            <dropColumn tableName="sample" columnName="gps_latitude"/>
+        </rollback>
+    </changeSet>
+
+        <changeSet author="mherman22" id="OGC-300-2026-02-11-2">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'gpsCoordinatesEnabled'; </sqlCheck>
+        </preConditions>
+        <comment>add GPS enabled configuration to site information</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="gpsCoordinatesEnabled" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="If true display GPS coordinate fields for collection location on order entry" />
+            <column name="value" value="false" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'sampleEntryConfig')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.patient.gps" />
+            <column name="group" value="0" />
+<!--            <column name="tag" value="siteInfo.gpsEnabled" />-->
+        </insert>
+    </changeSet>
+
+    <changeSet author="mherman22" id="OGC-300-2026-02-11-3">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'gpsRequiredAccuracyMeters'; </sqlCheck>
+        </preConditions>
+        <comment>add GPS required accuracy configuration to site information</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="gpsRequiredAccuracyMeters" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Maximum acceptable GPS accuracy in meters (0 to disable accuracy checking)" />
+            <column name="value" value="100" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'sampleEntryConfig')" />
+            <column name="value_type" value="text" />
+            <column name="instruction_key" value="instructions.patient.gps.accuracy" />
+            <column name="group" value="0" />
+<!--            <column name="tag" value="siteInfo.gpsAccuracy" />-->
+        </insert>
+    </changeSet>
+
+    <changeSet author="mherman22" id="OGC-300-2026-02-11-4">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'gpsTimeoutSeconds'; </sqlCheck>
+        </preConditions>
+        <comment>add GPS timeout configuration to site information</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="gpsTimeoutSeconds" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Timeout in seconds for GPS location requests" />
+            <column name="value" value="10" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'sampleEntryConfig')"/>
+            <column name="value_type" value="text" />
+            <column name="instruction_key" value="instructions.patient.gps.timeout" />
+            <column name="group" value="0" />
+<!--            <column name="tag" value="siteInfo.gpsTimeout" />-->
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

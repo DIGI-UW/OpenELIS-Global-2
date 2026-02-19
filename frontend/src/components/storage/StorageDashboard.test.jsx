@@ -440,27 +440,192 @@ describe("StorageDashboard Filter UI", () => {
     jest
       .spyOn(require("react-router-dom"), "useLocation")
       .mockReturnValue(createMockLocation("/Storage/samples"));
+
     renderWithIntl(<StorageDashboard />);
 
     await screen.findByText(/Storage Management Dashboard/i);
 
-    // Set a filter - interact with the TextInput inside the dropdown
-    const locationFilters = screen.getAllByTestId("location-filter-dropdown");
-    const locationFilter = locationFilters[0];
-    const textInput = locationFilter.querySelector('input[type="text"]');
-    if (textInput) {
-      fireEvent.change(textInput, { target: { value: "1" } });
-    }
+    // Initially, Clear Filters should NOT be visible
+    expect(screen.queryAllByTestId("clear-filters-button")).toHaveLength(0);
 
-    // Click Clear Filters button
-    const clearButtons = screen.getAllByText(/Clear Filters/i);
+    // Activate search filter
+    const searchInput = screen.getByTestId("sample-search-input");
+
+    fireEvent.change(searchInput, {
+      target: { value: "test search" },
+    });
+
+    // Verify Clear Filters button appears (at least one button)
+    await waitFor(() => {
+      const clearButtons = screen.queryAllByTestId("clear-filters-button");
+      expect(clearButtons.length).toBeGreaterThan(0);
+    });
+
+    // Click the first Clear Filters button
+    const clearButtons = screen.getAllByTestId("clear-filters-button");
     fireEvent.click(clearButtons[0]);
 
-    // Verify filter is reset - wait for it to clear
-    const resetFilters = await screen.findAllByTestId(
-      "location-filter-dropdown",
-    );
-    expect(resetFilters.length).toBeGreaterThan(0);
+    // Verify button disappears after clearing
+    await waitFor(() => {
+      expect(screen.queryAllByTestId("clear-filters-button")).toHaveLength(0);
+    });
+
+    // Verify search input is cleared
+    expect(searchInput.value).toBe("");
+  });
+
+  // for rooms
+
+  test("Clear Filters appears only when Rooms filters active", async () => {
+    jest
+      .spyOn(require("react-router-dom"), "useLocation")
+      .mockReturnValue(createMockLocation("/Storage/rooms"));
+
+    renderWithIntl(<StorageDashboard />);
+
+    await screen.findByText(/Storage Management Dashboard/i);
+
+    // Initially hidden
+    expect(screen.queryAllByTestId("clear-filters-button")).toHaveLength(0);
+
+    // Activate search filter (stable trigger)
+    const searchInput = screen.getByTestId("room-search-input");
+
+    fireEvent.change(searchInput, {
+      target: { value: "lab" },
+    });
+
+    // Clear button should appear
+    await waitFor(() => {
+      expect(
+        screen.queryAllByTestId("clear-filters-button").length,
+      ).toBeGreaterThan(0);
+    });
+
+    // Click Clear
+    fireEvent.click(screen.getAllByTestId("clear-filters-button")[0]);
+
+    // Should disappear
+    await waitFor(() => {
+      expect(screen.queryAllByTestId("clear-filters-button")).toHaveLength(0);
+    });
+  });
+
+  // devices tab
+  test("Clear Filters appears only when Devices filters active", async () => {
+    jest
+      .spyOn(require("react-router-dom"), "useLocation")
+      .mockReturnValue(createMockLocation("/Storage/devices"));
+
+    renderWithIntl(<StorageDashboard />);
+
+    await screen.findByText(/Storage Management Dashboard/i);
+
+    // Initially hidden
+    expect(screen.queryAllByTestId("clear-filters-button")).toHaveLength(0);
+
+    // Activate search filter
+    const searchInput = screen.getByTestId("device-search-input");
+
+    fireEvent.change(searchInput, {
+      target: { value: "freezer" },
+    });
+
+    // Should appear
+    await waitFor(() => {
+      expect(
+        screen.queryAllByTestId("clear-filters-button").length,
+      ).toBeGreaterThan(0);
+    });
+
+    // Click clear
+    fireEvent.click(screen.getAllByTestId("clear-filters-button")[0]);
+
+    // Should disappear
+    await waitFor(() => {
+      expect(screen.queryAllByTestId("clear-filters-button")).toHaveLength(0);
+    });
+
+    // Input cleared
+    expect(searchInput.value).toBe("");
+  });
+
+  // for shelves tab
+  test("Clear Filters appears only when Shelves filters active", async () => {
+    jest
+      .spyOn(require("react-router-dom"), "useLocation")
+      .mockReturnValue(createMockLocation("/Storage/shelves"));
+
+    renderWithIntl(<StorageDashboard />);
+
+    await screen.findByText(/Storage Management Dashboard/i);
+
+    // Initially hidden
+    expect(screen.queryAllByTestId("clear-filters-button")).toHaveLength(0);
+
+    // Activate search
+    const searchInput = screen.getByTestId("shelf-search-input");
+
+    fireEvent.change(searchInput, {
+      target: { value: "Shelf-A" },
+    });
+
+    // Should appear
+    await waitFor(() => {
+      const buttons = screen.queryAllByTestId("clear-filters-button");
+      expect(buttons.length).toBeGreaterThan(0);
+    });
+
+    // Click clear
+    const clearButtons = screen.getAllByTestId("clear-filters-button");
+    fireEvent.click(clearButtons[0]);
+
+    // Should disappear
+    await waitFor(() => {
+      expect(screen.queryAllByTestId("clear-filters-button")).toHaveLength(0);
+    });
+
+    // Input cleared
+    expect(searchInput.value).toBe("");
+  });
+
+  // for racks tab
+  test("Clear Filters appears only when Racks filters active", async () => {
+    jest
+      .spyOn(require("react-router-dom"), "useLocation")
+      .mockReturnValue(createMockLocation("/Storage/racks"));
+
+    renderWithIntl(<StorageDashboard />);
+
+    await screen.findByText(/Storage Management Dashboard/i);
+
+    // Initially hidden
+    expect(screen.queryAllByTestId("clear-filters-button")).toHaveLength(0);
+
+    // Activate search
+    const searchInput = screen.getByTestId("rack-search-input");
+
+    fireEvent.change(searchInput, {
+      target: { value: "Rack-1" },
+    });
+
+    // Should appear
+    await waitFor(() => {
+      const buttons = screen.queryAllByTestId("clear-filters-button");
+      expect(buttons.length).toBeGreaterThan(0);
+    });
+
+    // Click clear
+    const clearButtons = screen.getAllByTestId("clear-filters-button");
+    fireEvent.click(clearButtons[0]);
+
+    // Should disappear
+    await waitFor(() => {
+      expect(screen.queryAllByTestId("clear-filters-button")).toHaveLength(0);
+    });
+
+    // Input cleared
+    expect(searchInput.value).toBe("");
   });
 
   /**
