@@ -9,11 +9,13 @@ import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
@@ -45,7 +47,8 @@ public class PractitionerProvider implements IResourceProvider {
     }
 
     @Create
-    public MethodOutcome create(@ResourceParam Practitioner practitioner) throws FhirLocalPersistingException {
+    public MethodOutcome create(@ResourceParam Practitioner practitioner, HttpServletRequest request)
+            throws FhirLocalPersistingException {
 
         String method = "create";
         LogEvent.logDebug(this.getClass().getSimpleName(), method, "Received FHIR CREATE request for Practitioner");
@@ -61,7 +64,7 @@ public class PractitionerProvider implements IResourceProvider {
             }
 
             Provider provider = fhirTransformService.transformToProvider(practitioner);
-            provider.getPerson().setSysUserId("1");
+            provider.getPerson().setSysUserId(ControllerUtills.getSysUserId(request));
             Person savedPerson = personService.save(provider.getPerson());
             provider.setPerson(savedPerson);
 
@@ -102,8 +105,8 @@ public class PractitionerProvider implements IResourceProvider {
     }
 
     @Update
-    public MethodOutcome update(@IdParam IdType theId, @ResourceParam Practitioner practitioner)
-            throws FhirLocalPersistingException {
+    public MethodOutcome update(@IdParam IdType theId, @ResourceParam Practitioner practitioner,
+            HttpServletRequest request) throws FhirLocalPersistingException {
 
         String method = "update";
         LogEvent.logDebug(this.getClass().getSimpleName(), method,
@@ -127,7 +130,7 @@ public class PractitionerProvider implements IResourceProvider {
             FhirTransformServiceImpl transForm = new FhirTransformServiceImpl();
             transForm.addHumanNameToPerson(practitioner.getNameFirstRep(), existingPerson);
             transForm.addTelecomToPerson(practitioner.getTelecom(), existingPerson);
-            existingPerson.setSysUserId("1");
+            existingPerson.setSysUserId(ControllerUtills.getSysUserId(request));
             Person updatedPerson = personService.save(existingPerson);
             provider.setPerson(updatedPerson);
             Provider providerToUpdate = providerService.save(provider);

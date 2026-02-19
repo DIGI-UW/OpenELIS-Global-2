@@ -98,7 +98,6 @@ import org.openelisglobal.patient.action.IPatientUpdate;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
-import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
@@ -176,8 +175,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private FhirUtil fhirUtil;
     @Autowired
     private FhirFacilityOrganizationService facilityOrganizationService;
-    @Autowired
-    private PersonService personService;
 
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
