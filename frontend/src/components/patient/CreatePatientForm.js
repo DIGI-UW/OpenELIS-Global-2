@@ -50,6 +50,10 @@ function CreatePatientForm(props) {
   const [patientDetails, setPatientDetails] = useState(CreatePatientFormValues);
   const [healthRegions, setHealthRegions] = useState([]);
   const [healthDistricts, setHealthDistricts] = useState([]);
+  const [addressHierarchyLevels, setAddressHierarchyLevels] = useState([]);
+  const [addressHierarchyValues, setAddressHierarchyValues] = useState({});
+  const [addressHierarchyInitialized, setAddressHierarchyInitialized] =
+    useState(null); // Track which patient's hierarchy is initialized
   const [educationList, setEducationList] = useState([]);
   const [maritalStatuses, setMaritalStatuses] = useState([]);
   const [prevfirstName, setPrevfirstName] = useState("");
@@ -221,6 +225,128 @@ function CreatePatientForm(props) {
     );
   };
 
+  const handleAddressHierarchySelection = (
+    levelIndex,
+    selectedId,
+    setFieldValue,
+  ) => {
+    // Clear all child levels
+    const clearedValues = { ...addressHierarchyValues };
+    for (let i = levelIndex + 1; i < addressHierarchyLevels.length; i++) {
+      clearedValues[i] = [];
+      setFieldValue(`addressHierarchy_${i}`, "");
+    }
+    setAddressHierarchyValues(clearedValues);
+
+    // Fetch children for the selected value
+    if (selectedId && levelIndex < addressHierarchyLevels.length - 1) {
+      getFromOpenElisServer(
+        `/rest/address-hierarchy/children?parentId=${selectedId}`,
+        (children) => {
+          if (componentMounted.current) {
+            setAddressHierarchyValues((prev) => ({
+              ...prev,
+              [levelIndex + 1]: children,
+            }));
+          }
+        },
+      );
+    }
+  };
+
+  const fetchAddressHierarchyLevels = (levels) => {
+    console.log("DEBUG fetchAddressHierarchyLevels: levels received:", levels);
+    if (componentMounted.current && levels && levels.length > 0) {
+      setAddressHierarchyLevels(levels);
+      // Fetch top level values
+      getFromOpenElisServer(`/rest/address-hierarchy/level/1`, (values) => {
+        if (componentMounted.current) {
+          setAddressHierarchyValues({ 0: values });
+          // Also populate healthRegions for backward compatibility
+          setHealthRegions(values);
+
+          // Check if any level has defaults configured
+          const hasDefaults = levels.some((lvl) => lvl.defaultId);
+          console.log(
+            "DEBUG fetchAddressHierarchyLevels: hasDefaults=",
+            hasDefaults,
+            "patientPK=",
+            props.selectedPatient?.patientPK,
+          );
+
+          // Apply defaults for new patients only
+          // Only apply if not editing an existing patient and defaults exist
+          if (!props.selectedPatient?.patientPK && hasDefaults) {
+            console.log(
+              "DEBUG fetchAddressHierarchyLevels: Applying defaults for new patient",
+            );
+            applyAddressHierarchyDefaults(levels);
+          }
+        }
+      });
+    }
+  };
+
+  const applyAddressHierarchyDefaults = (levels) => {
+    console.log("DEBUG: Applying address hierarchy defaults for new patient");
+
+    // Build the defaults object and fetch child values for each level
+    const defaults = {};
+    const fetchChildrenForDefaultLevel = (levelIndex) => {
+      if (levelIndex >= levels.length) {
+        // All defaults applied, update patientDetails
+        console.log("DEBUG: Final defaults to apply:", defaults);
+        if (Object.keys(defaults).length > 0) {
+          setPatientDetails((prev) => ({
+            ...prev,
+            ...defaults,
+          }));
+        }
+        return;
+      }
+
+      const level = levels[levelIndex];
+      if (level.defaultId) {
+        defaults[`addressHierarchy_${levelIndex}`] = level.defaultId;
+        console.log(
+          `DEBUG: Set default for level ${levelIndex}: ${level.defaultId} (${level.defaultValue})`,
+        );
+
+        // Fetch children for next level if this level has a default
+        if (levelIndex < levels.length - 1) {
+          getFromOpenElisServer(
+            `/rest/address-hierarchy/children?parentId=${level.defaultId}`,
+            (children) => {
+              if (componentMounted.current && children) {
+                setAddressHierarchyValues((prev) => ({
+                  ...prev,
+                  [levelIndex + 1]: children,
+                }));
+                // Continue to next level
+                fetchChildrenForDefaultLevel(levelIndex + 1);
+              }
+            },
+          );
+        } else {
+          // Last level, finish
+          fetchChildrenForDefaultLevel(levelIndex + 1);
+        }
+      } else {
+        // No default for this level, stop cascading
+        console.log(`DEBUG: No default for level ${levelIndex}, stopping`);
+        if (Object.keys(defaults).length > 0) {
+          setPatientDetails((prev) => ({
+            ...prev,
+            ...defaults,
+          }));
+        }
+      }
+    };
+
+    // Start from level 0
+    fetchChildrenForDefaultLevel(0);
+  };
+
   const handlePhoneValidation = (e) => {
     const { id, value } = e.target;
     getFromOpenElisServer(
@@ -296,6 +422,27 @@ function CreatePatientForm(props) {
   }
 
   useEffect(() => {
+    console.log(
+      "DEBUG CreatePatientForm: selectedPatient changed:",
+      props.selectedPatient,
+    );
+    console.log(
+      "DEBUG CreatePatientForm: addressHierarchy:",
+      props.selectedPatient?.addressHierarchy,
+    );
+
+    // Reset address hierarchy initialization when patient changes
+    if (
+      props.selectedPatient?.patientPK &&
+      addressHierarchyInitialized !== props.selectedPatient.patientPK
+    ) {
+      console.log(
+        "DEBUG: Resetting addressHierarchyInitialized for new patient",
+        props.selectedPatient.patientPK,
+      );
+      setAddressHierarchyInitialized(null);
+    }
+
     if (props.selectedPatient.patientPK) {
       if (props.selectedPatient.healthRegion != null) {
         getFromOpenElisServer(
@@ -321,14 +468,31 @@ function CreatePatientForm(props) {
         ...patient?.patientContact,
         person: patientContactPerson,
       };
+      // Flatten addressHierarchy map into top-level form fields
+      const flattenedAddressHierarchy = {};
+      if (patient.addressHierarchy) {
+        console.log(
+          "DEBUG CreatePatientForm: Flattening addressHierarchy:",
+          patient.addressHierarchy,
+        );
+        Object.entries(patient.addressHierarchy).forEach(([key, value]) => {
+          flattenedAddressHierarchy[key] = value;
+        });
+        console.log(
+          "DEBUG CreatePatientForm: Flattened:",
+          flattenedAddressHierarchy,
+        );
+      }
       patient = {
         ...patientDetails,
         ...patient,
+        ...flattenedAddressHierarchy,
         patientContact: patientContact,
       };
       setPatientDetails({
         ...patientDetails,
         ...patient,
+        ...flattenedAddressHierarchy,
         patientContact: patientContact,
       });
       getYearsMonthsDaysFromDOB(patient.birthDateForDisplay);
@@ -355,7 +519,22 @@ function CreatePatientForm(props) {
         props.orderFormValues.patientProperties.firstName !== "" ||
         props.orderFormValues.patientProperties.guid !== ""
       ) {
-        setPatientDetails(props.orderFormValues.patientProperties);
+        // Flatten addressHierarchy map into top-level form fields (same as selectedPatient useEffect)
+        const patient = props.orderFormValues.patientProperties;
+        const flattenedAddressHierarchy = {};
+        if (patient.addressHierarchy) {
+          console.log(
+            "DEBUG repopulatePatientInfo: Flattening addressHierarchy:",
+            patient.addressHierarchy,
+          );
+          Object.entries(patient.addressHierarchy).forEach(([key, value]) => {
+            flattenedAddressHierarchy[key] = value;
+          });
+        }
+        setPatientDetails({
+          ...patient,
+          ...flattenedAddressHierarchy,
+        });
         getYearsMonthsDaysFromDOB(
           props.orderFormValues.patientProperties.birthDateForDisplay,
         );
@@ -374,6 +553,123 @@ function CreatePatientForm(props) {
       componentMounted.current = false;
     };
   }, []);
+
+  // Fetch address hierarchy levels when configurationProperties changes
+  useEffect(() => {
+    console.log(
+      "DEBUG: USE_NEW_ADDRESS_HIERARCHY =",
+      configurationProperties.USE_NEW_ADDRESS_HIERARCHY,
+      "componentMounted =",
+      componentMounted.current,
+    );
+    if (
+      configurationProperties.USE_NEW_ADDRESS_HIERARCHY === "true" &&
+      componentMounted.current
+    ) {
+      console.log("DEBUG: Fetching address hierarchy levels...");
+      getFromOpenElisServer(
+        "/rest/address-hierarchy/levels",
+        fetchAddressHierarchyLevels,
+      );
+    }
+  }, [configurationProperties.USE_NEW_ADDRESS_HIERARCHY]);
+
+  // Initialize address hierarchy values when editing a patient
+  useEffect(() => {
+    const patientPK = props.selectedPatient?.patientPK;
+    const addressHierarchy = props.selectedPatient?.addressHierarchy;
+
+    console.log(
+      "DEBUG: Address hierarchy init useEffect triggered. Conditions:",
+      {
+        USE_NEW_ADDRESS_HIERARCHY:
+          configurationProperties.USE_NEW_ADDRESS_HIERARCHY,
+        patientPK: patientPK,
+        addressHierarchy: addressHierarchy,
+        addressHierarchyKeysLength: addressHierarchy
+          ? Object.keys(addressHierarchy).length
+          : 0,
+        addressHierarchyLevelsLength: addressHierarchyLevels.length,
+        addressHierarchyValues0: addressHierarchyValues[0],
+        addressHierarchyValues0Length: addressHierarchyValues[0]?.length,
+        alreadyInitialized: addressHierarchyInitialized === patientPK,
+      },
+    );
+
+    // Skip if already initialized for this patient
+    if (addressHierarchyInitialized === patientPK) {
+      console.log(
+        "DEBUG: Already initialized for patient",
+        patientPK,
+        ", skipping",
+      );
+      return;
+    }
+
+    if (
+      configurationProperties.USE_NEW_ADDRESS_HIERARCHY === "true" &&
+      patientPK &&
+      addressHierarchy &&
+      Object.keys(addressHierarchy).length > 0 &&
+      addressHierarchyLevels.length > 0 &&
+      addressHierarchyValues[0] && // Ensure level 0 options are loaded
+      addressHierarchyValues[0].length > 0
+    ) {
+      console.log(
+        "DEBUG: All conditions met! Initializing address hierarchy with saved values:",
+        addressHierarchy,
+      );
+
+      // Mark as initialized for this patient to prevent re-running
+      setAddressHierarchyInitialized(patientPK);
+
+      // For each saved level, fetch the children to populate the next dropdown
+      // Use a recursive approach with callbacks to ensure sequential execution
+      const fetchChildrenForLevel = (levelIndex) => {
+        if (levelIndex >= addressHierarchyLevels.length - 1) {
+          console.log("DEBUG: Reached last level, done fetching children");
+          return;
+        }
+        const value = addressHierarchy[`addressHierarchy_${levelIndex}`];
+        console.log(`DEBUG: Level ${levelIndex} saved value: ${value}`);
+        if (value) {
+          getFromOpenElisServer(
+            `/rest/address-hierarchy/children?parentId=${value}`,
+            (children) => {
+              console.log(
+                `DEBUG: Fetched ${children ? children.length : 0} children for level ${levelIndex + 1}`,
+              );
+              if (componentMounted.current && children) {
+                setAddressHierarchyValues((prev) => ({
+                  ...prev,
+                  [levelIndex + 1]: children,
+                }));
+                // Continue to next level after state update
+                // Use setTimeout to allow React to process state update
+                setTimeout(() => {
+                  fetchChildrenForLevel(levelIndex + 1);
+                }, 100);
+              }
+            },
+          );
+        } else {
+          console.log(`DEBUG: No value for level ${levelIndex}, stopping`);
+        }
+      };
+
+      // Start fetching from level 0
+      fetchChildrenForLevel(0);
+    } else {
+      console.log("DEBUG: Conditions NOT met, skipping address hierarchy init");
+    }
+  }, [
+    props.selectedPatient?.patientPK,
+    props.selectedPatient?.addressHierarchy,
+    addressHierarchyLevels,
+    addressHierarchyValues[0], // Re-run when level 0 options are loaded
+    configurationProperties.USE_NEW_ADDRESS_HIERARCHY,
+    addressHierarchyInitialized,
+  ]);
 
   const fetchHeathRegions = (regions) => {
     if (componentMounted.current) {
@@ -935,124 +1231,194 @@ function CreatePatientForm(props) {
                     })}
                   >
                     <Grid>
-                      <Column lg={16} md={8} sm={4}>
-                        {" "}
-                        <br></br>
-                      </Column>
-                      <Column lg={8} md={4} sm={4}>
-                        <Field name="city">
-                          {({ field }) => (
-                            <TextInput
-                              value={values.city || ""}
-                              name={field.name}
-                              labelText={intl.formatMessage({
-                                id: "patient.address.town",
-                              })}
-                              id={field.name}
-                              placeholder={intl.formatMessage({
-                                id: "patient.emergency.additional.town",
-                              })}
-                            />
-                          )}
-                        </Field>
-                      </Column>
-                      <Column lg={8} md={4} sm={4}>
-                        <Field name="streetAddress">
-                          {({ field }) => (
-                            <TextInput
-                              value={values.streetAddress || ""}
-                              name={field.name}
-                              labelText={intl.formatMessage({
-                                id: "patient.address.street",
-                              })}
-                              id={field.name}
-                              placeholder={intl.formatMessage({
-                                id: "patient.emergency.additional.street",
-                              })}
-                            />
-                          )}
-                        </Field>
-                      </Column>
-                      <Column lg={16} md={8} sm={4}>
-                        {" "}
-                        <br></br>
-                      </Column>
-                      <Column lg={8} md={4} sm={4}>
-                        <Field name="commune">
-                          {({ field }) => (
-                            <TextInput
-                              value={values.commune || ""}
-                              name={field.name}
-                              labelText={intl.formatMessage({
-                                id: "patient.address.camp",
-                              })}
-                              id={field.name}
-                              placeholder={intl.formatMessage({
-                                id: "patient.emergency.additional.camp",
-                              })}
-                            />
-                          )}
-                        </Field>
-                      </Column>
-                      <Column lg={16} md={8} sm={4}>
-                        {" "}
-                        <br></br>
-                      </Column>
-                      <Column lg={8} md={4} sm={4}>
-                        <Field name="healthRegion">
-                          {({ field }) => (
-                            <Select
-                              id="health_region"
-                              value={values.healthRegion || ""}
-                              name={field.name}
-                              labelText={intl.formatMessage({
-                                id: "patient.address.healthregion",
-                              })}
-                              onChange={(e) => handleRegionSelection(e, values)}
-                              helperText={intl.formatMessage({
-                                id: "patient.emergency.additional.region",
-                              })}
-                            >
-                              <SelectItem text="" value="" />
-                              {healthRegions?.map((region, index) => (
-                                <SelectItem
-                                  text={region.value}
-                                  value={region.id}
-                                  key={index}
+                      {/* Legacy address fields - Show ONLY if new hierarchy is disabled */}
+                      {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
+                        "false" && (
+                        <>
+                          <Column lg={16} md={8} sm={4}>
+                            {" "}
+                            <br></br>
+                          </Column>
+                          <Column lg={8} md={4} sm={4}>
+                            <Field name="city">
+                              {({ field }) => (
+                                <TextInput
+                                  value={values.city || ""}
+                                  name={field.name}
+                                  labelText={intl.formatMessage({
+                                    id: "patient.address.town",
+                                  })}
+                                  id={field.name}
+                                  placeholder={intl.formatMessage({
+                                    id: "patient.emergency.additional.town",
+                                  })}
                                 />
-                              ))}
-                            </Select>
-                          )}
-                        </Field>
+                              )}
+                            </Field>
+                          </Column>
+                          <Column lg={8} md={4} sm={4}>
+                            <Field name="streetAddress">
+                              {({ field }) => (
+                                <TextInput
+                                  value={values.streetAddress || ""}
+                                  name={field.name}
+                                  labelText={intl.formatMessage({
+                                    id: "patient.address.street",
+                                  })}
+                                  id={field.name}
+                                  placeholder={intl.formatMessage({
+                                    id: "patient.emergency.additional.street",
+                                  })}
+                                />
+                              )}
+                            </Field>
+                          </Column>
+                          <Column lg={16} md={8} sm={4}>
+                            {" "}
+                            <br></br>
+                          </Column>
+                          <Column lg={8} md={4} sm={4}>
+                            <Field name="commune">
+                              {({ field }) => (
+                                <TextInput
+                                  value={values.commune || ""}
+                                  name={field.name}
+                                  labelText={intl.formatMessage({
+                                    id: "patient.address.camp",
+                                  })}
+                                  id={field.name}
+                                  placeholder={intl.formatMessage({
+                                    id: "patient.emergency.additional.camp",
+                                  })}
+                                />
+                              )}
+                            </Field>
+                          </Column>
+                        </>
+                      )}
+                      <Column lg={16} md={8} sm={4}>
+                        {" "}
+                        <br></br>
                       </Column>
+                      {/* Dynamic Address Hierarchy Dropdowns - Show if new hierarchy is enabled */}
+                      {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
+                        "true" &&
+                        addressHierarchyLevels.length > 0 &&
+                        addressHierarchyLevels.map((level, levelIndex) => (
+                          <Column lg={8} md={4} sm={4} key={level.level}>
+                            <Field name={`addressHierarchy_${levelIndex}`}>
+                              {({ field }) => (
+                                <Select
+                                  id={`address_hierarchy_${levelIndex}`}
+                                  value={
+                                    values[`addressHierarchy_${levelIndex}`] ||
+                                    ""
+                                  }
+                                  name={field.name}
+                                  labelText={level.typeName}
+                                  onChange={(e) => {
+                                    setFieldValue(
+                                      `addressHierarchy_${levelIndex}`,
+                                      e.target.value,
+                                    );
+                                    handleAddressHierarchySelection(
+                                      levelIndex,
+                                      e.target.value,
+                                      setFieldValue,
+                                    );
+                                    // For backward compatibility, also set healthRegion/healthDistrict
+                                    if (levelIndex === 0) {
+                                      setFieldValue(
+                                        "healthRegion",
+                                        e.target.value,
+                                      );
+                                      handleRegionSelection(e, values);
+                                    } else if (levelIndex === 1) {
+                                      setFieldValue(
+                                        "healthDistrict",
+                                        e.target.value,
+                                      );
+                                    }
+                                  }}
+                                >
+                                  <SelectItem text="" value="" />
+                                  {(
+                                    addressHierarchyValues[levelIndex] || []
+                                  ).map((item, index) => (
+                                    <SelectItem
+                                      text={item.value}
+                                      value={item.id}
+                                      key={index}
+                                    />
+                                  ))}
+                                </Select>
+                              )}
+                            </Field>
+                          </Column>
+                        ))}
+                      {/* Legacy Health Region/District - Show ONLY if new hierarchy is explicitly disabled */}
+                      {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
+                        "false" && (
+                        <>
+                          <Column lg={8} md={4} sm={4}>
+                            <Field name="healthRegion">
+                              {({ field }) => (
+                                <Select
+                                  id="health_region"
+                                  value={values.healthRegion || ""}
+                                  name={field.name}
+                                  labelText={intl.formatMessage({
+                                    id: "patient.address.healthregion",
+                                  })}
+                                  onChange={(e) =>
+                                    handleRegionSelection(e, values)
+                                  }
+                                  helperText={intl.formatMessage({
+                                    id: "patient.emergency.additional.region",
+                                  })}
+                                >
+                                  <SelectItem text="" value="" />
+                                  {healthRegions?.map((region, index) => (
+                                    <SelectItem
+                                      text={region.value}
+                                      value={region.id}
+                                      key={index}
+                                    />
+                                  ))}
+                                </Select>
+                              )}
+                            </Field>
+                          </Column>
 
-                      <Column lg={8} md={4} sm={4}>
-                        <Field name="healthDistrict">
-                          {({ field }) => (
-                            <Select
-                              id="health_district"
-                              value={values.healthDistrict || ""}
-                              name={field.name}
-                              labelText={intl.formatMessage({
-                                id: "patient.address.healthdistrict",
-                              })}
-                              onChange={() => {}}
-                              helperText={intl.formatMessage({
-                                id: "patient.emergency.additional.district",
-                              })}
-                            >
-                              <SelectItem text="" value="" />
-                              {healthDistricts.map((district, index) => (
-                                <SelectItem
-                                  text={district.value}
-                                  value={district.value}
-                                  key={index}
-                                />
-                              ))}
-                            </Select>
-                          )}
-                        </Field>
-                      </Column>
+                          <Column lg={8} md={4} sm={4}>
+                            <Field name="healthDistrict">
+                              {({ field }) => (
+                                <Select
+                                  id="health_district"
+                                  value={values.healthDistrict || ""}
+                                  name={field.name}
+                                  labelText={intl.formatMessage({
+                                    id: "patient.address.healthdistrict",
+                                  })}
+                                  onChange={() => {}}
+                                  helperText={intl.formatMessage({
+                                    id: "patient.emergency.additional.district",
+                                  })}
+                                >
+                                  <SelectItem text="" value="" />
+                                  {healthDistricts.map((district, index) => (
+                                    <SelectItem
+                                      text={district.value}
+                                      value={district.value}
+                                      key={index}
+                                    />
+                                  ))}
+                                </Select>
+                              )}
+                            </Field>
+                          </Column>
+                        </>
+                      )}
                       <Column lg={16} md={8} sm={4}>
                         {" "}
                         <br></br>

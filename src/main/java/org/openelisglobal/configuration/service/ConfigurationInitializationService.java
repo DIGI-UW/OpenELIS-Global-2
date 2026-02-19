@@ -220,6 +220,13 @@ public class ConfigurationInitializationService implements ApplicationListener<C
             InputStreamSource streamSource = entry.getValue();
             filesFound = true;
 
+            // Check if this handler can process this file
+            if (!handler.canProcess(fileName)) {
+                LogEvent.logDebug(CLASS_NAME, "processFiles",
+                        "Handler " + handler.getClass().getSimpleName() + " skipping file: " + fileName);
+                continue;
+            }
+
             try {
                 // Check if this file has been loaded with the same checksum
                 String currentChecksum;

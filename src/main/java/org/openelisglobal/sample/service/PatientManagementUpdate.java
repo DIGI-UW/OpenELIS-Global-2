@@ -6,6 +6,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.validator.GenericValidator;
@@ -157,6 +158,27 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         persistIdentityType(patientInfo.getHealthRegion(), "HEALTH REGION");
         persistIdentityType(patientInfo.getOtherNationality(), "OTHER NATIONALITY");
         persistIdentityType(patientInfo.getGuid(), "GUID");
+
+        // Persist dynamic address hierarchy values (addressHierarchy_0,
+        // addressHierarchy_1, etc.)
+        System.out.println("DEBUG SAVE: Address hierarchy map: " + patientInfo.getAddressHierarchy());
+        if (patientInfo.getAddressHierarchy() != null && !patientInfo.getAddressHierarchy().isEmpty()) {
+            System.out.println("DEBUG SAVE: Map has " + patientInfo.getAddressHierarchy().size() + " entries");
+            for (Map.Entry<String, String> entry : patientInfo.getAddressHierarchy().entrySet()) {
+                System.out
+                        .println("DEBUG SAVE: Processing entry: key=" + entry.getKey() + ", value=" + entry.getValue());
+                if (entry.getKey() != null && entry.getValue() != null && !entry.getValue().isEmpty()) {
+                    // Convert key like "addressHierarchy_0" to identity type "ADDRESS_HIERARCHY_0"
+                    String identityType = entry.getKey().toUpperCase().replace("ADDRESSHIERARCHY", "ADDRESS_HIERARCHY");
+                    System.out.println("DEBUG SAVE: Persisting identity type: " + identityType + " with value: "
+                            + entry.getValue());
+                    persistIdentityType(entry.getValue(), identityType);
+                    System.out.println("DEBUG SAVE: Successfully persisted " + identityType);
+                }
+            }
+        } else {
+            System.out.println("DEBUG SAVE: Address hierarchy map is null or empty!");
+        }
     }
 
     private void persistExtraPatientAddressInfo(PatientManagementInfo patientInfo) {
@@ -249,10 +271,14 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         Boolean newIdentityNeeded = true;
         String typeID = PatientIdentityTypeMap.getInstance().getIDForType(type);
 
+        if (typeID == null) {
+            return; // Cannot persist without a valid type ID
+        }
+
         if (patientUpdateStatus == PatientUpdateStatus.UPDATE) {
 
             for (PatientIdentity listIdentity : patientIdentities) {
-                if (listIdentity.getIdentityTypeId().equals(typeID)) {
+                if (typeID.equals(listIdentity.getIdentityTypeId())) {
 
                     newIdentityNeeded = false;
 

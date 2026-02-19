@@ -39,6 +39,18 @@ public interface DomainConfigurationHandler {
     }
 
     /**
+     * Checks if this handler can process the given file. This is used when multiple
+     * handlers share the same domain to filter which files each handler should
+     * process. By default, all files matching the extension are accepted.
+     *
+     * @param fileName the name of the file
+     * @return true if this handler should process the file, false to skip
+     */
+    default boolean canProcess(String fileName) {
+        return true;
+    }
+
+    /**
      * Processes a configuration file from the given input stream.
      *
      * @param inputStream the input stream containing the configuration data
