@@ -51,5 +51,5 @@
   <!-- Site Branding / White Labeling (001-site-branding) -->
   <include relativeToChangelogFile="true" file="028-create-site-branding-table.xml"/>
 
-  <!-- NOTE: Analyzer-related changesets have been moved to 3.4.x.x/base.xml -->
+  <include relativeToChangelogFile="true" file="029-add-gps-coordinates-to-sample.xml"/>
 </databaseChangeLog>

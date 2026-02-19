@@ -107,6 +107,38 @@ li.clickableUserDetails:hover {
   width: 120%;
 }
 
+.inlineDiv {
+  display: flex;
+  margin-top: 2%;
+  margin-bottom: 3%;
+  margin-left: 1%;
+}
+
+.gpsDiv {
+  display: flex;
+  margin-top: 2%;
+  /* margin-bottom: 3%; */
+  margin-left: 1%;
+}
+
+.section {
+  border: 0.5px solid green;
+  border-radius: 3px;
+  margin: 0.5%;
+}
+
+.errorMessage {
+  font-size: 12px;
+  color: red;
+  width: 150px;
+  margin-top: 0.25rem;
+}
+
+.errorMessage::before {
+  content: " ";
+  font-size: 10px;
+}
+
 .inlineDivBlock > div {
   display: inline-block;
   margin-right: 1rem;

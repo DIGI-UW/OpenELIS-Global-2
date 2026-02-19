@@ -441,6 +441,12 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.REQUIRE_LAB_UNIT_AT_LOGIN));
         configs.put(Property.ENABLE_CLIENT_REGISTRY.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ENABLE_CLIENT_REGISTRY));
+        configs.put(Property.GPS_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ENABLED));
+        configs.put(Property.GPS_ACCURACY_METERS.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ACCURACY_METERS));
+        configs.put(Property.GPS_TIMEOUT_SECONDS.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_TIMEOUT_SECONDS));
         return configs;
     }
 
