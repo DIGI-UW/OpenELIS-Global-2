@@ -83,8 +83,7 @@ public class ProgramAccessionValidator implements IAccessionNumberGenerator {
     @Override
     public ValidationResults validFormat(String accessionNumber, boolean checkDate) {
         // The rule is 4 digit program code and 5 incremented numbers
-        if (accessionNumber.length() != LENGTH) {
-
+        if (accessionNumber == null || accessionNumber.length() != LENGTH || accessionNumber.trim().isEmpty()) {
             return ValidationResults.LENGTH_FAIL;
         }
 
