@@ -1067,6 +1067,7 @@
   "genericSample.field.storageLocation": "Congélateur de stockage n° et emplacement",
   "genericSample.field.type": "Type",
   "genericSample.notebook.selection.title": "Sélection du projet (facultatif)",
+  "genericSample.edit.success": "Échantillon mis à jour avec succès",
   "genericSample.order.error.labNoRequired": "Veuillez générer un numéro de laboratoire avant d'enregistrer.",
   "genericSample.order.generateLabNo": "Générer un numéro de laboratoire",
   "genericSample.order.labNo.placeholder": "Cliquez sur « Générer un numéro de laboratoire » pour générer ",

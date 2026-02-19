@@ -1124,6 +1124,7 @@
   "genericSample.field.storageLocation": "Storage freezer # & location",
   "genericSample.field.type": "Type",
   "genericSample.notebook.selection.title": "Notebook Selection (Optional)",
+  "genericSample.edit.success": "Sample updated successfully",
   "genericSample.order.error.labNoRequired": "Please generate a Lab Number before saving.",
   "genericSample.order.generateLabNo": "Generate Lab Number",
   "genericSample.order.labNo.placeholder": "Click 'Generate Lab Number' to create",
