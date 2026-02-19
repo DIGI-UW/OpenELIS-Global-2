@@ -105,6 +105,16 @@ jobs:
               cypress/e2e/storageSamplesTable.cy.js,
               cypress/e2e/storageSearch.cy.js,
               cypress/e2e/storageViewStorage.cy.js
+          - shard: admin
+            specs: >-
+              cypress/e2e/AdminE2E/userManagement.cy.js,
+              cypress/e2e/siteBranding.cy.js,
+              cypress/e2e/patientMerge.cy.js,
+              cypress/e2e/help.cy.js,
+              cypress/e2e/labNumberManagement.cy.js,
+              cypress/e2e/AdminE2E/dictionaryMenu.cy.js,
+              cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js,
+              cypress/e2e/AdminE2E/batchTestReassignmentandCancelation.cy.js
           # Catch-all: specs computed dynamically (see "Compute catch-all specs" step)
           - shard: independent
             specs: ""

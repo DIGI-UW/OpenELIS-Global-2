@@ -1,0 +1,41 @@
+{
+  "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "analyzer_name": "Cepheid GeneXpert (HL7 Mode)",
+  "manufacturer": "Cepheid",
+  "category": "MOLECULAR",
+  "protocol": { "name": "HL7", "version": "2.5" },
+  "identifier_pattern": "GENEXPERT|CEPHEID",
+  "transport": ["HTTP", "TCP/IP"],
+  "transport_config": {
+    "HTTP": { "default_port": 8080 },
+    "TCP/IP": {}
+  },
+  "msh3_pattern": "GENEXPERT|CEPHEID",
+  "default_test_mappings": [
+    {
+      "obx_identifier": "MTB",
+      "test_name_hint": "Mycobacterium tuberculosis DNA",
+      "loinc": "23826-1",
+      "unit": ""
+    },
+    {
+      "obx_identifier": "RIF",
+      "test_name_hint": "Rifampin Resistance",
+      "loinc": "46244-0",
+      "unit": ""
+    },
+    {
+      "obx_identifier": "COVID19",
+      "test_name_hint": "SARS-CoV-2 RNA",
+      "loinc": "94500-6",
+      "unit": ""
+    },
+    {
+      "obx_identifier": "HIV",
+      "test_name_hint": "HIV-1 RNA",
+      "loinc": "20447-9",
+      "unit": "copies/mL"
+    }
+  ],
+  "notes": "Multi-protocol capable: FILE (primary), ASTM, HL7 all confirmed per Cepheid LIS spec. This config is for HL7 mode via HTTP transport. GeneXpert uses HTTP instead of MLLP framing. MSH-3 sending application = 'GENEXPERT' or 'CEPHEID'. Results are qualitative (Detected/Not Detected) for most assays."
+}

@@ -1,3 +1,4 @@
+/* Sidenav style improvements — fix/011-sidenav-styles */
 .logo {
   height: 40px;
   width: auto;
@@ -57,55 +58,24 @@ li.clickableUserDetails:hover {
   width: 100%;
 }
 
-.inputSearch {
-  width: 50%;
-  --cds-icon-primary: black;
+.oe-loginPageCenter {
+  width: 100%;
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.rules {
-  display: flex;
-  justify-content: space-between;
-}
-
-.first-division {
-  display: flex;
-  flex-direction: column;
-  margin: 0 5px 0.5rem 0;
+/* REMOVED: Forcing black text caused dark mode input issues 
+   Carbon's <Theme theme="white"> handles this correctly */
+.inputText {
   width: 100%;
 }
 
-.second-division {
-  padding-top: 5%;
+.inputSearch {
+  width: 50%;
 }
 
-button {
-  background: none;
-  cursor: pointer;
-  font-weight: 500;
-  border-radius: 2px;
-  padding: 5px 10px;
-}
-
-.add_button {
-  align-self: flex-start;
-  display: flex;
-  align-items: center;
-  margin-top: 0.5rem;
-  color: rgb(0, 208, 255);
-  border-color: rgb(0, 208, 255);
-}
-
-.add_button,
-.remove-btn {
-  border: 1px solid;
-}
-
-.remove-btn {
-  color: red;
-  border-color: red;
-}
-
-.services {
+.rules {
   display: flex;
   justify-content: space-between;
 }
@@ -358,9 +328,7 @@ button {
 }
 
 .selectSampleType {
-  --cds-text-primary: black;
   width: 200px;
-  --cds-text-secondary: black;
   margin-bottom: 20px;
 }
 
@@ -401,6 +369,14 @@ button {
 }
 
 .cds--date-picker__input {
+  max-width: 200px;
+}
+
+.cds--select-input {
+  max-width: 200px;
+}
+
+.cds--select {
   max-width: 200px;
 }
 
@@ -448,33 +424,6 @@ button {
   display: inline-flex !important;
 }
 
-.custom-sidenav-button {
-  box-sizing: border-box;
-  margin: 0;
-  border: 0;
-  cursor: pointer;
-  display: flex;
-  visibility: visible !important;
-  align-items: center;
-  background-color: var(--cds-background-hover, #072655);
-  color: var(--cds-text-secondary, #ffffff);
-  transition:
-    color 110ms,
-    background-color 110ms,
-    outline 110ms;
-  -webkit-user-select: none;
-  user-select: none;
-  width: 100%;
-}
-
-.custom-sidenav-button {
-  pointer-events: auto;
-}
-
-.custom-sidenav-button:hover {
-  background-color: var(--cds-background, #295785);
-}
-
 .cds--side-nav__link a {
   pointer-events: auto;
   text-decoration: none !important;
@@ -497,9 +446,7 @@ button {
   background-color: var(--cds-background-hover, #072655);
 }
 
-#mainHeader .cds--side-nav__link {
-  pointer-events: none;
-}
+/* Removed pointer-events: none - was blocking subnav clicks after onClick refactor */
 
 @media screen and (max-width: 792px) {
   .banner h5 {
