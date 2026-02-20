@@ -48,6 +48,18 @@ public interface FhirPatientLinkService {
             String mergedFhirUuid) throws FhirLocalPersistingException;
 
     /**
+     * Verifies that FHIR resources exist for both patients before proceeding with a
+     * merge.
+     * Throws an exception if either resource is missing, which should trigger a
+     * transaction rollback.
+     *
+     * @param primaryFhirUuid FHIR UUID of the primary patient resource
+     * @param mergedFhirUuid  FHIR UUID of the merged patient resource
+     * @throws FhirLocalPersistingException If either FHIR resource cannot be found
+     */
+    void verifyFhirResources(String primaryFhirUuid, String mergedFhirUuid) throws FhirLocalPersistingException;
+
+    /**
      * Checks if a patient has an associated FHIR resource (non-null fhirUuid).
      *
      * @param patientId Internal database ID of the patient
