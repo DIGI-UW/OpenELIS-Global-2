@@ -169,10 +169,12 @@ const SampleType = (props) => {
       const defaultReferralRequest = [];
       selectedTests.map((test) => {
         defaultReferralRequest.push({
-          reasonForReferral: referralReasons[0].id,
+          reasonForReferral:
+            referralReasons.length > 0 ? referralReasons[0].id : "",
           referrer:
             userSessionDetails.firstName + " " + userSessionDetails.lastName,
-          institute: referralOrganizations[0].id,
+          institute:
+            referralOrganizations.length > 0 ? referralOrganizations[0].id : "",
           sentDate: "",
           testId: test.id,
         });
