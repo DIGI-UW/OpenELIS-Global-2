@@ -90,25 +90,30 @@ const OrderEntryAdditionalQuestions = ({
   );
 
   const handleProgramSelection = (event) => {
-    if (!event?.target?.value) {
-      setAdditionalQuestions({});
-      setOrderFormValues({
-        ...orderFormValues,
+    const newProgramId = event?.target?.value || "";
+
+    if (!newProgramId) {
+      setQuestionnaire(null);
+      setQuestionnaireResponse(null);
+      setOrderFormValues((prev) => ({
+        ...prev,
         sampleOrderItems: {
-          ...orderFormValues.sampleOrderItems,
+          ...prev.sampleOrderItems,
           programId: "",
+          questionnaire: null,
+          additionalQuestions: null,
         },
-      });
+      }));
     } else {
-      setOrderFormValues({
-        ...orderFormValues,
+      setOrderFormValues((prev) => ({
+        ...prev,
         sampleOrderItems: {
-          ...orderFormValues.sampleOrderItems,
-          programId: event.target.value,
+          ...prev.sampleOrderItems,
+          programId: newProgramId,
         },
-      });
+      }));
       getFromOpenElisServer(
-        "/rest/program/" + event.target.value + "/questionnaire",
+        "/rest/program/" + newProgramId + "/questionnaire",
         (res) => setAdditionalQuestions(res, event),
       );
     }
@@ -145,17 +150,32 @@ const OrderEntryAdditionalQuestions = ({
       setQuestionnaire(res);
       var convertedQuestionnaireResponse = convertQuestionnaireToResponse(res);
       setQuestionnaireResponse(convertedQuestionnaireResponse);
-      setOrderFormValues({
-        ...orderFormValues,
+
+      setOrderFormValues((prev) => ({
+        ...prev,
         sampleOrderItems: {
-          ...orderFormValues.sampleOrderItems,
+          ...prev.sampleOrderItems,
           questionnaire: res,
-          programId: event ? event.target.value : "",
+          programId: event
+            ? event.target.value
+            : prev.sampleOrderItems.programId,
           additionalQuestions: convertedQuestionnaireResponse,
         },
-      });
+      }));
+    } else {
+      setQuestionnaire(null);
+      setQuestionnaireResponse(null);
+      setOrderFormValues((prev) => ({
+        ...prev,
+        sampleOrderItems: {
+          ...prev.sampleOrderItems,
+          questionnaire: null,
+          additionalQuestions: null,
+        },
+      }));
     }
   }
+
   const getAnswer = (linkId) => {
     var responseItem = questionnaireResponse?.item?.find(
       (item) => item.linkId === linkId,
