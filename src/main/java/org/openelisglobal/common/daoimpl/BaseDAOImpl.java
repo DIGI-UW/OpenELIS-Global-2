@@ -674,22 +674,26 @@ public abstract class BaseDAOImpl<T extends BaseObject<PK>, PK extends Serializa
             }
             Predicate predicate;
             switch (comparisonOperation.getComparison()) {
-            case EQ:
-                predicate = criteriaBuilder.equal(pathToProperty, propertyValue);
-                break;
-            case LIKE:
-                predicate = criteriaBuilder.like(criteriaBuilder.lower(pathToProperty),
-                        "%" + ((String) propertyValue).toLowerCase() + "%");
-                break;
-            case IN:
-                In<String> inClause = criteriaBuilder.in(root.get(propertyName));
-                for (String id : (List<String>) propertyValue) {
-                    inClause.value(id);
-                }
-                predicate = inClause;
-                break;
-            default:
-                throw new UnsupportedOperationException();
+                case EQ:
+                    if (propertyValue == null) {
+                        predicate = criteriaBuilder.isNull(pathToProperty);
+                    } else {
+                        predicate = criteriaBuilder.equal(pathToProperty, propertyValue);
+                    }
+                    break;
+                case LIKE:
+                    predicate = criteriaBuilder.like(criteriaBuilder.lower(pathToProperty),
+                            "%" + ((String) propertyValue).toLowerCase() + "%");
+                    break;
+                case IN:
+                    In<String> inClause = criteriaBuilder.in(root.get(propertyName));
+                    for (String id : (List<String>) propertyValue) {
+                        inClause.value(id);
+                    }
+                    predicate = inClause;
+                    break;
+                default:
+                    throw new UnsupportedOperationException();
             }
             wherePredicates.add(predicate);
         }
