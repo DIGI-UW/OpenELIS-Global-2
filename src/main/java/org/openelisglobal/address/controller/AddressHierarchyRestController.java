@@ -181,34 +181,122 @@ public class AddressHierarchyRestController {
     }
 
     /**
-     * Search for locations by name across all levels.
+     * Search for locations by name across all levels. Returns results with full
+     * hierarchy path and IDs for each level, enabling auto-population of address
+     * fields.
      *
-     * @param query The search query
-     * @return List of matching locations
+     * @param query The search query (minimum 2 characters)
+     * @param limit Maximum number of results (default 20, max 50)
+     * @return List of matching locations with full hierarchy information
      */
     @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<AddressSearchResult> search(@RequestParam String query) {
+    public List<AddressSearchResult> search(@RequestParam String query, @RequestParam(defaultValue = "20") int limit) {
         if (GenericValidator.isBlankOrNull(query) || query.length() < 2) {
             return Collections.emptyList();
         }
 
+        // Ensure limit is reasonable
+        limit = Math.min(Math.max(limit, 1), 50);
+
         List<AddressSearchResult> results = new ArrayList<>();
-        List<Organization> orgs = organizationService.getOrganizations(query);
+        // Use searchOrganizationsWithTypes to eagerly load organization types
+        List<Organization> orgs = organizationService.searchOrganizationsWithTypes(query);
 
         for (Organization org : orgs) {
             // Check if this organization is part of an address hierarchy
             if (isAddressHierarchyOrganization(org)) {
-                AddressSearchResult result = new AddressSearchResult();
-                result.setId(org.getId());
-                result.setCode(org.getCode());
-                result.setName(org.getOrganizationName());
-                result.setFullPath(buildFullPath(org));
+                AddressSearchResult result = buildSearchResult(org);
                 results.add(result);
             }
         }
 
-        return results.stream().sorted(Comparator.comparing(AddressSearchResult::getName)).limit(50)
+        return results.stream().sorted(Comparator.comparing(AddressSearchResult::getFullPath)).limit(limit)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Build a search result with full hierarchy path and level IDs.
+     */
+    private AddressSearchResult buildSearchResult(Organization org) {
+        AddressSearchResult result = new AddressSearchResult();
+        result.setId(org.getId());
+        result.setCode(org.getCode());
+        result.setName(org.getOrganizationName());
+
+        // Build the full path and collect level IDs
+        List<String> pathParts = new ArrayList<>();
+        List<AddressSearchResult.HierarchyLevel> levels = new ArrayList<>();
+
+        Organization current = org;
+        while (current != null) {
+            pathParts.add(0, current.getOrganizationName());
+
+            // Determine the level number for this organization
+            int levelNum = getOrganizationLevel(current);
+
+            AddressSearchResult.HierarchyLevel levelInfo = new AddressSearchResult.HierarchyLevel();
+            levelInfo.setLevel(levelNum);
+            levelInfo.setId(current.getId());
+            levelInfo.setName(current.getOrganizationName());
+            levels.add(0, levelInfo);
+
+            current = current.getOrganization();
+        }
+
+        result.setFullPath(String.join(" > ", pathParts));
+        result.setHierarchyLevels(levels);
+
+        return result;
+    }
+
+    /**
+     * Determine the hierarchy level number for an organization based on its type.
+     * This method is defensive against lazy loading issues.
+     */
+    private int getOrganizationLevel(Organization org) {
+        try {
+            if (org.getOrganizationTypes() == null || org.getOrganizationTypes().isEmpty()) {
+                return countParentLevels(org);
+            }
+
+            for (OrganizationType type : org.getOrganizationTypes()) {
+                int level = AddressHierarchyConfigurationHandler.getHierarchyLevel(type);
+                if (level > 0) {
+                    return level;
+                }
+                // Legacy types
+                if ("Health Region".equals(type.getName())) {
+                    return 1;
+                }
+                if ("Health District".equals(type.getName())) {
+                    return 2;
+                }
+            }
+        } catch (Exception e) {
+            // Lazy loading exception - fall back to counting parents
+            System.out.println("DEBUG getOrganizationLevel: LazyInit exception for org " + org.getId()
+                    + ", falling back to parent count");
+        }
+
+        return countParentLevels(org);
+    }
+
+    /**
+     * Count the level by walking up the parent hierarchy.
+     */
+    private int countParentLevels(Organization org) {
+        int level = 1;
+        try {
+            Organization parent = org.getOrganization();
+            while (parent != null) {
+                level++;
+                parent = parent.getOrganization();
+            }
+        } catch (Exception e) {
+            // If we can't traverse parents, return what we have
+            System.out.println("DEBUG countParentLevels: Exception traversing parents for org " + org.getId());
+        }
+        return level;
     }
 
     private String getTypeNameForLevel(int levelNumber) {
@@ -234,18 +322,24 @@ public class AddressHierarchyRestController {
     }
 
     private boolean isAddressHierarchyOrganization(Organization org) {
-        if (org.getOrganizationTypes() == null) {
-            return false;
-        }
+        try {
+            if (org.getOrganizationTypes() == null || org.getOrganizationTypes().isEmpty()) {
+                return false;
+            }
 
-        for (OrganizationType type : org.getOrganizationTypes()) {
-            if (AddressHierarchyConfigurationHandler.isAddressHierarchyType(type)) {
-                return true;
+            for (OrganizationType type : org.getOrganizationTypes()) {
+                if (AddressHierarchyConfigurationHandler.isAddressHierarchyType(type)) {
+                    return true;
+                }
+                // Also check legacy types
+                if ("Health Region".equals(type.getName()) || "Health District".equals(type.getName())) {
+                    return true;
+                }
             }
-            // Also check legacy types
-            if ("Health Region".equals(type.getName()) || "Health District".equals(type.getName())) {
-                return true;
-            }
+        } catch (Exception e) {
+            // Lazy loading exception - assume not part of hierarchy
+            System.out.println("DEBUG isAddressHierarchyOrganization: Exception for org " + org.getId());
+            return false;
         }
         return false;
     }
@@ -331,6 +425,7 @@ public class AddressHierarchyRestController {
         private String code;
         private String name;
         private String fullPath;
+        private List<HierarchyLevel> hierarchyLevels;
 
         public String getId() {
             return id;
@@ -362,6 +457,47 @@ public class AddressHierarchyRestController {
 
         public void setFullPath(String fullPath) {
             this.fullPath = fullPath;
+        }
+
+        public List<HierarchyLevel> getHierarchyLevels() {
+            return hierarchyLevels;
+        }
+
+        public void setHierarchyLevels(List<HierarchyLevel> hierarchyLevels) {
+            this.hierarchyLevels = hierarchyLevels;
+        }
+
+        /**
+         * DTO for individual hierarchy level within a search result.
+         */
+        public static class HierarchyLevel {
+            private int level;
+            private String id;
+            private String name;
+
+            public int getLevel() {
+                return level;
+            }
+
+            public void setLevel(int level) {
+                this.level = level;
+            }
+
+            public String getId() {
+                return id;
+            }
+
+            public void setId(String id) {
+                this.id = id;
+            }
+
+            public String getName() {
+                return name;
+            }
+
+            public void setName(String name) {
+                this.name = name;
+            }
         }
     }
 }

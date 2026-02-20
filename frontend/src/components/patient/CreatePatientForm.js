@@ -28,6 +28,7 @@ import {
   Grid,
   Column,
 } from "@carbon/react";
+import AddressSearch from "./AddressSearch";
 
 import { Formik, Field, ErrorMessage } from "formik";
 import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFormValues";
@@ -252,6 +253,60 @@ function CreatePatientForm(props) {
         },
       );
     }
+  };
+
+  /**
+   * Handle address selection from the search component.
+   * Auto-populates all hierarchy level fields and fetches child options for each level.
+   */
+  const handleAddressSearchSelect = (hierarchyLevels, setFieldValue) => {
+    if (!hierarchyLevels || hierarchyLevels.length === 0) return;
+
+    console.log(
+      "DEBUG handleAddressSearchSelect: selected levels:",
+      hierarchyLevels,
+    );
+
+    // Set field values for each level
+    hierarchyLevels.forEach((level) => {
+      const levelIndex = level.level - 1; // Convert 1-based to 0-based index
+      setFieldValue(`addressHierarchy_${levelIndex}`, level.id);
+
+      // For backward compatibility
+      if (levelIndex === 0) {
+        setFieldValue("healthRegion", level.id);
+      } else if (levelIndex === 1) {
+        setFieldValue("healthDistrict", level.id);
+      }
+    });
+
+    // Fetch child options for each level to populate the dropdowns
+    const fetchChildrenForLevels = (levelIndex) => {
+      if (levelIndex >= hierarchyLevels.length) return;
+
+      const level = hierarchyLevels[levelIndex];
+      const nextLevelIndex = levelIndex + 1;
+
+      // Fetch children for next dropdown
+      if (nextLevelIndex < addressHierarchyLevels.length) {
+        getFromOpenElisServer(
+          `/rest/address-hierarchy/children?parentId=${level.id}`,
+          (children) => {
+            if (componentMounted.current && children) {
+              setAddressHierarchyValues((prev) => ({
+                ...prev,
+                [nextLevelIndex]: children,
+              }));
+              // Continue to next level
+              fetchChildrenForLevels(nextLevelIndex);
+            }
+          },
+        );
+      }
+    };
+
+    // Start from the first level to populate all dropdowns
+    fetchChildrenForLevels(0);
   };
 
   const fetchAddressHierarchyLevels = (levels) => {
@@ -1300,7 +1355,20 @@ function CreatePatientForm(props) {
                         {" "}
                         <br></br>
                       </Column>
-                      {/* Dynamic Address Hierarchy Dropdowns - Show if new hierarchy is enabled */}
+                      {/* Address Hierarchy Section - Quick Search */}
+                      {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
+                        "true" &&
+                        addressHierarchyLevels.length > 0 && (
+                          <Column lg={16} md={8} sm={4}>
+                            <AddressSearch
+                              onAddressSelect={(levels) =>
+                                handleAddressSearchSelect(levels, setFieldValue)
+                              }
+                              addressHierarchyLevels={addressHierarchyLevels}
+                            />
+                          </Column>
+                        )}
+                      {/* Dynamic Address Hierarchy Dropdowns - Always show when new hierarchy is enabled */}
                       {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
                         "true" &&
                         addressHierarchyLevels.length > 0 &&

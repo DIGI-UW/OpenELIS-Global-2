@@ -56,4 +56,13 @@ public interface OrganizationService extends BaseObjectService<Organization, Str
     Organization getOrganizationByFhirId(String idPart);
 
     Organization getOrganizationByCode(String code);
+
+    /**
+     * Search organizations by name with eager loading of organization types and
+     * parent organizations. Optimized for address hierarchy search.
+     *
+     * @param filter Search filter for organization name
+     * @return List of organizations with types eagerly loaded
+     */
+    List<Organization> searchOrganizationsWithTypes(String filter);
 }
