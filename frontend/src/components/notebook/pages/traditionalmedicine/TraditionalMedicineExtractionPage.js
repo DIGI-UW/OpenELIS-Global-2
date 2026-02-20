@@ -36,9 +36,8 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -65,38 +64,10 @@ function TraditionalMedicineExtractionPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
-  const { hasAnyRole } = usePermissions();
 
-  // TMMRD permissions per matrix requirements
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canAccessStage3to4,
-    canPerformWork,
-    isReadOnly,
-    TMMRD_ROLES,
-    TMMRD_PAGES,
-  } = useTMMRDPermissions();
-
-  // STAGE 4 allowed roles per TMMRD matrix
-  const allowedRoles = [
-    TMMRD_ROLES.LAB_TECHNICIAN,
-    TMMRD_ROLES.RESEARCHER,
-    TMMRD_ROLES.PHARMACOGNOSIST,
-    TMMRD_ROLES.LAB_MANAGER,
-    TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
-  ];
-
-  const canAccessPage = canAccessStage3to4();
-
-  // Get user's permission level for this specific page
-  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.EXTRACTION);
-
-  // Function-level permissions based on matrix
-  const canRecordExtraction = canPerformWork(pagePermissionLevel);
-  const canModifyData = canSaveData(pagePermissionLevel);
-  const canMarkComplete = canPerformWork(pagePermissionLevel);
-  const isViewOnly = isReadOnly(pagePermissionLevel);
+  // Use standard permissions instead of custom TMMRD-specific logic
+  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
+  // This component focuses on action-level permissions using standard role groups
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
@@ -861,24 +832,9 @@ function TraditionalMedicineExtractionPage({
     [samples],
   );
 
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Traditional Medicine Extraction & Concentration"
-        reason={intl.formatMessage({
-          id: "notebook.tradmed.extraction.accessDenied",
-          defaultMessage:
-            "Access to the Traditional Medicine Extraction & Concentration page requires technical laboratory permissions. This page is restricted to roles responsible for chemical extraction processes, filtration methods, and concentration techniques.",
-        })}
-        requiredRoles={allowedRoles}
-        additionalInfo={intl.formatMessage({
-          id: "notebook.tradmed.extraction.accessRequirements",
-          defaultMessage:
-            "Required permissions: Chemical extraction operations, Filtration techniques, Concentration methods, and Analytical pathway selection.",
-        })}
-      />
-    );
-  }
+  // Page-level access control is handled by usePageAccessControl() in parent workflow component
+  // This component assumes it's only rendered when user has page access
+  // Individual UI elements use PermissionGate for action-level control
 
   const renderStatus = (sample) => {
     const status = sample.status || "PENDING";
@@ -1000,7 +956,7 @@ function TraditionalMedicineExtractionPage({
               ? intl.formatMessage({
                   id: "notebook.tradmed.tooltip.recordExtractionPermission",
                   defaultMessage:
-                    "Requires TMMRD Lab Technician or higher role to record extraction processes",
+                    "Insufficient permissions to record extraction processes",
                 })
               : selectedSampleIds.length === 0
                 ? intl.formatMessage({
@@ -1034,7 +990,7 @@ function TraditionalMedicineExtractionPage({
               ? intl.formatMessage({
                   id: "notebook.tradmed.tooltip.recordFiltrationPermission",
                   defaultMessage:
-                    "Requires TMMRD Lab Technician or higher role to record filtration processes",
+                    "Insufficient permissions to record filtration processes",
                 })
               : ""
           }
@@ -1063,7 +1019,7 @@ function TraditionalMedicineExtractionPage({
               ? intl.formatMessage({
                   id: "notebook.tradmed.tooltip.recordConcentrationPermission",
                   defaultMessage:
-                    "Requires TMMRD Lab Technician or higher role to record concentration processes",
+                    "Insufficient permissions to record concentration processes",
                 })
               : ""
           }
@@ -1092,7 +1048,7 @@ function TraditionalMedicineExtractionPage({
               ? intl.formatMessage({
                   id: "notebook.tradmed.tooltip.selectPathwayPermission",
                   defaultMessage:
-                    "Requires TMMRD Lab Technician or higher role to select analytical pathways",
+                    "Insufficient permissions to select analytical pathways",
                 })
               : ""
           }
@@ -1122,7 +1078,7 @@ function TraditionalMedicineExtractionPage({
               ? intl.formatMessage({
                   id: "notebook.tradmed.tooltip.markCompletePermission",
                   defaultMessage:
-                    "Requires TMMRD Lab Technician or higher role to mark extraction complete",
+                    "Insufficient permissions to mark extraction complete",
                 })
               : ""
           }

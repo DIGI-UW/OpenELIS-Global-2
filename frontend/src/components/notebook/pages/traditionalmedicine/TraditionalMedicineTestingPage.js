@@ -35,8 +35,8 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import { usePermissions } from "../../../../hooks/usePermissions";
-import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -64,32 +64,9 @@ function TraditionalMedicineTestingPage({
   const componentMounted = useRef(false);
   const { hasAnyRole } = usePermissions();
 
-  // TMMRD permissions per SRS Section 11
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canPerformWork,
-    hasFullControl,
-    isReadOnly,
-    canAccessProductDevelopment,
-    TMMRD_ROLES,
-    TMMRD_PAGES,
-  } = useTMMRDPermissions();
-
-  // Page access check
-  const canAccessPage = canAccessProductDevelopment();
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(
-    TMMRD_PAGES.PRODUCT_DEVELOPMENT,
-  );
-
-  // Function-level permissions per permission matrix
-  const canAssignTests = canPerformWork(pagePermissionLevel); // Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (Yes), Lab Manager (Full), Principal Investigator (View)
-  const canRecordResults = canPerformWork(pagePermissionLevel); // Same as test assignment
-  const canMarkComplete = canPerformWork(pagePermissionLevel); // Same permissions for completion
-  const canModifyData = canSaveData(pagePermissionLevel);
-  const isViewOnly = isReadOnly(pagePermissionLevel);
+  // Use standard permissions instead of custom TMMRD-specific logic
+  // Page-level access control should be handled by usePageAccessControl() in workflow components
+  // This component focuses on action-level permissions using standard role groups
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
@@ -961,22 +938,9 @@ function TraditionalMedicineTestingPage({
     [samples],
   );
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Product Development & Testing"
-        reason="This page requires specific Traditional Medicine product development roles to access."
-        requiredRoles={[
-          TMMRD_ROLES.LAB_TECHNICIAN,
-          TMMRD_ROLES.RESEARCHER,
-          TMMRD_ROLES.PHARMACOGNOSIST,
-          TMMRD_ROLES.LAB_MANAGER,
-          TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
-        ]}
-      />
-    );
-  }
+  // Page-level access control is handled by usePageAccessControl() in parent workflow component
+  // This component assumes it's only rendered when user has page access
+  // Individual UI elements use PermissionGate for action-level control
 
   // Helper to render sample status - simple status display matching API response
   const renderStatus = (sample) => {
@@ -1067,38 +1031,27 @@ function TraditionalMedicineTestingPage({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openTestAssignmentModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canAssignTests ||
-            isViewOnly
-          }
-          title={
-            !canAssignTests
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.testing.insufficientPermissions.assign",
-                  defaultMessage:
-                    "Insufficient permissions to assign tests. Only Lab Technicians, Researchers, Pharmacognosists, and Lab Manager (with appropriate permissions) can assign tests.",
-                })
-              : isViewOnly
-                ? intl.formatMessage({
-                    id: "notebook.tradmed.testing.viewOnlyAccess",
-                    defaultMessage: "You have view-only access to this page.",
-                  })
-                : undefined
-          }
+        <PermissionGate
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.testing.insufficientPermissions.assign",
+            defaultMessage: "Insufficient permissions to assign tests",
+          })}
         >
-          <FormattedMessage
-            id="notebook.page.tradmed.testing.assignTests"
-            defaultMessage="Assign Tests ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openTestAssignmentModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.testing.assignTests"
+              defaultMessage="Assign Tests ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -1113,39 +1066,29 @@ function TraditionalMedicineTestingPage({
           />
         </Button>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            isCompleting ||
-            !hasRealPageId ||
-            !canMarkComplete ||
-            isViewOnly
-          }
-          title={
-            !canMarkComplete
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.testing.insufficientPermissions.complete",
-                  defaultMessage:
-                    "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
-                })
-              : isViewOnly
-                ? intl.formatMessage({
-                    id: "notebook.tradmed.testing.viewOnlyAccess",
-                    defaultMessage: "You have view-only access to this page.",
-                  })
-                : undefined
-          }
+        <PermissionGate
+          roles={Permissions.UPDATE_SAMPLES}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.testing.insufficientPermissions.complete",
+            defaultMessage: "Insufficient permissions to mark samples complete",
+          })}
         >
-          <FormattedMessage
-            id="notebook.tradmed.testing.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={
+              selectedSampleIds.length === 0 || isCompleting || !hasRealPageId
+            }
+          >
+            <FormattedMessage
+              id="notebook.tradmed.testing.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
       </div>
 
       <div className="sample-table-section">
@@ -1377,12 +1320,7 @@ function TraditionalMedicineTestingPage({
           id: "label.cancel",
           defaultMessage: "Cancel",
         })}
-        primaryButtonDisabled={
-          isApplying ||
-          !testResultsData.result ||
-          !canRecordResults ||
-          isViewOnly
-        }
+        primaryButtonDisabled={isApplying || !testResultsData.result}
         size="lg"
       >
         {isApplying && <Loading withOverlay={false} small />}
@@ -1613,8 +1551,6 @@ function TraditionalMedicineTestingPage({
         primaryButtonDisabled={
           isApplying ||
           !assignmentData.specificTest ||
-          !canAssignTests ||
-          isViewOnly ||
           (assignmentData.category &&
             getTMMRDMethodologies(assignmentData.category).length > 0 &&
             !assignmentData.methodology)

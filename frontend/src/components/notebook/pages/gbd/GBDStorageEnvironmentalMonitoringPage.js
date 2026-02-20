@@ -32,7 +32,6 @@ import {
   Renew,
   Automatic,
 } from "@carbon/react/icons";
-import useGBDPermissions from "../../../../hooks/useGBDPermissions";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -40,7 +39,8 @@ import {
   getFromOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../common/Permissions";
+import PermissionGate from "../../../common/PermissionGate";
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
@@ -82,24 +82,8 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canAccessSampleStorage,
-    GBD_PAGES,
-  } = useGBDPermissions();
 
-  const allowedRoles = [
-    "GBD Lab Technician",
-    "GBD Manager",
-    "GBD Principal Investigator",
-    "GBD Data Manager",
-  ];
-
-  const canAccessPage = canAccessSampleStorage();
-
-  const pagePermissionLevel = getPagePermissionLevel(GBD_PAGES.SAMPLE_STORAGE);
-  const canPerformStorage = canSaveData(pagePermissionLevel);
+  // Page-level access control is managed by the parent notebook component
 
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
@@ -860,17 +844,6 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
     onProgressUpdate,
   ]);
 
-  // Check page access
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Storage & Environmental Monitoring"
-        reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   return (
     <div className="gbd-storage-monitoring-page">
       <div className="page-section-header">
@@ -925,113 +898,115 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
 
       {/* Action Bar */}
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Archive}
-          onClick={handleOpenStorageModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canPerformStorage ||
-            // Disable if any selected sample is disposed or completed
-            samples
-              .filter((s) => selectedSampleIds.includes(s.id))
-              .some((s) => s.disposal || s.status === "COMPLETED") ||
-            // Disable if any selected sample already has storage assigned
-            samples
-              .filter((s) => selectedSampleIds.includes(s.id))
-              .some((s) => s.storageLocation && s.storageLocation.length > 0)
-          }
-          title={
-            samples
-              .filter((s) => selectedSampleIds.includes(s.id))
-              .some((s) => s.storageLocation && s.storageLocation.length > 0)
-              ? "Some selected samples already have storage assigned. Unassign storage first to reassign."
-              : ""
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.storage.assignStorage"
-            defaultMessage="Assign to Storage ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.UPDATE_SAMPLES}>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Archive}
+            onClick={handleOpenStorageModal}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              !hasRealPageId ||
+              // Disable if any selected sample is disposed or completed
+              samples
+                .filter((s) => selectedSampleIds.includes(s.id))
+                .some((s) => s.disposal || s.status === "COMPLETED") ||
+              // Disable if any selected sample already has storage assigned
+              samples
+                .filter((s) => selectedSampleIds.includes(s.id))
+                .some((s) => s.storageLocation && s.storageLocation.length > 0)
+            }
+            title={
+              samples
+                .filter((s) => selectedSampleIds.includes(s.id))
+                .some((s) => s.storageLocation && s.storageLocation.length > 0)
+                ? "Some selected samples already have storage assigned. Unassign storage first to reassign."
+                : ""
+            }
+          >
+            <FormattedMessage
+              id="notebook.gbd.storage.assignStorage"
+              defaultMessage="Assign to Storage ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={Undo}
-          onClick={() => {
-            setIsBulkRetrieval(true);
-            setRetrievalModalOpen(true);
-          }}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canPerformStorage ||
-            // Recover only for DISPOSED samples (to recover them), not if COMPLETED
-            samples
-              .filter((s) => selectedSampleIds.includes(s.id))
-              .some((s) => s.status === "COMPLETED") ||
-            samples
-              .filter((s) => selectedSampleIds.includes(s.id))
-              .every((s) => !s.disposal || s.retrieval)
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.storage.retrieveSelected"
-            defaultMessage="Recover ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.UPDATE_SAMPLES}>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Undo}
+            onClick={() => {
+              setIsBulkRetrieval(true);
+              setRetrievalModalOpen(true);
+            }}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              !hasRealPageId ||
+              // Recover only for DISPOSED samples (to recover them), not if COMPLETED
+              samples
+                .filter((s) => selectedSampleIds.includes(s.id))
+                .some((s) => s.status === "COMPLETED") ||
+              samples
+                .filter((s) => selectedSampleIds.includes(s.id))
+                .every((s) => !s.disposal || s.retrieval)
+            }
+          >
+            <FormattedMessage
+              id="notebook.gbd.storage.retrieveSelected"
+              defaultMessage="Recover ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={TrashCan}
-          onClick={() => {
-            setIsBulkDisposal(true);
-            setDisposalModalOpen(true);
-          }}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canPerformStorage ||
-            // Dispose only for STORED samples (not yet disposed), not if COMPLETED
-            samples
-              .filter((s) => selectedSampleIds.includes(s.id))
-              .some((s) => s.status === "COMPLETED") ||
-            samples
-              .filter((s) => selectedSampleIds.includes(s.id))
-              .every((s) => !s.storageLocation || s.disposal)
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.storage.disposeSelected"
-            defaultMessage="Dispose ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.UPDATE_SAMPLES}>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={TrashCan}
+            onClick={() => {
+              setIsBulkDisposal(true);
+              setDisposalModalOpen(true);
+            }}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              !hasRealPageId ||
+              // Dispose only for STORED samples (not yet disposed), not if COMPLETED
+              samples
+                .filter((s) => selectedSampleIds.includes(s.id))
+                .some((s) => s.status === "COMPLETED") ||
+              samples
+                .filter((s) => selectedSampleIds.includes(s.id))
+                .every((s) => !s.storageLocation || s.disposal)
+            }
+          >
+            <FormattedMessage
+              id="notebook.gbd.storage.disposeSelected"
+              defaultMessage="Dispose ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            eligibleForCompletionCount === 0 ||
-            submitting ||
-            !hasRealPageId ||
-            !canPerformStorage
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.storage.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: eligibleForCompletionCount }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={
+              eligibleForCompletionCount === 0 || submitting || !hasRealPageId
+            }
+          >
+            <FormattedMessage
+              id="notebook.gbd.storage.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: eligibleForCompletionCount }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -1076,7 +1051,7 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
               samples={samples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={canPerformStorage}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

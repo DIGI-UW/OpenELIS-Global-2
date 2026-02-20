@@ -16,11 +16,10 @@ import {
   Checkbox,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useBioanalyticalPermissions } from "../../../../hooks/useBioanalyticalPermissions";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import "./BioanalyticalPages.css";
@@ -43,8 +42,6 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { hasAnyRole } = usePermissions();
-
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, message }) => {
       setNotificationVisible(true);
@@ -52,24 +49,10 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     },
     [addNotification, setNotificationVisible],
   );
-  const {
-    BIOANALYTICAL_ROLES,
-    getPagePermissionLevel,
-    canApproveData,
-    canModify,
-    canAccessStorageArchiving,
-  } = useBioanalyticalPermissions();
 
-  const allowedRoles = [
-    BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
-    BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
-  ];
-
-  const canAccessPage = canAccessStorageArchiving();
-
-  const pagePermissionLevel = getPagePermissionLevel("Storage & Archiving");
-  const canApproveStorage = canApproveData(pagePermissionLevel);
-  const canModifyStorage = canModify(pagePermissionLevel);
+  // Use standard permissions instead of custom bioanalytical-specific logic
+  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
+  // This component focuses on action-level permissions using standard role groups
 
   const [isLoading, setIsLoading] = useState(false);
   const [storageSamples, setStorageSamples] = useState([]);
@@ -1198,15 +1181,9 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     [],
   );
 
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Sample Storage & Archival"
-        reason="This page requires specific bioanalytical laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
+  // Page-level access control is handled by usePageAccessControl() in parent workflow component
+  // This component assumes it's only rendered when user has page access
+  // Individual UI elements use PermissionGate for action-level control
 
   return (
     <div className="bioanalytical-page">
@@ -1347,44 +1324,51 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                           />
                         )}
                       </Button>
-                      <Button
-                        kind="secondary"
-                        onClick={() => setRetentionStorageModalOpen(true)}
-                        disabled={
-                          isLoading ||
-                          !(canModifyStorage || canApproveStorage) ||
-                          !hasActionableSelectedSamples
-                        }
-                        title={
-                          !hasActionableSelectedSamples &&
-                          selectedSamples.size > 0
-                            ? "Selected samples have already been transferred or disposed"
-                            : "Place selected samples in retention storage"
-                        }
+                      <PermissionGate
+                        roles={Permissions.UPDATE_SAMPLES}
+                        disabledTooltip="Insufficient permissions to manage retention storage"
                       >
-                        <FormattedMessage
-                          id="notebook.bioanalytical.storage.retentionStorage"
-                          defaultMessage="Retention Storage"
-                        />
-                      </Button>
-                      <Button
-                        kind="danger--tertiary"
-                        onClick={() => setDisposalModalOpen(true)}
-                        disabled={
-                          isLoading ||
-                          !canApproveStorage ||
-                          !hasActionableSelectedSamples
-                        }
-                        title={
-                          !hasActionableSelectedSamples &&
-                          selectedSamples.size > 0
-                            ? "Selected samples have already been transferred or disposed"
-                            : "Schedule selected samples for disposal"
-                        }
+                        <Button
+                          kind="secondary"
+                          onClick={() => setRetentionStorageModalOpen(true)}
+                          disabled={
+                            isLoading ||
+                            !hasActionableSelectedSamples
+                          }
+                          title={
+                            !hasActionableSelectedSamples &&
+                            selectedSamples.size > 0
+                              ? "Selected samples have already been transferred or disposed"
+                              : "Place selected samples in retention storage"
+                          }
+                        >
+                          <FormattedMessage
+                            id="notebook.bioanalytical.storage.retentionStorage"
+                            defaultMessage="Retention Storage"
+                          />
+                        </Button>
+                      </PermissionGate>
+                      <PermissionGate
+                        roles={Permissions.UPDATE_SAMPLES}
+                        disabledTooltip="Insufficient permissions to manage sample disposal"
                       >
-                        <FormattedMessage
-                          id="notebook.bioanalytical.storage.manageSampleDisposal"
-                          defaultMessage="Manage Sample Disposal"
+                        <Button
+                          kind="danger--tertiary"
+                          onClick={() => setDisposalModalOpen(true)}
+                          disabled={
+                            isLoading ||
+                            !hasActionableSelectedSamples
+                          }
+                          title={
+                            !hasActionableSelectedSamples &&
+                            selectedSamples.size > 0
+                              ? "Selected samples have already been transferred or disposed"
+                              : "Schedule selected samples for disposal"
+                          }
+                        >
+                          <FormattedMessage
+                            id="notebook.bioanalytical.storage.manageSampleDisposal"
+                            defaultMessage="Manage Sample Disposal"
                         />
                       </Button>
                     </div>

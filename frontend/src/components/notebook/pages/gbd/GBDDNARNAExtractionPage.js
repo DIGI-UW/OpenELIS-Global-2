@@ -21,8 +21,6 @@ import {
   Loading,
 } from "@carbon/react";
 import { Chemistry, Renew, CheckmarkFilled } from "@carbon/react/icons";
-import useGBDPermissions from "../../../../hooks/useGBDPermissions";
-import { usePermissions } from "../../../../hooks/usePermissions";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -30,7 +28,8 @@ import {
   getFromOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../common/Permissions";
+import PermissionGate from "../../../common/PermissionGate";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -63,29 +62,8 @@ export const GBDDNARNAExtractionPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canPerformWork,
-    hasFullControl,
-    isReadOnly,
-    canAccessExtraction,
-    GBD_ROLES,
-    GBD_PAGES,
-  } = useGBDPermissions();
 
-  // Page access check
-  const canAccessPage = canAccessExtraction();
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(GBD_PAGES.EXTRACTION);
-
-  // Function-level permissions per permission matrix
-  // Matrix: Lab Technicians (Yes), Bioinformaticians (No), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
-  const canPerformExtraction = canPerformWork(pagePermissionLevel); // Lab Technicians (Yes), Lab Manager (Full)
-  const canModifyData = canSaveData(pagePermissionLevel);
-  const canMarkComplete = canPerformWork(pagePermissionLevel);
-  const isViewOnly = isReadOnly(pagePermissionLevel); // Principal Investigator (View)
+  // Page-level access control is managed by the parent notebook component
 
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
@@ -437,20 +415,6 @@ export const GBDDNARNAExtractionPage = ({
     [samples, selectedSampleIds],
   );
 
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="DNA/RNA Extraction"
-        reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={[
-          GBD_ROLES.LAB_TECHNICIAN,
-          GBD_ROLES.MANAGER,
-          GBD_ROLES.PRINCIPAL_INVESTIGATOR,
-        ]}
-      />
-    );
-  }
-
   const renderStatus = (sample) => {
     const status = sample.status || "PENDING";
 
@@ -532,72 +496,39 @@ export const GBDDNARNAExtractionPage = ({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Chemistry}
-          onClick={openModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canPerformExtraction ||
-            isViewOnly
-          }
-          title={
-            !canPerformExtraction
-              ? intl.formatMessage({
-                  id: "notebook.gbd.extraction.insufficientPermissions.record",
-                  defaultMessage:
-                    "Insufficient permissions to record extraction. Only Lab Technicians and Lab Manager (with appropriate permissions) can perform extractions.",
-                })
-              : isViewOnly
-                ? intl.formatMessage({
-                    id: "notebook.gbd.extraction.viewOnlyAccess",
-                    defaultMessage: "You have view-only access to this page.",
-                  })
-                : undefined
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.recordExtraction"
-            defaultMessage="Record Extraction ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.UPDATE_SAMPLES}>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Chemistry}
+            onClick={openModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.gbd.recordExtraction"
+              defaultMessage="Record Extraction ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            eligibleForCompletionCount === 0 ||
-            isCompleting ||
-            !hasRealPageId ||
-            !canMarkComplete ||
-            isViewOnly
-          }
-          title={
-            !canMarkComplete
-              ? intl.formatMessage({
-                  id: "notebook.gbd.extraction.insufficientPermissions.complete",
-                  defaultMessage:
-                    "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
-                })
-              : isViewOnly
-                ? intl.formatMessage({
-                    id: "notebook.gbd.extraction.viewOnlyAccess",
-                    defaultMessage: "You have view-only access to this page.",
-                  })
-                : undefined
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: eligibleForCompletionCount }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={
+              eligibleForCompletionCount === 0 || isCompleting || !hasRealPageId
+            }
+          >
+            <FormattedMessage
+              id="notebook.gbd.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: eligibleForCompletionCount }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -641,7 +572,7 @@ export const GBDDNARNAExtractionPage = ({
               samples={readyForExtractionSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={canPerformExtraction}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
@@ -731,9 +662,7 @@ export const GBDDNARNAExtractionPage = ({
           id: "label.cancel",
           defaultMessage: "Cancel",
         })}
-        primaryButtonDisabled={
-          isApplyingExtraction || !canModifyData || isViewOnly
-        }
+        primaryButtonDisabled={isApplyingExtraction}
         size="lg"
       >
         {isApplyingExtraction && <Loading withOverlay={false} small />}

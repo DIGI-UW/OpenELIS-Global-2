@@ -23,9 +23,8 @@ import {
   TextArea,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useBioequivalencePermissions } from "../../../../hooks/useBioequivalencePermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "./BioequivalencePages.css";
 
 /**
@@ -55,32 +54,10 @@ function BioequivalenceReportingPage({
   onPageNavigation,
 }) {
   const intl = useIntl();
-  const { hasAnyRole } = usePermissions();
-  const {
-    getPagePermissionLevel,
-    canAnalytics,
-    canApproveData,
-    hasFullControl,
-  } = useBioequivalencePermissions();
 
-  // PAGE 4 allowed roles per test.pdf Section 11
-  const allowedRoles = [
-    "Bioequivalence Chemical Analyst",
-    "Bioequivalence Pharmacist",
-    "Bioequivalence Lab Supervisor",
-    "Bioequivalence Study Director",
-    "Bioequivalence QA Officer",
-    "Bioequivalence Researcher",
-    "Bioequivalence Data Manager",
-  ];
-
-  const canAccessPage = hasAnyRole(allowedRoles);
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel("Reporting & Release");
-  const canExportData = canAnalytics(pagePermissionLevel);
-  const canApproveResults = canApproveData(pagePermissionLevel);
-  const canEditReporting = hasFullControl(pagePermissionLevel);
+  // Page-level access control is handled by usePageAccessControl() in parent workflow component
+  // This component assumes it's only rendered when user has page access
+  // Individual UI elements use PermissionGate for action-level control
   const [isLoading, setIsLoading] = useState(false);
   const [isQaLoading, setIsQaLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
@@ -1439,16 +1416,6 @@ function BioequivalenceReportingPage({
     submissionTargets,
   ]);
 
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Reporting & Release"
-        reason="This page requires specific bioequivalence laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   return (
     <div className="bioequivalence-page">
       <div className="page-instructions">
@@ -2577,22 +2544,26 @@ function BioequivalenceReportingPage({
                     </div>
 
                     <div style={{ marginTop: "1.5rem" }}>
-                      <Button
-                        kind="primary"
-                        onClick={handleQaApproval}
-                        disabled={isQaLoading || !canApproveResults}
+                      <PermissionGate
+                        permissions={[Permissions.UPDATE_SAMPLES]}
                       >
-                        {isQaLoading ? (
-                          <>
-                            <Loading description="Submitting approval..." />
-                          </>
-                        ) : (
-                          <FormattedMessage
-                            id="notebook.bioequivalence.reporting.completeQa"
-                            defaultMessage="Complete QA Approval"
-                          />
-                        )}
-                      </Button>
+                        <Button
+                          kind="primary"
+                          onClick={handleQaApproval}
+                          disabled={isQaLoading}
+                        >
+                          {isQaLoading ? (
+                            <>
+                              <Loading description="Submitting approval..." />
+                            </>
+                          ) : (
+                            <FormattedMessage
+                              id="notebook.bioequivalence.reporting.completeQa"
+                              defaultMessage="Complete QA Approval"
+                            />
+                          )}
+                        </Button>
+                      </PermissionGate>
                     </div>
 
                     {/* Show Stage 5 progression button after QA approval */}
@@ -2853,24 +2824,26 @@ function BioequivalenceReportingPage({
 
                     {qaApproved && (
                       <div style={{ marginTop: "1.5rem" }}>
-                        <Button
-                          kind="primary"
-                          onClick={handleExport}
-                          disabled={
-                            !exportFormat || isLoading || !canExportData
-                          }
+                        <PermissionGate
+                          permissions={[Permissions.GENERATE_REPORTS]}
                         >
-                          {isLoading ? (
-                            <>
-                              <Loading description="Exporting..." />
-                            </>
-                          ) : (
-                            <FormattedMessage
-                              id="notebook.bioequivalence.reporting.exportNow"
-                              defaultMessage="Export Now"
-                            />
-                          )}
-                        </Button>
+                          <Button
+                            kind="primary"
+                            onClick={handleExport}
+                            disabled={!exportFormat || isLoading}
+                          >
+                            {isLoading ? (
+                              <>
+                                <Loading description="Exporting..." />
+                              </>
+                            ) : (
+                              <FormattedMessage
+                                id="notebook.bioequivalence.reporting.exportNow"
+                                defaultMessage="Export Now"
+                              />
+                            )}
+                          </Button>
+                        </PermissionGate>
                       </div>
                     )}
                   </div>

@@ -23,8 +23,6 @@ import {
   Checkbox,
 } from "@carbon/react";
 import { Renew, CheckmarkFilled, Chemistry } from "@carbon/react/icons";
-import useGBDPermissions from "../../../../hooks/useGBDPermissions";
-import { usePermissions } from "../../../../hooks/usePermissions";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -32,7 +30,8 @@ import {
   getFromOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../common/Permissions";
+import PermissionGate from "../../../common/PermissionGate";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -67,22 +66,8 @@ export const GBDBioanalyzerQCPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { getPagePermissionLevel, canSaveData, canAccessBioanalyzerQC } =
-    useGBDPermissions();
 
-  // Bioanalyzer QC allowed roles - per GBD permission mapping
-  const allowedRoles = [
-    "GBD Lab Technician",
-    "GBD Manager",
-    "GBD Principal Investigator",
-  ];
-
-  // Page access check - GBD-specific permission function only
-  const canAccessPage = canAccessBioanalyzerQC();
-
-  // Action permission check - what can user do on this page
-  const pagePermissionLevel = getPagePermissionLevel("Bioanalyzer QC");
-  const canPerformBioanalyzerQC = canSaveData(pagePermissionLevel);
+  // Page-level access control is managed by the parent notebook component
 
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
@@ -565,16 +550,6 @@ export const GBDBioanalyzerQCPage = ({
     [samples],
   );
 
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Bioanalyzer QC"
-        reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   const renderStatus = (sample) => {
     const status = sample.status || "PENDING";
 
@@ -705,42 +680,39 @@ export const GBDBioanalyzerQCPage = ({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Chemistry}
-          onClick={openModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canPerformBioanalyzerQC
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.recordBioanalyzer"
-            defaultMessage="Record Bioanalyzer ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.UPDATE_SAMPLES}>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Chemistry}
+            onClick={openModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.gbd.recordBioanalyzer"
+              defaultMessage="Record Bioanalyzer ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            eligibleForCompletionCount === 0 ||
-            isCompleting ||
-            !hasRealPageId ||
-            !canPerformBioanalyzerQC
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: eligibleForCompletionCount }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={
+              eligibleForCompletionCount === 0 || isCompleting || !hasRealPageId
+            }
+          >
+            <FormattedMessage
+              id="notebook.gbd.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: eligibleForCompletionCount }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -784,7 +756,7 @@ export const GBDBioanalyzerQCPage = ({
               samples={readyForBioanalyzerSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={canPerformBioanalyzerQC}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

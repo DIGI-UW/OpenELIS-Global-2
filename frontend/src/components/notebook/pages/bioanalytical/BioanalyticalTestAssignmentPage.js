@@ -37,9 +37,8 @@ import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../../config.json";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useBioanalyticalPermissions } from "../../../../hooks/useBioanalyticalPermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "./BioanalyticalPages.css";
 
 /**
@@ -481,40 +480,9 @@ function BioanalyticalTestAssignmentPage({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { hasAnyRole } = usePermissions();
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    hasFullControl,
-    canAccessTestAssignment,
-    BIOANALYTICAL_ROLES,
-  } = useBioanalyticalPermissions();
-
-  // PAGE 2 allowed roles per test.pdf Section 11
-  const allowedRoles = [
-    BIOANALYTICAL_ROLES.CHEMICAL_ANALYST,
-    BIOANALYTICAL_ROLES.PHARMACIST,
-    BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
-    BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
-    BIOANALYTICAL_ROLES.QA_OFFICER,
-    BIOANALYTICAL_ROLES.RESEARCHER,
-  ];
-
-  const canAccessPage = canAccessTestAssignment();
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel("Test Assignment");
-  const canAssignTests = hasFullControl(pagePermissionLevel);
-  const canSaveAssignments = canSaveData(pagePermissionLevel);
-
-  // Debug logging for permission issues
-  if (process.env.NODE_ENV === "development") {
-    console.log("Test Assignment Page - Permission Debug:", {
-      pagePermissionLevel,
-      canSaveAssignments,
-      canAssignTests,
-    });
-  }
+  // Use standard permissions instead of custom bioanalytical-specific logic
+  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
+  // This component focuses on action-level permissions using standard role groups
 
   // Loading and data states
   const [isLoading, setIsLoading] = useState(false);
@@ -1491,16 +1459,9 @@ function BioanalyticalTestAssignmentPage({
     onProgressUpdate,
   ]);
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Test Assignment & Preparation"
-        reason="This page requires specific bioanalytical laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
+  // Page-level access control is handled by usePageAccessControl() in parent workflow component
+  // This component assumes it's only rendered when user has page access
+  // Individual UI elements use PermissionGate for action-level control
 
   return (
     <div className="bioanalytical-page">
@@ -1549,49 +1510,45 @@ function BioanalyticalTestAssignmentPage({
                   }}
                 >
                   {selectedSamples.size > 0 && (
-                    <Button
-                      kind="primary"
-                      onClick={handleShowAssignmentForm}
-                      disabled={!canAssignTests}
-                      title={
-                        !canAssignTests
-                          ? intl.formatMessage({
-                              id: "notebook.bioanalytical.testassignment.insufficientPermissions",
-                              defaultMessage:
-                                "Insufficient permissions to configure test assignments. Only Pharmacists and Lab Supervisors can assign tests.",
-                            })
-                          : undefined
-                      }
+                    <PermissionGate
+                      roles={Permissions.UPDATE_SAMPLES}
+                      disabledTooltip={intl.formatMessage({
+                        id: "notebook.bioanalytical.testassignment.insufficientPermissions",
+                        defaultMessage:
+                          "Insufficient permissions to configure test assignments",
+                      })}
                     >
-                      <FormattedMessage
-                        id="notebook.bioanalytical.testassignment.configureTests"
-                        defaultMessage="Configure Tests for {count} Sample(s)"
-                        values={{ count: selectedSamples.size }}
-                      />
-                    </Button>
+                      <Button kind="primary" onClick={handleShowAssignmentForm}>
+                        <FormattedMessage
+                          id="notebook.bioanalytical.testassignment.configureTests"
+                          defaultMessage="Configure Tests for {count} Sample(s)"
+                          values={{ count: selectedSamples.size }}
+                        />
+                      </Button>
+                    </PermissionGate>
                   )}
 
                   {/* Show completion button if samples have test assignments */}
                   {samples.filter((s) => testAssignments[s.id]).length > 0 && (
-                    <Button
-                      kind="secondary"
-                      onClick={handleMarkCompleteAndAdvance}
-                      disabled={isAdvancing || !canAssignTests}
-                      title={
-                        !canAssignTests
-                          ? intl.formatMessage({
-                              id: "notebook.bioanalytical.testassignment.completeInsufficientPermissions",
-                              defaultMessage:
-                                "Insufficient permissions to complete test assignments. Only Pharmacists and Lab Supervisors can complete assignments.",
-                            })
-                          : undefined
-                      }
+                    <PermissionGate
+                      roles={Permissions.UPDATE_SAMPLES}
+                      disabledTooltip={intl.formatMessage({
+                        id: "notebook.bioanalytical.testassignment.completeInsufficientPermissions",
+                        defaultMessage:
+                          "Insufficient permissions to complete test assignments",
+                      })}
                     >
-                      <FormattedMessage
-                        id="notebook.bioanalytical.testassignment.completeAndAdvance"
-                        defaultMessage="Mark Complete & Move to Next Stage"
-                      />
-                    </Button>
+                      <Button
+                        kind="secondary"
+                        onClick={handleMarkCompleteAndAdvance}
+                        disabled={isAdvancing}
+                      >
+                        <FormattedMessage
+                          id="notebook.bioanalytical.testassignment.completeAndAdvance"
+                          defaultMessage="Mark Complete & Move to Next Stage"
+                        />
+                      </Button>
+                    </PermissionGate>
                   )}
                 </div>
 
@@ -1812,8 +1769,7 @@ function BioanalyticalTestAssignmentPage({
           isAssigning ||
           !assignmentConfig.analyticalMethod ||
           !assignmentConfig.assignedStaff ||
-          !assignmentConfig.samplePreparation?.trim() ||
-          !canSaveAssignments
+          !assignmentConfig.samplePreparation?.trim()
         }
         size="md"
       >
@@ -1822,8 +1778,7 @@ function BioanalyticalTestAssignmentPage({
           {(isAssigning ||
             !assignmentConfig.analyticalMethod ||
             !assignmentConfig.assignedStaff ||
-            !assignmentConfig.samplePreparation?.trim() ||
-            !canSaveAssignments) && (
+            !assignmentConfig.samplePreparation?.trim()) && (
             <div
               style={{
                 marginBottom: "1rem",
@@ -1873,12 +1828,6 @@ function BioanalyticalTestAssignmentPage({
                   <li>
                     <span style={{ color: "#da1e28" }}>●</span> Document
                     preparation method
-                  </li>
-                )}
-                {!canSaveAssignments && (
-                  <li>
-                    <span style={{ color: "#da1e28" }}>●</span> Insufficient
-                    permissions (current level: {pagePermissionLevel || "NONE"})
                   </li>
                 )}
               </ul>

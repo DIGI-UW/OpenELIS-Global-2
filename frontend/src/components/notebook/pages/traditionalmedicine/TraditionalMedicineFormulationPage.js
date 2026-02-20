@@ -34,9 +34,8 @@ import {
   postToOpenElisServer,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -61,18 +60,10 @@ function TraditionalMedicineFormulationPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
-  const { hasAnyRole } = usePermissions();
 
-  // TMMRD permissions per matrix requirements
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canAccessStage7,
-    canPerformWork,
-    isReadOnly,
-    TMMRD_ROLES,
-    TMMRD_PAGES,
-  } = useTMMRDPermissions();
+  // Use standard permissions instead of custom TMMRD-specific logic
+  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
+  // This component focuses on action-level permissions using standard role groups
 
   // All state must be declared before any early returns (React Hooks Rule)
   const [samples, setSamples] = useState([]);
@@ -113,28 +104,6 @@ function TraditionalMedicineFormulationPage({
   const [heavyMetalsPass, setHeavyMetalsPass] = useState(null);
   const [stabilityPass, setStabilityPass] = useState(null);
   const [productQcNotes, setProductQcNotes] = useState("");
-
-  // All hooks and calculations must be defined before any conditional returns (React Hooks Rule)
-
-  // STAGE 7 allowed roles per TMMRD matrix
-  const allowedRoles = [
-    TMMRD_ROLES.LAB_TECHNICIAN,
-    TMMRD_ROLES.RESEARCHER,
-    TMMRD_ROLES.PHARMACOGNOSIST,
-    TMMRD_ROLES.LAB_MANAGER,
-    TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
-  ];
-
-  const canAccessPage = canAccessStage7();
-
-  // Get user's permission level for this specific page
-  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.FORMULATION);
-
-  // Function-level permissions based on matrix
-  const canRecordFormulation = canPerformWork(pagePermissionLevel);
-  const canModifyData = canSaveData(pagePermissionLevel);
-  const canMarkComplete = canPerformWork(pagePermissionLevel);
-  const isViewOnly = isReadOnly(pagePermissionLevel);
 
   const formulationOptions = [
     { id: "capsule", label: "Capsules" },
@@ -785,25 +754,9 @@ function TraditionalMedicineFormulationPage({
     return <Tag type={config.type}>{config.label}</Tag>;
   };
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Traditional Medicine Formulation Development"
-        reason={intl.formatMessage({
-          id: "notebook.tradmed.formulation.accessDenied",
-          defaultMessage:
-            "Access to the Traditional Medicine Formulation Development page requires pharmaceutical formulation permissions. This page is restricted to roles responsible for product development, batch manufacturing, and quality control operations.",
-        })}
-        requiredRoles={allowedRoles}
-        additionalInfo={intl.formatMessage({
-          id: "notebook.tradmed.formulation.accessRequirements",
-          defaultMessage:
-            "Required permissions: Product formulation, Batch manufacturing, Quality control testing, and Disposal management capabilities.",
-        })}
-      />
-    );
-  }
+  // Page-level access control is handled by usePageAccessControl() in parent workflow component
+  // This component assumes it's only rendered when user has page access
+  // Individual UI elements use PermissionGate for action-level control
 
   return (
     <div className="tradmed-formulation-page">
@@ -881,7 +834,7 @@ function TraditionalMedicineFormulationPage({
               ? intl.formatMessage({
                   id: "notebook.tradmed.tooltip.recordFormulationPermission",
                   defaultMessage:
-                    "Requires TMMRD Lab Technician or higher role to record formulation details",
+                    "Insufficient permissions to record formulation details",
                 })
               : selectedSampleIds.length === 0
                 ? intl.formatMessage({
@@ -914,7 +867,7 @@ function TraditionalMedicineFormulationPage({
               ? intl.formatMessage({
                   id: "notebook.tradmed.tooltip.recordQCPermission",
                   defaultMessage:
-                    "Requires TMMRD Lab Technician or higher role to record product QC",
+                    "Insufficient permissions to record product QC",
                 })
               : ""
           }
@@ -949,7 +902,7 @@ function TraditionalMedicineFormulationPage({
                 ? intl.formatMessage({
                     id: "notebook.tradmed.tooltip.recordDisposalPermission",
                     defaultMessage:
-                      "Requires TMMRD Lab Technician or higher role to record disposal information",
+                      "Insufficient permissions to record disposal information",
                   })
                 : ""
             }
@@ -979,7 +932,7 @@ function TraditionalMedicineFormulationPage({
               ? intl.formatMessage({
                   id: "notebook.tradmed.tooltip.markCompletePermission",
                   defaultMessage:
-                    "Requires TMMRD Lab Technician or higher role to mark formulation complete",
+                    "Insufficient permissions to mark formulation complete",
                 })
               : ""
           }

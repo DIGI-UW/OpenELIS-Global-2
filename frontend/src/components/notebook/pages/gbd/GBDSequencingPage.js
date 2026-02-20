@@ -22,8 +22,6 @@ import {
   Loading,
 } from "@carbon/react";
 import { Renew, CheckmarkFilled, Chemistry } from "@carbon/react/icons";
-import useGBDPermissions from "../../../../hooks/useGBDPermissions";
-import { usePermissions } from "../../../../hooks/usePermissions";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -31,7 +29,8 @@ import {
   getFromOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../common/Permissions";
+import PermissionGate from "../../../common/PermissionGate";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -66,23 +65,8 @@ export const GBDSequencingPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canPerformWork,
-    isReadOnly,
-    canAccessSequencing,
-    GBD_ROLES,
-    GBD_PAGES,
-  } = useGBDPermissions();
 
-  // Page access check and permissions per matrix
-  // Matrix: Lab Technicians (Yes), Bioinformaticians (View), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
-  const canAccessPage = canAccessSequencing();
-  const pagePermissionLevel = getPagePermissionLevel(GBD_PAGES.SEQUENCING);
-  const canPerformSequencing = canPerformWork(pagePermissionLevel); // Lab Technicians (Yes), Lab Manager (Full)
-  const canModifyData = canSaveData(pagePermissionLevel);
-  const isViewOnly = isReadOnly(pagePermissionLevel); // Bioinformaticians (View), Principal Investigator (View)
+  // Page-level access control is managed by the parent notebook component
 
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
@@ -608,22 +592,6 @@ export const GBDSequencingPage = ({
     [samples],
   );
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Sequencing"
-        reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={[
-          GBD_ROLES.LAB_TECHNICIAN,
-          GBD_ROLES.BIOINFORMATICIAN,
-          GBD_ROLES.MANAGER,
-          GBD_ROLES.PRINCIPAL_INVESTIGATOR,
-        ]}
-      />
-    );
-  }
-
   // Helper to render sample status
   const renderStatus = (sample) => {
     const status = sample.status || "PENDING";
@@ -755,42 +723,39 @@ export const GBDSequencingPage = ({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Chemistry}
-          onClick={openModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canPerformSequencing
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.recordSequencing"
-            defaultMessage="Record Sequencing ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.UPDATE_SAMPLES}>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Chemistry}
+            onClick={openModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.gbd.recordSequencing"
+              defaultMessage="Record Sequencing ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            eligibleForCompletionCount === 0 ||
-            isCompleting ||
-            !hasRealPageId ||
-            !canPerformSequencing
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: eligibleForCompletionCount }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={
+              eligibleForCompletionCount === 0 || isCompleting || !hasRealPageId
+            }
+          >
+            <FormattedMessage
+              id="notebook.gbd.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: eligibleForCompletionCount }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -834,7 +799,7 @@ export const GBDSequencingPage = ({
               samples={readyForSequencingSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={canPerformSequencing}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

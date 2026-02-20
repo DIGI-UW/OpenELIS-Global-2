@@ -43,9 +43,8 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -78,20 +77,10 @@ function TraditionalMedicineAuthenticationStoragePage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
-  const { hasAnyRole } = usePermissions();
 
-  // TMMRD permissions per matrix requirements
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canApproveData,
-    canAccessStage2,
-    canPerformWork,
-    canRegisterData,
-    isReadOnly,
-    TMMRD_ROLES,
-    TMMRD_PAGES,
-  } = useTMMRDPermissions();
+  // Use standard permissions instead of custom TMMRD-specific logic
+  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
+  // This component focuses on action-level permissions using standard role groups
 
   // All state must be declared before any conditional returns (React Hooks Rule)
   const [samples, setSamples] = useState([]);
@@ -1282,25 +1271,9 @@ function TraditionalMedicineAuthenticationStoragePage({
     );
   };
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Traditional Medicine Authentication & Storage"
-        reason={intl.formatMessage({
-          id: "notebook.tradmed.storage.accessDenied",
-          defaultMessage:
-            "Access to the Traditional Medicine Authentication & Storage page requires specialized permissions. This page is restricted to roles responsible for botanical authentication verification and storage management.",
-        })}
-        requiredRoles={allowedRoles}
-        additionalInfo={intl.formatMessage({
-          id: "notebook.tradmed.storage.accessRequirements",
-          defaultMessage:
-            "Required permissions: Authentication verification, Storage assignment, and Herbarium cataloging capabilities.",
-        })}
-      />
-    );
-  }
+  // Page-level access control is handled by usePageAccessControl() in parent workflow component
+  // This component assumes it's only rendered when user has page access
+  // Individual UI elements use PermissionGate for action-level control
 
   return (
     <div className="tradmed-storage-page">
@@ -1382,8 +1355,7 @@ function TraditionalMedicineAuthenticationStoragePage({
             !canAssignStorage || isViewOnly
               ? intl.formatMessage({
                   id: "notebook.tradmed.tooltip.assignStoragePermission",
-                  defaultMessage:
-                    "Requires TMMRD Pharmacognosist, Lab Manager, or Principal Investigator role to assign storage",
+                  defaultMessage: "Insufficient permissions to assign storage",
                 })
               : selectedSampleIds.length === 0
                 ? intl.formatMessage({
@@ -1414,7 +1386,7 @@ function TraditionalMedicineAuthenticationStoragePage({
                 ? intl.formatMessage({
                     id: "notebook.tradmed.tooltip.markCompletePermission",
                     defaultMessage:
-                      "Requires TMMRD Pharmacognosist, Lab Manager, or Principal Investigator role to mark samples complete",
+                      "Insufficient permissions to mark samples complete",
                   })
                 : ""
             }

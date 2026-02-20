@@ -9,9 +9,8 @@ import SampleGrid from "../../workflow/SampleGrid";
 import { Upload, Checkmark, Edit } from "@carbon/react/icons";
 import { postToOpenElisServer } from "../../../utils/Utils";
 import config from "../../../../config.json";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useBioequivalencePermissions } from "../../../../hooks/useBioequivalencePermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "./BioequivalencePages.css";
 
 /**
@@ -46,32 +45,10 @@ function BioequivalenceSampleReceptionPage({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { hasAnyRole } = usePermissions();
-  const {
-    getPagePermissionLevel,
-    canRegisterData,
-    canSaveData,
-    canAccessSampleReception,
-    BIOEQUIVALENCE_ROLES,
-  } = useBioequivalencePermissions();
 
-  // PAGE 1 allowed roles per test.pdf Section 11
-  const allowedRoles = [
-    BIOEQUIVALENCE_ROLES.SAMPLE_RECEIVER,
-    BIOEQUIVALENCE_ROLES.CHEMICAL_ANALYST,
-    BIOEQUIVALENCE_ROLES.PHARMACIST,
-    BIOEQUIVALENCE_ROLES.LAB_SUPERVISOR,
-    BIOEQUIVALENCE_ROLES.STUDY_DIRECTOR,
-    BIOEQUIVALENCE_ROLES.QA_OFFICER,
-    BIOEQUIVALENCE_ROLES.RESEARCHER,
-  ];
-
-  const canAccessPage = canAccessSampleReception();
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel("Sample Reception");
-  const canImportSamples = canRegisterData(pagePermissionLevel);
-  const canEditMetadata = canSaveData(pagePermissionLevel);
+  // Use standard permissions instead of custom bioequivalence-specific logic
+  // Page-level access control should be handled by usePageAccessControl() in workflow components
+  // This component focuses on action-level permissions using standard role groups
 
   // Core state following established patterns
   const [isLoading, setIsLoading] = useState(false);
@@ -352,16 +329,9 @@ function BioequivalenceSampleReceptionPage({
     loadPageSamples();
   }, [loadPageSamples]);
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Sample Reception & Registration"
-        reason="This page requires specific bioequivalence laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
+  // Page-level access control is handled by usePageAccessControl() in parent workflow component
+  // This component assumes it's only rendered when user has page access
+  // Individual UI elements use PermissionGate for action-level control
 
   return (
     <div className="bioequivalence-page">
@@ -464,68 +434,63 @@ function BioequivalenceSampleReceptionPage({
             className="page-actions-bar"
             style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
           >
-            <Button
-              kind="primary"
-              size="sm"
-              renderIcon={Upload}
-              onClick={handleImportModalOpen}
-              disabled={!canImportSamples}
-              title={
-                !canImportSamples
-                  ? intl.formatMessage({
-                      id: "notebook.bioequivalence.stage1.insufficientPermissions",
-                      defaultMessage:
-                        "Insufficient permissions to import samples",
-                    })
-                  : ""
-              }
+            <PermissionGate
+              roles={Permissions.REGISTER_SAMPLES}
+              disabledTooltip={intl.formatMessage({
+                id: "notebook.bioequivalence.stage1.insufficientPermissions",
+                defaultMessage: "Insufficient permissions to import samples",
+              })}
             >
-              <FormattedMessage
-                id="notebook.bioequivalence.stage1.importManifest"
-                defaultMessage="Import from Manifest"
-              />
-            </Button>
+              <Button
+                kind="primary"
+                size="sm"
+                renderIcon={Upload}
+                onClick={handleImportModalOpen}
+              >
+                <FormattedMessage
+                  id="notebook.bioequivalence.stage1.importManifest"
+                  defaultMessage="Import from Manifest"
+                />
+              </Button>
+            </PermissionGate>
 
             {/* Conditional buttons that appear when samples are selected */}
             {selectedSampleIds.length > 0 && (
               <>
-                <Button
-                  kind="primary"
-                  size="sm"
-                  renderIcon={Edit}
-                  onClick={() => setIsBulkApplyModalOpen(true)}
-                  disabled={!canEditMetadata}
-                  title={
-                    !canEditMetadata
-                      ? intl.formatMessage({
-                          id: "notebook.bioequivalence.stage1.insufficientPermissionsEdit",
-                          defaultMessage:
-                            "Insufficient permissions to edit metadata",
-                        })
-                      : ""
-                  }
+                <PermissionGate
+                  roles={Permissions.UPDATE_SAMPLES}
+                  disabledTooltip={intl.formatMessage({
+                    id: "notebook.bioequivalence.stage1.insufficientPermissionsEdit",
+                    defaultMessage: "Insufficient permissions to edit metadata",
+                  })}
                 >
-                  Edit Metadata ({selectedSampleIds.length})
-                </Button>
+                  <Button
+                    kind="primary"
+                    size="sm"
+                    renderIcon={Edit}
+                    onClick={() => setIsBulkApplyModalOpen(true)}
+                  >
+                    Edit Metadata ({selectedSampleIds.length})
+                  </Button>
+                </PermissionGate>
 
-                <Button
-                  kind="primary"
-                  size="sm"
-                  renderIcon={Checkmark}
-                  onClick={markAsVerified}
-                  disabled={!canSaveData(pagePermissionLevel)}
-                  title={
-                    !canSaveData(pagePermissionLevel)
-                      ? intl.formatMessage({
-                          id: "notebook.bioequivalence.stage1.insufficientPermissionsVerify",
-                          defaultMessage:
-                            "Insufficient permissions to verify samples",
-                        })
-                      : ""
-                  }
+                <PermissionGate
+                  roles={Permissions.UPDATE_SAMPLES}
+                  disabledTooltip={intl.formatMessage({
+                    id: "notebook.bioequivalence.stage1.insufficientPermissionsVerify",
+                    defaultMessage:
+                      "Insufficient permissions to verify samples",
+                  })}
                 >
-                  Mark as Verified ({selectedSampleIds.length})
-                </Button>
+                  <Button
+                    kind="primary"
+                    size="sm"
+                    renderIcon={Checkmark}
+                    onClick={markAsVerified}
+                  >
+                    Mark as Verified ({selectedSampleIds.length})
+                  </Button>
+                </PermissionGate>
               </>
             )}
           </div>

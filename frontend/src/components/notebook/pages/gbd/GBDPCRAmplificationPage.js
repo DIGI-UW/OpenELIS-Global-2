@@ -23,8 +23,6 @@ import {
   Checkbox,
 } from "@carbon/react";
 import { Renew, CheckmarkFilled, Chemistry } from "@carbon/react/icons";
-import useGBDPermissions from "../../../../hooks/useGBDPermissions";
-import { usePermissions } from "../../../../hooks/usePermissions";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -32,7 +30,8 @@ import {
   getFromOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../common/Permissions";
+import PermissionGate from "../../../common/PermissionGate";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -69,22 +68,8 @@ export const GBDPCRAmplificationPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canPerformWork,
-    isReadOnly,
-    canAccessPCR,
-    GBD_ROLES,
-    GBD_PAGES,
-  } = useGBDPermissions();
 
-  // Page access check and permissions per matrix
-  const canAccessPage = canAccessPCR();
-  const pagePermissionLevel = getPagePermissionLevel(GBD_PAGES.PCR);
-  const canPerformPCR = canPerformWork(pagePermissionLevel);
-  const canModifyData = canSaveData(pagePermissionLevel);
-  const isViewOnly = isReadOnly(pagePermissionLevel);
+  // Page-level access control is managed by the parent notebook component
 
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
@@ -484,20 +469,6 @@ export const GBDPCRAmplificationPage = ({
     [samples],
   );
 
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="PCR Amplification"
-        reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={[
-          GBD_ROLES.LAB_TECHNICIAN,
-          GBD_ROLES.MANAGER,
-          GBD_ROLES.PRINCIPAL_INVESTIGATOR,
-        ]}
-      />
-    );
-  }
-
   const renderStatus = (sample) => {
     const status = sample.status || "PENDING";
 
@@ -579,40 +550,39 @@ export const GBDPCRAmplificationPage = ({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Chemistry}
-          onClick={openModal}
-          disabled={
-            selectedSampleIds.length === 0 || !hasRealPageId || !canPerformPCR
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.recordPCR"
-            defaultMessage="Record PCR ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.UPDATE_SAMPLES}>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Chemistry}
+            onClick={openModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.gbd.recordPCR"
+              defaultMessage="Record PCR ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            eligibleForCompletionCount === 0 ||
-            isCompleting ||
-            !hasRealPageId ||
-            !canPerformPCR
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: eligibleForCompletionCount }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={
+              eligibleForCompletionCount === 0 || isCompleting || !hasRealPageId
+            }
+          >
+            <FormattedMessage
+              id="notebook.gbd.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: eligibleForCompletionCount }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -656,7 +626,7 @@ export const GBDPCRAmplificationPage = ({
               samples={readyForPCRSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={canPerformPCR}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

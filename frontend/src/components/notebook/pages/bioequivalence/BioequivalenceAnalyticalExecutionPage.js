@@ -40,9 +40,8 @@ import { FormattedMessage } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useBioequivalencePermissions } from "../../../../hooks/useBioequivalencePermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import config from "../../../../config.json";
 
 /**
@@ -95,34 +94,11 @@ function BioequivalenceAnalyticalExecutionPage({
 }) {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { hasAnyRole } = usePermissions();
-  const { getPagePermissionLevel, hasFullControl, canSaveData } =
-    useBioequivalencePermissions();
   const isMountedRef = useRef(true);
 
-  const allowedRoles = [
-    "Bioequivalence Chemical Analyst",
-    "Bioequivalence Pharmacist",
-    "Bioequivalence Lab Supervisor",
-    "Bioequivalence Study Director",
-    "Bioequivalence QA Officer",
-    "Bioequivalence Researcher",
-  ];
-
-  const canAccessPage = hasAnyRole(allowedRoles);
-
-  const pagePermissionLevel = getPagePermissionLevel("Analytical Execution");
-  const canExecuteAnalysis = hasFullControl(pagePermissionLevel);
-  const canSaveResults = canSaveData(pagePermissionLevel);
-
-  // Debug logging for permission issues
-  if (process.env.NODE_ENV === "development") {
-    console.log("Analytical Execution Page - Permission Debug:", {
-      pagePermissionLevel,
-      canSaveResults,
-      canExecuteAnalysis,
-    });
-  }
+  // Page-level access control is handled by usePageAccessControl() in parent workflow component
+  // This component assumes it's only rendered when user has page access
+  // Individual UI elements use PermissionGate for action-level control
 
   // ============================================================================
   // CORE STATE
@@ -1202,17 +1178,6 @@ function BioequivalenceAnalyticalExecutionPage({
     }
   }, [allSelected, sampleTableRows]);
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Analytical Test Execution"
-        reason="This page requires specific bioequivalence laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   // ============================================================================
   // LOADING STATE
   // ============================================================================
@@ -1251,16 +1216,18 @@ function BioequivalenceAnalyticalExecutionPage({
             <Grid>
               <Column lg={16} md={8} sm={4}>
                 <div style={{ marginTop: "1rem", marginBottom: "2rem" }}>
-                  <Button
-                    kind="primary"
-                    onClick={() => setIsExecutionModalOpen(true)}
-                    disabled={selectedSampleIds.length === 0 || !canSaveResults}
-                    size="lg"
-                  >
-                    Configure Test Execution ({selectedSampleIds.length} samples
-                    selected)
-                  </Button>
-                  {(selectedSampleIds.length === 0 || !canSaveResults) && (
+                  <PermissionGate permissions={[Permissions.PROCESS_SAMPLES]}>
+                    <Button
+                      kind="primary"
+                      onClick={() => setIsExecutionModalOpen(true)}
+                      disabled={selectedSampleIds.length === 0}
+                      size="lg"
+                    >
+                      Configure Test Execution ({selectedSampleIds.length}{" "}
+                      samples selected)
+                    </Button>
+                  </PermissionGate>
+                  {selectedSampleIds.length === 0 && (
                     <div
                       style={{
                         marginTop: "0.75rem",
@@ -1288,23 +1255,14 @@ function BioequivalenceAnalyticalExecutionPage({
                           color: "#161616",
                         }}
                       >
-                        {selectedSampleIds.length === 0 && (
-                          <li>
-                            <span style={{ color: "#da1e28" }}>●</span> Select
-                            at least one sample from the table
-                          </li>
-                        )}
-                        {!canSaveResults && (
-                          <li>
-                            <span style={{ color: "#da1e28" }}>●</span>{" "}
-                            Insufficient permissions (current level:{" "}
-                            {pagePermissionLevel || "NONE"})
-                          </li>
-                        )}
+                        <li>
+                          <span style={{ color: "#da1e28" }}>●</span> Select at
+                          least one sample from the table
+                        </li>
                       </ul>
                     </div>
                   )}
-                  {selectedSampleIds.length > 0 && canSaveResults && (
+                  {selectedSampleIds.length > 0 && (
                     <p
                       style={{
                         marginTop: "0.5rem",
@@ -2443,31 +2401,33 @@ function BioequivalenceAnalyticalExecutionPage({
                 </div>
 
                 <div style={{ marginTop: "1rem" }}>
-                  <Button
-                    kind="primary"
-                    onClick={handleCompleteExecution}
-                    disabled={(() => {
-                      const totalFiles =
-                        (uploadedRawFiles?.length || 0) +
-                        (uploadedFiles?.length || 0);
-                      const totalProcessed =
-                        (uploadedRawFiles?.filter((f) => f.processed).length ||
-                          0) +
-                        (uploadedFiles?.filter((f) => f.processed).length || 0);
+                  <PermissionGate permissions={[Permissions.PROCESS_SAMPLES]}>
+                    <Button
+                      kind="primary"
+                      onClick={handleCompleteExecution}
+                      disabled={(() => {
+                        const totalFiles =
+                          (uploadedRawFiles?.length || 0) +
+                          (uploadedFiles?.length || 0);
+                        const totalProcessed =
+                          (uploadedRawFiles?.filter((f) => f.processed)
+                            .length || 0) +
+                          (uploadedFiles?.filter((f) => f.processed).length ||
+                            0);
 
-                      return (
-                        executionData.isExecuting ||
-                        selectedSampleIds.length === 0 ||
-                        !qcApproved ||
-                        (totalFiles > 0 && totalProcessed === 0) || // If files uploaded but none processed
-                        !canSaveResults
-                      );
-                    })()}
-                  >
-                    {executionData.isExecuting
-                      ? "Completing..."
-                      : "Complete Test Execution"}
-                  </Button>
+                        return (
+                          executionData.isExecuting ||
+                          selectedSampleIds.length === 0 ||
+                          !qcApproved ||
+                          (totalFiles > 0 && totalProcessed === 0) // If files uploaded but none processed
+                        );
+                      })()}
+                    >
+                      {executionData.isExecuting
+                        ? "Completing..."
+                        : "Complete Test Execution"}
+                    </Button>
+                  </PermissionGate>
                   {(!uploadedFiles || uploadedFiles.length === 0) && (
                     <p
                       style={{

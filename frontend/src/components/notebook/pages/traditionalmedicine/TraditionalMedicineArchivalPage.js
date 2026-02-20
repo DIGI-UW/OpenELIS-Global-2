@@ -35,9 +35,8 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -65,11 +64,10 @@ function TraditionalMedicineArchivalPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
-  const { hasAnyRole } = usePermissions();
 
-  // TMMRD permissions per SRS Section 11
-  const { getPagePermissionLevel, canSaveData, canAccessStage8, TMMRD_PAGES } =
-    useTMMRDPermissions();
+  // Use standard permissions instead of custom TMMRD-specific logic
+  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
+  // This component focuses on action-level permissions using standard role groups
 
   // All hooks and state must be declared before any conditional returns (React Hooks Rule)
   const [samples, setSamples] = useState([]);
@@ -85,8 +83,8 @@ function TraditionalMedicineArchivalPage({
   const [archivalNotes, setArchivalNotes] = useState("");
   const [generateReport, setGenerateReport] = useState(false);
 
-  // STAGE 9 allowed roles per TMMRD SRS Section 11 - Management only for archival
-  const allowedRoles = ["TMMRD Lab Manager", "TMMRD Principal Investigator"];
+  // Use standard permissions instead of custom TMMRD-specific logic
+  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
 
   const canAccessPage = canAccessStage8();
 
@@ -388,16 +386,9 @@ function TraditionalMedicineArchivalPage({
     );
   };
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Reporting & Archival"
-        reason="This page requires management level Traditional Medicine roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
+  // Page-level access control is handled by usePageAccessControl() in parent workflow component
+  // This component assumes it's only rendered when user has page access
+  // Individual UI elements use PermissionGate for action-level control
 
   return (
     <div className="tradmed-archival-page">

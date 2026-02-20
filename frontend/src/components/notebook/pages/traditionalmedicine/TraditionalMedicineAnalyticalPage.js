@@ -33,8 +33,8 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
-import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -63,34 +63,9 @@ function TraditionalMedicineAnalyticalPage({
     useContext(NotificationContext);
   const componentMounted = useRef(false);
 
-  // TMMRD permissions per matrix requirements
-  const {
-    canAccessStage5to6,
-    getPagePermissionLevel,
-    canPerformWork,
-    canSaveData,
-    isReadOnly,
-    TMMRD_ROLES,
-    TMMRD_PAGES,
-  } = useTMMRDPermissions();
-
-  const allowedRoles = [
-    TMMRD_ROLES.RESEARCHER,
-    TMMRD_ROLES.PHARMACOGNOSIST,
-    TMMRD_ROLES.LAB_MANAGER,
-    TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
-  ];
-
-  const canAccessPage = canAccessStage5to6();
-
-  // Get user's permission level for this specific page
-  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.ANALYTICAL);
-
-  // Function-level permissions based on matrix
-  const canPerformAnalyticalWork = canPerformWork(pagePermissionLevel);
-  const canModifyData = canSaveData(pagePermissionLevel);
-  const canMarkCompleteWork = canPerformWork(pagePermissionLevel);
-  const isViewOnly = isReadOnly(pagePermissionLevel);
+  // Use standard permissions instead of custom TMMRD-specific logic
+  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
+  // This component focuses on action-level permissions using standard role groups
 
   // Core state
   const [samples, setSamples] = useState([]);
@@ -840,24 +815,9 @@ function TraditionalMedicineAnalyticalPage({
     [samples],
   );
 
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Traditional Medicine Analytical Pathways"
-        reason={intl.formatMessage({
-          id: "notebook.tradmed.analytical.accessDenied",
-          defaultMessage:
-            "Access to the Traditional Medicine Analytical Pathways page requires advanced research permissions. This page is restricted to roles responsible for fractionation, identification, purification, and characterization processes.",
-        })}
-        requiredRoles={allowedRoles}
-        additionalInfo={intl.formatMessage({
-          id: "notebook.tradmed.analytical.accessRequirements",
-          defaultMessage:
-            "Required permissions: Analytical method development, Chromatographic separation, Spectroscopic analysis, and Structure determination capabilities.",
-        })}
-      />
-    );
-  }
+  // Page-level access control is handled by usePageAccessControl() in parent workflow component
+  // This component assumes it's only rendered when user has page access
+  // Individual UI elements use PermissionGate for action-level control
 
   const renderStepStatus = (sample) => {
     const steps = [
@@ -973,7 +933,7 @@ function TraditionalMedicineAnalyticalPage({
               ? intl.formatMessage({
                   id: "notebook.tradmed.tooltip.fractionationPermission",
                   defaultMessage:
-                    "Requires TMMRD Researcher or higher role to perform fractionation",
+                    "Insufficient permissions to perform fractionation",
                 })
               : selectedSampleIds.length === 0
                 ? intl.formatMessage({
@@ -1006,7 +966,7 @@ function TraditionalMedicineAnalyticalPage({
               ? intl.formatMessage({
                   id: "notebook.tradmed.tooltip.identificationPermission",
                   defaultMessage:
-                    "Requires TMMRD Researcher or higher role to perform identification",
+                    "Insufficient permissions to perform identification",
                 })
               : !canOpenIdentificationModal()
                 ? intl.formatMessage({
@@ -1039,7 +999,7 @@ function TraditionalMedicineAnalyticalPage({
               ? intl.formatMessage({
                   id: "notebook.tradmed.tooltip.purificationPermission",
                   defaultMessage:
-                    "Requires TMMRD Researcher or higher role to perform purification",
+                    "Insufficient permissions to perform purification",
                 })
               : !canOpenPurificationModal()
                 ? intl.formatMessage({
@@ -1073,7 +1033,7 @@ function TraditionalMedicineAnalyticalPage({
               ? intl.formatMessage({
                   id: "notebook.tradmed.tooltip.characterizationPermission",
                   defaultMessage:
-                    "Requires TMMRD Researcher or higher role to perform characterization",
+                    "Insufficient permissions to perform characterization",
                 })
               : !canOpenCharacterizationModal()
                 ? intl.formatMessage({
@@ -1120,7 +1080,7 @@ function TraditionalMedicineAnalyticalPage({
               ? intl.formatMessage({
                   id: "notebook.tradmed.tooltip.markCompletePermission",
                   defaultMessage:
-                    "Requires TMMRD Researcher or higher role to mark analytical work complete",
+                    "Insufficient permissions to mark analytical work complete",
                 })
               : !canMarkComplete()
                 ? intl.formatMessage({

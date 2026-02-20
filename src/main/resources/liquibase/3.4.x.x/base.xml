@@ -192,4 +192,8 @@
     <!-- Pathology Specimen Types: Tissue, Cytology, Body Fluid, Blood, Bone Marrow -->
     <include file="liquibase/3.4.x.x/072-pathology-specimen-types.xml"/>
 
+    <!-- Research Lab RBAC Migration: Remove Custom Roles -->
+    <!-- Rolls back custom role implementations to use standard OpenELIS RBAC + department-based access -->
+    <include file="liquibase/3.4.x.x/080-rollback-research-lab-custom-roles.xml"/>
+
 </databaseChangeLog>
