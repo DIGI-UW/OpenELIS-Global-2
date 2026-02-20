@@ -87,6 +87,17 @@
             type="java.lang.Boolean" />
         <property name="fhirUuid" column="fhir_uuid"
             type="java.util.UUID" />
+        <property name="gpsLatitude" column="gps_latitude"
+            type="java.lang.Double" />
+        <property name="gpsLongitude" column="gps_longitude"
+            type="java.lang.Double" />
+        <property name="gpsAccuracyMeters"
+            column="gps_accuracy_meters" type="java.lang.Integer" />
+        <property name="gpsCaptureMethod" column="gps_capture_method"
+            type="java.lang.String" length="10" />
+        <property name="gpsCaptureTimestamp"
+            column="gps_capture_timestamp" type="java.sql.Timestamp" />
+
         <!-- <set name="sampleOrganizations" inverse="true"> <key> <column name="SAMP_ID"
             precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.sampleorganization.valueholder.SampleOrganization"
             /> </set> <set name="sampleEnvironmentals" inverse="true"> <key> <column

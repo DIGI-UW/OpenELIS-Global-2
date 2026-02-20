@@ -9,7 +9,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 public class ControllerUtills {
 
-    protected String getSysUserId(HttpServletRequest request) {
+    public static String getSysUserId(HttpServletRequest request) {
         UserSessionData usd = (UserSessionData) request.getSession().getAttribute(IActionConstants.USER_SESSION_DATA);
         if (usd == null) {
             usd = (UserSessionData) request.getAttribute(IActionConstants.USER_SESSION_DATA);
