@@ -15,7 +15,12 @@ body {
   padding: 0.5rem;
   border: 1px solid #999;
   background-color: #ffffff;
-  margin-top: 0.25rem;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  z-index: 10;
+  margin-top: 0;
 }
 
 .suggestions {
@@ -34,7 +39,9 @@ body {
 }
 
 .suggestions-container {
-  position: relative;
+  position: absolute;
+  top: 100%;
+  left: 0;
   width: 100%;
 }
 

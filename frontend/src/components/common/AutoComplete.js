@@ -126,8 +126,10 @@ function AutoComplete(props) {
       );
     } else {
       suggestionsListComponent = (
-        <div className="no-suggestions">
-          <em>No suggestions available.</em>
+        <div className="suggestions-container">
+          <div className="no-suggestions">
+            <em>No suggestions available.</em>
+          </div>
         </div>
       );
     }
@@ -137,10 +139,6 @@ function AutoComplete(props) {
     <div
       style={{
         position: "relative",
-        marginBottom:
-          showSuggestions && userInput && !filteredSuggestions.length
-            ? "3rem"
-            : "0",
       }}
     >
       <TextInput
