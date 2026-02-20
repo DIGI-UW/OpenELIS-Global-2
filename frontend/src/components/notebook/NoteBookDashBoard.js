@@ -45,9 +45,11 @@ import {
   List,
 } from "@carbon/react/icons";
 import "./NoteBook.css";
+import { useHistory } from "react-router-dom";
 
 function NoteBookDashBoard() {
   const componentMounted = useRef(false);
+  const history = useHistory();
 
   const { notificationVisible } = useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -168,23 +170,23 @@ function NoteBookDashBoard() {
   };
 
   const openNoteBookView = (id) => {
-    window.location.href = "/NoteBookEntryForm/" + id;
+    history.push("/NoteBookEntryForm/" + id);
   };
 
   const openNoteBookEntryForm = () => {
-    window.location.href = "/NoteBookEntryForm";
+    history.push("/NoteBookEntryForm");
   };
 
   const openNoteBookInstanceEntryForm = () => {
-    window.location.href = "/NoteBookInstanceEntryForm/" + selectedNoteBook.id;
+    history.push("/NoteBookInstanceEntryForm/" + selectedNoteBook.id);
   };
 
   const openNoteBookInstanceView = (id) => {
-    window.location.href = "/NoteBookInstanceEditForm/" + id + "?mode=view";
+    history.push("/NoteBookInstanceEditForm/" + id + "?mode=view");
   };
 
   const openNoteBookInstanceEdit = (id) => {
-    window.location.href = "/NoteBookInstanceEditForm/" + id + "?mode=edit";
+    history.push("/NoteBookInstanceEditForm/" + id + "?mode=edit");
   };
 
   useEffect(() => {

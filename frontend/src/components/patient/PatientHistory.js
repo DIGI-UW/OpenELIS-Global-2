@@ -5,6 +5,7 @@ import { Heading, Grid, Column, Section } from "@carbon/react";
 import SearchPatientForm from "./SearchPatientForm";
 import { useState, useEffect, useRef } from "react";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { useHistory } from "react-router-dom";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -13,6 +14,7 @@ let breadcrumbs = [
 const PatientHistory = () => {
   const [selectedPatient, setSelectedPatient] = useState({});
   const componentMounted = useRef(false);
+  const history = useHistory();
 
   const getSelectedPatient = (patient) => {
     if (componentMounted.current) {
@@ -30,7 +32,7 @@ const PatientHistory = () => {
 
   const openPatientResults = (patientId) => {
     if (patientId) {
-      window.location.href = "/PatientResults/" + patientId;
+      history.push("/PatientResults/" + patientId);
     }
   };
 

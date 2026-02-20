@@ -21,6 +21,7 @@ import {
 } from "./patientMerge/patientMergeService";
 import "./patientMerge/PatientMerge.scss";
 import "../../components/Style.css";
+import { useHistory } from "react-router-dom";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -36,6 +37,7 @@ function PatientMerge() {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+  const history = useHistory();
 
   // Wizard state
   const [currentStep, setCurrentStep] = useState(STEP_SELECT);
@@ -182,7 +184,7 @@ function PatientMerge() {
 
   const handleCancel = () => {
     resetWizard();
-    window.location.href = "/";
+    history.push("/");
   };
 
   // Handle patient selection

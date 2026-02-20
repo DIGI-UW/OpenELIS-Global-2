@@ -1,4 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
+import { useHistory } from "react-router-dom";
 import {
   Checkbox,
   Heading,
@@ -34,6 +35,7 @@ import "./PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 
 function PathologyDashboard() {
+  const history = useHistory();
   const componentMounted = useRef(false);
 
   const intl = useIntl();
@@ -216,7 +218,7 @@ function PathologyDashboard() {
   };
 
   const openCaseView = (id) => {
-    window.location.href = "/PathologyCaseView/" + id;
+    history.push("/PathologyCaseView/" + id);
   };
 
   useEffect(() => {

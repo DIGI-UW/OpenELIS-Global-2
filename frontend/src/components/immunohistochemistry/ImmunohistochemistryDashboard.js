@@ -1,4 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
+import { useHistory } from "react-router-dom";
 import {
   Checkbox,
   Heading,
@@ -34,6 +35,7 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 
 function ImmunohistochemistryDashboard() {
+  const history = useHistory();
   const componentMounted = useRef(false);
 
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -237,7 +239,7 @@ function ImmunohistochemistryDashboard() {
   };
 
   const openCaseView = (id) => {
-    window.location.href = "/ImmunohistochemistryCaseView/" + id;
+    history.push("/ImmunohistochemistryCaseView/" + id);
   };
 
   useEffect(() => {
