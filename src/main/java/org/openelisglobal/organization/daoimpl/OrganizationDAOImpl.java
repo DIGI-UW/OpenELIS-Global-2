@@ -569,4 +569,50 @@ public class OrganizationDAOImpl extends BaseDAOImpl<Organization, String> imple
 
         return null;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Organization> searchOrganizationsWithTypes(String filter) throws LIMSRuntimeException {
+        List<Organization> list;
+        try {
+            // Simple query - we'll eagerly initialize within the transaction
+            String sql = "FROM Organization o " + "WHERE upper(o.organizationName) LIKE upper(:param) "
+                    + "AND o.isActive='Y' " + "ORDER BY upper(o.organizationName)";
+            Query<Organization> query = entityManager.unwrap(Session.class).createQuery(sql, Organization.class);
+            query.setParameter("param", "%" + filter + "%");
+            query.setMaxResults(100); // Limit results for performance
+
+            list = query.list();
+
+            // Force initialization of all organization types and parent chain within the
+            // transaction
+            // This supports any number of hierarchy levels
+            for (Organization org : list) {
+                initializeOrganizationHierarchy(org);
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Organization searchOrganizationsWithTypes()", e);
+        }
+
+        return list;
+    }
+
+    /**
+     * Recursively initialize organization types and parent hierarchy. Supports any
+     * number of levels.
+     */
+    private void initializeOrganizationHierarchy(Organization org) {
+        if (org == null) {
+            return;
+        }
+        // Initialize organization types
+        if (org.getOrganizationTypes() != null) {
+            org.getOrganizationTypes().size();
+        }
+        // Recursively initialize parent
+        if (org.getOrganization() != null) {
+            initializeOrganizationHierarchy(org.getOrganization());
+        }
+    }
 }
