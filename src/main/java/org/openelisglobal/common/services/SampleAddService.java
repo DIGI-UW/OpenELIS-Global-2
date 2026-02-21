@@ -179,10 +179,18 @@ public class SampleAddService {
                 String storageLocationType = sampleItem.attributeValue("storageLocationType");
                 String storagePositionCoordinate = sampleItem.attributeValue("storagePositionCoordinate");
 
-                sampleItemsTests.add(new SampleTestCollection(item, tests,
-                        USE_RECEIVE_DATE_FOR_COLLECTION_DATE ? collectionDateFromRecieveDate : collectionDateTime,
-                        initialConditionList, testIdToUserSectionMap, testIdToSampleTypeMap, sampleNature,
-                        storageLocationId, storageLocationType, storagePositionCoordinate));
+                String gpsLatitude = sampleItem.attributeValue("gpsLatitude");
+                String gpsLongitude = sampleItem.attributeValue("gpsLongitude");
+                String gpsAccuracy = sampleItem.attributeValue("gpsAccuracy");
+                String gpsCaptureMethod = sampleItem.attributeValue("gpsCaptureMethod");
+
+                sampleItemsTests
+                        .add(new SampleTestCollection(item, tests,
+                                USE_RECEIVE_DATE_FOR_COLLECTION_DATE ? collectionDateFromRecieveDate
+                                        : collectionDateTime,
+                                initialConditionList, testIdToUserSectionMap, testIdToSampleTypeMap, sampleNature,
+                                storageLocationId, storageLocationType, storagePositionCoordinate, gpsLatitude,
+                                gpsLongitude, gpsAccuracy, gpsCaptureMethod));
             }
         } catch (DocumentException e) {
             LogEvent.logDebug(e);
@@ -296,6 +304,11 @@ public class SampleAddService {
         public String storageLocationType;
         public String storagePositionCoordinate;
 
+        public String gpsLatitude;
+        public String gpsLongitude;
+        public String gpsAccuracy;
+        public String gpsCaptureMethod;
+
         public SampleTestCollection(SampleItem item, List<Test> tests, String collectionDate,
                 List<ObservationHistory> initialConditionList, Map<String, String> testIdToUserSectionMap,
                 Map<String, String> testIdToUserSampleTypeMap, ObservationHistory sampleNature) {
@@ -317,6 +330,19 @@ public class SampleAddService {
             this.storageLocationId = storageLocationId;
             this.storageLocationType = storageLocationType;
             this.storagePositionCoordinate = storagePositionCoordinate;
+        }
+
+        public SampleTestCollection(SampleItem item, List<Test> tests, String collectionDate,
+                List<ObservationHistory> initialConditionList, Map<String, String> testIdToUserSectionMap,
+                Map<String, String> testIdToUserSampleTypeMap, ObservationHistory sampleNature,
+                String storageLocationId, String storageLocationType, String storagePositionCoordinate,
+                String gpsLatitude, String gpsLongitude, String gpsAccuracy, String gpsCaptureMethod) {
+            this(item, tests, collectionDate, initialConditionList, testIdToUserSectionMap, testIdToUserSampleTypeMap,
+                    sampleNature, storageLocationId, storageLocationType, storagePositionCoordinate);
+            this.gpsLatitude = gpsLatitude;
+            this.gpsLongitude = gpsLongitude;
+            this.gpsAccuracy = gpsAccuracy;
+            this.gpsCaptureMethod = gpsCaptureMethod;
         }
     }
 }
