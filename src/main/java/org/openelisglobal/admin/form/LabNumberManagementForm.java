@@ -2,8 +2,8 @@ package org.openelisglobal.admin.form;
 
 import org.hibernate.validator.constraints.Length;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
-import org.openelisglobal.validation.annotations.ValidRegex;
 import org.openelisglobal.validation.annotations.SafeHtml;
+import org.openelisglobal.validation.annotations.ValidRegex;
 
 public class LabNumberManagementForm {
 
