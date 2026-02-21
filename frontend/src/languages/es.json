@@ -1476,6 +1476,7 @@
   "menu.validation.date": "Por fecha",
   "message.method.activation": "Esta unidad de método no estará activa hasta que se le haya asignado al menos una prueba.",
   "message.noPluginFound": "No se encontraron complementos",
+  "message.propertiesupdate.success": "Properties updated successfully",
   "method.browse.title": "Sección de Método",
   "method.methodName": "Nombre del Método",
   "modal.add.method": "Agregar nuevo método",
