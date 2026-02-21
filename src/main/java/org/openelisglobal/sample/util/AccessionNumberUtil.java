@@ -21,6 +21,7 @@ import static org.openelisglobal.common.provider.validation.IAccessionNumberVali
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.PatternSyntaxException;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
@@ -49,6 +50,23 @@ public class AccessionNumberUtil {
             return false;
         }
         return value.matches(blacklistCharacters);
+    }
+
+    public static boolean matchesConfiguredRegex(String accessionNumber, Property regexProperty) {
+        if (StringUtil.isNullorNill(accessionNumber) || regexProperty == null) {
+            return true;
+        }
+        String regex = ConfigurationProperties.getInstance().getPropertyValue(regexProperty);
+        if (StringUtil.isNullorNill(regex) || regex.trim().isEmpty()) {
+            return true;
+        }
+        try {
+            return accessionNumber.matches(regex);
+        } catch (PatternSyntaxException e) {
+            LogEvent.logError("AccessionNumberUtil", "matchesConfiguredRegex",
+                    "Invalid regex for " + regexProperty + ": " + e.getMessage());
+            return true;
+        }
     }
 
     public static IAccessionNumberValidator getGeneralAccessionNumberValidator() {

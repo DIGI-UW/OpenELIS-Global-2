@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <property name="now" value="now()" dbms="postgresql" />
+
+    <changeSet author="codex" id="1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information_domain where name = 'labNumberManagement';</sqlCheck>
+        </preConditions>
+        <comment>ensure labNumberManagement domain exists for lab number regex settings</comment>
+        <insert schemaName="clinlims" tableName="site_information_domain">
+            <column name="id" valueSequenceNext="site_information_domain_seq" />
+            <column name="name" value="labNumberManagement" />
+            <column name="description" value="Items related to lab numbers" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="codex" id="2">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'alphanumAccessionRegex';</sqlCheck>
+        </preConditions>
+        <comment>add alphanum accession regex configuration</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="alphanumAccessionRegex" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="regex for alphanumeric accession numbers" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'labNumberManagement')" />
+            <column name="value_type" value="text" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="codex" id="3">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'siteYearnumAccessionRegex';</sqlCheck>
+        </preConditions>
+        <comment>add site-year accession regex configuration</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="siteYearnumAccessionRegex" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="regex for site-year accession numbers" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'labNumberManagement')" />
+            <column name="value_type" value="text" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="codex" id="4">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'yearnumSixAccessionRegex';</sqlCheck>
+        </preConditions>
+        <comment>add yearnum six accession regex configuration</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="yearnumSixAccessionRegex" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="regex for yearnum six accession numbers" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'labNumberManagement')" />
+            <column name="value_type" value="text" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="codex" id="5">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'yearnumDashSevenAccessionRegex';</sqlCheck>
+        </preConditions>
+        <comment>add yearnum dash seven accession regex configuration</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="yearnumDashSevenAccessionRegex" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="regex for yearnum dash seven accession numbers" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'labNumberManagement')" />
+            <column name="value_type" value="text" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="codex" id="6">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'yearnumSevenAccessionRegex';</sqlCheck>
+        </preConditions>
+        <comment>add yearnum seven accession regex configuration</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="yearnumSevenAccessionRegex" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="regex for yearnum seven accession numbers" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'labNumberManagement')" />
+            <column name="value_type" value="text" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="codex" id="7">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'programnumAccessionRegex';</sqlCheck>
+        </preConditions>
+        <comment>add program accession regex configuration</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="programnumAccessionRegex" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="regex for program accession numbers" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'labNumberManagement')" />
+            <column name="value_type" value="text" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="codex" id="8">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'altYearAccessionRegex';</sqlCheck>
+        </preConditions>
+        <comment>add alt-year accession regex configuration</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="altYearAccessionRegex" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="regex for alternate year accession numbers" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'labNumberManagement')" />
+            <column name="value_type" value="text" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

@@ -254,6 +254,13 @@ public abstract class ConfigurationProperties {
         USE_ALT_ACCESSION_PREFIX("prePrintUseAltAccession", "text"), //
         USE_ALPHANUM_ACCESSION_PREFIX("useAlphanumAccessionPrefix", "text"), //
         ALPHANUM_ACCESSION_PREFIX("alphanumAccessionPrefix", "text"), //
+        ALPHANUM_ACCESSION_REGEX("alphanumAccessionRegex", "text"), //
+        SITEYEARNUM_ACCESSION_REGEX("siteYearnumAccessionRegex", "text"), //
+        YEARNUM_SIX_ACCESSION_REGEX("yearnumSixAccessionRegex", "text"), //
+        YEARNUM_DASH_SEVEN_ACCESSION_REGEX("yearnumDashSevenAccessionRegex", "text"), //
+        YEARNUM_SEVEN_ACCESSION_REGEX("yearnumSevenAccessionRegex", "text"), //
+        PROGRAMNUM_ACCESSION_REGEX("programnumAccessionRegex", "text"), //
+        ALT_YEAR_ACCESSION_REGEX("altYearAccessionRegex", "text"), //
         LAB_DIRECTOR_NAME("labDirectorName", "text"), //
         LAB_DIRECTOR_TITLE("labDirectorTitle", "text"), //
         INFO_HIGHWAY_USERNAME("infoHighway.username", "text"), //

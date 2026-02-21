@@ -363,6 +363,13 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.CONTACT_TRACING, "false");
         properties.setPropertyValue(Property.ALPHANUM_ACCESSION_PREFIX, "");
         properties.setPropertyValue(Property.USE_ALPHANUM_ACCESSION_PREFIX, "false");
+        properties.setPropertyValue(Property.ALPHANUM_ACCESSION_REGEX, "");
+        properties.setPropertyValue(Property.SITEYEARNUM_ACCESSION_REGEX, "");
+        properties.setPropertyValue(Property.YEARNUM_SIX_ACCESSION_REGEX, "");
+        properties.setPropertyValue(Property.YEARNUM_DASH_SEVEN_ACCESSION_REGEX, "");
+        properties.setPropertyValue(Property.YEARNUM_SEVEN_ACCESSION_REGEX, "");
+        properties.setPropertyValue(Property.PROGRAMNUM_ACCESSION_REGEX, "");
+        properties.setPropertyValue(Property.ALT_YEAR_ACCESSION_REGEX, "");
         properties.setPropertyValue(Property.REQUIRE_LAB_UNIT_AT_LOGIN, "false");
         properties.setPropertyValue(Property.ENABLE_CLIENT_REGISTRY, "false");
         properties.setPropertyValue(Property.BAR_CODE_TYPE, "BARCODE");

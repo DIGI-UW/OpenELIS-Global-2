@@ -2,6 +2,7 @@ package org.openelisglobal.admin.form;
 
 import org.hibernate.validator.constraints.Length;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
+import org.openelisglobal.validation.annotations.ValidRegex;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
 public class LabNumberManagementForm {
@@ -13,6 +14,14 @@ public class LabNumberManagementForm {
     @Length(max = 5, min = 0)
     @SafeHtml
     private String alphanumPrefix;
+
+    @Length(max = 512)
+    @ValidRegex
+    private String alphanumRegex;
+
+    @Length(max = 512)
+    @ValidRegex
+    private String siteYearnumRegex;
 
     public AccessionFormat getLabNumberType() {
         return labNumberType;
@@ -36,5 +45,21 @@ public class LabNumberManagementForm {
 
     public void setAlphanumPrefix(String alphanumPrefix) {
         this.alphanumPrefix = alphanumPrefix;
+    }
+
+    public String getAlphanumRegex() {
+        return alphanumRegex;
+    }
+
+    public void setAlphanumRegex(String alphanumRegex) {
+        this.alphanumRegex = alphanumRegex;
+    }
+
+    public String getSiteYearnumRegex() {
+        return siteYearnumRegex;
+    }
+
+    public void setSiteYearnumRegex(String siteYearnumRegex) {
+        this.siteYearnumRegex = siteYearnumRegex;
     }
 }

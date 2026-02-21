@@ -36,6 +36,7 @@ import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 
 public class ProgramAccessionValidator implements IAccessionNumberGenerator {
 
@@ -107,6 +108,10 @@ public class ProgramAccessionValidator implements IAccessionNumberGenerator {
         try {
             Integer.parseInt(accessionNumber.substring(INCREMENT_START));
         } catch (NumberFormatException e) {
+            return ValidationResults.FORMAT_FAIL;
+        }
+
+        if (!AccessionNumberUtil.matchesConfiguredRegex(accessionNumber, Property.PROGRAMNUM_ACCESSION_REGEX)) {
             return ValidationResults.FORMAT_FAIL;
         }
 

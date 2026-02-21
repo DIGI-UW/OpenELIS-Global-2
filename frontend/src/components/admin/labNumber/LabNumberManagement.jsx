@@ -228,7 +228,43 @@ function LabNumberManagement() {
                       />
                     </span>
                   </Column>
+                  <Column lg={16} md={8} sm={4}>
+                    <TextInput
+                      type="text"
+                      name="alphanumRegex"
+                      id="alphanumRegex"
+                      labelText={intl.formatMessage({
+                        id: "labNumber.regex.alphanum",
+                      })}
+                      helperText={intl.formatMessage({
+                        id: "labNumber.regex.helper",
+                      })}
+                      value={labNumberValues.alphanumRegex}
+                      onChange={handleFieldChange}
+                      enableCounter={true}
+                      maxCount={512}
+                    />
+                  </Column>
                 </>
+              )}
+              {labNumberValues.labNumberType === "SITEYEARNUM" && (
+                <Column lg={16} md={8} sm={4}>
+                  <TextInput
+                    type="text"
+                    name="siteYearnumRegex"
+                    id="siteYearnumRegex"
+                    labelText={intl.formatMessage({
+                      id: "labNumber.regex.siteyear",
+                    })}
+                    helperText={intl.formatMessage({
+                      id: "labNumber.regex.helper",
+                    })}
+                    value={labNumberValues.siteYearnumRegex}
+                    onChange={handleFieldChange}
+                    enableCounter={true}
+                    maxCount={512}
+                  />
+                </Column>
               )}
               <br></br>
               <Column lg={16} md={8} sm={4}>
