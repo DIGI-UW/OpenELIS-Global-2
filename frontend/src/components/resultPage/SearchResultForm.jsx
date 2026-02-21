@@ -22,6 +22,7 @@ import {
   Loading,
   Link,
   FileUploader,
+  Tag,
 } from "@carbon/react";
 import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
@@ -970,6 +971,51 @@ export function SearchResults(props) {
     }
   };
 
+  const getRangeStatusTag = (row) => {
+    if (row.resultType !== "N") {
+      return "";
+    }
+
+    const value = row.resultValue;
+    if (value === null || value === undefined || value === "") {
+      return "";
+    }
+
+    const actualValue = ("" + value).replace(/[<>]/g, "").replace(/,/g, "");
+    const numericValue = Number(actualValue);
+    if (Number.isNaN(numericValue)) {
+      return "";
+    }
+
+    const low = Number(row.lowerNormalRange);
+    const high = Number(row.upperNormalRange);
+    if (!Number.isFinite(low) || !Number.isFinite(high) || low === high) {
+      return "";
+    }
+
+    if (numericValue < low) {
+      return (
+        <Tag type="yellow" size="sm">
+          {intl.formatMessage({ id: "result.range.low" })}
+        </Tag>
+      );
+    }
+
+    if (numericValue > high) {
+      return (
+        <Tag type="red" size="sm">
+          {intl.formatMessage({ id: "result.range.high" })}
+        </Tag>
+      );
+    }
+
+    return (
+      <Tag type="green" size="sm">
+        {intl.formatMessage({ id: "result.range.normal" })}
+      </Tag>
+    );
+  };
+
   var columns = [
     {
       id: "sampleInfo",
@@ -1010,6 +1056,13 @@ export function SearchResults(props) {
       id: "normalRange",
       name: intl.formatMessage({ id: "column.name.normalRange" }),
       selector: (row) => row.normalRange,
+      sortable: true,
+      width: "8rem",
+    },
+    {
+      id: "rangeStatus",
+      name: intl.formatMessage({ id: "column.name.rangeStatus" }),
+      cell: (row) => getRangeStatusTag(row),
       sortable: true,
       width: "8rem",
     },
