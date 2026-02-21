@@ -1,3 +1,4 @@
+/* Layout Container - from develop */
 .notebook-layout-container {
   display: flex;
   gap: 1.5rem;
@@ -21,6 +22,129 @@
   min-width: 0;
 }
 
+/* Dashboard Tiles - from issue-2720 */
+.notebook-dashboard-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.notebook-dashboard-tile {
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
+  height: 100%;
+  background-color: #f4f4f4;
+  border-radius: 5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.notebook-tile-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+.notebook-tile-buttons {
+  margin-top: auto;
+  padding: 0 1rem 1rem;
+}
+
+.notebook-tile-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.notebook-tile-subtitle {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.notebook-tile-value {
+  margin-top: 10px;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.dashboard-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  margin-bottom: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.dashboard-tile {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  background-color: #f4f4f4;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tile-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.tile-value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #333;
+  margin: 0;
+}
+
+.gridBoundary {
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  overflow: visible;
+}
+
+.gridBoundary .cds--form-item,
+.gridBoundary .cds--multi-select,
+.gridBoundary .cds--text-input,
+.gridBoundary .cds--date-picker {
+  max-width: 100%;
+}
+
+.orderLegendBody {
+  background-color: #fff;
+  padding: 1rem;
+  border-radius: 5px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.orderLegendBody .cds--grid {
+  max-width: 100%;
+}
+
+.orderLegendBody .cds--data-table-container {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+@media (max-width: 1312px) {
+  .notebook-dashboard-container {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  .dashboard-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .notebook-layout-container {
     flex-direction: column;
@@ -30,5 +154,52 @@
     flex: 1;
     max-width: 100%;
     width: 100%;
+  }
+}
+
+@media (max-width: 1056px) {
+  .notebook-dashboard-container {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 792px) {
+  .notebook-dashboard-container {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .gridBoundary {
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 672px) {
+  .dashboard-container {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .notebook-dashboard-tile {
+    min-height: 250px;
+  }
+
+  .tile-value {
+    font-size: 1.75rem;
+  }
+}
+
+@media (max-width: 500px) {
+  .notebook-tile-buttons .cds--btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .gridBoundary,
+  .orderLegendBody {
+    padding: 0.5rem;
   }
 }
