@@ -11,6 +11,7 @@ import org.openelisglobal.common.servlet.validation.AjaxXMLServlet;
 import org.openelisglobal.dataexchange.aggregatereporting.IndicatorAggregationReportingServlet;
 import org.openelisglobal.dataexchange.order.action.OrderRawServlet;
 import org.openelisglobal.dataexchange.order.action.OrderServlet;
+import org.openelisglobal.fhir.servlets.FhirRestfulServer;
 import org.openelisglobal.metricservice.action.MetricServicesServlet;
 import org.springframework.web.WebApplicationInitializer;
 import org.springframework.web.context.ContextLoaderListener;
@@ -32,6 +33,12 @@ public class AnnotationWebAppInitializer implements WebApplicationInitializer {
     }
 
     private void setupServlets(ServletContext servletContext, AnnotationConfigWebApplicationContext rootContext) {
+
+        ServletRegistration.Dynamic fhirServlet = servletContext.addServlet("FhirServlet",
+                new FhirRestfulServer(rootContext));
+        fhirServlet.setLoadOnStartup(++startupOrder);
+        fhirServlet.addMapping("/fhir/facade/*");
+
         ServletRegistration.Dynamic dispatcher = servletContext.addServlet("dispatcher",
                 new DispatcherServlet(rootContext));
         dispatcher.setLoadOnStartup(++startupOrder);
