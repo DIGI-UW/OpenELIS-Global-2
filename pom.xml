@@ -640,7 +640,6 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>${postgresql.version}</version>
-            <scope>scope</scope>
         </dependency>
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
@@ -1000,16 +999,6 @@
                 <version>3.8.1</version>
                 <configuration>
                     <artifactItems>
-                        <artifactItem>
-                            <groupId>[ groupId ]</groupId>
-                            <artifactId>[ artifactId ]</artifactId>
-                            <version>[ version ]</version>
-                            <type>[ packaging ]</type>
-                            <classifier> [classifier - optional] </classifier>
-                            <overWrite>[ true or false ]</overWrite>
-                            <outputDirectory>[ output directory ]</outputDirectory>
-                            <destFileName>[ filename ]</destFileName>
-                        </artifactItem>
                     </artifactItems>
                     <!-- other configurations here -->
                 </configuration>

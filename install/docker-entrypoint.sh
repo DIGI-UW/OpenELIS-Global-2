@@ -35,7 +35,7 @@ mkdir -p \
   "$LUCENE" \
   "$BRANDING"
 
-# Fix ownership → UID 8443 (tomcat_admin)
+# Fix ownership ??? UID 8443 (tomcat_admin)
 chown -R 8443:tomcat "$OE_LOGS" || true
 chown -R 8443:tomcat "$TOMCAT_LOGS" || true
 chown -R 8443:tomcat "$LUCENE" || true

@@ -23,11 +23,20 @@ export default function Layout(props) {
   const [notificationVisible, setNotificationVisible] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
-  const location = useLocation();
+  // Integrate persistent sidenav state
+  const { mode, isExpanded, toggle, setMode, SIDENAV_MODES } =
+    useSideNavPreference({
+      defaultMode: pageDefaultMode,
+      storageKeyPrefix: pageStorageKeyPrefix,
+    });
+
+  const isLocked = mode === SIDENAV_MODES.LOCK;
+  const layoutConfig = {
+    defaultMode: pageDefaultMode,
+    storageKeyPrefix: pageStorageKeyPrefix,
+  };
 
   const addNotification = (notificationBody) => {
-    
-
     const exists = notifications.some(
       (n) =>
         n.title === notificationBody.title &&
