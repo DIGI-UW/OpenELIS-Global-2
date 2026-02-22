@@ -14,6 +14,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import { useHistory } from "react-router-dom";
 import {
   ComposedModal,
   ModalHeader,
@@ -38,6 +39,7 @@ const CopyMappingsModal = ({
   onSuccess,
 }) => {
   const intl = useIntl();
+  const history = useHistory();
   const [targetAnalyzerId, setTargetAnalyzerId] = useState("");
   const [availableAnalyzers, setAvailableAnalyzers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -132,7 +134,7 @@ const CopyMappingsModal = ({
         if (response.error) {
           setError(
             response.error ||
-              intl.formatMessage({ id: "analyzer.copyMappings.error" }),
+            intl.formatMessage({ id: "analyzer.copyMappings.error" }),
           );
         } else {
           setCopyResult(response);
@@ -152,7 +154,7 @@ const CopyMappingsModal = ({
   const handleViewTarget = () => {
     handleClose();
     if (targetAnalyzerId) {
-      window.location.href = `/analyzers/${targetAnalyzerId}/mappings`;
+      history.push(`/analyzers/${targetAnalyzerId}/mappings`);
     }
   };
 

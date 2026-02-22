@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
+import { useHistory } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import {
   Button,
@@ -97,6 +98,7 @@ const NoteBookInstanceEntryForm = () => {
   const [mode, setMode] = useState(MODES.CREATE);
   const { notebookid } = useParams();
   const { notebookentryid } = useParams();
+  const history = useHistory();
 
   // Get mode from query parameter
   const urlParams = new URLSearchParams(window.location.search);
@@ -209,7 +211,7 @@ const NoteBookInstanceEntryForm = () => {
         message: intl.formatMessage({ id: "error.save.msg" }),
       });
     }
-    window.location.href = "/NoteBookInstanceEditForm/" + body.id;
+    history.push("/NoteBookInstanceEditForm/" + body.id);
   };
 
   // Check if a sample is already added (by sampleItemId)
@@ -570,7 +572,7 @@ const NoteBookInstanceEntryForm = () => {
       setNotificationVisible(true);
       // Redirect back to dashboard
       setTimeout(() => {
-        window.location.href = "/NoteBookDashboard";
+        history.push("/NoteBookDashboard");
       }, 100);
       return false;
     }
@@ -907,7 +909,7 @@ const NoteBookInstanceEntryForm = () => {
     if (noteBookData.templateId || notebookid) {
       getFromOpenElisServer(
         "/rest/notebook/notebooksamples?noteBookId=" +
-          (noteBookData.templateId || notebookid),
+        (noteBookData.templateId || notebookid),
         (samples) => {
           if (samples && Array.isArray(samples)) {
             setSampleList(samples);
@@ -964,7 +966,7 @@ const NoteBookInstanceEntryForm = () => {
       locationData?.sample?.id ||
       sampleItemId ||
       (sampleLocations[sampleItemId] &&
-      typeof sampleLocations[sampleItemId] === "object"
+        typeof sampleLocations[sampleItemId] === "object"
         ? sampleLocations[sampleItemId].sampleItemId
         : null);
 
@@ -1855,8 +1857,8 @@ const NoteBookInstanceEntryForm = () => {
                                 </Column>
                                 <Column lg={14} md={8} sm={4}>
                                   {sample.results &&
-                                  Array.isArray(sample.results) &&
-                                  sample.results.length > 0 ? (
+                                    Array.isArray(sample.results) &&
+                                    sample.results.length > 0 ? (
                                     <div>
                                       {sample.results.map(
                                         (result, resultIndex) => (
@@ -1906,11 +1908,11 @@ const NoteBookInstanceEntryForm = () => {
                                               :{" "}
                                               {result.dateCreated
                                                 ? new Date(
-                                                    result.dateCreated,
-                                                  ).toLocaleString()
+                                                  result.dateCreated,
+                                                ).toLocaleString()
                                                 : intl.formatMessage({
-                                                    id: "not.available",
-                                                  })}
+                                                  id: "not.available",
+                                                })}
                                             </div>
                                           </Tile>
                                         ),
@@ -1984,8 +1986,8 @@ const NoteBookInstanceEntryForm = () => {
                                     <FormattedMessage
                                       id={
                                         sample.results &&
-                                        Array.isArray(sample.results) &&
-                                        sample.results.length > 0
+                                          Array.isArray(sample.results) &&
+                                          sample.results.length > 0
                                           ? "notebook.button.editResults"
                                           : "notebook.button.enterResults"
                                       }
@@ -2035,11 +2037,11 @@ const NoteBookInstanceEntryForm = () => {
                                 var win = window.open();
                                 win.document.write(
                                   '<iframe src="' +
-                                    "data:" +
-                                    file.fileType +
-                                    ";base64," +
-                                    file.fileData +
-                                    '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
+                                  "data:" +
+                                  file.fileType +
+                                  ";base64," +
+                                  file.fileData +
+                                  '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
                                 );
                               }}
                             >
@@ -2095,11 +2097,11 @@ const NoteBookInstanceEntryForm = () => {
                               var win = window.open();
                               win.document.write(
                                 '<iframe src="' +
-                                  "data:" +
-                                  file.fileType +
-                                  ";base64," +
-                                  file.fileData +
-                                  '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
+                                "data:" +
+                                file.fileType +
+                                ";base64," +
+                                file.fileData +
+                                '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
                               );
                             }}
                           >
@@ -2403,8 +2405,8 @@ const NoteBookInstanceEntryForm = () => {
                       <p style={{ fontSize: "0.875rem", color: "#525252" }}>
                         {comment.author ||
                           userSessionDetails.firstName +
-                            " " +
-                            userSessionDetails.lastName}
+                          " " +
+                          userSessionDetails.lastName}
                         {comment.dateCreated
                           ? new Date(comment.dateCreated).toLocaleString()
                           : "Just now"}
@@ -2596,7 +2598,7 @@ const NoteBookInstanceEntryForm = () => {
         size="lg"
       >
         {resultsModalData.testResult &&
-        resultsModalData.testResult.length > 0 ? (
+          resultsModalData.testResult.length > 0 ? (
           <SearchResults
             results={resultsModalData}
             setResultForm={setResultsModalData}

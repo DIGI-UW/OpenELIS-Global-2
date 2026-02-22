@@ -25,6 +25,7 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
+import { useHistory } from "react-router-dom";
 
 let breadcrumbs = [{ label: "home.label", link: "/" }];
 
@@ -41,6 +42,7 @@ const ProgramDashboard = () => {
   const [pageSize, setPageSize] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
   const intl = useIntl();
+  const history = useHistory();
 
   const fetchDashBoard = (pageNumber, filter) => {
     let url = programDashboardUrl;
@@ -86,7 +88,7 @@ const ProgramDashboard = () => {
   };
 
   const handleRowClick = (programSampleId) => {
-    window.location.href = `/programView/${programSampleId}`;
+    history.push(`/programView/${programSampleId}`);
   };
 
   useEffect(() => {

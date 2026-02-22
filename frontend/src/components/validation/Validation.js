@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
+import { useHistory } from "react-router-dom";
 import { Field, Formik } from "formik";
 import {
   Button,
@@ -32,6 +33,7 @@ const Validation = (props) => {
   const { configurationProperties } = useContext(ConfigurationContext);
 
   const intl = useIntl();
+  const history = useHistory();
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
@@ -132,7 +134,7 @@ const Validation = (props) => {
     if (status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      window.location.href = "/validation" + props.params;
+      history.push("/validation" + props.params);
     }
     addNotification({
       kind: kind,
@@ -413,9 +415,9 @@ const Validation = (props) => {
               data={
                 props.results
                   ? props?.results?.resultList?.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )
+                    (page - 1) * pageSize,
+                    page * pageSize,
+                  )
                   : []
               }
               columns={columns}

@@ -22,13 +22,14 @@ import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import config from "../../config.json";
-
+import { useHistory } from "react-router-dom";
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
 
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
+  const history = useHistory();
 
   const intl = useIntl();
 
@@ -131,7 +132,7 @@ const AnalyserResults = (props) => {
     if (status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      window.location.href = "/AnalyzerResults?type=" + props.type;
+      history.push(`/AnalyzerResults?type=${props.type}`);
     }
     addNotification({
       kind: kind,
@@ -443,9 +444,9 @@ const AnalyserResults = (props) => {
               data={
                 props.results
                   ? props.results.resultList?.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )
+                    (page - 1) * pageSize,
+                    page * pageSize,
+                  )
                   : []
               }
               columns={columns}

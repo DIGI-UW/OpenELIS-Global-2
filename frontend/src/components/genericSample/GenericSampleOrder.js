@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
+import { useHistory } from "react-router-dom"; import {
   Grid,
   Column,
   Section,
@@ -74,6 +74,7 @@ export default function GenericSampleOrder({
   renderCustomContent,
 }) {
   const intl = useIntl();
+  const history = useHistory();
 
   // Extract notebook IDs from initialValues (these should NOT be in defaultForm)
   // Use useMemo to ensure these values update when initialValues changes
@@ -492,7 +493,7 @@ export default function GenericSampleOrder({
                 </Button>
                 <Button
                   kind="tertiary"
-                  onClick={() => (window.location.href = "/")}
+                  onClick={() => history.push("/")}
                 >
                   <FormattedMessage id="button.home" defaultMessage="Home" />
                 </Button>
