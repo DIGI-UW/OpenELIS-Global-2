@@ -237,6 +237,10 @@ public abstract class ConfigurationProperties {
         BAR_CODE_TYPE("BarCodeType", "text"),
         PatientImageUploadDisabled("patientImageUploadDisabled", "text");
 
+        BAR_CODE_TYPE("BarCodeType", "text"), //
+        GPS_ENABLED("gpsCoordinatesEnabled", "text"), // if true, GPS coordinate fields are displayed in order entry
+        GPS_ACCURACY_METERS("gpsRequiredAccuracyMeters", "text"), // maximum acceptable GPS accuracy in meters
+        GPS_TIMEOUT_SECONDS("gpsTimeoutSeconds", "text"); // timeout in seconds for GPS location requests
 
         // visible on
         // the ui
