@@ -340,7 +340,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   ];
 
   const handleMinimizeClick = () => {
-    console.log("Icon clicked!");
     if (selectedTile.type == "ORDERS_FOR_USER") {
       const tile: Tile = {
         title: <FormattedMessage id="dashboard.user.orders.label" />,
@@ -376,7 +375,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   };
 
   const viewUserOrders = (row) => {
-    console.log("Icon clicked!");
     const firstName = row.cells.find(
       (e) => e.info.header === "userFirstName",
     ).value;

@@ -453,8 +453,6 @@ export function encodeDate(dateString) {
 }
 
 export function getDifferenceInDays(date1, date2) {
-  console.log("secondDate", date2);
-
   // Function to parse dates in DD/MM/YYYY format
   function parseDate(dateStr) {
     const [day, month, year] = dateStr.split("/").map(Number);

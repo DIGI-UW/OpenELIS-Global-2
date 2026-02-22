@@ -174,7 +174,6 @@ const NoteBookInstanceEntryForm = () => {
     noteBookForm.comments = comments
       .filter((c) => c.id === null)
       .map((c) => ({ id: null, text: c.text }));
-    console.log(JSON.stringify(noteBookForm));
     var url =
       mode === MODES.EDIT
         ? "/rest/notebook/update/" + notebookentryid
@@ -188,7 +187,6 @@ const NoteBookInstanceEntryForm = () => {
 
   const handleSubmited = async (response) => {
     var body = await response.json();
-    console.log(body);
     var status = response.status;
     setIsSubmitting(false);
     setNotificationVisible(true);
@@ -258,7 +256,6 @@ const NoteBookInstanceEntryForm = () => {
     orderFormValues.sampleOrderItems.providersList = [];
     orderFormValues.sampleOrderItems.paymentOptions = [];
     orderFormValues.sampleOrderItems.testLocationCodeList = [];
-    console.log(JSON.stringify(orderFormValues));
     postToOpenElisServer(
       "/rest/SampleEdit",
       JSON.stringify(orderFormValues),

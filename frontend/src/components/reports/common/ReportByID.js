@@ -20,7 +20,6 @@ function ReportByID(props) {
 
     setLoading(true);
 
-    console.log("National ID:", nationalId);
     const baseParams = `report=${props.report}&type=patient`;
     const baseUrl = `${config.serverBaseUrl}/ReportPrint`;
     const url = `${baseUrl}?${baseParams}&patientNumberDirect=${nationalId}`;

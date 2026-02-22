@@ -47,9 +47,7 @@ export const CommonProperties = () => {
     setLoading(true);
     const url = `/rest/properties`;
     let body = JSON.stringify(commonProperties);
-    postToOpenElisServerJsonResponse(url, body, (response, err) => {
-      console.log("response from server", response);
-    });
+    postToOpenElisServerJsonResponse(url, body, (response, err) => {});
     addNotification({
       kind: "success",
       message: intl.formatMessage({ id: "message.propertiesupdate.success" }),

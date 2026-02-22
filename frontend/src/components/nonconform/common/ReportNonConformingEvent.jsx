@@ -171,12 +171,10 @@ export const ReportNonConformingEvent = () => {
   ];
 
   useEffect(() => {
-    console.log(JSON.stringify(selectedSample));
     if (selectedSample.labOrderNumber && selectedSample.specimenId) {
       getFromOpenElisServer(
         `/rest/reportnonconformingevent?labOrderNumber=${selectedSample.labOrderNumber}&specimenId=${selectedSample.specimenId}`,
         (data) => {
-          console.log("data from server for selected", data);
           setLData(undefined);
           setnceForm({
             ...nceForm,
@@ -189,7 +187,6 @@ export const ReportNonConformingEvent = () => {
   }, [selectedSample]);
 
   const handleNCEFormSubmit = () => {
-    console.log("nceForm.data", nceForm.data);
     const newErrors = {};
     if (!nceForm.data.dateOfEvent) {
       newErrors.dateOfEvent = "Date of event is required";

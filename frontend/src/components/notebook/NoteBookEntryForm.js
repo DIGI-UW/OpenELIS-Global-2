@@ -202,7 +202,6 @@ const NoteBookEntryForm = () => {
     noteBookForm.comments = comments
       .filter((c) => c.id === null)
       .map((c) => ({ id: null, text: c.text }));
-    console.log(JSON.stringify(noteBookForm));
     var url =
       mode === MODES.EDIT
         ? "/rest/notebook/update/" + notebookid
@@ -216,7 +215,6 @@ const NoteBookEntryForm = () => {
 
   const handleSubmited = async (response) => {
     var body = await response.json();
-    console.log(body);
     var status = response.status;
     setIsSubmitting(false);
     setNotificationVisible(true);

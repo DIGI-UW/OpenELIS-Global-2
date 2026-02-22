@@ -148,7 +148,6 @@ const ReportByDate = (props) => {
       }
     };
 
-    console.log("props", props);
     if (
       props.report === "activityReportByTest" ||
       props.report === "activityReportByPanel" ||

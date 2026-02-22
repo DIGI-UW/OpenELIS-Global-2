@@ -333,7 +333,6 @@ const SampleBatchEntrySetup = () => {
     if (res.status === 200) {
       setPostRequestMade(true);
     } else {
-      console.log("Response from server:", res);
       setStatus("error");
     }
   }

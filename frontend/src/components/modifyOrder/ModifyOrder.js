@@ -156,7 +156,6 @@ const ModifyOrder = () => {
     orderFormValues.sampleOrderItems.providersList = [];
     orderFormValues.sampleOrderItems.paymentOptions = [];
     orderFormValues.sampleOrderItems.testLocationCodeList = [];
-    console.log(JSON.stringify(orderFormValues));
     postToOpenElisServer(
       "/rest/SampleEdit",
       JSON.stringify(orderFormValues),

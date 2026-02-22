@@ -81,7 +81,6 @@ const AuditTrailReport = ({ id }) => {
           setIsLabNoError(null);
           setAuditTrailItems(updatedAuditTrailItems);
           setData(data);
-          console.log("site name", data.sampleOrderItems.referringSiteName);
         }
         setIsLoading(false);
         setShowNotification(true);

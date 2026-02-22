@@ -120,7 +120,6 @@ const ReportByDateCSV = (props) => {
     if (props.report === "CIStudyExport") {
       getFromOpenElisServer("/rest/projects", (data) => {
         setStatusOptions(data);
-        console.log("data", data);
       });
     } else {
       getFromOpenElisServer("/rest/trendsprojects", (data) => {

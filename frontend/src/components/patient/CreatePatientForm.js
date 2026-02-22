@@ -448,7 +448,6 @@ function CreatePatientForm(props) {
     if ("days" in values) {
       delete values.days;
     }
-    console.log(JSON.stringify(values));
     postToOpenElisServer(
       "/rest/PatientManagement",
       JSON.stringify(values),

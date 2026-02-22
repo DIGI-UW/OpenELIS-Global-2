@@ -44,15 +44,10 @@ export default function SlideOverNotifications(props) {
       const subscription = await reg.pushManager.getSubscription();
       if (!subscription && !res?.pf_endpoint) {
         setSubscriptionState("NotSubscribed");
-        console.log("NotSubscribed");
       } else if (subscription?.endpoint === res?.pfEndpoint) {
         setSubscriptionState("SubscribedOnThisDevice");
-        console.log("SubscribedOnThisDevice");
       } else {
-        console.log("subscription?.endpoint", subscription?.endpoint);
-
         setSubscriptionState("SubscribedOnAnotherDevice");
-        console.log("SubscribedOnAnotherDevice");
       }
     } catch (error) {
       console.error("Error checking subscription status:", error);
@@ -153,9 +148,7 @@ export default function SlideOverNotifications(props) {
       postToOpenElisServer(
         "/rest/notification/subscribe",
         JSON.stringify(data),
-        (res) => {
-          console.log("res", res);
-        },
+        (res) => {},
       );
 
       // Set the loading state to false

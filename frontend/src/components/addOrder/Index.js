@@ -602,7 +602,6 @@ const Index = () => {
     orderFormValues.sampleOrderItems.providersList = [];
     orderFormValues.sampleOrderItems.paymentOptions = [];
     orderFormValues.sampleOrderItems.testLocationCodeList = [];
-    console.log(JSON.stringify(orderFormValues));
     postToOpenElisServer(
       "/rest/SamplePatientEntry",
       JSON.stringify(orderFormValues),
@@ -617,7 +616,6 @@ const Index = () => {
   }, [page]);
 
   useEffect(() => {
-    console.log(changed);
     OrderEntryValidationSchema.validate(orderFormValues, { abortEarly: false })
       .then((validData) => {
         setErrors([]);

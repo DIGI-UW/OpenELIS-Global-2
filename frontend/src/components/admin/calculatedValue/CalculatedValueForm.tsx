@@ -114,7 +114,6 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
 
   const loadCalculationList = (calculations) => {
     if (componentMounted.current) {
-      // console.log(JSON.stringify(reflexRuleList))
       const sampleList = [];
       if (calculations.length > 0) {
         setCalculationList(calculations);
@@ -241,7 +240,6 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     };
 
     list[index]["operations"].push(operation);
-    console.log(JSON.stringify(list[index]["operations"]));
     setCalculationList(list);
   };
 
@@ -260,7 +258,6 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     const list = [...calculationList];
     //list[index]['operations'].push(operation);
     list[index]["operations"].splice(operationIndex + 1, 0, operation);
-    console.log(JSON.stringify(list[index]["operations"]));
     setCalculationList(list);
   };
 
@@ -410,7 +407,6 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     try {
       // Code that might throw an error
       eval(mathematicalOperation);
-      console.log(JSON.stringify(calculationList[index]));
       postToOpenElisServer(
         "/rest/test-calculation",
         JSON.stringify(calculationList[index]),

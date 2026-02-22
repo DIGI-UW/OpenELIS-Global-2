@@ -365,7 +365,6 @@ export const ViewNonConformingEvent = () => {
                           name="radio-group"
                           onClick={() => {
                             setSelected(row.nceNumber);
-                            console.log(row);
                           }}
                           labelText=""
                           id={row.id}

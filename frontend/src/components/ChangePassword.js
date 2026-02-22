@@ -40,7 +40,6 @@ function ChangePassword() {
       body: qs.stringify(values),
     })
       .then((response) => {
-        console.log(response);
         if (response.redirected === true) {
           addNotification({
             kind: NotificationKinds.success,

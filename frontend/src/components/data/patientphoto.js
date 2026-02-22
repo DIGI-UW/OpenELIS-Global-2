@@ -650,7 +650,6 @@ const PatientFormExample = () => {
     e.preventDefault();
 
     // Envoi de toutes les données y compris la photo
-    console.log("Données du formulaire:", formData);
 
     // Exemple d'envoi API
     // const response = await fetch('/rest/patient', {

@@ -199,7 +199,6 @@ function OEHeader({
         `/rest/notification/markasread/${notificationId}`,
         null,
         (response) => {
-          console.log("Notification marked as read", response);
           getNotifications();
         },
       );
@@ -214,7 +213,6 @@ function OEHeader({
         `/rest/notification/markasread/all`,
         null,
         (response) => {
-          console.log("All Notifications marked as read", response);
           getNotifications();
         },
       );

@@ -51,9 +51,7 @@ const EOrderSearch = ({
     );
   }, []);
 
-  const handleElectronicOrders = (response) => {
-    console.log(response);
-  };
+  const handleElectronicOrders = (response) => {};
 
   const handleOrderStatus = (response) => {
     setStatusOptions(response);

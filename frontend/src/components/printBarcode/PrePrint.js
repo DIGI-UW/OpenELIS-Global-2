@@ -150,7 +150,6 @@ const PrePrint = () => {
   };
 
   const prePrintLabels = () => {
-    console.log(selectedPanels);
     const selectedTestIds = selectedTests
       .map((selectedTest) => selectedTest.id)
       .join(",");
