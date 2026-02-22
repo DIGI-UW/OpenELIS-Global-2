@@ -1476,6 +1476,7 @@
   "menu.validation.date": "După dată",
   "message.method.activation": "Această metodă nu va fi activă până când cel puțin un test nu este asociat.",
   "message.noPluginFound": "Nu au fost găsite pluginuri",
+  "message.propertiesupdate.success": "Properties updated successfully",
   "method.browse.title": "Secțiune metodă",
   "method.methodName": "Nume metodă",
   "modal.add.method": "Adaugă metodă nouă",
