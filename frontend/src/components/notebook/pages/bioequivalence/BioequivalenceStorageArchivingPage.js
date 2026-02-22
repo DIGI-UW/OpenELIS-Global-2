@@ -40,10 +40,6 @@ import "./BioequivalencePages.css";
 function BioequivalenceStorageArchivingPage({ entryId, pageData }) {
   const intl = useIntl();
 
-  // Page-level access control is handled by usePageAccessControl() in parent workflow component
-  // This component assumes it's only rendered when user has page access
-  // Individual UI elements use PermissionGate for action-level control
-
   const [isLoading, setIsLoading] = useState(false);
   const [storageSamples, setStorageSamples] = useState([]);
   const [selectedSamples, setSelectedSamples] = useState(new Set());

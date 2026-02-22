@@ -65,10 +65,6 @@ function TraditionalMedicineArchivalPage({
     useContext(NotificationContext);
   const componentMounted = useRef(false);
 
-  // Use standard permissions instead of custom TMMRD-specific logic
-  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
-  // This component focuses on action-level permissions using standard role groups
-
   // All hooks and state must be declared before any conditional returns (React Hooks Rule)
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
@@ -82,15 +78,6 @@ function TraditionalMedicineArchivalPage({
   const [retentionYears, setRetentionYears] = useState("");
   const [archivalNotes, setArchivalNotes] = useState("");
   const [generateReport, setGenerateReport] = useState(false);
-
-  // Use standard permissions instead of custom TMMRD-specific logic
-  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
-
-  const canAccessPage = canAccessStage8();
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.ARCHIVAL);
-  const canEditData = canSaveData(pagePermissionLevel);
 
   const archiveTypeOptions = [
     { id: "digital", label: "Digital Archive" },
@@ -386,10 +373,6 @@ function TraditionalMedicineArchivalPage({
     );
   };
 
-  // Page-level access control is handled by usePageAccessControl() in parent workflow component
-  // This component assumes it's only rendered when user has page access
-  // Individual UI elements use PermissionGate for action-level control
-
   return (
     <div className="tradmed-archival-page">
       <div className="page-section-header">
@@ -433,19 +416,32 @@ function TraditionalMedicineArchivalPage({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openModal}
-          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+        <PermissionGate
+          roles={[
+            Permissions.CHEMICAL_ANALYST,
+            Permissions.PHARMACIST,
+            Permissions.RESEARCHER,
+            Permissions.LAB_SUPERVISOR,
+          ]}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.recordArchivalPermission",
+            defaultMessage: "Insufficient permissions to record archival",
+          })}
         >
-          <FormattedMessage
-            id="notebook.page.tradmed.archival.recordArchival"
-            defaultMessage="Record Archival ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.archival.recordArchival"
+              defaultMessage="Record Archival ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"

@@ -39,8 +39,8 @@ import {
   getFromOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
-import { Permissions } from "../../../../common/Permissions";
-import PermissionGate from "../../../common/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
@@ -82,8 +82,6 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-
-  // Page-level access control is managed by the parent notebook component
 
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);

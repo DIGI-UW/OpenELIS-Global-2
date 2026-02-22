@@ -211,10 +211,6 @@ function BioequivalenceTestAssignmentPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  // Page-level access control is handled by usePageAccessControl() in parent workflow component
-  // This component assumes it's only rendered when user has page access
-  // Individual UI elements use PermissionGate for action-level control
-
   // Loading and data states
   const [isLoading, setIsLoading] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);

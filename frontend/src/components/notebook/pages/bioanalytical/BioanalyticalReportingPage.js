@@ -26,6 +26,7 @@ import {
   TextInput,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { usePermissions } from "../../../../hooks/usePermissions";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
 import { NotificationContext } from "../../../layout/Layout";
@@ -132,9 +133,6 @@ function BioanalyticalReportingPage({
     },
     [addNotification, setNotificationVisible],
   );
-  // Use standard permissions instead of custom bioanalytical-specific logic
-  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
-  // This component focuses on action-level permissions using standard role groups
   const [isLoading, setIsLoading] = useState(false);
   const [isQaLoading, setIsQaLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
@@ -1745,10 +1743,6 @@ function BioanalyticalReportingPage({
     onProgressUpdate,
     submissionTargets,
   ]);
-
-  // Page-level access control is handled by usePageAccessControl() in parent workflow component
-  // This component assumes it's only rendered when user has page access
-  // Individual UI elements use PermissionGate for action-level control
 
   return (
     <div className="bioanalytical-page">

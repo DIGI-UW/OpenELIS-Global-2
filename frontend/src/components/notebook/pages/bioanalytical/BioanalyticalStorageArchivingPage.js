@@ -50,10 +50,6 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     [addNotification, setNotificationVisible],
   );
 
-  // Use standard permissions instead of custom bioanalytical-specific logic
-  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
-  // This component focuses on action-level permissions using standard role groups
-
   const [isLoading, setIsLoading] = useState(false);
   const [storageSamples, setStorageSamples] = useState([]);
   const [selectedSamples, setSelectedSamples] = useState(new Set());
@@ -1181,10 +1177,6 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     [],
   );
 
-  // Page-level access control is handled by usePageAccessControl() in parent workflow component
-  // This component assumes it's only rendered when user has page access
-  // Individual UI elements use PermissionGate for action-level control
-
   return (
     <div className="bioanalytical-page">
       <div className="page-instructions">
@@ -1285,45 +1277,50 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                       }}
                     >
                       {/* Biorepository Transfer - Now Enabled */}
-                      <Button
-                        kind="primary"
-                        onClick={() => setBiorepositoryModalOpen(true)}
-                        disabled={!hasActionableSelectedSamples}
-                        title={
-                          selectedSamples.size === 0
-                            ? "Select samples to transfer to biorepository"
-                            : !hasActionableSelectedSamples
-                              ? "Selected samples have already been transferred or disposed"
-                              : "Transfer selected samples to biorepository for long-term storage"
-                        }
+                      <PermissionGate
+                        roles={Permissions.UPDATE_SAMPLES}
+                        disabledTooltip="Insufficient permissions to transfer samples to biorepository"
                       >
-                        {selectedSampleStatuses.transferredCount > 0 &&
-                        selectedSampleStatuses.actionableCount === 0 ? (
-                          <FormattedMessage
-                            id="notebook.bioanalytical.storage.samplesAlreadyTransferred"
-                            defaultMessage="{count} samples already transferred"
-                            values={{
-                              count: selectedSampleStatuses.transferredCount,
-                            }}
-                          />
-                        ) : selectedSampleStatuses.transferredCount > 0 ? (
-                          <FormattedMessage
-                            id="notebook.bioanalytical.storage.transferRemaining"
-                            defaultMessage="Transfer {actionable} remaining ({transferred} already transferred)"
-                            values={{
-                              actionable:
-                                selectedSampleStatuses.actionableCount,
-                              transferred:
-                                selectedSampleStatuses.transferredCount,
-                            }}
-                          />
-                        ) : (
-                          <FormattedMessage
-                            id="notebook.bioanalytical.storage.transferBiorepository"
-                            defaultMessage="Transfer to Biorepository"
-                          />
-                        )}
-                      </Button>
+                        <Button
+                          kind="primary"
+                          onClick={() => setBiorepositoryModalOpen(true)}
+                          disabled={!hasActionableSelectedSamples}
+                          title={
+                            selectedSamples.size === 0
+                              ? "Select samples to transfer to biorepository"
+                              : !hasActionableSelectedSamples
+                                ? "Selected samples have already been transferred or disposed"
+                                : "Transfer selected samples to biorepository for long-term storage"
+                          }
+                        >
+                          {selectedSampleStatuses.transferredCount > 0 &&
+                          selectedSampleStatuses.actionableCount === 0 ? (
+                            <FormattedMessage
+                              id="notebook.bioanalytical.storage.samplesAlreadyTransferred"
+                              defaultMessage="{count} samples already transferred"
+                              values={{
+                                count: selectedSampleStatuses.transferredCount,
+                              }}
+                            />
+                          ) : selectedSampleStatuses.transferredCount > 0 ? (
+                            <FormattedMessage
+                              id="notebook.bioanalytical.storage.transferRemaining"
+                              defaultMessage="Transfer {actionable} remaining ({transferred} already transferred)"
+                              values={{
+                                actionable:
+                                  selectedSampleStatuses.actionableCount,
+                                transferred:
+                                  selectedSampleStatuses.transferredCount,
+                              }}
+                            />
+                          ) : (
+                            <FormattedMessage
+                              id="notebook.bioanalytical.storage.transferBiorepository"
+                              defaultMessage="Transfer to Biorepository"
+                            />
+                          )}
+                        </Button>
+                      </PermissionGate>
                       <PermissionGate
                         roles={Permissions.UPDATE_SAMPLES}
                         disabledTooltip="Insufficient permissions to manage retention storage"
@@ -1331,10 +1328,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                         <Button
                           kind="secondary"
                           onClick={() => setRetentionStorageModalOpen(true)}
-                          disabled={
-                            isLoading ||
-                            !hasActionableSelectedSamples
-                          }
+                          disabled={isLoading || !hasActionableSelectedSamples}
                           title={
                             !hasActionableSelectedSamples &&
                             selectedSamples.size > 0
@@ -1355,10 +1349,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                         <Button
                           kind="danger--tertiary"
                           onClick={() => setDisposalModalOpen(true)}
-                          disabled={
-                            isLoading ||
-                            !hasActionableSelectedSamples
-                          }
+                          disabled={isLoading || !hasActionableSelectedSamples}
                           title={
                             !hasActionableSelectedSamples &&
                             selectedSamples.size > 0
@@ -1369,8 +1360,9 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                           <FormattedMessage
                             id="notebook.bioanalytical.storage.manageSampleDisposal"
                             defaultMessage="Manage Sample Disposal"
-                        />
-                      </Button>
+                          />
+                        </Button>
+                      </PermissionGate>
                     </div>
                   )}
 

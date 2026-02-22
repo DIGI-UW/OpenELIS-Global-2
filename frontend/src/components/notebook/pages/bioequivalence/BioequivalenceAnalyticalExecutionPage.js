@@ -96,10 +96,6 @@ function BioequivalenceAnalyticalExecutionPage({
     useContext(NotificationContext);
   const isMountedRef = useRef(true);
 
-  // Page-level access control is handled by usePageAccessControl() in parent workflow component
-  // This component assumes it's only rendered when user has page access
-  // Individual UI elements use PermissionGate for action-level control
-
   // ============================================================================
   // CORE STATE
   // ============================================================================

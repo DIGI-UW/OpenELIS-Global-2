@@ -58,9 +58,6 @@ export const GBDSampleReceptionPageEnhanced = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  // Use standard permissions instead of custom GBD-specific logic
-  // Page-level access control should be handled by usePageAccessControl() in workflow components
-  // This component focuses on action-level permissions using standard role groups
 
   const componentMounted = useRef(false);
   const [isManifestModalOpen, setIsManifestModalOpen] = useState(false);
@@ -259,10 +256,6 @@ export const GBDSampleReceptionPageEnhanced = ({
     loadPageSamples,
     onSampleStatusChange,
   ]);
-
-  // Page-level access control is handled by usePageAccessControl() in parent workflow component
-  // This component assumes it's only rendered when user has page access
-  // Individual UI elements use PermissionGate for action-level control
 
   return (
     <div className="gbd-sample-reception-page">

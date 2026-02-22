@@ -66,11 +66,6 @@ function TraditionalMedicineAuthenticationPage({
     useContext(NotificationContext);
   const componentMounted = useRef(false);
 
-  // Use standard permissions instead of custom TMMRD-specific logic
-  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
-  // This component focuses on action-level permissions using standard role groups
-
-  // All state must be declared before any conditional returns (React Hooks Rule)
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +82,6 @@ function TraditionalMedicineAuthenticationPage({
   );
   const [authNotes, setAuthNotes] = useState("");
 
-  // Check if page has a real ID
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
 
@@ -109,7 +103,6 @@ function TraditionalMedicineAuthenticationPage({
     { id: "partial", label: "Partially Confirmed" },
   ];
 
-  // Notification callback
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, message }) => {
       setNotificationVisible(true);
@@ -118,7 +111,6 @@ function TraditionalMedicineAuthenticationPage({
     [addNotification, setNotificationVisible],
   );
 
-  // Load samples for this page
   const loadPageSamples = useCallback(() => {
     if (!pageData?.id || String(pageData.id).startsWith("default-")) {
       setLoading(false);
@@ -177,7 +169,6 @@ function TraditionalMedicineAuthenticationPage({
     };
   }, [entryId, pageData?.id, loadPageSamples]);
 
-  // Reset authentication form
   const resetAuthForm = useCallback(() => {
     setAuthMethod(null);
     setAuthResult(null);
@@ -186,7 +177,6 @@ function TraditionalMedicineAuthenticationPage({
     setAuthNotes("");
   }, []);
 
-  // Open authentication modal
   const openAuthModal = useCallback(() => {
     if (selectedSampleIds.length === 0) {
       notify({
@@ -533,7 +523,18 @@ function TraditionalMedicineAuthenticationPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <PermissionGate permissions={[Permissions.UPDATE_SAMPLES]}>
+        <PermissionGate
+          roles={[
+            Permissions.CHEMICAL_ANALYST,
+            Permissions.PHARMACIST,
+            Permissions.RESEARCHER,
+            Permissions.LAB_SUPERVISOR,
+          ]}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.authenticatePermission",
+            defaultMessage: "Insufficient permissions to authenticate samples",
+          })}
+        >
           <Button
             kind="primary"
             size="sm"
@@ -559,7 +560,19 @@ function TraditionalMedicineAuthenticationPage({
 
         {selectedSampleIds.length > 0 &&
           pendingSamples.some((s) => selectedSampleIds.includes(s.id)) && (
-            <PermissionGate permissions={[Permissions.PROCESS_SAMPLES]}>
+            <PermissionGate
+              roles={[
+                Permissions.CHEMICAL_ANALYST,
+                Permissions.PHARMACIST,
+                Permissions.RESEARCHER,
+                Permissions.LAB_SUPERVISOR,
+              ]}
+              disabledTooltip={intl.formatMessage({
+                id: "notebook.tradmed.tooltip.markCompletePermission",
+                defaultMessage:
+                  "Insufficient permissions to mark samples complete",
+              })}
+            >
               <Button
                 kind="tertiary"
                 size="sm"
@@ -625,7 +638,7 @@ function TraditionalMedicineAuthenticationPage({
               samples={pendingSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={!isViewOnly}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

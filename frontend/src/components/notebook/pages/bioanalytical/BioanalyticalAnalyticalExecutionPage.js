@@ -103,10 +103,6 @@ function BioanalyticalAnalyticalExecutionPage({
     useContext(NotificationContext);
   const isMountedRef = useRef(true);
 
-  // Use standard permissions instead of custom bioanalytical-specific logic
-  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
-  // This component focuses on action-level permissions using standard role groups
-
   // ============================================================================
   // CORE STATE
   // ============================================================================
@@ -1735,10 +1731,6 @@ function BioanalyticalAnalyticalExecutionPage({
       setSelectedSampleIds(sampleTableRows.map((row) => row.id));
     }
   }, [allSelected, sampleTableRows]);
-
-  // Page-level access control is handled by usePageAccessControl() in parent workflow component
-  // This component assumes it's only rendered when user has page access
-  // Individual UI elements use PermissionGate for action-level control
 
   // ============================================================================
   // LOADING STATE

@@ -62,10 +62,6 @@ function BioanalyticalSampleReceptionPage({
     useContext(NotificationContext);
   const { hasAnyRole } = usePermissions();
 
-  // Use standard permissions instead of custom bioanalytical-specific logic
-  // Page-level access control should be handled by usePageAccessControl() in workflow components
-  // This component focuses on action-level permissions using standard role groups
-
   // Core state following established patterns
   const [isLoading, setIsLoading] = useState(false);
   const [samples, setSamples] = useState([]);
@@ -808,7 +804,13 @@ function BioanalyticalSampleReceptionPage({
             style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
           >
             <PermissionGate
-              roles={Permissions.REGISTER_SAMPLES}
+              roles={[
+                Permissions.SAMPLE_RECEIVER,
+                Permissions.CHEMICAL_ANALYST,
+                Permissions.PHARMACIST,
+                Permissions.RESEARCHER,
+                Permissions.LAB_SUPERVISOR,
+              ]}
               disabledTooltip={intl.formatMessage({
                 id: "notebook.bioanalytical.stage1.insufficientPermissions",
                 defaultMessage: "Insufficient permissions to import samples",
@@ -831,7 +833,12 @@ function BioanalyticalSampleReceptionPage({
             {selectedSampleIds.length > 0 && (
               <>
                 <PermissionGate
-                  roles={Permissions.UPDATE_SAMPLES}
+                  roles={[
+                    Permissions.CHEMICAL_ANALYST,
+                    Permissions.PHARMACIST,
+                    Permissions.RESEARCHER,
+                    Permissions.LAB_SUPERVISOR,
+                  ]}
                   disabledTooltip={intl.formatMessage({
                     id: "notebook.bioanalytical.stage1.insufficientPermissionsEdit",
                     defaultMessage: "Insufficient permissions to edit metadata",
@@ -850,7 +857,12 @@ function BioanalyticalSampleReceptionPage({
 
                 {/* QC Verification Button */}
                 <PermissionGate
-                  roles={Permissions.VALIDATE_RESULTS}
+                  roles={[
+                    Permissions.CHEMICAL_ANALYST,
+                    Permissions.PHARMACIST,
+                    Permissions.RESEARCHER,
+                    Permissions.LAB_SUPERVISOR,
+                  ]}
                   disabledTooltip={
                     selectedSampleIds.length === 0
                       ? "Select samples to perform QC verification"
@@ -878,7 +890,12 @@ function BioanalyticalSampleReceptionPage({
                 </PermissionGate>
 
                 <PermissionGate
-                  roles={Permissions.UPDATE_SAMPLES}
+                  roles={[
+                    Permissions.CHEMICAL_ANALYST,
+                    Permissions.PHARMACIST,
+                    Permissions.RESEARCHER,
+                    Permissions.LAB_SUPERVISOR,
+                  ]}
                   disabledTooltip={intl.formatMessage({
                     id: "notebook.bioanalytical.stage1.insufficientPermissionsVerify",
                     defaultMessage:

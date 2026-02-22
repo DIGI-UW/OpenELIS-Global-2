@@ -65,7 +65,7 @@ function TraditionalMedicineAnalyticalPage({
 
   // Use standard permissions instead of custom TMMRD-specific logic
   // Page-level access control should be handled by usePageAccessControl() in parent workflow component
-  // This component focuses on action-level permissions using standard role groups
+  // This component focuses on action-level permissions using PermissionGate components around individual actions
 
   // Core state
   const [samples, setSamples] = useState([]);
@@ -861,21 +861,6 @@ function TraditionalMedicineAnalyticalPage({
 
   return (
     <div className="tradmed-analytical-page">
-      {/* View-only banner */}
-      {isViewOnly && (
-        <div className="view-only-banner">
-          <div className="view-only-content">
-            <WarningAltFilled size={16} />
-            <span>
-              <FormattedMessage
-                id="notebook.tradmed.analytical.viewOnlyMode"
-                defaultMessage="View-only mode: Your role permissions allow viewing but not modifying analytical pathway data."
-              />
-            </span>
-          </div>
-        </div>
-      )}
-
       <div className="page-section-header">
         <h4>
           <FormattedMessage
@@ -917,138 +902,157 @@ function TraditionalMedicineAnalyticalPage({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openFractionationModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canPerformAnalyticalWork ||
-            isViewOnly
-          }
-          title={
-            !canPerformAnalyticalWork || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.fractionationPermission",
-                  defaultMessage:
-                    "Insufficient permissions to perform fractionation",
-                })
-              : selectedSampleIds.length === 0
+        <PermissionGate
+          roles={[
+            Permissions.CHEMICAL_ANALYST,
+            Permissions.PHARMACIST,
+            Permissions.RESEARCHER,
+            Permissions.LAB_SUPERVISOR,
+          ]}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.fractionationPermission",
+            defaultMessage: "Insufficient permissions to perform fractionation",
+          })}
+        >
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openFractionationModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+            title={
+              selectedSampleIds.length === 0
                 ? intl.formatMessage({
                     id: "notebook.tradmed.tooltip.selectSamples",
                     defaultMessage: "Select samples for fractionation",
                   })
                 : ""
-          }
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.analytical.step1"
-            defaultMessage="Step 1: Fractionation"
-          />
-        </Button>
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.analytical.step1"
+              defaultMessage="Step 1: Fractionation"
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openIdentificationModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !canOpenIdentificationModal() ||
-            !hasRealPageId ||
-            !canPerformAnalyticalWork ||
-            isViewOnly
-          }
-          title={
-            !canPerformAnalyticalWork || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.identificationPermission",
-                  defaultMessage:
-                    "Insufficient permissions to perform identification",
-                })
-              : !canOpenIdentificationModal()
+        <PermissionGate
+          roles={[
+            Permissions.CHEMICAL_ANALYST,
+            Permissions.PHARMACIST,
+            Permissions.RESEARCHER,
+            Permissions.LAB_SUPERVISOR,
+          ]}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.identificationPermission",
+            defaultMessage:
+              "Insufficient permissions to perform identification",
+          })}
+        >
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openIdentificationModal}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              !canOpenIdentificationModal() ||
+              !hasRealPageId
+            }
+            title={
+              !canOpenIdentificationModal()
                 ? intl.formatMessage({
                     id: "notebook.tradmed.tooltip.fractionationRequired",
                     defaultMessage: "Fractionation must be completed first",
                   })
                 : ""
-          }
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.analytical.step2"
-            defaultMessage="Step 2: Identification"
-          />
-        </Button>
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.analytical.step2"
+              defaultMessage="Step 2: Identification"
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openPurificationModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !canOpenPurificationModal() ||
-            !hasRealPageId ||
-            !canPerformAnalyticalWork ||
-            isViewOnly
-          }
-          title={
-            !canPerformAnalyticalWork || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.purificationPermission",
-                  defaultMessage:
-                    "Insufficient permissions to perform purification",
-                })
-              : !canOpenPurificationModal()
+        <PermissionGate
+          roles={[
+            Permissions.CHEMICAL_ANALYST,
+            Permissions.PHARMACIST,
+            Permissions.RESEARCHER,
+            Permissions.LAB_SUPERVISOR,
+          ]}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.purificationPermission",
+            defaultMessage: "Insufficient permissions to perform purification",
+          })}
+        >
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openPurificationModal}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              !canOpenPurificationModal() ||
+              !hasRealPageId
+            }
+            title={
+              !canOpenPurificationModal()
                 ? intl.formatMessage({
                     id: "notebook.tradmed.tooltip.priorStepsRequired",
                     defaultMessage:
                       "Fractionation and Identification must be completed first",
                   })
                 : ""
-          }
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.analytical.step3"
-            defaultMessage="Step 3: Purification"
-          />
-        </Button>
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.analytical.step3"
+              defaultMessage="Step 3: Purification"
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openCharacterizationModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !canOpenCharacterizationModal() ||
-            !hasRealPageId ||
-            !canPerformAnalyticalWork ||
-            isViewOnly
-          }
-          title={
-            !canPerformAnalyticalWork || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.characterizationPermission",
-                  defaultMessage:
-                    "Insufficient permissions to perform characterization",
-                })
-              : !canOpenCharacterizationModal()
+        <PermissionGate
+          roles={[
+            Permissions.CHEMICAL_ANALYST,
+            Permissions.PHARMACIST,
+            Permissions.RESEARCHER,
+            Permissions.LAB_SUPERVISOR,
+          ]}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.characterizationPermission",
+            defaultMessage:
+              "Insufficient permissions to perform characterization",
+          })}
+        >
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openCharacterizationModal}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              !canOpenCharacterizationModal() ||
+              !hasRealPageId
+            }
+            title={
+              !canOpenCharacterizationModal()
                 ? intl.formatMessage({
                     id: "notebook.tradmed.tooltip.allPriorStepsRequired",
                     defaultMessage:
                       "All prior analytical steps must be completed first",
                   })
                 : ""
-          }
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.analytical.step4"
-            defaultMessage="Step 4: Characterization"
-          />
-        </Button>
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.analytical.step4"
+              defaultMessage="Step 4: Characterization"
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -1063,39 +1067,36 @@ function TraditionalMedicineAnalyticalPage({
           />
         </Button>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            !canMarkComplete() ||
-            isCompleting ||
-            !hasRealPageId ||
-            !canMarkCompleteWork ||
-            isViewOnly
-          }
-          title={
-            !canMarkCompleteWork || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.markCompletePermission",
-                  defaultMessage:
-                    "Insufficient permissions to mark analytical work complete",
-                })
-              : !canMarkComplete()
+        <PermissionGate
+          roles={[Permissions.LAB_SUPERVISOR, Permissions.PHARMACIST]}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.markCompletePermission",
+            defaultMessage:
+              "Insufficient permissions to mark analytical work complete",
+          })}
+        >
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={!canMarkComplete() || isCompleting || !hasRealPageId}
+            title={
+              !canMarkComplete()
                 ? intl.formatMessage({
                     id: "notebook.tradmed.tooltip.allStepsCompleteRequired",
                     defaultMessage: "All 4 analytical steps must be completed",
                   })
                 : ""
-          }
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.analytical.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.analytical.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
       </div>
 
       <div className="sample-table-section">
@@ -1126,7 +1127,7 @@ function TraditionalMedicineAnalyticalPage({
               samples={pendingSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={!isViewOnly}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

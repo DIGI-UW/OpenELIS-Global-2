@@ -46,10 +46,6 @@ function BioequivalenceSampleReceptionPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  // Use standard permissions instead of custom bioequivalence-specific logic
-  // Page-level access control should be handled by usePageAccessControl() in workflow components
-  // This component focuses on action-level permissions using standard role groups
-
   // Core state following established patterns
   const [isLoading, setIsLoading] = useState(false);
   const [samples, setSamples] = useState([]);
@@ -328,10 +324,6 @@ function BioequivalenceSampleReceptionPage({
   useEffect(() => {
     loadPageSamples();
   }, [loadPageSamples]);
-
-  // Page-level access control is handled by usePageAccessControl() in parent workflow component
-  // This component assumes it's only rendered when user has page access
-  // Individual UI elements use PermissionGate for action-level control
 
   return (
     <div className="bioequivalence-page">

@@ -67,7 +67,7 @@ function TraditionalMedicineExtractionPage({
 
   // Use standard permissions instead of custom TMMRD-specific logic
   // Page-level access control should be handled by usePageAccessControl() in parent workflow component
-  // This component focuses on action-level permissions using standard role groups
+  // This component focuses on action-level permissions using PermissionGate components around individual actions
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
@@ -881,21 +881,6 @@ function TraditionalMedicineExtractionPage({
 
   return (
     <div className="tradmed-extraction-page">
-      {/* View-only banner */}
-      {isViewOnly && (
-        <div className="view-only-banner">
-          <div className="view-only-content">
-            <WarningAltFilled size={16} />
-            <span>
-              <FormattedMessage
-                id="notebook.tradmed.extraction.viewOnlyMode"
-                defaultMessage="View-only mode: Your role permissions allow viewing but not modifying extraction and concentration data."
-              />
-            </span>
-          </div>
-        </div>
-      )}
-
       <div className="page-section-header">
         <h4>
           <FormattedMessage
@@ -939,156 +924,169 @@ function TraditionalMedicineExtractionPage({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openExtractionModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            hasAnyCompletedExtraction() ||
-            !canRecordExtraction ||
-            isViewOnly
-          }
-          title={
-            !canRecordExtraction || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.recordExtractionPermission",
-                  defaultMessage:
-                    "Insufficient permissions to record extraction processes",
-                })
-              : selectedSampleIds.length === 0
+        <PermissionGate
+          roles={[
+            Permissions.CHEMICAL_ANALYST,
+            Permissions.PHARMACIST,
+            Permissions.RESEARCHER,
+            Permissions.LAB_SUPERVISOR,
+          ]}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.recordExtractionPermission",
+            defaultMessage:
+              "Insufficient permissions to record extraction processes",
+          })}
+        >
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openExtractionModal}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              !hasRealPageId ||
+              hasAnyCompletedExtraction()
+            }
+            title={
+              selectedSampleIds.length === 0
                 ? intl.formatMessage({
                     id: "notebook.tradmed.tooltip.selectSamples",
                     defaultMessage: "Select samples to record extraction",
                   })
                 : ""
-          }
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.extraction.recordExtraction"
-            defaultMessage="Record Extraction ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.extraction.recordExtraction"
+              defaultMessage="Record Extraction ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openFiltrationModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            hasAnyCompletedFiltration() ||
-            !canRecordExtraction ||
-            isViewOnly
-          }
-          title={
-            !canRecordExtraction || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.recordFiltrationPermission",
-                  defaultMessage:
-                    "Insufficient permissions to record filtration processes",
-                })
-              : ""
-          }
+        <PermissionGate
+          roles={[
+            Permissions.CHEMICAL_ANALYST,
+            Permissions.PHARMACIST,
+            Permissions.RESEARCHER,
+            Permissions.LAB_SUPERVISOR,
+          ]}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.recordFiltrationPermission",
+            defaultMessage:
+              "Insufficient permissions to record filtration processes",
+          })}
         >
-          <FormattedMessage
-            id="notebook.page.tradmed.filtration.recordFiltration"
-            defaultMessage="Record Filtration ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openFiltrationModal}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              !hasRealPageId ||
+              hasAnyCompletedFiltration()
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.filtration.recordFiltration"
+              defaultMessage="Record Filtration ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openConcentrationModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            hasAnyCompletedConcentration() ||
-            !canRecordExtraction ||
-            isViewOnly
-          }
-          title={
-            !canRecordExtraction || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.recordConcentrationPermission",
-                  defaultMessage:
-                    "Insufficient permissions to record concentration processes",
-                })
-              : ""
-          }
+        <PermissionGate
+          roles={[
+            Permissions.CHEMICAL_ANALYST,
+            Permissions.PHARMACIST,
+            Permissions.RESEARCHER,
+            Permissions.LAB_SUPERVISOR,
+          ]}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.recordConcentrationPermission",
+            defaultMessage:
+              "Insufficient permissions to record concentration processes",
+          })}
         >
-          <FormattedMessage
-            id="notebook.page.tradmed.concentration.recordConcentration"
-            defaultMessage="Record Concentration ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openConcentrationModal}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              !hasRealPageId ||
+              hasAnyCompletedConcentration()
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.concentration.recordConcentration"
+              defaultMessage="Record Concentration ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="danger"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openPathwaySelectionModal}
-          disabled={
-            !canOpenPathwaySelection() ||
-            !hasRealPageId ||
-            hasAnySelectedPathway() ||
-            !canRecordExtraction ||
-            isViewOnly
-          }
-          title={
-            !canRecordExtraction || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.selectPathwayPermission",
-                  defaultMessage:
-                    "Insufficient permissions to select analytical pathways",
-                })
-              : ""
-          }
+        <PermissionGate
+          roles={[
+            Permissions.CHEMICAL_ANALYST,
+            Permissions.PHARMACIST,
+            Permissions.RESEARCHER,
+            Permissions.LAB_SUPERVISOR,
+          ]}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.selectPathwayPermission",
+            defaultMessage:
+              "Insufficient permissions to select analytical pathways",
+          })}
         >
-          <FormattedMessage
-            id="notebook.page.tradmed.extraction.selectPathway"
-            defaultMessage="Select Analysis Pathway ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="danger"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openPathwaySelectionModal}
+            disabled={
+              !canOpenPathwaySelection() ||
+              !hasRealPageId ||
+              hasAnySelectedPathway()
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.extraction.selectPathway"
+              defaultMessage="Select Analysis Pathway ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            isCompleting ||
-            !hasRealPageId ||
-            !hasAllSelectedSamplesPathway() ||
-            !canMarkComplete ||
-            isViewOnly
-          }
-          title={
-            !canMarkComplete || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.markCompletePermission",
-                  defaultMessage:
-                    "Insufficient permissions to mark extraction complete",
-                })
-              : ""
-          }
+        <PermissionGate
+          roles={[Permissions.LAB_SUPERVISOR, Permissions.PHARMACIST]}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.markCompletePermission",
+            defaultMessage:
+              "Insufficient permissions to mark extraction complete",
+          })}
         >
-          <FormattedMessage
-            id="notebook.tradmed.extract.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              isCompleting ||
+              !hasRealPageId ||
+              !hasAllSelectedSamplesPathway()
+            }
+          >
+            <FormattedMessage
+              id="notebook.tradmed.extract.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -1132,7 +1130,7 @@ function TraditionalMedicineExtractionPage({
               samples={unpreparedSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={!isViewOnly}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

@@ -63,7 +63,7 @@ function TraditionalMedicineFormulationPage({
 
   // Use standard permissions instead of custom TMMRD-specific logic
   // Page-level access control should be handled by usePageAccessControl() in parent workflow component
-  // This component focuses on action-level permissions using standard role groups
+  // This component focuses on action-level permissions using PermissionGate components around individual actions
 
   // All state must be declared before any early returns (React Hooks Rule)
   const [samples, setSamples] = useState([]);
@@ -760,21 +760,6 @@ function TraditionalMedicineFormulationPage({
 
   return (
     <div className="tradmed-formulation-page">
-      {/* View-only banner */}
-      {isViewOnly && (
-        <div className="view-only-banner">
-          <div className="view-only-content">
-            <WarningAltFilled size={16} />
-            <span>
-              <FormattedMessage
-                id="notebook.tradmed.formulation.viewOnlyMode"
-                defaultMessage="View-only mode: Your role permissions allow viewing but not modifying formulation development data."
-              />
-            </span>
-          </div>
-        </div>
-      )}
-
       <div className="page-section-header">
         <h4>
           <FormattedMessage
@@ -818,66 +803,68 @@ function TraditionalMedicineFormulationPage({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canRecordFormulation ||
-            isViewOnly
-          }
-          title={
-            !canRecordFormulation || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.recordFormulationPermission",
-                  defaultMessage:
-                    "Insufficient permissions to record formulation details",
-                })
-              : selectedSampleIds.length === 0
+        <PermissionGate
+          roles={[
+            Permissions.CHEMICAL_ANALYST,
+            Permissions.PHARMACIST,
+            Permissions.RESEARCHER,
+            Permissions.LAB_SUPERVISOR,
+          ]}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.recordFormulationPermission",
+            defaultMessage:
+              "Insufficient permissions to record formulation details",
+          })}
+        >
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+            title={
+              selectedSampleIds.length === 0
                 ? intl.formatMessage({
                     id: "notebook.tradmed.tooltip.selectSamples",
                     defaultMessage: "Select samples to record formulation",
                   })
                 : ""
-          }
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.formulation.recordFormulation"
-            defaultMessage="Record Formulation ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.formulation.recordFormulation"
+              defaultMessage="Record Formulation ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="danger"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openProductQcModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canRecordFormulation ||
-            isViewOnly
-          }
-          title={
-            !canRecordFormulation || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.recordQCPermission",
-                  defaultMessage:
-                    "Insufficient permissions to record product QC",
-                })
-              : ""
-          }
+        <PermissionGate
+          roles={[
+            Permissions.CHEMICAL_ANALYST,
+            Permissions.PHARMACIST,
+            Permissions.RESEARCHER,
+            Permissions.LAB_SUPERVISOR,
+          ]}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.recordQCPermission",
+            defaultMessage: "Insufficient permissions to record product QC",
+          })}
         >
-          <FormattedMessage
-            id="notebook.tradmed.formulation.qc.button"
-            defaultMessage="Record Product QC ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="danger"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openProductQcModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.tradmed.formulation.qc.button"
+              defaultMessage="Record Product QC ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
         {/* FINAL ACTIONS - Disposal & Archival */}
         <div
@@ -887,62 +874,58 @@ function TraditionalMedicineFormulationPage({
             marginLeft: "1rem",
           }}
         >
+          <PermissionGate
+            roles={[
+              Permissions.CHEMICAL_ANALYST,
+              Permissions.PHARMACIST,
+              Permissions.RESEARCHER,
+              Permissions.LAB_SUPERVISOR,
+            ]}
+            disabledTooltip={intl.formatMessage({
+              id: "notebook.tradmed.tooltip.recordDisposalPermission",
+              defaultMessage:
+                "Insufficient permissions to record disposal information",
+            })}
+          >
+            <Button
+              kind="danger--tertiary"
+              size="sm"
+              onClick={openDisposalModal}
+              disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+            >
+              <FormattedMessage
+                id="notebook.page.tradmed.disposal.recordDisposal"
+                defaultMessage="Record Disposal ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          </PermissionGate>
+        </div>
+
+        <PermissionGate
+          roles={[Permissions.LAB_SUPERVISOR, Permissions.PHARMACIST]}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.markCompletePermission",
+            defaultMessage:
+              "Insufficient permissions to mark formulation complete",
+          })}
+        >
           <Button
-            kind="danger--tertiary"
+            kind="tertiary"
             size="sm"
-            onClick={openDisposalModal}
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
             disabled={
-              selectedSampleIds.length === 0 ||
-              !hasRealPageId ||
-              !canRecordFormulation ||
-              isViewOnly
-            }
-            title={
-              !canRecordFormulation || isViewOnly
-                ? intl.formatMessage({
-                    id: "notebook.tradmed.tooltip.recordDisposalPermission",
-                    defaultMessage:
-                      "Insufficient permissions to record disposal information",
-                  })
-                : ""
+              selectedSampleIds.length === 0 || isCompleting || !hasRealPageId
             }
           >
             <FormattedMessage
-              id="notebook.page.tradmed.disposal.recordDisposal"
-              defaultMessage="Record Disposal ({count})"
+              id="notebook.tradmed.formulation.markComplete"
+              defaultMessage="Mark Complete ({count})"
               values={{ count: selectedSampleIds.length }}
             />
           </Button>
-        </div>
-
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            isCompleting ||
-            !hasRealPageId ||
-            !canMarkComplete ||
-            isViewOnly
-          }
-          title={
-            !canMarkComplete || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.markCompletePermission",
-                  defaultMessage:
-                    "Insufficient permissions to mark formulation complete",
-                })
-              : ""
-          }
-        >
-          <FormattedMessage
-            id="notebook.tradmed.formulation.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -986,7 +969,7 @@ function TraditionalMedicineFormulationPage({
               samples={pendingSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={!isViewOnly}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

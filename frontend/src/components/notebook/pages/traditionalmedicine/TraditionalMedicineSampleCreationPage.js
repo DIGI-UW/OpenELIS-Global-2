@@ -496,15 +496,14 @@ function TraditionalMedicineSampleCreationPage({
             renderIcon={Checkmark}
             onClick={markAsRegistered}
             disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.markAsRegistered"
+              defaultMessage="Mark as Registered ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
           </Button>
         </PermissionGate>
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.markAsRegistered"
-            defaultMessage="Mark as Registered ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
 
         <Button
           kind="ghost"
