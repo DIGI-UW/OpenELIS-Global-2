@@ -197,7 +197,7 @@ const NoteBookEntryForm = () => {
     // Convert empty string to null for questionnaireFhirUuid (Jackson expects null or valid UUID string)
     noteBookForm.questionnaireFhirUuid =
       noteBookData.questionnaireFhirUuid &&
-      teBookData.questionnaireFhirUuid.trim() !== ""
+        noteBookData.questionnaireFhirUuid.trim() !== ""
         ? noteBookData.questionnaireFhirUuid
         : null;
     // Send only new comments (those without id) with just text
@@ -1023,11 +1023,11 @@ const NoteBookEntryForm = () => {
                               var win = window.open();
                               win.document.write(
                                 '<iframe src="' +
-                                  "data:" +
-                                  file.fileType +
-                                  ";base64," +
-                                  file.fileData +
-                                  '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
+                                "data:" +
+                                file.fileType +
+                                ";base64," +
+                                file.fileData +
+                                '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
                               );
                             }}
                           >
@@ -1323,8 +1323,8 @@ const NoteBookEntryForm = () => {
                       <p style={{ fontSize: "0.875rem", color: "#525252" }}>
                         {comment.author ||
                           userSessionDetails.firstName +
-                            " " +
-                            userSessionDetails.lastName}
+                          " " +
+                          userSessionDetails.lastName}
                         {comment.dateCreated
                           ? new Date(comment.dateCreated).toLocaleString()
                           : "Just now"}
