@@ -4,190 +4,54 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-  <changeSet id="rollback-research-lab-custom-roles-and-permissions" author="claude">
+  <changeSet id="rollback-research-lab-custom-roles-and-permissions" author="mherman22">
     <preConditions onFail="MARK_RAN">
-      <or>
-        <!-- Check if any of the custom roles exist in system_role table -->
-        <sqlCheck expectedResult="1">
-          SELECT COUNT(*) > 0 FROM system_role
-          WHERE name IN (
-            'TMMRD Lab Technician', 'TMMRD Researcher', 'TMMRD Pharmacognosist',
-            'TMMRD Lab Manager', 'TMMRD Principal Investigator',
-            'Bioanalytical Sample Receiver', 'Bioanalytical Chemical Analyst',
-            'Bioanalytical Pharmacist', 'Bioanalytical Researcher',
-            'Bioanalytical Lab Supervisor', 'Bioanalytical Study Director',
-            'Bioanalytical QA Officer', 'Bioanalytical Data Manager',
-            'GBD Sample Collector', 'GBD Laboratory Technician',
-            'GBD Junior Senior Researcher', 'GBD Lab Manager Supervisor',
-            'Bioequivalence Sample Receiver', 'Bioequivalence Chemical Analyst',
-            'Bioequivalence Pharmacist', 'Bioequivalence Researcher',
-            'Bioequivalence Lab Supervisor', 'Bioequivalence Study Director',
-            'Bioequivalence QA Officer'
-          )
-        </sqlCheck>
-        <!-- Check if any custom role permission assignments exist -->
-        <sqlCheck expectedResult="1">
-          SELECT COUNT(*) > 0 FROM notebook_page_allowed_roles
-          WHERE role IN (
-            'TMMRD Lab Technician', 'TMMRD Researcher', 'TMMRD Pharmacognosist',
-            'TMMRD Lab Manager', 'TMMRD Principal Investigator',
-            'Bioanalytical Sample Receiver', 'Bioanalytical Chemical Analyst',
-            'Bioanalytical Pharmacist', 'Bioanalytical Researcher',
-            'Bioanalytical Lab Supervisor', 'Bioanalytical Study Director',
-            'Bioanalytical QA Officer', 'Bioanalytical Data Manager',
-            'GBD Sample Collector', 'GBD Laboratory Technician',
-            'GBD Junior Senior Researcher', 'GBD Lab Manager Supervisor',
-            'Bioequivalence Sample Receiver', 'Bioequivalence Chemical Analyst',
-            'Bioequivalence Pharmacist', 'Bioequivalence Researcher',
-            'Bioequivalence Lab Supervisor', 'Bioequivalence Study Director',
-            'Bioequivalence QA Officer'
-          )
-        </sqlCheck>
-      </or>
+      <sqlCheck expectedResult="1">
+        SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM system_role
+        WHERE name LIKE 'TMMRD %' OR name LIKE 'Bioanalytical %'
+           OR name LIKE 'GBD %' OR name LIKE 'Bioequivalence %'
+      </sqlCheck>
     </preConditions>
 
-    <comment>
-      ROLLBACK: Remove all custom research lab roles, permissions, and permission levels.
+    <comment>Remove custom research lab RBAC implementation</comment>
 
-      This changeset undoes the custom RBAC implementations for:
-      - Traditional Medicine (TMMRD) roles + permission levels
-      - Bioanalytical roles + permission levels
-      - Bioequivalence roles + permission levels
-      - Genomics/GBD roles + permission levels
-
-      Rolls back changesets:
-      - *-system-roles.xml (role creation)
-      - *-page-roles*.xml (page-role assignments)
-      - *-permission-levels.xml (permission level mappings)
-      - *-add-*-roles-to-alllabunits.xml (lab unit assignments)
-
-      Rationale: Migrating to standard OpenELIS RBAC using generic functional roles
-      + department-based access control instead of lab-specific role hierarchies.
-
-      This addresses Ethiopian server deployment issues where custom role creation
-      failed due to Liquibase migration order dependencies.
-
-      References migration: frontend/src/components/notebook/pages/* (31+ components)
-    </comment>
-
-    <!-- Remove notebook page permission assignments for custom roles -->
     <delete tableName="notebook_page_allowed_roles">
-      <where>role IN (
-        'TMMRD Lab Technician', 'TMMRD Researcher', 'TMMRD Pharmacognosist',
-        'TMMRD Lab Manager', 'TMMRD Principal Investigator',
-        'Bioanalytical Sample Receiver', 'Bioanalytical Chemical Analyst',
-        'Bioanalytical Pharmacist', 'Bioanalytical Researcher',
-        'Bioanalytical Lab Supervisor', 'Bioanalytical Study Director',
-        'Bioanalytical QA Officer', 'Bioanalytical Data Manager',
-        'GBD Sample Collector', 'GBD Laboratory Technician',
-        'GBD Junior Senior Researcher', 'GBD Lab Manager Supervisor',
-        'Bioequivalence Sample Receiver', 'Bioequivalence Chemical Analyst',
-        'Bioequivalence Pharmacist', 'Bioequivalence Researcher',
-        'Bioequivalence Lab Supervisor', 'Bioequivalence Study Director',
-        'Bioequivalence QA Officer'
-      )</where>
+      <where>role LIKE 'TMMRD %' OR role LIKE 'Bioanalytical %'
+             OR role LIKE 'GBD %' OR role LIKE 'Bioequivalence %'</where>
     </delete>
 
-    <!-- Remove lab unit role assignments (to avoid FK constraints) -->
-    <delete tableName="lab_unit_role">
-      <where>role_id IN (
-        SELECT id FROM system_role WHERE name IN (
-          'TMMRD Lab Technician', 'TMMRD Researcher', 'TMMRD Pharmacognosist',
-          'TMMRD Lab Manager', 'TMMRD Principal Investigator',
-          'Bioanalytical Sample Receiver', 'Bioanalytical Chemical Analyst',
-          'Bioanalytical Pharmacist', 'Bioanalytical Researcher',
-          'Bioanalytical Lab Supervisor', 'Bioanalytical Study Director',
-          'Bioanalytical QA Officer', 'Bioanalytical Data Manager',
-          'GBD Sample Collector', 'GBD Laboratory Technician',
-          'GBD Junior Senior Researcher', 'GBD Lab Manager Supervisor',
-          'Bioequivalence Sample Receiver', 'Bioequivalence Chemical Analyst',
-          'Bioequivalence Pharmacist', 'Bioequivalence Researcher',
-          'Bioequivalence Lab Supervisor', 'Bioequivalence Study Director',
-          'Bioequivalence QA Officer'
-        )
-      )</where>
-    </delete>
-
-    <!-- Remove system user role assignments -->
     <delete tableName="system_user_role">
       <where>role_id IN (
-        SELECT id FROM system_role WHERE name IN (
-          'TMMRD Lab Technician', 'TMMRD Researcher', 'TMMRD Pharmacognosist',
-          'TMMRD Lab Manager', 'TMMRD Principal Investigator',
-          'Bioanalytical Sample Receiver', 'Bioanalytical Chemical Analyst',
-          'Bioanalytical Pharmacist', 'Bioanalytical Researcher',
-          'Bioanalytical Lab Supervisor', 'Bioanalytical Study Director',
-          'Bioanalytical QA Officer', 'Bioanalytical Data Manager',
-          'GBD Sample Collector', 'GBD Laboratory Technician',
-          'GBD Junior Senior Researcher', 'GBD Lab Manager Supervisor',
-          'Bioequivalence Sample Receiver', 'Bioequivalence Chemical Analyst',
-          'Bioequivalence Pharmacist', 'Bioequivalence Researcher',
-          'Bioequivalence Lab Supervisor', 'Bioequivalence Study Director',
-          'Bioequivalence QA Officer'
-        )
+        SELECT id FROM system_role
+        WHERE name LIKE 'TMMRD %' OR name LIKE 'Bioanalytical %'
+           OR name LIKE 'GBD %' OR name LIKE 'Bioequivalence %'
       )</where>
     </delete>
 
-    <!-- Remove role-to-module assignments -->
     <delete tableName="system_role_module">
-      <where>role_id IN (
-        SELECT id FROM system_role WHERE name IN (
-          'TMMRD Lab Technician', 'TMMRD Researcher', 'TMMRD Pharmacognosist',
-          'TMMRD Lab Manager', 'TMMRD Principal Investigator',
-          'Bioanalytical Sample Receiver', 'Bioanalytical Chemical Analyst',
-          'Bioanalytical Pharmacist', 'Bioanalytical Researcher',
-          'Bioanalytical Lab Supervisor', 'Bioanalytical Study Director',
-          'Bioanalytical QA Officer', 'Bioanalytical Data Manager',
-          'GBD Sample Collector', 'GBD Laboratory Technician',
-          'GBD Junior Senior Researcher', 'GBD Lab Manager Supervisor',
-          'Bioequivalence Sample Receiver', 'Bioequivalence Chemical Analyst',
-          'Bioequivalence Pharmacist', 'Bioequivalence Researcher',
-          'Bioequivalence Lab Supervisor', 'Bioequivalence Study Director',
-          'Bioequivalence QA Officer'
-        )
+      <where>system_role_id IN (
+        SELECT id FROM system_role
+        WHERE name LIKE 'TMMRD %' OR name LIKE 'Bioanalytical %'
+           OR name LIKE 'GBD %' OR name LIKE 'Bioequivalence %'
       )</where>
     </delete>
 
-    <!-- Remove the custom roles themselves -->
     <delete tableName="system_role">
-      <where>name IN (
-        'TMMRD Lab Technician', 'TMMRD Researcher', 'TMMRD Pharmacognosist',
-        'TMMRD Lab Manager', 'TMMRD Principal Investigator',
-        'Bioanalytical Sample Receiver', 'Bioanalytical Chemical Analyst',
-        'Bioanalytical Pharmacist', 'Bioanalytical Researcher',
-        'Bioanalytical Lab Supervisor', 'Bioanalytical Study Director',
-        'Bioanalytical QA Officer', 'Bioanalytical Data Manager',
-        'GBD Sample Collector', 'GBD Laboratory Technician',
-        'GBD Junior Senior Researcher', 'GBD Lab Manager Supervisor',
-        'Bioequivalence Sample Receiver', 'Bioequivalence Chemical Analyst',
-        'Bioequivalence Pharmacist', 'Bioequivalence Researcher',
-        'Bioequivalence Lab Supervisor', 'Bioequivalence Study Director',
-        'Bioequivalence QA Officer'
-      )</where>
+      <where>name LIKE 'TMMRD %' OR name LIKE 'Bioanalytical %'
+             OR name LIKE 'GBD %' OR name LIKE 'Bioequivalence %'</where>
     </delete>
-
 
     <rollback>
       <comment>No rollback needed - this is the rollback changeset</comment>
     </rollback>
   </changeSet>
 
-  <changeSet id="rollback-research-lab-permission-level-column" author="claude">
+  <changeSet id="rollback-research-lab-permission-level-column" author="mherman22">
     <preConditions onFail="MARK_RAN">
       <columnExists tableName="notebook_page_allowed_roles" columnName="permission_level" schemaName="clinlims"/>
     </preConditions>
 
-    <comment>
-      Drop permission_level column that was added exclusively for custom research lab permissions.
-
-      The permission_level column was added by:
-      - 022-tradmed-permission-levels.xml
-      - 049-bioanalytical-permission-levels.xml
-      - 056-gbd-permission-levels.xml
-
-      Since we're removing the entire custom research lab RBAC system and this column
-      is not used by standard OpenELIS roles, we should return the schema to its original state.
-    </comment>
+    <comment>Remove permission_level column used exclusively by custom research lab roles.</comment>
 
     <dropColumn tableName="notebook_page_allowed_roles" schemaName="clinlims" columnName="permission_level"/>
 
@@ -197,6 +61,25 @@
           <constraints nullable="false"/>
         </column>
       </addColumn>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="cleanup-orphaned-lab-role-references" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM lab_roles
+        WHERE role IN ('74','75','76','77','78','79','80','81','82','83','84','85','86','87','88','89','90','91','92','93','94','95','96','97','98','99')
+      </sqlCheck>
+    </preConditions>
+
+    <comment>Clean up orphaned role ID references in lab_roles table that cause login NullPointerException</comment>
+
+    <delete tableName="lab_roles">
+      <where>role IN ('74','75','76','77','78','79','80','81','82','83','84','85','86','87','88','89','90','91','92','93','94','95','96','97','98','99')</where>
+    </delete>
+
+    <rollback>
+      <comment>Cannot rollback - orphaned references should not be restored</comment>
     </rollback>
   </changeSet>
 
