@@ -5,30 +5,6 @@
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
   <changeSet id="rollback-research-lab-custom-roles-and-permissions" author="claude">
-    <comment>
-      ROLLBACK: Remove all custom research lab roles, permissions, and permission levels.
-
-      This changeset undoes the custom RBAC implementations for:
-      - Traditional Medicine (TMMRD) roles + permission levels
-      - Bioanalytical roles + permission levels
-      - Bioequivalence roles + permission levels
-      - Genomics/GBD roles + permission levels
-
-      Rolls back changesets:
-      - *-system-roles.xml (role creation)
-      - *-page-roles*.xml (page-role assignments)
-      - *-permission-levels.xml (permission level mappings)
-      - *-add-*-roles-to-alllabunits.xml (lab unit assignments)
-
-      Rationale: Migrating to standard OpenELIS RBAC using generic functional roles
-      + department-based access control instead of lab-specific role hierarchies.
-
-      This addresses Ethiopian server deployment issues where custom role creation
-      failed due to Liquibase migration order dependencies.
-
-      References migration: frontend/src/components/notebook/pages/* (31+ components)
-    </comment>
-
     <preConditions onFail="MARK_RAN">
       <or>
         <!-- Check if any of the custom roles exist in system_role table -->
@@ -69,6 +45,30 @@
         </sqlCheck>
       </or>
     </preConditions>
+
+    <comment>
+      ROLLBACK: Remove all custom research lab roles, permissions, and permission levels.
+
+      This changeset undoes the custom RBAC implementations for:
+      - Traditional Medicine (TMMRD) roles + permission levels
+      - Bioanalytical roles + permission levels
+      - Bioequivalence roles + permission levels
+      - Genomics/GBD roles + permission levels
+
+      Rolls back changesets:
+      - *-system-roles.xml (role creation)
+      - *-page-roles*.xml (page-role assignments)
+      - *-permission-levels.xml (permission level mappings)
+      - *-add-*-roles-to-alllabunits.xml (lab unit assignments)
+
+      Rationale: Migrating to standard OpenELIS RBAC using generic functional roles
+      + department-based access control instead of lab-specific role hierarchies.
+
+      This addresses Ethiopian server deployment issues where custom role creation
+      failed due to Liquibase migration order dependencies.
+
+      References migration: frontend/src/components/notebook/pages/* (31+ components)
+    </comment>
 
     <!-- Remove notebook page permission assignments for custom roles -->
     <delete tableName="notebook_page_allowed_roles">
@@ -173,6 +173,10 @@
   </changeSet>
 
   <changeSet id="rollback-research-lab-permission-level-column" author="claude">
+    <preConditions onFail="MARK_RAN">
+      <columnExists tableName="notebook_page_allowed_roles" columnName="permission_level" schemaName="clinlims"/>
+    </preConditions>
+
     <comment>
       Drop permission_level column that was added exclusively for custom research lab permissions.
 
@@ -184,10 +188,6 @@
       Since we're removing the entire custom research lab RBAC system and this column
       is not used by standard OpenELIS roles, we should return the schema to its original state.
     </comment>
-
-    <preConditions onFail="MARK_RAN">
-      <columnExists tableName="notebook_page_allowed_roles" columnName="permission_level" schemaName="clinlims"/>
-    </preConditions>
 
     <dropColumn tableName="notebook_page_allowed_roles" schemaName="clinlims" columnName="permission_level"/>
 
