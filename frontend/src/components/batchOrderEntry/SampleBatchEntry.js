@@ -77,7 +77,7 @@ const SampleBatchEntry = (props) => {
   useEffect(() => {
     getFromOpenElisServer(
       "/rest/departments-for-site?refferingSiteId=" +
-      (orderFormValues.sampleOrderItems.referringSiteId || ""),
+        (orderFormValues.sampleOrderItems.referringSiteId || ""),
       loadDepartments,
     );
   }, [orderFormValues.referringSiteId]);
@@ -494,9 +494,7 @@ const SampleBatchEntry = (props) => {
               <Grid>
                 <Button
                   data-cy="finishButton"
-                  onClick={() =>
-                    history.push("/SampleBatchEntrySetup")
-                  }
+                  onClick={() => history.push("/SampleBatchEntrySetup")}
                 >
                   <FormattedMessage id="label.button.finish" />
                 </Button>

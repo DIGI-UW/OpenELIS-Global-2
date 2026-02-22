@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useHistory } from "react-router-dom"; import {
+import { useHistory } from "react-router-dom";
+import {
   Grid,
   Column,
   Section,
@@ -491,10 +492,7 @@ export default function GenericSampleOrder({
                     defaultMessage="Create Another Sample"
                   />
                 </Button>
-                <Button
-                  kind="tertiary"
-                  onClick={() => history.push("/")}
-                >
+                <Button kind="tertiary" onClick={() => history.push("/")}>
                   <FormattedMessage id="button.home" defaultMessage="Home" />
                 </Button>
               </div>

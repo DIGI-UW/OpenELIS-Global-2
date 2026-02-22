@@ -134,7 +134,7 @@ const CopyMappingsModal = ({
         if (response.error) {
           setError(
             response.error ||
-            intl.formatMessage({ id: "analyzer.copyMappings.error" }),
+              intl.formatMessage({ id: "analyzer.copyMappings.error" }),
           );
         } else {
           setCopyResult(response);

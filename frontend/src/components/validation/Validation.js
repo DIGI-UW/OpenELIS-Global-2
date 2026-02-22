@@ -415,9 +415,9 @@ const Validation = (props) => {
               data={
                 props.results
                   ? props?.results?.resultList?.slice(
-                    (page - 1) * pageSize,
-                    page * pageSize,
-                  )
+                      (page - 1) * pageSize,
+                      page * pageSize,
+                    )
                   : []
               }
               columns={columns}
