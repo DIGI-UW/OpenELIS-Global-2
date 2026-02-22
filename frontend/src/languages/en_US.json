@@ -1585,6 +1585,7 @@
   "patient.photo.cancel": "Cancel",
   "patient.photo.capture": "Capture Photo",
   "patient.photo.captured": "Captured Photo:",
+  "admin.patientImageUploadDisabled": "Disable Patient Image Upload",
   "patient.photo.change": "Change Image",
   "patient.photo.confirm": "Confirm",
   "patient.photo.dragndrop": "Drag and drop an image here",

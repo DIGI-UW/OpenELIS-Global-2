@@ -234,7 +234,9 @@ public abstract class ConfigurationProperties {
         CONTACT_TRACING("contactTracingEnabled", "text"), //
         REQUIRE_LAB_UNIT_AT_LOGIN("requireLabUnitAtLogin", "text"), //
         ENABLE_CLIENT_REGISTRY("enableClientRegistry", "text"), // if true, then client registry search option is
-        BAR_CODE_TYPE("BarCodeType", "text");
+        BAR_CODE_TYPE("BarCodeType", "text"),
+        PatientImageUploadDisabled("patientImageUploadDisabled", "text");
+
 
         // visible on
         // the ui

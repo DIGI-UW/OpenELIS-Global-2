@@ -535,11 +535,14 @@ function CreatePatientForm(props) {
                 <br></br>
               </Column>
               <Column lg={16} md={8} sm={4}>
-                <PatientImageSelector
-                  value={values.photo}
-                  onChange={(photo) => handlePhotoChange(photo, setFieldValue)}
-                  required={false}
-                />
+
+<PatientImageSelector
+  value={values.photo}
+  onChange={(photo) => handlePhotoChange(photo, setFieldValue)}
+  required={false}
+  disableUpload={configurationProperties?.patientImageUploadDisabled}
+/>
+
               </Column>
               <Column lg={8} md={4} sm={4}>
                 <Field name="subjectNumber">

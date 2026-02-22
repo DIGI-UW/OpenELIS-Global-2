@@ -11,6 +11,7 @@ import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
@@ -80,7 +81,14 @@ public class PatientManagementRestController extends BaseRestController {
                 patientService.persistPatientData(patientInfo, patient, getSysUserId(request));
                 fhirTransformService.transformPersistPatient(patientInfo,
                         (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD));
-                photoService.savePhoto(patient.getId(), patientInfo.getPhoto());
+                boolean uploadDisabled = "true".equals(
+                        ConfigurationProperties.getInstance()
+                                .getPropertyValueLowerCase(
+                                        ConfigurationProperties.Property.PatientImageUploadDisabled));
+
+                if (!uploadDisabled) {
+                    photoService.savePhoto(patient.getId(), patientInfo.getPhoto());
+                }
             } catch (LIMSRuntimeException e) {
 
                 if (e.getCause() instanceof StaleObjectStateException) {

@@ -17,10 +17,11 @@ const ImagePreviewModal = ({
   onClose,
   onImageSelect,
   currentImage = null,
+  disableUpload = false,
 }) => {
   const intl = useIntl();
 
-  const [selectedTab, setSelectedTab] = useState(0);
+  const [selectedTab, setSelectedTab] = useState(disableUpload ? 1 : 0);
   const [previewUrl, setPreviewUrl] = useState(currentImage);
   const [isCameraActive, setIsCameraActive] = useState(false);
 
