@@ -20,7 +20,7 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
-import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },

@@ -33,7 +33,7 @@ import {
 } from "../../common/CustomNotification.js";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
-import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import AutoComplete from "../../common/AutoComplete.js";
 
 let breadcrumbs = [

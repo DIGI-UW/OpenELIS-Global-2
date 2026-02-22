@@ -20,7 +20,7 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification.js";
-import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },

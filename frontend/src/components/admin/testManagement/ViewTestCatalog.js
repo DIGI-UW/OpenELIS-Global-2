@@ -26,7 +26,7 @@ import {
   Heading,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../utils/Utils.js";
-import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { FormattedMessage, useIntl } from "react-intl";
 
 let breadcrumbs = [

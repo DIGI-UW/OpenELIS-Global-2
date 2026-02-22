@@ -1,8 +1,17 @@
 import { Breadcrumb, BreadcrumbItem, Column, Grid } from "@carbon/react";
-import React from "react";
+import React, { memo } from "react";
 import { useIntl } from "react-intl";
 
-const PageBreadCrumb = ({ breadcrumbs }) => {
+interface BreadcrumbData {
+  label: string;
+  link: string;
+}
+
+interface PageBreadCrumbProps {
+  breadcrumbs: BreadcrumbData[];
+}
+
+const PageBreadCrumb: React.FC<PageBreadCrumbProps> = ({ breadcrumbs }) => {
   const intl = useIntl();
 
   return (
@@ -22,4 +31,4 @@ const PageBreadCrumb = ({ breadcrumbs }) => {
   );
 };
 
-export default PageBreadCrumb;
+export default memo(PageBreadCrumb);

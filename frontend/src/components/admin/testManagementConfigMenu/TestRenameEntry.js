@@ -25,7 +25,7 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification.js";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import SearchTestNames from "./SearchTestNames";
 
 let breadcrumbs = [
