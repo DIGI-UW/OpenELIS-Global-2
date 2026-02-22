@@ -159,4 +159,9 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     public Panel getPanelByLoincCode(String loincCode) {
         return getBaseObjectDAO().getPanelByLoincCode(loincCode);
     }
+
+    @Override
+    public Panel getPanelByGUID(String guid) {
+        return getBaseObjectDAO().getPanelByGUID(guid);
+    }
 }

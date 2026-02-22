@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="Pravin Timalsina" id="nidan-incoming-orders-001">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="incoming_orders" />
+            </not>
+        </preConditions>
+
+        <createTable schemaName="clinlims" tableName="incoming_orders">
+            <column name="id" type="INTEGER" valueSequenceNext="incoming_orders_seq">
+                <constraints primaryKey="true" />
+            </column>
+
+            <column name="external_order_number" type="VARCHAR(255)">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="patient_guid" type="VARCHAR(255)">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="payload" type="TEXT">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="received_timestamp" type="TIMESTAMP" />
+            <column name="received_sys_user_id" type="VARCHAR(50)" />
+
+            <column name="collected_timestamp" type="TIMESTAMP" />
+            <column name="collected_sys_user_id" type="VARCHAR(50)" />
+
+            <column name="lab_no" type="VARCHAR(50)" />
+            <column name="sample_id" type="NUMERIC(10)" />
+
+            <column name="error_message" type="TEXT" />
+
+            <column name="last_updated" type="TIMESTAMP" />
+        </createTable>
+
+        <createSequence incrementBy="1" schemaName="clinlims" sequenceName="incoming_orders_seq"
+            startValue="1" />
+
+        <createIndex schemaName="clinlims" tableName="incoming_orders" indexName="idx_incoming_orders_received_ts">
+            <column name="received_timestamp" />
+        </createIndex>
+
+    </changeSet>
+
+</databaseChangeLog>

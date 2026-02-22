@@ -78,35 +78,35 @@ services:
             - source: datasource.password
             - source: common.properties
             
-    fhir.openelis.org:
-        container_name: external-fhir-api
-        image: hapiproject/hapi:v6.6.0-tomcat
-       # platform: linux/amd64
-        depends_on:
-            - db.openelis.org
-            - certs
-        ports:
-            - "8081:8080"   # moved to avoid conflict with Nidan CIS (8081)
-            - "8444:8443"   # high port to avoid 8444 collisions
-        networks:
-            - default
-        restart: always
-        environment:
-          SPRING_CONFIG_LOCATION: file:///run/secrets/hapi_application.yaml
-          TZ: Africa/Nairobi
+    # fhir.openelis.org:
+    #     container_name: external-fhir-api
+    #     image: hapiproject/hapi:v6.6.0-tomcat
+    #    # platform: linux/amd64
+    #     depends_on:
+    #         - db.openelis.org
+    #         - certs
+    #     ports:
+    #         - "8081:8080"   # moved to avoid conflict with Nidan CIS (8081)
+    #         - "8444:8443"   # high port to avoid 8444 collisions
+    #     networks:
+    #         - default
+    #     restart: always
+    #     environment:
+    #       SPRING_CONFIG_LOCATION: file:///run/secrets/hapi_application.yaml
+    #       TZ: Africa/Nairobi
 
-          JAVA_OPTS: "-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore 
-                      -Djavax.net.ssl.trustStorePassword=tspass
-                      -Djavax.net.ssl.trustStoreType=pkcs12 
-                      -Djavax.net.ssl.keyStore=/etc/openelis-global/keystore 
-                      -Djavax.net.ssl.keyStorePassword=kspass 
-                      -Djavax.net.ssl.keyStoreType=pkcs12"            
+    #       JAVA_OPTS: "-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore 
+    #                   -Djavax.net.ssl.trustStorePassword=tspass
+    #                   -Djavax.net.ssl.trustStoreType=pkcs12 
+    #                   -Djavax.net.ssl.keyStore=/etc/openelis-global/keystore 
+    #                   -Djavax.net.ssl.keyStorePassword=kspass 
+    #                   -Djavax.net.ssl.keyStoreType=pkcs12"            
         
-        volumes:
-            -  key_trust-store-volume:/etc/openelis-global
-            - ./volume/tomcat/hapi_server.xml:/opt/bitnami/tomcat/conf/server.xml
-        secrets:
-             - source: hapi_application.yaml 
+    #     volumes:
+    #         -  key_trust-store-volume:/etc/openelis-global
+    #         - ./volume/tomcat/hapi_server.xml:/opt/bitnami/tomcat/conf/server.xml
+    #     secrets:
+    #          - source: hapi_application.yaml 
 
          
     frontend.openelis.org:

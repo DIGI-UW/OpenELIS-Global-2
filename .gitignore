@@ -57,3 +57,7 @@ volume/odoo/*
 **/*checksum*.properties
 **/*checksums*.properties
 OpenELIS-Global-2.code-workspace
+
+#localbuild files
+local-stuff/
+

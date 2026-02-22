@@ -35,4 +35,6 @@ public interface PanelService extends BaseObjectService<Panel, String> {
 
     Panel getPanelByLoincCode(String loincCode);
 
+    Panel getPanelByGUID(String guid);
+
 }

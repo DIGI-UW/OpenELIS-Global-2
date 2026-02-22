@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { Button, ProgressIndicator, ProgressStep, Stack } from "@carbon/react";
 import PatientInfo from "./PatientInfo";
 import AddSample from "./AddSample";
@@ -50,6 +50,9 @@ const Index = () => {
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [incomingOrderNumber, setIncomingOrderNumber] = useState("");
+  const globalTestsByIdRef = useRef(null);
+  const globalPanelsByIdRef = useRef(null);
   const [phoneValidation, setPhoneValidation] = useState({
     primaryPhone: { body: "", status: true },
     contactPhone: { body: "", status: true },
@@ -76,7 +79,11 @@ const Index = () => {
     if (configurationProperties.ACCEPT_EXTERNAL_ORDERS === "true") {
       const urlParams = new URLSearchParams(window.location.search);
       const externalId = urlParams.get("ID");
-      checkOrderReferral(externalId);
+      // Incoming orders reuse this wizard but must NOT trigger external referral lookup.
+      const incoming = urlParams.get("incomingOrderNumber");
+      if (!incoming) {
+        checkOrderReferral(externalId);
+      }
     } else {
       setOrderFormValues({
         ...orderFormValues,
@@ -89,10 +96,281 @@ const Index = () => {
   }, [configurationProperties.ACCEPT_EXTERNAL_ORDERS]);
 
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const incoming = urlParams.get("incomingOrderNumber");
+    if (incoming) {
+      setIncomingOrderNumber(incoming);
+      loadIncomingOrderForm(incoming);
+    }
+  }, []);
+
+  const loadIncomingOrderForm = (externalOrderNumber) => {
+    getFromOpenElisServer(
+      "/rest/incoming-orders/" +
+        encodeURIComponent(externalOrderNumber) +
+        "/sample-patient-entry-form",
+      (form) => {
+        if (!form) {
+          return;
+        }
+
+        const sampleOrderItems = form.sampleOrderItems || {};
+        const patientProperties = form.patientProperties || {};
+        const resolvedExternalOrderNumber =
+          sampleOrderItems.externalOrderNumber || externalOrderNumber || "";
+
+        setOrderFormValues({
+          ...SampleOrderFormValues,
+          ...form,
+          patientProperties: {
+            ...SampleOrderFormValues.patientProperties,
+            ...patientProperties,
+          },
+          sampleOrderItems: {
+            ...SampleOrderFormValues.sampleOrderItems,
+            ...sampleOrderItems,
+            // Incoming-order review flow uses incomingOrderNumber to skip referral lookup,
+            // but must still submit externalOrderNumber so it can be persisted and later
+            // included in middleware result sync payloads.
+            externalOrderNumber: resolvedExternalOrderNumber,
+          },
+        });
+
+        const mappedSamples = mapSamplesFromXml(form.sampleXML);
+        const initialSamples = mappedSamples.length > 0 ? mappedSamples : [sampleObject];
+        setSamples(initialSamples);
+        resolveIncomingSampleNames(initialSamples);
+        setPage(orderPageNumber);
+      },
+    );
+  };
+
+  const resolveIncomingSampleNames = (samplesToResolve) => {
+    if (!samplesToResolve || samplesToResolve.length === 0) {
+      return;
+    }
+
+    samplesToResolve.forEach((s, idx) => {
+      const sampleTypeId = s?.sampleTypeId;
+      if (!sampleTypeId) {
+        return;
+      }
+
+      getFromOpenElisServer(
+        `/rest/sample-type-tests?sampleType=${encodeURIComponent(sampleTypeId)}`,
+        (res) => {
+          const testsById = {};
+          const panelsById = {};
+
+          if (res && Array.isArray(res.tests)) {
+            res.tests.forEach((t) => {
+              if (t && t.id != null) {
+                testsById[String(t.id)] = t.name;
+              }
+            });
+          }
+          if (res && Array.isArray(res.panels)) {
+            res.panels.forEach((p) => {
+              if (p && p.id != null) {
+                panelsById[String(p.id)] = {
+                  name: p.name,
+                  testIds: p.testIds,
+                };
+              }
+            });
+          }
+
+          const applyResolvedNames = () => {
+            setSamples((prev) => {
+              if (!Array.isArray(prev) || !prev[idx]) {
+                return prev;
+              }
+
+              const next = [...prev];
+              const current = next[idx];
+              if (!current) {
+                return prev;
+              }
+
+              const globalTestsById = globalTestsByIdRef.current || {};
+              const globalPanelsById = globalPanelsByIdRef.current || {};
+
+              next[idx] = {
+                ...current,
+                tests: Array.isArray(current.tests)
+                  ? current.tests.map((t) => {
+                      const id = String(t.id);
+                      return {
+                        ...t,
+                        name:
+                          testsById[id] ||
+                          globalTestsById[id] ||
+                          t.name ||
+                          id,
+                      };
+                    })
+                  : current.tests,
+                panels: Array.isArray(current.panels)
+                  ? current.panels
+                      .map((p) => {
+                        const id = String(p.id);
+                        const resolved = panelsById[id];
+                        return {
+                          ...p,
+                          name:
+                            resolved?.name ||
+                            globalPanelsById[id] ||
+                            p.name ||
+                            id,
+                          testIds: resolved?.testIds,
+                        };
+                      })
+                      // Incoming-order panels coming from XML lack testIds.
+                      // SampleType panel-selection logic requires testIds, so drop panels
+                      // which cannot be resolved for this sample type.
+                      .filter((p) => p && p.testIds)
+                  : current.panels,
+              };
+
+              return next;
+            });
+          };
+
+          const needsGlobalTests =
+            Array.isArray(s.tests) &&
+            s.tests.some((t) => !testsById[String(t.id)]);
+          const needsGlobalPanels =
+            Array.isArray(s.panels) &&
+            s.panels.some((p) => !panelsById[String(p.id)]);
+
+          const fetches = [];
+
+          if (needsGlobalTests && !globalTestsByIdRef.current) {
+            fetches.push(
+              new Promise((resolve) => {
+                getFromOpenElisServer("/rest/tests", (list) => {
+                  const map = {};
+                  if (Array.isArray(list)) {
+                    list.forEach((item) => {
+                      if (item && item.id != null) {
+                        map[String(item.id)] = item.value;
+                      }
+                    });
+                  }
+                  globalTestsByIdRef.current = map;
+                  resolve();
+                });
+              }),
+            );
+          }
+
+          if (needsGlobalPanels && !globalPanelsByIdRef.current) {
+            fetches.push(
+              new Promise((resolve) => {
+                getFromOpenElisServer("/rest/panels", (list) => {
+                  const map = {};
+                  if (Array.isArray(list)) {
+                    list.forEach((item) => {
+                      if (item && item.id != null) {
+                        map[String(item.id)] = item.value;
+                      }
+                    });
+                  }
+                  globalPanelsByIdRef.current = map;
+                  resolve();
+                });
+              }),
+            );
+          }
+
+          if (fetches.length > 0) {
+            Promise.all(fetches).then(() => applyResolvedNames());
+          } else {
+            applyResolvedNames();
+          }
+        },
+      );
+    });
+  };
+
+  const mapSamplesFromXml = (sampleXML) => {
+    if (!sampleXML) {
+      return [];
+    }
+
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(sampleXML, "text/xml");
+      const parseError = doc.getElementsByTagName("parsererror");
+      if (parseError && parseError.length > 0) {
+        return [];
+      }
+
+      const nodes = Array.from(doc.getElementsByTagName("sample"));
+      return nodes.map((node, idx) => {
+        const sampleTypeId = node.getAttribute("sampleID") || "";
+        const date = node.getAttribute("date") || "";
+        const time = node.getAttribute("time") || "";
+        const collector = node.getAttribute("collector") || "";
+        const quantity = node.getAttribute("quantity") || "";
+        const uom = node.getAttribute("uom") || "";
+        const testsAttr = node.getAttribute("tests") || "";
+        const panelsAttr = node.getAttribute("panels") || "";
+
+        const tests = testsAttr
+          ? testsAttr
+              .split(",")
+              .map((id) => id.trim())
+              .filter((id) => id)
+              .map((id) => ({ id: id, name: "" }))
+          : [];
+
+        const panels = panelsAttr
+          ? panelsAttr
+              .split(",")
+              .map((id) => id.trim())
+              .filter((id) => id)
+              .map((id) => ({ id: id, name: "" }))
+          : [];
+
+        return {
+          index: idx + 1,
+          sampleRejected: false,
+          rejectionReason: "",
+          requestReferralEnabled: false,
+          referralItems: [],
+          sampleTypeId: String(sampleTypeId),
+          sampleXML: {
+            collectionDate: date,
+            collectionTime: time,
+            collector: collector,
+            quantity: quantity,
+            uom: uom,
+            rejected: false,
+            rejectionReason: "",
+          },
+          panels: panels,
+          tests: tests,
+        };
+      });
+    } catch (e) {
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    if (incomingOrderNumber) {
+      return;
+    }
+
     checkOrderReferral(orderFormValues.sampleOrderItems.externalOrderNumber);
   }, [orderFormValues.sampleOrderItems.externalOrderNumber]);
 
   const checkOrderReferral = (externalOrderNumber) => {
+    if (incomingOrderNumber) {
+      return;
+    }
+
     if (externalOrderNumber) {
       getLabOrder(externalOrderNumber, processLabOrderSuccess);
     }
@@ -550,6 +828,15 @@ const Index = () => {
   const handlePost = (status) => {
     setIsSubmitting(false);
     if (status === 200) {
+      if (incomingOrderNumber) {
+        postToOpenElisServer(
+          "/rest/incoming-orders/" +
+            encodeURIComponent(incomingOrderNumber) +
+            "/finalize",
+          JSON.stringify({}),
+          () => {},
+        );
+      }
       showAlertMessage(
         <FormattedMessage id="save.order.success.msg" />,
         NotificationKinds.success,
@@ -580,31 +867,50 @@ const Index = () => {
       return;
     }
     setIsSubmitting(true);
-    if ("years" in orderFormValues.patientProperties) {
-      delete orderFormValues.patientProperties.years;
+
+    const payload = JSON.parse(JSON.stringify(orderFormValues));
+
+    if (payload.patientProperties && "years" in payload.patientProperties) {
+      delete payload.patientProperties.years;
     }
-    if ("months" in orderFormValues.patientProperties) {
-      delete orderFormValues.patientProperties.months;
+    if (payload.patientProperties && "months" in payload.patientProperties) {
+      delete payload.patientProperties.months;
     }
-    if ("days" in orderFormValues.patientProperties) {
-      delete orderFormValues.patientProperties.days;
+    if (payload.patientProperties && "days" in payload.patientProperties) {
+      delete payload.patientProperties.days;
     }
-    if ("questionnaire" in orderFormValues.sampleOrderItems) {
-      delete orderFormValues.sampleOrderItems.questionnaire;
+    if (payload.sampleOrderItems && "questionnaire" in payload.sampleOrderItems) {
+      delete payload.sampleOrderItems.questionnaire;
     }
-    //remove display Lists rom the form
-    orderFormValues.sampleOrderItems.priorityList = [];
-    orderFormValues.sampleOrderItems.programList = [];
-    orderFormValues.sampleOrderItems.referringSiteList = [];
-    orderFormValues.initialSampleConditionList = [];
-    orderFormValues.testSectionList = [];
-    orderFormValues.sampleOrderItems.providersList = [];
-    orderFormValues.sampleOrderItems.paymentOptions = [];
-    orderFormValues.sampleOrderItems.testLocationCodeList = [];
-    console.log(JSON.stringify(orderFormValues));
+
+    // Remove display-only lists that backend does not accept in JSON binding.
+    if (payload.patientProperties) {
+      delete payload.patientProperties.educationList;
+      delete payload.patientProperties.maritialList;
+      delete payload.patientProperties.nationalityList;
+      delete payload.patientProperties.patientTypes;
+      delete payload.patientProperties.genders;
+      delete payload.patientProperties.addressDepartments;
+      delete payload.patientProperties.healthRegions;
+      delete payload.patientProperties.healthDistricts;
+    }
+
+    // remove display Lists rom the form
+    if (payload.sampleOrderItems) {
+      payload.sampleOrderItems.priorityList = [];
+      payload.sampleOrderItems.programList = [];
+      payload.sampleOrderItems.referringSiteList = [];
+      payload.sampleOrderItems.providersList = [];
+      payload.sampleOrderItems.paymentOptions = [];
+      payload.sampleOrderItems.testLocationCodeList = [];
+    }
+    payload.initialSampleConditionList = [];
+    payload.testSectionList = [];
+
+    console.log(JSON.stringify(payload));
     postToOpenElisServer(
       "/rest/SamplePatientEntry",
-      JSON.stringify(orderFormValues),
+      JSON.stringify(payload),
       handlePost,
     );
   };

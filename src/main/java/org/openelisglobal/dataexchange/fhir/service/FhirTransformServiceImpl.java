@@ -644,7 +644,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 sample.getAccessionNumber()));
 
         for (Analysis analysis : analysises) {
-            task.addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
+            String basedOnServiceRequestId = analysis.getFhirUuidAsString();
+            if (sample != null && !GenericValidator.isBlankOrNull(sample.getReferringId())) {
+                basedOnServiceRequestId = sample.getReferringId();
+            }
+            task.addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, basedOnServiceRequestId));
             if (sample.getStatusId().equals(statusService.getStatusID(OrderStatus.Finished))) {
                 task.addOutput() //
                         .setType(new CodeableConcept().addCoding(new Coding().setCode("reference"))) //
@@ -888,6 +892,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         serviceRequest.setId(analysis.getFhirUuidAsString());
         serviceRequest.addIdentifier(
                 this.createIdentifier(fhirConfig.getOeFhirSystem() + "/analysis_uuid", analysis.getFhirUuidAsString()));
+        if (sample != null && !GenericValidator.isBlankOrNull(sample.getReferringId())) {
+            serviceRequest.addIdentifier(
+                    this.createIdentifier(fhirConfig.getOeFhirSystem() + "/external_order_uuid", "sr-" + sample.getReferringId()));
+        }
         serviceRequest.setRequisition(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/samp_labNo",
                 analysis.getSampleItem().getSample().getAccessionNumber()));
         if (organization != null) {
@@ -982,6 +990,9 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         CodeableConcept codeableConcept = new CodeableConcept();
         codeableConcept
                 .addCoding(new Coding("http://loinc.org", test.getLoinc(), test.getLocalizedTestName().getEnglish()));
+        if (!GenericValidator.isBlankOrNull(test.getGuid())) {
+            codeableConcept.addCoding(new Coding(null, test.getGuid(), null));
+        }
         return codeableConcept;
     }
 
@@ -1176,7 +1187,21 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             this.addToOperations(fhirOperations, tempIdGenerator, task);
         }
 
-        Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+        try {
+            fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+        } catch (FhirLocalPersistingException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "transformPersistResultValidationFhirObjects",
+                    "Local FHIR store persistence failed; continuing with middleware dispatch. Error: "
+                            + e.getMessage());
+            LogEvent.logError(this.getClass().getSimpleName(), "transformPersistResultValidationFhirObjects",
+                    "Full error: " + e);
+        } catch (RuntimeException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "transformPersistResultValidationFhirObjects",
+                    "Unexpected error during local FHIR store persistence; continuing with middleware dispatch. Error: "
+                            + e.getMessage());
+            LogEvent.logError(this.getClass().getSimpleName(), "transformPersistResultValidationFhirObjects",
+                    "Full error: " + e);
+        }
 
         try {
             Bundle outboundBundle = new Bundle();
@@ -1231,6 +1256,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         List<Result> allResults = resultService.getResultsByAnalysis(analysis);
         SampleItem sampleItem = analysis.getSampleItem();
+        Sample sample = sampleItem.getSample();
         Patient patient = sampleHumanService.getPatientForSample(sampleItem.getSample());
 
         DiagnosticReport diagnosticReport = genNewDiagnosticReport(analysis);
@@ -1248,8 +1274,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             diagnosticReport.setStatus(DiagnosticReportStatus.UNKNOWN);
         }
 
-        diagnosticReport
-                .addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
+        String basedOnServiceRequestId = analysis.getFhirUuidAsString();
+        if (sample != null && !GenericValidator.isBlankOrNull(sample.getReferringId())) {
+            basedOnServiceRequestId = sample.getReferringId();
+        }
+        diagnosticReport.addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, basedOnServiceRequestId));
         diagnosticReport.addSpecimen(this.createReferenceFor(ResourceType.Specimen, sampleItem.getFhirUuidAsString()));
         diagnosticReport.setSubject(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
         for (Result curResult : allResults) {
@@ -1282,6 +1311,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         Analysis analysis = result.getAnalysis();
         Test test = analysis.getTest();
         SampleItem sampleItem = analysis.getSampleItem();
+        Sample sample = sampleItem.getSample();
         Patient patient = sampleHumanService.getPatientForSample(sampleItem.getSample());
         Observation observation = new Observation();
 
@@ -1348,7 +1378,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             }
         }
         observation.setCode(transformTestToCodeableConcept(test.getId()));
-        observation.addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
+        String basedOnServiceRequestId = analysis.getFhirUuidAsString();
+        if (sample != null && !GenericValidator.isBlankOrNull(sample.getReferringId())) {
+            basedOnServiceRequestId = sample.getReferringId();
+        }
+        observation.addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, basedOnServiceRequestId));
         observation.setSpecimen(this.createReferenceFor(ResourceType.Specimen, sampleItem.getFhirUuidAsString()));
         observation.setSubject(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
         // observation.setIssued(result.getOriginalLastupdated());

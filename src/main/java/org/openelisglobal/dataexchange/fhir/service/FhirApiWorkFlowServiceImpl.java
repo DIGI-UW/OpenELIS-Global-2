@@ -40,7 +40,6 @@ import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
-import org.openelisglobal.dataexchange.fhir.form.TaskOrderProcessingSummaryForm;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceServiceImpl.FhirOperations;
 import org.openelisglobal.dataexchange.fhir.service.TaskWorker.TaskResult;
 import org.openelisglobal.dataexchange.order.action.DBOrderExistanceChecker;
@@ -126,81 +125,6 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
             default:
             }
         }
-    }
-
-    @Override
-    public TaskOrderProcessingSummaryForm processIncomingOrderBundle(Bundle bundle) {
-        if (bundle == null || !bundle.hasEntry()) {
-            return new TaskOrderProcessingSummaryForm();
-        }
-
-        TaskOrderProcessingSummaryForm summary = new TaskOrderProcessingSummaryForm();
-
-        for (BundleEntryComponent entry : bundle.getEntry()) {
-            if (!entry.hasResource()
-                    || !ResourceType.Task.equals(entry.getResource().getResourceType())) {
-                continue;
-            }
-
-            Task task = (Task) entry.getResource();
-            if (task.getStatus() != null && !TaskStatus.REQUESTED.equals(task.getStatus())) {
-                continue;
-            }
-
-            OriginalReferralObjects localObjects = buildOriginalReferralObjectsFromBundle(bundle, task);
-            if (localObjects == null || localObjects.task == null || localObjects.serviceRequests == null
-                    || localObjects.serviceRequests.isEmpty()) {
-                continue;
-            }
-
-            Patient patient = localObjects.patient;
-            if (patient == null) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "processIncomingOrderBundle",
-                        "no patient found for Task " + localObjects.task.getId());
-            }
-
-            boolean taskOrderAcceptedFlag = false;
-            TaskResult taskResult = null;
-            for (ServiceRequest serviceRequest : localObjects.serviceRequests) {
-                TaskWorker worker = new TaskWorker(task,
-                        fhirContext.newJsonParser().encodeResourceToString(task), serviceRequest, patient);
-
-                worker.setInterpreter(SpringContext.getBean(TaskInterpreter.class));
-                worker.setExistanceChecker(SpringContext.getBean(DBOrderExistanceChecker.class));
-                worker.setPersister(SpringContext.getBean(IOrderPersister.class));
-
-                taskResult = worker.handleOrderRequest();
-                if (taskResult == TaskResult.OK) {
-                    taskOrderAcceptedFlag = true;
-                }
-
-                String orderNumber = null;
-                if (serviceRequest.hasIdentifier() && !serviceRequest.getIdentifier().isEmpty()) {
-                    orderNumber = serviceRequest.getIdentifierFirstRep().getValue();
-                }
-
-                TaskOrderProcessingSummaryForm.OrderStatus orderStatus = new TaskOrderProcessingSummaryForm.OrderStatus();
-                orderStatus.setOrderNumber(orderNumber);
-                if (taskResult == TaskResult.OK) {
-                    orderStatus.setStatus("OK");
-                } else if (taskResult == TaskResult.DUPLICATE_ORDER) {
-                    orderStatus.setStatus("DUPLICATE");
-                } else if (taskResult != null) {
-                    orderStatus.setStatus(taskResult.name());
-                } else {
-                    orderStatus.setStatus("UNKNOWN");
-                }
-                summary.getOrders().add(orderStatus);
-            }
-
-            if (localObjects.task.getStatus() == null || TaskStatus.REQUESTED.equals(localObjects.task.getStatus())) {
-                TaskStatus taskStatus = taskOrderAcceptedFlag ? TaskStatus.ACCEPTED : TaskStatus.REJECTED;
-                localObjects.task.setStatus(taskStatus);
-                IGenericClient localFhirClient = fhirUtil.getFhirClient(localFhirStorePath);
-                localFhirClient.update().resource(localObjects.task).execute();
-            }
-        }
-        return summary;
     }
 
     private void beginTaskCheckIfAcceptedPath(String remoteStorePath) throws FhirLocalPersistingException {

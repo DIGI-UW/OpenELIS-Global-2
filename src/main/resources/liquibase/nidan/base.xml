@@ -7,4 +7,5 @@
   <include relativeToChangelogFile="true" file="add-panel-guid.xml"/>
   <include relativeToChangelogFile="true" file="add-test-price.xml"/>
   <include relativeToChangelogFile="true" file="add-panel-price.xml"/>
+  <include relativeToChangelogFile="true" file="incoming_orders.xml"/>
 </databaseChangeLog>

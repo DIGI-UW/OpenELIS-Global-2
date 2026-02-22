@@ -54,6 +54,7 @@ import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder.js";
 import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
 import LabDashboard from "./components/home/LabDashboard.tsx";
+import IncomingOrders from "./components/incomingOrders/Index";
 
 export default function App() {
   let i18nConfig = {
@@ -373,7 +374,6 @@ export default function App() {
                   path="/NoteBookInstanceEditForm/:notebookentryid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
-                  role=""
                   labUnitRole={{ Cytology: [Roles.RESULTS] }}
                   role={Roles.RESULTS}
                 />
@@ -451,6 +451,13 @@ export default function App() {
                   path="/ElectronicOrders"
                   exact
                   component={() => <EOrderPage />}
+                  role={Roles.RECEPTION}
+                />
+
+                <SecureRoute
+                  path="/IncomingOrders"
+                  exact
+                  component={() => <IncomingOrders />}
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute
