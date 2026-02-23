@@ -1756,12 +1756,14 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         public List<ServiceRequest> serviceRequests = new ArrayList<>();
     }
 
+    @Override
     public void addHumanNameToPerson(HumanName humanName, Person person) {
         person.setFirstName(
                 humanName.getGivenAsSingleString() == null ? "" : humanName.getGivenAsSingleString().strip());
         person.setLastName(humanName.getFamily() == null ? "" : humanName.getFamily().strip());
     }
 
+    @Override
     public void addTelecomToPerson(List<ContactPoint> telecoms, Person person) {
         for (ContactPoint contact : telecoms) {
             String contactValue = contact.getValue();
