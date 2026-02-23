@@ -1317,30 +1317,48 @@ function UserAddModify() {
                         <Checkbox
                           id={`all-permissions-${key}`}
                           labelText={"All Permissions"}
-                          checked={["4", "5", "7", "10"].every(
-                            (num) =>
-                              selectedTestSectionLabUnits[key] &&
-                              selectedTestSectionLabUnits[key].includes(num),
-                          )}
+                          checked={
+                            userDataShow &&
+                            userDataShow.labUnitRoles &&
+                            userDataShow.labUnitRoles.length > 0 &&
+                            userDataShow.labUnitRoles.every(
+                              (section) =>
+                                selectedTestSectionLabUnits[key] &&
+                                selectedTestSectionLabUnits[key].includes(
+                                  section.roleId,
+                                ),
+                            )
+                          }
                           onChange={() => {
-                            const numbersToAdd = ["4", "5", "7", "10"];
+                            const allRoleIds =
+                              userDataShow && userDataShow.labUnitRoles
+                                ? userDataShow.labUnitRoles.map(
+                                    (section) => section.roleId,
+                                  )
+                                : [];
                             const updatedRoles = selectedTestSectionLabUnits[
                               key
                             ]
                               ? [...selectedTestSectionLabUnits[key]]
                               : [];
-                            const numbersToRemove = numbersToAdd.filter((num) =>
-                              updatedRoles.includes(num),
+                            const rolesToRemove = allRoleIds.filter((roleId) =>
+                              updatedRoles.includes(roleId),
                             );
-                            if (numbersToRemove.length > 0) {
-                              numbersToRemove.forEach((num) => {
-                                const index = updatedRoles.indexOf(num);
+                            if (rolesToRemove.length === allRoleIds.length) {
+                              // All roles are selected, so unselect all
+                              rolesToRemove.forEach((roleId) => {
+                                const index = updatedRoles.indexOf(roleId);
                                 if (index !== -1) {
                                   updatedRoles.splice(index, 1);
                                 }
                               });
                             } else {
-                              updatedRoles.push(...numbersToAdd);
+                              // Not all roles are selected, so select all
+                              allRoleIds.forEach((roleId) => {
+                                if (!updatedRoles.includes(roleId)) {
+                                  updatedRoles.push(roleId);
+                                }
+                              });
                             }
                             setSelectedTestSectionLabUnits((prev) => ({
                               ...prev,

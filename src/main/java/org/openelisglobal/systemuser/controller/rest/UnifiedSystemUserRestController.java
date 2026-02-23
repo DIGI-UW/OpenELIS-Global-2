@@ -1,8 +1,5 @@
 package org.openelisglobal.systemuser.controller.rest;
 
-import jakarta.annotation.PostConstruct;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -16,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.json.JSONArray;
@@ -62,6 +60,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/rest")
@@ -382,11 +384,21 @@ public class UnifiedSystemUserRestController extends BaseController {
             form.setSystemUserLastupdated(systemUser.getLastupdated());
 
             List<String> roleIds = userRoleService.getRoleIdsForUser(systemUser.getId());
+
+            List<String> expandedRoleIds = new ArrayList<>(roleIds);
+            for (String roleId : roleIds) {
+                Role role = roleService.getRoleById(roleId);
+                if (role != null && role.getGroupingRole()) {
+                    List<Role> childRoles = roleService.getReferencingRoles(role);
+                    expandedRoleIds.addAll(childRoles.stream().map(Role::getId).collect(Collectors.toList()));
+                }
+            }
+
             String globalParentRoleId = roleService.getRoleByName(Constants.GLOBAL_ROLES_GROUP).getId();
             List<String> globalRoleIds = getAllRoles().stream().filter(role -> role.getGroupingParent() != null)
                     .filter(role -> role.getGroupingParent().equals(globalParentRoleId)).map(role -> role.getId())
                     .collect(Collectors.toList());
-            List<String> globalSelectedRoleIds = roleIds.stream().filter(role -> globalRoleIds.contains(role))
+            List<String> globalSelectedRoleIds = expandedRoleIds.stream().filter(role -> globalRoleIds.contains(role))
                     .collect(Collectors.toList());
             setLabunitRolesForExistingUser(form);
             form.setSelectedRoles(globalSelectedRoleIds);
@@ -680,6 +692,33 @@ public class UnifiedSystemUserRestController extends BaseController {
 
     private void setLabunitRolesForExistingUser(UnifiedSystemUserForm form) {
         UserLabUnitRoles roles = userService.getUserLabUnitRoles(form.getSystemUserId());
+
+        // Also check for system_user_role assignments that should be considered as lab
+        // unit roles
+        List<String> userRoleIds = userRoleService.getRoleIdsForUser(form.getSystemUserId());
+
+        // Expand role hierarchy for lab unit roles
+        Set<String> expandedLabRoleIds = new HashSet<>();
+        for (String roleId : userRoleIds) {
+            Role role = roleService.getRoleById(roleId);
+            if (role != null) {
+                // Check if this role or its parent is Lab Unit Roles grouping
+                String labUnitRolesGroupId = roleService.getRoleByName(Constants.LAB_ROLES_GROUP).getId();
+                if (role.getId().equals(labUnitRolesGroupId)
+                        || (role.getGroupingParent() != null && role.getGroupingParent().equals(labUnitRolesGroupId))) {
+
+                    if (role.getGroupingRole()) {
+                        // This is a grouping role (parent), get all its children
+                        List<Role> childRoles = roleService.getReferencingRoles(role);
+                        expandedLabRoleIds.addAll(childRoles.stream().map(Role::getId).collect(Collectors.toList()));
+                    } else {
+                        // This is a regular role
+                        expandedLabRoleIds.add(role.getId());
+                    }
+                }
+            }
+        }
+
         if (roles != null) {
             Set<LabUnitRoleMap> roleMaps = roles.getLabUnitRoleMap();
             List<String> userLabUnits = new ArrayList<>();
@@ -697,17 +736,31 @@ public class UnifiedSystemUserRestController extends BaseController {
 
             Map<String, Set<String>> userTestSectionLabUnits = new HashMap<>();
             if (userLabUnits.contains(ALL_LAB_UNITS)) {
-                roleMaps.stream().filter(map -> map.getLabUnit().equals(ALL_LAB_UNITS))
-                        .forEach(map -> userTestSectionLabUnits.put(map.getLabUnit(), new HashSet<>(map.getRoles())));
+                roleMaps.stream().filter(map -> map.getLabUnit().equals(ALL_LAB_UNITS)).forEach(map -> {
+                    Set<String> roleSet = new HashSet<>(map.getRoles());
+                    roleSet.addAll(expandedLabRoleIds);
+                    userTestSectionLabUnits.put(map.getLabUnit(), roleSet);
+                });
             } else {
                 for (LabUnitRoleMap map : roleMaps) {
-                    userTestSectionLabUnits.put(testSectionService.get(map.getLabUnit()).getId(),
-                            new HashSet<>(map.getRoles().stream().map(r -> roleService.getRoleById(r).getId().trim())
-                                    .collect(Collectors.toList())));
+                    Set<String> roleSet = new HashSet<>(map.getRoles().stream()
+                            .map(r -> roleService.getRoleById(r).getId().trim()).collect(Collectors.toList()));
+                    roleSet.addAll(expandedLabRoleIds);
+                    userTestSectionLabUnits.put(testSectionService.get(map.getLabUnit()).getId(), roleSet);
                 }
             }
 
             form.setSelectedTestSectionLabUnits(userTestSectionLabUnits);
+        } else if (!expandedLabRoleIds.isEmpty()) {
+            // User has no lab unit roles but has system_user_role assignments for lab roles
+            // Create a default lab unit assignment with ALL_LAB_UNITS
+            Map<String, Set<String>> userTestSectionLabUnits = new HashMap<>();
+            userTestSectionLabUnits.put(ALL_LAB_UNITS, expandedLabRoleIds);
+            form.setSelectedTestSectionLabUnits(userTestSectionLabUnits);
+
+            JSONObject userLabData = new JSONObject();
+            userLabData.put(ALL_LAB_UNITS, new ArrayList<>(expandedLabRoleIds));
+            form.setUserLabRoleData(userLabData);
         }
     }
 
