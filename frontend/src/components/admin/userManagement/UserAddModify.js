@@ -1314,44 +1314,56 @@ function UserAddModify() {
                           )}
                         </Select>
                         <br />
-                     <Checkbox
-                       id={`all-permissions-${key}`}
-                       labelText={"All Permissions"}
-                       checked={
-                         userDataShow.labUnitRoles &&
-                         userDataShow.labUnitRoles.length > 0 &&
-                         userDataShow.labUnitRoles.every(
-                           (role) =>
-                             selectedTestSectionLabUnits[key] &&
-                             selectedTestSectionLabUnits[key].includes(String(role.roleId)),
-                         )
-                       }
-                       onChange={() => {
-                         const allRoleIds = userDataShow.labUnitRoles.map((role) => String(role.roleId));
-                         const updatedRoles = selectedTestSectionLabUnits[key]
-                           ? [...selectedTestSectionLabUnits[key]]
-                           : [];
-                         const allSelected = allRoleIds.every((id) => updatedRoles.includes(id));
-                         if (allSelected) {
-                           // Deselect all
-                           const finalRoles = updatedRoles.filter((id) => !allRoleIds.includes(id));
-                           setSelectedTestSectionLabUnits((prev) => ({
-                             ...prev,
-                             [key]: finalRoles,
-                           }));
-                         } else {
-                           // Select all missing roles
-                           const missingRoles = allRoleIds.filter((id) => !updatedRoles.includes(id));
-                           setSelectedTestSectionLabUnits((prev) => ({
-                             ...prev,
-                             [key]: [...updatedRoles, ...missingRoles],
-                           }));
-                         }
-                         setSaveButton(false);
-                         setValidation({ ...validation, selectedLab: true });
-                       }}
-                     />
-                    
+                        <Checkbox
+                          id={`all-permissions-${key}`}
+                          labelText={"All Permissions"}
+                          checked={
+                            userDataShow.labUnitRoles &&
+                            userDataShow.labUnitRoles.length > 0 &&
+                            userDataShow.labUnitRoles.every(
+                              (role) =>
+                                selectedTestSectionLabUnits[key] &&
+                                selectedTestSectionLabUnits[key].includes(
+                                  String(role.roleId),
+                                ),
+                            )
+                          }
+                          onChange={() => {
+                            const allRoleIds = userDataShow.labUnitRoles.map(
+                              (role) => String(role.roleId),
+                            );
+                            const updatedRoles = selectedTestSectionLabUnits[
+                              key
+                            ]
+                              ? [...selectedTestSectionLabUnits[key]]
+                              : [];
+                            const allSelected = allRoleIds.every((id) =>
+                              updatedRoles.includes(id),
+                            );
+                            if (allSelected) {
+                              // Deselect all
+                              const finalRoles = updatedRoles.filter(
+                                (id) => !allRoleIds.includes(id),
+                              );
+                              setSelectedTestSectionLabUnits((prev) => ({
+                                ...prev,
+                                [key]: finalRoles,
+                              }));
+                            } else {
+                              // Select all missing roles
+                              const missingRoles = allRoleIds.filter(
+                                (id) => !updatedRoles.includes(id),
+                              );
+                              setSelectedTestSectionLabUnits((prev) => ({
+                                ...prev,
+                                [key]: [...updatedRoles, ...missingRoles],
+                              }));
+                            }
+                            setSaveButton(false);
+                            setValidation({ ...validation, selectedLab: true });
+                          }}
+                        />
+
                         <FormGroup
                           key={key}
                           legendId={`labUnitRoles-${key}`}
