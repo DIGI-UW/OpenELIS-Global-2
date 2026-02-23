@@ -1,0 +1,24 @@
+# HL7 v2.5 Sample: Stago STart 4 Coagulation Analyzer
+# Purpose: Test Stago STart 4 plugin HL7 parsing (Feature 011, M11)
+# Reference: specs/011-madagascar-analyzer-integration/research.md
+#
+# Analyzer: Stago STart 4 (Coagulation/Hemostasis)
+# Protocol: HL7 v2.5 over Network
+# Message Type: ORU^R01 (Observation Result - Unsolicited)
+#
+# Segments:
+#   MSH - Message Header
+#   PID - Patient Identification
+#   ORC - Common Order
+#   OBR - Observation Request
+#   OBX - Observation/Result
+
+MSH|^~\&|STAGO|LAB|OpenELIS|LAB|20260123120000||ORU^R01|STAGO001|P|2.5.1||||||||
+PID|1||PAT002^^^HOSPITAL||RAKOTO^MARIE||19900220|F||||||||||||||||||||
+ORC|RE|PLACER789|FILLER012|||||||||||||||||||||||||
+OBR|1|PLACER789|FILLER012|1|^^^COAG^COAGULATION PANEL|||20260123110000|||||||||||||||||||||||F|||||||||||||||||||||||||
+OBX|1|NM|^^^PT^PROTHROMBIN TIME||12.5|sec|||||F||||||
+OBX|2|NM|^^^INR^INTERNATIONAL NORMALIZED RATIO||1.05|||||F||||||
+OBX|3|NM|^^^APTT^ACTIVATED PARTIAL THROMBOPLASTIN TIME||28.5|sec|||||F||||||
+OBX|4|NM|^^^FIB^FIBRINOGEN||3.2|g/L|||||F||||||
+OBX|5|NM|^^^TT^THROMBIN TIME||15.2|sec|||||F||||||

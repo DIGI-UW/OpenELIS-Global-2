@@ -117,7 +117,8 @@ describe("Dashboard Tests", function () {
     });
 
     it("User navigates back to ImmunoChemistry Dashboard to confirm added order", function () {
-      homePage.goToImmunoChemistryDashboard();
+      dashboard = homePage.goToImmunoChemistryDashboard();
+      cy.url().should("include", "ImmunohistochemistryDashboard");
     });
 
     it("Change The Status of Order and saves it", function () {
@@ -145,7 +146,8 @@ describe("Dashboard Tests", function () {
     });
 
     it("User navigates back to Cytology Dashboard to confirm added order", function () {
-      homePage.goToCytologyDashboard();
+      dashboard = homePage.goToCytologyDashboard();
+      cy.url().should("include", "CytologyDashboard");
     });
 
     it("Change The Status of Order and saves it", function () {
