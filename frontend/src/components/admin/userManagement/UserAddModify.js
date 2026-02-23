@@ -1317,13 +1317,20 @@ function UserAddModify() {
                         <Checkbox
                           id={`all-permissions-${key}`}
                           labelText={"All Permissions"}
-                          checked={["4", "5", "7", "10"].every(
+                          checked={(
+                            userDataShow?.labUnitRoles?.map(
+                              (section) => section.roleId,
+                            ) ?? []
+                          ).every(
                             (num) =>
                               selectedTestSectionLabUnits[key] &&
                               selectedTestSectionLabUnits[key].includes(num),
                           )}
                           onChange={() => {
-                            const numbersToAdd = ["4", "5", "7", "10"];
+                            const numbersToAdd =
+                              userDataShow?.labUnitRoles?.map(
+                                (section) => section.roleId,
+                              ) ?? [];
                             const updatedRoles = selectedTestSectionLabUnits[
                               key
                             ]
