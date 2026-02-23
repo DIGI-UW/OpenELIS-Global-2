@@ -47,9 +47,8 @@ import {
   postToOpenElisServerJsonResponse,
   postToOpenElisServer,
 } from "../../../utils/Utils";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useBioanalyticalPermissions } from "../../../../hooks/useBioanalyticalPermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import config from "../../../../config.json";
 
 /**
@@ -102,39 +101,7 @@ function BioanalyticalAnalyticalExecutionPage({
 }) {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { hasAnyRole } = usePermissions();
-  const {
-    getPagePermissionLevel,
-    hasFullControl,
-    canSaveData,
-    canAccessAnalyticalExecution,
-    BIOANALYTICAL_ROLES,
-  } = useBioanalyticalPermissions();
   const isMountedRef = useRef(true);
-
-  const allowedRoles = [
-    BIOANALYTICAL_ROLES.CHEMICAL_ANALYST,
-    BIOANALYTICAL_ROLES.PHARMACIST,
-    BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
-    BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
-    BIOANALYTICAL_ROLES.QA_OFFICER,
-    BIOANALYTICAL_ROLES.RESEARCHER,
-  ];
-
-  const canAccessPage = canAccessAnalyticalExecution();
-
-  const pagePermissionLevel = getPagePermissionLevel("Analytical Execution");
-  const canExecuteAnalysis = hasFullControl(pagePermissionLevel);
-  const canSaveResults = canSaveData(pagePermissionLevel);
-
-  // Debug logging for permission issues
-  if (process.env.NODE_ENV === "development") {
-    console.log("Analytical Execution Page - Permission Debug:", {
-      pagePermissionLevel,
-      canSaveResults,
-      canExecuteAnalysis,
-    });
-  }
 
   // ============================================================================
   // CORE STATE
@@ -1765,17 +1732,6 @@ function BioanalyticalAnalyticalExecutionPage({
     }
   }, [allSelected, sampleTableRows]);
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Analytical Test Execution"
-        reason="This page requires specific bioanalytical laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   // ============================================================================
   // LOADING STATE
   // ============================================================================
@@ -1814,16 +1770,21 @@ function BioanalyticalAnalyticalExecutionPage({
             <Grid>
               <Column lg={16} md={8} sm={4}>
                 <div style={{ marginTop: "1rem", marginBottom: "2rem" }}>
-                  <Button
-                    kind="primary"
-                    onClick={() => setIsExecutionModalOpen(true)}
-                    disabled={selectedSampleIds.length === 0 || !canSaveResults}
-                    size="lg"
+                  <PermissionGate
+                    roles={Permissions.PROCESS_SAMPLES}
+                    disabledTooltip="Insufficient permissions to configure test execution"
                   >
-                    Configure Test Execution ({selectedSampleIds.length} samples
-                    selected)
-                  </Button>
-                  {(selectedSampleIds.length === 0 || !canSaveResults) && (
+                    <Button
+                      kind="primary"
+                      onClick={() => setIsExecutionModalOpen(true)}
+                      disabled={selectedSampleIds.length === 0}
+                      size="lg"
+                    >
+                      Configure Test Execution ({selectedSampleIds.length}{" "}
+                      samples selected)
+                    </Button>
+                  </PermissionGate>
+                  {selectedSampleIds.length === 0 && (
                     <div
                       style={{
                         marginTop: "0.75rem",
@@ -1851,23 +1812,14 @@ function BioanalyticalAnalyticalExecutionPage({
                           color: "#161616",
                         }}
                       >
-                        {selectedSampleIds.length === 0 && (
-                          <li>
-                            <span style={{ color: "#da1e28" }}>●</span> Select
-                            at least one sample from the table
-                          </li>
-                        )}
-                        {!canSaveResults && (
-                          <li>
-                            <span style={{ color: "#da1e28" }}>●</span>{" "}
-                            Insufficient permissions (current level:{" "}
-                            {pagePermissionLevel || "NONE"})
-                          </li>
-                        )}
+                        <li>
+                          <span style={{ color: "#da1e28" }}>●</span> Select at
+                          least one sample from the table
+                        </li>
                       </ul>
                     </div>
                   )}
-                  {selectedSampleIds.length > 0 && canSaveResults && (
+                  {selectedSampleIds.length > 0 && (
                     <p
                       style={{
                         marginTop: "0.5rem",
@@ -3760,31 +3712,36 @@ function BioanalyticalAnalyticalExecutionPage({
                 </div>
 
                 <div style={{ marginTop: "1rem" }}>
-                  <Button
-                    kind="primary"
-                    onClick={handleCompleteExecution}
-                    disabled={(() => {
-                      const totalFiles =
-                        (uploadedRawFiles?.length || 0) +
-                        (uploadedFiles?.length || 0);
-                      const totalProcessed =
-                        (uploadedRawFiles?.filter((f) => f.processed).length ||
-                          0) +
-                        (uploadedFiles?.filter((f) => f.processed).length || 0);
-
-                      return (
-                        executionData.isExecuting ||
-                        selectedSampleIds.length === 0 ||
-                        !qcApproved ||
-                        (totalFiles > 0 && totalProcessed === 0) || // If files uploaded but none processed
-                        !canSaveResults
-                      );
-                    })()}
+                  <PermissionGate
+                    roles={Permissions.PROCESS_SAMPLES}
+                    disabledTooltip="Insufficient permissions to complete test execution"
                   >
-                    {executionData.isExecuting
-                      ? "Completing..."
-                      : "Complete Test Execution"}
-                  </Button>
+                    <Button
+                      kind="primary"
+                      onClick={handleCompleteExecution}
+                      disabled={(() => {
+                        const totalFiles =
+                          (uploadedRawFiles?.length || 0) +
+                          (uploadedFiles?.length || 0);
+                        const totalProcessed =
+                          (uploadedRawFiles?.filter((f) => f.processed)
+                            .length || 0) +
+                          (uploadedFiles?.filter((f) => f.processed).length ||
+                            0);
+
+                        return (
+                          executionData.isExecuting ||
+                          selectedSampleIds.length === 0 ||
+                          !qcApproved ||
+                          (totalFiles > 0 && totalProcessed === 0) // If files uploaded but none processed
+                        );
+                      })()}
+                    >
+                      {executionData.isExecuting
+                        ? "Completing..."
+                        : "Complete Test Execution"}
+                    </Button>
+                  </PermissionGate>
                   {(!uploadedFiles || uploadedFiles.length === 0) && (
                     <p
                       style={{

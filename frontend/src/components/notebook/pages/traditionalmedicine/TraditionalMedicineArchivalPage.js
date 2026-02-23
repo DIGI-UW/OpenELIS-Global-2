@@ -35,9 +35,8 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -65,11 +64,6 @@ function TraditionalMedicineArchivalPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
-  const { hasAnyRole } = usePermissions();
-
-  // TMMRD permissions per SRS Section 11
-  const { getPagePermissionLevel, canSaveData, canAccessStage8, TMMRD_PAGES } =
-    useTMMRDPermissions();
 
   // All hooks and state must be declared before any conditional returns (React Hooks Rule)
   const [samples, setSamples] = useState([]);
@@ -84,15 +78,6 @@ function TraditionalMedicineArchivalPage({
   const [retentionYears, setRetentionYears] = useState("");
   const [archivalNotes, setArchivalNotes] = useState("");
   const [generateReport, setGenerateReport] = useState(false);
-
-  // STAGE 9 allowed roles per TMMRD SRS Section 11 - Management only for archival
-  const allowedRoles = ["TMMRD Lab Manager", "TMMRD Principal Investigator"];
-
-  const canAccessPage = canAccessStage8();
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.ARCHIVAL);
-  const canEditData = canSaveData(pagePermissionLevel);
 
   const archiveTypeOptions = [
     { id: "digital", label: "Digital Archive" },
@@ -388,17 +373,6 @@ function TraditionalMedicineArchivalPage({
     );
   };
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Reporting & Archival"
-        reason="This page requires management level Traditional Medicine roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   return (
     <div className="tradmed-archival-page">
       <div className="page-section-header">
@@ -442,19 +416,27 @@ function TraditionalMedicineArchivalPage({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openModal}
-          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+        <PermissionGate
+          roles={Permissions.UPDATE_SAMPLES}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.recordArchivalPermission",
+            defaultMessage: "Insufficient permissions to record archival",
+          })}
         >
-          <FormattedMessage
-            id="notebook.page.tradmed.archival.recordArchival"
-            defaultMessage="Record Archival ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.archival.recordArchival"
+              defaultMessage="Record Archival ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"

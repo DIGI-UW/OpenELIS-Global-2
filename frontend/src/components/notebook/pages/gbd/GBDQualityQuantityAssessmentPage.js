@@ -22,8 +22,6 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { Renew, CheckmarkFilled, Chemistry } from "@carbon/react/icons";
-import useGBDPermissions from "../../../../hooks/useGBDPermissions";
-import { usePermissions } from "../../../../hooks/usePermissions";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -31,7 +29,8 @@ import {
   getFromOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -65,29 +64,6 @@ export const GBDQualityQuantityAssessmentPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canPerformWork,
-    hasFullControl,
-    isReadOnly,
-    canAccessQC,
-    GBD_ROLES,
-    GBD_PAGES,
-  } = useGBDPermissions();
-
-  // Page access check
-  const canAccessPage = canAccessQC();
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(GBD_PAGES.QC);
-
-  // Function-level permissions per permission matrix
-  // Matrix: Lab Technicians (Yes), Bioinformaticians (No), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
-  const canPerformQC = canPerformWork(pagePermissionLevel); // Lab Technicians (Yes), Lab Manager (Full)
-  const canModifyData = canSaveData(pagePermissionLevel);
-  const canMarkComplete = canPerformWork(pagePermissionLevel);
-  const isViewOnly = isReadOnly(pagePermissionLevel); // Principal Investigator (View)
 
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
@@ -523,20 +499,6 @@ export const GBDQualityQuantityAssessmentPage = ({
     [samples],
   );
 
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Quality & Quantity Assessment"
-        reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={[
-          GBD_ROLES.LAB_TECHNICIAN,
-          GBD_ROLES.MANAGER,
-          GBD_ROLES.PRINCIPAL_INVESTIGATOR,
-        ]}
-      />
-    );
-  }
-
   const renderStatus = (sample) => {
     const status = sample.status || "PENDING";
 
@@ -669,72 +631,39 @@ export const GBDQualityQuantityAssessmentPage = ({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Chemistry}
-          onClick={openModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canPerformQC ||
-            isViewOnly
-          }
-          title={
-            !canPerformQC
-              ? intl.formatMessage({
-                  id: "notebook.gbd.qc.insufficientPermissions.record",
-                  defaultMessage:
-                    "Insufficient permissions to record QC data. Only Lab Technicians and Lab Manager (with appropriate permissions) can perform QC.",
-                })
-              : isViewOnly
-                ? intl.formatMessage({
-                    id: "notebook.gbd.qc.viewOnlyAccess",
-                    defaultMessage: "You have view-only access to this page.",
-                  })
-                : undefined
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.recordQC"
-            defaultMessage="Record QC ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.UPDATE_SAMPLES}>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Chemistry}
+            onClick={openModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.gbd.recordQC"
+              defaultMessage="Record QC ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            eligibleForCompletionCount === 0 ||
-            isCompleting ||
-            !hasRealPageId ||
-            !canMarkComplete ||
-            isViewOnly
-          }
-          title={
-            !canMarkComplete
-              ? intl.formatMessage({
-                  id: "notebook.gbd.qc.insufficientPermissions.complete",
-                  defaultMessage:
-                    "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
-                })
-              : isViewOnly
-                ? intl.formatMessage({
-                    id: "notebook.gbd.qc.viewOnlyAccess",
-                    defaultMessage: "You have view-only access to this page.",
-                  })
-                : undefined
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: eligibleForCompletionCount }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={
+              eligibleForCompletionCount === 0 || isCompleting || !hasRealPageId
+            }
+          >
+            <FormattedMessage
+              id="notebook.gbd.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: eligibleForCompletionCount }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -778,7 +707,7 @@ export const GBDQualityQuantityAssessmentPage = ({
               samples={readyForQCSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={canPerformQC}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
@@ -945,7 +874,7 @@ export const GBDQualityQuantityAssessmentPage = ({
           id: "label.cancel",
           defaultMessage: "Cancel",
         })}
-        primaryButtonDisabled={isApplyingQC || !canModifyData || isViewOnly}
+        primaryButtonDisabled={isApplyingQC}
         size="lg"
       >
         {isApplyingQC && <Loading withOverlay={false} small />}

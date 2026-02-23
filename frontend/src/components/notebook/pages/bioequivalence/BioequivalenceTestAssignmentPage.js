@@ -33,9 +33,8 @@ import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../../config.json";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useBioequivalencePermissions } from "../../../../hooks/useBioequivalencePermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "./BioequivalencePages.css";
 
 /**
@@ -211,35 +210,6 @@ function BioequivalenceTestAssignmentPage({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { hasAnyRole } = usePermissions();
-  const { getPagePermissionLevel, canSaveData, hasFullControl } =
-    useBioequivalencePermissions();
-
-  // PAGE 2 allowed roles per test.pdf Section 11
-  const allowedRoles = [
-    "Bioequivalence Chemical Analyst",
-    "Bioequivalence Pharmacist",
-    "Bioequivalence Lab Supervisor",
-    "Bioequivalence Study Director",
-    "Bioequivalence QA Officer",
-    "Bioequivalence Researcher",
-  ];
-
-  const canAccessPage = hasAnyRole(allowedRoles);
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel("Test Assignment");
-  const canAssignTests = hasFullControl(pagePermissionLevel);
-  const canSaveAssignments = canSaveData(pagePermissionLevel);
-
-  // Debug logging for permission issues
-  if (process.env.NODE_ENV === "development") {
-    console.log("Test Assignment Page - Permission Debug:", {
-      pagePermissionLevel,
-      canSaveAssignments,
-      canAssignTests,
-    });
-  }
 
   // Loading and data states
   const [isLoading, setIsLoading] = useState(false);
@@ -1046,17 +1016,6 @@ function BioequivalenceTestAssignmentPage({
     onProgressUpdate,
   ]);
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Test Assignment & Preparation"
-        reason="This page requires specific bioequivalence laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   return (
     <div className="bioequivalence-page">
       <div className="page-instructions">
@@ -1104,49 +1063,31 @@ function BioequivalenceTestAssignmentPage({
                   }}
                 >
                   {selectedSamples.size > 0 && (
-                    <Button
-                      kind="primary"
-                      onClick={handleShowAssignmentForm}
-                      disabled={!canAssignTests}
-                      title={
-                        !canAssignTests
-                          ? intl.formatMessage({
-                              id: "notebook.bioequivalence.testassignment.insufficientPermissions",
-                              defaultMessage:
-                                "Insufficient permissions to configure test assignments. Only Pharmacists and Lab Supervisors can assign tests.",
-                            })
-                          : undefined
-                      }
-                    >
-                      <FormattedMessage
-                        id="notebook.bioequivalence.testassignment.configureTests"
-                        defaultMessage="Configure Tests for {count} Sample(s)"
-                        values={{ count: selectedSamples.size }}
-                      />
-                    </Button>
+                    <PermissionGate permissions={[Permissions.UPDATE_SAMPLES]}>
+                      <Button kind="primary" onClick={handleShowAssignmentForm}>
+                        <FormattedMessage
+                          id="notebook.bioequivalence.testassignment.configureTests"
+                          defaultMessage="Configure Tests for {count} Sample(s)"
+                          values={{ count: selectedSamples.size }}
+                        />
+                      </Button>
+                    </PermissionGate>
                   )}
 
                   {/* Show completion button if samples have test assignments */}
                   {samples.filter((s) => testAssignments[s.id]).length > 0 && (
-                    <Button
-                      kind="secondary"
-                      onClick={handleMarkCompleteAndAdvance}
-                      disabled={isAdvancing || !canAssignTests}
-                      title={
-                        !canAssignTests
-                          ? intl.formatMessage({
-                              id: "notebook.bioequivalence.testassignment.completeInsufficientPermissions",
-                              defaultMessage:
-                                "Insufficient permissions to complete test assignments. Only Pharmacists and Lab Supervisors can complete assignments.",
-                            })
-                          : undefined
-                      }
-                    >
-                      <FormattedMessage
-                        id="notebook.bioequivalence.testassignment.completeAndAdvance"
-                        defaultMessage="Mark Complete & Move to Next Stage"
-                      />
-                    </Button>
+                    <PermissionGate permissions={[Permissions.PROCESS_SAMPLES]}>
+                      <Button
+                        kind="secondary"
+                        onClick={handleMarkCompleteAndAdvance}
+                        disabled={isAdvancing}
+                      >
+                        <FormattedMessage
+                          id="notebook.bioequivalence.testassignment.completeAndAdvance"
+                          defaultMessage="Mark Complete & Move to Next Stage"
+                        />
+                      </Button>
+                    </PermissionGate>
                   )}
                 </div>
 
@@ -1349,8 +1290,7 @@ function BioequivalenceTestAssignmentPage({
           isAssigning ||
           !assignmentConfig.analyticalMethod ||
           !assignmentConfig.assignedStaff ||
-          !assignmentConfig.samplePreparation?.trim() ||
-          !canSaveAssignments
+          !assignmentConfig.samplePreparation?.trim()
         }
         size="md"
       >
@@ -1359,8 +1299,7 @@ function BioequivalenceTestAssignmentPage({
           {(isAssigning ||
             !assignmentConfig.analyticalMethod ||
             !assignmentConfig.assignedStaff ||
-            !assignmentConfig.samplePreparation?.trim() ||
-            !canSaveAssignments) && (
+            !assignmentConfig.samplePreparation?.trim()) && (
             <div
               style={{
                 marginBottom: "1rem",
@@ -1410,12 +1349,6 @@ function BioequivalenceTestAssignmentPage({
                   <li>
                     <span style={{ color: "#da1e28" }}>●</span> Document
                     preparation method
-                  </li>
-                )}
-                {!canSaveAssignments && (
-                  <li>
-                    <span style={{ color: "#da1e28" }}>●</span> Insufficient
-                    permissions (current level: {pagePermissionLevel || "NONE"})
                   </li>
                 )}
               </ul>

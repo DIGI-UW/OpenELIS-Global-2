@@ -36,9 +36,8 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -66,21 +65,7 @@ function TraditionalMedicineAuthenticationPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
-  const { hasAnyRole } = usePermissions();
 
-  // TMMRD permissions per SRS Section 11
-  const {
-    getPagePermissionLevel,
-    canPerformWork,
-    canAuthenticate,
-    hasFullControl,
-    isReadOnly,
-    canAccessAuthentication,
-    TMMRD_ROLES,
-    TMMRD_PAGES,
-  } = useTMMRDPermissions();
-
-  // All state must be declared before any conditional returns (React Hooks Rule)
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -97,27 +82,6 @@ function TraditionalMedicineAuthenticationPage({
   );
   const [authNotes, setAuthNotes] = useState("");
 
-  // Page access check
-  const canAccessPage = canAccessAuthentication();
-
-  // Get user's permission level for this specific page
-  const pagePermissionLevel = getPagePermissionLevel(
-    TMMRD_PAGES.AUTHENTICATION,
-  );
-
-  // STAGE 2 allowed roles per TMMRD matrix
-  const allowedRoles = [
-    TMMRD_ROLES.PHARMACOGNOSIST,
-    TMMRD_ROLES.LAB_MANAGER,
-    TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
-  ];
-
-  // Function-level permissions based on matrix
-  const canPerformAuthentication = canAuthenticate(pagePermissionLevel);
-  const canMarkComplete = canPerformWork(pagePermissionLevel);
-  const isViewOnly = isReadOnly(pagePermissionLevel);
-
-  // Check if page has a real ID
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
 
@@ -139,7 +103,6 @@ function TraditionalMedicineAuthenticationPage({
     { id: "partial", label: "Partially Confirmed" },
   ];
 
-  // Notification callback
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, message }) => {
       setNotificationVisible(true);
@@ -148,7 +111,6 @@ function TraditionalMedicineAuthenticationPage({
     [addNotification, setNotificationVisible],
   );
 
-  // Load samples for this page
   const loadPageSamples = useCallback(() => {
     if (!pageData?.id || String(pageData.id).startsWith("default-")) {
       setLoading(false);
@@ -207,7 +169,6 @@ function TraditionalMedicineAuthenticationPage({
     };
   }, [entryId, pageData?.id, loadPageSamples]);
 
-  // Reset authentication form
   const resetAuthForm = useCallback(() => {
     setAuthMethod(null);
     setAuthResult(null);
@@ -216,7 +177,6 @@ function TraditionalMedicineAuthenticationPage({
     setAuthNotes("");
   }, []);
 
-  // Open authentication modal
   const openAuthModal = useCallback(() => {
     if (selectedSampleIds.length === 0) {
       notify({
@@ -515,43 +475,8 @@ function TraditionalMedicineAuthenticationPage({
     }
   };
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Traditional Medicine Botanical Authentication & Verification"
-        reason={intl.formatMessage({
-          id: "notebook.tradmed.authentication.accessDenied",
-          defaultMessage:
-            "Access to the Traditional Medicine Botanical Authentication & Verification page requires specialized botanical expertise. This page is restricted to roles responsible for species identification and authentication verification.",
-        })}
-        requiredRoles={allowedRoles}
-        additionalInfo={intl.formatMessage({
-          id: "notebook.tradmed.authentication.accessRequirements",
-          defaultMessage:
-            "Required permissions: Botanical identification, Morphological analysis, Microscopic examination, and Molecular authentication capabilities.",
-        })}
-      />
-    );
-  }
-
   return (
     <div className="tradmed-authentication-page">
-      {/* View-only banner */}
-      {isViewOnly && (
-        <div className="view-only-banner">
-          <div className="view-only-content">
-            <WarningAltFilled size={16} />
-            <span>
-              <FormattedMessage
-                id="notebook.tradmed.authentication.viewOnlyMode"
-                defaultMessage="View-only mode: Your role permissions allow viewing but not modifying authentication data."
-              />
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* Page Header */}
       <div className="page-section-header">
         <h4>
@@ -598,65 +523,60 @@ function TraditionalMedicineAuthenticationPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openAuthModal}
-          disabled={
-            !canPerformAuthentication ||
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            isViewOnly
-          }
-          title={
-            !canPerformAuthentication || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.authenticatePermission",
-                  defaultMessage:
-                    "Requires TMMRD Pharmacognosist or higher role to perform authentication",
-                })
-              : selectedSampleIds.length === 0
+        <PermissionGate
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.authenticatePermission",
+            defaultMessage: "Insufficient permissions to authenticate samples",
+          })}
+        >
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openAuthModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+            title={
+              selectedSampleIds.length === 0
                 ? intl.formatMessage({
                     id: "notebook.tradmed.tooltip.selectSamples",
                     defaultMessage: "Select samples to authenticate",
                   })
                 : ""
-          }
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.authenticate"
-            defaultMessage="Authenticate ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.authenticate"
+              defaultMessage="Authenticate ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
         {selectedSampleIds.length > 0 &&
           pendingSamples.some((s) => selectedSampleIds.includes(s.id)) && (
-            <Button
-              kind="tertiary"
-              size="sm"
-              renderIcon={CheckmarkFilled}
-              onClick={handleMarkComplete}
-              disabled={
-                isCompleting || !hasRealPageId || !canMarkComplete || isViewOnly
-              }
-              title={
-                !canMarkComplete || isViewOnly
-                  ? intl.formatMessage({
-                      id: "notebook.tradmed.tooltip.markCompletePermission",
-                      defaultMessage:
-                        "Requires TMMRD Pharmacognosist or higher role to mark authentication complete",
-                    })
-                  : ""
-              }
+            <PermissionGate
+              roles={Permissions.VALIDATE_RESULTS}
+              disabledTooltip={intl.formatMessage({
+                id: "notebook.tradmed.tooltip.markCompletePermission",
+                defaultMessage:
+                  "Insufficient permissions to mark samples complete",
+              })}
             >
-              <FormattedMessage
-                id="notebook.tradmed.auth.markComplete"
-                defaultMessage="Mark Complete ({count})"
-                values={{ count: selectedSampleIds.length }}
-              />
-            </Button>
+              <Button
+                kind="tertiary"
+                size="sm"
+                renderIcon={CheckmarkFilled}
+                onClick={handleMarkComplete}
+                disabled={isCompleting || !hasRealPageId}
+              >
+                <FormattedMessage
+                  id="notebook.tradmed.auth.markComplete"
+                  defaultMessage="Mark Complete ({count})"
+                  values={{ count: selectedSampleIds.length }}
+                />
+              </Button>
+            </PermissionGate>
           )}
 
         <Button
@@ -708,7 +628,7 @@ function TraditionalMedicineAuthenticationPage({
               samples={pendingSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={!isViewOnly}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

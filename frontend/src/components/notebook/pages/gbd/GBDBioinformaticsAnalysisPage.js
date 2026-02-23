@@ -23,8 +23,6 @@ import {
   Loading,
 } from "@carbon/react";
 import { Renew, CheckmarkFilled, Chemistry } from "@carbon/react/icons";
-import useGBDPermissions from "../../../../hooks/useGBDPermissions";
-import { usePermissions } from "../../../../hooks/usePermissions";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -32,7 +30,8 @@ import {
   getFromOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -72,29 +71,6 @@ export const GBDBioinformaticsAnalysisPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canPerformWork,
-    hasFullControl,
-    isReadOnly,
-    canAccessBioinformatics,
-    GBD_ROLES,
-    GBD_PAGES,
-  } = useGBDPermissions();
-
-  // Page access check
-  const canAccessPage = canAccessBioinformatics();
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(GBD_PAGES.BIOINFORMATICS);
-
-  // Function-level permissions per permission matrix
-  // Matrix: Lab Technicians (No), Bioinformaticians (Full), Lab Manager (View), Principal Investigator (View), Data Managers (View)
-  const canPerformBioinformatics = canPerformWork(pagePermissionLevel); // For Bioinformaticians with Full access
-  const canModifyData = canSaveData(pagePermissionLevel);
-  const canMarkComplete = canPerformWork(pagePermissionLevel);
-  const isViewOnly = isReadOnly(pagePermissionLevel);
 
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
@@ -599,22 +575,6 @@ export const GBDBioinformaticsAnalysisPage = ({
     [samples],
   );
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Bioinformatics Analysis & Data Submission"
-        reason="This page requires specific GBD bioinformatics roles to access."
-        requiredRoles={[
-          GBD_ROLES.BIOINFORMATICIAN,
-          GBD_ROLES.MANAGER,
-          GBD_ROLES.PRINCIPAL_INVESTIGATOR,
-          GBD_ROLES.DATA_MANAGER,
-        ]}
-      />
-    );
-  }
-
   // Helper to render sample status
   const renderStatus = (sample) => {
     const status = sample.status || "PENDING";
@@ -758,72 +718,39 @@ export const GBDBioinformaticsAnalysisPage = ({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Chemistry}
-          onClick={openModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canPerformBioinformatics ||
-            isViewOnly
-          }
-          title={
-            !canPerformBioinformatics
-              ? intl.formatMessage({
-                  id: "notebook.gbd.bioinformatics.insufficientPermissions.record",
-                  defaultMessage:
-                    "Insufficient permissions to record bioinformatics analysis. Only Bioinformaticians (with Full access) can record analysis.",
-                })
-              : isViewOnly
-                ? intl.formatMessage({
-                    id: "notebook.gbd.bioinformatics.viewOnlyAccess",
-                    defaultMessage: "You have view-only access to this page.",
-                  })
-                : undefined
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.recordAnalysis"
-            defaultMessage="Record Analysis ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.UPDATE_SAMPLES}>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Chemistry}
+            onClick={openModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.gbd.recordAnalysis"
+              defaultMessage="Record Analysis ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            eligibleForCompletionCount === 0 ||
-            isCompleting ||
-            !hasRealPageId ||
-            !canMarkComplete ||
-            isViewOnly
-          }
-          title={
-            !canMarkComplete
-              ? intl.formatMessage({
-                  id: "notebook.gbd.bioinformatics.insufficientPermissions.complete",
-                  defaultMessage:
-                    "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
-                })
-              : isViewOnly
-                ? intl.formatMessage({
-                    id: "notebook.gbd.bioinformatics.viewOnlyAccess",
-                    defaultMessage: "You have view-only access to this page.",
-                  })
-                : undefined
-          }
-        >
-          <FormattedMessage
-            id="notebook.gbd.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: eligibleForCompletionCount }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={
+              eligibleForCompletionCount === 0 || isCompleting || !hasRealPageId
+            }
+          >
+            <FormattedMessage
+              id="notebook.gbd.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: eligibleForCompletionCount }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -867,7 +794,7 @@ export const GBDBioinformaticsAnalysisPage = ({
               samples={readyForAnalysisSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={canPerformBioinformatics}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
@@ -1042,9 +969,7 @@ export const GBDBioinformaticsAnalysisPage = ({
           id: "label.cancel",
           defaultMessage: "Cancel",
         })}
-        primaryButtonDisabled={
-          isApplyingAnalysis || !canModifyData || isViewOnly
-        }
+        primaryButtonDisabled={isApplyingAnalysis}
         size="lg"
       >
         {isApplyingAnalysis && <Loading withOverlay={false} small />}

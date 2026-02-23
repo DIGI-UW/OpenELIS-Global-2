@@ -36,9 +36,8 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -65,38 +64,10 @@ function TraditionalMedicineExtractionPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
-  const { hasAnyRole } = usePermissions();
 
-  // TMMRD permissions per matrix requirements
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canAccessStage3to4,
-    canPerformWork,
-    isReadOnly,
-    TMMRD_ROLES,
-    TMMRD_PAGES,
-  } = useTMMRDPermissions();
-
-  // STAGE 4 allowed roles per TMMRD matrix
-  const allowedRoles = [
-    TMMRD_ROLES.LAB_TECHNICIAN,
-    TMMRD_ROLES.RESEARCHER,
-    TMMRD_ROLES.PHARMACOGNOSIST,
-    TMMRD_ROLES.LAB_MANAGER,
-    TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
-  ];
-
-  const canAccessPage = canAccessStage3to4();
-
-  // Get user's permission level for this specific page
-  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.EXTRACTION);
-
-  // Function-level permissions based on matrix
-  const canRecordExtraction = canPerformWork(pagePermissionLevel);
-  const canModifyData = canSaveData(pagePermissionLevel);
-  const canMarkComplete = canPerformWork(pagePermissionLevel);
-  const isViewOnly = isReadOnly(pagePermissionLevel);
+  // Use standard permissions instead of custom TMMRD-specific logic
+  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
+  // This component focuses on action-level permissions using PermissionGate components around individual actions
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
@@ -861,24 +832,9 @@ function TraditionalMedicineExtractionPage({
     [samples],
   );
 
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Traditional Medicine Extraction & Concentration"
-        reason={intl.formatMessage({
-          id: "notebook.tradmed.extraction.accessDenied",
-          defaultMessage:
-            "Access to the Traditional Medicine Extraction & Concentration page requires technical laboratory permissions. This page is restricted to roles responsible for chemical extraction processes, filtration methods, and concentration techniques.",
-        })}
-        requiredRoles={allowedRoles}
-        additionalInfo={intl.formatMessage({
-          id: "notebook.tradmed.extraction.accessRequirements",
-          defaultMessage:
-            "Required permissions: Chemical extraction operations, Filtration techniques, Concentration methods, and Analytical pathway selection.",
-        })}
-      />
-    );
-  }
+  // Page-level access control is handled by usePageAccessControl() in parent workflow component
+  // This component assumes it's only rendered when user has page access
+  // Individual UI elements use PermissionGate for action-level control
 
   const renderStatus = (sample) => {
     const status = sample.status || "PENDING";
@@ -925,21 +881,6 @@ function TraditionalMedicineExtractionPage({
 
   return (
     <div className="tradmed-extraction-page">
-      {/* View-only banner */}
-      {isViewOnly && (
-        <div className="view-only-banner">
-          <div className="view-only-content">
-            <WarningAltFilled size={16} />
-            <span>
-              <FormattedMessage
-                id="notebook.tradmed.extraction.viewOnlyMode"
-                defaultMessage="View-only mode: Your role permissions allow viewing but not modifying extraction and concentration data."
-              />
-            </span>
-          </div>
-        </div>
-      )}
-
       <div className="page-section-header">
         <h4>
           <FormattedMessage
@@ -983,156 +924,149 @@ function TraditionalMedicineExtractionPage({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openExtractionModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            hasAnyCompletedExtraction() ||
-            !canRecordExtraction ||
-            isViewOnly
-          }
-          title={
-            !canRecordExtraction || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.recordExtractionPermission",
-                  defaultMessage:
-                    "Requires TMMRD Lab Technician or higher role to record extraction processes",
-                })
-              : selectedSampleIds.length === 0
+        <PermissionGate
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.recordExtractionPermission",
+            defaultMessage:
+              "Insufficient permissions to record extraction processes",
+          })}
+        >
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openExtractionModal}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              !hasRealPageId ||
+              hasAnyCompletedExtraction()
+            }
+            title={
+              selectedSampleIds.length === 0
                 ? intl.formatMessage({
                     id: "notebook.tradmed.tooltip.selectSamples",
                     defaultMessage: "Select samples to record extraction",
                   })
                 : ""
-          }
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.extraction.recordExtraction"
-            defaultMessage="Record Extraction ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.extraction.recordExtraction"
+              defaultMessage="Record Extraction ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openFiltrationModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            hasAnyCompletedFiltration() ||
-            !canRecordExtraction ||
-            isViewOnly
-          }
-          title={
-            !canRecordExtraction || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.recordFiltrationPermission",
-                  defaultMessage:
-                    "Requires TMMRD Lab Technician or higher role to record filtration processes",
-                })
-              : ""
-          }
+        <PermissionGate
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.recordFiltrationPermission",
+            defaultMessage:
+              "Insufficient permissions to record filtration processes",
+          })}
         >
-          <FormattedMessage
-            id="notebook.page.tradmed.filtration.recordFiltration"
-            defaultMessage="Record Filtration ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openFiltrationModal}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              !hasRealPageId ||
+              hasAnyCompletedFiltration()
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.filtration.recordFiltration"
+              defaultMessage="Record Filtration ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openConcentrationModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            hasAnyCompletedConcentration() ||
-            !canRecordExtraction ||
-            isViewOnly
-          }
-          title={
-            !canRecordExtraction || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.recordConcentrationPermission",
-                  defaultMessage:
-                    "Requires TMMRD Lab Technician or higher role to record concentration processes",
-                })
-              : ""
-          }
+        <PermissionGate
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.recordConcentrationPermission",
+            defaultMessage:
+              "Insufficient permissions to record concentration processes",
+          })}
         >
-          <FormattedMessage
-            id="notebook.page.tradmed.concentration.recordConcentration"
-            defaultMessage="Record Concentration ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openConcentrationModal}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              !hasRealPageId ||
+              hasAnyCompletedConcentration()
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.concentration.recordConcentration"
+              defaultMessage="Record Concentration ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="danger"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openPathwaySelectionModal}
-          disabled={
-            !canOpenPathwaySelection() ||
-            !hasRealPageId ||
-            hasAnySelectedPathway() ||
-            !canRecordExtraction ||
-            isViewOnly
-          }
-          title={
-            !canRecordExtraction || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.selectPathwayPermission",
-                  defaultMessage:
-                    "Requires TMMRD Lab Technician or higher role to select analytical pathways",
-                })
-              : ""
-          }
+        <PermissionGate
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.selectPathwayPermission",
+            defaultMessage:
+              "Insufficient permissions to select analytical pathways",
+          })}
         >
-          <FormattedMessage
-            id="notebook.page.tradmed.extraction.selectPathway"
-            defaultMessage="Select Analysis Pathway ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="danger"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openPathwaySelectionModal}
+            disabled={
+              !canOpenPathwaySelection() ||
+              !hasRealPageId ||
+              hasAnySelectedPathway()
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.extraction.selectPathway"
+              defaultMessage="Select Analysis Pathway ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            isCompleting ||
-            !hasRealPageId ||
-            !hasAllSelectedSamplesPathway() ||
-            !canMarkComplete ||
-            isViewOnly
-          }
-          title={
-            !canMarkComplete || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.markCompletePermission",
-                  defaultMessage:
-                    "Requires TMMRD Lab Technician or higher role to mark extraction complete",
-                })
-              : ""
-          }
+        <PermissionGate
+          roles={Permissions.VALIDATE_RESULTS}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.markCompletePermission",
+            defaultMessage:
+              "Insufficient permissions to mark extraction complete",
+          })}
         >
-          <FormattedMessage
-            id="notebook.tradmed.extract.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              isCompleting ||
+              !hasRealPageId ||
+              !hasAllSelectedSamplesPathway()
+            }
+          >
+            <FormattedMessage
+              id="notebook.tradmed.extract.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -1176,7 +1110,7 @@ function TraditionalMedicineExtractionPage({
               samples={unpreparedSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={!isViewOnly}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

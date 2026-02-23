@@ -16,8 +16,9 @@ import {
   CheckmarkFilled,
   Pending,
 } from "@carbon/icons-react";
-import useGBDPermissions from "../../../../hooks/useGBDPermissions";
 import { usePermissions } from "../../../../hooks/usePermissions";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -25,7 +26,6 @@ import {
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
 import GBDManifestImportModal from "../../workflow/GBDManifestImportModal";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
 import SampleGrid from "../../workflow/SampleGrid";
 
 /**
@@ -58,30 +58,6 @@ export const GBDSampleReceptionPageEnhanced = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canRegisterData,
-    canPerformWork,
-    hasFullControl,
-    isReadOnly,
-    canAccessRegistration,
-    GBD_ROLES,
-    GBD_PAGES,
-  } = useGBDPermissions();
-
-  // Page access check
-  const canAccessPage = canAccessRegistration();
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(GBD_PAGES.REGISTRATION);
-
-  // Function-level permissions per permission matrix
-  // Matrix: Lab Technicians (Yes), Bioinformaticians (View), Lab Manager (Full), Principal Investigator (View), Data Managers (No)
-  const canCreateSamples = canRegisterData(pagePermissionLevel); // Lab Technicians (Yes), Lab Manager (Full)
-  const canModifyData = canSaveData(pagePermissionLevel);
-  const canMarkReceived = canPerformWork(pagePermissionLevel);
-  const isViewOnly = isReadOnly(pagePermissionLevel); // Bioinformaticians (View), Principal Investigator (View)
 
   const componentMounted = useRef(false);
   const [isManifestModalOpen, setIsManifestModalOpen] = useState(false);
@@ -281,23 +257,6 @@ export const GBDSampleReceptionPageEnhanced = ({
     onSampleStatusChange,
   ]);
 
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Sample Reception & Registration"
-        reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={[
-          GBD_ROLES.LAB_TECHNICIAN,
-          GBD_ROLES.BIOINFORMATICIAN,
-          GBD_ROLES.MANAGER,
-          GBD_ROLES.PRINCIPAL_INVESTIGATOR,
-        ]}
-      />
-    );
-  }
-
-  const isReadOnlyAccess = isViewOnly;
-
   return (
     <div className="gbd-sample-reception-page">
       {/* Page Section Header */}
@@ -344,61 +303,46 @@ export const GBDSampleReceptionPageEnhanced = ({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={Upload}
-          onClick={() => setIsManifestModalOpen(true)}
-          disabled={!canCreateSamples || isViewOnly}
-          title={
-            !canCreateSamples
-              ? intl.formatMessage({
-                  id: "notebook.gbd.reception.insufficientPermissions.import",
-                  defaultMessage:
-                    "Insufficient permissions to import samples. Only Lab Technicians and Lab Manager (with appropriate permissions) can create samples.",
-                })
-              : isViewOnly
-                ? intl.formatMessage({
-                    id: "notebook.gbd.reception.viewOnlyAccess",
-                    defaultMessage: "You have view-only access to this page.",
-                  })
-                : undefined
-          }
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.gbd.reception.insufficientPermissions.import",
+            defaultMessage: "Insufficient permissions to import samples",
+          })}
         >
-          <FormattedMessage
-            id="notebook.gbd.reception.importManifest"
-            defaultMessage="Import Manifest"
-          />
-        </Button>
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={Checkmark}
-          onClick={handleMarkComplete}
-          disabled={
-            !canMarkReceived || isViewOnly || selectedSampleIds.length === 0
-          }
-          title={
-            !canMarkReceived
-              ? intl.formatMessage({
-                  id: "notebook.gbd.reception.insufficientPermissions.complete",
-                  defaultMessage:
-                    "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
-                })
-              : isViewOnly
-                ? intl.formatMessage({
-                    id: "notebook.gbd.reception.viewOnlyAccess",
-                    defaultMessage: "You have view-only access to this page.",
-                  })
-                : undefined
-          }
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Upload}
+            onClick={() => setIsManifestModalOpen(true)}
+          >
+            <FormattedMessage
+              id="notebook.gbd.reception.importManifest"
+              defaultMessage="Import Manifest"
+            />
+          </Button>
+        </PermissionGate>
+        <PermissionGate
+          roles={Permissions.UPDATE_SAMPLES}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.gbd.reception.insufficientPermissions.complete",
+            defaultMessage: "Insufficient permissions to mark samples complete",
+          })}
         >
-          <FormattedMessage
-            id="notebook.gbd.reception.markComplete"
-            defaultMessage="Mark as Complete ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Checkmark}
+            onClick={handleMarkComplete}
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.gbd.reception.markComplete"
+              defaultMessage="Mark as Complete ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
         <Button
           kind="ghost"
           size="sm"

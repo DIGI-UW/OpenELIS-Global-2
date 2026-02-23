@@ -1,9 +1,0 @@
-name,description,displayKey,active,editable,isGroupingRole,groupingParent
-Bioanalytical Sample Receiver,Receives and registers biological samples for bioanalytical testing,role.bioanalytical.sample.receiver,Y,N,N,Lab Unit Roles
-Bioanalytical Chemical Analyst,"Performs chemical analysis, method validation, and data interpretation",role.bioanalytical.chemical.analyst,Y,N,N,Lab Unit Roles
-Bioanalytical Pharmacist,Validates pharmaceutical quality and bioequivalence studies,role.bioanalytical.pharmacist,Y,N,N,Lab Unit Roles
-Bioanalytical Researcher,Conducts bioanalytical research and method development,role.bioanalytical.researcher,Y,N,N,Lab Unit Roles
-Bioanalytical Lab Supervisor,Supervises laboratory operations and approves sample processing,role.bioanalytical.lab.supervisor,Y,N,N,Lab Unit Roles
-Bioanalytical Study Director,Manages bioequivalence studies and approves study protocols,role.bioanalytical.study.director,Y,N,N,Lab Unit Roles
-Bioanalytical QA Officer,Ensures quality assurance and regulatory compliance,role.bioanalytical.qa.officer,Y,N,N,Lab Unit Roles
-Bioanalytical Data Manager,Manages analytical data and generates reports,role.bioanalytical.data.manager,Y,N,N,Lab Unit Roles

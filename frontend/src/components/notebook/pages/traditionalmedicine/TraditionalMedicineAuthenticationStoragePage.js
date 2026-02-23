@@ -43,9 +43,8 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -78,20 +77,6 @@ function TraditionalMedicineAuthenticationStoragePage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
-  const { hasAnyRole } = usePermissions();
-
-  // TMMRD permissions per matrix requirements
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canApproveData,
-    canAccessStage2,
-    canPerformWork,
-    canRegisterData,
-    isReadOnly,
-    TMMRD_ROLES,
-    TMMRD_PAGES,
-  } = useTMMRDPermissions();
 
   // All state must be declared before any conditional returns (React Hooks Rule)
   const [samples, setSamples] = useState([]);
@@ -126,26 +111,6 @@ function TraditionalMedicineAuthenticationStoragePage({
   });
   const [boxLayout, setBoxLayout] = useState({});
   const [wellAssignments, setWellAssignments] = useState({});
-
-  // STAGE 2 allowed roles per TMMRD matrix
-  const allowedRoles = [
-    TMMRD_ROLES.PHARMACOGNOSIST,
-    TMMRD_ROLES.LAB_MANAGER,
-    TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
-  ];
-
-  const canAccessPage = canAccessStage2();
-
-  // Get user's permission level for this specific page
-  const pagePermissionLevel = getPagePermissionLevel(
-    TMMRD_PAGES.AUTHENTICATION_STORAGE,
-  );
-
-  // Function-level permissions based on matrix
-  const canAssignStorage = canPerformWork(pagePermissionLevel);
-  const canModifyData = canSaveData(pagePermissionLevel);
-  const canMarkComplete = canPerformWork(pagePermissionLevel);
-  const isViewOnly = isReadOnly(pagePermissionLevel);
 
   // TMMRD-specific storage conditions using backend-compatible enum values
   const storageConditionOptions = [
@@ -1282,43 +1247,8 @@ function TraditionalMedicineAuthenticationStoragePage({
     );
   };
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Traditional Medicine Authentication & Storage"
-        reason={intl.formatMessage({
-          id: "notebook.tradmed.storage.accessDenied",
-          defaultMessage:
-            "Access to the Traditional Medicine Authentication & Storage page requires specialized permissions. This page is restricted to roles responsible for botanical authentication verification and storage management.",
-        })}
-        requiredRoles={allowedRoles}
-        additionalInfo={intl.formatMessage({
-          id: "notebook.tradmed.storage.accessRequirements",
-          defaultMessage:
-            "Required permissions: Authentication verification, Storage assignment, and Herbarium cataloging capabilities.",
-        })}
-      />
-    );
-  }
-
   return (
     <div className="tradmed-storage-page">
-      {/* View-only banner */}
-      {isViewOnly && (
-        <div className="view-only-banner">
-          <div className="view-only-content">
-            <WarningAltFilled size={16} />
-            <span>
-              <FormattedMessage
-                id="notebook.tradmed.storage.viewOnlyMode"
-                defaultMessage="View-only mode: Your role permissions allow viewing but not modifying authentication and storage data."
-              />
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* Page Header */}
       <div className="page-section-header">
         <h4>
@@ -1367,64 +1297,59 @@ function TraditionalMedicineAuthenticationStoragePage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={CloudUpload}
-          onClick={openStorageModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canAssignStorage ||
-            isViewOnly
-          }
-          title={
-            !canAssignStorage || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.assignStoragePermission",
-                  defaultMessage:
-                    "Requires TMMRD Pharmacognosist, Lab Manager, or Principal Investigator role to assign storage",
-                })
-              : selectedSampleIds.length === 0
+        <PermissionGate
+          roles={Permissions.UPDATE_SAMPLES}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.tooltip.assignStoragePermission",
+            defaultMessage: "Insufficient permissions to assign storage",
+          })}
+        >
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={CloudUpload}
+            onClick={openStorageModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+            title={
+              selectedSampleIds.length === 0
                 ? intl.formatMessage({
                     id: "notebook.tradmed.tooltip.selectSamples",
                     defaultMessage: "Select samples to assign storage",
                   })
                 : ""
-          }
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.storage.assignStorage"
-            defaultMessage="Assign Storage ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
-
-        {selectedSampleIds.length > 0 && (
-          <Button
-            kind="tertiary"
-            size="sm"
-            renderIcon={CheckmarkFilled}
-            onClick={handleMarkComplete}
-            disabled={
-              isCompleting || !pageData?.id || !canMarkComplete || isViewOnly
-            }
-            title={
-              !canMarkComplete || isViewOnly
-                ? intl.formatMessage({
-                    id: "notebook.tradmed.tooltip.markCompletePermission",
-                    defaultMessage:
-                      "Requires TMMRD Pharmacognosist, Lab Manager, or Principal Investigator role to mark samples complete",
-                  })
-                : ""
             }
           >
             <FormattedMessage
-              id="notebook.tradmed.storage.markComplete"
-              defaultMessage="Mark Complete ({count})"
+              id="notebook.page.tradmed.storage.assignStorage"
+              defaultMessage="Assign Storage ({count})"
               values={{ count: selectedSampleIds.length }}
             />
           </Button>
+        </PermissionGate>
+
+        {selectedSampleIds.length > 0 && (
+          <PermissionGate
+            roles={Permissions.VALIDATE_RESULTS}
+            disabledTooltip={intl.formatMessage({
+              id: "notebook.tradmed.tooltip.markCompletePermission",
+              defaultMessage:
+                "Insufficient permissions to mark samples complete",
+            })}
+          >
+            <Button
+              kind="tertiary"
+              size="sm"
+              renderIcon={CheckmarkFilled}
+              onClick={handleMarkComplete}
+              disabled={isCompleting || !pageData?.id}
+            >
+              <FormattedMessage
+                id="notebook.tradmed.storage.markComplete"
+                defaultMessage="Mark Complete ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          </PermissionGate>
         )}
 
         <Button
@@ -1476,7 +1401,7 @@ function TraditionalMedicineAuthenticationStoragePage({
               samples={authenticatedInProgressSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={!isViewOnly}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

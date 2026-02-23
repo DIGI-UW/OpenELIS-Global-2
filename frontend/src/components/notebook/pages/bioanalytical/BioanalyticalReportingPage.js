@@ -27,10 +27,10 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { usePermissions } from "../../../../hooks/usePermissions";
-import { useBioanalyticalPermissions } from "../../../../hooks/useBioanalyticalPermissions";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
 import "./BioanalyticalPages.css";
 
 /**
@@ -133,34 +133,6 @@ function BioanalyticalReportingPage({
     },
     [addNotification, setNotificationVisible],
   );
-  const {
-    BIOANALYTICAL_ROLES,
-    getPagePermissionLevel,
-    canAnalytics,
-    canApproveData,
-    hasFullControl,
-    canAccessReporting,
-  } = useBioanalyticalPermissions();
-
-  // PAGE 4 allowed roles per test.pdf Section 11 permission matrix
-  // Matrix: Sample Receivers (No), Chemical Analysts (Limited), Pharmacists (Full), Researchers (Project-specific), Lab Supervisors (Full), Study Directors (Full), QA Officers (Full), Data Managers (Full Analytics)
-  const allowedRoles = [
-    BIOANALYTICAL_ROLES.CHEMICAL_ANALYST,
-    BIOANALYTICAL_ROLES.PHARMACIST,
-    BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
-    BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
-    BIOANALYTICAL_ROLES.QA_OFFICER,
-    BIOANALYTICAL_ROLES.RESEARCHER,
-    BIOANALYTICAL_ROLES.DATA_MANAGER,
-  ];
-
-  const canAccessPage = canAccessReporting();
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel("Reporting");
-  const canExportData = canAnalytics(pagePermissionLevel);
-  const canApproveResults = canApproveData(pagePermissionLevel);
-  const canEditReporting = hasFullControl(pagePermissionLevel);
   const [isLoading, setIsLoading] = useState(false);
   const [isQaLoading, setIsQaLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
@@ -1771,16 +1743,6 @@ function BioanalyticalReportingPage({
     onProgressUpdate,
     submissionTargets,
   ]);
-
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Reporting & Release"
-        reason="This page requires specific bioanalytical laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
 
   return (
     <div className="bioanalytical-page">
@@ -3661,22 +3623,27 @@ function BioanalyticalReportingPage({
                     </div>
 
                     <div style={{ marginTop: "1.5rem" }}>
-                      <Button
-                        kind="primary"
-                        onClick={handleQaApproval}
-                        disabled={isQaLoading || !canApproveResults}
+                      <PermissionGate
+                        roles={Permissions.UPDATE_SAMPLES}
+                        disabledTooltip="Insufficient permissions to complete QA approval"
                       >
-                        {isQaLoading ? (
-                          <>
-                            <Loading description="Submitting approval..." />
-                          </>
-                        ) : (
-                          <FormattedMessage
-                            id="notebook.bioanalytical.reporting.completeQa"
-                            defaultMessage="Complete QA Approval"
-                          />
-                        )}
-                      </Button>
+                        <Button
+                          kind="primary"
+                          onClick={handleQaApproval}
+                          disabled={isQaLoading}
+                        >
+                          {isQaLoading ? (
+                            <>
+                              <Loading description="Submitting approval..." />
+                            </>
+                          ) : (
+                            <FormattedMessage
+                              id="notebook.bioanalytical.reporting.completeQa"
+                              defaultMessage="Complete QA Approval"
+                            />
+                          )}
+                        </Button>
+                      </PermissionGate>
                     </div>
 
                     {/* Show Stage 5 progression button after QA approval */}
@@ -3937,24 +3904,27 @@ function BioanalyticalReportingPage({
 
                     {qaApproved && (
                       <div style={{ marginTop: "1.5rem" }}>
-                        <Button
-                          kind="primary"
-                          onClick={handleExport}
-                          disabled={
-                            !exportFormat || isLoading || !canExportData
-                          }
+                        <PermissionGate
+                          roles={Permissions.GENERATE_REPORTS}
+                          disabledTooltip="Insufficient permissions to export data"
                         >
-                          {isLoading ? (
-                            <>
-                              <Loading description="Exporting..." />
-                            </>
-                          ) : (
-                            <FormattedMessage
-                              id="notebook.bioanalytical.reporting.exportNow"
-                              defaultMessage="Export Now"
-                            />
-                          )}
-                        </Button>
+                          <Button
+                            kind="primary"
+                            onClick={handleExport}
+                            disabled={!exportFormat || isLoading}
+                          >
+                            {isLoading ? (
+                              <>
+                                <Loading description="Exporting..." />
+                              </>
+                            ) : (
+                              <FormattedMessage
+                                id="notebook.bioanalytical.reporting.exportNow"
+                                defaultMessage="Export Now"
+                              />
+                            )}
+                          </Button>
+                        </PermissionGate>
                       </div>
                     )}
                   </div>

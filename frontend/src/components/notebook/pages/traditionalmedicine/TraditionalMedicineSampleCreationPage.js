@@ -21,9 +21,8 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import TraditionalMedicineManifestImportModal from "../../workflow/TraditionalMedicineManifestImportModal";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -58,33 +57,9 @@ function TraditionalMedicineSampleCreationPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
-  const { hasAnyRole } = usePermissions();
-
-  // TMMRD permissions per SRS Section 11
-  const {
-    getPagePermissionLevel,
-    canRegisterData,
-    canSaveData,
-    canPerformWork,
-    hasFullControl,
-    isReadOnly,
-    canAccessRegistration,
-    TMMRD_ROLES,
-    TMMRD_PAGES,
-  } = useTMMRDPermissions();
-
-  // Page access check
-  const canAccessPage = canAccessRegistration();
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.REGISTRATION);
-
-  // Function-level permissions per permission matrix
-  // Matrix: Lab Technicians (Yes), Researchers (Yes), Pharmacognosists (View), Lab Manager (Full), Principal Investigator (View)
-  const canCreateSamples = canRegisterData(pagePermissionLevel); // Lab Technicians (Yes), Researchers (Yes), Lab Manager (Full)
-  const canModifyData = canSaveData(pagePermissionLevel);
-  const canMarkComplete = canPerformWork(pagePermissionLevel);
-  const isViewOnly = isReadOnly(pagePermissionLevel); // Pharmacognosists (View), Principal Investigator (View)
+  // Use standard permissions instead of custom TMMRD-specific logic
+  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
+  // This component focuses on action-level permissions using standard role groups
 
   // All state must be declared before any conditional returns (React Hooks Rule)
   const [samples, setSamples] = useState([]);
@@ -429,22 +404,9 @@ function TraditionalMedicineSampleCreationPage({
     }
   };
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Sample Intake & Registration"
-        reason="This page requires specific Traditional Medicine laboratory roles to access."
-        requiredRoles={[
-          TMMRD_ROLES.LAB_TECHNICIAN,
-          TMMRD_ROLES.RESEARCHER,
-          TMMRD_ROLES.PHARMACOGNOSIST,
-          TMMRD_ROLES.LAB_MANAGER,
-          TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
-        ]}
-      />
-    );
-  }
+  // Page-level access control is handled by usePageAccessControl() in parent workflow component
+  // This component assumes it's only rendered when user has page access
+  // Individual UI elements use PermissionGate for action-level control
 
   return (
     <div className="tradmed-sample-creation-page">
@@ -501,62 +463,47 @@ function TraditionalMedicineSampleCreationPage({
 
       {/* Action Buttons - SRS Stage 1: Sample Intake & Registration Only */}
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Upload}
-          onClick={() => setImportModalOpen(true)}
-          disabled={!canCreateSamples || isViewOnly}
-          title={
-            !canCreateSamples
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.registration.insufficientPermissions.import",
-                  defaultMessage:
-                    "Insufficient permissions to import samples. Only Lab Technicians, Researchers, and Lab Manager (with appropriate permissions) can create samples.",
-                })
-              : isViewOnly
-                ? intl.formatMessage({
-                    id: "notebook.tradmed.registration.viewOnlyAccess",
-                    defaultMessage: "You have view-only access to this page.",
-                  })
-                : undefined
-          }
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.registration.insufficientPermissions.import",
+            defaultMessage: "Insufficient permissions to import samples",
+          })}
         >
-          <FormattedMessage
-            id="notebook.page.tradmed.importManifest"
-            defaultMessage="Import from Manifest"
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Upload}
+            onClick={() => setImportModalOpen(true)}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.importManifest"
+              defaultMessage="Import from Manifest"
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={Checkmark}
-          onClick={markAsRegistered}
-          disabled={
-            !canMarkComplete || isViewOnly || selectedSampleIds.length === 0
-          }
-          title={
-            !canMarkComplete
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.registration.insufficientPermissions.complete",
-                  defaultMessage:
-                    "Insufficient permissions to mark samples complete. Only users with work permissions can complete samples.",
-                })
-              : isViewOnly
-                ? intl.formatMessage({
-                    id: "notebook.tradmed.registration.viewOnlyAccess",
-                    defaultMessage: "You have view-only access to this page.",
-                  })
-                : undefined
-          }
+        <PermissionGate
+          roles={Permissions.UPDATE_SAMPLES}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.tradmed.registration.insufficientPermissions.complete",
+            defaultMessage: "Insufficient permissions to mark samples complete",
+          })}
         >
-          <FormattedMessage
-            id="notebook.page.tradmed.markAsRegistered"
-            defaultMessage="Mark as Registered ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Checkmark}
+            onClick={markAsRegistered}
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.markAsRegistered"
+              defaultMessage="Mark as Registered ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"

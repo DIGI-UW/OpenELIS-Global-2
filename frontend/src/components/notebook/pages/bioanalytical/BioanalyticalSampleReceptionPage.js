@@ -24,8 +24,8 @@ import { Upload, Checkmark, Edit, Chemistry } from "@carbon/react/icons";
 import { postToOpenElisServer } from "../../../utils/Utils";
 import config from "../../../../config.json";
 import { usePermissions } from "../../../../hooks/usePermissions";
-import { useBioanalyticalPermissions } from "../../../../hooks/useBioanalyticalPermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "./BioanalyticalPages.css";
 
 /**
@@ -61,33 +61,6 @@ function BioanalyticalSampleReceptionPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { hasAnyRole } = usePermissions();
-  const {
-    getPagePermissionLevel,
-    canRegisterData,
-    canSaveData,
-    canAccessSampleReception,
-    BIOANALYTICAL_ROLES,
-  } = useBioanalyticalPermissions();
-
-  // PAGE 1 allowed roles per test.pdf Section 11
-  const allowedRoles = [
-    BIOANALYTICAL_ROLES.SAMPLE_RECEIVER,
-    BIOANALYTICAL_ROLES.CHEMICAL_ANALYST,
-    BIOANALYTICAL_ROLES.PHARMACIST,
-    BIOANALYTICAL_ROLES.LAB_SUPERVISOR,
-    BIOANALYTICAL_ROLES.STUDY_DIRECTOR,
-    BIOANALYTICAL_ROLES.QA_OFFICER,
-    BIOANALYTICAL_ROLES.RESEARCHER,
-  ];
-
-  const canAccessPage = canAccessSampleReception();
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(
-    "Sample Reception & Registration",
-  );
-  const canImportSamples = canRegisterData(pagePermissionLevel);
-  const canEditMetadata = canSaveData(pagePermissionLevel);
 
   // Core state following established patterns
   const [isLoading, setIsLoading] = useState(false);
@@ -725,16 +698,9 @@ function BioanalyticalSampleReceptionPage({
     loadPageSamples();
   }, [loadPageSamples]);
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Sample Reception & Registration"
-        reason="This page requires specific bioanalytical laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
+  // Page-level access control is handled by usePageAccessControl() in parent workflow component
+  // This component assumes it's only rendered when user has page access
+  // Individual UI elements use PermissionGate for action-level control
 
   return (
     <div className="bioanalytical-page">
@@ -837,97 +803,94 @@ function BioanalyticalSampleReceptionPage({
             className="page-actions-bar"
             style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
           >
-            <Button
-              kind="primary"
-              size="sm"
-              renderIcon={Upload}
-              onClick={handleImportModalOpen}
-              disabled={!canImportSamples}
-              title={
-                !canImportSamples
-                  ? intl.formatMessage({
-                      id: "notebook.bioanalytical.stage1.insufficientPermissions",
-                      defaultMessage:
-                        "Insufficient permissions to import samples",
-                    })
-                  : ""
-              }
+            <PermissionGate
+              roles={Permissions.REGISTER_SAMPLES}
+              disabledTooltip={intl.formatMessage({
+                id: "notebook.bioanalytical.stage1.insufficientPermissions",
+                defaultMessage: "Insufficient permissions to import samples",
+              })}
             >
-              <FormattedMessage
-                id="notebook.bioanalytical.stage1.importManifest"
-                defaultMessage="Import from Manifest"
-              />
-            </Button>
+              <Button
+                kind="primary"
+                size="sm"
+                renderIcon={Upload}
+                onClick={handleImportModalOpen}
+              >
+                <FormattedMessage
+                  id="notebook.bioanalytical.stage1.importManifest"
+                  defaultMessage="Import from Manifest"
+                />
+              </Button>
+            </PermissionGate>
 
             {/* Conditional buttons that appear when samples are selected */}
             {selectedSampleIds.length > 0 && (
               <>
-                <Button
-                  kind="primary"
-                  size="sm"
-                  renderIcon={Edit}
-                  onClick={() => setIsBulkApplyModalOpen(true)}
-                  disabled={!canEditMetadata}
-                  title={
-                    !canEditMetadata
-                      ? intl.formatMessage({
-                          id: "notebook.bioanalytical.stage1.insufficientPermissionsEdit",
-                          defaultMessage:
-                            "Insufficient permissions to edit metadata",
-                        })
-                      : ""
-                  }
+                <PermissionGate
+                  roles={Permissions.UPDATE_SAMPLES}
+                  disabledTooltip={intl.formatMessage({
+                    id: "notebook.bioanalytical.stage1.insufficientPermissionsEdit",
+                    defaultMessage: "Insufficient permissions to edit metadata",
+                  })}
                 >
-                  Edit Metadata ({selectedSampleIds.length})
-                </Button>
+                  <Button
+                    kind="primary"
+                    size="sm"
+                    renderIcon={Edit}
+                    onClick={() => setIsBulkApplyModalOpen(true)}
+                    disabled={selectedSampleIds.length === 0}
+                  >
+                    Edit Metadata ({selectedSampleIds.length})
+                  </Button>
+                </PermissionGate>
 
                 {/* QC Verification Button */}
-                <Button
-                  kind="secondary"
-                  size="sm"
-                  renderIcon={Chemistry}
-                  onClick={handleQCVerificationModalOpen}
-                  disabled={
-                    selectedSampleIds.length === 0 ||
-                    !canSaveData(pagePermissionLevel)
-                  }
-                  title={
+                <PermissionGate
+                  roles={Permissions.PROCESS_SAMPLES}
+                  disabledTooltip={
                     selectedSampleIds.length === 0
                       ? "Select samples to perform QC verification"
-                      : !canSaveData(pagePermissionLevel)
-                        ? intl.formatMessage({
-                            id: "notebook.bioanalytical.stage1.insufficientPermissionsQC",
-                            defaultMessage:
-                              "Insufficient permissions for QC verification",
-                          })
-                        : `Perform QC verification on ${selectedSampleIds.length} selected sample(s)`
-                  }
-                >
-                  <FormattedMessage
-                    id="notebook.bioanalytical.stage1.qcVerification"
-                    defaultMessage="QC Verification ({count})"
-                    values={{ count: selectedSampleIds.length }}
-                  />
-                </Button>
-
-                <Button
-                  kind="primary"
-                  size="sm"
-                  renderIcon={Checkmark}
-                  onClick={markAsVerified}
-                  disabled={!canSaveData(pagePermissionLevel)}
-                  title={
-                    !canSaveData(pagePermissionLevel)
-                      ? intl.formatMessage({
-                          id: "notebook.bioanalytical.stage1.insufficientPermissionsVerify",
+                      : intl.formatMessage({
+                          id: "notebook.bioanalytical.stage1.insufficientPermissionsQC",
                           defaultMessage:
-                            "Insufficient permissions to verify samples",
+                            "Insufficient permissions for QC verification",
                         })
-                      : ""
                   }
                 >
-                  Mark as Verified ({selectedSampleIds.length})
-                </Button>
+                  <Button
+                    kind="secondary"
+                    size="sm"
+                    renderIcon={Chemistry}
+                    onClick={handleQCVerificationModalOpen}
+                    disabled={selectedSampleIds.length === 0}
+                    title={`Perform QC verification on ${selectedSampleIds.length} selected sample(s)`}
+                  >
+                    <FormattedMessage
+                      id="notebook.bioanalytical.stage1.qcVerification"
+                      defaultMessage="QC Verification ({count})"
+                      values={{ count: selectedSampleIds.length }}
+                    />
+                  </Button>
+                </PermissionGate>
+
+                <PermissionGate
+                  roles={Permissions.VALIDATE_RESULTS}
+                  disabledTooltip={intl.formatMessage({
+                    id: "notebook.bioanalytical.stage1.insufficientPermissionsVerify",
+                    defaultMessage:
+                      "Insufficient permissions to verify samples",
+                  })}
+                >
+                  <Button
+                    kind="primary"
+                    size="sm"
+                    renderIcon={Checkmark}
+                    onClick={markAsVerified}
+                    disabled={selectedSampleIds.length === 0}
+                  >
+                    Mark as Verified ({selectedSampleIds.length})
+                  </Button>
+                </PermissionGate>
               </>
             )}
           </div>

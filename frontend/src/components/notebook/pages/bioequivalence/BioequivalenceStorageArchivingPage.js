@@ -17,9 +17,8 @@ import {
   Checkbox,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useBioequivalencePermissions } from "../../../../hooks/useBioequivalencePermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import "./BioequivalencePages.css";
@@ -40,26 +39,6 @@ import "./BioequivalencePages.css";
  */
 function BioequivalenceStorageArchivingPage({ entryId, pageData }) {
   const intl = useIntl();
-  const { hasAnyRole } = usePermissions();
-  const { getPagePermissionLevel, canApproveData, canModify } =
-    useBioequivalencePermissions();
-
-  // PAGE 5 allowed roles per test.pdf Section 11
-  const allowedRoles = [
-    "Bioequivalence Sample Receiver",
-    "Bioequivalence Lab Supervisor",
-    "Bioequivalence Study Director",
-    "Bioequivalence QA Officer",
-  ];
-
-  const canAccessPage = hasAnyRole(allowedRoles);
-
-  // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(
-    "Post-Test Storage & Archiving",
-  );
-  const canApproveStorage = canApproveData(pagePermissionLevel);
-  const canModifyStorage = canModify(pagePermissionLevel);
 
   const [isLoading, setIsLoading] = useState(false);
   const [storageSamples, setStorageSamples] = useState([]);
@@ -990,17 +969,6 @@ function BioequivalenceStorageArchivingPage({ entryId, pageData }) {
     [],
   );
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Sample Storage & Archival"
-        reason="This page requires specific bioequivalence laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   return (
     <div className="bioequivalence-page">
       <div className="page-instructions">
@@ -1129,28 +1097,34 @@ function BioequivalenceStorageArchivingPage({ entryId, pageData }) {
                           (Coming Soon)
                         </span>
                       </Button>
-                      <Button
-                        kind="secondary"
-                        onClick={() => setRetentionStorageModalOpen(true)}
-                        disabled={
-                          isLoading || !(canModifyStorage || canApproveStorage)
-                        }
+                      <PermissionGate
+                        permissions={[Permissions.UPDATE_SAMPLES]}
                       >
-                        <FormattedMessage
-                          id="notebook.bioequivalence.storage.retentionStorage"
-                          defaultMessage="Retention Storage"
-                        />
-                      </Button>
-                      <Button
-                        kind="danger--tertiary"
-                        onClick={() => setDisposalModalOpen(true)}
-                        disabled={isLoading || !canApproveStorage}
+                        <Button
+                          kind="secondary"
+                          onClick={() => setRetentionStorageModalOpen(true)}
+                          disabled={isLoading}
+                        >
+                          <FormattedMessage
+                            id="notebook.bioequivalence.storage.retentionStorage"
+                            defaultMessage="Retention Storage"
+                          />
+                        </Button>
+                      </PermissionGate>
+                      <PermissionGate
+                        permissions={[Permissions.UPDATE_SAMPLES]}
                       >
-                        <FormattedMessage
-                          id="notebook.bioequivalence.storage.manageSampleDisposal"
-                          defaultMessage="Manage Sample Disposal"
-                        />
-                      </Button>
+                        <Button
+                          kind="danger--tertiary"
+                          onClick={() => setDisposalModalOpen(true)}
+                          disabled={isLoading}
+                        >
+                          <FormattedMessage
+                            id="notebook.bioequivalence.storage.manageSampleDisposal"
+                            defaultMessage="Manage Sample Disposal"
+                          />
+                        </Button>
+                      </PermissionGate>
                     </div>
                   )}
 

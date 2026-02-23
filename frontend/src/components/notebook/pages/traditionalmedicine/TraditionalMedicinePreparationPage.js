@@ -36,9 +36,8 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
-import { usePermissions } from "../../../../hooks/usePermissions";
-import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -66,18 +65,10 @@ function TraditionalMedicinePreparationPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
-  const { hasAnyRole } = usePermissions();
 
-  // TMMRD permissions per matrix requirements
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canAccessStage3to4,
-    canPerformWork,
-    isReadOnly,
-    TMMRD_ROLES,
-    TMMRD_PAGES,
-  } = useTMMRDPermissions();
+  // Use standard permissions instead of custom TMMRD-specific logic
+  // Page-level access control should be handled by usePageAccessControl() in parent workflow component
+  // This component focuses on action-level permissions using standard role groups
 
   // All state must be declared before any conditional returns (React Hooks Rule)
   const [samples, setSamples] = useState([]);
@@ -103,26 +94,6 @@ function TraditionalMedicinePreparationPage({
   const [prepNotes, setPrepNotes] = useState("");
   const [operatorInfo, setOperatorInfo] = useState("");
   const [preparedAtTime, setPreparedAtTime] = useState("");
-
-  // STAGE 3-4 allowed roles per TMMRD matrix
-  const allowedRoles = [
-    TMMRD_ROLES.LAB_TECHNICIAN,
-    TMMRD_ROLES.RESEARCHER,
-    TMMRD_ROLES.PHARMACOGNOSIST,
-    TMMRD_ROLES.LAB_MANAGER,
-    TMMRD_ROLES.PRINCIPAL_INVESTIGATOR,
-  ];
-
-  const canAccessPage = canAccessStage3to4();
-
-  // Get user's permission level for this specific page
-  const pagePermissionLevel = getPagePermissionLevel(TMMRD_PAGES.PREPARATION);
-
-  // Function-level permissions based on matrix
-  const canRecordPreparation = canPerformWork(pagePermissionLevel);
-  const canModifyData = canSaveData(pagePermissionLevel);
-  const canMarkComplete = canPerformWork(pagePermissionLevel);
-  const isViewOnly = isReadOnly(pagePermissionLevel);
 
   // Processing method options (per SRS)
   const processingMethodOptions = [
@@ -542,43 +513,8 @@ function TraditionalMedicinePreparationPage({
     }
   };
 
-  // Check page access - show access denied if user lacks required roles
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Traditional Medicine Sample Preparation"
-        reason={intl.formatMessage({
-          id: "notebook.tradmed.preparation.accessDenied",
-          defaultMessage:
-            "Access to the Traditional Medicine Sample Preparation page requires technical laboratory permissions. This page is restricted to roles responsible for physical sample processing and preparation methods.",
-        })}
-        requiredRoles={allowedRoles}
-        additionalInfo={intl.formatMessage({
-          id: "notebook.tradmed.preparation.accessRequirements",
-          defaultMessage:
-            "Required permissions: Sample processing, Weight measurements, Drying operations, and Preparation documentation.",
-        })}
-      />
-    );
-  }
-
   return (
     <div className="tradmed-preparation-page">
-      {/* View-only banner */}
-      {isViewOnly && (
-        <div className="view-only-banner">
-          <div className="view-only-content">
-            <WarningAltFilled size={16} />
-            <span>
-              <FormattedMessage
-                id="notebook.tradmed.preparation.viewOnlyMode"
-                defaultMessage="View-only mode: Your role permissions allow viewing but not modifying sample preparation data."
-              />
-            </span>
-          </div>
-        </div>
-      )}
-
       <div className="page-section-header">
         <h4>
           <FormattedMessage
@@ -622,67 +558,47 @@ function TraditionalMedicinePreparationPage({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openPrepModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canRecordPreparation ||
-            isViewOnly
-          }
-          title={
-            !canRecordPreparation || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.recordPreparationPermission",
-                  defaultMessage:
-                    "Requires TMMRD Lab Technician or higher role to record sample preparation",
-                })
-              : selectedSampleIds.length === 0
+        <PermissionGate permissions={[Permissions.UPDATE_SAMPLES]}>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={openPrepModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+            title={
+              selectedSampleIds.length === 0
                 ? intl.formatMessage({
                     id: "notebook.tradmed.tooltip.selectSamples",
                     defaultMessage: "Select samples to record preparation",
                   })
                 : ""
-          }
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.prep.recordPrep"
-            defaultMessage="Record Preparation ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.prep.recordPrep"
+              defaultMessage="Record Preparation ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            isCompleting ||
-            !hasRealPageId ||
-            !canMarkComplete ||
-            isViewOnly
-          }
-          title={
-            !canMarkComplete || isViewOnly
-              ? intl.formatMessage({
-                  id: "notebook.tradmed.tooltip.markCompletePermission",
-                  defaultMessage:
-                    "Requires TMMRD Lab Technician or higher role to mark preparation complete",
-                })
-              : ""
-          }
-        >
-          <FormattedMessage
-            id="notebook.tradmed.prep.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+        <PermissionGate permissions={[Permissions.PROCESS_SAMPLES]}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={
+              selectedSampleIds.length === 0 || isCompleting || !hasRealPageId
+            }
+          >
+            <FormattedMessage
+              id="notebook.tradmed.prep.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -726,7 +642,7 @@ function TraditionalMedicinePreparationPage({
               samples={unpreparedSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={!isViewOnly}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

@@ -1,40 +1,39 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
 import {
-  Grid,
-  Column,
-  Section,
-  Heading,
-  Form,
-  TextInput,
-  UnorderedList,
-  ListItem,
-  RadioButton,
   Button,
+  Checkbox,
+  Column,
+  Form,
+  FormGroup,
+  Grid,
+  Heading,
+  ListItem,
   Loading,
+  PasswordInput,
+  RadioButton,
+  Section,
   Select,
   SelectItem,
-  PasswordInput,
-  Checkbox,
-  FormGroup,
+  TextInput,
+  UnorderedList,
 } from "@carbon/react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
-import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import AutoComplete from "../../common/AutoComplete.js";
+import CustomDatePicker from "../../common/CustomDatePicker.js";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification.js";
+import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import {
   ConfigurationContext,
   NotificationContext,
 } from "../../layout/Layout.js";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
-import CustomDatePicker from "../../common/CustomDatePicker.js";
-import AutoComplete from "../../common/AutoComplete.js";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -647,10 +646,32 @@ function UserAddModify() {
     if (globalAdminRoleId && roleId === globalAdminRoleId) {
       if (selectedGlobalLabUnitRoles.includes(roleId)) {
         updatedRoles = updatedRoles.filter((role) => role !== roleId);
+
+        const updatedLabUnits = { ...selectedTestSectionLabUnits };
+        delete updatedLabUnits["AllLabUnits"];
+        setSelectedTestSectionLabUnits(updatedLabUnits);
       } else {
         updatedRoles = Array.from(
           new Set([...updatedRoles, roleId, ...numberToUpdate]),
         );
+
+        if (userDataShow && userDataShow.labUnitRoles) {
+          const allLabUnitRoleIds = userDataShow.labUnitRoles.map(
+            (role) => role.roleId,
+          );
+          const updatedLabUnits = {
+            ...selectedTestSectionLabUnits,
+            AllLabUnits: allLabUnitRoleIds,
+          };
+          setSelectedTestSectionLabUnits(updatedLabUnits);
+
+          if (!selectedTestSectionList.includes("AllLabUnits")) {
+            setSelectedTestSectionList((prevList) => [
+              "AllLabUnits",
+              ...prevList,
+            ]);
+          }
+        }
       }
     } else {
       if (selectedGlobalLabUnitRoles.includes(roleId)) {
@@ -1317,30 +1338,48 @@ function UserAddModify() {
                         <Checkbox
                           id={`all-permissions-${key}`}
                           labelText={"All Permissions"}
-                          checked={["4", "5", "7", "10"].every(
-                            (num) =>
-                              selectedTestSectionLabUnits[key] &&
-                              selectedTestSectionLabUnits[key].includes(num),
-                          )}
+                          checked={
+                            userDataShow &&
+                            userDataShow.labUnitRoles &&
+                            userDataShow.labUnitRoles.length > 0 &&
+                            userDataShow.labUnitRoles.every(
+                              (section) =>
+                                selectedTestSectionLabUnits[key] &&
+                                selectedTestSectionLabUnits[key].includes(
+                                  section.roleId,
+                                ),
+                            )
+                          }
                           onChange={() => {
-                            const numbersToAdd = ["4", "5", "7", "10"];
+                            const allRoleIds =
+                              userDataShow && userDataShow.labUnitRoles
+                                ? userDataShow.labUnitRoles.map(
+                                    (section) => section.roleId,
+                                  )
+                                : [];
                             const updatedRoles = selectedTestSectionLabUnits[
                               key
                             ]
                               ? [...selectedTestSectionLabUnits[key]]
                               : [];
-                            const numbersToRemove = numbersToAdd.filter((num) =>
-                              updatedRoles.includes(num),
+                            const rolesToRemove = allRoleIds.filter((roleId) =>
+                              updatedRoles.includes(roleId),
                             );
-                            if (numbersToRemove.length > 0) {
-                              numbersToRemove.forEach((num) => {
-                                const index = updatedRoles.indexOf(num);
+                            if (rolesToRemove.length === allRoleIds.length) {
+                              // All roles are selected, so unselect all
+                              rolesToRemove.forEach((roleId) => {
+                                const index = updatedRoles.indexOf(roleId);
                                 if (index !== -1) {
                                   updatedRoles.splice(index, 1);
                                 }
                               });
                             } else {
-                              updatedRoles.push(...numbersToAdd);
+                              // Not all roles are selected, so select all
+                              allRoleIds.forEach((roleId) => {
+                                if (!updatedRoles.includes(roleId)) {
+                                  updatedRoles.push(roleId);
+                                }
+                              });
                             }
                             setSelectedTestSectionLabUnits((prev) => ({
                               ...prev,
