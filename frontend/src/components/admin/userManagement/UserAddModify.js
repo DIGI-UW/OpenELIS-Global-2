@@ -1314,42 +1314,43 @@ function UserAddModify() {
                           )}
                         </Select>
                         <br />
-                        <Checkbox
-                          id={`all-permissions-${key}`}
-                          labelText={"All Permissions"}
-                          checked={["4", "5", "7", "10"].every(
-                            (num) =>
-                              selectedTestSectionLabUnits[key] &&
-                              selectedTestSectionLabUnits[key].includes(num),
-                          )}
-                          onChange={() => {
-                            const numbersToAdd = ["4", "5", "7", "10"];
-                            const updatedRoles = selectedTestSectionLabUnits[
-                              key
-                            ]
-                              ? [...selectedTestSectionLabUnits[key]]
-                              : [];
-                            const numbersToRemove = numbersToAdd.filter((num) =>
-                              updatedRoles.includes(num),
-                            );
-                            if (numbersToRemove.length > 0) {
-                              numbersToRemove.forEach((num) => {
-                                const index = updatedRoles.indexOf(num);
-                                if (index !== -1) {
-                                  updatedRoles.splice(index, 1);
-                                }
-                              });
-                            } else {
-                              updatedRoles.push(...numbersToAdd);
-                            }
-                            setSelectedTestSectionLabUnits((prev) => ({
-                              ...prev,
-                              [key]: updatedRoles,
-                            }));
-                            setSaveButton(false);
-                            setValidation({ ...validation, selectedLab: true });
-                          }}
-                        />
+                       <Checkbox
+                         id={`all-permissions-${key}`}
+                         labelText={"All Permissions"}
+                         checked={
+                           userDataShow.labUnitRoles &&
+                           userDataShow.labUnitRoles.length > 0 &&
+                           userDataShow.labUnitRoles.every(
+                             (role) =>
+                               selectedTestSectionLabUnits[key] &&
+                               selectedTestSectionLabUnits[key].includes(role.roleId),
+                           )
+                         }
+                         onChange={() => {
+                           const allRoleIds = userDataShow.labUnitRoles.map((role) => role.roleId);
+                           const updatedRoles = selectedTestSectionLabUnits[key]
+                             ? [...selectedTestSectionLabUnits[key]]
+                             : [];
+                           const allSelected = allRoleIds.every((id) => updatedRoles.includes(id));
+                           if (allSelected) {
+                             // Deselect all
+                             const finalRoles = updatedRoles.filter((id) => !allRoleIds.includes(id));
+                             setSelectedTestSectionLabUnits((prev) => ({
+                               ...prev,
+                               [key]: finalRoles,
+                             }));
+                           } else {
+                             // Select all missing roles
+                             const missingRoles = allRoleIds.filter((id) => !updatedRoles.includes(id));
+                             setSelectedTestSectionLabUnits((prev) => ({
+                               ...prev,
+                               [key]: [...updatedRoles, ...missingRoles],
+                             }));
+                           }
+                           setSaveButton(false);
+                           setValidation({ ...validation, selectedLab: true });
+                         }}
+                       />
                         <FormGroup
                           key={key}
                           legendId={`labUnitRoles-${key}`}
