@@ -1,40 +1,39 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
 import {
-  Grid,
-  Column,
-  Section,
-  Heading,
-  Form,
-  TextInput,
-  UnorderedList,
-  ListItem,
-  RadioButton,
   Button,
+  Checkbox,
+  Column,
+  Form,
+  FormGroup,
+  Grid,
+  Heading,
+  ListItem,
   Loading,
+  PasswordInput,
+  RadioButton,
+  Section,
   Select,
   SelectItem,
-  PasswordInput,
-  Checkbox,
-  FormGroup,
+  TextInput,
+  UnorderedList,
 } from "@carbon/react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
-import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import AutoComplete from "../../common/AutoComplete.js";
+import CustomDatePicker from "../../common/CustomDatePicker.js";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification.js";
+import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import {
   ConfigurationContext,
   NotificationContext,
 } from "../../layout/Layout.js";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
-import CustomDatePicker from "../../common/CustomDatePicker.js";
-import AutoComplete from "../../common/AutoComplete.js";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -647,10 +646,32 @@ function UserAddModify() {
     if (globalAdminRoleId && roleId === globalAdminRoleId) {
       if (selectedGlobalLabUnitRoles.includes(roleId)) {
         updatedRoles = updatedRoles.filter((role) => role !== roleId);
+
+        const updatedLabUnits = { ...selectedTestSectionLabUnits };
+        delete updatedLabUnits["AllLabUnits"];
+        setSelectedTestSectionLabUnits(updatedLabUnits);
       } else {
         updatedRoles = Array.from(
           new Set([...updatedRoles, roleId, ...numberToUpdate]),
         );
+
+        if (userDataShow && userDataShow.labUnitRoles) {
+          const allLabUnitRoleIds = userDataShow.labUnitRoles.map(
+            (role) => role.roleId,
+          );
+          const updatedLabUnits = {
+            ...selectedTestSectionLabUnits,
+            AllLabUnits: allLabUnitRoleIds,
+          };
+          setSelectedTestSectionLabUnits(updatedLabUnits);
+
+          if (!selectedTestSectionList.includes("AllLabUnits")) {
+            setSelectedTestSectionList((prevList) => [
+              "AllLabUnits",
+              ...prevList,
+            ]);
+          }
+        }
       }
     } else {
       if (selectedGlobalLabUnitRoles.includes(roleId)) {

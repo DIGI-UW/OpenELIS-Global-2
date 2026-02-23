@@ -56,7 +56,8 @@ const PermissionGate = ({
   hideCompletely = false,
   fallback = null,
 }) => {
-  const { hasRole, hasAnyRole, hasAllRoles, hasLabUnitRole } = usePermissions();
+  const { hasRole, hasAnyRole, hasAllRoles, hasLabUnitRole, isGlobalAdmin } =
+    usePermissions();
 
   /**
    * Check if user has required global roles
@@ -92,8 +93,10 @@ const PermissionGate = ({
 
   /**
    * Determine if user has permission
+   * Global Administrators bypass all permission checks
    */
-  const hasPermission = checkGlobalRoles() && checkLabUnitRoles();
+  const hasPermission =
+    isGlobalAdmin || (checkGlobalRoles() && checkLabUnitRoles());
 
   // If user has permission, render children normally
   if (hasPermission) {
