@@ -804,12 +804,7 @@ function TraditionalMedicineFormulationPage({
 
       <div className="page-actions-bar">
         <PermissionGate
-          roles={[
-            Permissions.CHEMICAL_ANALYST,
-            Permissions.PHARMACIST,
-            Permissions.RESEARCHER,
-            Permissions.LAB_SUPERVISOR,
-          ]}
+          roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.recordFormulationPermission",
             defaultMessage:
@@ -840,12 +835,7 @@ function TraditionalMedicineFormulationPage({
         </PermissionGate>
 
         <PermissionGate
-          roles={[
-            Permissions.CHEMICAL_ANALYST,
-            Permissions.PHARMACIST,
-            Permissions.RESEARCHER,
-            Permissions.LAB_SUPERVISOR,
-          ]}
+          roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.recordQCPermission",
             defaultMessage: "Insufficient permissions to record product QC",
@@ -875,12 +865,7 @@ function TraditionalMedicineFormulationPage({
           }}
         >
           <PermissionGate
-            roles={[
-              Permissions.CHEMICAL_ANALYST,
-              Permissions.PHARMACIST,
-              Permissions.RESEARCHER,
-              Permissions.LAB_SUPERVISOR,
-            ]}
+            roles={Permissions.UPDATE_SAMPLES}
             disabledTooltip={intl.formatMessage({
               id: "notebook.tradmed.tooltip.recordDisposalPermission",
               defaultMessage:
@@ -903,7 +888,7 @@ function TraditionalMedicineFormulationPage({
         </div>
 
         <PermissionGate
-          roles={[Permissions.LAB_SUPERVISOR, Permissions.PHARMACIST]}
+          roles={Permissions.VALIDATE_RESULTS}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.markCompletePermission",
             defaultMessage:

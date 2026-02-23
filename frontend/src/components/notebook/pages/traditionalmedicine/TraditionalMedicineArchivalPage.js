@@ -417,12 +417,7 @@ function TraditionalMedicineArchivalPage({
 
       <div className="page-actions-bar">
         <PermissionGate
-          roles={[
-            Permissions.CHEMICAL_ANALYST,
-            Permissions.PHARMACIST,
-            Permissions.RESEARCHER,
-            Permissions.LAB_SUPERVISOR,
-          ]}
+          roles={Permissions.UPDATE_SAMPLES}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.recordArchivalPermission",
             defaultMessage: "Insufficient permissions to record archival",

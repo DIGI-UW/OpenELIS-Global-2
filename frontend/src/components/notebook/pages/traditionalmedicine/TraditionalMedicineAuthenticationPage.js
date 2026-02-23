@@ -524,12 +524,7 @@ function TraditionalMedicineAuthenticationPage({
       {/* Action Buttons */}
       <div className="page-actions-bar">
         <PermissionGate
-          roles={[
-            Permissions.CHEMICAL_ANALYST,
-            Permissions.PHARMACIST,
-            Permissions.RESEARCHER,
-            Permissions.LAB_SUPERVISOR,
-          ]}
+          roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.authenticatePermission",
             defaultMessage: "Insufficient permissions to authenticate samples",
@@ -561,12 +556,7 @@ function TraditionalMedicineAuthenticationPage({
         {selectedSampleIds.length > 0 &&
           pendingSamples.some((s) => selectedSampleIds.includes(s.id)) && (
             <PermissionGate
-              roles={[
-                Permissions.CHEMICAL_ANALYST,
-                Permissions.PHARMACIST,
-                Permissions.RESEARCHER,
-                Permissions.LAB_SUPERVISOR,
-              ]}
+              roles={Permissions.VALIDATE_RESULTS}
               disabledTooltip={intl.formatMessage({
                 id: "notebook.tradmed.tooltip.markCompletePermission",
                 defaultMessage:

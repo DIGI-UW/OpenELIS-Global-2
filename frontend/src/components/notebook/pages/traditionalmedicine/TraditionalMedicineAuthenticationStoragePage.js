@@ -1298,12 +1298,7 @@ function TraditionalMedicineAuthenticationStoragePage({
       {/* Action Buttons */}
       <div className="page-actions-bar">
         <PermissionGate
-          roles={[
-            Permissions.CHEMICAL_ANALYST,
-            Permissions.PHARMACIST,
-            Permissions.RESEARCHER,
-            Permissions.LAB_SUPERVISOR,
-          ]}
+          roles={Permissions.UPDATE_SAMPLES}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.assignStoragePermission",
             defaultMessage: "Insufficient permissions to assign storage",
@@ -1334,12 +1329,7 @@ function TraditionalMedicineAuthenticationStoragePage({
 
         {selectedSampleIds.length > 0 && (
           <PermissionGate
-            roles={[
-              Permissions.CHEMICAL_ANALYST,
-              Permissions.PHARMACIST,
-              Permissions.RESEARCHER,
-              Permissions.LAB_SUPERVISOR,
-            ]}
+            roles={Permissions.VALIDATE_RESULTS}
             disabledTooltip={intl.formatMessage({
               id: "notebook.tradmed.tooltip.markCompletePermission",
               defaultMessage:

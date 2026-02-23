@@ -1504,12 +1504,7 @@ function BioanalyticalTestAssignmentPage({
                 >
                   {selectedSamples.size > 0 && (
                     <PermissionGate
-                      roles={[
-                        Permissions.CHEMICAL_ANALYST,
-                        Permissions.PHARMACIST,
-                        Permissions.RESEARCHER,
-                        Permissions.LAB_SUPERVISOR,
-                      ]}
+                      roles={Permissions.PROCESS_SAMPLES}
                       disabledTooltip={intl.formatMessage({
                         id: "notebook.bioanalytical.testassignment.insufficientPermissions",
                         defaultMessage:
@@ -1529,12 +1524,7 @@ function BioanalyticalTestAssignmentPage({
                   {/* Show completion button if samples have test assignments */}
                   {samples.filter((s) => testAssignments[s.id]).length > 0 && (
                     <PermissionGate
-                      roles={[
-                        Permissions.CHEMICAL_ANALYST,
-                        Permissions.PHARMACIST,
-                        Permissions.RESEARCHER,
-                        Permissions.LAB_SUPERVISOR,
-                      ]}
+                      roles={Permissions.VALIDATE_RESULTS}
                       disabledTooltip={intl.formatMessage({
                         id: "notebook.bioanalytical.testassignment.completeInsufficientPermissions",
                         defaultMessage:

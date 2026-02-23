@@ -925,12 +925,7 @@ function TraditionalMedicineExtractionPage({
 
       <div className="page-actions-bar">
         <PermissionGate
-          roles={[
-            Permissions.CHEMICAL_ANALYST,
-            Permissions.PHARMACIST,
-            Permissions.RESEARCHER,
-            Permissions.LAB_SUPERVISOR,
-          ]}
+          roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.recordExtractionPermission",
             defaultMessage:
@@ -965,12 +960,7 @@ function TraditionalMedicineExtractionPage({
         </PermissionGate>
 
         <PermissionGate
-          roles={[
-            Permissions.CHEMICAL_ANALYST,
-            Permissions.PHARMACIST,
-            Permissions.RESEARCHER,
-            Permissions.LAB_SUPERVISOR,
-          ]}
+          roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.recordFiltrationPermission",
             defaultMessage:
@@ -997,12 +987,7 @@ function TraditionalMedicineExtractionPage({
         </PermissionGate>
 
         <PermissionGate
-          roles={[
-            Permissions.CHEMICAL_ANALYST,
-            Permissions.PHARMACIST,
-            Permissions.RESEARCHER,
-            Permissions.LAB_SUPERVISOR,
-          ]}
+          roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.recordConcentrationPermission",
             defaultMessage:
@@ -1029,12 +1014,7 @@ function TraditionalMedicineExtractionPage({
         </PermissionGate>
 
         <PermissionGate
-          roles={[
-            Permissions.CHEMICAL_ANALYST,
-            Permissions.PHARMACIST,
-            Permissions.RESEARCHER,
-            Permissions.LAB_SUPERVISOR,
-          ]}
+          roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.selectPathwayPermission",
             defaultMessage:
@@ -1061,7 +1041,7 @@ function TraditionalMedicineExtractionPage({
         </PermissionGate>
 
         <PermissionGate
-          roles={[Permissions.LAB_SUPERVISOR, Permissions.PHARMACIST]}
+          roles={Permissions.VALIDATE_RESULTS}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.markCompletePermission",
             defaultMessage:

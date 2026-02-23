@@ -903,12 +903,7 @@ function TraditionalMedicineAnalyticalPage({
 
       <div className="page-actions-bar">
         <PermissionGate
-          roles={[
-            Permissions.CHEMICAL_ANALYST,
-            Permissions.PHARMACIST,
-            Permissions.RESEARCHER,
-            Permissions.LAB_SUPERVISOR,
-          ]}
+          roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.fractionationPermission",
             defaultMessage: "Insufficient permissions to perform fractionation",
@@ -937,12 +932,7 @@ function TraditionalMedicineAnalyticalPage({
         </PermissionGate>
 
         <PermissionGate
-          roles={[
-            Permissions.CHEMICAL_ANALYST,
-            Permissions.PHARMACIST,
-            Permissions.RESEARCHER,
-            Permissions.LAB_SUPERVISOR,
-          ]}
+          roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.identificationPermission",
             defaultMessage:
@@ -976,12 +966,7 @@ function TraditionalMedicineAnalyticalPage({
         </PermissionGate>
 
         <PermissionGate
-          roles={[
-            Permissions.CHEMICAL_ANALYST,
-            Permissions.PHARMACIST,
-            Permissions.RESEARCHER,
-            Permissions.LAB_SUPERVISOR,
-          ]}
+          roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.purificationPermission",
             defaultMessage: "Insufficient permissions to perform purification",
@@ -1015,12 +1000,7 @@ function TraditionalMedicineAnalyticalPage({
         </PermissionGate>
 
         <PermissionGate
-          roles={[
-            Permissions.CHEMICAL_ANALYST,
-            Permissions.PHARMACIST,
-            Permissions.RESEARCHER,
-            Permissions.LAB_SUPERVISOR,
-          ]}
+          roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.characterizationPermission",
             defaultMessage:
@@ -1068,7 +1048,7 @@ function TraditionalMedicineAnalyticalPage({
         </Button>
 
         <PermissionGate
-          roles={[Permissions.LAB_SUPERVISOR, Permissions.PHARMACIST]}
+          roles={Permissions.VALIDATE_RESULTS}
           disabledTooltip={intl.formatMessage({
             id: "notebook.tradmed.tooltip.markCompletePermission",
             defaultMessage:
