@@ -67,7 +67,6 @@ import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitori
 import ProgramDashboard from "./components/program/programDashboard.jsx";
 import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
-import InventoryManagement from "./components/inventory/InventoryManagement";
 
 export default function App() {
   const defaultLocale =
