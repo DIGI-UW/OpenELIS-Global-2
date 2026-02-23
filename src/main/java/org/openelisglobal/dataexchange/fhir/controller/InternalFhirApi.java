@@ -60,6 +60,11 @@ public class InternalFhirApi {
         return forwardGetRequest(request);
     }
 
+    @GetMapping("/{resourceType}/**")
+    public ResponseEntity<Object> recieveSearchFhirRequests(HttpServletRequest request) {
+        return forwardGetRequest(request);
+    }
+
     @PostMapping("/**")
     public void receivePostFhirRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {

@@ -3,6 +3,7 @@ package org.openelisglobal.fhir.providers;
 import ca.uhn.fhir.rest.annotation.Create;
 import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
+import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
 import ca.uhn.fhir.rest.annotation.Update;
 import ca.uhn.fhir.rest.api.MethodOutcome;
@@ -46,6 +47,29 @@ public class PractitionerProvider implements IResourceProvider {
     @Override
     public Class<? extends IBaseResource> getResourceType() {
         return Practitioner.class;
+    }
+
+    @Read
+    public Practitioner getPractitionerByUUID(@IdParam IdType theId) {
+        String method = "Read";
+        try {
+            if (theId == null || !theId.hasIdPart()) {
+                LogEvent.logError(this.getClass().getSimpleName(), method, "Missing Practitioner ID for Read");
+                throw new InvalidRequestException("Practitioner ID must be provided for Read");
+            }
+            Provider provider = providerService.getProviderByFhirId(UUID.fromString(theId.getIdPart()));
+            if (provider == null) {
+                throw new ResourceNotFoundException("Provider is null " + theId.getIdPart());
+            }
+            Practitioner practitioner = fhirTransformService.transformProviderToPractitioner(provider);
+            return practitioner;
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "Unexpected error while Reading Practitioner: " + e.getMessage());
+            throw new InternalErrorException("Unexpected server error while Reading Practitioner", e);
+
+        }
+
     }
 
     @Create
@@ -165,7 +189,7 @@ public class PractitionerProvider implements IResourceProvider {
     }
 
     @Delete
-    public MethodOutcome delete(@IdParam IdType theId, HttpServletRequest request) {
+    public MethodOutcome delete1(@IdParam IdType theId, HttpServletRequest request) {
 
         String method = "delete";
         LogEvent.logDebug(this.getClass().getSimpleName(), method,
