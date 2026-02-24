@@ -1,26 +1,27 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
 import {
-  Form,
-  Heading,
-  Toggle,
   Button,
-  Loading,
-  Grid,
   Column,
+  Form,
+  Grid,
+  Heading,
+  Loading,
   Section,
+  Toggle,
 } from "@carbon/react";
+import { Download } from "@carbon/react/icons";
+import { useContext, useEffect, useRef, useState } from "react";
+import { FormattedMessage, useIntl } from "react-intl";
+import {
+  AlertDialog,
+  NotificationKinds,
+} from "../../common/CustomNotification";
+import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import { NotificationContext } from "../../layout/Layout";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
 import { MenuCheckBox } from "./MenuUtil";
-import { NotificationContext } from "../../layout/Layout";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
-import { FormattedMessage, useIntl } from "react-intl";
-import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -40,6 +41,7 @@ function GlobalMenuManagement() {
 
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [showChildren, setShowChildren] = useState(true);
   const [menuItem, setMenuItem] = useState({
     menu: { isActive: true, elementId: "menu_sidenav" },
@@ -104,6 +106,86 @@ function GlobalMenuManagement() {
     };
   }, []);
 
+  const convertToConfigFormat = (menuItems) => {
+    return {
+      includes: menuItems
+        .filter((item) => item.menu.isActive)
+        .map(convertMenuItem)
+        .sort((a, b) => {
+          const orderA =
+            menuItems.find((item) => item.menu.elementId === a.elementId)?.menu
+              .presentationOrder || 0;
+          const orderB =
+            menuItems.find((item) => item.menu.elementId === b.elementId)?.menu
+              .presentationOrder || 0;
+          return orderA - orderB;
+        }),
+    };
+  };
+
+  const convertMenuItem = (item) => {
+    return {
+      elementId: item.menu.elementId,
+      childMenus: item.childMenus
+        .filter((child) => child.menu.isActive)
+        .map(convertMenuItem)
+        .sort((a, b) => {
+          const orderA =
+            item.childMenus.find(
+              (child) => child.menu.elementId === a.elementId,
+            )?.menu.presentationOrder || 0;
+          const orderB =
+            item.childMenus.find(
+              (child) => child.menu.elementId === b.elementId,
+            )?.menu.presentationOrder || 0;
+          return orderA - orderB;
+        }),
+    };
+  };
+
+  const downloadMenuConfig = (config, filename) => {
+    const blob = new Blob([JSON.stringify(config, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportConfig = async () => {
+    try {
+      setIsExporting(true);
+
+      const config = convertToConfigFormat(menuItem.childMenus);
+      const timestamp = new Date().toISOString().split("T")[0];
+      const filename = `menu_config_export_${timestamp}.json`;
+
+      downloadMenuConfig(config, filename);
+
+      addNotification({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: `Menu configuration exported as ${filename}`,
+      });
+    } catch (error) {
+      console.error("Error exporting menu config:", error);
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message:
+          intl.formatMessage({ id: "error.export.msg" }) ||
+          "Error exporting menu configuration",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
@@ -117,41 +199,57 @@ function GlobalMenuManagement() {
                 <FormattedMessage id="menu.global.title" />
               </Heading>
             </Section>
-            <Section>
-              <Form onSubmit={handleSubmit}>
-                <br></br>
-                <Toggle
-                  id="toggleShowChildren"
-                  labelText={intl.formatMessage({
-                    id: "label.showChildren",
-                  })}
-                  size="md"
-                  toggled={showChildren}
-                  onToggle={() => {
-                    setShowChildren(!showChildren);
-                  }}
-                />
-                <br></br>
-                <br></br>
-                <MenuCheckBox
-                  menuItem={menuItem}
-                  curMenuItem={menuItem}
-                  path="$"
-                  setMenuItem={setMenuItem}
-                  labelKey="menu.sidenav.active"
-                  recurse={showChildren}
-                />
-                <br></br>
-                <div>
-                  <Button type="submit">
-                    <FormattedMessage id="label.button.submit" />
-                    {isSubmitting && <Loading small={true} />}
-                  </Button>
-                </div>
-              </Form>
-            </Section>
           </Column>
         </Grid>
+
+        <div className="orderLegendBody">
+          <Grid fullWidth={true}>
+            <Column lg={16}>
+              <Section>
+                <Form onSubmit={handleSubmit}>
+                  <br></br>
+                  <Toggle
+                    id="toggleShowChildren"
+                    labelText={intl.formatMessage({
+                      id: "label.showChildren",
+                    })}
+                    size="md"
+                    toggled={showChildren}
+                    onToggle={() => {
+                      setShowChildren(!showChildren);
+                    }}
+                  />
+                  <br></br>
+                  <br></br>
+                  <MenuCheckBox
+                    menuItem={menuItem}
+                    curMenuItem={menuItem}
+                    path="$"
+                    setMenuItem={setMenuItem}
+                    labelKey="menu.sidenav.active"
+                    recurse={showChildren}
+                  />
+                  <br></br>
+                  <div style={{ display: "flex", gap: "1rem" }}>
+                    <Button type="submit">
+                      <FormattedMessage id="label.button.submit" />
+                      {isSubmitting && <Loading small={true} />}
+                    </Button>
+                    <Button
+                      kind="secondary"
+                      renderIcon={Download}
+                      onClick={handleExportConfig}
+                      disabled={isExporting || isSubmitting}
+                    >
+                      Export Config
+                      {isExporting && <Loading small={true} />}
+                    </Button>
+                  </div>
+                </Form>
+              </Section>
+            </Column>
+          </Grid>
+        </div>
       </div>
     </>
   );

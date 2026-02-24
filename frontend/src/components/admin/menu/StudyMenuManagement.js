@@ -210,41 +210,48 @@ function StudyMenuManagement() {
                 <FormattedMessage id="menu.study.title" />
               </Heading>
             </Section>
-            <Section>
-              <Form onSubmit={handleSubmit}>
-                <br></br>
-                <Toggle
-                  id="toggleShowChildren"
-                  labelText={intl.formatMessage({
-                    id: "label.showChildren",
-                  })}
-                  size="md"
-                  toggled={showChildren}
-                  onToggle={() => {
-                    setShowChildren(!showChildren);
-                  }}
-                />
-                <br></br>
-                <br></br>
-                <MenuCheckBox
-                  menuItem={menuItem}
-                  curMenuItem={menuItem}
-                  path="$"
-                  setMenuItem={setMenuItem}
-                  labelKey="menu.study.active"
-                  recurse={showChildren}
-                />
-                <br></br>
-                <div>
-                  <Button type="submit">
-                    <FormattedMessage id="label.button.submit" />
-                    {isSubmitting && <Loading small={true} />}
-                  </Button>
-                </div>
-              </Form>
-            </Section>
           </Column>
         </Grid>
+
+        <div className="orderLegendBody">
+          <Grid fullWidth={true}>
+            <Column lg={16}>
+              <Section>
+                <Form onSubmit={handleSubmit}>
+                  <br></br>
+                  <Toggle
+                    id="toggleShowChildren"
+                    labelText={intl.formatMessage({
+                      id: "label.showChildren",
+                    })}
+                    size="md"
+                    toggled={showChildren}
+                    onToggle={() => {
+                      setShowChildren(!showChildren);
+                    }}
+                  />
+                  <br></br>
+                  <br></br>
+                  <MenuCheckBox
+                    menuItem={menuItem}
+                    curMenuItem={menuItem}
+                    path="$"
+                    setMenuItem={setMenuItem}
+                    labelKey="menu.study.active"
+                    recurse={showChildren}
+                  />
+                  <br></br>
+                  <div>
+                    <Button type="submit">
+                      <FormattedMessage id="label.button.submit" />
+                      {isSubmitting && <Loading small={true} />}
+                    </Button>
+                  </div>
+                </Form>
+              </Section>
+            </Column>
+          </Grid>
+        </div>
       </div>
     </>
   );
