@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Patient photo data for PatientManagementRestController integration tests. -->
+<!-- Load after patient.xml: executeDataSetWithStateManagement("testdata/patient.xml")
+     then executeDataSetWithStateManagement("testdata/patient_management_rest.xml") -->
+<dataset>
+    <!-- Minimal base64 PNG (1x1 pixel) for getPhoto endpoint test -->
+    <patient_photo id="1" patient_id="1"
+        photo_data="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        thumbnail_data="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        photo_type="image/png" last_updated="2023-11-01 12:00:00" />
+</dataset>

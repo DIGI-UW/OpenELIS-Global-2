@@ -2,145 +2,75 @@ package org.openelisglobal.patient.controller.rest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.Assert.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.openelisglobal.patient.action.bean.PatientManagementInfo;
-import org.openelisglobal.patient.service.PatientPhotoService;
-import org.openelisglobal.patient.service.PatientService;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.annotation.Rollback;
+import org.springframework.test.web.servlet.MvcResult;
 
 /**
- * Unit tests for PatientManagementRestController service interactions. Tests
- * controller service delegation and error handling without HTTP dependencies.
- * No Docker/TestContainers required - focuses on service layer testing.
+ * Integration tests for PatientManagementRestController. Uses real services and
+ * test database to simulate runtime environment. Follows OpenELIS integration
+ * test pattern - no service mocking.
  */
-@RunWith(SpringRunner.class)
-public class PatientManagementRestControllerTest {
+@Rollback
+public class PatientManagementRestControllerTest extends BaseWebContextSensitiveTest {
 
-    @Mock
-    private PatientService patientService;
-
-    @Mock
-    private PatientPhotoService patientPhotoService;
-
-    private PatientManagementRestController controller;
+    private static final String PATIENT_WITH_PHOTO_ID = "1";
 
     @Before
-    public void setUp() {
-        MockitoAnnotations.initMocks(this);
-        controller = new PatientManagementRestController();
-
-        // Inject mocked services using reflection (like existing OpenELIS tests)
-        org.springframework.test.util.ReflectionTestUtils.setField(controller, "patientService", patientService);
-        org.springframework.test.util.ReflectionTestUtils.setField(controller, "photoService", patientPhotoService);
+    public void setUp() throws Exception {
+        super.setUp();
+        executeDataSetWithStateManagement("testdata/patient.xml");
+        executeDataSetWithStateManagement("testdata/patient_management_rest.xml");
     }
 
     @Test
-    public void patientService_SavePatientData_ShouldAcceptValidData() {
-        // Test that patientService.persistPatientData accepts valid data without
-        // throwing
-        PatientManagementInfo patientInfo = new PatientManagementInfo();
-        patientInfo.setFirstName("John");
-        patientInfo.setLastName("Doe");
-        patientInfo.setPatientUpdateStatus(org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus.ADD);
+    public void getPhoto_shouldReturnPhotoDataGivenPatientId() throws Exception {
+        MvcResult result = mockMvc
+                .perform(get("/rest/patient-photos/" + PATIENT_WITH_PHOTO_ID + "/true")
+                        .accept(MediaType.APPLICATION_JSON_VALUE))
+                .andReturn();
 
-        // This should not throw an exception (service is mocked)
-        patientService.persistPatientData(patientInfo, null, "testUser");
+        assertEquals("Response: " + result.getResponse().getContentAsString(),
+                200, result.getResponse().getStatus());
 
-        // Verify the service was called with the expected data
-        verify(patientService).persistPatientData(any(PatientManagementInfo.class), any(), anyString());
+        String json = result.getResponse().getContentAsString();
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> response = mapper.readValue(json, new TypeReference<Map<String, Object>>() {
+        });
+
+        assertTrue("Response should contain data key", response.containsKey("data"));
+        Object data = response.get("data");
+        assertNotNull("Photo data should not be null", data);
+        assertTrue("Photo data should not be empty", ((String) data).length() > 0);
     }
 
     @Test
-    public void patientService_SavePatientData_ThrowsException_ShouldPropagate() {
-        // Test error handling - when patientService throws exception
-        PatientManagementInfo patientInfo = new PatientManagementInfo();
-        patientInfo.setFirstName("John");
-        patientInfo.setLastName("Doe");
+    public void getPhoto_shouldReturnPhotoDataForFullSize() throws Exception {
+        MvcResult result = mockMvc
+                .perform(get("/rest/patient-photos/" + PATIENT_WITH_PHOTO_ID + "/false")
+                        .accept(MediaType.APPLICATION_JSON_VALUE))
+                .andReturn();
 
-        doThrow(new RuntimeException("Database connection failed")).when(patientService)
-                .persistPatientData(any(PatientManagementInfo.class), any(), anyString());
+        assertEquals("Response: " + result.getResponse().getContentAsString(),
+                200, result.getResponse().getStatus());
 
-        try {
-            patientService.persistPatientData(patientInfo, null, "testUser");
-            fail("Expected RuntimeException to be thrown");
-        } catch (RuntimeException e) {
-            assertEquals("Database connection failed", e.getMessage());
-        }
+        String json = result.getResponse().getContentAsString();
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> response = mapper.readValue(json, new TypeReference<Map<String, Object>>() {
+        });
 
-        verify(patientService).persistPatientData(any(PatientManagementInfo.class), any(), anyString());
+        Object data = response.get("data");
+        assertNotNull("Photo data should not be null", data);
+        assertTrue("Photo should be data URI", ((String) data).startsWith("data:image"));
     }
 
-    @Test
-    public void photoService_GetPhotoById_ReturnsExpectedData() {
-        // Test photo service returns expected data
-        String expectedPhoto = "base64photo";
-        when(patientPhotoService.getPhotoByPatientId("123", true)).thenReturn(expectedPhoto);
-
-        String result = patientPhotoService.getPhotoByPatientId("123", true);
-
-        assertEquals("Photo service should return expected photo data", expectedPhoto, result);
-        verify(patientPhotoService).getPhotoByPatientId("123", true);
-    }
-
-    @Test
-    public void photoService_GetPhotoById_ReturnsNullForNonExistentPhoto() {
-        // Test photo service handles null return (photo not found)
-        when(patientPhotoService.getPhotoByPatientId("999", false)).thenReturn(null);
-
-        String result = patientPhotoService.getPhotoByPatientId("999", false);
-
-        assertEquals("Photo service should return null for non-existent photo", null, result);
-        verify(patientPhotoService).getPhotoByPatientId("999", false);
-    }
-
-    @Test
-    public void photoService_GetPhotoById_ThrowsException_ShouldPropagate() {
-        // Test error handling in photo service
-        when(patientPhotoService.getPhotoByPatientId("123", true))
-            .thenThrow(new RuntimeException("Photo storage unavailable"));
-
-        try {
-            patientPhotoService.getPhotoByPatientId("123", true);
-            fail("Expected RuntimeException to be thrown");
-        } catch (RuntimeException e) {
-            assertEquals("Photo storage unavailable", e.getMessage());
-        }
-
-        verify(patientPhotoService).getPhotoByPatientId("123", true);
-    }
-
-    @Test
-    public void controller_ServiceInjection_ShouldWorkCorrectly() {
-        // Test that controller has proper service injection (critical for controller
-        // functionality)
-        assertNotNull("Controller should have patientService injected", controller.patientService);
-        assertNotNull("Controller should have photoService injected", controller.photoService);
-
-        // Verify the injected services are our mocks
-        assertEquals("PatientService should be our mock instance", patientService, controller.patientService);
-        assertEquals("PatientPhotoService should be our mock instance", patientPhotoService, controller.photoService);
-    }
-
-    @Test
-    public void patientService_PersistData_WithNullParameters_ShouldHandleGracefully() {
-        // Test service handles null parameters appropriately
-        PatientManagementInfo patientInfo = null;
-        String userId = null;
-
-        // Service should accept null parameters without throwing (mock behavior)
-        patientService.persistPatientData(patientInfo, null, userId);
-
-        verify(patientService).persistPatientData(patientInfo, null, userId);
-    }
 }

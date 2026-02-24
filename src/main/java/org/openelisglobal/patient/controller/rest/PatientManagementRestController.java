@@ -97,10 +97,14 @@ public class PatientManagementRestController extends BaseRestController {
     }
 
     @GetMapping("patient-photos/{id}/{isThumbnail}")
-    public ResponseEntity<Map<String, String>> getPhoto(@PathVariable String id, @PathVariable boolean isThumbnail)
-            throws LIMSRuntimeException {
-        String photo = photoService.getPhotoByPatientId(id, isThumbnail);
-        return ResponseEntity.ok(Map.of("data", photo));
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> getPhoto(@PathVariable String id,
+            @PathVariable String isThumbnail) {
+
+        boolean asThumbnail = "true".equalsIgnoreCase(isThumbnail);
+        String photo = photoService.getPhotoByPatientId(id, asThumbnail);
+        String data = photo != null ? photo : "";
+        return ResponseEntity.ok(Map.of("data", data));
     }
 
     private void preparePatientData(Errors errors, HttpServletRequest request, PatientManagementInfo patientInfo,
