@@ -11,6 +11,14 @@
     <localization id="5" description="Type of Sample Name"
         english="Serum" french="Sérum" />
 
+    <analysis_status id="1" name="Not Started"
+        description="Not Started" lastupdated="2023-01-01" />
+    <analysis_status id="2" name="Started"
+        description="Started" lastupdated="2023-01-01" />
+    <analysis_status id="3" name="Completed"
+        description="Completed" lastupdated="2023-01-01" />
+    <analysis_status id="4" name="Released"
+        description="Released" lastupdated="2023-01-01" />
     <system_user id="1" external_id="EXT003" login_name="admin"
         last_name="Doe" first_name="John" initials="JD" is_active="Y"
         is_employee="Y" lastupdated="2025-03-08 12:00:00" />
@@ -183,7 +191,7 @@
         so_send_date="2025-07-07 11:45:00" so_send_entry_by="Dr. Doe"
         so_send_entry_date="2025-07-07 11:45:00" analysis_type="ROUTINE"
         lastupdated="2025-07-07 14:00:00" parent_analysis_id="1"
-        is_reportable="Y" reflex_trigger="false" status_id="1"
+        is_reportable="Y" reflex_trigger="false" status_id="4"
         entry_date="2025-07-07 09:00:00" panel_id="1" referred_out="true"
         type_of_sample_name="Blood Sample" corrected="false"
         fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01"
@@ -198,7 +206,7 @@
         so_send_date="2025-07-07 12:45:00" so_send_entry_by="Dr. Smith"
         so_send_entry_date="2025-07-07 12:45:00" analysis_type="CONFIRM"
         lastupdated="2025-07-07 14:00:00" parent_analysis_id="2"
-        is_reportable="Y" reflex_trigger="false" status_id="3"
+        is_reportable="Y" reflex_trigger="false" status_id="4"
         entry_date="2025-07-07 10:00:00" panel_id="2" referred_out="true"
         type_of_sample_name="Urine Sample" corrected="false"
         fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02"
