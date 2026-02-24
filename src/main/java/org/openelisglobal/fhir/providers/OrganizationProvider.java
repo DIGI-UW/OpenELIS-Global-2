@@ -15,11 +15,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.IdType;
-import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Organization;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
@@ -69,24 +67,19 @@ public class OrganizationProvider implements IResourceProvider {
 
             org.openelisglobal.organization.valueholder.Organization organization = fhirTransformService
                     .transformToOrganization(fhirOrganization);
-            organization.setSysUserId(ControllerUtills.getSysUserId(request));
+            organization.setSysUserId(FhirProviderUtils.getSysUserId(request));
             organization.setFhirUuid(UUID.randomUUID());
             org.openelisglobal.organization.valueholder.Organization savedOrganization = organizationService
                     .save(organization);
 
             Organization resultFhirOrg = fhirTransformService.transformToFhirOrganization(savedOrganization);
-            syncToFhirStore(resultFhirOrg, method);
+            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, resultFhirOrg, this.getClass().getSimpleName(),
+                    method);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), method,
                     "Successfully created Organization with UUID: " + savedOrganization.getFhirUuidAsString());
 
-            MethodOutcome outcome = new MethodOutcome();
-            outcome.setId(resultFhirOrg.getIdElement());
-            outcome.setResource(resultFhirOrg);
-            outcome.setCreated(true);
-            outcome.setResponseStatusCode(201);
-
-            return outcome;
+            return FhirProviderUtils.buildCreateOutcome(resultFhirOrg);
 
         } catch (UnprocessableEntityException | InvalidRequestException e) {
             throw e;
@@ -110,12 +103,7 @@ public class OrganizationProvider implements IResourceProvider {
 
         try {
 
-            if (theId == null || !theId.hasIdPart()) {
-
-                LogEvent.logError(this.getClass().getSimpleName(), method, "Missing Organization ID for update");
-
-                throw new InvalidRequestException("Organization ID must be provided for update");
-            }
+            FhirProviderUtils.validateIdParam(theId, "Organization", this.getClass().getSimpleName(), method);
 
             fhirOrganization.setId(theId);
 
@@ -131,22 +119,17 @@ public class OrganizationProvider implements IResourceProvider {
                     .transformToOrganization(fhirOrganization);
             existingOrg.setOrganizationName(incomingOrg.getOrganizationName());
             existingOrg.setIsActive(incomingOrg.getIsActive());
-            existingOrg.setSysUserId(ControllerUtills.getSysUserId(request));
+            existingOrg.setSysUserId(FhirProviderUtils.getSysUserId(request));
             org.openelisglobal.organization.valueholder.Organization updatedOrg = organizationService.save(existingOrg);
 
             Organization resultFhirOrg = fhirTransformService.transformToFhirOrganization(updatedOrg);
-            syncToFhirStore(resultFhirOrg, method);
+            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, resultFhirOrg, this.getClass().getSimpleName(),
+                    method);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), method,
                     "Successfully updated Organization with ID: " + theId.getIdPart());
 
-            MethodOutcome outcome = new MethodOutcome();
-            outcome.setId(resultFhirOrg.getIdElement());
-            outcome.setResource(resultFhirOrg);
-            outcome.setCreated(false);
-            outcome.setResponseStatusCode(200);
-
-            return outcome;
+            return FhirProviderUtils.buildUpdateOutcome(resultFhirOrg);
 
         } catch (ResourceNotFoundException | UnprocessableEntityException | InvalidRequestException e) {
             throw e;
@@ -169,10 +152,7 @@ public class OrganizationProvider implements IResourceProvider {
 
         try {
 
-            if (theId == null || !theId.hasIdPart()) {
-                LogEvent.logError(this.getClass().getSimpleName(), method, "Missing Organization ID for delete");
-                throw new InvalidRequestException("Organization ID must be provided for delete");
-            }
+            FhirProviderUtils.validateIdParam(theId, "Organization", this.getClass().getSimpleName(), method);
 
             org.openelisglobal.organization.valueholder.Organization organization = organizationService
                     .getOrganizationByFhirId(theId.getIdPart());
@@ -182,26 +162,18 @@ public class OrganizationProvider implements IResourceProvider {
             }
 
             organization.setIsActive(IActionConstants.NO);
-            organization.setSysUserId(ControllerUtills.getSysUserId(request));
+            organization.setSysUserId(FhirProviderUtils.getSysUserId(request));
             organizationService.save(organization);
 
             Organization fhirOrgToSync = fhirTransformService.transformToFhirOrganization(organization);
             fhirOrgToSync.setActive(false);
-            syncToFhirStore(fhirOrgToSync, method);
+            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, fhirOrgToSync, this.getClass().getSimpleName(),
+                    method);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), method,
                     "Successfully deleted Organization with ID: " + theId.getIdPart());
 
-            MethodOutcome outcome = new MethodOutcome();
-            outcome.setId(theId);
-            outcome.setResponseStatusCode(204);
-
-            OperationOutcome operationOutcome = new OperationOutcome();
-            operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.INFORMATION)
-                    .setDiagnostics("Organization " + theId.getIdPart() + " has been deleted");
-            outcome.setOperationOutcome(operationOutcome);
-
-            return outcome;
+            return FhirProviderUtils.buildDeleteOutcome(theId, "Organization");
 
         } catch (ResourceNotFoundException | InvalidRequestException e) {
             throw e;
@@ -210,15 +182,6 @@ public class OrganizationProvider implements IResourceProvider {
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while deleting Organization: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error while deleting Organization", e);
-        }
-    }
-
-    private void syncToFhirStore(Organization fhirOrg, String callingMethod) {
-        try {
-            fhirPersistenceService.updateFhirResourceInFhirStore(fhirOrg);
-        } catch (Exception syncEx) {
-            LogEvent.logError(this.getClass().getSimpleName(), callingMethod,
-                    "FHIR store sync failed (continuing anyway): " + syncEx.getMessage());
         }
     }
 }
