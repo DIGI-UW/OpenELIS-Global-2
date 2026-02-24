@@ -11,14 +11,7 @@
     <localization id="5" description="Type of Sample Name"
         english="Serum" french="Sérum" />
 
-    <analysis_status id="1" name="Not Started"
-        description="Not Started" lastupdated="2023-01-01" />
-    <analysis_status id="2" name="Started"
-        description="Started" lastupdated="2023-01-01" />
-    <analysis_status id="3" name="Completed"
-        description="Completed" lastupdated="2023-01-01" />
-    <analysis_status id="4" name="Released"
-        description="Released" lastupdated="2023-01-01" />
+
     <system_user id="1" external_id="EXT003" login_name="admin"
         last_name="Doe" first_name="John" initials="JD" is_active="Y"
         is_employee="Y" lastupdated="2025-03-08 12:00:00" />
