@@ -11,7 +11,6 @@ import {
   Button,
   Modal,
   TextInput,
-  NumberInput,
   DatePickerInput,
   Grid,
   Column,
@@ -914,57 +913,52 @@ export const GBDQualityQuantityAssessmentPage = ({
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="nanodrop-concentration"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.gbd.qc.nanodrop.concentration",
                 defaultMessage: "Concentration (ng/µL)",
               })}
               value={nanodropConcentration}
-              onChange={(e) =>
-                setNanodropConcentration(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={0.1}
-              min={0}
-              max={3000}
+              onChange={(e) => setNanodropConcentration(e.target.value)}
+              type="number"
+              step="0.1"
+              min="0"
+              max="3000"
               placeholder="50"
             />
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="a260-280"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.gbd.qc.a260.280",
                 defaultMessage: "A260/280 Ratio",
               })}
               value={a260_280}
-              onChange={(e) =>
-                setA260_280(e.imaginaryTarget?.value || e.target?.value || "")
-              }
-              step={0.01}
-              min={0.5}
-              max={3.0}
+              onChange={(e) => setA260_280(e.target.value)}
+              type="number"
+              step="0.01"
+              min="0.5"
+              max="3.0"
               placeholder="1.9"
             />
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="a260-230"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.gbd.qc.a260.230",
                 defaultMessage: "A260/230 Ratio",
               })}
               value={a260_230}
-              onChange={(e) =>
-                setA260_230(e.imaginaryTarget?.value || e.target?.value || "")
-              }
-              step={0.01}
-              min={0.5}
-              max={3.0}
+              onChange={(e) => setA260_230(e.target.value)}
+              type="number"
+              step="0.01"
+              min="0.5"
+              max="3.0"
               placeholder="2.0"
             />
           </Column>
@@ -979,21 +973,18 @@ export const GBDQualityQuantityAssessmentPage = ({
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="qubit-concentration"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.gbd.qc.qubit.concentration",
                 defaultMessage: "Concentration (ng/µL)",
               })}
               value={qubitConcentration}
-              onChange={(e) =>
-                setQubitConcentration(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={0.1}
-              min={0}
-              max={1000}
+              onChange={(e) => setQubitConcentration(e.target.value)}
+              type="number"
+              step="0.1"
+              min="0"
+              max="1000"
               placeholder="25"
             />
           </Column>
@@ -1008,39 +999,35 @@ export const GBDQualityQuantityAssessmentPage = ({
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="rin"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.gbd.qc.bioanalyzer.rin",
                 defaultMessage: "RIN (RNA Integrity Number)",
               })}
               value={rin}
-              onChange={(e) =>
-                setRin(e.imaginaryTarget?.value || e.target?.value || "")
-              }
-              step={0.1}
-              min={0}
-              max={10}
+              onChange={(e) => setRin(e.target.value)}
+              type="number"
+              step="0.1"
+              min="0"
+              max="10"
               placeholder="8"
             />
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="fragment-size"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.gbd.qc.bioanalyzer.fragmentSize",
                 defaultMessage: "Fragment Size (bp)",
               })}
               value={fragmentSize}
-              onChange={(e) =>
-                setFragmentSize(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={10}
-              min={100}
-              max={10000}
+              onChange={(e) => setFragmentSize(e.target.value)}
+              type="number"
+              step="10"
+              min="100"
+              max="10000"
               placeholder="500"
             />
           </Column>

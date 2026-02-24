@@ -17,7 +17,6 @@ import {
   TextInput,
   TextArea,
   Loading,
-  NumberInput,
 } from "@carbon/react";
 import {
   Renew,
@@ -1278,53 +1277,44 @@ function TraditionalMedicineExtractionPage({
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="plant-weight"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.page.tradmed.extraction.modal.plantWeight",
                 defaultMessage: "Plant Material Weight (g)",
               })}
               value={plantMaterialWeight}
-              onChange={(e) =>
-                setPlantMaterialWeight(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={0.1}
+              onChange={(e) => setPlantMaterialWeight(e.target.value)}
+              type="number"
+              step="0.1"
             />
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="solvent-vol"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.page.tradmed.extraction.modal.solventVolume",
                 defaultMessage: "Solvent Volume (mL)",
               })}
               value={solventVolume}
-              onChange={(e) =>
-                setSolventVolume(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={1}
+              onChange={(e) => setSolventVolume(e.target.value)}
+              type="number"
+              step="1"
             />
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="ext-temp"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.page.tradmed.extraction.modal.temp",
                 defaultMessage: "Temperature (°C)",
               })}
               value={extractionTemp}
-              onChange={(e) =>
-                setExtractionTemp(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={1}
+              onChange={(e) => setExtractionTemp(e.target.value)}
+              type="number"
+              step="1"
             />
           </Column>
 
@@ -1463,19 +1453,16 @@ function TraditionalMedicineExtractionPage({
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="extract-weight"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.page.tradmed.concentration.modal.extractWeight",
                 defaultMessage: "Extract Weight (g)",
               })}
               value={extractWeight}
-              onChange={(e) =>
-                setExtractWeight(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={0.1}
+              onChange={(e) => setExtractWeight(e.target.value)}
+              type="number"
+              step="0.1"
             />
           </Column>
 

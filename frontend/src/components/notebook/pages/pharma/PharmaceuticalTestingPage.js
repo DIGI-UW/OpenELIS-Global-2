@@ -93,7 +93,7 @@ function PharmaceuticalTestingPage({
       positiveControlResult: "",
       negativeControlResult: "",
       internalStandardUsed: false,
-      replicateCount: 2,
+      replicateCount: "2",
       acceptanceCriteria: "",
       rsdValue: "",
     },
@@ -443,7 +443,7 @@ function PharmaceuticalTestingPage({
         positiveControlResult: "",
         negativeControlResult: "",
         internalStandardUsed: false,
-        replicateCount: 2,
+        replicateCount: "2",
         acceptanceCriteria: "",
         rsdValue: "",
       },
@@ -1372,24 +1372,25 @@ function PharmaceuticalTestingPage({
               />
             </Column>
             <Column lg={4} md={4} sm={4}>
-              <NumberInput
+              <TextInput
                 id="replicate-count"
-                label={intl.formatMessage({
+                labelText={intl.formatMessage({
                   id: "notebook.pharma.testing.replicates",
                   defaultMessage: "Replicates",
                 })}
                 value={testExecutionData.qcData.replicateCount}
-                onChange={(_, { value }) =>
+                onChange={(e) =>
                   setTestExecutionData({
                     ...testExecutionData,
                     qcData: {
                       ...testExecutionData.qcData,
-                      replicateCount: value,
+                      replicateCount: e.target.value,
                     },
                   })
                 }
-                min={1}
-                max={10}
+                type="number"
+                min="1"
+                max="10"
               />
             </Column>
             <Column lg={4} md={4} sm={4}>
