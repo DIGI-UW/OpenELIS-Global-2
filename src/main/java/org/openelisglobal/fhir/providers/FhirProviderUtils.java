@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.OperationOutcome;
+import org.hl7.fhir.r4.model.Resource;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
@@ -72,7 +73,7 @@ public final class FhirProviderUtils {
      * not propagate — the local operation is considered successful even if the sync
      * fails.
      */
-    public static void syncToFhirStore(FhirPersistanceService fhirPersistenceService, IBaseResource resource,
+    public static void syncToFhirStore(FhirPersistanceService fhirPersistenceService, Resource resource,
             String callerClassName, String callingMethod) {
         try {
             fhirPersistenceService.updateFhirResourceInFhirStore(resource);
