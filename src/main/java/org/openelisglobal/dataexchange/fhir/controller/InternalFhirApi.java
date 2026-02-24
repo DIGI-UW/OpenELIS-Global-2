@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -48,6 +49,12 @@ public class InternalFhirApi {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
+    @GetMapping("/metadata")
+    public void receiveMetadataRequest(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        forwardToFacade(request, response);
+    }
+
     @GetMapping("/**")
     public ResponseEntity<Object> recieveGetFhirRequests(HttpServletRequest request) {
         return forwardGetRequest(request);
@@ -62,6 +69,13 @@ public class InternalFhirApi {
     @PutMapping("/{resourceType}/**")
     public void receivePutFhirRequest(@PathVariable("resourceType") ResourceType resourceType,
             HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        forwardToFacade(request, response);
+    }
+
+    @DeleteMapping("/{resourceType}/{id}")
+    public void receiveDeleteFhirRequest(@PathVariable("resourceType") String resourceType,
+            @PathVariable("id") String id, HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
         forwardToFacade(request, response);
     }
 
@@ -94,12 +108,7 @@ public class InternalFhirApi {
             String targetUrl = buildQueryPath(fhirConfig.getLocalFhirStorePath(), fhirPath, request.getQueryString());
 
             HttpGet httpGet = new HttpGet(targetUrl);
-            String username = fhirConfig.getUsername();
-            String password = fhirConfig.getPassword();
-            if (username != null && !username.isBlank()) {
-                String encoding = Base64.getEncoder().encodeToString((username + ":" + password).getBytes());
-                httpGet.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + encoding);
-            }
+            addAuthHeader(httpGet);
             httpGet.setHeader(HttpHeaders.ACCEPT, "application/json");
 
             try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
@@ -122,6 +131,15 @@ public class InternalFhirApi {
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error in GET FHIR request: " + e.getMessage());
             return ResponseEntity.internalServerError().body("Unexpected server error");
+        }
+    }
+
+    private void addAuthHeader(org.apache.http.HttpRequest httpRequest) {
+        String username = fhirConfig.getUsername();
+        String password = fhirConfig.getPassword();
+        if (username != null && !username.isBlank()) {
+            String encoding = Base64.getEncoder().encodeToString((username + ":" + password).getBytes());
+            httpRequest.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + encoding);
         }
     }
 
