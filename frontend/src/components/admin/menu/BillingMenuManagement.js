@@ -101,52 +101,58 @@ function BillingMenuManagement() {
                 <FormattedMessage id="menu.billing.title" />
               </Heading>
             </Section>
-            <br />
-            <Section>
-              <Form onSubmit={handleSubmit}>
-                <div className="formInlineDiv">
-                  <TextInput
-                    id="billing_address"
-                    labelText={intl.formatMessage({
-                      id: "menu.billing.address",
-                    })}
-                    value={menuItem.menu.actionURL || ""}
-                    onChange={(e) => {
-                      setMenuItem({
-                        ...menuItem,
-                        menu: { ...menuItem.menu, actionURL: e.target.value },
-                      });
-                    }}
-                    type="url"
-                    required
-                    pattern="https?://.*"
-                  />
-                </div>
-                <div className="formInlineDiv">
-                  <Checkbox
-                    id="billing_active"
-                    labelText={intl.formatMessage({
-                      id: "menu.billing.active",
-                    })}
-                    checked={menuItem.menu.isActive || false}
-                    onChange={(_, { checked }) => {
-                      setMenuItem({
-                        ...menuItem,
-                        menu: { ...menuItem.menu, isActive: checked },
-                      });
-                    }}
-                  />
-                </div>
-                <div>
-                  <Button type="submit">
-                    <FormattedMessage id="label.button.submit" />
-                    {isSubmitting && <Loading small={true} />}
-                  </Button>
-                </div>
-              </Form>
-            </Section>
           </Column>
         </Grid>
+
+        <div className="orderLegendBody">
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <Section>
+                <Form onSubmit={handleSubmit}>
+                  <div className="formInlineDiv">
+                    <TextInput
+                      id="billing_address"
+                      labelText={intl.formatMessage({
+                        id: "menu.billing.address",
+                      })}
+                      value={menuItem.menu.actionURL || ""}
+                      onChange={(e) => {
+                        setMenuItem({
+                          ...menuItem,
+                          menu: { ...menuItem.menu, actionURL: e.target.value },
+                        });
+                      }}
+                      type="url"
+                      required
+                      pattern="https?://.*"
+                    />
+                  </div>
+                  <div className="formInlineDiv">
+                    <Checkbox
+                      id="billing_active"
+                      labelText={intl.formatMessage({
+                        id: "menu.billing.active",
+                      })}
+                      checked={menuItem.menu.isActive || false}
+                      onChange={(_, { checked }) => {
+                        setMenuItem({
+                          ...menuItem,
+                          menu: { ...menuItem.menu, isActive: checked },
+                        });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Button type="submit">
+                      <FormattedMessage id="label.button.submit" />
+                      {isSubmitting && <Loading small={true} />}
+                    </Button>
+                  </div>
+                </Form>
+              </Section>
+            </Column>
+          </Grid>
+        </div>
       </div>
     </>
   );

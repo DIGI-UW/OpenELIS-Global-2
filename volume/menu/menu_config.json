@@ -5,111 +5,6 @@
       "childMenus": []
     },
     {
-      "elementId": "menu_generic_sample",
-      "childMenus": [
-        {
-          "elementId": "menu_generic_sample_order",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_generic_sample_edit",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_generic_sample_import",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_generic_sample_results",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_sample_management",
-          "childMenus": []
-        }
-      ]
-    },
-    {
-      "elementId": "menu_sample",
-      "childMenus": [
-        {
-          "elementId": "menu_sample_add",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_sample_create",
-          "childMenus": [
-            {
-              "elementId": "menu_sample_create_initial",
-              "childMenus": []
-            },
-            {
-              "elementId": "menu_sample_create_double",
-              "childMenus": []
-            },
-            {
-              "elementId": "menu_sample_consult",
-              "childMenus": []
-            },
-            {
-              "elementId": "menu_study_sample_eorder",
-              "childMenus": []
-            }
-          ]
-        },
-        {
-          "elementId": "menu_sample_edit",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_sample_eorder",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_sample_batch_entry",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_sample_print_barcode",
-          "childMenus": []
-        }
-      ]
-    },
-    {
-      "elementId": "menu_patient",
-      "childMenus": [
-        {
-          "elementId": "menu_patient_add_or_edit",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_patienthistory",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_patient_create",
-          "childMenus": [
-            {
-              "elementId": "menu_patient_create_initial",
-              "childMenus": []
-            },
-            {
-              "elementId": "menu_patient_create_double",
-              "childMenus": []
-            },
-            {
-              "elementId": "menu_patient_edit",
-              "childMenus": []
-            },
-            {
-              "elementId": "menu_patient_consult",
-              "childMenus": []
-            }
-          ]
-        }
-      ]
-    },
-    {
       "elementId": "menu_storage",
       "childMenus": [
         {
@@ -161,18 +56,6 @@
       ]
     },
     {
-      "elementId": "menu_pathology",
-      "childMenus": []
-    },
-    {
-      "elementId": "menu_immunochem",
-      "childMenus": []
-    },
-    {
-      "elementId": "menu_cytology",
-      "childMenus": []
-    },
-    {
       "elementId": "menu_results",
       "childMenus": [
         {
@@ -200,17 +83,8 @@
           "childMenus": []
         },
         {
-          "elementId": "menu_results_analyzer",
-          "childMenus": [
-            {
-              "elementId": "PocH100iAnalyzer_plugin",
-              "childMenus": []
-            },
-            {
-              "elementId": "GeneXpertAnalyzer_plugin",
-              "childMenus": []
-            }
-          ]
+          "elementId": "order_programmes",
+          "childMenus": []
         }
       ]
     },
@@ -505,11 +379,20 @@
       ]
     },
     {
-      "elementId": "menu_administration",
-      "childMenus": []
+      "elementId": "menu_inventory",
+      "childMenus": [
+        {
+          "elementId": "menu_inventory_management",
+          "childMenus": []
+        },
+        {
+          "elementId": "menu_equipment_usage",
+          "childMenus": []
+        }
+      ]
     },
     {
-      "elementId": "menu_billing",
+      "elementId": "menu_administration",
       "childMenus": []
     },
     {
@@ -521,36 +404,13 @@
       "childMenus": []
     },
     {
-      "elementId": "menu_inventory",
-      "childMenus": [
-        {
-          "elementId": "menu_inventory_management",
-          "childMenus": []
-        }
-      ]
-    },
-    {
       "elementId": "menu_help",
       "childMenus": [
         {
           "elementId": "menu_help_user_manual",
           "childMenus": []
-        },
-        {
-          "elementId": "menu_help_documents",
-          "childMenus": [
-            {
-              "elementId": "menu_help_form_VL",
-              "childMenus": []
-            },
-            {
-              "elementId": "menu_help_form_DBS",
-              "childMenus": []
-            }
-          ]
         }
       ]
     }
   ]
 }
-
