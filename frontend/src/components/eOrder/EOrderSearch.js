@@ -183,11 +183,15 @@ const EOrderSearch = ({
           }}
         />
       </Column>
-      <Column lg={2}>
+      <Column lg={3} md={4} sm={4}>
         <div className="bottomAlign">
           <Checkbox
             id="allInfo1"
-            labelText={intl.formatMessage({ id: "eorder.allInfo" })}
+            labelText={
+              <span style={{ whiteSpace: "nowrap" }}>
+                {intl.formatMessage({ id: "eorder.allInfo" })}
+              </span>
+            }
             checked={allInfo}
             onChange={(e) => {
               setAllInfo(e.currentTarget.checked);
@@ -195,8 +199,12 @@ const EOrderSearch = ({
           />
         </div>
       </Column>
-      <Column lg={1}></Column>
-      <Column lg={4}>
+
+      <Column lg={16} md={8} sm={4}>
+        <br></br>
+      </Column>
+
+      <Column lg={4} md={4} sm={4}>
         <Button onClick={searchByIdentifier}>
           <FormattedMessage id="label.button.search" />
         </Button>
@@ -211,7 +219,8 @@ const EOrderSearch = ({
       <Column lg={16} md={8} sm={4}>
         <br></br>
       </Column>
-      <Column lg={3} md={2} sm={2}>
+
+      <Column lg={4} md={4} sm={4}>
         <CustomDatePicker
           id={"eOrder_startDate"}
           labelText={intl.formatMessage({ id: "eorder.date.start" })}
@@ -220,16 +229,16 @@ const EOrderSearch = ({
           onChange={(date) => setStartDate(date)}
         />
       </Column>
-      <Column lg={3} md={2} sm={2}>
+      <Column lg={4} md={4} sm={4}>
         <CustomDatePicker
-          id={"eOrder_startDate"}
+          id={"eOrder_endDate"}
           labelText={intl.formatMessage({ id: "eorder.date.end" })}
-          value={startDate}
+          value={endDate}
           className="inputDate"
           onChange={(date) => setEndDate(date)}
         />
       </Column>
-      <Column lg={3} md={2} sm={2}>
+      <Column lg={4} md={4} sm={4}>
         <Select
           id="statusId"
           labelText={intl.formatMessage({ id: "eorder.status" })}
@@ -250,11 +259,15 @@ const EOrderSearch = ({
           })}
         </Select>
       </Column>
-      <Column lg={2}>
+      <Column lg={4} md={4} sm={4}>
         <div className="bottomAlign">
           <Checkbox
             id="allInfo2"
-            labelText={intl.formatMessage({ id: "eorder.allInfo" })}
+            labelText={
+              <span style={{ whiteSpace: "nowrap" }}>
+                {intl.formatMessage({ id: "eorder.allInfo" })}
+              </span>
+            }
             checked={allInfo2}
             onChange={(e) => {
               setAllInfo2(e.currentTarget.checked);
@@ -262,8 +275,12 @@ const EOrderSearch = ({
           />
         </div>
       </Column>
-      <Column lg={1}></Column>
-      <Column lg={4} md={4} sm={2}>
+
+      <Column lg={16} md={8} sm={4}>
+        <br></br>
+      </Column>
+
+      <Column lg={4} md={4} sm={4}>
         <Button onClick={searchByDateAndStatus}>
           <FormattedMessage id="label.button.search" />
         </Button>
@@ -287,7 +304,7 @@ const EOrderSearch = ({
             flexDirection: "column",
             alignItems: "center",
             gap: "10px",
-            width: "110%",
+            width: "100%",
           }}
         >
           {pagination && (
