@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- ============================================================ -->
+  <!-- 1. Sequences for all enrollment tables                       -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-009-01-sequences" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <sequenceExists sequenceName="eqa_enrollment_seq" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Create sequences for enrollment tables</comment>
+    <createSequence sequenceName="eqa_enrollment_seq"
+                    schemaName="clinlims" startValue="1" incrementBy="1"/>
+    <createSequence sequenceName="eqa_lab_enroll_seq"
+                    schemaName="clinlims" startValue="1" incrementBy="1"/>
+    <createSequence sequenceName="eqa_lab_unit_map_seq"
+                    schemaName="clinlims" startValue="1" incrementBy="1"/>
+    <createSequence sequenceName="eqa_lab_test_map_seq"
+                    schemaName="clinlims" startValue="1" incrementBy="1"/>
+    <rollback>
+      <dropSequence sequenceName="eqa_lab_test_map_seq" schemaName="clinlims"/>
+      <dropSequence sequenceName="eqa_lab_unit_map_seq" schemaName="clinlims"/>
+      <dropSequence sequenceName="eqa_lab_enroll_seq" schemaName="clinlims"/>
+      <dropSequence sequenceName="eqa_enrollment_seq" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 2. Provider-side enrollment (DM-007)                         -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-009-02-program-enrollment" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="eqa_program_enrollment" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Create provider-side enrollment table linking organizations to EQA programs</comment>
+    <createTable tableName="eqa_program_enrollment" schemaName="clinlims">
+      <column name="id" type="numeric(10,0)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="eqa_program_id" type="numeric(10,0)">
+        <constraints nullable="false"
+                     foreignKeyName="fk_enrollment_program"
+                     references="clinlims.eqa_program(id)"/>
+      </column>
+      <column name="organization_id" type="numeric(10,0)">
+        <constraints nullable="false"
+                     foreignKeyName="fk_enrollment_org"
+                     references="clinlims.organization(id)"/>
+      </column>
+      <column name="enrollment_date" type="TIMESTAMP" defaultValueComputed="NOW()">
+        <constraints nullable="false"/>
+      </column>
+      <column name="status" type="VARCHAR(20)" defaultValue="Active">
+        <constraints nullable="false"/>
+      </column>
+      <column name="status_changed_date" type="TIMESTAMP"/>
+      <column name="status_changed_by" type="numeric(10,0)"/>
+      <column name="withdrawal_reason" type="TEXT"/>
+      <column name="sys_user_id" type="numeric(10,0)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+    </createTable>
+    <rollback>
+      <dropTable tableName="eqa_program_enrollment" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 3. Partial unique index: one active enrollment per org/prog  -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-009-03-enrollment-unique-idx" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="eqa_program_enrollment" schemaName="clinlims"/>
+    </preConditions>
+    <comment>Partial unique index to prevent duplicate active enrollments</comment>
+    <sql>
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_enrollment_active_unique
+      ON clinlims.eqa_program_enrollment (eqa_program_id, organization_id)
+      WHERE status = 'Active';
+    </sql>
+    <rollback>
+      DROP INDEX IF EXISTS clinlims.idx_enrollment_active_unique;
+    </rollback>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 4. Self-enrollment (DM-008)                                  -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-009-04-lab-program-enrollment" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="eqa_lab_program_enrollment" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Create self-enrollment table for local lab participation in external programs</comment>
+    <createTable tableName="eqa_lab_program_enrollment" schemaName="clinlims">
+      <column name="id" type="numeric(10,0)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="program_name" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="provider" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="description" type="TEXT"/>
+      <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+        <constraints nullable="false"/>
+      </column>
+      <column name="created_date" type="TIMESTAMP" defaultValueComputed="NOW()">
+        <constraints nullable="false"/>
+      </column>
+      <column name="created_by" type="numeric(10,0)"/>
+      <column name="last_modified" type="TIMESTAMP"/>
+      <column name="sys_user_id" type="numeric(10,0)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+    </createTable>
+    <rollback>
+      <dropTable tableName="eqa_lab_program_enrollment" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 5. Lab unit mapping (DM-009)                                 -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-009-05-lab-enrollment-lab-unit" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="eqa_lab_enrollment_lab_unit" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Create lab unit mapping table for self-enrollment</comment>
+    <createTable tableName="eqa_lab_enrollment_lab_unit" schemaName="clinlims">
+      <column name="id" type="numeric(10,0)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="enrollment_id" type="numeric(10,0)">
+        <constraints nullable="false"
+                     foreignKeyName="fk_lab_unit_enrollment"
+                     references="clinlims.eqa_lab_program_enrollment(id)"/>
+      </column>
+      <column name="test_section_id" type="numeric(10,0)">
+        <constraints nullable="false"
+                     foreignKeyName="fk_lab_unit_section"
+                     references="clinlims.test_section(id)"/>
+      </column>
+      <column name="sys_user_id" type="numeric(10,0)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+    </createTable>
+    <addUniqueConstraint tableName="eqa_lab_enrollment_lab_unit"
+                         schemaName="clinlims"
+                         columnNames="enrollment_id, test_section_id"
+                         constraintName="uq_lab_enrollment_unit"/>
+    <rollback>
+      <dropTable tableName="eqa_lab_enrollment_lab_unit" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 6. Test/panel mapping (DM-010)                               -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-009-06-lab-enrollment-test-map" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="eqa_lab_enrollment_test_map" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Create test/panel mapping table for self-enrollment with CHECK constraint</comment>
+    <createTable tableName="eqa_lab_enrollment_test_map" schemaName="clinlims">
+      <column name="id" type="numeric(10,0)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="enrollment_id" type="numeric(10,0)">
+        <constraints nullable="false"
+                     foreignKeyName="fk_test_map_enrollment"
+                     references="clinlims.eqa_lab_program_enrollment(id)"/>
+      </column>
+      <column name="test_id" type="numeric(10,0)">
+        <constraints foreignKeyName="fk_test_map_test"
+                     references="clinlims.test(id)"/>
+      </column>
+      <column name="panel_id" type="numeric(10,0)">
+        <constraints foreignKeyName="fk_test_map_panel"
+                     references="clinlims.panel(id)"/>
+      </column>
+      <column name="sys_user_id" type="numeric(10,0)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+    </createTable>
+    <sql>
+      ALTER TABLE clinlims.eqa_lab_enrollment_test_map
+      ADD CONSTRAINT chk_test_or_panel
+      CHECK (test_id IS NOT NULL OR panel_id IS NOT NULL);
+    </sql>
+    <rollback>
+      <dropTable tableName="eqa_lab_enrollment_test_map" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

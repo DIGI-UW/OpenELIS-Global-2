@@ -1,0 +1,569 @@
+openapi: 3.0.3
+info:
+  title: OpenELIS EQA Module — Enrollment & Navigation Addendum API
+  version: 3.0.0
+  description: |
+    API contracts for the EQA Enrollment Addendum (v3).
+    Covers: EQA Orders listing, My Programs self-enrollment,
+    EQA Management Programs, and Provider-side Participant Enrollment.
+
+servers:
+  - url: https://localhost/api
+    description: Development
+
+paths:
+  # ═══════════════════════════════════════════════════
+  # EQA Tests — Orders
+  # ═══════════════════════════════════════════════════
+
+  /eqa/orders:
+    get:
+      summary: List EQA orders for the local lab
+      description: |
+        Returns all EQA orders (samples where is_eqa_sample = true).
+        Supports filtering by status, program, priority, and date range.
+      operationId: getEqaOrders
+      tags: [EQA Tests - Orders]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, IN_PROGRESS, COMPLETED, OVERDUE]
+        - name: programId
+          in: query
+          schema:
+            type: integer
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [STANDARD, URGENT, CRITICAL]
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: search
+          in: query
+          description: Search by lab number or program name
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of EQA orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EQAOrder"
+
+  /eqa/orders/summary:
+    get:
+      summary: EQA order summary counts
+      operationId: getEqaOrdersSummary
+      tags: [EQA Tests - Orders]
+      responses:
+        "200":
+          description: Summary counts by status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQAOrderSummary"
+
+  # ═══════════════════════════════════════════════════
+  # EQA Tests — My Programs (Self-Enrollment)
+  # ═══════════════════════════════════════════════════
+
+  /eqa/my-programs:
+    get:
+      summary: List self-enrollment records
+      operationId: getMyPrograms
+      tags: [EQA Tests - My Programs]
+      responses:
+        "200":
+          description: All self-enrollment records for the local lab
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EQALabProgramEnrollment"
+    post:
+      summary: Create self-enrollment in external EQA program
+      operationId: createMyProgram
+      tags: [EQA Tests - My Programs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EQALabProgramEnrollmentRequest"
+      responses:
+        "201":
+          description: Enrollment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQALabProgramEnrollment"
+        "400":
+          description: Validation error
+
+  /eqa/my-programs/{id}:
+    get:
+      summary: Get self-enrollment by ID
+      operationId: getMyProgram
+      tags: [EQA Tests - My Programs]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Self-enrollment details with test/panel mappings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQALabProgramEnrollment"
+        "404":
+          description: Not found
+    put:
+      summary: Update self-enrollment
+      operationId: updateMyProgram
+      tags: [EQA Tests - My Programs]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EQALabProgramEnrollmentRequest"
+      responses:
+        "200":
+          description: Updated enrollment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQALabProgramEnrollment"
+    delete:
+      summary: Soft-delete (deactivate) self-enrollment
+      operationId: deleteMyProgram
+      tags: [EQA Tests - My Programs]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deactivated successfully
+
+  # ═══════════════════════════════════════════════════
+  # Provider Typeahead
+  # ═══════════════════════════════════════════════════
+
+  /eqa/providers:
+    get:
+      summary: Distinct provider names for typeahead
+      description: |
+        Returns union of provider names from managed programs
+        and self-enrollment records.
+      operationId: getProviders
+      tags: [EQA Common]
+      responses:
+        "200":
+          description: List of distinct provider name strings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  # ═══════════════════════════════════════════════════
+  # EQA Management — Programs (extends existing)
+  # ═══════════════════════════════════════════════════
+
+  /eqa/programs:
+    get:
+      summary: List managed EQA programs
+      description: Existing endpoint — no changes needed.
+      operationId: getPrograms
+      tags: [EQA Management - Programs]
+      responses:
+        "200":
+          description: List of EQA programs with participant counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EQAProgramWithCount"
+
+  /eqa/programs/{id}:
+    get:
+      summary: Get EQA program details
+      operationId: getProgram
+      tags: [EQA Management - Programs]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Program details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQAProgramWithCount"
+
+  # ═══════════════════════════════════════════════════
+  # EQA Management — Enrollments (Provider-Side)
+  # ═══════════════════════════════════════════════════
+
+  /eqa/programs/{programId}/enrollments:
+    get:
+      summary: List enrolled organizations for a program
+      operationId: getProgramEnrollments
+      tags: [EQA Management - Participants]
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of enrollment records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EQAProgramEnrollment"
+    post:
+      summary: Enroll organizations in a program (bulk)
+      operationId: enrollOrganizations
+      tags: [EQA Management - Participants]
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollOrganizationsRequest"
+      responses:
+        "201":
+          description: Enrollments created
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EQAProgramEnrollment"
+        "409":
+          description: Duplicate enrollment (organization already active)
+
+  /eqa/programs/{programId}/enrollments/{enrollmentId}:
+    put:
+      summary: Update enrollment status (Suspend/Withdraw/Reactivate)
+      operationId: updateEnrollmentStatus
+      tags: [EQA Management - Participants]
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: enrollmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEnrollmentStatusRequest"
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQAProgramEnrollment"
+        "400":
+          description: Invalid status transition
+
+  /eqa/eligible-organizations:
+    get:
+      summary: List organizations eligible for enrollment
+      description: |
+        Returns active organizations from the Organizations table.
+        Marks already-enrolled organizations for the specified program.
+      operationId: getEligibleOrganizations
+      tags: [EQA Management - Participants]
+      parameters:
+        - name: programId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of eligible organizations with enrollment status
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EligibleOrganization"
+
+components:
+  schemas:
+    # ── EQA Orders ──
+
+    EQAOrder:
+      type: object
+      properties:
+        id:
+          type: string
+        labNumber:
+          type: string
+        accessionNumber:
+          type: string
+        programName:
+          type: string
+        providerName:
+          type: string
+        sampleId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, COMPLETED, OVERDUE]
+        deadline:
+          type: string
+          format: date-time
+        priority:
+          type: string
+          enum: [STANDARD, URGENT, CRITICAL]
+        dateEntered:
+          type: string
+          format: date-time
+        testsCompleted:
+          type: integer
+        testsTotal:
+          type: integer
+
+    EQAOrderSummary:
+      type: object
+      properties:
+        pending:
+          type: integer
+        inProgress:
+          type: integer
+        overdue:
+          type: integer
+        completedThisMonth:
+          type: integer
+
+    # ── Self-Enrollment (My Programs) ──
+
+    EQALabProgramEnrollment:
+      type: object
+      properties:
+        id:
+          type: integer
+        programName:
+          type: string
+        provider:
+          type: string
+        description:
+          type: string
+        isActive:
+          type: boolean
+        createdDate:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+        labUnits:
+          type: array
+          items:
+            $ref: "#/components/schemas/LabUnitRef"
+        tests:
+          type: array
+          items:
+            $ref: "#/components/schemas/TestRef"
+        panels:
+          type: array
+          items:
+            $ref: "#/components/schemas/PanelRef"
+
+    EQALabProgramEnrollmentRequest:
+      type: object
+      required: [programName, provider]
+      properties:
+        programName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        provider:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        isActive:
+          type: boolean
+          default: true
+        labUnitIds:
+          type: array
+          items:
+            type: integer
+        testIds:
+          type: array
+          items:
+            type: integer
+        panelIds:
+          type: array
+          items:
+            type: integer
+
+    LabUnitRef:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+
+    TestRef:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+
+    PanelRef:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+
+    # ── Programs (Extended) ──
+
+    EQAProgramWithCount:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        providerName:
+          type: string
+        description:
+          type: string
+        isActive:
+          type: boolean
+        participantCount:
+          type: integer
+
+    # ── Provider-Side Enrollment ──
+
+    EQAProgramEnrollment:
+      type: object
+      properties:
+        id:
+          type: integer
+        eqaProgramId:
+          type: integer
+        organizationId:
+          type: integer
+        organizationName:
+          type: string
+        organizationCode:
+          type: string
+        district:
+          type: string
+        enrollmentDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [Active, Suspended, Withdrawn]
+        statusChangedDate:
+          type: string
+          format: date-time
+        withdrawalReason:
+          type: string
+        isLocalLab:
+          type: boolean
+
+    EnrollOrganizationsRequest:
+      type: object
+      required: [organizationIds]
+      properties:
+        organizationIds:
+          type: array
+          items:
+            type: integer
+          minItems: 1
+
+    UpdateEnrollmentStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [Active, Suspended, Withdrawn]
+        reason:
+          type: string
+
+    EligibleOrganization:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        code:
+          type: string
+        district:
+          type: string
+        type:
+          type: string
+        isLocalLab:
+          type: boolean
+        isAlreadyEnrolled:
+          type: boolean

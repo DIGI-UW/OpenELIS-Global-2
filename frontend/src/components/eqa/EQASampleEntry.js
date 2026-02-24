@@ -10,15 +10,22 @@ import {
   RadioButton,
   Column,
   Grid,
+  InlineNotification,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 
-const EQASampleEntry = ({ orderFormValues, setOrderFormValues }) => {
+const EQASampleEntry = ({
+  orderFormValues,
+  setOrderFormValues,
+  onMyProgramSelected,
+}) => {
   const intl = useIntl();
   const componentMounted = useRef(false);
   const [eqaPrograms, setEqaPrograms] = useState([]);
+  const [myProgramEnrollments, setMyProgramEnrollments] = useState([]);
   const [providerOrganizations, setProviderOrganizations] = useState([]);
+  const [prePopulatedInfo, setPrePopulatedInfo] = useState(null);
 
   const isEQA = orderFormValues?.sampleOrderItems?.isEQASample || false;
 
@@ -28,6 +35,11 @@ const EQASampleEntry = ({ orderFormValues, setOrderFormValues }) => {
       getFromOpenElisServer("/rest/eqa/programs", (data) => {
         if (componentMounted.current && Array.isArray(data)) {
           setEqaPrograms(data);
+        }
+      });
+      getFromOpenElisServer("/rest/eqa/my-programs", (data) => {
+        if (componentMounted.current && Array.isArray(data)) {
+          setMyProgramEnrollments(data.filter((e) => e.isActive));
         }
       });
       getFromOpenElisServer("/rest/organizations", (data) => {
@@ -42,6 +54,7 @@ const EQASampleEntry = ({ orderFormValues, setOrderFormValues }) => {
   }, [isEQA]);
 
   const handleEQAToggle = (checked) => {
+    setPrePopulatedInfo(null);
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
@@ -51,6 +64,7 @@ const EQASampleEntry = ({ orderFormValues, setOrderFormValues }) => {
           ? {}
           : {
               eqaProgramId: "",
+              eqaMyProgramEnrollmentId: "",
               eqaProviderOrganizationId: "",
               eqaProviderSampleId: "",
               eqaParticipantId: "",
@@ -69,6 +83,42 @@ const EQASampleEntry = ({ orderFormValues, setOrderFormValues }) => {
         [field]: value,
       },
     });
+  };
+
+  const handleMyProgramChange = (enrollmentId) => {
+    handleFieldChange("eqaMyProgramEnrollmentId", enrollmentId);
+    setPrePopulatedInfo(null);
+
+    if (enrollmentId) {
+      getFromOpenElisServer(`/rest/eqa/my-programs/${enrollmentId}`, (data) => {
+        if (componentMounted.current && data) {
+          const testIds = (data.tests || []).map((t) => t.id);
+          const panelIds = (data.panels || []).map((p) => p.id);
+          const labUnitIds = (data.labUnits || []).map((lu) => lu.id);
+
+          setPrePopulatedInfo({
+            programName: data.programName,
+            testCount: testIds.length,
+            panelCount: panelIds.length,
+            labUnitCount: labUnitIds.length,
+          });
+
+          if (onMyProgramSelected) {
+            onMyProgramSelected({
+              enrollmentId: data.id,
+              programName: data.programName,
+              testIds,
+              panelIds,
+              labUnitIds,
+            });
+          }
+        }
+      });
+    } else {
+      if (onMyProgramSelected) {
+        onMyProgramSelected(null);
+      }
+    }
   };
 
   return (
@@ -114,6 +164,58 @@ const EQASampleEntry = ({ orderFormValues, setOrderFormValues }) => {
               ))}
             </Select>
           </Column>
+
+          {myProgramEnrollments.length > 0 && (
+            <Column lg={8} md={4} sm={4}>
+              <Select
+                id="eqa-my-program-select"
+                labelText={intl.formatMessage({
+                  id: "eqa.myProgram.label",
+                })}
+                value={
+                  orderFormValues.sampleOrderItems.eqaMyProgramEnrollmentId ||
+                  ""
+                }
+                onChange={(e) => handleMyProgramChange(e.target.value)}
+                data-testid="eqa-my-program-select"
+                helperText={intl.formatMessage({
+                  id: "eqa.myProgram.helperText",
+                })}
+              >
+                <SelectItem
+                  value=""
+                  text={intl.formatMessage({ id: "eqa.myProgram.select" })}
+                />
+                {myProgramEnrollments.map((enrollment) => (
+                  <SelectItem
+                    key={enrollment.id}
+                    value={String(enrollment.id)}
+                    text={`${enrollment.programName} (${enrollment.provider})`}
+                  />
+                ))}
+              </Select>
+            </Column>
+          )}
+
+          {prePopulatedInfo && (
+            <Column lg={16} md={8} sm={4}>
+              <InlineNotification
+                kind="info"
+                lowContrast
+                hideCloseButton
+                title={intl.formatMessage({
+                  id: "eqa.myProgram.prePopulated.title",
+                })}
+                subtitle={intl.formatMessage(
+                  { id: "eqa.myProgram.prePopulated.subtitle" },
+                  {
+                    tests: prePopulatedInfo.testCount,
+                    panels: prePopulatedInfo.panelCount,
+                  },
+                )}
+              />
+            </Column>
+          )}
 
           <Column lg={8} md={4} sm={4}>
             <Select

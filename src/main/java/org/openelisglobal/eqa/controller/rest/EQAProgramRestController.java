@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.util.ControllerUtills;
+import org.openelisglobal.eqa.service.EQAProgramEnrollmentService;
 import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
@@ -29,6 +30,9 @@ public class EQAProgramRestController extends ControllerUtills {
 
     @Autowired
     private EQAProgramService programService;
+
+    @Autowired
+    private EQAProgramEnrollmentService enrollmentService;
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('EQA Coordinator')")
@@ -195,6 +199,7 @@ public class EQAProgramRestController extends ControllerUtills {
         dto.put("frequency", program.getFrequency());
         dto.put("isActive", program.getIsActive());
         dto.put("fhirUuid", program.getFhirUuid() != null ? program.getFhirUuid().toString() : null);
+        dto.put("participantCount", enrollmentService.countActiveEnrollments(program.getId()));
         return dto;
     }
 

@@ -158,3 +158,7 @@ This wastes 60+ minutes of CI time.
   (005-eqa-module)
 
 **Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0
+
+## Recent Changes
+
+- 005-eqa-module: Added Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript)

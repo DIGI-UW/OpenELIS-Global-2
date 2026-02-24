@@ -8,6 +8,9 @@ import StorageDashboard from "./components/storage/StorageDashboard";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
 import EQAManagementDashboard from "./components/eqa/EQAManagementDashboard";
 import EQADistributionDashboard from "./components/eqa/EQADistributionDashboard";
+import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
+import MyProgramsPage from "./components/eqa/MyProgramsPage";
+import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
 import InventoryManagement from "./components/inventory/InventoryManagement";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
@@ -504,9 +507,27 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
+                  path="/EQAOrders"
+                  exact
+                  component={() => <EQAOrdersPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAMyPrograms"
+                  exact
+                  component={() => <MyProgramsPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
                   path="/EQAManagement"
                   exact
                   component={() => <EQAManagementDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAParticipants"
+                  exact
+                  component={() => <EQAParticipantsPage />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute

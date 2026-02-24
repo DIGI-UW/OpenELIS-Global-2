@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- ============================================================ -->
+  <!-- 1. Deactivate old menu_eqa parent                            -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-010-01" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa' AND is_active = true
+      </sqlCheck>
+    </preConditions>
+    <comment>Deactivate old EQA parent menu item</comment>
+    <update tableName="menu" schemaName="clinlims">
+      <column name="is_active" valueBoolean="false"/>
+      <where>element_id = 'menu_eqa'</where>
+    </update>
+    <rollback>
+      <update tableName="menu" schemaName="clinlims">
+        <column name="is_active" valueBoolean="true"/>
+        <where>element_id = 'menu_eqa'</where>
+      </update>
+    </rollback>
+  </changeSet>
+
+  <!-- Deactivate old child items under menu_eqa -->
+  <changeSet id="eqa-010-02" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa'
+      </sqlCheck>
+    </preConditions>
+    <comment>Deactivate old EQA child menu items</comment>
+    <update tableName="menu" schemaName="clinlims">
+      <column name="is_active" valueBoolean="false"/>
+      <where>parent_id = (SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')</where>
+    </update>
+    <rollback>
+      <update tableName="menu" schemaName="clinlims">
+        <column name="is_active" valueBoolean="true"/>
+        <where>parent_id = (SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')</where>
+      </update>
+    </rollback>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 2. Create "EQA Tests" parent (order 35)                      -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-010-03" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_tests'
+      </sqlCheck>
+    </preConditions>
+    <comment>Create EQA Tests parent menu item</comment>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq"/>
+      <column name="presentation_order" value="35"/>
+      <column name="element_id" value="menu_eqa_tests"/>
+      <column name="display_key" value="banner.menu.eqa.tests"/>
+      <column name="tool_tip_key" value="banner.menu.eqa.tests.tooltip"/>
+      <column name="new_window" valueBoolean="false"/>
+      <column name="is_active" valueBoolean="true"/>
+      <column name="hide_in_old_ui" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+
+  <!-- EQA Tests → Orders (order 1) -->
+  <changeSet id="eqa-010-04" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_orders'
+      </sqlCheck>
+    </preConditions>
+    <comment>Create Orders sub-item under EQA Tests</comment>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq"/>
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa_tests')"/>
+      <column name="presentation_order" value="1"/>
+      <column name="element_id" value="menu_eqa_orders"/>
+      <column name="action_url" value="/EQAOrders"/>
+      <column name="display_key" value="banner.menu.eqa.tests.orders"/>
+      <column name="tool_tip_key" value="banner.menu.eqa.tests.orders.tooltip"/>
+      <column name="new_window" valueBoolean="false"/>
+      <column name="is_active" valueBoolean="true"/>
+      <column name="hide_in_old_ui" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+
+  <!-- EQA Tests → My Programs (order 2) -->
+  <changeSet id="eqa-010-05" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_my_programs'
+      </sqlCheck>
+    </preConditions>
+    <comment>Create My Programs sub-item under EQA Tests</comment>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq"/>
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa_tests')"/>
+      <column name="presentation_order" value="2"/>
+      <column name="element_id" value="menu_eqa_my_programs"/>
+      <column name="action_url" value="/EQAMyPrograms"/>
+      <column name="display_key" value="banner.menu.eqa.tests.myPrograms"/>
+      <column name="tool_tip_key" value="banner.menu.eqa.tests.myPrograms.tooltip"/>
+      <column name="new_window" valueBoolean="false"/>
+      <column name="is_active" valueBoolean="true"/>
+      <column name="hide_in_old_ui" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 3. Create "EQA Management" parent (order 36)                 -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-010-06" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_mgmt'
+      </sqlCheck>
+    </preConditions>
+    <comment>Create EQA Management parent menu item</comment>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq"/>
+      <column name="presentation_order" value="36"/>
+      <column name="element_id" value="menu_eqa_mgmt"/>
+      <column name="display_key" value="banner.menu.eqa.mgmt"/>
+      <column name="tool_tip_key" value="banner.menu.eqa.mgmt.tooltip"/>
+      <column name="new_window" valueBoolean="false"/>
+      <column name="is_active" valueBoolean="true"/>
+      <column name="hide_in_old_ui" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+
+  <!-- EQA Management → Programs (order 1) -->
+  <changeSet id="eqa-010-07" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_mgmt_programs'
+      </sqlCheck>
+    </preConditions>
+    <comment>Create Programs sub-item under EQA Management</comment>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq"/>
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa_mgmt')"/>
+      <column name="presentation_order" value="1"/>
+      <column name="element_id" value="menu_eqa_mgmt_programs"/>
+      <column name="action_url" value="/EQAManagement"/>
+      <column name="display_key" value="banner.menu.eqa.mgmt.programs"/>
+      <column name="tool_tip_key" value="banner.menu.eqa.mgmt.programs.tooltip"/>
+      <column name="new_window" valueBoolean="false"/>
+      <column name="is_active" valueBoolean="true"/>
+      <column name="hide_in_old_ui" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+
+  <!-- EQA Management → Participants (order 2) -->
+  <changeSet id="eqa-010-08" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_mgmt_participants'
+      </sqlCheck>
+    </preConditions>
+    <comment>Create Participants sub-item under EQA Management</comment>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq"/>
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa_mgmt')"/>
+      <column name="presentation_order" value="2"/>
+      <column name="element_id" value="menu_eqa_mgmt_participants"/>
+      <column name="action_url" value="/EQAParticipants"/>
+      <column name="display_key" value="banner.menu.eqa.mgmt.participants"/>
+      <column name="tool_tip_key" value="banner.menu.eqa.mgmt.participants.tooltip"/>
+      <column name="new_window" valueBoolean="false"/>
+      <column name="is_active" valueBoolean="true"/>
+      <column name="hide_in_old_ui" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+
+  <!-- EQA Management → Distributions (order 3) -->
+  <changeSet id="eqa-010-09" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_mgmt_distributions'
+      </sqlCheck>
+    </preConditions>
+    <comment>Create Distributions sub-item under EQA Management</comment>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq"/>
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa_mgmt')"/>
+      <column name="presentation_order" value="3"/>
+      <column name="element_id" value="menu_eqa_mgmt_distributions"/>
+      <column name="action_url" value="/EQADistribution"/>
+      <column name="display_key" value="banner.menu.eqa.mgmt.distributions"/>
+      <column name="tool_tip_key" value="banner.menu.eqa.mgmt.distributions.tooltip"/>
+      <column name="new_window" valueBoolean="false"/>
+      <column name="is_active" valueBoolean="true"/>
+      <column name="hide_in_old_ui" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+
+  <!-- EQA Management → Results & Analysis (order 4) -->
+  <changeSet id="eqa-010-10" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_mgmt_results'
+      </sqlCheck>
+    </preConditions>
+    <comment>Create Results and Analysis sub-item under EQA Management</comment>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq"/>
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa_mgmt')"/>
+      <column name="presentation_order" value="4"/>
+      <column name="element_id" value="menu_eqa_mgmt_results"/>
+      <column name="action_url" value="/EQAResults"/>
+      <column name="display_key" value="banner.menu.eqa.mgmt.results"/>
+      <column name="tool_tip_key" value="banner.menu.eqa.mgmt.results.tooltip"/>
+      <column name="new_window" valueBoolean="false"/>
+      <column name="is_active" valueBoolean="true"/>
+      <column name="hide_in_old_ui" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 4. Move Alerts to standalone top-level (order 38)            -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-010-11" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_alerts'
+      </sqlCheck>
+    </preConditions>
+    <comment>Create new standalone Alerts menu item at top-level</comment>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq"/>
+      <column name="presentation_order" value="38"/>
+      <column name="element_id" value="menu_alerts_standalone"/>
+      <column name="action_url" value="/Alerts"/>
+      <column name="display_key" value="banner.menu.alerts"/>
+      <column name="tool_tip_key" value="banner.menu.alerts.tooltip"/>
+      <column name="new_window" valueBoolean="false"/>
+      <column name="is_active" valueBoolean="true"/>
+      <column name="hide_in_old_ui" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 5. Register new URLs with EQAView system module              -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-010-12" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'EQAView'
+      </sqlCheck>
+    </preConditions>
+    <comment>Register new page URLs with EQAView system module</comment>
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/EQAOrders"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'EQAView')"/>
+    </insert>
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/EQAMyPrograms"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'EQAView')"/>
+    </insert>
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/EQAParticipants"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'EQAView')"/>
+    </insert>
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/EQAResults"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'EQAView')"/>
+    </insert>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 6. Localization for new menu items                           -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-010-13" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.localization WHERE description = 'banner.menu.eqa.tests'
+      </sqlCheck>
+    </preConditions>
+    <comment>Add localization entries for restructured EQA menu items</comment>
+    <sql>
+      INSERT INTO clinlims.localization (id, description, english, french, lastupdated)
+      VALUES
+      (nextval('localization_seq'), 'banner.menu.eqa.tests', 'EQA Tests', 'Tests EQE', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.tests.tooltip', 'EQA test orders and program enrollment', 'Commandes de tests EQE et inscription aux programmes', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.tests.orders', 'Orders', 'Commandes', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.tests.orders.tooltip', 'View and manage EQA test orders', 'Voir et gérer les commandes de tests EQE', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.tests.myPrograms', 'My Programs', 'Mes programmes', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.tests.myPrograms.tooltip', 'Manage self-enrollment in external EQA programs', 'Gérer l''inscription aux programmes EQE externes', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.mgmt', 'EQA Management', 'Gestion EQE', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.tooltip', 'Manage EQA programs, participants, and distributions', 'Gérer les programmes EQE, participants et distributions', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.programs', 'Programs', 'Programmes', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.programs.tooltip', 'Create and manage EQA programs', 'Créer et gérer les programmes EQE', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.participants', 'Participants', 'Participants', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.participants.tooltip', 'Manage organization enrollment in EQA programs', 'Gérer l''inscription des organisations aux programmes EQE', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.distributions', 'Distributions', 'Distributions', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.distributions.tooltip', 'Create and manage EQA distributions', 'Créer et gérer les distributions EQE', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.results', 'Results &amp; Analysis', 'Résultats et analyse', CURRENT_TIMESTAMP),
+      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.results.tooltip', 'EQA results collection and statistical analysis', 'Collecte de résultats et analyse statistique EQE', CURRENT_TIMESTAMP);
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

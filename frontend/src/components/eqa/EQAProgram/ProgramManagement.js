@@ -86,6 +86,13 @@ const ProgramManagement = () => {
   };
 
   const activeCount = programs.filter((p) => p.isActive).length;
+  const totalParticipants = programs.reduce(
+    (sum, p) => sum + (p.participantCount || 0),
+    0,
+  );
+  const activeParticipants = programs
+    .filter((p) => p.isActive)
+    .reduce((sum, p) => sum + (p.participantCount || 0), 0);
 
   const headers = [
     {
@@ -105,6 +112,10 @@ const ProgramManagement = () => {
       header: intl.formatMessage({ id: "eqa.admin.col.frequency" }),
     },
     {
+      key: "participantCount",
+      header: intl.formatMessage({ id: "eqa.admin.col.participants" }),
+    },
+    {
       key: "status",
       header: intl.formatMessage({ id: "eqa.program.status" }),
     },
@@ -120,6 +131,7 @@ const ProgramManagement = () => {
     providerName: p.providerName || "",
     category: p.category || "",
     frequency: p.frequency || "",
+    participantCount: p.participantCount != null ? p.participantCount : 0,
     status: p.isActive
       ? intl.formatMessage({ id: "eqa.program.active" })
       : intl.formatMessage({ id: "eqa.program.inactive" }),
@@ -208,7 +220,7 @@ const ProgramManagement = () => {
             <div
               style={{ fontSize: "2rem", fontWeight: 700, margin: "0.25rem 0" }}
             >
-              —
+              {activeParticipants}
             </div>
             <div style={{ fontSize: "0.75rem", color: "#0043ce" }}>
               {intl.formatMessage({ id: "eqa.admin.tile.acrossAllPrograms" })}
@@ -241,7 +253,7 @@ const ProgramManagement = () => {
             <div
               style={{ fontSize: "2rem", fontWeight: 700, margin: "0.25rem 0" }}
             >
-              —
+              {totalParticipants}
             </div>
             <div style={{ fontSize: "0.75rem", color: "#7e22ce" }}>
               {intl.formatMessage({ id: "eqa.admin.tile.acrossAllPrograms" })}

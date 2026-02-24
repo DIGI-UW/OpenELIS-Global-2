@@ -68,5 +68,12 @@
 
   <!-- EQA Program Administration columns (provider, category, frequency) -->
   <include relativeToChangelogFile="true" file="eqa-008-add-program-admin-columns.xml"/>
+
+  <!-- EQA Enrollment tables (provider-side + self-enrollment + mappings) -->
+  <include relativeToChangelogFile="true" file="eqa-009-create-enrollment-tables.xml"/>
+
+  <!-- EQA Navigation restructure (EQA Tests + EQA Management + standalone Alerts) -->
+  <include relativeToChangelogFile="true" file="eqa-010-restructure-menu.xml"/>
+
   <include relativeToChangelogFile="true" file="029-add-gps-coordinates-to-sample.xml"/>
 </databaseChangeLog>

@@ -70,8 +70,12 @@ describe("ProgramManagement", () => {
 
   test("renders program list from API", () => {
     renderWithIntl(<ProgramManagement />);
-    expect(screen.getByText("Chemistry PT")).toBeTruthy();
-    expect(screen.getByText("Hematology PT")).toBeTruthy();
+    expect(screen.getAllByText("Chemistry PT").length).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(screen.getAllByText("Hematology PT").length).toBeGreaterThanOrEqual(
+      1,
+    );
   });
 
   test("renders provider and category columns", () => {
@@ -91,7 +95,9 @@ describe("ProgramManagement", () => {
   test("renders summary tiles", () => {
     renderWithIntl(<ProgramManagement />);
     expect(screen.getByText("Active Programs")).toBeTruthy();
-    expect(screen.getByText("System Users")).toBeTruthy();
+    expect(
+      screen.getAllByText("Enrolled Participants").length,
+    ).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Total Participants")).toBeTruthy();
   });
 
@@ -100,9 +106,9 @@ describe("ProgramManagement", () => {
     expect(screen.getAllByText("EQA Programs").length).toBeGreaterThanOrEqual(
       1,
     );
-    expect(
-      screen.getAllByText("User Management").length,
-    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Participants").length).toBeGreaterThanOrEqual(
+      1,
+    );
     expect(
       screen.getAllByText("System Settings").length,
     ).toBeGreaterThanOrEqual(1);

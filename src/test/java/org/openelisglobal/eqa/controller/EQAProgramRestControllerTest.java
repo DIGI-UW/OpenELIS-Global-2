@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.eqa.controller.rest.EQAProgramRestController;
+import org.openelisglobal.eqa.service.EQAProgramEnrollmentService;
 import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
@@ -32,6 +33,9 @@ public class EQAProgramRestControllerTest {
 
     @Mock
     private EQAProgramService programService;
+
+    @Mock
+    private EQAProgramEnrollmentService enrollmentService;
 
     @Mock
     private HttpServletRequest request;
