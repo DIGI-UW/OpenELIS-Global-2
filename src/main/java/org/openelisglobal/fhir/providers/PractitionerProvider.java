@@ -27,7 +27,6 @@ import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Encounter;
 import org.hl7.fhir.r4.model.IdType;
-import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.common.log.LogEvent;
@@ -104,31 +103,20 @@ public class PractitionerProvider implements IResourceProvider {
             }
 
             Provider provider = fhirTransformService.transformToProvider(practitioner);
-            provider.getPerson().setSysUserId(ControllerUtills.getSysUserId(request));
+            provider.getPerson().setSysUserId(FhirProviderUtils.getSysUserId(request));
             Person savedPerson = personService.save(provider.getPerson());
             provider.setPerson(savedPerson);
 
             Provider providerTosave = providerService.save(provider);
 
             Practitioner practitionerToSave = fhirTransformService.transformProviderToPractitioner(providerTosave);
-
-            try {
-                fhirPersistenceService.updateFhirResourceInFhirStore(practitionerToSave);
-            } catch (Exception syncEx) {
-                LogEvent.logError(this.getClass().getSimpleName(), method,
-                        "FHIR store sync failed (continuing anyway): " + syncEx.getMessage());
-            }
+            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, practitionerToSave,
+                    this.getClass().getSimpleName(), method);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), method,
                     "Successfully created Practitioner with UUID: " + provider.getFhirUuidAsString());
 
-            MethodOutcome outcome = new MethodOutcome();
-            outcome.setId(practitionerToSave.getIdElement());
-            outcome.setResource(practitionerToSave);
-            outcome.setCreated(true);
-            outcome.setResponseStatusCode(201);
-
-            return outcome;
+            return FhirProviderUtils.buildCreateOutcome(practitionerToSave);
 
         } catch (UnprocessableEntityException | InvalidRequestException e) {
             throw e;
@@ -152,12 +140,7 @@ public class PractitionerProvider implements IResourceProvider {
 
         try {
 
-            if (theId == null || !theId.hasIdPart()) {
-
-                LogEvent.logError(this.getClass().getSimpleName(), method, "Missing Practitioner ID for update");
-
-                throw new InvalidRequestException("Practitioner ID must be provided for update");
-            }
+            FhirProviderUtils.validateIdParam(theId, "Practitioner", this.getClass().getSimpleName(), method);
 
             practitioner.setId(theId);
 
@@ -167,28 +150,18 @@ public class PractitionerProvider implements IResourceProvider {
 
             fhirTransformService.addHumanNameToPerson(practitioner.getNameFirstRep(), existingPerson);
             fhirTransformService.addTelecomToPerson(practitioner.getTelecom(), existingPerson);
-            existingPerson.setSysUserId(ControllerUtills.getSysUserId(request));
+            existingPerson.setSysUserId(FhirProviderUtils.getSysUserId(request));
             Person updatedPerson = personService.save(existingPerson);
             provider.setPerson(updatedPerson);
             Provider providerToUpdate = providerService.save(provider);
             Practitioner practitionerToSave = fhirTransformService.transformProviderToPractitioner(providerToUpdate);
-            try {
-                fhirPersistenceService.updateFhirResourceInFhirStore(practitionerToSave);
-            } catch (Exception syncEx) {
-                LogEvent.logError(this.getClass().getSimpleName(), method,
-                        "FHIR store sync failed during update (continuing anyway): " + syncEx.getMessage());
-            }
+            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, practitionerToSave,
+                    this.getClass().getSimpleName(), method);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), method,
                     "Successfully updated Practitioner with ID: " + theId.getIdPart());
 
-            MethodOutcome outcome = new MethodOutcome();
-            outcome.setId(practitionerToSave.getIdElement());
-            outcome.setResource(practitionerToSave);
-            outcome.setCreated(false);
-            outcome.setResponseStatusCode(200);
-
-            return outcome;
+            return FhirProviderUtils.buildUpdateOutcome(practitionerToSave);
 
         } catch (UnprocessableEntityException | InvalidRequestException e) {
             throw e;
@@ -211,10 +184,7 @@ public class PractitionerProvider implements IResourceProvider {
 
         try {
 
-            if (theId == null || !theId.hasIdPart()) {
-                LogEvent.logError(this.getClass().getSimpleName(), method, "Missing Practitioner ID for delete");
-                throw new InvalidRequestException("Practitioner ID must be provided for delete");
-            }
+            FhirProviderUtils.validateIdParam(theId, "Practitioner", this.getClass().getSimpleName(), method);
 
             Provider provider = providerService.getProviderByFhirId(UUID.fromString(theId.getIdPart()));
 
@@ -223,31 +193,18 @@ public class PractitionerProvider implements IResourceProvider {
             }
 
             provider.setActive(false);
-            provider.setSysUserId(ControllerUtills.getSysUserId(request));
+            provider.setSysUserId(FhirProviderUtils.getSysUserId(request));
             providerService.save(provider);
 
-            try {
-                Practitioner practitionerToDelete = fhirTransformService.transformProviderToPractitioner(provider);
-                practitionerToDelete.setActive(false);
-                fhirPersistenceService.updateFhirResourceInFhirStore(practitionerToDelete);
-            } catch (Exception syncEx) {
-                LogEvent.logError(this.getClass().getSimpleName(), method,
-                        "FHIR store sync failed during delete (continuing anyway): " + syncEx.getMessage());
-            }
+            Practitioner practitionerToDelete = fhirTransformService.transformProviderToPractitioner(provider);
+            practitionerToDelete.setActive(false);
+            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, practitionerToDelete,
+                    this.getClass().getSimpleName(), method);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), method,
                     "Successfully deleted Practitioner with ID: " + theId.getIdPart());
 
-            MethodOutcome outcome = new MethodOutcome();
-            outcome.setId(theId);
-            outcome.setResponseStatusCode(204);
-
-            OperationOutcome operationOutcome = new OperationOutcome();
-            operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.INFORMATION)
-                    .setDiagnostics("Practitioner " + theId.getIdPart() + " has been deleted");
-            outcome.setOperationOutcome(operationOutcome);
-
-            return outcome;
+            return FhirProviderUtils.buildDeleteOutcome(theId, "Practitioner");
 
         } catch (ResourceNotFoundException | InvalidRequestException e) {
             throw e;
