@@ -36,7 +36,6 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setUp() throws Exception {
-        // Load test data (critical!)
         executeDataSetWithStateManagement("testdata/result.xml");
 
         fhirServlet = new RestfulServer(FhirContext.forR4());
@@ -49,17 +48,18 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void readObservation_shouldReturnSuccess() throws Exception {
-        // Use a real FHIR UUID from result.xml
         String fhirUuid = "550e8400-e29b-41d4-a716-446655440003";
 
-        // Optional: verify it exists
         Result result = resultService.getResultByFhirUuid(fhirUuid);
-        assertNotNull("Result not found", result);
+        assertNotNull("Result not found in test data", result);
 
-        // Test GET request
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setMethod("GET");
+        request.setContextPath("");
+        request.setServletPath("/fhir/facade");
+        request.setPathInfo("/Observation/" + fhirUuid);
         request.setRequestURI("/fhir/facade/Observation/" + fhirUuid);
+        request.setContentType("application/fhir+json");
         request.addHeader("Accept", "application/fhir+json");
 
         MockHttpServletResponse response = new MockHttpServletResponse();
