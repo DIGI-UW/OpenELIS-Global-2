@@ -99,6 +99,7 @@ public final class FhirProviderUtils {
      * @param callerClassName the caller's class name for logging
      * @param method          the calling method name for logging
      */
+
     public static void validateIdParam(IdType theId, String resourceType, String callerClassName, String method) {
         if (theId == null || !theId.hasIdPart()) {
             LogEvent.logError(callerClassName, method, "Missing " + resourceType + " ID for " + method);
