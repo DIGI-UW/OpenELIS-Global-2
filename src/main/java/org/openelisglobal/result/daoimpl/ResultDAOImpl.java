@@ -18,6 +18,7 @@ package org.openelisglobal.result.daoimpl;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Date;
 import java.util.List;
+import java.util.UUID;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -423,5 +424,19 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
             handleException(e, "getResultsForTestSectionInDateRange");
         }
         return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Result getResultByFhirUuid(String fhirUuid) throws LIMSRuntimeException {
+        try {
+            String sql = "FROM Result r WHERE r.fhirUuid = :fhirUuid";
+            Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);
+            query.setParameter("fhirUuid", UUID.fromString(fhirUuid));
+            return query.uniqueResult();
+        } catch (RuntimeException e) {
+            handleException(e, "getResultByFhirUuid");
+            return null;
+        }
     }
 }

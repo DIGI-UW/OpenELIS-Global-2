@@ -225,5 +225,16 @@
         system_user_id="2" is_supervisor="false"
         lastupdated="2025-07-06 08:00:00.000" non_user_name="External Doctor" />
 
+    <!-- Person -->
+    <person id="1" last_name="Doe" first_name="John"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Patient -->
+    <patient id="1" person_id="1" lastupdated="2023-11-01 12:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440001" />
+
+    <!-- Sample Human -->
+    <sample_human id="1" samp_id="1" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
 
 </dataset>

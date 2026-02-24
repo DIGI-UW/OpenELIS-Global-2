@@ -73,4 +73,6 @@ public interface ResultService extends BaseObjectService<Result, String> {
     String getResultValueForDisplay(Result result, String string, boolean b, boolean c);
 
     String getUOM(Result result);
+
+    Result getResultByFhirUuid(String fhirUuid);
 }

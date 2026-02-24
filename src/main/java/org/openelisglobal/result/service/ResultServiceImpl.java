@@ -691,4 +691,10 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
     public List<Result> getPageOfResults(int startingRecNo) {
         return getBaseObjectDAO().getPageOfResults(startingRecNo);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Result getResultByFhirUuid(String fhirUuid) {
+        return baseObjectDAO.getResultByFhirUuid(fhirUuid);
+    }
 }
