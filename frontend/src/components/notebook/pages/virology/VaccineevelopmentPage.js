@@ -7,7 +7,6 @@ import {
   Select,
   SelectItem,
   FileUploader,
-  NumberInput,
   DatePicker,
   DatePickerInput,
   TextArea,
@@ -288,9 +287,9 @@ const VaccineevelopmentPage = ({
         </Column>
 
         <Column lg={8}>
-          <NumberInput
+          <TextInput
             id="passage-number"
-            label={
+            labelText={
               <FormattedMessage
                 id="vaccine.development.passageNumber"
                 defaultMessage="Passage Number *"
@@ -306,8 +305,9 @@ const VaccineevelopmentPage = ({
                 },
               }))
             }
-            min={0}
-            step={1}
+            type="number"
+            step="1"
+            min="0"
             helperText="Track viral passage history for strain stability"
           />
         </Column>
@@ -337,9 +337,9 @@ const VaccineevelopmentPage = ({
         </Column>
 
         <Column lg={8}>
-          <NumberInput
+          <TextInput
             id="initial-titer"
-            label={
+            labelText={
               <FormattedMessage
                 id="vaccine.development.initialTiter"
                 defaultMessage="Initial Titer (Log10)"
@@ -355,8 +355,9 @@ const VaccineevelopmentPage = ({
                 },
               }))
             }
-            step={0.1}
-            min={0}
+            type="number"
+            step="0.1"
+            min="0"
             helperText="Initial viral titer at isolation (TCID50/ml or PFU/ml)"
           />
         </Column>
@@ -519,9 +520,9 @@ const VaccineevelopmentPage = ({
         </Column>
 
         <Column lg={8}>
-          <NumberInput
+          <TextInput
             id="tcid50-value"
-            label={
+            labelText={
               <FormattedMessage
                 id="vaccine.development.tcid50"
                 defaultMessage="TCID50/ml (Log10)"
@@ -537,16 +538,17 @@ const VaccineevelopmentPage = ({
                 },
               }))
             }
-            step={0.1}
-            min={0}
+            type="number"
+            step="0.1"
+            min="0"
             helperText="50% tissue culture infectious dose per ml"
           />
         </Column>
 
         <Column lg={8}>
-          <NumberInput
+          <TextInput
             id="pfu-value"
-            label={
+            labelText={
               <FormattedMessage
                 id="vaccine.development.pfuMl"
                 defaultMessage="PFU/ml (Log10)"
@@ -562,16 +564,17 @@ const VaccineevelopmentPage = ({
                 },
               }))
             }
-            step={0.1}
-            min={0}
+            type="number"
+            step="0.1"
+            min="0"
             helperText="Plaque forming units per ml"
           />
         </Column>
 
         <Column lg={8}>
-          <NumberInput
+          <TextInput
             id="ha-titer"
-            label={
+            labelText={
               <FormattedMessage
                 id="vaccine.development.haTiter"
                 defaultMessage="HA Titer (HAU/ml)"
@@ -587,8 +590,9 @@ const VaccineevelopmentPage = ({
                 },
               }))
             }
-            step={1}
-            min={0}
+            type="number"
+            step="1"
+            min="0"
             helperText="Hemagglutination units per ml"
           />
         </Column>
@@ -672,9 +676,9 @@ const VaccineevelopmentPage = ({
         </Column>
 
         <Column lg={8}>
-          <NumberInput
+          <TextInput
             id="replicates"
-            label={
+            labelText={
               <FormattedMessage
                 id="vaccine.development.replicates"
                 defaultMessage="Number of Replicates *"
@@ -690,9 +694,10 @@ const VaccineevelopmentPage = ({
                 },
               }))
             }
-            min={1}
-            max={96}
-            step={1}
+            type="number"
+            step="1"
+            min="1"
+            max="96"
             helperText="Typical: 3-6 wells per dilution"
           />
         </Column>
@@ -1078,9 +1083,9 @@ const VaccineevelopmentPage = ({
         </Column>
 
         <Column lg={8}>
-          <NumberInput
+          <TextInput
             id="passage-level"
-            label={
+            labelText={
               <FormattedMessage
                 id="vaccine.development.passageLevel"
                 defaultMessage="Passage Level"
@@ -1096,8 +1101,9 @@ const VaccineevelopmentPage = ({
                 },
               }))
             }
-            step={1}
-            min={0}
+            type="number"
+            step="1"
+            min="0"
           />
         </Column>
 
@@ -1222,9 +1228,9 @@ const VaccineevelopmentPage = ({
         </Column>
 
         <Column lg={8}>
-          <NumberInput
+          <TextInput
             id="animal-count"
-            label={
+            labelText={
               <FormattedMessage
                 id="vaccine.development.animalCount"
                 defaultMessage="Number of Animals"
@@ -1240,8 +1246,9 @@ const VaccineevelopmentPage = ({
                 },
               }))
             }
-            step={1}
-            min={1}
+            type="number"
+            step="1"
+            min="1"
           />
         </Column>
 
@@ -1420,9 +1427,9 @@ const VaccineevelopmentPage = ({
         </Column>
 
         <Column lg={8}>
-          <NumberInput
+          <TextInput
             id="participant-count"
-            label={
+            labelText={
               <FormattedMessage
                 id="vaccine.development.participantCount"
                 defaultMessage="Participant Count"
@@ -1438,8 +1445,9 @@ const VaccineevelopmentPage = ({
                 },
               }))
             }
-            step={1}
-            min={1}
+            type="number"
+            step="1"
+            min="1"
           />
         </Column>
 

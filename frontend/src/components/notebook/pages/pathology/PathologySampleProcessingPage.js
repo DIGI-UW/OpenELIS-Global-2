@@ -89,7 +89,7 @@ function PathologySampleProcessingPage({
 
   // Create Children Modal state
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [childCount, setChildCount] = useState(1);
+  const [childCount, setChildCount] = useState("1");
   const [externalIdPrefix, setExternalIdPrefix] = useState("PATH-C");
   const [creating, setCreating] = useState(false);
 
@@ -1325,17 +1325,18 @@ function PathologySampleProcessingPage({
           {childTypeOptions.find((opt) => opt.id === childType)?.description}
         </p>
 
-        <NumberInput
+        <TextInput
           id="childCount"
-          label={intl.formatMessage({
+          labelText={intl.formatMessage({
             id: "pathology.page.processing.createModal.childCount",
             defaultMessage: "Children per Parent",
           })}
           value={childCount}
-          onChange={(e, { value }) => setChildCount(value)}
-          min={1}
-          max={10}
-          step={1}
+          onChange={(e) => setChildCount(e.target.value)}
+          type="number"
+          min="1"
+          max="10"
+          step="1"
           style={{ marginBottom: "1rem" }}
         />
 

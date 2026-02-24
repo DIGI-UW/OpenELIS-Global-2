@@ -92,12 +92,12 @@ function ImmunologyChildSampleCreationPage({
     childSampleType: "",
 
     // Extraction details
-    extractionVolume: "",
+    extractionVolume: "100",
     extractionVolumeUnit: "uL",
 
     // Parent sample tracking
     trackRemainingVolume: true,
-    remainingParentVolume: "",
+    remainingParentVolume: "500",
     remainingParentVolumeUnit: "uL",
 
     // Notes
@@ -876,22 +876,23 @@ function ImmunologyChildSampleCreationPage({
             >
               <Grid narrow>
                 <Column lg={4} md={4} sm={4}>
-                  <NumberInput
+                  <TextInput
                     id="childCountPerParent"
-                    label={intl.formatMessage({
+                    labelText={intl.formatMessage({
                       id: "notebook.immunology.child.count",
                       defaultMessage: "Children per Parent",
                     })}
                     value={creationValues.childCountPerParent}
-                    onChange={(e, { value }) =>
+                    onChange={(e) =>
                       setCreationValues((prev) => ({
                         ...prev,
-                        childCountPerParent: value,
+                        childCountPerParent: e.target.value,
                       }))
                     }
-                    min={1}
-                    max={20}
-                    step={1}
+                    type="number"
+                    min="1"
+                    max="20"
+                    step="1"
                   />
                 </Column>
                 <Column lg={6} md={4} sm={4}>
@@ -965,21 +966,23 @@ function ImmunologyChildSampleCreationPage({
             >
               <Grid narrow>
                 <Column lg={4} md={3} sm={2}>
-                  <NumberInput
+                  <TextInput
                     id="extractionVolume"
-                    label={intl.formatMessage({
+                    labelText={intl.formatMessage({
                       id: "notebook.immunology.child.extractionVolume",
                       defaultMessage: "Extraction Volume (per child)",
                     })}
                     value={creationValues.extractionVolume}
-                    onChange={(e, { value }) =>
+                    onChange={(e) =>
                       setCreationValues((prev) => ({
                         ...prev,
-                        extractionVolume: value,
+                        extractionVolume: e.target.value,
                       }))
                     }
-                    min={0}
-                    step={0.1}
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="100"
                   />
                 </Column>
                 <Column lg={2} md={1} sm={2}>
@@ -1020,21 +1023,23 @@ function ImmunologyChildSampleCreationPage({
                 {creationValues.trackRemainingVolume && (
                   <>
                     <Column lg={4} md={3} sm={2}>
-                      <NumberInput
+                      <TextInput
                         id="remainingParentVolume"
-                        label={intl.formatMessage({
+                        labelText={intl.formatMessage({
                           id: "notebook.immunology.child.remainingVolume",
                           defaultMessage: "Remaining Parent Volume",
                         })}
                         value={creationValues.remainingParentVolume}
-                        onChange={(e, { value }) =>
+                        onChange={(e) =>
                           setCreationValues((prev) => ({
                             ...prev,
-                            remainingParentVolume: value,
+                            remainingParentVolume: e.target.value,
                           }))
                         }
-                        min={0}
-                        step={0.1}
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        placeholder="500"
                       />
                     </Column>
                     <Column lg={2} md={1} sm={2}>

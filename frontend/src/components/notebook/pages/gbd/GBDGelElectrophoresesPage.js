@@ -12,7 +12,6 @@ import {
   Modal,
   TextInput,
   Dropdown,
-  NumberInput,
   DatePickerInput,
   Grid,
   Column,
@@ -1157,41 +1156,35 @@ export const GBDGelElectrophoresesPage = ({
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="product-size"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.gbd.gel.productSize",
                 defaultMessage: "Observed Product Size (bp)",
               })}
               value={productSize}
-              onChange={(e) =>
-                setProductSize(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={10}
-              min={50}
-              max={15000}
+              onChange={(e) => setProductSize(e.target.value)}
+              type="number"
+              step="10"
+              min="50"
+              max="15000"
               placeholder="500"
             />
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="concentration"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.gbd.gel.concentration",
                 defaultMessage: "Concentration (ng/µL)",
               })}
               value={concentration}
-              onChange={(e) =>
-                setConcentration(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={0.1}
-              min={0}
-              max={5000}
+              onChange={(e) => setConcentration(e.target.value)}
+              type="number"
+              step="0.1"
+              min="0"
+              max="5000"
               placeholder="50"
             />
           </Column>

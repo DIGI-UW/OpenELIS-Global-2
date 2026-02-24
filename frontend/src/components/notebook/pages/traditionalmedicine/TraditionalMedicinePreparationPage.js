@@ -14,9 +14,9 @@ import {
   Tag,
   Modal,
   Dropdown,
+  TextInput,
   TextArea,
   Loading,
-  NumberInput,
   InlineNotification,
 } from "@carbon/react";
 import {
@@ -814,130 +814,116 @@ function TraditionalMedicinePreparationPage({
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="weight-before"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.page.tradmed.prep.modal.weightBefore",
                 defaultMessage: "Weight Before (g)",
               })}
               value={weightBefore}
-              onChange={(e) =>
-                setWeightBefore(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={0.1}
+              onChange={(e) => setWeightBefore(e.target.value)}
+              type="number"
+              step="0.1"
+              placeholder="0.0"
             />
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="weight-after"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.page.tradmed.prep.modal.weightAfter",
                 defaultMessage: "Weight After (g)",
               })}
               value={weightAfter}
-              onChange={(e) =>
-                setWeightAfter(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={0.1}
+              onChange={(e) => setWeightAfter(e.target.value)}
+              type="number"
+              step="0.1"
+              placeholder="0.0"
             />
           </Column>
 
           {dryingMethod?.id === "oven_drying" && (
             <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-              <NumberInput
+              <TextInput
                 id="drying-temp"
-                label={intl.formatMessage({
+                labelText={intl.formatMessage({
                   id: "notebook.page.tradmed.prep.modal.dryingTemp",
                   defaultMessage: "Drying Temperature (°C)",
                 })}
                 value={dryingTemperature}
-                onChange={(e) =>
-                  setDryingTemperature(
-                    e.imaginaryTarget?.value || e.target?.value || "",
-                  )
-                }
-                step={1}
+                onChange={(e) => setDryingTemperature(e.target.value)}
+                type="number"
+                step="1"
+                placeholder="60"
               />
             </Column>
           )}
 
           {dryingMethod?.id === "oven_drying" && (
             <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-              <NumberInput
+              <TextInput
                 id="drying-duration"
-                label={intl.formatMessage({
+                labelText={intl.formatMessage({
                   id: "notebook.page.tradmed.prep.modal.dryingDuration",
                   defaultMessage: "Drying Duration (hours)",
                 })}
                 value={dryingDuration}
-                onChange={(e) =>
-                  setDryingDuration(
-                    e.imaginaryTarget?.value || e.target?.value || "",
-                  )
-                }
-                step={0.5}
+                onChange={(e) => setDryingDuration(e.target.value)}
+                type="number"
+                step="0.5"
+                placeholder="24"
               />
             </Column>
           )}
 
           {dryingMethod?.id === "freeze_drying" && (
             <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-              <NumberInput
+              <TextInput
                 id="freeze-drying-temp"
-                label={intl.formatMessage({
+                labelText={intl.formatMessage({
                   id: "notebook.page.tradmed.prep.modal.freezeDryingTemp",
                   defaultMessage: "Cooling Temperature (°C)",
                 })}
                 value={freezeDryingTemperature}
-                onChange={(e) =>
-                  setFreezeDryingTemperature(
-                    e.imaginaryTarget?.value || e.target?.value || "",
-                  )
-                }
-                step={1}
+                onChange={(e) => setFreezeDryingTemperature(e.target.value)}
+                type="number"
+                step="1"
+                placeholder="-80"
               />
             </Column>
           )}
 
           {dryingMethod?.id === "freeze_drying" && (
             <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-              <NumberInput
+              <TextInput
                 id="freeze-drying-vacuum"
-                label={intl.formatMessage({
+                labelText={intl.formatMessage({
                   id: "notebook.page.tradmed.prep.modal.freezeDryingVacuum",
                   defaultMessage: "Vacuum Pressure (mBar)",
                 })}
                 value={freezeDryingVacuum}
-                onChange={(e) =>
-                  setFreezeDryingVacuum(
-                    e.imaginaryTarget?.value || e.target?.value || "",
-                  )
-                }
-                step={0.1}
+                onChange={(e) => setFreezeDryingVacuum(e.target.value)}
+                type="number"
+                step="0.1"
+                placeholder="0.1"
               />
             </Column>
           )}
 
           {dryingMethod?.id === "freeze_drying" && (
             <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-              <NumberInput
+              <TextInput
                 id="freeze-drying-sublimation"
-                label={intl.formatMessage({
+                labelText={intl.formatMessage({
                   id: "notebook.page.tradmed.prep.modal.freezeDryingSublimation",
                   defaultMessage: "Sublimation Time (hours)",
                 })}
                 value={freezeDryingSublimationTime}
-                onChange={(e) =>
-                  setFreezeDryingSublimationTime(
-                    e.imaginaryTarget?.value || e.target?.value || "",
-                  )
-                }
-                step={0.5}
+                onChange={(e) => setFreezeDryingSublimationTime(e.target.value)}
+                type="number"
+                step="0.5"
+                placeholder="24"
               />
             </Column>
           )}

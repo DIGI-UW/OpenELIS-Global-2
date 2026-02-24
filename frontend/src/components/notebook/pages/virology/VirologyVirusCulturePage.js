@@ -623,30 +623,32 @@ function VirologyVirusCulturePage({
             placeholder="37"
           />
 
-          <NumberInput
+          <TextInput
             id="co2Percentage"
-            label={intl.formatMessage({
+            labelText={intl.formatMessage({
               id: "virology.culture.modal.co2",
               defaultMessage: "CO₂ Percentage (%)",
             })}
             value={co2Percentage}
             onChange={(e) => setCo2Percentage(e.target.value)}
-            min={0}
-            max={100}
-            step={0.1}
+            type="number"
+            min="0"
+            max="100"
+            step="0.1"
             placeholder="5"
           />
 
-          <NumberInput
+          <TextInput
             id="durationHours"
-            label={intl.formatMessage({
+            labelText={intl.formatMessage({
               id: "virology.culture.modal.duration",
               defaultMessage: "Duration (hours)",
             })}
             value={durationHours}
             onChange={(e) => setDurationHours(e.target.value)}
-            min={0}
-            step={1}
+            type="number"
+            min="0"
+            step="1"
             placeholder="24"
           />
 

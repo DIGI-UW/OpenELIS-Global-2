@@ -15,7 +15,7 @@ import {
   Accordion,
   AccordionItem,
   Checkbox,
-  NumberInput,
+  TextInput,
 } from "@carbon/react";
 import { Checkmark, Edit } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -1455,9 +1455,9 @@ function TBQualityCheckPage({
                     </RadioButtonGroup>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
-                    <NumberInput
+                    <TextInput
                       id="cultureContaminationRate"
-                      label={intl.formatMessage({
+                      labelText={intl.formatMessage({
                         id: "notebook.tb.qc.cultureContaminationRate",
                         defaultMessage: "Contamination Rate (%)",
                       })}
@@ -1465,18 +1465,18 @@ function TBQualityCheckPage({
                         id: "notebook.tb.qc.cultureContaminationRate.helper",
                         defaultMessage: "Should be <5%",
                       })}
-                      min={0}
-                      max={100}
-                      step={0.1}
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
                       value={bulkApplyValues.cultureContaminationRate}
-                      onChange={(e, { value }) =>
+                      onChange={(e) =>
                         setBulkApplyValues((prev) => ({
                           ...prev,
-                          cultureContaminationRate: value,
+                          cultureContaminationRate: e.target.value,
                         }))
                       }
                       invalid={false}
-                      allowEmpty={true}
                     />
                   </Column>
                 </Grid>
@@ -1670,9 +1670,9 @@ function TBQualityCheckPage({
                     </RadioButtonGroup>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
-                    <NumberInput
+                    <TextInput
                       id="genexpertErrorRate"
-                      label={intl.formatMessage({
+                      labelText={intl.formatMessage({
                         id: "notebook.tb.qc.genexpertErrorRate",
                         defaultMessage: "Error Rate (%)",
                       })}
@@ -1680,18 +1680,18 @@ function TBQualityCheckPage({
                         id: "notebook.tb.qc.genexpertErrorRate.helper",
                         defaultMessage: "Monitor error rate trends",
                       })}
-                      min={0}
-                      max={100}
-                      step={0.1}
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
                       value={bulkApplyValues.genexpertErrorRate}
-                      onChange={(e, { value }) =>
+                      onChange={(e) =>
                         setBulkApplyValues((prev) => ({
                           ...prev,
-                          genexpertErrorRate: value,
+                          genexpertErrorRate: e.target.value,
                         }))
                       }
                       invalid={false}
-                      allowEmpty={true}
                     />
                   </Column>
                 </Grid>

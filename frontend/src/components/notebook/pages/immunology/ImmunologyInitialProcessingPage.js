@@ -14,7 +14,6 @@ import {
   Tag,
   Checkbox,
   TextInput,
-  NumberInput,
   MultiSelect,
   DatePicker,
   DatePickerInput,
@@ -1293,23 +1292,22 @@ function ImmunologyInitialProcessingPage({
             >
               <Grid fullWidth className="processing-section">
                 <Column lg={8} md={4} sm={4}>
-                  <NumberInput
+                  <TextInput
                     id="initialVolume"
-                    label={intl.formatMessage({
+                    labelText={intl.formatMessage({
                       id: "notebook.immunology.initialVolume",
                       defaultMessage: "Initial Sample Volume",
                     })}
                     value={processingValues.initialVolume}
-                    onChange={(e, { value }) =>
+                    onChange={(e) =>
                       setProcessingValues((prev) => ({
                         ...prev,
-                        initialVolume: value,
+                        initialVolume: e.target.value,
                       }))
                     }
-                    min={0}
-                    step={0.1}
-                    allowEmpty
-                    hideSteppers={false}
+                    type="number"
+                    step="0.1"
+                    min="0"
                   />
                 </Column>
                 <Column lg={4} md={2} sm={2}>
@@ -1333,23 +1331,22 @@ function ImmunologyInitialProcessingPage({
                   </Select>
                 </Column>
                 <Column lg={4} md={2} sm={2}>
-                  <NumberInput
+                  <TextInput
                     id="minimumVolumeRequired"
-                    label={intl.formatMessage({
+                    labelText={intl.formatMessage({
                       id: "notebook.immunology.minimumVolume",
                       defaultMessage: "Minimum Required",
                     })}
                     value={processingValues.minimumVolumeRequired}
-                    onChange={(e, { value }) =>
+                    onChange={(e) =>
                       setProcessingValues((prev) => ({
                         ...prev,
-                        minimumVolumeRequired: value,
+                        minimumVolumeRequired: e.target.value,
                       }))
                     }
-                    min={0}
-                    step={0.1}
-                    allowEmpty
-                    hideSteppers={false}
+                    type="number"
+                    step="0.1"
+                    min="0"
                   />
                 </Column>
                 <Column lg={8} md={4} sm={4}>
@@ -1574,24 +1571,23 @@ function ImmunologyInitialProcessingPage({
             >
               <Grid fullWidth className="processing-section">
                 <Column lg={8} md={4} sm={4}>
-                  <NumberInput
+                  <TextInput
                     id="centrifugationSpeed"
-                    label={intl.formatMessage({
+                    labelText={intl.formatMessage({
                       id: "notebook.immunology.centrifugationSpeed",
                       defaultMessage: "Centrifugation Speed",
                     })}
                     value={processingValues.centrifugationSpeed}
-                    onChange={(e, { value }) =>
+                    onChange={(e) =>
                       setProcessingValues((prev) => ({
                         ...prev,
-                        centrifugationSpeed: value,
+                        centrifugationSpeed: e.target.value,
                       }))
                     }
-                    min={0}
-                    max={20000}
-                    step={100}
-                    allowEmpty
-                    hideSteppers={false}
+                    type="number"
+                    step="100"
+                    min="0"
+                    max="20000"
                   />
                 </Column>
                 <Column lg={4} md={2} sm={2}>
@@ -1615,45 +1611,43 @@ function ImmunologyInitialProcessingPage({
                   </Select>
                 </Column>
                 <Column lg={4} md={2} sm={2}>
-                  <NumberInput
+                  <TextInput
                     id="centrifugationTime"
-                    label={intl.formatMessage({
+                    labelText={intl.formatMessage({
                       id: "notebook.immunology.centrifugationTime",
                       defaultMessage: "Centrifugation Time",
                     })}
                     value={processingValues.centrifugationTime}
-                    onChange={(e, { value }) =>
+                    onChange={(e) =>
                       setProcessingValues((prev) => ({
                         ...prev,
-                        centrifugationTime: value,
+                        centrifugationTime: e.target.value,
                       }))
                     }
-                    min={0}
-                    max={120}
-                    step={1}
-                    allowEmpty
-                    hideSteppers={false}
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="120"
                   />
                 </Column>
                 <Column lg={8} md={4} sm={4}>
-                  <NumberInput
+                  <TextInput
                     id="processingTemperature"
-                    label={intl.formatMessage({
+                    labelText={intl.formatMessage({
                       id: "notebook.immunology.processingTemperature",
                       defaultMessage: "Processing Temperature",
                     })}
                     value={processingValues.processingTemperature}
-                    onChange={(e, { value }) =>
+                    onChange={(e) =>
                       setProcessingValues((prev) => ({
                         ...prev,
-                        processingTemperature: value,
+                        processingTemperature: e.target.value,
                       }))
                     }
-                    min={-80}
-                    max={100}
-                    step={0.5}
-                    allowEmpty
-                    hideSteppers={false}
+                    type="number"
+                    step="0.5"
+                    min="-80"
+                    max="100"
                   />
                 </Column>
                 <Column lg={4} md={2} sm={2}>
@@ -1746,24 +1740,23 @@ function ImmunologyInitialProcessingPage({
                   />
                 </Column>
                 <Column lg={4} md={2} sm={2}>
-                  <NumberInput
+                  <TextInput
                     id="cellViabilityPercentage"
-                    label={intl.formatMessage({
+                    labelText={intl.formatMessage({
                       id: "notebook.immunology.cellViability",
                       defaultMessage: "Cell Viability (%)",
                     })}
                     value={processingValues.cellViabilityPercentage}
-                    onChange={(e, { value }) =>
+                    onChange={(e) =>
                       setProcessingValues((prev) => ({
                         ...prev,
-                        cellViabilityPercentage: value,
+                        cellViabilityPercentage: e.target.value,
                       }))
                     }
-                    min={0}
-                    max={100}
-                    step={0.1}
-                    allowEmpty
-                    hideSteppers={false}
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
                   />
                 </Column>
                 <Column lg={4} md={2} sm={2}>
@@ -2003,7 +1996,7 @@ function ImmunologyInitialProcessingPage({
               <Column lg={8} md={4} sm={4}>
                 <div className="qc-result-display">
                   {processingValues.qcResult === "Pass" && (
-                    <Tag type="green" size="lg">
+                    <Tag type="green" size="md">
                       <FormattedMessage
                         id="notebook.immunology.result.pass"
                         defaultMessage="PASS - Proceed to Next Step"
@@ -2011,7 +2004,7 @@ function ImmunologyInitialProcessingPage({
                     </Tag>
                   )}
                   {processingValues.qcResult === "Fail" && (
-                    <Tag type="red" size="lg">
+                    <Tag type="red" size="md">
                       <FormattedMessage
                         id="notebook.immunology.result.fail"
                         defaultMessage="FAIL - Flag for Review"
@@ -2019,7 +2012,7 @@ function ImmunologyInitialProcessingPage({
                     </Tag>
                   )}
                   {!processingValues.qcResult && (
-                    <Tag type="gray" size="lg">
+                    <Tag type="gray" size="md">
                       <FormattedMessage
                         id="notebook.immunology.result.pending"
                         defaultMessage="Complete quality checks above"

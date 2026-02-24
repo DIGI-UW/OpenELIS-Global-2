@@ -221,15 +221,8 @@ function ImmunologySampleReceptionPage({
   const completedCount = completedSamples.length;
 
   // Custom columns for immunology reception metadata
+  // Note: Removed "sampleType" column as it's already included in SampleGrid's default headers
   const getAdditionalColumns = (intl) => [
-    {
-      key: "sampleType",
-      header: intl.formatMessage({
-        id: "notebook.sample.sampleType",
-        defaultMessage: "Sample Type",
-      }),
-      render: (value, sample) => value || sample?.sampleType || "-",
-    },
     {
       key: "projectNameId",
       header: intl.formatMessage({

@@ -12,7 +12,6 @@ import {
   Modal,
   TextInput,
   Dropdown,
-  NumberInput,
   DatePickerInput,
   Grid,
   Column,
@@ -964,21 +963,18 @@ export const GBDLibraryPreparationPage = ({
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="concentration"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.gbd.library.concentration",
                 defaultMessage: "Library Concentration (nM)",
               })}
               value={concentration}
-              onChange={(e) =>
-                setConcentration(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={0.1}
-              min={0}
-              max={10000}
+              onChange={(e) => setConcentration(e.target.value)}
+              type="number"
+              step="0.1"
+              min="0"
+              max="10000"
               placeholder="50"
             />
           </Column>

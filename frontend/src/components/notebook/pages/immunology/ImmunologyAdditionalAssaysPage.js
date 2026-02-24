@@ -1349,7 +1349,7 @@ function ImmunologyAdditionalAssaysPage({
                       }))
                     }
                   >
-                    <TimePickerSelect id="startTimePeriod" labelText="AM/PM">
+                    <TimePickerSelect id="startTimePeriod">
                       <SelectItem value="AM" text="AM" />
                       <SelectItem value="PM" text="PM" />
                     </TimePickerSelect>
@@ -1370,7 +1370,7 @@ function ImmunologyAdditionalAssaysPage({
                       }))
                     }
                   >
-                    <TimePickerSelect id="endTimePeriod" labelText="AM/PM">
+                    <TimePickerSelect id="endTimePeriod">
                       <SelectItem value="AM" text="AM" />
                       <SelectItem value="PM" text="PM" />
                     </TimePickerSelect>

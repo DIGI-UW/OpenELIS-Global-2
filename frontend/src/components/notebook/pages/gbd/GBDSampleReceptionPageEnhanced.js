@@ -189,7 +189,7 @@ export const GBDSampleReceptionPageEnhanced = ({
     ],
   );
 
-  const handleMarkComplete = useCallback(async () => {
+  const handleMarkComplete = useCallback(() => {
     if (selectedSampleIds.length === 0) {
       setNotificationVisible(true);
       addNotification({
@@ -202,51 +202,55 @@ export const GBDSampleReceptionPageEnhanced = ({
       return;
     }
 
-    try {
-      await postToOpenElisServer(
-        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-        JSON.stringify({
-          sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-          status: "COMPLETED",
-        }),
-      );
+    postToOpenElisServer(
+      `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+      JSON.stringify({
+        sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+        status: "COMPLETED",
+      }),
+      (status) => {
+        if (status === 200) {
+          setSelectedSampleIds([]);
+          setNotificationVisible(true);
+          addNotification({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({
+              id: "notebook.gbd.reception.samplesCompleted",
+              defaultMessage: "Samples Completed",
+            }),
+            message: intl.formatMessage(
+              {
+                id: "notebook.gbd.reception.samplesCompletedMessage",
+                defaultMessage:
+                  "{count} sample(s) marked as complete and moved to the next workflow step",
+              },
+              { count: selectedSampleIds.length },
+            ),
+          });
 
-      setSelectedSampleIds([]);
-      setNotificationVisible(true);
-      addNotification({
-        kind: NotificationKinds.success,
-        title: intl.formatMessage({
-          id: "notebook.gbd.reception.samplesCompleted",
-          defaultMessage: "Samples Completed",
-        }),
-        message: intl.formatMessage(
-          {
-            id: "notebook.gbd.reception.samplesCompletedMessage",
-            defaultMessage:
-              "{count} sample(s) marked as complete and moved to the next workflow step",
-          },
-          { count: selectedSampleIds.length },
-        ),
-      });
-
-      setTimeout(() => {
-        loadPageSamples();
-        if (onSampleStatusChange) {
-          onSampleStatusChange();
+          setTimeout(() => {
+            loadPageSamples();
+            if (onSampleStatusChange) {
+              onSampleStatusChange();
+            }
+          }, 500);
+        } else {
+          setNotificationVisible(true);
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({
+              id: "notebook.gbd.reception.error",
+              defaultMessage: "Error",
+            }),
+            message: intl.formatMessage({
+              id: "notebook.gbd.reception.statusError",
+              defaultMessage:
+                "Failed to mark samples as complete. Please try again.",
+            }),
+          });
         }
-      }, 500);
-    } catch (error) {
-      console.error("Error marking samples complete:", error);
-      setNotificationVisible(true);
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({
-          id: "notebook.gbd.reception.error",
-          defaultMessage: "Error",
-        }),
-        message: error.message,
-      });
-    }
+      },
+    );
   }, [
     selectedSampleIds,
     pageData.id,

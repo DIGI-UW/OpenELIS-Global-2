@@ -866,21 +866,18 @@ export const GBDPCRAmplificationPage = ({
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="expected-band-size"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.gbd.pcr.expectedBandSize",
                 defaultMessage: "Expected Band Size (bp)",
               })}
               value={expectedBandSize}
-              onChange={(e) =>
-                setExpectedBandSize(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={10}
-              min={50}
-              max={15000}
+              onChange={(e) => setExpectedBandSize(e.target.value)}
+              type="number"
+              step="10"
+              min="50"
+              max="15000"
               placeholder="500"
             />
           </Column>
@@ -1014,21 +1011,20 @@ export const GBDPCRAmplificationPage = ({
               {positiveControlPresent && (
                 <>
                   <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-                    <NumberInput
+                    <TextInput
                       id="positive-control-band-size"
-                      label={intl.formatMessage({
+                      labelText={intl.formatMessage({
                         id: "notebook.gbd.pcr.positiveControlBandSize",
                         defaultMessage: "Positive Control Band Size (bp)",
                       })}
                       value={positiveControlBandSize}
                       onChange={(e) =>
-                        setPositiveControlBandSize(
-                          e.imaginaryTarget?.value || e.target?.value || "",
-                        )
+                        setPositiveControlBandSize(e.target.value)
                       }
-                      step={10}
-                      min={50}
-                      max={15000}
+                      type="number"
+                      step="10"
+                      min="50"
+                      max="15000"
                       placeholder="500"
                     />
                   </Column>

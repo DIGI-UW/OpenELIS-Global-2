@@ -12,7 +12,6 @@ import {
   Modal,
   TextInput,
   Dropdown,
-  NumberInput,
   DatePickerInput,
   Grid,
   Column,
@@ -1081,39 +1080,35 @@ export const GBDSequencingPage = ({
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="read-length"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.gbd.sequencing.readLength",
                 defaultMessage: "Read Length (bp)",
               })}
               value={readLength}
-              onChange={(e) =>
-                setReadLength(e.imaginaryTarget?.value || e.target?.value || "")
-              }
-              step={1}
-              min={25}
-              max={300}
+              onChange={(e) => setReadLength(e.target.value)}
+              type="number"
+              step="1"
+              min="25"
+              max="300"
               placeholder="150"
             />
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="number-of-cycles"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.gbd.sequencing.numberOfCycles",
                 defaultMessage: "Number of Cycles",
               })}
               value={numberOfCycles}
-              onChange={(e) =>
-                setNumberOfCycles(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={1}
-              min={1}
-              max={500}
+              onChange={(e) => setNumberOfCycles(e.target.value)}
+              type="number"
+              step="1"
+              min="1"
+              max="500"
               placeholder="300"
             />
           </Column>
@@ -1132,57 +1127,52 @@ export const GBDSequencingPage = ({
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="cluster-density"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.gbd.sequencing.clusterDensity",
                 defaultMessage: "Cluster Density (M)",
               })}
               value={clusterDensity}
-              onChange={(e) =>
-                setClusterDensity(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={0.1}
-              min={0}
-              max={2000}
+              onChange={(e) => setClusterDensity(e.target.value)}
+              type="number"
+              step="0.1"
+              min="0"
+              max="2000"
               placeholder="800"
             />
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="q30-score"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.gbd.sequencing.q30Score",
                 defaultMessage: "Q30 Score (%)",
               })}
               value={q30Score}
-              onChange={(e) =>
-                setQ30Score(e.imaginaryTarget?.value || e.target?.value || "")
-              }
-              step={0.1}
-              min={0}
-              max={100}
+              onChange={(e) => setQ30Score(e.target.value)}
+              type="number"
+              step="0.1"
+              min="0"
+              max="100"
               placeholder="85"
             />
           </Column>
 
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
+            <TextInput
               id="error-rate"
-              label={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "notebook.gbd.sequencing.errorRate",
                 defaultMessage: "Error Rate (%)",
               })}
               value={errorRate}
-              onChange={(e) =>
-                setErrorRate(e.imaginaryTarget?.value || e.target?.value || "")
-              }
-              step={0.01}
-              min={0}
-              max={10}
+              onChange={(e) => setErrorRate(e.target.value)}
+              type="number"
+              step="0.01"
+              min="0"
+              max="10"
               placeholder="0.5"
             />
           </Column>
