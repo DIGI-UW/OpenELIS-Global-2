@@ -1,0 +1,162 @@
+@use "@carbon/react/scss/spacing" as *;
+@use "@carbon/react/scss/type" as *;
+@use "@carbon/react/scss/colors" as *;
+@use "@carbon/react/scss/themes" as *;
+@use "@carbon/react/scss/motion" as *;
+
+.nce-inline-wrapper {
+  border-top: 3px solid $orange-60;
+  border-radius: 4px;
+  background-color: $yellow-10;
+  padding: $spacing-03;
+  margin: $spacing-03 0;
+  animation: nce-slide-down $duration-moderate-01 motion(standard, productive);
+
+  &__header {
+    margin-bottom: $spacing-02;
+
+    h4 {
+      @include type-style("heading-compact-01");
+      color: $orange-60;
+    }
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-02;
+  }
+
+  // Default two-column row (description + immediate action)
+  &__row {
+    display: flex;
+    gap: $spacing-03;
+
+    > * {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  // Controls row: Category | Subcategory | Severity | Sample Action
+  &__row--controls {
+    align-items: flex-start;
+
+    > :nth-child(1) { flex: 1; }    // Category
+    > :nth-child(2) { flex: 1.5; }  // Subcategory
+    > :nth-child(3) { flex: 2; }    // Severity
+    > :nth-child(4) { flex: 1.5; }  // Sample Action
+  }
+
+  &__severity,
+  &__sample-action {
+    .cds--radio-button-group {
+      gap: $spacing-03;
+    }
+
+    &--invalid {
+      border-left: 3px solid $red-60;
+      padding-left: $spacing-03;
+    }
+  }
+
+  &__error {
+    @include type-style("label-01");
+    color: $red-60;
+    display: block;
+    margin-top: $spacing-01;
+  }
+
+  // Footer: linked items left, actions right
+  &__footer {
+    display: flex;
+    align-items: center;
+    gap: $spacing-03;
+
+    .nce-linked-items {
+      flex: 1;
+      margin: 0;
+    }
+  }
+
+  &__footer-actions {
+    display: flex;
+    align-items: center;
+    gap: $spacing-02;
+    flex-shrink: 0;
+  }
+}
+
+.nce-context-banner {
+  background-color: $gray-10;
+  border-radius: 4px;
+  padding: $spacing-02 $spacing-03;
+  margin-bottom: $spacing-02;
+
+  &__fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-01 $spacing-04;
+  }
+
+  &__field {
+    display: flex;
+    align-items: center;
+    gap: $spacing-02;
+  }
+
+  &__label {
+    @include type-style("label-01");
+    color: $gray-60;
+  }
+
+  &__value {
+    @include type-style("body-compact-01");
+  }
+}
+
+.nce-linked-items {
+  background-color: $gray-10;
+  border-radius: 4px;
+  padding: $spacing-02 $spacing-03;
+
+  &__title {
+    @include type-style("label-01");
+    display: flex;
+    align-items: center;
+    gap: $spacing-02;
+    margin-bottom: $spacing-01;
+    color: $gray-70;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: $spacing-01 $spacing-04;
+  }
+
+  &__item {
+    @include type-style("body-compact-01");
+    display: flex;
+    align-items: center;
+    gap: $spacing-02;
+    color: $gray-80;
+  }
+}
+
+// Prevent Carbon CSS Grid from interfering with inline wrapper layout in expanded rows
+.cds--css-grid:has(.nce-inline-wrapper) {
+  display: block;
+}
+
+@keyframes nce-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

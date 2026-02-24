@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import {
   Button,
   Column,
@@ -18,6 +18,7 @@ import {
   RadioButton,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import {
   NotificationKinds,
   AlertDialog,
@@ -88,6 +89,43 @@ export const ViewNonConformingEvent = () => {
     useContext(NotificationContext);
 
   const intl = useIntl();
+  const location = useLocation();
+  const autoSearchDone = useRef(false);
+
+  // Auto-search when navigating with ?nceNumber= query param (e.g. from NCEBadge)
+  useEffect(() => {
+    if (autoSearchDone.current) return;
+    const params = new URLSearchParams(location.search);
+    const nceNumber = params.get("nceNumber");
+    if (nceNumber) {
+      autoSearchDone.current = true;
+      setReportFormValues({
+        type: "nceNumber",
+        value: nceNumber,
+        error: undefined,
+      });
+      getFromOpenElisServer(
+        `/rest/viewNonConformEvents?nceNumber=${encodeURIComponent(nceNumber)}&labNumber=&status=Pending`,
+        (responseData) => {
+          if (!responseData.nceEventsSearchResults) {
+            setReportFormValues((prev) => ({
+              ...prev,
+              error: intl.formatMessage({ id: "no.data.found" }),
+            }));
+            setData(null);
+            setTData(null);
+          } else if (responseData.nceEventsSearchResults.length < 2) {
+            setData(responseData);
+            setNceTypes(responseData.nceTypes);
+            setTData(null);
+          } else {
+            setTData(responseData);
+            setData(null);
+          }
+        },
+      );
+    }
+  }, [location.search]);
 
   useEffect(() => {
     let a = parseInt(formData.consequences ?? 0);
@@ -385,7 +423,7 @@ export const ViewNonConformingEvent = () => {
                         {
                           tData.reportingUnits.find(
                             (obj) => parseInt(obj.id) === row.reportingUnitId,
-                          ).value
+                          )?.value
                         }
                       </TableCell>
                     </TableRow>
@@ -443,7 +481,7 @@ export const ViewNonConformingEvent = () => {
             <div style={{ marginBottom: "10px" }}>
               {
                 data.reportingUnits.find((obj) => obj.id == data.reportingUnit)
-                  .value
+                  ?.value
               }
             </div>
           </Column>
@@ -454,7 +492,7 @@ export const ViewNonConformingEvent = () => {
               </span>
             </div>
             <div style={{ marginBottom: "10px" }}>
-              {data.specimens[0].typeOfSample.description}
+              {data.specimens?.[0]?.typeOfSample?.description}
             </div>
           </Column>
           <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>

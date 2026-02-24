@@ -15,6 +15,7 @@ import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.notification.service.TestNotificationService;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationNature;
+import org.openelisglobal.qaevent.service.DeltaCheckEvaluationService;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
@@ -32,14 +33,17 @@ public class ResultValidationServiceImpl implements ResultValidationService {
     private NoteService noteService;
     private SampleService sampleService;
     private TestNotificationService testNotificationService;
+    private DeltaCheckEvaluationService deltaCheckEvaluationService;
 
     public ResultValidationServiceImpl(AnalysisService analysisService, ResultService resultService,
-            NoteService noteService, SampleService sampleService, TestNotificationService testNotificationService) {
+            NoteService noteService, SampleService sampleService, TestNotificationService testNotificationService,
+            DeltaCheckEvaluationService deltaCheckEvaluationService) {
         this.analysisService = analysisService;
         this.resultService = resultService;
         this.noteService = noteService;
         this.sampleService = sampleService;
         this.testNotificationService = testNotificationService;
+        this.deltaCheckEvaluationService = deltaCheckEvaluationService;
     }
 
     @Override
@@ -72,6 +76,19 @@ public class ResultValidationServiceImpl implements ResultValidationService {
                 } catch (RuntimeException e) {
                     LogEvent.logError(e);
                 }
+            }
+        }
+
+        // Evaluate delta checks for validated results
+        for (Result resultUpdate : resultUpdateList) {
+            try {
+                if (deltaCheckEvaluationService.shouldPerformDeltaCheck(resultUpdate)) {
+                    deltaCheckEvaluationService.evaluateResultForDeltaCheck(resultUpdate);
+                }
+            } catch (RuntimeException e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "persistdata",
+                        "Delta check evaluation failed for result " + resultUpdate.getId());
+                LogEvent.logError(e);
             }
         }
 

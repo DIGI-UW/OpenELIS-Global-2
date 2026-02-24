@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="OpenELIS" id="OGC-501-013-2" labels="NCE Delta Check Configuration">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'nceDeltaCheckEnabled'</sqlCheck>
+        </preConditions>
+        <comment>Add delta check enabled configuration to NCE site information</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq"/>
+            <column name="name" value="nceDeltaCheckEnabled"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="description" value="If true, delta check alerts are generated when result values change significantly between visits"/>
+            <column name="value" value="false"/>
+            <column name="encrypted" value="false"/>
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'non_conformityConfig')"/>
+            <column name="value_type" value="boolean"/>
+            <column name="group" value="0"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="OGC-501-013-3" labels="NCE Delta Check Configuration">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'nceDeltaCheckThreshold'</sqlCheck>
+        </preConditions>
+        <comment>Add delta check percentage threshold configuration to NCE site information</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq"/>
+            <column name="name" value="nceDeltaCheckThreshold"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="description" value="Percentage change threshold that triggers a delta check alert (default: 30)"/>
+            <column name="value" value="30"/>
+            <column name="encrypted" value="false"/>
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'non_conformityConfig')"/>
+            <column name="value_type" value="text"/>
+            <column name="group" value="0"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="OGC-501-013-4" labels="NCE Delta Check Configuration">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'nceDeltaCheckAbsoluteThreshold'</sqlCheck>
+        </preConditions>
+        <comment>Add delta check absolute value threshold configuration to NCE site information</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq"/>
+            <column name="name" value="nceDeltaCheckAbsoluteThreshold"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="description" value="Absolute value change threshold that triggers a delta check alert (leave empty to disable)"/>
+            <column name="value" value=""/>
+            <column name="encrypted" value="false"/>
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'non_conformityConfig')"/>
+            <column name="value_type" value="text"/>
+            <column name="group" value="0"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="OGC-501-013-5" labels="NCE Delta Check Configuration">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'nceDeltaCheckComparisonPeriod'</sqlCheck>
+        </preConditions>
+        <comment>Add delta check comparison period configuration to NCE site information</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq"/>
+            <column name="name" value="nceDeltaCheckComparisonPeriod"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="description" value="Lookback period in days for delta check result comparisons (default: 90)"/>
+            <column name="value" value="90"/>
+            <column name="encrypted" value="false"/>
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'non_conformityConfig')"/>
+            <column name="value_type" value="text"/>
+            <column name="group" value="0"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="OGC-501-013-8" labels="NCE Delta Check Configuration">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="delta_check_alert" columnName="previous_result_date"/></not>
+        </preConditions>
+        <comment>Add previous_result_date column to delta_check_alert for AC14 display</comment>
+        <addColumn tableName="delta_check_alert">
+            <column name="previous_result_date" type="TIMESTAMP"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="OGC-501-013-6" labels="NCE Delta Check Configuration">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="delta_check_configuration"/>
+        </preConditions>
+        <comment>Drop FK constraints and indexes on delta_check_configuration before dropping the table</comment>
+        <dropForeignKeyConstraint baseTableName="delta_check_configuration" constraintName="fk_delta_check_config_test"/>
+        <dropForeignKeyConstraint baseTableName="delta_check_configuration" constraintName="fk_delta_check_config_analyte"/>
+        <dropIndex tableName="delta_check_configuration" indexName="idx_delta_check_config_test_analyte"/>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="OGC-501-013-7" labels="NCE Delta Check Configuration">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="delta_check_configuration"/>
+        </preConditions>
+        <comment>Drop delta_check_configuration table — configuration now stored in site_information</comment>
+        <dropTable tableName="delta_check_configuration"/>
+    </changeSet>
+
+</databaseChangeLog>

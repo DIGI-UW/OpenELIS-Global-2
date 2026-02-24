@@ -23,6 +23,9 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import config from "../../config.json";
+import NCEBadge from "../results/NCEBadge/NCEBadge";
+import DeltaCheckAlert from "../results/DeltaCheckAlert/DeltaCheckAlert";
+import ValidationNCETriggerModal from "./ValidationNCETriggerModal";
 
 const Validation = (props) => {
   const componentMounted = useRef(false);
@@ -36,6 +39,9 @@ const Validation = (props) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showNCETrigger, setShowNCETrigger] = useState(false);
+  const [rejectedResults, setRejectedResults] = useState([]);
+  const [mandatoryNCE, setMandatoryNCE] = useState(false);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -89,8 +95,16 @@ const Validation = (props) => {
       width: "8rem",
     },
     {
-      id: "retest",
-      name: intl.formatMessage({ id: "column.name.retest" }),
+      id: "reject",
+      name: intl.formatMessage({ id: "column.name.reject" }),
+      cell: (row, index, column, id) => {
+        return renderCell(row, index, column, id);
+      },
+      width: "8rem",
+    },
+    {
+      id: "noRetest",
+      name: intl.formatMessage({ id: "validation.noRetest" }),
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
@@ -116,6 +130,35 @@ const Validation = (props) => {
 
   const handleSave = (values) => {
     if (isSubmitting) {
+      return;
+    }
+    const rejected = props.results?.resultList?.filter(
+      (r) =>
+        (r.isRejected === true || r.isRejected === "true") &&
+        r.resultId &&
+        r.resultId !== "0",
+    );
+    if (rejected && rejected.length > 0) {
+      // FR-015: Check if any rejected results have "no retest" flag
+      const hasNoRetest = rejected.some(
+        (r) => r.noRetest === true || r.noRetest === "true",
+      );
+      setRejectedResults(rejected);
+      setMandatoryNCE(hasNoRetest);
+      setShowNCETrigger(true);
+      return;
+    }
+    submitValidation();
+  };
+
+  const submitValidation = () => {
+    if (!props.results) {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "validation.save.error" }),
+      });
+      setNotificationVisible(true);
       return;
     }
     setIsSubmitting(true);
@@ -230,6 +273,7 @@ const Validation = (props) => {
                 />
               </picture>
             )}
+            <NCEBadge resultId={row.resultId} />
           </>
         );
       case "testName":
@@ -261,21 +305,29 @@ const Validation = (props) => {
           </>
         );
 
-      case "retest":
+      case "reject":
         return (
-          <>
-            <Field name="isRejected">
-              {({ field }) => (
-                <Checkbox
-                  id={"resultList" + row.id + ".isRejected"}
-                  name={"resultList[" + row.id + "].isRejected"}
-                  labelText=""
-                  value={true}
-                  onChange={(e) => handleCheckBox(e, row.id)}
-                />
-              )}
-            </Field>
-          </>
+          <Field name="isRejected">
+            {({ field }) => (
+              <Checkbox
+                id={"resultList" + row.id + ".isRejected"}
+                name={"resultList[" + row.id + "].isRejected"}
+                labelText=""
+                value={true}
+                onChange={(e) => handleCheckBox(e, row.id)}
+              />
+            )}
+          </Field>
+        );
+
+      case "noRetest":
+        return (
+          <Checkbox
+            id={"resultList" + row.id + ".noRetest"}
+            name={"resultList[" + row.id + "].noRetest"}
+            labelText=""
+            onChange={(e) => handleCheckBox(e, row.id)}
+          />
         );
 
       case "notes":
@@ -467,6 +519,10 @@ const Validation = (props) => {
               }
             />
 
+            <DeltaCheckAlert
+              analysisIds={props.results?.resultList?.map((r) => r.id)}
+            />
+
             <Button
               type="button"
               onClick={() => handleSave(values)}
@@ -480,6 +536,35 @@ const Validation = (props) => {
           </Form>
         )}
       </Formik>
+
+      <ValidationNCETriggerModal
+        open={showNCETrigger}
+        rejectedResults={rejectedResults}
+        mandatory={mandatoryNCE}
+        onComplete={(createdNCEs) => {
+          setShowNCETrigger(false);
+          setRejectedResults([]);
+          setMandatoryNCE(false);
+          if (createdNCEs?.length > 0) {
+            addNotification({
+              kind: NotificationKinds.info,
+              title: intl.formatMessage({ id: "notification.title" }),
+              message: intl.formatMessage(
+                { id: "validation.trigger.nceCreated" },
+                { count: createdNCEs.length },
+              ),
+            });
+            setNotificationVisible(true);
+          }
+          submitValidation();
+        }}
+        onCancel={() => {
+          setShowNCETrigger(false);
+          setRejectedResults([]);
+          setMandatoryNCE(false);
+          submitValidation();
+        }}
+      />
     </>
   );
 };

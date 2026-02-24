@@ -238,7 +238,11 @@ public abstract class ConfigurationProperties {
         GPS_ENABLED("gpsCoordinatesEnabled", "text"), // if true, GPS coordinate fields are displayed in order entry
         GPS_ACCURACY_METERS("gpsRequiredAccuracyMeters", "text"), // maximum acceptable GPS accuracy in meters
         GPS_TIMEOUT_SECONDS("gpsTimeoutSeconds", "text"), // timeout in seconds for GPS location requests
-        USE_NEW_ADDRESS_HIERARCHY("useNewAddressHierarchy", "text"); // if true, use new configurable address hierarchy
+        USE_NEW_ADDRESS_HIERARCHY("useNewAddressHierarchy", "text"), // if true, use new configurable address hierarchy
+        NCE_DELTA_CHECK_ENABLED("nceDeltaCheckEnabled", "text"), // enable/disable delta check alerts globally
+        NCE_DELTA_CHECK_THRESHOLD("nceDeltaCheckThreshold", "text"), // percentage change threshold for delta check
+        NCE_DELTA_CHECK_ABSOLUTE_THRESHOLD("nceDeltaCheckAbsoluteThreshold", "text"), // absolute value change threshold
+        NCE_DELTA_CHECK_COMPARISON_PERIOD("nceDeltaCheckComparisonPeriod", "text"); // lookback period in days
 
         // visible on
         // the ui

@@ -18,4 +18,6 @@
   <include relativeToChangelogFile="true" file="010-create-analyzer-plugin-config.xml"/>
   <include relativeToChangelogFile="true" file="011-create-analyzer-pending-code.xml"/>
   <include relativeToChangelogFile="true" file="012-add-organization-type-hierarchy-level.xml"/>
+  <include relativeToChangelogFile="true" file="012-nce-integration-tables.xml"/>
+  <include relativeToChangelogFile="true" file="013-nce-delta-check-site-information.xml"/>
 </databaseChangeLog>

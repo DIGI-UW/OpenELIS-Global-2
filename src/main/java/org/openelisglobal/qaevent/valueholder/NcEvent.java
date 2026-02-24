@@ -1,13 +1,14 @@
 package org.openelisglobal.qaevent.valueholder;
 
-import jakarta.persistence.Basic;
-import jakarta.persistence.Column;
-import jakarta.persistence.Id;
 import java.sql.Date;
 import java.util.Objects;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 public class NcEvent extends BaseObject<String> {
+    public static final String NCE_NUMBER_PREFIX = "NCE-";
+    public static final String STATUS_PENDING = "Pending";
+    public static final String ACTION_REJECT_SAMPLE = "REJECT_SAMPLE";
+
     private String id;
     private Date reportDate;
     private String name;
@@ -37,10 +38,11 @@ public class NcEvent extends BaseObject<String> {
     private Integer nceTypeId;
     private String status;
     private String discussionDate;
+    private String sourceType;
+    private String triggerType;
+    private String triggerAction;
 
     @Override
-    @Id
-    @Column(name = "id", nullable = false)
     public String getId() {
         return id;
     }
@@ -50,8 +52,6 @@ public class NcEvent extends BaseObject<String> {
         this.id = id;
     }
 
-    @Basic
-    @Column(name = "report_date", nullable = true)
     public Date getReportDate() {
         return reportDate;
     }
@@ -60,8 +60,6 @@ public class NcEvent extends BaseObject<String> {
         this.reportDate = reportDate;
     }
 
-    @Basic
-    @Column(name = "name", nullable = true, length = 200)
     public String getName() {
         return name;
     }
@@ -70,8 +68,6 @@ public class NcEvent extends BaseObject<String> {
         this.name = name;
     }
 
-    @Basic
-    @Column(name = "name_of_reporter", nullable = true, length = 200)
     public String getNameOfReporter() {
         return nameOfReporter;
     }
@@ -80,8 +76,6 @@ public class NcEvent extends BaseObject<String> {
         this.nameOfReporter = nameOfReporter;
     }
 
-    @Basic
-    @Column(name = "nce_number", nullable = true, length = 20)
     public String getNceNumber() {
         return nceNumber;
     }
@@ -90,8 +84,6 @@ public class NcEvent extends BaseObject<String> {
         this.nceNumber = nceNumber;
     }
 
-    @Basic
-    @Column(name = "date_of_event", nullable = true)
     public Date getDateOfEvent() {
         return dateOfEvent;
     }
@@ -100,8 +92,6 @@ public class NcEvent extends BaseObject<String> {
         this.dateOfEvent = dateOfEvent;
     }
 
-    @Basic
-    @Column(name = "lab_order_number", nullable = true, length = 30)
     public String getLabOrderNumber() {
         return labOrderNumber;
     }
@@ -110,8 +100,6 @@ public class NcEvent extends BaseObject<String> {
         this.labOrderNumber = labOrderNumber;
     }
 
-    @Basic
-    @Column(name = "prescriber_name", nullable = true, length = 200)
     public String getPrescriberName() {
         return prescriberName;
     }
@@ -120,8 +108,6 @@ public class NcEvent extends BaseObject<String> {
         this.prescriberName = prescriberName;
     }
 
-    @Basic
-    @Column(name = "site", nullable = true, length = 200)
     public String getSite() {
         return site;
     }
@@ -130,8 +116,6 @@ public class NcEvent extends BaseObject<String> {
         this.site = site;
     }
 
-    @Basic
-    @Column(name = "reporting_unit_id", nullable = true, length = 10)
     public Integer getReportingUnitId() {
         return reportingUnitId;
     }
@@ -140,8 +124,6 @@ public class NcEvent extends BaseObject<String> {
         this.reportingUnitId = reportingUnitId;
     }
 
-    @Basic
-    @Column(name = "description", nullable = true, length = -1)
     public String getDescription() {
         return description;
     }
@@ -150,8 +132,6 @@ public class NcEvent extends BaseObject<String> {
         this.description = description;
     }
 
-    @Basic
-    @Column(name = "suspected_causes", nullable = true, length = -1)
     public String getSuspectedCauses() {
         return suspectedCauses;
     }
@@ -160,8 +140,6 @@ public class NcEvent extends BaseObject<String> {
         this.suspectedCauses = suspectedCauses;
     }
 
-    @Basic
-    @Column(name = "proposed_action", nullable = true, length = -1)
     public String getProposedAction() {
         return proposedAction;
     }
@@ -170,8 +148,6 @@ public class NcEvent extends BaseObject<String> {
         this.proposedAction = proposedAction;
     }
 
-    @Basic
-    @Column(name = "laboratory_component", nullable = true, length = 10)
     public String getLaboratoryComponent() {
         return laboratoryComponent;
     }
@@ -180,8 +156,6 @@ public class NcEvent extends BaseObject<String> {
         this.laboratoryComponent = laboratoryComponent;
     }
 
-    @Basic
-    @Column(name = "severity_id")
     public String getConsequenceId() {
         return consequenceId;
     }
@@ -190,8 +164,6 @@ public class NcEvent extends BaseObject<String> {
         this.consequenceId = consequenceId;
     }
 
-    @Basic
-    @Column(name = "recurrence_id", nullable = true, length = 10)
     public String getRecurrenceId() {
         return recurrenceId;
     }
@@ -200,8 +172,6 @@ public class NcEvent extends BaseObject<String> {
         this.recurrenceId = recurrenceId;
     }
 
-    @Basic
-    @Column(name = "severity_score", nullable = true, length = 5)
     public String getSeverityScore() {
         return severityScore;
     }
@@ -210,8 +180,6 @@ public class NcEvent extends BaseObject<String> {
         this.severityScore = severityScore;
     }
 
-    @Basic
-    @Column(name = "color_code", nullable = true, length = 5)
     public String getColorCode() {
         return colorCode;
     }
@@ -220,8 +188,6 @@ public class NcEvent extends BaseObject<String> {
         this.colorCode = colorCode;
     }
 
-    @Basic
-    @Column(name = "corrective_action", nullable = true, length = -1)
     public String getCorrectiveAction() {
         return correctiveAction;
     }
@@ -230,8 +196,6 @@ public class NcEvent extends BaseObject<String> {
         this.correctiveAction = correctiveAction;
     }
 
-    @Basic
-    @Column(name = "control_action", nullable = true, length = -1)
     public String getControlAction() {
         return controlAction;
     }
@@ -240,8 +204,6 @@ public class NcEvent extends BaseObject<String> {
         this.controlAction = controlAction;
     }
 
-    @Basic
-    @Column(name = "comments", nullable = true, length = -1)
     public String getComments() {
         return comments;
     }
@@ -250,8 +212,6 @@ public class NcEvent extends BaseObject<String> {
         this.comments = comments;
     }
 
-    @Basic
-    @Column(name = "effective", nullable = true, length = 5)
     public String getEffective() {
         return effective;
     }
@@ -260,8 +220,6 @@ public class NcEvent extends BaseObject<String> {
         this.effective = effective;
     }
 
-    @Basic
-    @Column(name = "signature", nullable = true, length = 200)
     public String getSignature() {
         return signature;
     }
@@ -270,14 +228,76 @@ public class NcEvent extends BaseObject<String> {
         this.signature = signature;
     }
 
-    @Basic
-    @Column(name = "date_completed", nullable = true)
     public Date getDateCompleted() {
         return dateCompleted;
     }
 
     public void setDateCompleted(Date dateCompleted) {
         this.dateCompleted = dateCompleted;
+    }
+
+    public Integer getNceCategoryId() {
+        return nceCategoryId;
+    }
+
+    public void setNceCategoryId(Integer nceCategoryId) {
+        this.nceCategoryId = nceCategoryId;
+    }
+
+    public String getSeverityId() {
+        return severityId;
+    }
+
+    public void setSeverityId(String severityId) {
+        this.severityId = severityId;
+    }
+
+    public Integer getNceTypeId() {
+        return nceTypeId;
+    }
+
+    public void setNceTypeId(Integer nceTypeId) {
+        this.nceTypeId = nceTypeId;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getDiscussionDate() {
+        return discussionDate;
+    }
+
+    public void setDiscussionDate(String discussionDate) {
+        this.discussionDate = discussionDate;
+    }
+
+    public String getSourceType() {
+        return sourceType;
+    }
+
+    public void setSourceType(String sourceType) {
+        this.sourceType = sourceType;
+    }
+
+    public String getTriggerType() {
+        return triggerType;
+    }
+
+    public void setTriggerType(String triggerType) {
+        this.triggerType = triggerType;
+    }
+
+    public String getTriggerAction() {
+        return triggerAction;
+    }
+
+    public void setTriggerAction(String triggerAction) {
+        this.triggerAction = triggerAction;
     }
 
     @Override
@@ -289,80 +309,11 @@ public class NcEvent extends BaseObject<String> {
             return false;
         }
         NcEvent ncEvent = (NcEvent) o;
-        return id == ncEvent.id && Objects.equals(reportDate, ncEvent.reportDate) && Objects.equals(name, ncEvent.name)
-                && Objects.equals(nameOfReporter, ncEvent.nameOfReporter)
-                && Objects.equals(nceNumber, ncEvent.nceNumber) && Objects.equals(dateOfEvent, ncEvent.dateOfEvent)
-                && Objects.equals(labOrderNumber, ncEvent.labOrderNumber)
-                && Objects.equals(prescriberName, ncEvent.prescriberName) && Objects.equals(site, ncEvent.site)
-                && Objects.equals(reportingUnitId, ncEvent.reportingUnitId)
-                && Objects.equals(description, ncEvent.description)
-                && Objects.equals(suspectedCauses, ncEvent.suspectedCauses)
-                && Objects.equals(proposedAction, ncEvent.proposedAction)
-                && Objects.equals(laboratoryComponent, ncEvent.laboratoryComponent)
-                && Objects.equals(consequenceId, ncEvent.consequenceId)
-                && Objects.equals(recurrenceId, ncEvent.recurrenceId)
-                && Objects.equals(severityScore, ncEvent.severityScore) && Objects.equals(colorCode, ncEvent.colorCode)
-                && Objects.equals(correctiveAction, ncEvent.correctiveAction)
-                && Objects.equals(controlAction, ncEvent.controlAction) && Objects.equals(comments, ncEvent.comments)
-                && Objects.equals(effective, ncEvent.effective) && Objects.equals(signature, ncEvent.signature)
-                && Objects.equals(dateCompleted, ncEvent.dateCompleted);
+        return Objects.equals(id, ncEvent.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, reportDate, name, nameOfReporter, nceNumber, dateOfEvent, labOrderNumber,
-                prescriberName, site, reportingUnitId, description, suspectedCauses, proposedAction,
-                laboratoryComponent, consequenceId, recurrenceId, severityScore, colorCode, correctiveAction,
-                controlAction, comments, effective, signature, dateCompleted);
-    }
-
-    @Basic
-    @Column(name = "nce_category_id", nullable = true)
-    public Integer getNceCategoryId() {
-        return nceCategoryId;
-    }
-
-    public void setNceCategoryId(Integer nceCategoryId) {
-        this.nceCategoryId = nceCategoryId;
-    }
-
-    @Basic
-    @Column(name = "severity_id", nullable = true, length = 10)
-    public String getSeverityId() {
-        return severityId;
-    }
-
-    public void setSeverityId(String severityId) {
-        this.severityId = severityId;
-    }
-
-    @Basic
-    @Column(name = "nce_type_id", nullable = true)
-    public Integer getNceTypeId() {
-        return nceTypeId;
-    }
-
-    public void setNceTypeId(Integer nceTypeId) {
-        this.nceTypeId = nceTypeId;
-    }
-
-    @Basic
-    @Column(name = "status", nullable = true)
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    @Basic
-    @Column(name = "discussion_date", nullable = true)
-    public String getDiscussionDate() {
-        return discussionDate;
-    }
-
-    public void setDiscussionDate(String discussionDate) {
-        this.discussionDate = discussionDate;
+        return Objects.hash(id);
     }
 }

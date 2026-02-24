@@ -1,5 +1,4 @@
-import React, { useState, useContext, useEffect, useRef } from "react";
-import { Field, Formik } from "formik";
+import { Copy } from "@carbon/icons-react";
 import {
   Button,
   Checkbox,
@@ -7,21 +6,23 @@ import {
   Form,
   Grid,
   Pagination,
-  Select,
-  SelectItem,
   TextArea,
   TextInput,
 } from "@carbon/react";
-import { Copy } from "@carbon/icons-react";
+import { Field, Formik } from "formik";
+import { useContext, useEffect, useRef, useState } from "react";
 import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
-import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
-import { NotificationKinds } from "../common/CustomNotification";
-import { postToOpenElisServer } from "../utils/Utils";
-import { NotificationContext } from "../layout/Layout";
-import { ConfigurationContext } from "../layout/Layout";
-import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import config from "../../config.json";
+import { NotificationKinds } from "../common/CustomNotification";
+import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import DeltaCheckAlert from "../results/DeltaCheckAlert/DeltaCheckAlert";
+import NCEBadge from "../results/NCEBadge/NCEBadge";
+import {
+  convertAlphaNumLabNumForDisplay,
+  postToOpenElisServer,
+} from "../utils/Utils";
 
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
@@ -231,6 +232,7 @@ const AnalyserResults = (props) => {
                     />
                   </picture>
                 )}
+                <NCEBadge resultId={row.resultId} />
               </>
             )}
           </>
@@ -439,6 +441,15 @@ const AnalyserResults = (props) => {
       >
         {({ values, errors, touched, handleChange }) => (
           <Form onChange={handleChange}>
+            {configurationProperties.NCE_DELTA_CHECK_ENABLED === true && (
+              <DeltaCheckAlert
+                analysisIds={
+                  props.results?.resultList
+                    ?.slice((page - 1) * pageSize, page * pageSize)
+                    .map((r) => r.analysisId) || []
+                }
+              />
+            )}
             <DataTable
               data={
                 props.results

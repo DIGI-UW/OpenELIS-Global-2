@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="OpenELIS" id="1" labels="NCE Integration">
+        <comment>Create NCE-Result association table for linking lab results to quality issues</comment>
+        <createTable tableName="nce_result_association">
+            <column name="id" type="INTEGER" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="result_id" type="NUMERIC(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="nce_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="association_type" type="VARCHAR(50)" defaultValue="RESULT_TRIGGERED_NCE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="2" labels="NCE Integration">
+        <comment>Create delta check configuration table for threshold management</comment>
+        <createTable tableName="delta_check_configuration">
+            <column name="id" type="INTEGER" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="test_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="analyte_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="threshold_percent" type="DECIMAL(6,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_by" type="VARCHAR(100)"/>
+            <column name="modified_date" type="TIMESTAMP"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="3" labels="NCE Integration">
+        <comment>Create delta check alerts table for tracking result comparison alerts</comment>
+        <createTable tableName="delta_check_alert">
+            <column name="id" type="INTEGER" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="result_id" type="NUMERIC(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="previous_result_id" type="NUMERIC(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="current_value" type="DECIMAL(15,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="previous_value" type="DECIMAL(15,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="change_percent" type="DECIMAL(6,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="threshold_percent" type="DECIMAL(6,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="ACTIVE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="dismissal_reason" type="TEXT"/>
+            <column name="dismissed_by" type="VARCHAR(100)"/>
+            <column name="dismissed_date" type="TIMESTAMP"/>
+            <column name="escalated_nce_id" type="INTEGER"/>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="4" labels="NCE Integration">
+        <comment>Add foreign key constraints for NCE-Result association</comment>
+        <addForeignKeyConstraint
+            baseTableName="nce_result_association"
+            baseColumnNames="result_id"
+            constraintName="fk_nce_result_association_result"
+            referencedTableName="result"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint
+            baseTableName="nce_result_association"
+            baseColumnNames="nce_id"
+            constraintName="fk_nce_result_association_nce"
+            referencedTableName="nc_event"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="5" labels="NCE Integration">
+        <comment>Add foreign key constraints for delta check configuration</comment>
+        <addForeignKeyConstraint
+            baseTableName="delta_check_configuration"
+            baseColumnNames="test_id"
+            constraintName="fk_delta_check_config_test"
+            referencedTableName="test"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint
+            baseTableName="delta_check_configuration"
+            baseColumnNames="analyte_id"
+            constraintName="fk_delta_check_config_analyte"
+            referencedTableName="analyte"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="6" labels="NCE Integration">
+        <comment>Add foreign key constraints for delta check alerts</comment>
+        <addForeignKeyConstraint
+            baseTableName="delta_check_alert"
+            baseColumnNames="result_id"
+            constraintName="fk_delta_check_alert_result"
+            referencedTableName="result"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint
+            baseTableName="delta_check_alert"
+            baseColumnNames="previous_result_id"
+            constraintName="fk_delta_check_alert_previous_result"
+            referencedTableName="result"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint
+            baseTableName="delta_check_alert"
+            baseColumnNames="escalated_nce_id"
+            constraintName="fk_delta_check_alert_nce"
+            referencedTableName="nc_event"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="7" labels="NCE Integration">
+        <comment>Create indexes for performance optimization</comment>
+        <createIndex indexName="idx_nce_result_association_result_id" tableName="nce_result_association">
+            <column name="result_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_nce_result_association_nce_id" tableName="nce_result_association">
+            <column name="nce_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_delta_check_config_test_analyte" tableName="delta_check_configuration">
+            <column name="test_id"/>
+            <column name="analyte_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_delta_check_alert_result_id" tableName="delta_check_alert">
+            <column name="result_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_delta_check_alert_status" tableName="delta_check_alert">
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="8" labels="NCE Integration">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT CASE WHEN COUNT(*) >= 3 THEN 1 ELSE 0 END FROM test WHERE id IN (1, 2, 3)</sqlCheck>
+        </preConditions>
+        <comment>Insert default delta check configurations for common tests (only if referenced tests exist)</comment>
+        <insert tableName="delta_check_configuration">
+            <column name="test_id" valueNumeric="1"/>
+            <column name="threshold_percent" valueNumeric="25.0"/>
+            <column name="created_by" value="system"/>
+        </insert>
+        <insert tableName="delta_check_configuration">
+            <column name="test_id" valueNumeric="2"/>
+            <column name="threshold_percent" valueNumeric="15.0"/>
+            <column name="created_by" value="system"/>
+        </insert>
+        <insert tableName="delta_check_configuration">
+            <column name="test_id" valueNumeric="3"/>
+            <column name="threshold_percent" valueNumeric="20.0"/>
+            <column name="created_by" value="system"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="9" labels="NCE Integration">
+        <comment>Fix result_id column types: NUMERIC(10) causes type mismatch with Hibernate String mapping.
+            Drop FK constraints first since cross-type FK (VARCHAR to NUMERIC) is not supported.
+            Data integrity is enforced at the service layer.</comment>
+
+        <dropForeignKeyConstraint baseTableName="nce_result_association" constraintName="fk_nce_result_association_result"/>
+        <dropForeignKeyConstraint baseTableName="delta_check_alert" constraintName="fk_delta_check_alert_result"/>
+        <dropForeignKeyConstraint baseTableName="delta_check_alert" constraintName="fk_delta_check_alert_previous_result"/>
+
+        <modifyDataType tableName="nce_result_association" columnName="result_id" newDataType="VARCHAR(20)"/>
+        <modifyDataType tableName="delta_check_alert" columnName="result_id" newDataType="VARCHAR(20)"/>
+        <modifyDataType tableName="delta_check_alert" columnName="previous_result_id" newDataType="VARCHAR(20)"/>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="10" labels="NCE Integration">
+        <comment>Create prompt dismissal audit table for tracking dismissed value alerts</comment>
+        <createTable tableName="nce_prompt_dismissal">
+            <column name="id" type="INTEGER" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="trigger_action" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="result_id" type="VARCHAR(20)"/>
+            <column name="context" type="TEXT"/>
+            <column name="dismissed_by" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="dismissed_date" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+        <createIndex indexName="idx_prompt_dismissal_result" tableName="nce_prompt_dismissal">
+            <column name="result_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="11" labels="NCE Integration">
+        <comment>Add source and trigger tracking columns to nc_event for audit trail</comment>
+        <addColumn tableName="nc_event">
+            <column name="source_type" type="VARCHAR(50)"/>
+            <column name="trigger_type" type="VARCHAR(50)"/>
+            <column name="trigger_action" type="VARCHAR(50)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="OpenELIS" id="12" labels="NCE Integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="nc_event" columnName="severity_id"/>
+            </not>
+        </preConditions>
+        <comment>Add severity_id to nc_event to support severity classification on inline NCE creation</comment>
+        <addColumn tableName="nc_event">
+            <column name="severity_id" type="VARCHAR(10)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

@@ -43,5 +43,9 @@
         <property name="nceTypeId" column="nce_type_id" />
         <property name="nceCategoryId" column="nce_category_id" />
         <property name="discussionDate" column="discussion_date" />
+        <property name="severityId" column="severity_id" />
+        <property name="sourceType" column="source_type" />
+        <property name="triggerType" column="trigger_type" />
+        <property name="triggerAction" column="trigger_action" />
     </class>
 </hibernate-mapping>
