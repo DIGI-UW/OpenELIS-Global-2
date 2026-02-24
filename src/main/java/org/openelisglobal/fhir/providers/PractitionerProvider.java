@@ -189,7 +189,7 @@ public class PractitionerProvider implements IResourceProvider {
     }
 
     @Delete
-    public MethodOutcome delete1(@IdParam IdType theId, HttpServletRequest request) {
+    public MethodOutcome delete(@IdParam IdType theId, HttpServletRequest request) {
 
         String method = "delete";
         LogEvent.logDebug(this.getClass().getSimpleName(), method,
