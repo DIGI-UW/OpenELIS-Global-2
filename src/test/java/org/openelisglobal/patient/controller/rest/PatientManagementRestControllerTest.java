@@ -34,13 +34,11 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
 
     @Test
     public void getPhoto_shouldReturnPhotoDataGivenPatientId() throws Exception {
-        MvcResult result = mockMvc
-                .perform(get("/rest/patient-photos/" + PATIENT_WITH_PHOTO_ID + "/true")
-                        .accept(MediaType.APPLICATION_JSON_VALUE))
+        MvcResult result = mockMvc.perform(
+                get("/rest/patient-photos/" + PATIENT_WITH_PHOTO_ID + "/true").accept(MediaType.APPLICATION_JSON_VALUE))
                 .andReturn();
 
-        assertEquals("Response: " + result.getResponse().getContentAsString(),
-                200, result.getResponse().getStatus());
+        assertEquals("Response: " + result.getResponse().getContentAsString(), 200, result.getResponse().getStatus());
 
         String json = result.getResponse().getContentAsString();
         ObjectMapper mapper = new ObjectMapper();
@@ -55,13 +53,10 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
 
     @Test
     public void getPhoto_shouldReturnPhotoDataForFullSize() throws Exception {
-        MvcResult result = mockMvc
-                .perform(get("/rest/patient-photos/" + PATIENT_WITH_PHOTO_ID + "/false")
-                        .accept(MediaType.APPLICATION_JSON_VALUE))
-                .andReturn();
+        MvcResult result = mockMvc.perform(get("/rest/patient-photos/" + PATIENT_WITH_PHOTO_ID + "/false")
+                .accept(MediaType.APPLICATION_JSON_VALUE)).andReturn();
 
-        assertEquals("Response: " + result.getResponse().getContentAsString(),
-                200, result.getResponse().getStatus());
+        assertEquals("Response: " + result.getResponse().getContentAsString(), 200, result.getResponse().getStatus());
 
         String json = result.getResponse().getContentAsString();
         ObjectMapper mapper = new ObjectMapper();
