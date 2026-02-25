@@ -1,21 +1,34 @@
 package org.openelisglobal.fhir.providers;
 
+import ca.uhn.fhir.model.api.Include;
 import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
+import ca.uhn.fhir.rest.annotation.IncludeParam;
+import ca.uhn.fhir.rest.annotation.OptionalParam;
+import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
+import ca.uhn.fhir.rest.annotation.Search;
 import ca.uhn.fhir.rest.annotation.Update;
 import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.param.DateRangeParam;
+import ca.uhn.fhir.rest.param.StringAndListParam;
+import ca.uhn.fhir.rest.param.TokenAndListParam;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Encounter;
 import org.hl7.fhir.r4.model.IdType;
+import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.patient.service.PatientService;
@@ -26,9 +39,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * HAPI FHIR resource provider for the Patient resource. Handles Update and
- * Delete operations against the local OpenELIS database with synchronization to
- * the FHIR store.
+ * HAPI FHIR resource provider for the Patient resource. Handles Read, Search,
+ * Update, and Delete operations against the local OpenELIS database with
+ * synchronization to the FHIR store.
  *
  * <p>
  * Note: {@code @Create} is not yet supported because no public
@@ -42,6 +55,9 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class PatientProvider implements IResourceProvider {
+
+    @Autowired
+    private FhirUtil util;
 
     @Autowired
     private FhirTransformService fhirTransformService;
@@ -58,6 +74,58 @@ public class PatientProvider implements IResourceProvider {
     @Override
     public Class<? extends IBaseResource> getResourceType() {
         return org.hl7.fhir.r4.model.Patient.class;
+    }
+
+    @Read
+    public org.hl7.fhir.r4.model.Patient getPatientByUUID(@IdParam IdType theId) {
+        String method = "Read";
+        try {
+            if (theId == null || !theId.hasIdPart()) {
+                LogEvent.logError(this.getClass().getSimpleName(), method, "Missing Patient ID for Read");
+                throw new InvalidRequestException("Patient ID must be provided for Read");
+            }
+            Patient patient = getPatientByFhirId(theId.getIdPart());
+            if (patient == null) {
+                throw new ResourceNotFoundException("Patient/" + theId.getIdPart());
+            }
+            return fhirTransformService.transformToFhirPatient(patient.getId());
+        } catch (ResourceNotFoundException | InvalidRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "Unexpected error while Reading Patient: " + e.getMessage());
+            throw new InternalErrorException("Unexpected server error while Reading Patient", e);
+        }
+    }
+
+    @Search
+    public Bundle searchPatientBundle(
+            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_IDENTIFIER) TokenAndListParam identifier,
+            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_GIVEN) StringAndListParam given,
+            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_FAMILY) StringAndListParam family,
+            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_NAME) StringAndListParam name,
+            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_BIRTHDATE) DateRangeParam birthdate,
+            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_GENDER) TokenAndListParam gender,
+            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_RES_ID) TokenAndListParam id,
+            @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated,
+            @IncludeParam(reverse = true, allow = { "Encounter:" + Encounter.SP_PATIENT,
+                    "ServiceRequest:" + ServiceRequest.SP_SUBJECT, }) HashSet<Include> revIncludes,
+            HttpServletRequest request) {
+
+        String methodName = "searchPatientBundle";
+        LogEvent.logDebug(this.getClass().getSimpleName(), methodName, "Searching for Patients (returning Bundle)");
+
+        try {
+
+            Bundle bundle = util.forwardSearchToFhirStore(request);
+
+            return bundle;
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), methodName,
+                    "Error searching Patients: " + e.getMessage());
+            throw new InternalErrorException("Error searching Patients", e);
+        }
     }
 
     @Update
