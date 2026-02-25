@@ -8,7 +8,8 @@
     <!-- for deployment cycles -->
     <!-- <version>${major.version}.${minor.version}.${fix.version}</version> -->
     <!-- for development cycles -->
-    <version>${major.version}.${minor.version}.${state.version}.${fix.version}</version>
+    <!-- hardcode to avoid Maven warning about expression in version -->
+    <version>3.2.1.2</version>
     <packaging>war</packaging>
     <properties>
         <maven.java.release>21</maven.java.release>
@@ -640,7 +641,8 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>${postgresql.version}</version>
-            <scope>scope</scope>
+            <!-- compile scope needed for classes used by JsonBinaryType -->
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
