@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Arrays;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.fhir.providers.ObservationProvider;
 import org.openelisglobal.result.service.ResultService;
@@ -19,7 +20,9 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletConfig;
 import org.springframework.mock.web.MockServletContext;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
+@RunWith(SpringJUnit4ClassRunner.class)
 public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
 
     private RestfulServer fhirServlet;
@@ -31,12 +34,13 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
     @Autowired
     private ObservationProvider observationProvider;
 
-    @Autowired
     private MockServletContext servletContext;
 
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/result.xml");
+
+        servletContext = new MockServletContext();
 
         fhirServlet = new RestfulServer(FhirContext.forR4());
         fhirServlet.setResourceProviders(Arrays.asList(observationProvider));
