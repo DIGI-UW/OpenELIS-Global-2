@@ -22,6 +22,7 @@ import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
@@ -110,6 +111,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private ImmunohistochemistrySampleService immunohistochemistrySampleService;
     @Autowired
     private ProgramSampleService programSampleService;
+    @Autowired
+    private FhirTransformService fhirTransformService;
 
     @Transactional
     @Override
@@ -164,6 +167,13 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             for (OrganizationAddress address : updateData.getOrgAddressExtra()) {
                 address.setOrganizationId(newOrganization.getId());
                 organizationAddressService.insert(address);
+            }
+
+            try {
+                fhirTransformService.transformPersistOrganization(newOrganization);
+            } catch (Exception e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "persistOrganizationData",
+                        "Failed to persist Organization to FHIR store: " + e.getMessage());
             }
         }
 
