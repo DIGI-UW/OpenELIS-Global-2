@@ -1,10 +1,8 @@
 package org.openelisglobal.fhir.providers;
 
-import ca.uhn.fhir.model.api.Include;
 import ca.uhn.fhir.rest.annotation.Create;
 import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
-import ca.uhn.fhir.rest.annotation.IncludeParam;
 import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
@@ -21,15 +19,12 @@ import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.HashSet;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Encounter;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.Practitioner;
-import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
@@ -232,7 +227,7 @@ public class OrganizationProvider implements IResourceProvider {
 
     @Search
     public Bundle searchPractitionerBundle(
-            @OptionalParam(name = Practitioner.SP_IDENTIFIER) TokenAndListParam identifier,
+            @OptionalParam(name = Organization.SP_IDENTIFIER) TokenAndListParam identifier,
             @OptionalParam(name = Organization.SP_NAME) StringParam name,
             @OptionalParam(name = Organization.SP_ACTIVE) TokenParam active,
             @OptionalParam(name = Organization.SP_TYPE) TokenAndListParam type,
@@ -242,10 +237,7 @@ public class OrganizationProvider implements IResourceProvider {
             @OptionalParam(name = Organization.SP_ADDRESS_POSTALCODE) StringParam addressPostalCode,
             @OptionalParam(name = Organization.SP_ADDRESS_COUNTRY) StringParam addressCountry,
             @OptionalParam(name = Practitioner.SP_RES_ID) TokenAndListParam id,
-            @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated,
-            @IncludeParam(reverse = true, allow = { "Encounter:" + Encounter.SP_PARTICIPANT,
-                    "ServiceRequest:" + ServiceRequest.SP_REQUESTER, }) HashSet<Include> revIncludes,
-            HttpServletRequest request) {
+            @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated, HttpServletRequest request) {
 
         String methodName = "searchPractitionerBundle";
         LogEvent.logDebug(this.getClass().getSimpleName(), methodName,

@@ -32,9 +32,6 @@ import org.springframework.stereotype.Component;
 public class FhirUtil implements FhirClientFetcher {
 
     @Autowired
-    CloseableHttpClient httpClient;
-
-    @Autowired
     private FhirConfig fhirConfig;
     @Autowired
     private FhirContext fhirContext;
@@ -87,8 +84,8 @@ public class FhirUtil implements FhirClientFetcher {
         String json = String.format("{\"username\":\"%s\",\"password\":\"%s\"}", authUserName, authPassowrd);
         StringEntity entity = new StringEntity(json);
         httpPost.setEntity(entity);
-        httpPost.setHeader("Accept", "application/fhir+json");
-        httpPost.setHeader("Content-type", "application/fhir+json");
+        httpPost.setHeader("Accept", "application/json");
+        httpPost.setHeader("Content-type", "application/json");
         ObjectMapper mapper = new ObjectMapper();
         JsonNode response = mapper.createObjectNode();
         try (CloseableHttpResponse res = closeableHttpClient.execute(httpPost)) {
@@ -131,7 +128,7 @@ public class FhirUtil implements FhirClientFetcher {
             addAuthHeader(httpGet);
             httpGet.setHeader(HttpHeaders.ACCEPT, "application/fhir+json");
 
-            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+            try (CloseableHttpResponse response = closeableHttpClient.execute(httpGet)) {
                 int statusCode = response.getStatusLine().getStatusCode();
                 String body = EntityUtils.toString(response.getEntity());
 
