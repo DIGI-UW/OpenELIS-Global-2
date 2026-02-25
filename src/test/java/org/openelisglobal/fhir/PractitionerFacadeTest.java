@@ -80,6 +80,56 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         return request;
     }
 
+    private MockHttpServletRequest buildRequestWithPath(String method, String pathInfo) {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setMethod(method);
+        request.setContextPath("");
+        request.setServletPath("/fhir");
+        request.setPathInfo(pathInfo);
+        request.setRequestURI("/fhir" + pathInfo);
+        request.setContentType("application/fhir+json");
+        request.addHeader("Accept", "application/fhir+json");
+        return request;
+    }
+
+    @Test
+    public void readPractitioner_shouldReturnPractitionerResource() throws Exception {
+        Provider existingProvider = providerService.get("1");
+        assertNotNull("Test provider with id=1 must exist", existingProvider);
+        String practitionerUuid = existingProvider.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildRequestWithPath("GET", "/Practitioner/" + practitionerUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+        assertEquals("Practitioner", jsonResponse.get("resourceType").asText());
+        assertEquals(practitionerUuid, jsonResponse.get("id").asText());
+
+        // Verify name from test data (John Doe, person_id=1)
+        assertTrue("Response should contain name array", jsonResponse.has("name"));
+        JsonNode nameArray = jsonResponse.get("name");
+        assertTrue("Name array should not be empty", nameArray.size() > 0);
+        assertEquals("Doe", nameArray.get(0).get("family").asText());
+    }
+
+    @Test
+    public void readPractitioner_withNonExistentId_shouldReturn404() throws Exception {
+        String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
+        MockHttpServletRequest request = buildRequestWithPath("GET", "/Practitioner/" + nonExistentUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(404, response.getStatus());
+
+        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+        assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
+    }
+
     @Test
     public void createPractitioner_shouldReturnSuccess() throws Exception {
         List<Provider> providers = providerService.getAll();
