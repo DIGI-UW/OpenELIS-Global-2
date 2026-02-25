@@ -90,10 +90,10 @@ public class DisplayListService implements LocaleChangeListener {
         TEST_SECTION_ACTIVE, TEST_SECTION_INACTIVE, TEST_SECTION_BY_NAME, HAITI_DEPARTMENTS, PATIENT_SEARCH_CRITERIA,
         PANELS, PANELS_ACTIVE, PANELS_INACTIVE, ORDERABLE_TESTS, ALL_TESTS, REJECTION_REASONS, REFERRAL_REASONS,
         REFERRAL_ORGANIZATIONS, TEST_LOCATION_CODE, DICTIONARY_PROGRAM, RESULT_TYPE_LOCALIZED, RESULT_TYPE_RAW,
-        UNIT_OF_MEASURE, UNIT_OF_MEASURE_ACTIVE, UNIT_OF_MEASURE_INACTIVE, DICTIONARY_TEST_RESULTS, LAB_COMPONENT,
-        SEVERITY_CONSEQUENCES_LIST, SEVERITY_RECURRENCE_LIST, ACTION_TYPE_LIST, LABORATORY_COMPONENT, SAMPLE_NATURE,
-        ELECTRONIC_ORDER_STATUSES, METHODS, METHODS_INACTIVE, METHOD_BY_NAME, PRACTITIONER_PERSONS, ORDER_PRIORITY,
-        PROGRAM, IMMUNOHISTOCHEMISTRY_STATUS, PATHOLOGY_STATUS, CYTOLOGY_SPECIMEN_ADEQUACY_SATISFACTION,
+        RESULT_TYPE_CODES, UNIT_OF_MEASURE, UNIT_OF_MEASURE_ACTIVE, UNIT_OF_MEASURE_INACTIVE, DICTIONARY_TEST_RESULTS,
+        LAB_COMPONENT, SEVERITY_CONSEQUENCES_LIST, SEVERITY_RECURRENCE_LIST, ACTION_TYPE_LIST, LABORATORY_COMPONENT,
+        SAMPLE_NATURE, ELECTRONIC_ORDER_STATUSES, METHODS, METHODS_INACTIVE, METHOD_BY_NAME, PRACTITIONER_PERSONS,
+        ORDER_PRIORITY, PROGRAM, IMMUNOHISTOCHEMISTRY_STATUS, PATHOLOGY_STATUS, CYTOLOGY_SPECIMEN_ADEQUACY_SATISFACTION,
         PATHOLOGY_TECHNIQUES, PATHOLOGIST_REQUESTS, PATHOLOGY_REQUEST_STATUS, PATHOLOGIST_CONCLUSIONS,
         IMMUNOHISTOCHEMISTRY_REPORT_TYPES, IMMUNOHISTOCHEMISTRY_MARKERS_TESTS, CYTOLOGY_STATUS, NOTEBOOK_STATUS,
         CYTOLOGY_SATISFACTORY_FOR_EVALUATION, CYTOLOGY_UN_SATISFACTORY_FOR_EVALUATION, CYTOLOGY_REPORT_TYPES,
@@ -414,6 +414,19 @@ public class DisplayListService implements LocaleChangeListener {
         return typeList;
     }
 
+    private List<IdValuePair> createResultTypeCodesList() {
+        List<IdValuePair> typeList = new ArrayList<>();
+
+        List<TypeOfTestResult> typeOfTestResultList = typeOfTestResultService.getAll();
+        for (TypeOfTestResult typeOfTestResult : typeOfTestResultList) {
+            if (typeOfTestResult.getTestResultType() != null) {
+                typeList.add(new IdValuePair(typeOfTestResult.getId(), typeOfTestResult.getTestResultType()));
+            }
+        }
+
+        return typeList;
+    }
+
     private List<IdValuePair> createDictionaryListForCategory(String category) {
         List<IdValuePair> list = new ArrayList<>();
         List<Dictionary> dictionaryList = dictionaryService.getDictionaryEntrysByCategoryAbbreviation("categoryName",
@@ -494,6 +507,7 @@ public class DisplayListService implements LocaleChangeListener {
         typeToListMap.put(ListType.DICTIONARY_PROGRAM, createDictionaryListForCategory("programs"));
         typeToListMap.put(ListType.RESULT_TYPE_LOCALIZED, createLocalizedResultTypeList());
         typeToListMap.put(ListType.RESULT_TYPE_RAW, createRawResultTypeList());
+        typeToListMap.put(ListType.RESULT_TYPE_CODES, createResultTypeCodesList());
         typeToListMap.put(ListType.UNIT_OF_MEASURE, createUOMList());
         typeToListMap.put(ListType.UNIT_OF_MEASURE_ACTIVE, createUOMList());
         typeToListMap.put(ListType.UNIT_OF_MEASURE_INACTIVE, createUOMList());
@@ -641,6 +655,9 @@ public class DisplayListService implements LocaleChangeListener {
         }
         case ACTIVE_ORG_LIST: {
             typeToListMap.put(ListType.ACTIVE_ORG_LIST, createActiveOrganizationsList());
+        }
+        case RESULT_TYPE_CODES: {
+            typeToListMap.put(ListType.RESULT_TYPE_CODES, createResultTypeCodesList());
         }
         }
     }
