@@ -84,25 +84,13 @@ public class OrganizationFacadeTest extends BaseWebContextSensitiveTest {
         }
     }
 
-    private MockHttpServletRequest buildRequest(String method, String pathInfo) {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setMethod(method);
-        request.setContextPath("");
-        request.setServletPath("/fhir");
-        request.setPathInfo(pathInfo);
-        request.setRequestURI("/fhir" + pathInfo);
-        request.setContentType("application/fhir+json");
-        request.addHeader("Accept", "application/fhir+json");
-        return request;
-    }
-
     @Test
     public void readOrganization_shouldReturnOrganizationResource() throws Exception {
         Organization existingOrg = organizationService.get("3");
         assertNotNull("Test organization with id=3 must exist", existingOrg);
         String orgUuid = existingOrg.getFhirUuidAsString();
 
-        MockHttpServletRequest request = buildRequest("GET", "/Organization/" + orgUuid);
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Organization/" + orgUuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
@@ -120,7 +108,7 @@ public class OrganizationFacadeTest extends BaseWebContextSensitiveTest {
     @Test
     public void readOrganization_withNonExistentId_shouldReturn404() throws Exception {
         String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
-        MockHttpServletRequest request = buildRequest("GET", "/Organization/" + nonExistentUuid);
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Organization/" + nonExistentUuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
@@ -135,7 +123,7 @@ public class OrganizationFacadeTest extends BaseWebContextSensitiveTest {
     public void createOrganization_shouldReturnSuccess() throws Exception {
         cleanupDatabase();
 
-        MockHttpServletRequest request = buildRequest("POST", "/Organization");
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Organization");
 
         String organizationJson = """
                 {
@@ -188,7 +176,7 @@ public class OrganizationFacadeTest extends BaseWebContextSensitiveTest {
         Organization existingOrg = organizationService.get("3");
         String orgUuid = existingOrg.getFhirUuidAsString();
 
-        MockHttpServletRequest request = buildRequest("PUT", "/Organization/" + orgUuid);
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Organization/" + orgUuid);
 
         String updateJson = """
                 {
@@ -239,7 +227,7 @@ public class OrganizationFacadeTest extends BaseWebContextSensitiveTest {
     public void deleteOrganization_shouldSetOrganizationInactive() throws ServletException, IOException {
         Organization existingOrg = organizationService.get("3");
         String orgUuid = existingOrg.getFhirUuidAsString();
-        MockHttpServletRequest request = buildRequest("DELETE", "/Organization/" + orgUuid);
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Organization/" + orgUuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);

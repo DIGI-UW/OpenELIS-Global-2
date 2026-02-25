@@ -64,32 +64,7 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         List<Person> people = personService.getAll();
         personService.deleteAll(people);
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
-
-        request.setMethod(method);
-
-        request.setContextPath("");
-        request.setServletPath("/fhir");
-        request.setPathInfo("/Practitioner");
-
-        request.setRequestURI("/fhir/Practitioner");
-
-        request.setContentType("application/fhir+json");
-        request.addHeader("Accept", "application/fhir+json");
-
-        return request;
-    }
-
-    private MockHttpServletRequest buildRequestWithPath(String method, String pathInfo) {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setMethod(method);
-        request.setContextPath("");
-        request.setServletPath("/fhir");
-        request.setPathInfo(pathInfo);
-        request.setRequestURI("/fhir" + pathInfo);
-        request.setContentType("application/fhir+json");
-        request.addHeader("Accept", "application/fhir+json");
-        return request;
+        return buildFhirRequest(method, "/Practitioner");
     }
 
     @Test
@@ -98,7 +73,7 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         assertNotNull("Test provider with id=1 must exist", existingProvider);
         String practitionerUuid = existingProvider.getFhirUuidAsString();
 
-        MockHttpServletRequest request = buildRequestWithPath("GET", "/Practitioner/" + practitionerUuid);
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner/" + practitionerUuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
@@ -119,7 +94,7 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
     @Test
     public void readPractitioner_withNonExistentId_shouldReturn404() throws Exception {
         String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
-        MockHttpServletRequest request = buildRequestWithPath("GET", "/Practitioner/" + nonExistentUuid);
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner/" + nonExistentUuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
@@ -189,16 +164,7 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         Provider existingProvider = providerService.get("1");
         String practitionerUuid = existingProvider.getFhirUuidAsString();
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
-
-        request.setMethod("PUT");
-        request.setContextPath("");
-        request.setServletPath("/fhir");
-        request.setPathInfo("/Practitioner/" + practitionerUuid);
-        request.setRequestURI("/fhir/Practitioner/" + practitionerUuid);
-
-        request.setContentType("application/fhir+json");
-        request.addHeader("Accept", "application/fhir+json");
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Practitioner/" + practitionerUuid);
 
         String updateJson = """
                 {
@@ -249,15 +215,7 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
 
         Provider existingProvider = providerService.get("1");
         String practitionerUuid = existingProvider.getFhirUuidAsString();
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setMethod("DELETE");
-        request.setContextPath("");
-        request.setServletPath("/fhir");
-        request.setPathInfo("/Practitioner/" + practitionerUuid);
-        request.setRequestURI("/fhir/Practitioner/" + practitionerUuid);
-
-        request.setContentType("application/fhir+json");
-        request.addHeader("Accept", "application/fhir+json");
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Practitioner/" + practitionerUuid);
 
         MockHttpServletResponse response = new MockHttpServletResponse();
 
