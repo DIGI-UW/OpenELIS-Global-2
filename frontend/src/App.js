@@ -164,21 +164,30 @@ export default function App() {
       })
         .then((response) => response.text())
         .then((html) => {
-          // Use a hidden iframe instead of a popup to process SAML SLO silently
-          const iframe = document.createElement("iframe");
-          iframe.style.display = "none";
-          iframe.name = "saml-logout-frame";
-          document.body.appendChild(iframe);
-          iframe.contentDocument.write(html);
-          iframe.contentDocument.close();
-          // Remove the iframe after a short delay to allow the logout request to complete
-          setTimeout(() => {
-            if (iframe.parentNode) {
-              iframe.parentNode.removeChild(iframe);
-            }
-          }, 5000);
-          getUserSessionDetails();
-          window.location.href = config.loginRedirect;
+          // Parse the SAML SLO response and submit the form in the current
+          // window — no popup, no iframe needed.
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, "text/html");
+          const samlForm = doc.querySelector("form");
+
+          if (samlForm) {
+            const form = document.createElement("form");
+            form.method = samlForm.method || "POST";
+            form.action = samlForm.action;
+            Array.from(samlForm.querySelectorAll("input")).forEach((input) => {
+              const hidden = document.createElement("input");
+              hidden.type = "hidden";
+              hidden.name = input.name;
+              hidden.value = input.value;
+              form.appendChild(hidden);
+            });
+            document.body.appendChild(form);
+            form.submit();
+          } else {
+            // No SAML form in response — fall back to a direct redirect
+            getUserSessionDetails();
+            window.location.href = config.loginRedirect;
+          }
         })
         .catch((error) => {
           console.error(error);
