@@ -232,7 +232,7 @@ public class OrganizationProvider implements IResourceProvider {
 
     @Search
     public Bundle searchPractitionerBundle(
-            @OptionalParam(name = Practitioner.SP_IDENTIFIER) TokenAndListParam identifier,
+            @OptionalParam(name = Organization.SP_IDENTIFIER) TokenAndListParam identifier,
             @OptionalParam(name = Organization.SP_NAME) StringParam name,
             @OptionalParam(name = Organization.SP_ACTIVE) TokenParam active,
             @OptionalParam(name = Organization.SP_TYPE) TokenAndListParam type,
@@ -243,8 +243,6 @@ public class OrganizationProvider implements IResourceProvider {
             @OptionalParam(name = Organization.SP_ADDRESS_COUNTRY) StringParam addressCountry,
             @OptionalParam(name = Practitioner.SP_RES_ID) TokenAndListParam id,
             @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated,
-            @IncludeParam(reverse = true, allow = { "Encounter:" + Encounter.SP_PARTICIPANT,
-                    "ServiceRequest:" + ServiceRequest.SP_REQUESTER, }) HashSet<Include> revIncludes,
             HttpServletRequest request) {
 
         String methodName = "searchPractitionerBundle";
