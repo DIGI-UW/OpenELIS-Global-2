@@ -1,6 +1,6 @@
 [submodule "plugins"]
 	path = plugins
-	url = https://github.com/I-TECH-UW/openelisglobal-plugins.git
+	url = https://github.com/DIGI-UW/openelisglobal-plugins.git
 [submodule "tools/Liquibase-Outdated"]
 	path = tools/Liquibase-Outdated
 	url = https://github.com/I-TECH-UW/Liquibase-Outdated.git
@@ -16,9 +16,10 @@
 [submodule "dataexport"]
 	path = dataexport
 	url = https://github.com/I-TECH-UW/dataexport.git
-[submodule "tools/astm-http-bridge"]
-	path = tools/astm-http-bridge
-	url = https://github.com/DIGI-UW/astm-http-bridge.git
-[submodule "tools/astm-mock-server"]
-	path = tools/astm-mock-server
-	url = https://github.com/DIGI-UW/astm-mock-server.git
+[submodule "tools/openelis-analyzer-bridge"]
+	path = tools/openelis-analyzer-bridge
+	url = https://github.com/DIGI-UW/openelis-analyzer-bridge.git
+	branch = develop
+[submodule "tools/analyzer-mock-server"]
+	path = tools/analyzer-mock-server
+	url = https://github.com/DIGI-UW/analyzer-mock-server.git

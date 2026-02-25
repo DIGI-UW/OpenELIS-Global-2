@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Person entries linked to patients -->
+    <person id="10" last_name="Nakamura" first_name="Yuki"
+        middle_name="Hana" city="Kampala" state="Central" zip_code="256"
+        country="Uganda" work_phone="12345678" home_phone="87654321"
+        cell_phone="09785432" primary_phone="12345678" fax="3456"
+        email="yuki.nakamura@example.com" lastUpdated="2025-01-15 12:00:00" />
+    <person id="11" last_name="Ochieng" first_name="Grace"
+        middle_name="Auma" city="Nairobi" state="Nairobi" zip_code="00100"
+        country="Kenya" work_phone="20000001" home_phone="20000002"
+        cell_phone="20000003" primary_phone="20000001" fax="2001"
+        email="grace.ochieng@example.com" lastUpdated="2025-01-15 12:00:00" />
+
+    <!-- Patient entries with fhir_uuid set -->
+    <patient id="10" person_id="10" race="asian" gender="F"
+        birth_date="1990-05-20 00:00:00" birth_time="1990-05-20 00:00:00"
+        national_id="NAT10001" ethnicity="A" external_id="EXT10001"
+        entered_birth_date="1990-05-20" lastUpdated="2025-01-15 12:00:00"
+        fhir_uuid="a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d" />
+    <patient id="11" person_id="11" race="black" gender="F"
+        birth_date="1985-08-10 00:00:00" birth_time="1985-08-10 00:00:00"
+        national_id="NAT10002" ethnicity="U" external_id="EXT10002"
+        entered_birth_date="1985-08-10" lastUpdated="2025-01-15 12:00:00"
+        fhir_uuid="b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e" />
+</dataset>
