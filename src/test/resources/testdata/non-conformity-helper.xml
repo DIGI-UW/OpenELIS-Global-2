@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y" />
+
+    keep_history="Y" is_hl7_encoded="N" lastupdated="2024-01-01" />
+    keep_history="Y" is_hl7_encoded="N" lastupdated="2024-01-01" />
+
+    <status_of_sample id="1" description="Sample Status 1"
+        code="1" status_type="SampleType1" lastupdated="2024-01-01"
+        name="Status 1" display_key="sample_status_1" is_active="Y" />
+
+    <sample id="401" accession_number="ACC-401"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2024-06-03 12:00:00" />
+    <sample id="402" accession_number="ACC-402"
+        received_date="2024-06-04 00:00:00.0"
+        entered_date="2024-06-04 00:00:00.0"
+        collection_date="2024-06-04 00:00:00.0"
+        lastupdated="2024-06-04 12:00:00" />
+
+    <sample_item id="601" sort_order="1" status_id="1"
+        collection_date="2024-06-03 10:00:00"
+        lastupdated="2024-06-03 12:00:00" />
+    <sample_item id="602" sort_order="2" status_id="1"
+        collection_date="2024-06-04 10:00:00"
+        lastupdated="2024-06-04 12:00:00" />
+
+    <qa_event id="301" name="QA Event 1"
+        description="QA Event for testing" is_billable="Y"
+        reporting_sequence="1" reporting_text="QA event reporting text."
+        is_holdable="N" lastupdated="2024-06-01 12:00:00"
+        display_key="QA_EVENT_1" />
+
+    <sample_qaevent id="1" qa_event_id="301" sample_id="401"
+        completed_date="2025-03-01" lastupdated="2024-06-25 09:00:00"
+        sampleitem_id="601" entered_date="2025-06-25 09:30:00" />
+    <sample_qaevent id="2" qa_event_id="301" sample_id="402"
+        completed_date="2025-03-10" lastupdated="2024-06-25 10:00:00"
+        sampleitem_id="602" entered_date="2025-06-25 10:00:00" />
+
+    <note id="1" sys_user_id="1" reference_id="401"
+        reference_table="1" note_type="N" subject="QaEvent Note"
+        text="QA note for sample 401" lastupdated="2024-06-03 10:00:00" />
+    <note id="2" sys_user_id="1" reference_id="1"
+        reference_table="188" note_type="N" subject=""
+        text="QA note for sampleQaEvent 1" lastupdated="2024-06-25 09:00:00" />
+</dataset>
