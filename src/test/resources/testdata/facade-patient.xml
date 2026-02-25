@@ -2,15 +2,15 @@
 <dataset>
     <!-- Person entries linked to patients -->
     <person id="10" last_name="Nakamura" first_name="Yuki"
-        middle_name="Hana" city="Kampala" state="Central"
-        zip_code="256" country="Uganda" work_phone="12345678"
-        home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
-        fax="3456" email="yuki.nakamura@example.com" lastUpdated="2025-01-15 12:00:00" />
+        middle_name="Hana" city="Kampala" state="Central" zip_code="256"
+        country="Uganda" work_phone="12345678" home_phone="87654321"
+        cell_phone="09785432" primary_phone="12345678" fax="3456"
+        email="yuki.nakamura@example.com" lastUpdated="2025-01-15 12:00:00" />
     <person id="11" last_name="Ochieng" first_name="Grace"
-        middle_name="Auma" city="Nairobi" state="Nairobi"
-        zip_code="00100" country="Kenya" work_phone="20000001"
-        home_phone="20000002" cell_phone="20000003" primary_phone="20000001"
-        fax="2001" email="grace.ochieng@example.com" lastUpdated="2025-01-15 12:00:00" />
+        middle_name="Auma" city="Nairobi" state="Nairobi" zip_code="00100"
+        country="Kenya" work_phone="20000001" home_phone="20000002"
+        cell_phone="20000003" primary_phone="20000001" fax="2001"
+        email="grace.ochieng@example.com" lastUpdated="2025-01-15 12:00:00" />
 
     <!-- Patient entries with fhir_uuid set -->
     <patient id="10" person_id="10" race="asian" gender="F"
