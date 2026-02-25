@@ -60,9 +60,9 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setMethod("GET");
         request.setContextPath("");
-        request.setServletPath("/fhir/facade");
+        request.setServletPath("/fhir");
         request.setPathInfo("/Observation/" + fhirUuid);
-        request.setRequestURI("/fhir/facade/Observation/" + fhirUuid);
+        request.setRequestURI("/fhir/Observation/" + fhirUuid);
         request.setContentType("application/fhir+json");
         request.addHeader("Accept", "application/fhir+json");
 
