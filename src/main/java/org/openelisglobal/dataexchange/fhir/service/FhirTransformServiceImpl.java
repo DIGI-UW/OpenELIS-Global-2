@@ -495,8 +495,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         // new organization created during order entry (free-text site)
         if (updateData.getNewOrganization() != null) {
-            org.hl7.fhir.r4.model.Organization fhirOrg = transformToFhirOrganization(
-                    updateData.getNewOrganization());
+            org.hl7.fhir.r4.model.Organization fhirOrg = transformToFhirOrganization(updateData.getNewOrganization());
             this.addToOperations(fhirOperations, tempIdGenerator, fhirOrg);
         }
 
