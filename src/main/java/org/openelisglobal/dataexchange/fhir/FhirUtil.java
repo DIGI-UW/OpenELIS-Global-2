@@ -6,18 +6,18 @@ import ca.uhn.fhir.rest.client.api.IClientInterceptor;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.interceptor.BasicAuthInterceptor;
 import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
-import jakarta.servlet.http.HttpServletRequest;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-
 import org.apache.commons.validator.GenericValidator;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
@@ -118,41 +118,54 @@ public class FhirUtil implements FhirClientFetcher {
         return url.toString();
     }
 
-public Bundle forwardSearchToFhirStore(HttpServletRequest request) {
-    String method = "forwardSearchToFhirStore";
-    try {
-        String fhirPath = extractFhirPath(request);
-        LogEvent.logDebug(this.getClass().getSimpleName(), method,
-                "Received FHIR search request for path: " + fhirPath);
-
-        String targetUrl = buildQueryPath(fhirConfig.getLocalFhirStorePath(), fhirPath, request.getQueryString());
-
-        HttpGet httpGet = new HttpGet(targetUrl);
-        addAuthHeader(httpGet);
-        httpGet.setHeader(HttpHeaders.ACCEPT, "application/fhir+json");
-
-        try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
-            int statusCode = response.getStatusLine().getStatusCode();
-            String body = EntityUtils.toString(response.getEntity());
-
+    public Bundle forwardSearchToFhirStore(HttpServletRequest request) {
+        String method = "forwardSearchToFhirStore";
+        try {
+            String fhirPath = extractFhirPath(request);
             LogEvent.logDebug(this.getClass().getSimpleName(), method,
-                    "FHIR store responded with status: " + statusCode);
+                    "Received FHIR search request for path: " + fhirPath);
 
-            if (statusCode >= 200 && statusCode < 300) {
-                // Parse the response as a FHIR Bundle
-                return getFhirParser().parseResource(Bundle.class, body);
-            } else {
-                LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "FHIR store returned error: " + statusCode + " - " + body);
-                throw new RuntimeException("FHIR store returned error: " + statusCode);
+            String targetUrl = buildQueryPath(fhirConfig.getLocalFhirStorePath(), fhirPath, request.getQueryString());
+
+            HttpGet httpGet = new HttpGet(targetUrl);
+            addAuthHeader(httpGet);
+            httpGet.setHeader(HttpHeaders.ACCEPT, "application/fhir+json");
+
+            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+                int statusCode = response.getStatusLine().getStatusCode();
+                String body = EntityUtils.toString(response.getEntity());
+
+                LogEvent.logDebug(this.getClass().getSimpleName(), method,
+                        "FHIR store responded with status: " + statusCode);
+
+                if (statusCode >= 200 && statusCode < 300) {
+
+                    return getFhirParser().parseResource(Bundle.class, body);
+                } else {
+                    LogEvent.logError(this.getClass().getSimpleName(), method,
+                            "FHIR store returned error: " + statusCode + " - " + body);
+                    throw new RuntimeException("FHIR store returned error: " + statusCode);
+                }
             }
+        } catch (SocketTimeoutException | ConnectTimeoutException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "Timeout while calling FHIR store: " + e.getMessage());
+            throw new RuntimeException("Timeout communicating with FHIR store", e);
+
+        } catch (IOException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "I/O error while calling FHIR store: " + e.getMessage());
+            throw new RuntimeException("Error communicating with FHIR store", e);
+
+        } catch (ca.uhn.fhir.parser.DataFormatException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method, "FHIR parsing error: " + e.getMessage());
+            throw new RuntimeException("Error parsing FHIR response", e);
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method, "Unexpected error: " + e.getMessage());
+            throw new RuntimeException("Unexpected error communicating with FHIR store", e);
         }
-    } catch (IOException e) {
-        LogEvent.logError(this.getClass().getSimpleName(), method,
-                "I/O error while calling local FHIR store: " + e.getMessage());
-        throw new RuntimeException("Error communicating with FHIR store", e);
     }
-}
 
     private void addAuthHeader(org.apache.http.HttpRequest httpRequest) {
         String username = fhirConfig.getUsername();

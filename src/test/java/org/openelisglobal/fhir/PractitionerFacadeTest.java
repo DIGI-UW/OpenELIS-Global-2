@@ -69,10 +69,10 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         request.setMethod(method);
 
         request.setContextPath("");
-        request.setServletPath("/fhir/facade");
+        request.setServletPath("/fhir");
         request.setPathInfo("/Practitioner");
 
-        request.setRequestURI("/fhir/facade/Practitioner");
+        request.setRequestURI("/fhir/Practitioner");
 
         request.setContentType("application/fhir+json");
         request.addHeader("Accept", "application/fhir+json");
@@ -143,9 +143,9 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
 
         request.setMethod("PUT");
         request.setContextPath("");
-        request.setServletPath("/fhir/facade");
+        request.setServletPath("/fhir");
         request.setPathInfo("/Practitioner/" + practitionerUuid);
-        request.setRequestURI("/fhir/facade/Practitioner/" + practitionerUuid);
+        request.setRequestURI("/fhir/Practitioner/" + practitionerUuid);
 
         request.setContentType("application/fhir+json");
         request.addHeader("Accept", "application/fhir+json");
@@ -202,9 +202,9 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setMethod("DELETE");
         request.setContextPath("");
-        request.setServletPath("/fhir/facade");
+        request.setServletPath("/fhir");
         request.setPathInfo("/Practitioner/" + practitionerUuid);
-        request.setRequestURI("/fhir/facade/Practitioner/" + practitionerUuid);
+        request.setRequestURI("/fhir/Practitioner/" + practitionerUuid);
 
         request.setContentType("application/fhir+json");
         request.addHeader("Accept", "application/fhir+json");
