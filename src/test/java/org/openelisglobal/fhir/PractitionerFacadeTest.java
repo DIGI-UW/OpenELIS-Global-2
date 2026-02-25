@@ -1,6 +1,7 @@
 package org.openelisglobal.fhir;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -8,6 +9,8 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.ServletException;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.Before;
@@ -66,10 +69,10 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         request.setMethod(method);
 
         request.setContextPath("");
-        request.setServletPath("/fhir/facade");
+        request.setServletPath("/fhir");
         request.setPathInfo("/Practitioner");
 
-        request.setRequestURI("/fhir/facade/Practitioner");
+        request.setRequestURI("/fhir/Practitioner");
 
         request.setContentType("application/fhir+json");
         request.addHeader("Accept", "application/fhir+json");
@@ -140,9 +143,9 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
 
         request.setMethod("PUT");
         request.setContextPath("");
-        request.setServletPath("/fhir/facade");
+        request.setServletPath("/fhir");
         request.setPathInfo("/Practitioner/" + practitionerUuid);
-        request.setRequestURI("/fhir/facade/Practitioner/" + practitionerUuid);
+        request.setRequestURI("/fhir/Practitioner/" + practitionerUuid);
 
         request.setContentType("application/fhir+json");
         request.addHeader("Accept", "application/fhir+json");
@@ -189,6 +192,34 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         assertEquals("bety.namatovu@example.com", updatedPerson.getEmail());
 
         assertTrue(updatedProvider.getActive());
+    }
+
+    @Test
+    public void deletePractitoner_shouldSetPractitionerInActive() throws ServletException, IOException {
+
+        Provider existingProvider = providerService.get("1");
+        String practitionerUuid = existingProvider.getFhirUuidAsString();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setMethod("DELETE");
+        request.setContextPath("");
+        request.setServletPath("/fhir");
+        request.setPathInfo("/Practitioner/" + practitionerUuid);
+        request.setRequestURI("/fhir/Practitioner/" + practitionerUuid);
+
+        request.setContentType("application/fhir+json");
+        request.addHeader("Accept", "application/fhir+json");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(204, response.getStatus());
+        Provider deletedProvider = providerService.get("1");
+        Person deletedPerson = personService.get(deletedProvider.getPerson().getId());
+
+        assertEquals("john@gmail.com", deletedPerson.getEmail());
+
+        assertFalse(deletedProvider.getActive());
     }
 
 }

@@ -434,6 +434,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     @Async
     @Override
     public void transformPersistOrganization(Organization organization) throws FhirLocalPersistingException {
+        String method = "transformPersistOrganization";
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformPersistOrganization",
                 "transformPersistOrganization called");
 
@@ -441,7 +442,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         FhirOperations fhirOperations = new FhirOperations();
         org.hl7.fhir.r4.model.Organization fhirOrg = transformToFhirOrganization(organization);
         this.addToOperations(fhirOperations, tempIdGenerator, fhirOrg);
-        Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+        try {
+            Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+        } catch (FhirLocalPersistingException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method, "Local fhirStore current unavalable");
+        }
     }
 
     @Override

@@ -1,22 +1,35 @@
 package org.openelisglobal.fhir.providers;
 
+import ca.uhn.fhir.model.api.Include;
 import ca.uhn.fhir.rest.annotation.Create;
 import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
+import ca.uhn.fhir.rest.annotation.IncludeParam;
+import ca.uhn.fhir.rest.annotation.OptionalParam;
+import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
+import ca.uhn.fhir.rest.annotation.Search;
 import ca.uhn.fhir.rest.annotation.Update;
 import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.param.DateRangeParam;
+import ca.uhn.fhir.rest.param.StringAndListParam;
+import ca.uhn.fhir.rest.param.TokenAndListParam;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashSet;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Encounter;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Practitioner;
+import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
@@ -29,6 +42,9 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class PractitionerProvider implements IResourceProvider {
+
+    @Autowired
+    private FhirUtil util;
 
     @Autowired
     private FhirTransformService fhirTransformService;
@@ -44,6 +60,29 @@ public class PractitionerProvider implements IResourceProvider {
     @Override
     public Class<? extends IBaseResource> getResourceType() {
         return Practitioner.class;
+    }
+
+    @Read
+    public Practitioner getPractitionerByUUID(@IdParam IdType theId) {
+        String method = "Read";
+        try {
+            if (theId == null || !theId.hasIdPart()) {
+                LogEvent.logError(this.getClass().getSimpleName(), method, "Missing Practitioner ID for Read");
+                throw new InvalidRequestException("Practitioner ID must be provided for Read");
+            }
+            Provider provider = providerService.getProviderByFhirId(UUID.fromString(theId.getIdPart()));
+            if (provider == null) {
+                throw new ResourceNotFoundException("Provider is null " + theId.getIdPart());
+            }
+            Practitioner practitioner = fhirTransformService.transformProviderToPractitioner(provider);
+            return practitioner;
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "Unexpected error while Reading Practitioner: " + e.getMessage());
+            throw new InternalErrorException("Unexpected server error while Reading Practitioner", e);
+
+        }
+
     }
 
     @Create
@@ -174,6 +213,34 @@ public class PractitionerProvider implements IResourceProvider {
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while deleting Practitioner: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error while deleting Practitioner", e);
+        }
+    }
+
+    @Search
+    public Bundle searchPractitionerBundle(
+            @OptionalParam(name = Practitioner.SP_IDENTIFIER) TokenAndListParam identifier,
+            @OptionalParam(name = Practitioner.SP_GIVEN) StringAndListParam given,
+            @OptionalParam(name = Practitioner.SP_FAMILY) StringAndListParam family,
+            @OptionalParam(name = Practitioner.SP_RES_ID) TokenAndListParam id,
+            @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated,
+            @IncludeParam(reverse = true, allow = { "Encounter:" + Encounter.SP_PARTICIPANT,
+                    "ServiceRequest:" + ServiceRequest.SP_REQUESTER, }) HashSet<Include> revIncludes,
+            HttpServletRequest request) {
+
+        String methodName = "searchPractitionerBundle";
+        LogEvent.logDebug(this.getClass().getSimpleName(), methodName,
+                "Searching for Practitioners (returning Bundle)");
+
+        try {
+
+            Bundle bundle = util.forwardSearchToFhirStore(request);
+
+            return bundle;
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), methodName,
+                    "Error searching Practitioners: " + e.getMessage());
+            throw new InternalErrorException("Error searching Practitioners", e);
         }
     }
 }
