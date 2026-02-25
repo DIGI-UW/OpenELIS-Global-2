@@ -697,4 +697,10 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
     public Result getResultByFhirUuid(String fhirUuid) {
         return baseObjectDAO.getResultByFhirUuid(fhirUuid);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Result> getResultsByPatientUuid(String patientUuid) {
+        return baseObjectDAO.getResultsByPatientUuid(patientUuid);
+    }
 }

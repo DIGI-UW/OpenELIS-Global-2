@@ -17,6 +17,7 @@ package org.openelisglobal.result.daoimpl;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Date;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.apache.commons.beanutils.PropertyUtils;
@@ -439,4 +440,21 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
             return null;
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Result> getResultsByPatientUuid(String patientUuid) throws LIMSRuntimeException {
+        try {
+            String sql = "FROM Result r WHERE r.analysis.sampleItem.sample.id IN "
+                    + "(SELECT sh.sampleId FROM SampleHuman sh " + "WHERE sh.patientId IN "
+                    + "(SELECT p.id FROM Patient p WHERE p.fhirUuid = :patientUuid))";
+            Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);
+            query.setParameter("patientUuid", UUID.fromString(patientUuid));
+            return query.list();
+        } catch (RuntimeException e) {
+            handleException(e, "getResultsByPatientUuid");
+            return new ArrayList<>();
+        }
+    }
+
 }

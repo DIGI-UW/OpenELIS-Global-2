@@ -75,4 +75,6 @@ public interface ResultService extends BaseObjectService<Result, String> {
     String getUOM(Result result);
 
     Result getResultByFhirUuid(String fhirUuid);
+
+    List<Result> getResultsByPatientUuid(String patientUuid);
 }
