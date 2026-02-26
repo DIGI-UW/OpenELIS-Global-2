@@ -71,6 +71,12 @@ public class AnalyzerRestController extends BaseRestController {
     @Autowired
     private AnalyzerTypeService analyzerTypeService;
 
+    @Autowired
+    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
+
+    @Autowired
+    private org.openelisglobal.test.service.TestService testService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /** ASTM LIS2-A2 Enquiry — initiates transmission. */
@@ -189,7 +195,7 @@ public class AnalyzerRestController extends BaseRestController {
             }
 
             if (form.getPluginTypeId() != null && !form.getPluginTypeId().trim().isEmpty()) {
-                AnalyzerType pluginType = analyzerTypeService.get(form.getPluginTypeId());
+                AnalyzerType pluginType = resolvePluginType(form.getPluginTypeId());
                 if (pluginType != null) {
                     analyzer.setAnalyzerType(pluginType);
                 }
@@ -205,6 +211,17 @@ public class AnalyzerRestController extends BaseRestController {
 
             analyzer.setSysUserId(getSysUserId(request));
             String analyzerId = analyzerService.insert(analyzer);
+
+            // Auto-create test mappings from default config if provided
+            if (form.getDefaultConfigId() != null && !form.getDefaultConfigId().isEmpty()) {
+                Map<String, Object> configData = loadDefaultConfigFile(form.getDefaultConfigId());
+                if (configData != null) {
+                    autoCreateTestMappings(analyzerId, configData);
+                } else {
+                    logger.warn("Could not load default config '{}' for test mapping auto-creation",
+                            form.getDefaultConfigId());
+                }
+            }
 
             Analyzer createdAnalyzer = analyzerService.get(analyzerId);
             if (createdAnalyzer == null) {
@@ -400,7 +417,7 @@ public class AnalyzerRestController extends BaseRestController {
                 analyzer.setIdentifierPattern(form.getIdentifierPattern());
             }
             if (form.getPluginTypeId() != null && !form.getPluginTypeId().trim().isEmpty()) {
-                AnalyzerType pluginType = analyzerTypeService.get(form.getPluginTypeId());
+                AnalyzerType pluginType = resolvePluginType(form.getPluginTypeId());
                 if (pluginType != null) {
                     analyzer.setAnalyzerType(pluginType);
                 }
@@ -954,6 +971,155 @@ public class AnalyzerRestController extends BaseRestController {
             Map<String, Object> error = new LinkedHashMap<>();
             error.put("error", "Failed to load template: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Resolve a pluginTypeId that may be numeric (database ID) or a well-known
+     * alias like "generic-astm". Returns null if unresolvable.
+     *
+     * <p>
+     * The frontend fallback list historically used string IDs ("generic-astm",
+     * "generic-hl7") instead of database numeric IDs. This method gracefully
+     * handles both formats to prevent NumberFormatException.
+     */
+    private AnalyzerType resolvePluginType(String pluginTypeId) {
+        if (pluginTypeId == null || pluginTypeId.trim().isEmpty()) {
+            return null;
+        }
+
+        // Try numeric ID first (normal path when frontend has real DB IDs)
+        try {
+            Integer.parseInt(pluginTypeId.trim());
+            return analyzerTypeService.get(pluginTypeId);
+        } catch (NumberFormatException e) {
+            logger.info("Non-numeric pluginTypeId '{}', attempting name-based lookup", pluginTypeId);
+        }
+
+        // Map well-known frontend aliases to database names
+        String lookupName;
+        switch (pluginTypeId.toLowerCase()) {
+        case "generic-astm":
+            lookupName = "Generic ASTM";
+            break;
+        case "generic-hl7":
+            lookupName = "Generic HL7";
+            break;
+        default:
+            lookupName = pluginTypeId;
+        }
+
+        AnalyzerType type = analyzerTypeService.getAnalyzerTypeByName(lookupName);
+        if (type == null) {
+            logger.warn("Could not resolve pluginTypeId '{}' (tried name '{}')", pluginTypeId, lookupName);
+        }
+        return type;
+    }
+
+    /**
+     * Load a default config JSON file from the filesystem. Returns null if
+     * validation fails or file not found.
+     *
+     * @param configId Config ID in "protocol/name" format (e.g.,
+     *                 "astm/genexpert-astm")
+     * @return Parsed JSON as Map, or null
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> loadDefaultConfigFile(String configId) {
+        if (configId == null || !configId.contains("/")) {
+            return null;
+        }
+
+        String[] parts = configId.split("/", 2);
+        String protocol = parts[0];
+        String name = parts[1];
+
+        if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")) {
+            return null;
+        }
+        if (!name.matches("^[a-zA-Z0-9\\-_.]+$")) {
+            return null;
+        }
+
+        String filename = name.endsWith(".json") ? name : name + ".json";
+        String defaultsDir = System.getenv("ANALYZER_DEFAULTS_DIR");
+        if (defaultsDir == null || defaultsDir.isEmpty()) {
+            defaultsDir = "/data/analyzer-defaults";
+        }
+
+        Path baseDir = Path.of(defaultsDir);
+        Path templateFile = baseDir.resolve(protocol).resolve(filename).normalize();
+        if (!templateFile.startsWith(baseDir.normalize())) {
+            return null;
+        }
+
+        if (!Files.exists(templateFile) || !Files.isRegularFile(templateFile)) {
+            return null;
+        }
+
+        try {
+            String jsonContent = Files.readString(templateFile, StandardCharsets.UTF_8);
+            return objectMapper.readValue(jsonContent, Map.class);
+        } catch (IOException e) {
+            logger.error("Error reading default config file: {}", configId, e);
+            return null;
+        }
+    }
+
+    /**
+     * Auto-create test mappings from a default config's
+     * {@code default_test_mappings} array. Each mapping entry with a valid LOINC
+     * code is resolved to an OpenELIS test and persisted as an AnalyzerTestMapping.
+     *
+     * <p>
+     * Mappings that can't be resolved (unknown LOINC) are logged and skipped.
+     *
+     * @param analyzerId The newly created analyzer's ID
+     * @param config     Parsed default config JSON
+     */
+    @SuppressWarnings("unchecked")
+    private void autoCreateTestMappings(String analyzerId, Map<String, Object> config) {
+        Object mappingsObj = config.get("default_test_mappings");
+        if (!(mappingsObj instanceof List)) {
+            return;
+        }
+
+        List<Map<String, Object>> mappings = (List<Map<String, Object>>) mappingsObj;
+        int created = 0;
+
+        for (Map<String, Object> mapping : mappings) {
+            String analyzerCode = (String) mapping.get("analyzer_code");
+            String loinc = (String) mapping.get("loinc");
+
+            if (analyzerCode == null || loinc == null || analyzerCode.isEmpty() || loinc.isEmpty()) {
+                logger.warn("Skipping test mapping with missing analyzer_code or loinc");
+                continue;
+            }
+
+            List<org.openelisglobal.test.valueholder.Test> tests = testService.getActiveTestsByLoinc(loinc);
+            if (tests == null || tests.isEmpty()) {
+                logger.warn("No active test found for LOINC '{}' (analyzer_code '{}')", loinc, analyzerCode);
+                continue;
+            }
+
+            org.openelisglobal.test.valueholder.Test test = tests.get(0);
+
+            org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping atm = new org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping();
+            atm.setAnalyzerId(analyzerId);
+            atm.setAnalyzerTestName(analyzerCode);
+            atm.setTestId(test.getId());
+            atm.setSysUserId("1");
+
+            try {
+                analyzerTestMappingService.insert(atm);
+                created++;
+            } catch (Exception e) {
+                logger.warn("Failed to create test mapping for analyzer_code '{}': {}", analyzerCode, e.getMessage());
+            }
+        }
+
+        if (created > 0) {
+            logger.info("Auto-created {} test mappings for analyzer {}", created, analyzerId);
         }
     }
 
