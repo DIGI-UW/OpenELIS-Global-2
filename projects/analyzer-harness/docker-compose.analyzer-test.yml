@@ -1,14 +1,28 @@
+# Analyzer Testing Services
+#
+# Provides mock analyzers, ASTM bridge, and virtual serial ports for E2E testing.
+# Static IPs match fixture data in src/test/resources/analyzer-minimal.sql so that
+# OE's test-connection (direct TCP) and bridge routing both work out of the box.
+#
+# Network: 172.20.1.0/24
+#   .100 = astm-simulator (Mindray BA-88A fixture, ID 2006)
+#   .110 = genexpert-simulator (GeneXpert ASTM fixture, ID 2013)
+
 services:
+  # Default ASTM mock — Mindray BA-88A (fixture ID 2006)
   astm-simulator:
     build:
       context: ../../tools/analyzer-mock-server
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"
+      - "5000:9600" # Host 5000 → container 9600 (matches fixture port)
     environment:
-      - ASTM_PORT=5000
+      - ASTM_PORT=9600
       - ANALYZER_TYPE=HEMATOLOGY
       - RESPONSE_DELAY_MS=100
+    networks:
+      analyzer-net:
+        ipv4_address: 172.20.1.100
     restart: unless-stopped
     healthcheck:
       test:
@@ -16,13 +30,59 @@ services:
           "CMD",
           "python",
           "-c",
-          "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 5000)); s.close()",
+          "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 9600)); s.close()",
         ]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
 
+  # GeneXpert ASTM simulator — template-driven, spec-compliant messages.
+  # Supports both push (client) and pull (server) ASTM workflows:
+  #   Pull: OE/bridge connects to 172.20.1.110:9600, mock responds with data
+  #   Push: HTTP API on port 8080 triggers ASTM TCP push to bridge:12001
+  # Activate with: --profile genexpert
+  genexpert-simulator:
+    build:
+      context: ../../tools/analyzer-mock-server
+      dockerfile: Dockerfile
+    ports:
+      - "5010:9600" # ASTM listen (matches fixture port=9600)
+      - "8085:8080" # HTTP API (trigger pushes, health check)
+    environment:
+      - ASTM_PORT=9600
+      - ASTM_TEMPLATE=genexpert_astm
+      - RESPONSE_DELAY_MS=100
+    command: >
+      python -u server.py
+      --port 9600
+      --api-port 8080
+      --push https://oe:8443
+      --verbose
+    networks:
+      analyzer-net:
+        ipv4_address: 172.20.1.110
+    profiles:
+      - genexpert
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ASTM-HTTP Bridge — always running, handles all analyzers.
+  # Inbound: listens on 12001, any analyzer connects, forwards to OE via HTTP.
+  # Outbound: OE sends ?forwardAddress={ip}&forwardPort={port} from DB,
+  #   bridge opens TCP to that analyzer. forward-astm-server is just the
+  #   default fallback when no forwardAddress is specified.
   openelis-analyzer-bridge:
     build:
       context: ../../tools/openelis-analyzer-bridge
@@ -30,19 +90,20 @@ services:
     image: itechuw/openelis-analyzer-bridge:latest
     ports:
       - "8442:8443" # HTTPS API port
-      - "12000:12001" # ASTM listen port
+      - "12000:12001" # ASTM listen port (inbound from analyzers)
     volumes:
       - ../../volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - LOGGING_LEVEL_ORG_ITECH=INFO
+      # Inbound: forward received ASTM data to OE
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe:8443/api/OpenELIS-Global/analyzer/astm
       - ORG_ITECH_AHB_LISTEN_ASTM_SERVER_PORT=12001
+      # Outbound default (when OE query omits forwardAddress)
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_HOST_NAME=astm-simulator
-      - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_PORT=5000
-    depends_on:
-      astm-simulator:
-        condition: service_healthy
+      - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_PORT=9600
+    networks:
+      - analyzer-net
     restart: unless-stopped
 
   virtual-serial:
@@ -58,13 +119,27 @@ services:
         wait
     volumes:
       - serial-vol:/serial
+    networks:
+      - analyzer-net
     restart: unless-stopped
 
+  # OE service stub — joins analyzer network and configures bridge URL
+  # so all outbound analyzer communication routes through the bridge.
   oe:
+    environment:
+      - ANALYZER_BRIDGE_URL=https://openelis-analyzer-bridge:8443
+    networks:
+      - analyzer-net
     volumes:
       - serial-vol:/dev/serial
+
+networks:
+  analyzer-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.1.0/24
 
 volumes:
   serial-vol:
     driver: local
-
