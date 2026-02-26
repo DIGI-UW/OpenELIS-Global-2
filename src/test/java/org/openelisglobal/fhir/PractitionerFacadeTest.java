@@ -64,20 +64,45 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         List<Person> people = personService.getAll();
         personService.deleteAll(people);
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
+        return buildFhirRequest(method, "/Practitioner");
+    }
 
-        request.setMethod(method);
+    @Test
+    public void readPractitioner_shouldReturnPractitionerResource() throws Exception {
+        Provider existingProvider = providerService.get("1");
+        assertNotNull("Test provider with id=1 must exist", existingProvider);
+        String practitionerUuid = existingProvider.getFhirUuidAsString();
 
-        request.setContextPath("");
-        request.setServletPath("/fhir");
-        request.setPathInfo("/Practitioner");
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner/" + practitionerUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
 
-        request.setRequestURI("/fhir/Practitioner");
+        fhirServlet.service(request, response);
 
-        request.setContentType("application/fhir+json");
-        request.addHeader("Accept", "application/fhir+json");
+        assertEquals(200, response.getStatus());
 
-        return request;
+        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+        assertEquals("Practitioner", jsonResponse.get("resourceType").asText());
+        assertEquals(practitionerUuid, jsonResponse.get("id").asText());
+
+        // Verify name from test data (John Doe, person_id=1)
+        assertTrue("Response should contain name array", jsonResponse.has("name"));
+        JsonNode nameArray = jsonResponse.get("name");
+        assertTrue("Name array should not be empty", nameArray.size() > 0);
+        assertEquals("Doe", nameArray.get(0).get("family").asText());
+    }
+
+    @Test
+    public void readPractitioner_withNonExistentId_shouldReturn404() throws Exception {
+        String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner/" + nonExistentUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(404, response.getStatus());
+
+        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+        assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
     }
 
     @Test
@@ -139,16 +164,7 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         Provider existingProvider = providerService.get("1");
         String practitionerUuid = existingProvider.getFhirUuidAsString();
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
-
-        request.setMethod("PUT");
-        request.setContextPath("");
-        request.setServletPath("/fhir");
-        request.setPathInfo("/Practitioner/" + practitionerUuid);
-        request.setRequestURI("/fhir/Practitioner/" + practitionerUuid);
-
-        request.setContentType("application/fhir+json");
-        request.addHeader("Accept", "application/fhir+json");
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Practitioner/" + practitionerUuid);
 
         String updateJson = """
                 {
@@ -199,15 +215,7 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
 
         Provider existingProvider = providerService.get("1");
         String practitionerUuid = existingProvider.getFhirUuidAsString();
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setMethod("DELETE");
-        request.setContextPath("");
-        request.setServletPath("/fhir");
-        request.setPathInfo("/Practitioner/" + practitionerUuid);
-        request.setRequestURI("/fhir/Practitioner/" + practitionerUuid);
-
-        request.setContentType("application/fhir+json");
-        request.addHeader("Accept", "application/fhir+json");
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Practitioner/" + practitionerUuid);
 
         MockHttpServletResponse response = new MockHttpServletResponse();
 
