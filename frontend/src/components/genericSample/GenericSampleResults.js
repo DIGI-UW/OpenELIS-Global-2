@@ -28,6 +28,8 @@ import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import DataTable from "react-data-table-component";
 import { Formik } from "formik";
 import config from "../../config.json";
+import ResultMultiSelect from "../common/multiSelect";
+import CascadingMultiSelect from "../common/cascadingMultiSelect";
 
 /**
  * GenericSampleResults - Configurable result entry component for Generic Sample menu.
@@ -413,12 +415,8 @@ function GenericSampleResults({
       id: "result",
       name: intl.formatMessage({ id: "column.name.result" }),
       cell: (row) => {
-        if (
-          row.resultType === "D" ||
-          row.resultType === "M" ||
-          row.resultType === "C"
-        ) {
-          // Dictionary/Multi/Cascading - dropdown
+        if (row.resultType === "D") {
+          // Dictionary - single select dropdown
           return (
             <Select
               id={"testResult" + row.id + ".resultValue"}
@@ -433,6 +431,28 @@ function GenericSampleResults({
                 <SelectItem key={idx} value={dict.id} text={dict.value} />
               ))}
             </Select>
+          );
+        } else if (row.resultType === "M") {
+          // Multi-select
+          return (
+            <ResultMultiSelect
+              id={`multiResultValue${row.id}`}
+              name={`testResult[${row.id}].multiSelectResultValues`}
+              dictionaryValues={row.dictionaryResults}
+              value={row.multiSelectResultValues}
+              onChange={(e) => handleResultChange(e, row.id)}
+            />
+          );
+        } else if (row.resultType === "C") {
+          // Cascading multi-select
+          return (
+            <CascadingMultiSelect
+              id={`multiResult${row.id}`}
+              name={`testResult[${row.id}].multiSelectResultValues`}
+              dictionaryValues={row.dictionaryResults}
+              value={row.multiSelectResultValues}
+              onChange={(e) => handleResultChange(e, row.id)}
+            />
           );
         } else {
           // Numeric/Text/etc - text input
@@ -449,7 +469,7 @@ function GenericSampleResults({
           );
         }
       },
-      width: "10rem",
+      width: "20rem",
     });
 
     // Current Result column
@@ -458,22 +478,41 @@ function GenericSampleResults({
         id: "currentResult",
         name: intl.formatMessage({ id: "column.name.currentResult" }),
         cell: (row) => {
-          // For dictionary/coded results, show the display text instead of the ID
           if (
-            (row.resultType === "D" ||
-              row.resultType === "M" ||
-              row.resultType === "C") &&
+            row.resultType === "D" &&
             row.resultValue &&
             row.dictionaryResults
           ) {
+            // Dictionary - resolve single ID to label
             const dictItem = row.dictionaryResults.find(
               (dict) => dict.id === row.resultValue,
             );
             return dictItem ? dictItem.value : row.resultValue;
+          } else if (
+            (row.resultType === "M" || row.resultType === "C") &&
+            row.multiSelectResultValues &&
+            row.dictionaryResults
+          ) {
+            // Multi/Cascading - resolve all selected IDs to labels
+            try {
+              const parsed = JSON.parse(row.multiSelectResultValues || "{}");
+              const allIds = Object.values(parsed)
+                .flatMap((v) => v.split(","))
+                .filter(Boolean);
+              const labels = allIds.map((id) => {
+                const dict = row.dictionaryResults.find(
+                  (d) => String(d.id) === String(id),
+                );
+                return dict ? dict.value : id;
+              });
+              return labels.join(", ");
+            } catch {
+              return row.multiSelectResultValues || "";
+            }
           }
           return row.resultValue || "";
         },
-        width: "8rem",
+        width: "10rem",
       });
     }
 
