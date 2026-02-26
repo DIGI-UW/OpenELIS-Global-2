@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+
+    <status_of_sample id="1" description="Sample Entered"
+        code="1" status_type="SAMPLE" lastupdated="2024-01-01"
+        name="SampleEntered" display_key="status.sample.entered" is_active="Y" />
+    <status_of_sample id="12"
+        description="Non Conforming Order" code="2" status_type="ORDER"
+        lastupdated="2024-01-01" name="NonConforming"
+        display_key="status.order.nonconforming" is_active="Y" />
+
+    <qa_event id="301" name="QA Event 1"
+        description="QA Event for testing" is_billable="Y"
+        reporting_sequence="1" reporting_text="QA event reporting text."
+        is_holdable="N" lastupdated="2024-06-01 12:00:00"
+        display_key="QA_EVENT_1" />
+
+    <sample id="401" accession_number="ACC-401" status_id="1"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2024-06-03 12:00:00" />
+    <sample id="402" accession_number="ACC-402" status_id="1"
+        received_date="2024-06-04 00:00:00.0"
+        entered_date="2024-06-04 00:00:00.0"
+        collection_date="2024-06-04 00:00:00.0"
+        lastupdated="2024-06-04 12:00:00" />
+    <sample id="403" accession_number="ACC-403"
+        received_date="2024-06-05 00:00:00.0"
+        entered_date="2024-06-05 00:00:00.0"
+        collection_date="2024-06-05 00:00:00.0" status_id="12"
+        lastupdated="2024-06-05 12:00:00" />
+
+    <sample_item id="601" sort_order="1" status_id="1"
+        collection_date="2024-06-03 10:00:00"
+        lastupdated="2024-06-03 12:00:00" />
+
+    <sample_qaevent id="1" qa_event_id="301" sample_id="401"
+        completed_date="2025-03-01" lastupdated="2024-06-25 09:00:00"
+        sampleitem_id="601" entered_date="2025-06-25 09:30:00" />
+
+</dataset>
