@@ -14,6 +14,8 @@ import { AnalyzerFormPage } from "../fixtures/analyzer-form";
  *   - Default configs available at /data/analyzer-defaults/astm/
  */
 test.describe("Analyzer Form - GeneXpert ASTM Create/Edit", () => {
+  test.describe.configure({ mode: "serial" });
+
   const uniqueSuffix = Date.now();
   const analyzerName = `TEST-GeneXpert-${uniqueSuffix}`;
   let createdAnalyzerId: string;

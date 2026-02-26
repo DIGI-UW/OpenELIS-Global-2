@@ -77,9 +77,7 @@ export class AnalyzerFormPage {
   /** Select an item from a Carbon Dropdown by visible text */
   private async selectDropdownItem(dropdown: Locator, text: string) {
     await dropdown.click();
-    const item = this.page.locator(`.cds--list-box__menu-item`).filter({
-      hasText: text,
-    });
+    const item = this.page.getByRole("option", { name: text });
     await item.first().click();
   }
 
