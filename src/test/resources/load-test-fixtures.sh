@@ -24,16 +24,25 @@ RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
 RESET=false
 VERIFY=true
 
-# SQL to link fixture analyzers (IDs 2000-2012) to their AnalyzerType records.
+# SQL to link fixture analyzers to their AnalyzerType records.
 # AnalyzerType IDs are auto-generated at startup by PluginRegistryService, so we
 # match by plugin_class_name (stable) rather than by ID (auto-generated).
+# Only generic plugins (GenericASTM, GenericHL7) are used — no legacy plugins.
 LINK_ANALYZER_TYPES_SQL="
 SET search_path TO clinlims;
--- Correct fixture analyzer → AnalyzerType links (overrides auto-linking if needed)
-UPDATE analyzer SET analyzer_type_id = (SELECT id FROM analyzer_type WHERE plugin_class_name = 'oe.plugin.analyzer.GeneXpertAnalyzer' LIMIT 1) WHERE id = 2002;
-UPDATE analyzer SET analyzer_type_id = (SELECT id FROM analyzer_type WHERE plugin_class_name = 'oe.plugin.analyzer.QuantStudio7FlexAnalyzer' LIMIT 1) WHERE id = 2009;
-UPDATE analyzer SET analyzer_type_id = (SELECT id FROM analyzer_type WHERE plugin_class_name = 'uw.edu.itech.StagoSTart4.StagoSTart4Analyzer' LIMIT 1) WHERE id = 2010;
-UPDATE analyzer SET analyzer_type_id = (SELECT id FROM analyzer_type WHERE plugin_class_name = 'oe.plugin.analyzer.SysmexXNLAnalyzer' LIMIT 1) WHERE id = 2011;
+-- Link GenericASTM analyzers to their AnalyzerType (auto-created by PluginRegistryService)
+UPDATE analyzer SET analyzer_type_id = (
+  SELECT id FROM analyzer_type
+  WHERE plugin_class_name = 'org.openelisglobal.plugins.analyzer.genericastm.GenericASTMAnalyzer'
+  LIMIT 1
+) WHERE id IN (2006, 2013) AND analyzer_type_id IS NULL;
+
+-- Link GenericHL7 analyzers to their AnalyzerType
+UPDATE analyzer SET analyzer_type_id = (
+  SELECT id FROM analyzer_type
+  WHERE plugin_class_name = 'org.openelisglobal.plugins.analyzer.generichl7.GenericHL7Analyzer'
+  LIMIT 1
+) WHERE id IN (2007, 2008, 2012) AND analyzer_type_id IS NULL;
 "
 
 # Parse command line arguments
