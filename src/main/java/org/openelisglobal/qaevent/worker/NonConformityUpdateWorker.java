@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.address.service.PersonAddressService;
@@ -34,6 +35,7 @@ import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.validator.BaseErrors;
+import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl;
 import org.openelisglobal.note.valueholder.Note;
@@ -152,6 +154,8 @@ public class NonConformityUpdateWorker implements INonConformityUpdateWorker {
     private SampleProjectService sampleProjectService;
     @Autowired
     private SystemUserService systemUserService;
+    @Autowired
+    private FhirTransformService fhirTransformService;
 
     private Provider provider;
     private Person providerPerson;
@@ -266,6 +270,12 @@ public class NonConformityUpdateWorker implements INonConformityUpdateWorker {
             if (insertNewOrganizaiton) {
                 orgService.insert(newOrganization);
                 orgService.linkOrganizationAndType(newOrganization, TableIdService.getInstance().REFERRING_ORG_TYPE_ID);
+                try {
+                    fhirTransformService.transformPersistOrganization(newOrganization);
+                } catch (Exception e) {
+                    LogEvent.logError(this.getClass().getSimpleName(), "update",
+                            "Failed to persist Organization to FHIR store: " + e.getMessage());
+                }
             }
 
             if (insertSampleRequester) {
@@ -615,6 +625,7 @@ public class NonConformityUpdateWorker implements INonConformityUpdateWorker {
 
             if (useFullProviderInfo) {
                 newOrganization = new Organization();
+                newOrganization.setFhirUuid(UUID.randomUUID());
                 newOrganization.setIsActive("Y");
                 newOrganization.setOrganizationName(service);
                 newOrganization.setSysUserId(webData.getCurrentSysUserId());
