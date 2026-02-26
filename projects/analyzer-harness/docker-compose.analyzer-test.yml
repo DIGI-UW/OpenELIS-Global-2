@@ -123,9 +123,11 @@ services:
       - analyzer-net
     restart: unless-stopped
 
-  # OE service stub — joins the analyzer network so test-connection
-  # (direct TCP to analyzer.ip_address:port) works.
+  # OE service stub — joins analyzer network and configures bridge URL
+  # so all outbound analyzer communication routes through the bridge.
   oe:
+    environment:
+      - ANALYZER_BRIDGE_URL=https://openelis-analyzer-bridge:8443
     networks:
       - analyzer-net
     volumes:
