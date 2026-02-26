@@ -2,7 +2,7 @@
 
 Database profiles are used when one wants to mass deactivate sites ot tests,
 this is used when one is **not** using the FHIR facility Registry on the
-Consolidated Server. The noral use case is when an administrator has just
+Consolidated Server. The normal use case is when an administrator has just
 installed OpenELIS and wants to deactivate the facilities and tests included
 with the OpenELIS installer.
 

@@ -5,13 +5,20 @@ import { confirmAlert } from "react-confirm-alert";
 import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
 import StorageDashboard from "./components/storage/StorageDashboard";
-import InventoryManagement from "./components/inventory/InventoryManagement";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
+import AnalyzersPage from "./pages/AnalyzersPage";
+import FieldMapping from "./components/analyzers/FieldMapping/FieldMapping";
+import ErrorDashboardPage from "./pages/ErrorDashboardPage";
+import CustomFieldTypeManagementPage from "./pages/CustomFieldTypeManagementPage";
+import QCDashboardPlaceholder from "./pages/analyzers/QCDashboardPlaceholder";
+import QCAlertsPlaceholder from "./pages/analyzers/QCAlertsPlaceholder";
+import CorrectiveActionsPlaceholder from "./pages/analyzers/CorrectiveActionsPlaceholder";
 import { Admin } from "./components";
 import ResultSearch from "./components/resultPage/ResultSearch";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { getFromOpenElisServer } from "./components/utils/Utils";
+import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import "./App.css";
 import { languages } from "./languages";
 import config from "./config.json";
@@ -56,16 +63,16 @@ import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitori
 import ProgramDashboard from "./components/program/programDashboard.jsx";
 import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
+import InventoryManagement from "./components/inventory/InventoryManagement";
 
 export default function App() {
-  let i18nConfig = {
-    locale: navigator.language.split(/[-_]/)[0],
-    defaultLocale: "en",
-    messages: languages["en"].messages,
-  };
-
   const defaultLocale =
     localStorage.getItem("locale") || navigator.language.split(/[-_]/)[0];
+
+  const initialLocale = languages[defaultLocale] ? defaultLocale : "en";
+
+  const [locale, setLocale] = useState(initialLocale);
+  const [messages, setMessages] = useState(languages[initialLocale].messages);
 
   const [userSessionDetails, setUserSessionDetails] = useState({});
   const [errorLoadingSessionDetails, setErrorLoadingSessionDetails] =
@@ -73,6 +80,21 @@ export default function App() {
 
   useEffect(() => {
     getUserSessionDetails();
+  }, []);
+
+  // Load and apply site branding (colors, favicon)
+  useEffect(() => {
+    loadAndApplyBranding();
+
+    // Listen for branding updates from admin UI
+    const handleBrandingUpdate = () => {
+      loadAndApplyBranding();
+    };
+    window.addEventListener("branding-updated", handleBrandingUpdate);
+
+    return () => {
+      window.removeEventListener("branding-updated", handleBrandingUpdate);
+    };
   }, []);
 
   const getUserSessionDetails = async () => {
@@ -130,10 +152,6 @@ export default function App() {
     return userSessionDetails;
   };
 
-  i18nConfig.locale = languages[defaultLocale] ? defaultLocale : "en";
-
-  i18nConfig.messages = languages[i18nConfig.locale].messages;
-
   const logout = () => {
     if (userSessionDetails.loginMethod === "SAML") {
       fetch(config.serverBaseUrl + "/Logout?useSAML=true", {
@@ -146,20 +164,30 @@ export default function App() {
       })
         .then((response) => response.text())
         .then((html) => {
-          const POPUP_HEIGHT = 700;
-          const POPUP_WIDTH = 600;
-          const top =
-            window.outerHeight / 2 + window.screenY - POPUP_HEIGHT / 2;
-          const left = window.outerWidth / 2 + window.screenX - POPUP_WIDTH / 2;
-          const newWindow = window.open(
-            "",
-            "SAML Popup",
-            `height=${POPUP_HEIGHT},width=${POPUP_WIDTH},top=${top},left=${left}`,
-          );
-          newWindow.document.write(html);
-          newWindow.document.close();
-          getUserSessionDetails();
-          window.location.href = config.loginRedirect;
+          // Parse the SAML SLO response and submit the form in the current
+          // window — no popup, no iframe needed.
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, "text/html");
+          const samlForm = doc.querySelector("form");
+
+          if (samlForm) {
+            const form = document.createElement("form");
+            form.method = samlForm.method || "POST";
+            form.action = samlForm.action;
+            Array.from(samlForm.querySelectorAll("input")).forEach((input) => {
+              const hidden = document.createElement("input");
+              hidden.type = "hidden";
+              hidden.name = input.name;
+              hidden.value = input.value;
+              form.appendChild(hidden);
+            });
+            document.body.appendChild(form);
+            form.submit();
+          } else {
+            // No SAML form in response — fall back to a direct redirect
+            getUserSessionDetails();
+            window.location.href = config.loginRedirect;
+          }
         })
         .catch((error) => {
           console.error(error);
@@ -188,8 +216,8 @@ export default function App() {
     if (!languages[lang]) {
       lang = "en";
     }
-    i18nConfig.messages = languages[lang].messages;
-    i18nConfig.locale = lang;
+    setLocale(lang);
+    setMessages(languages[lang].messages);
     localStorage.setItem("locale", lang);
   };
 
@@ -223,10 +251,10 @@ export default function App() {
 
   return (
     <IntlProvider
-      locale={i18nConfig.locale}
-      key={i18nConfig.locale}
-      defaultLocale={i18nConfig.defaultLocale}
-      messages={i18nConfig.messages}
+      locale={locale}
+      key={locale}
+      defaultLocale="en"
+      messages={messages}
     >
       <UserSessionDetailsContext.Provider
         value={{
@@ -256,36 +284,6 @@ export default function App() {
                   path="/"
                   exact
                   component={() => <Home />}
-                  role=""
-                />
-                <SecureRoute
-                  path="/GenericSample/Order"
-                  exact
-                  component={() => {
-                    const GenericSampleOrder =
-                      require("./components/genericSample/GenericSampleOrder").default;
-                    return <GenericSampleOrder />;
-                  }}
-                  role=""
-                />
-                <SecureRoute
-                  path="/GenericSample/Edit"
-                  exact
-                  component={() => {
-                    const GenericSampleOrderEdit =
-                      require("./components/genericSample/GenericSampleOrderEdit").default;
-                    return <GenericSampleOrderEdit />;
-                  }}
-                  role=""
-                />
-                <SecureRoute
-                  path="/GenericSample/Import"
-                  exact
-                  component={() => {
-                    const GenericSampleOrderImport =
-                      require("./components/genericSample/GenericSampleOrderImport").default;
-                    return <GenericSampleOrderImport />;
-                  }}
                   role=""
                 />
                 <SecureRoute
@@ -352,12 +350,6 @@ export default function App() {
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute
-                  path="/FreezerMonitoring"
-                  exact
-                  component={() => <FreezerMonitoringDashboard />}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
                   path="/NoteBookDashboard"
                   exact
                   component={() => <NoteBookDashBoard />}
@@ -405,6 +397,42 @@ export default function App() {
                   component={() => <CytologyCaseView />}
                   role=""
                   labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path="/GenericSample/Order"
+                  exact
+                  component={() => {
+                    const GenericSampleOrder =
+                      require("./components/genericSample/GenericSampleOrder").default;
+                    return <GenericSampleOrder />;
+                  }}
+                  role=""
+                />
+                <SecureRoute
+                  path="/GenericSample/Edit"
+                  exact
+                  component={() => {
+                    const GenericSampleOrderEdit =
+                      require("./components/genericSample/GenericSampleOrderEdit").default;
+                    return <GenericSampleOrderEdit />;
+                  }}
+                  role=""
+                />
+                <SecureRoute
+                  path="/GenericSample/Import"
+                  exact
+                  component={() => {
+                    const GenericSampleOrderImport =
+                      require("./components/genericSample/GenericSampleOrderImport").default;
+                    return <GenericSampleOrderImport />;
+                  }}
+                  role=""
+                />
+                <SecureRoute
+                  path="/FreezerMonitoring"
+                  exact
+                  component={() => <FreezerMonitoringDashboard />}
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/SamplePatientEntry"
@@ -499,14 +527,46 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
-                  path="/GenericSample/Results"
+                  path="/analyzers"
                   exact
-                  component={() => {
-                    const GenericSampleResults =
-                      require("./components/genericSample/GenericSampleResults").default;
-                    return <GenericSampleResults />;
-                  }}
-                  role={[Roles.RESULTS]}
+                  component={() => <AnalyzersPage />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/:id/mappings"
+                  exact
+                  component={FieldMapping}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/errors"
+                  exact
+                  component={() => <ErrorDashboardPage />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/custom-field-types"
+                  exact
+                  component={() => <CustomFieldTypeManagementPage />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/qc"
+                  exact
+                  component={() => <QCDashboardPlaceholder />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/alerts"
+                  exact
+                  component={() => <QCAlertsPlaceholder />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/corrective-actions"
+                  exact
+                  component={() => <CorrectiveActionsPlaceholder />}
+                  role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute
                   path="/PatientHistory"
@@ -519,6 +579,16 @@ export default function App() {
                   exact
                   component={() => <PatientMerge />}
                   role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/GenericSample/Results"
+                  exact
+                  component={() => {
+                    const GenericSampleResults =
+                      require("./components/genericSample/GenericSampleResults").default;
+                    return <GenericSampleResults />;
+                  }}
+                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/Aliquot"

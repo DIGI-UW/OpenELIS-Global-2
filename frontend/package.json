@@ -2,8 +2,11 @@
   "name": "openelis-global-react-app",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "^20.1.0 || ^22.0.0 || >=24.0.0"
+  },
   "dependencies": {
-    "@carbon/charts": "^1.5.2",
+    "@carbon/charts": "^1.27.2",
     "@carbon/charts-react": "^1.5.2",
     "@carbon/icons-react": "^11.17.0",
     "@carbon/react": "^1.15.0",
@@ -24,9 +27,10 @@
     "formik": "^2.2.9",
     "formik-error-focus": "2.0.0",
     "geopattern": "1.2.3",
+    "i18next": "^21.10.0",
     "jsonpath": "^1.1.1",
-    "lodash-es": "^4.17.15",
-    "qs": "6.11.0",
+    "lodash-es": "^4.17.23",
+    "qs": "6.14.1",
     "react": "^17.0.2",
     "react-avatar": "5.0.3",
     "react-confirm-alert": "^2.7.0",
@@ -53,16 +57,22 @@
     "test": "react-scripts test",
     "test:unit": "react-scripts test",
     "eject": "react-scripts eject",
-    "cy:run": "cypress run --headless --browser chrome",
-    "cy:unset-run": "unset ELECTRON_RUN_AS_NODE; cypress run --headless --browser chrome",
-    "cy:open": "cypress open --browser chrome",
-    "test:e2e:single": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000 --spec",
-    "test:e2e:full": "cypress run --headless --browser chrome",
     "format": "prettier ./ --write",
     "check-format": "prettier ./ --check",
+    "cy:run": "unset ELECTRON_RUN_AS_NODE && cypress run --headless --browser chrome",
+    "cy:open": "unset ELECTRON_RUN_AS_NODE && cypress open --browser chrome",
+    "cy:spec": "unset ELECTRON_RUN_AS_NODE && npx cypress run --browser chrome --headless --spec",
+    "cy:admin": "unset ELECTRON_RUN_AS_NODE && npx cypress run --browser chrome --headless --spec 'cypress/e2e/AdminE2E/**/*.cy.js'",
+    "cy:analyzer": "unset ELECTRON_RUN_AS_NODE && npx cypress run --browser chrome --headless --spec 'cypress/e2e/AnalyzerE2E/**/*.cy.js'",
+    "cy:failfast": "unset ELECTRON_RUN_AS_NODE && CYPRESS_FAIL_FAST_ENABLED=true npx cypress run --browser chrome --headless",
+    "cy:failfast:spec": "unset ELECTRON_RUN_AS_NODE && CYPRESS_FAIL_FAST_ENABLED=true npx cypress run --browser chrome --headless --spec",
     "cy:quick": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000",
     "cy:single": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000 --spec",
-    "cy:debug": "ELECTRON_ENABLE_LOGGING=1 cypress run --browser electron --config video=false,defaultCommandTimeout=10000"
+    "cy:debug": "ELECTRON_ENABLE_LOGGING=1 cypress run --browser electron --config video=false,defaultCommandTimeout=10000",
+    "pw:install": "playwright install chromium",
+    "pw:test": "playwright test",
+    "pw:test:ui": "playwright test --ui",
+    "pw:test:headed": "playwright test --headed"
   },
   "jest": {
     "transformIgnorePatterns": [
@@ -95,8 +105,10 @@
     "**/@types/react": "16.14.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@testing-library/react-hooks": "^8.0.1",
-    "cypress": "^12.17.4",
+    "cypress": "^15.9.0",
+    "cypress-fail-fast": "^7.1.1",
     "cypress-xpath": "^2.0.1",
     "eslint": "^8.48.0",
     "eslint-config-prettier": "^9.0.0",
@@ -105,5 +117,24 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "prettier": "^3.4.2",
     "prettier-eslint": "15.0.1"
+  },
+  "overrides": {
+    "@svgr/babel-plugin-add-jsx-attribute": "8.0.0",
+    "@svgr/babel-plugin-remove-jsx-attribute": "8.0.0",
+    "@svgr/babel-plugin-remove-jsx-empty-expression": "8.0.0",
+    "@svgr/babel-plugin-replace-jsx-attribute-value": "8.0.0",
+    "@svgr/babel-plugin-svg-dynamic-title": "8.0.0",
+    "@svgr/babel-plugin-svg-em-dimensions": "8.0.0",
+    "@svgr/babel-plugin-transform-react-native-svg": "8.1.0",
+    "@svgr/babel-plugin-transform-svg-component": "8.0.0",
+    "@svgr/babel-preset": "8.1.0",
+    "@svgr/core": "8.1.0",
+    "@svgr/hast-util-to-babel-ast": "8.0.0",
+    "@svgr/plugin-jsx": "8.1.0",
+    "@svgr/plugin-svgo": "8.1.0",
+    "@svgr/webpack": "8.1.0",
+    "body-parser": "1.20.4",
+    "qs": "6.14.1",
+    "resolve-url-loader": "5.0.0"
   }
 }

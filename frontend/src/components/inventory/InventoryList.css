@@ -73,3 +73,29 @@
 .cds--toolbar-content .cds--dropdown {
   min-width: 150px;
 }
+
+/* Scoped date picker styling for inventory reports only */
+.orderLegendBody .cds--date-picker--range {
+  display: flex;
+  gap: var(--cds-spacing-05, 1rem);
+  flex-wrap: wrap;
+}
+
+.orderLegendBody .cds--date-picker--range .cds--date-picker-container {
+  flex: 1;
+  min-width: 200px;
+  margin-right: 0;
+}
+
+/* Responsive layout for smaller screens */
+@media (max-width: 42rem) {
+  .orderLegendBody .cds--date-picker--range {
+    flex-direction: column;
+    gap: var(--cds-spacing-04, 0.75rem);
+  }
+
+  .orderLegendBody .cds--date-picker--range .cds--date-picker-container {
+    width: 100%;
+    min-width: unset;
+  }
+}

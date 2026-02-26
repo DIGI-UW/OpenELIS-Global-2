@@ -33,6 +33,16 @@ You can find more information on how to set up OpenELIS at our
 
 [![End to End QA Tests Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml)
 
+### Contributing
+
+We welcome community contributions to help improve OpenELIS Global!
+
+1. Read our
+   [Dev Environment Setup Instructions](https://uwdigi.atlassian.net/wiki/spaces/OG/pages/240844805/Dev+Environment+Setup+Instructions)
+   on the project wiki.
+2. Check out our [CONTRIBUTING guide](./CONTRIBUTING.md) for detailed
+   contribution practices and [pull request tips](PULL_REQUEST_TIPS.md).
+
 ### Requirements
 
 1. You need to install [Docker](https://docs.docker.com/engine/install/) and
@@ -54,6 +64,22 @@ for Offline Installation
 see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
 
 ### For Running OpenELIS Global2 from Source Code
+
+**Prerequisites for all methods below:**
+
+Before running any `docker compose` command, you must create a `.env` file with
+your environment configuration:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` to customize settings for your environment (database passwords,
+domain, etc.). See `.env.example` for detailed documentation of each variable.
+
+**IMPORTANT:** Never commit `.env` to version control as it contains secrets and
+server-specific settings. CI copies `.env.example` to `.env` before running
+docker compose.
 
 #### Running OpenELIS Global2 using docker compose With published docker images on dockerhub
 
@@ -194,18 +220,7 @@ This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
 Spec-Driven Development (SDD). AI coding agents can use slash commands to create
 specifications, plans, and tasks.
 
-**Setup SpecKit Commands:**
-
-```bash
-# Install commands for all supported AI agents (Cursor + Claude Code)
-./.specify/scripts/bash/install-commands.sh
-
-# Or install for specific agent only
-./.specify/scripts/bash/install-commands.sh cursor   # Cursor IDE
-./.specify/scripts/bash/install-commands.sh claude   # Claude Code CLI
-```
-
-**Available Commands** (after installation):
+**Available Commands:**
 
 - `/speckit.specify` - Create feature specification
 - `/speckit.plan` - Generate implementation plan

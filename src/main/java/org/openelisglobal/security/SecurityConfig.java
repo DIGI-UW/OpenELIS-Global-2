@@ -94,7 +94,8 @@ public class SecurityConfig {
     // TODO should we move these to the properties files?
     // pages that have special security constraints
     public static final String[] OPEN_PAGES = { "/pluginServlet/**", "/ChangePasswordLogin",
-            "/UpdateLoginChangePassword", "/health/**", "/rest/open-configuration-properties", "/docs/UserManual" };
+            "/UpdateLoginChangePassword", "/health/**", "/rest/open-configuration-properties", "/docs/UserManual",
+            "/rest/site-branding/**" };
     public static final String[] LOGIN_PAGES = { "/LoginPage", "/ValidateLogin", "/session" };
 
     public static final String[] AUTH_OPEN_PAGES = { "/Home", "/Dashboard", "/Logout", "/MasterListsPage",
@@ -291,10 +292,13 @@ public class SecurityConfig {
         authenticationProvider.setAssertionValidator(validator);
         http.securityMatcher(new SamlRequestedMatcher())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                .saml2Logout(saml2 -> saml2.logoutUrl("/Logout"))
                 .saml2Login(saml2 -> saml2.failureHandler(customSamlAuthenticationFailureHandler())
                         .successHandler(customSamlAuthenticationSuccessHandler())
                         .relyingPartyRegistrationRepository(relyingPartyRegistrationRepository()))
+                .saml2Logout(saml2 -> saml2.logoutUrl("/Logout")
+                        .logoutRequest(request -> request.logoutUrl("/logout/saml2/slo"))
+                        .logoutResponse(response -> response.logoutUrl("/logout/saml2/slo")))
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/logout/saml2/slo/**"))
                 .authenticationManager(new ProviderManager(authenticationProvider))
 
         ;
