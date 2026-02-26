@@ -139,7 +139,8 @@ public class PatientSearchPopulateRestController {
         patientInfo.setHealthRegion(identityMap.getIdentityValue(identityList, "HEALTH REGION"));
         patientInfo.setGuid(identityMap.getIdentityValue(identityList, "GUID"));
 
-        // Retrieve dynamic address hierarchy values (ADDRESS_HIERARCHY_0, ADDRESS_HIERARCHY_1, etc.)
+        // Retrieve dynamic address hierarchy values (ADDRESS_HIERARCHY_0,
+        // ADDRESS_HIERARCHY_1, etc.)
         for (int i = 0; i < 10; i++) {
             String identityTypeName = "ADDRESS_HIERARCHY_" + i;
             String value = getIdentityValueSafe(identityList, identityTypeName);
