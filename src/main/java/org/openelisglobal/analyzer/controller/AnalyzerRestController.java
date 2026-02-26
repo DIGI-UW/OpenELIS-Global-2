@@ -5,8 +5,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,6 +38,7 @@ import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -72,6 +75,18 @@ public class AnalyzerRestController extends BaseRestController {
     private AnalyzerTypeService analyzerTypeService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * Bridge URL for outbound analyzer communication. When set, all test-connection
+     * and query operations route through the bridge instead of direct TCP. This is
+     * the production architecture — OE never connects directly to analyzers.
+     *
+     * <p>
+     * Set via Spring property {@code analyzer.bridge.url} or env var
+     * {@code ANALYZER_BRIDGE_URL}. Empty/unset = fallback to direct TCP.
+     */
+    @Value("${analyzer.bridge.url:}")
+    private String analyzerBridgeUrl;
 
     /** ASTM LIS2-A2 Enquiry — initiates transmission. */
     private static final byte ENQ = 0x05;
@@ -669,8 +684,8 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * Test ASTM analyzer connection over TCP/IP. ASTM requires ENQ/ACK handshake
-     * for connection validation.
+     * Test ASTM analyzer connection. Routes through the bridge when configured
+     * (production architecture), falls back to direct TCP when no bridge is set.
      *
      * @param analyzer Analyzer entity with IP/port
      * @return Map with success status and message
@@ -683,9 +698,109 @@ public class AnalyzerRestController extends BaseRestController {
             return response;
         }
 
-        // Use existing testTcpConnection which implements ASTM ENQ/ACK
+        if (analyzerBridgeUrl != null && !analyzerBridgeUrl.isBlank()) {
+            // Production path: route through bridge
+            Map<String, Object> response = testConnectionViaBridge(analyzer);
+            response.put("connectionType", "ASTM via bridge");
+            return response;
+        }
+
+        // Fallback: direct TCP (deployments without bridge)
+        logger.warn("No analyzer.bridge.url configured — using direct TCP for test-connection. "
+                + "Set ANALYZER_BRIDGE_URL for production deployments.");
         Map<String, Object> response = testTcpConnection(analyzer.getIpAddress(), analyzer.getPort());
-        response.put("connectionType", "ASTM");
+        response.put("connectionType", "ASTM (direct TCP — no bridge)");
+        return response;
+    }
+
+    /**
+     * Test analyzer connection by routing through the ASTM-HTTP bridge.
+     *
+     * <p>
+     * Sends a minimal ASTM header to the bridge's HTTP API with
+     * {@code forwardAddress} and {@code forwardPort} query parameters. The bridge
+     * opens a TCP connection to the analyzer, performs the ASTM ENQ/ACK handshake,
+     * and returns the result.
+     *
+     * @param analyzer Analyzer entity with IP/port
+     * @return Map with success status and message
+     */
+    private Map<String, Object> testConnectionViaBridge(Analyzer analyzer) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        String bridgeEndpoint = analyzerBridgeUrl.replaceAll("/+$", "") + "/?forwardAddress=" + analyzer.getIpAddress()
+                + "&forwardPort=" + analyzer.getPort();
+
+        try {
+            logger.info("Testing connection via bridge: {} -> {}:{}", bridgeEndpoint, analyzer.getIpAddress(),
+                    analyzer.getPort());
+
+            // Send minimal ASTM header as test payload
+            String testMessage = "H|\\^&|||TEST|||||||LIS2-A2";
+
+            URL url = new URL(bridgeEndpoint);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            // Trust self-signed certs in dev (bridge uses HTTPS)
+            if (conn instanceof javax.net.ssl.HttpsURLConnection) {
+                javax.net.ssl.HttpsURLConnection httpsConn = (javax.net.ssl.HttpsURLConnection) conn;
+                javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
+                sslContext.init(null, new javax.net.ssl.TrustManager[] { new javax.net.ssl.X509TrustManager() {
+                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                        return null;
+                    }
+
+                    public void checkClientTrusted(java.security.cert.X509Certificate[] c, String s) {
+                    }
+
+                    public void checkServerTrusted(java.security.cert.X509Certificate[] c, String s) {
+                    }
+                } }, new java.security.SecureRandom());
+                httpsConn.setSSLSocketFactory(sslContext.getSocketFactory());
+                httpsConn.setHostnameVerifier((hostname, session) -> true);
+            }
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "text/plain; charset=utf-8");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(10000);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(testMessage.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int status = conn.getResponseCode();
+            String body = "";
+            try (InputStream is = (status < 400) ? conn.getInputStream() : conn.getErrorStream()) {
+                if (is != null) {
+                    body = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                }
+            }
+
+            if (status >= 200 && status < 300) {
+                response.put("success", true);
+                response.put("message", "Connection successful via bridge");
+                logger.info("Bridge test-connection succeeded for {}:{}", analyzer.getIpAddress(), analyzer.getPort());
+            } else {
+                response.put("success", false);
+                response.put("message", "Bridge returned HTTP " + status + ": " + body);
+                logger.warn("Bridge test-connection failed for {}:{} — HTTP {}: {}", analyzer.getIpAddress(),
+                        analyzer.getPort(), status, body);
+            }
+        } catch (java.net.ConnectException e) {
+            response.put("success", false);
+            response.put("message", "Cannot reach bridge at " + analyzerBridgeUrl + " — " + e.getMessage());
+            logger.error("Bridge unreachable: {}", analyzerBridgeUrl, e);
+        } catch (SocketTimeoutException e) {
+            response.put("success", false);
+            response.put("message", "Bridge timeout — analyzer may be unreachable at " + analyzer.getIpAddress() + ":"
+                    + analyzer.getPort());
+            logger.warn("Bridge test-connection timeout for {}:{}", analyzer.getIpAddress(), analyzer.getPort(), e);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Bridge connection error: " + e.getMessage());
+            logger.error("Bridge test-connection error for {}:{}", analyzer.getIpAddress(), analyzer.getPort(), e);
+        }
+
+        response.put("bridgeUrl", analyzerBridgeUrl);
         return response;
     }
 

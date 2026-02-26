@@ -263,6 +263,10 @@ load_analyzer_fixtures() {
             # Load legacy fixtures (IDs 1000-1004)
             load_sql_file "$ANALYZER_SQL_FILE" "analyzer-test-data.sql (Feature 004, IDs 1000-1004)"
 
+            # Load minimal fixtures (GeneXpert ID 2013, generic analyzer configs + test mappings)
+            # Uses ON CONFLICT DO NOTHING — safe to load alongside generated fixtures.
+            load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (GeneXpert + generic configs)"
+
             # Load generated analyzer E2E fixtures (Feature 011, IDs 2006-2013)
             if [ -f "$ANALYZER_E2E_SQL" ]; then
                 load_sql_file "$ANALYZER_E2E_SQL" "analyzer-e2e.generated.sql (Feature 011)"
