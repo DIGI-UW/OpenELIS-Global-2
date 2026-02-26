@@ -120,3 +120,62 @@
     font-size: 0.9rem;
   }
 }
+
+
+/* .pathology-layout-wrapper {
+  display: flex;
+}
+
+.pathology-sidebar {
+  position: sticky; 
+}
+
+.pathology-main-content {
+  flex: 1; 
+} */
+
+
+/* Container for the whole page */
+.app-shell {
+  height: 100vh;      
+  width: 100vw;      
+  overflow: hidden;   
+  display: flex;
+  flex-direction: column;
+}
+
+.page-header {
+  height: 200px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.body-wrapper {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.pathology-sidebar {
+  position: sticky;
+  background: white;
+}
+
+.scrollable-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  background-color: #f4f4f4;
+}
+
+.sticky-footer {
+  height: 70px;
+  flex-shrink: 0;
+  border-top: 1px solid #e0e0e0;
+  background: white;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 2rem;
+  z-index: 9999;
+}
