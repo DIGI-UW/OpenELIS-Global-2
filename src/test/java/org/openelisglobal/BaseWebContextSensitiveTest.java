@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
@@ -55,6 +56,27 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
     protected void setUp() throws Exception {
         mockMvc = MockMvcBuilders.webAppContextSetup(this.webApplicationContext).build();
+    }
+
+    /**
+     * Builds a {@link MockHttpServletRequest} pre-configured for FHIR facade
+     * endpoints. Sets the servlet path to {@code /fhir}, content type to
+     * {@code application/fhir+json}, and the Accept header accordingly.
+     *
+     * @param method   the HTTP method (GET, POST, PUT, DELETE)
+     * @param pathInfo the FHIR resource path (e.g. {@code /Patient/uuid})
+     * @return a configured MockHttpServletRequest
+     */
+    protected MockHttpServletRequest buildFhirRequest(String method, String pathInfo) {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setMethod(method);
+        request.setContextPath("");
+        request.setServletPath("/fhir");
+        request.setPathInfo(pathInfo);
+        request.setRequestURI("/fhir" + pathInfo);
+        request.setContentType("application/fhir+json");
+        request.addHeader("Accept", "application/fhir+json");
+        return request;
     }
 
     protected String mapToJson(Object obj) throws JsonProcessingException {
