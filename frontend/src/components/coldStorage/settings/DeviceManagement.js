@@ -15,15 +15,10 @@ import {
   Tag,
   Pagination,
   Modal,
-  Form,
   Stack,
-  TextInput,
-  Select,
-  SelectItem,
   Dropdown,
   Toggle,
   IconButton,
-  FormLabel,
 } from "@carbon/react";
 import { Add, Edit, Power, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
@@ -112,7 +107,6 @@ function DeviceManagement() {
   const [devices, setDevices] = useState([]);
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -170,18 +164,17 @@ function DeviceManagement() {
   const loadDevices = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
       const response = await fetchDevices(searchTerm);
       setDevices(response || []);
     } catch (err) {
-      setError(
+      console.error(
         intl.formatMessage({ id: "coldStorage.error.loadDevices" }) +
           err.message,
       );
     } finally {
       setLoading(false);
     }
-  }, [searchTerm]);
+  }, [searchTerm, intl]);
 
   useEffect(() => {
     loadLocations();
@@ -331,10 +324,6 @@ function DeviceManagement() {
   const cancelDeleteDevice = () => {
     setIsDeleteModalOpen(false);
     setDeviceToDelete(null);
-  };
-
-  const handleFormChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (formData) => {

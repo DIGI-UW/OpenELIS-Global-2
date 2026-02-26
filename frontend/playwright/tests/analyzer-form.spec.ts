@@ -177,9 +177,7 @@ test.describe("Analyzer Form - GeneXpert ASTM Create/Edit", () => {
     await form.save();
 
     // Validation errors should appear (name is required)
-    const nameError = page.locator(
-      '[data-testid="analyzer-form-name-input"] .cds--form-requirement',
-    );
+    const nameError = page.locator(".cds--form-requirement").first();
     await expect(nameError).toBeVisible({ timeout: 3000 });
 
     await form.cancelButton.click();

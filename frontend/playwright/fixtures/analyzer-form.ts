@@ -27,9 +27,7 @@ export class AnalyzerFormPage {
     this.page = page;
     this.modal = page.locator('[data-testid="analyzer-form"]');
     this.header = page.locator('[data-testid="analyzer-form-header"]');
-    this.nameInput = page.locator(
-      '[data-testid="analyzer-form-name-input"] input',
-    );
+    this.nameInput = page.locator("#analyzer-name");
     this.typeDropdown = page.locator(
       '[data-testid="analyzer-form-type-dropdown"]',
     );
@@ -39,18 +37,12 @@ export class AnalyzerFormPage {
     this.defaultConfigDropdown = page.locator(
       '[data-testid="analyzer-form-default-config-dropdown"]',
     );
-    this.identifierPatternInput = page.locator(
-      '[data-testid="analyzer-form-identifier-pattern-input"] input',
-    );
+    this.identifierPatternInput = page.locator("#analyzer-identifier-pattern");
     this.protocolVersionDropdown = page.locator(
       '[data-testid="analyzer-form-protocol-version-dropdown"]',
     );
-    this.ipAddressInput = page.locator(
-      '[data-testid="analyzer-form-ip-input"] input',
-    );
-    this.portInput = page.locator(
-      '[data-testid="analyzer-form-port-input"] input',
-    );
+    this.ipAddressInput = page.locator("#analyzer-ip");
+    this.portInput = page.locator("#analyzer-port");
     this.statusDropdown = page.locator(
       '[data-testid="analyzer-form-status-dropdown"]',
     );
