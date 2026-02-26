@@ -84,8 +84,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         }
 
         String[] headers = parseCsvLine(headerLine);
-        System.out.println("DEBUG processConfiguration: headerLine=" + headerLine);
-        System.out.println("DEBUG processConfiguration: parsed headers=" + java.util.Arrays.toString(headers));
         validateHeaders(headers, fileName);
 
         // Get column indices
@@ -94,7 +92,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         int displayKeyIndex = findColumnIndex(headers, "displayKey");
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
         int defaultValueIndex = findColumnIndex(headers, "defaultValue");
-        System.out.println("DEBUG processConfiguration: defaultValueIndex=" + defaultValueIndex);
 
         List<OrganizationType> processedTypes = new ArrayList<>();
         String line;
@@ -185,10 +182,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         String levelStr = getValueOrEmpty(values, levelIndex);
         String typeName = getValueOrEmpty(values, typeNameIndex);
         String defaultValue = getValueOrEmpty(values, defaultValueIndex);
-
-        System.out.println("DEBUG processCsvLine: levelStr=" + levelStr + " typeName=" + typeName
-                + " defaultValueIndex=" + defaultValueIndex + " defaultValue='" + defaultValue + "'" + " values.length="
-                + values.length);
 
         if (levelStr.isEmpty()) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine", "Skipping row with missing level");

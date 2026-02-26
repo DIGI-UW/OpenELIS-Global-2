@@ -159,25 +159,15 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         persistIdentityType(patientInfo.getOtherNationality(), "OTHER NATIONALITY");
         persistIdentityType(patientInfo.getGuid(), "GUID");
 
-        // Persist dynamic address hierarchy values (addressHierarchy_0,
-        // addressHierarchy_1, etc.)
-        System.out.println("DEBUG SAVE: Address hierarchy map: " + patientInfo.getAddressHierarchy());
+        // Persist dynamic address hierarchy values (addressHierarchy_0, addressHierarchy_1, etc.)
         if (patientInfo.getAddressHierarchy() != null && !patientInfo.getAddressHierarchy().isEmpty()) {
-            System.out.println("DEBUG SAVE: Map has " + patientInfo.getAddressHierarchy().size() + " entries");
             for (Map.Entry<String, String> entry : patientInfo.getAddressHierarchy().entrySet()) {
-                System.out
-                        .println("DEBUG SAVE: Processing entry: key=" + entry.getKey() + ", value=" + entry.getValue());
                 if (entry.getKey() != null && entry.getValue() != null && !entry.getValue().isEmpty()) {
                     // Convert key like "addressHierarchy_0" to identity type "ADDRESS_HIERARCHY_0"
                     String identityType = entry.getKey().toUpperCase().replace("ADDRESSHIERARCHY", "ADDRESS_HIERARCHY");
-                    System.out.println("DEBUG SAVE: Persisting identity type: " + identityType + " with value: "
-                            + entry.getValue());
                     persistIdentityType(entry.getValue(), identityType);
-                    System.out.println("DEBUG SAVE: Successfully persisted " + identityType);
                 }
             }
-        } else {
-            System.out.println("DEBUG SAVE: Address hierarchy map is null or empty!");
         }
     }
 

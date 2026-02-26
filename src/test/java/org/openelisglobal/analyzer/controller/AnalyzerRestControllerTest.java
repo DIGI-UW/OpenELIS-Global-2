@@ -73,9 +73,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
             // Set sequence to maxId (next nextval() will return maxId+1)
             jdbcTemplate.execute("SELECT setval('analyzer_seq', " + maxId + ", true)");
         } catch (Exception e) {
-            // Log but don't fail - cleanup is best effort
-            // Note: logger is package-private in BaseWebContextSensitiveTest
-            System.out.println("Failed to clean analyzer test data: " + e.getMessage());
+            // Cleanup is best effort - don't fail if it doesn't work
         }
     }
 
@@ -124,13 +122,6 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
         int status = createResult.getResponse().getStatus();
         String responseBody = createResult.getResponse().getContentAsString();
-
-        // Debug: Print status and response if not 201
-        if (status != 201) {
-            System.out.println("DEBUG: Analyzer creation failed with status: " + status);
-            System.out.println("DEBUG: Response body: " + responseBody);
-            System.out.println("DEBUG: Request body: " + createBody);
-        }
 
         // Assert creation succeeded
         assertEquals("Analyzer creation should succeed", 201, status);
