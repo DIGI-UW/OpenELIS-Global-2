@@ -181,7 +181,8 @@ public class AnalyzerRestController extends BaseRestController {
             Analyzer analyzer = new Analyzer();
             analyzer.setName(form.getName());
             analyzer.setType(form.getAnalyzerType());
-            analyzer.setIpAddress(form.getIpAddress());
+            analyzer.setIpAddress(
+                    form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty() ? form.getIpAddress() : null);
             analyzer.setPort(form.getPort());
             ProtocolVersion pv = ProtocolVersion.fromValue(form.getProtocolVersion());
             analyzer.setProtocolVersion(pv != null ? pv : ProtocolVersion.ASTM_LIS2_A2);
@@ -390,7 +391,7 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getAnalyzerType() != null && !form.getAnalyzerType().trim().isEmpty()) {
                 analyzer.setType(form.getAnalyzerType());
             }
-            if (form.getIpAddress() != null) {
+            if (form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty()) {
                 analyzer.setIpAddress(form.getIpAddress());
             }
             if (form.getPort() != null) {
