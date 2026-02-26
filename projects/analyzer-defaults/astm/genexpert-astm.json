@@ -3,7 +3,7 @@
   "analyzer_name": "Cepheid GeneXpert (ASTM Mode)",
   "manufacturer": "Cepheid",
   "category": "MOLECULAR",
-  "protocol": { "name": "ASTM", "version": "LIS2-A2" },
+  "protocol": { "name": "ASTM", "version": "E-1394-97" },
   "identifier_pattern": "GENEXPERT|CEPHEID",
   "transport": ["RS-232", "TCP/IP"],
   "transport_config": {
@@ -12,7 +12,7 @@
   },
   "default_test_mappings": [
     {
-      "analyzer_code": "MTB",
+      "analyzer_code": "MTB-RIF",
       "test_name_hint": "Mycobacterium tuberculosis DNA",
       "loinc": "23826-1",
       "unit": ""
@@ -30,7 +30,7 @@
       "unit": ""
     },
     {
-      "analyzer_code": "HIV",
+      "analyzer_code": "HIV-VL",
       "test_name_hint": "HIV-1 RNA",
       "loinc": "20447-9",
       "unit": "copies/mL"
