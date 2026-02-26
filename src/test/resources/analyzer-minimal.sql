@@ -12,20 +12,23 @@ SET search_path TO clinlims;
 -- =============================================================================
 -- 1. ANALYZER TYPES (Plugin Capability — normally created at startup)
 -- =============================================================================
--- Generic plugins don't auto-create analyzer_type rows via addAnalyzerDatabaseParts();
--- they only register in-memory via registerAnalyzer(). We must INSERT here so
--- findGenericAnalyzersWithPatterns() can JOIN on analyzer_type.is_generic_plugin.
+-- PluginRegistryService auto-creates these at startup when plugin JARs are loaded.
+-- Names MUST match PluginRegistryService.derivePluginName() output:
+--   GenericASTMAnalyzer → "Generic ASTM"
+--   GenericHL7Analyzer  → "Generic HL7"
+-- These INSERTs are a fallback for environments where plugins aren't loaded
+-- (e.g., unit tests without the full plugin JAR lifecycle).
 
 INSERT INTO analyzer_type (id, name, description, plugin_class_name, protocol, is_generic_plugin, is_active, last_updated)
-VALUES (nextval('analyzer_type_seq'), 'GenericASTM', 'Generic ASTM analyzer plugin',
+VALUES (nextval('analyzer_type_seq'), 'Generic ASTM', 'Generic ASTM - Dashboard-configurable analyzer (requires identifier_pattern)',
         'org.openelisglobal.plugins.analyzer.genericastm.GenericASTMAnalyzer',
-        'ASTM_LIS2_A2', true, true, NOW())
+        'ASTM', true, true, NOW())
 ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO analyzer_type (id, name, description, plugin_class_name, protocol, is_generic_plugin, is_active, last_updated)
-VALUES (nextval('analyzer_type_seq'), 'GenericHL7', 'Generic HL7 analyzer plugin',
+VALUES (nextval('analyzer_type_seq'), 'Generic HL7', 'Generic HL7 - Dashboard-configurable analyzer (requires identifier_pattern)',
         'org.openelisglobal.plugins.analyzer.generichl7.GenericHL7Analyzer',
-        'HL7_V2_3_1', true, true, NOW())
+        'HL7', true, true, NOW())
 ON CONFLICT (name) DO NOTHING;
 
 -- =============================================================================
@@ -57,11 +60,11 @@ ON CONFLICT (id) DO NOTHING;
 -- =============================================================================
 
 UPDATE analyzer SET analyzer_type_id = (
-  SELECT id FROM analyzer_type WHERE name = 'GenericASTM'
+  SELECT id FROM analyzer_type WHERE name = 'Generic ASTM'
 ) WHERE id IN (2006, 2013) AND analyzer_type_id IS NULL;
 
 UPDATE analyzer SET analyzer_type_id = (
-  SELECT id FROM analyzer_type WHERE name = 'GenericHL7'
+  SELECT id FROM analyzer_type WHERE name = 'Generic HL7'
 ) WHERE id = 2007 AND analyzer_type_id IS NULL;
 
 -- =============================================================================
@@ -101,7 +104,7 @@ DECLARE
   v_linked_count     INTEGER;
 BEGIN
   SELECT COUNT(*) INTO v_analyzer_count FROM analyzer WHERE id IN (2006, 2007, 2013);
-  SELECT COUNT(*) INTO v_type_count FROM analyzer_type WHERE name IN ('GenericASTM', 'GenericHL7');
+  SELECT COUNT(*) INTO v_type_count FROM analyzer_type WHERE name IN ('Generic ASTM', 'Generic HL7');
   SELECT COUNT(*) INTO v_map_count FROM analyzer_test_map WHERE analyzer_id = '2013';
   SELECT COUNT(*) INTO v_linked_count FROM analyzer WHERE id IN (2006, 2007, 2013) AND analyzer_type_id IS NOT NULL;
 
