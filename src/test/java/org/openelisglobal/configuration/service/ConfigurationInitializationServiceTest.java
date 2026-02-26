@@ -58,6 +58,7 @@ public class ConfigurationInitializationServiceTest {
         when(mockHandler.getDomainName()).thenReturn("tests");
         when(mockHandler.getFileExtension()).thenReturn("csv");
         when(mockHandler.getLoadOrder()).thenReturn(100);
+        when(mockHandler.canProcess(anyString())).thenReturn(true);
 
         mockEvent = mock(ContextRefreshedEvent.class);
 
@@ -123,11 +124,13 @@ public class ConfigurationInitializationServiceTest {
         when(laterHandler.getDomainName()).thenReturn("roles");
         when(laterHandler.getFileExtension()).thenReturn("csv");
         when(laterHandler.getLoadOrder()).thenReturn(300);
+        when(laterHandler.canProcess(anyString())).thenReturn(true);
 
         DomainConfigurationHandler earlyHandler = mock(DomainConfigurationHandler.class);
         when(earlyHandler.getDomainName()).thenReturn("sample-types");
         when(earlyHandler.getFileExtension()).thenReturn("csv");
         when(earlyHandler.getLoadOrder()).thenReturn(50);
+        when(earlyHandler.canProcess(anyString())).thenReturn(true);
 
         // Provide resources so processConfiguration gets called
         Resource earlyResource = createMockResource("samples.csv", "sample data");
@@ -323,6 +326,7 @@ public class ConfigurationInitializationServiceTest {
         when(goodHandler.getDomainName()).thenReturn("good-domain");
         when(goodHandler.getFileExtension()).thenReturn("csv");
         when(goodHandler.getLoadOrder()).thenReturn(100);
+        when(goodHandler.canProcess(anyString())).thenReturn(true);
 
         // Make the first handler's resolver call throw
         when(resolver.getResources("classpath*:configuration/bad-domain/*.csv"))
