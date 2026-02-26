@@ -91,27 +91,13 @@
     <include file="liquibase/3.4.x.x/044-bioanalytical-workflow-pages.xml"/>
     <include file="liquibase/3.4.x.x/045-bioanalytical-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/046-bioanalytical-supporting-tables.xml"/>
-    <include file="liquibase/3.4.x.x/047-bioanalytical-page-roles.xml"/>
     <include file="liquibase/3.4.x.x/019-traditional-medicine-notebook-srs-aligned.xml"/>
-    <include file="liquibase/3.4.x.x/020-tradmed-system-roles.xml"/>
-    <include file="liquibase/3.4.x.x/021-tradmed-page-roles.xml"/>
-    <include file="liquibase/3.4.x.x/022-tradmed-permission-levels.xml"/>
-    <include file="liquibase/3.4.x.x/023-create-tradmed-lab-unit.xml"/>
-    <include file="liquibase/3.4.x.x/024-add-tradmed-roles-to-alllabunits.xml"/>
     <include file="liquibase/3.4.x.x/035-add-genome-sequencing-page-to-virology-workflow.xml"/>
     <include file="liquibase/3.4.x.x/036-add-seed-virus-production-page-to-virology-workflow.xml"/>
     <include file="liquibase/3.4.x.x/048-add-trials-page-to-virology-workflow.xml"/>
-    <include file="liquibase/3.4.x.x/048-bioanalytical-system-roles.xml"/>
-    <include file="liquibase/3.4.x.x/049-bioanalytical-permission-levels.xml"/>
     <include file="liquibase/3.4.x.x/050-bioequivalence-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/051-separate-bioanalytical-bioequivalence-notebooks.xml"/>
-    <include file="liquibase/3.4.x.x/052-bioequivalence-page-roles.xml"/>
     <include file="liquibase/3.4.x.x/053-gbd-notebook-template.xml"/>
-    <include file="liquibase/3.4.x.x/054-gbd-system-roles.xml"/>
-    <include file="liquibase/3.4.x.x/055-gbd-page-roles.xml"/>
-    <include file="liquibase/3.4.x.x/056-gbd-permission-levels.xml"/>
-    <include file="liquibase/3.4.x.x/057-create-gbd-lab-unit.xml"/>
-    <include file="liquibase/3.4.x.x/058-add-gbd-roles-to-alllabunits.xml"/>
 
     <!-- TB Laboratory Workflow Feature (053) -->
     <include file="liquibase/3.4.x.x/053-tuberculosis-notebook-template.xml"/>
@@ -151,49 +137,12 @@
     <!-- Increase test_section.name column length to accommodate research lab names -->
     <include file="liquibase/3.4.x.x/071-5-increase-test-section-name-length.xml"/>
 
-    <!-- Bioanalytical Lab Unit Configuration -->
-    <!-- Creates Bioanalytical lab unit and assigns bioanalytical roles following GBD pattern -->
-    <include file="liquibase/3.4.x.x/072-create-bioanalytical-lab-unit.xml"/>
-
-    <!-- Add bioanalytical roles to AllLabUnits so admin users get automatic access -->
-    <include file="liquibase/3.4.x.x/073-add-bioanalytical-roles-to-alllabunits.xml"/>
-
     <include file="liquibase/3.4.x.x/073-increase-system-role-name-length.xml"/>
-
-    <!-- Bioequivalence Lab Unit Configuration -->
-    <!-- Creates bioequivalence system roles with prefixes -->
-    <include file="liquibase/3.4.x.x/074-bioequivalence-system-roles.xml"/>
-
-    <!-- Creates Bioequivalence lab unit and assigns bioequivalence roles following GBD pattern -->
-    <include file="liquibase/3.4.x.x/075-create-bioequivalence-lab-unit.xml"/>
-
-    <!-- Add bioequivalence roles to AllLabUnits so admin users get automatic access -->
-    <include file="liquibase/3.4.x.x/076-add-bioequivalence-roles-to-alllabunits.xml"/>
-
-    <!-- Bioanalytical Permission Matrix Fix -->
-    <!-- Corrects page role assignments to match test.pdf Section 11 permission matrix exactly -->
-    <include file="liquibase/3.4.x.x/047-bioanalytical-page-roles-corrected.xml"/>
-
-    <!-- Bioequivalence Permission Matrix Fix -->
-    <!-- Corrects page role assignments to match test.pdf Section 11 permission matrix exactly -->
-    <include file="liquibase/3.4.x.x/052-bioequivalence-page-roles-corrected.xml"/>
-
-    <!-- Traditional Medicine Permission Matrix Fix -->
-    <!-- Corrects page role assignments to match permission matrix from Section 11 exactly -->
-    <include file="liquibase/3.4.x.x/021-tradmed-page-roles-corrected.xml"/>
-
-    <!-- GBD Permission Matrix Fix -->
-    <!-- Corrects page role assignments to match permission matrix from Section 11 exactly -->
-    <include file="liquibase/3.4.x.x/055-gbd-page-roles-corrected.xml"/>
 
     <!-- Storage Code Length Increases -->
     <!-- Increases storage entity code columns from 10 to 50 characters for hierarchical naming -->
     <include file="liquibase/3.4.x.x/079-increase-storage-code-lengths.xml"/>
     <!-- Pathology Specimen Types: Tissue, Cytology, Body Fluid, Blood, Bone Marrow -->
     <include file="liquibase/3.4.x.x/072-pathology-specimen-types.xml"/>
-
-    <!-- Research Lab RBAC Migration: Remove Custom Roles -->
-    <!-- Rolls back custom role implementations to use standard OpenELIS RBAC + department-based access -->
-    <include file="liquibase/3.4.x.x/080-rollback-research-lab-custom-roles.xml"/>
 
 </databaseChangeLog>
