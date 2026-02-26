@@ -147,10 +147,12 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getAnalyzerType() == null || form.getAnalyzerType().trim().isEmpty()) {
                 validationErrors.add("Analyzer type is required");
             }
-            if (form.getIpAddress() != null && !form.getIpAddress().matches("^(\\d{1,3}\\.){3}\\d{1,3}$")) {
+            if (form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty()
+                    && !form.getIpAddress().matches("^(\\d{1,3}\\.){3}\\d{1,3}$")) {
                 validationErrors.add("Invalid IPv4 address format");
             }
-            if (form.getIpAddress() != null && NetworkValidationUtil.isBlockedAddress(form.getIpAddress())) {
+            if (form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty()
+                    && NetworkValidationUtil.isBlockedAddress(form.getIpAddress())) {
                 validationErrors.add("Connection to this address is not permitted");
             }
             if (form.getPort() != null && (form.getPort() < 1 || form.getPort() > 65535)) {
@@ -179,7 +181,8 @@ public class AnalyzerRestController extends BaseRestController {
             Analyzer analyzer = new Analyzer();
             analyzer.setName(form.getName());
             analyzer.setType(form.getAnalyzerType());
-            analyzer.setIpAddress(form.getIpAddress());
+            analyzer.setIpAddress(
+                    form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty() ? form.getIpAddress() : null);
             analyzer.setPort(form.getPort());
             ProtocolVersion pv = ProtocolVersion.fromValue(form.getProtocolVersion());
             analyzer.setProtocolVersion(pv != null ? pv : ProtocolVersion.ASTM_LIS2_A2);
@@ -189,7 +192,7 @@ public class AnalyzerRestController extends BaseRestController {
             }
 
             if (form.getPluginTypeId() != null && !form.getPluginTypeId().trim().isEmpty()) {
-                AnalyzerType pluginType = analyzerTypeService.get(form.getPluginTypeId());
+                AnalyzerType pluginType = resolvePluginType(form.getPluginTypeId());
                 if (pluginType != null) {
                     analyzer.setAnalyzerType(pluginType);
                 }
@@ -205,6 +208,17 @@ public class AnalyzerRestController extends BaseRestController {
 
             analyzer.setSysUserId(getSysUserId(request));
             String analyzerId = analyzerService.insert(analyzer);
+
+            // Auto-create test mappings from default config if provided
+            if (form.getDefaultConfigId() != null && !form.getDefaultConfigId().isEmpty()) {
+                Map<String, Object> configData = loadDefaultConfigFile(form.getDefaultConfigId());
+                if (configData != null) {
+                    analyzerService.autoCreateTestMappings(analyzerId, configData, getSysUserId(request));
+                } else {
+                    logger.warn("Could not load default config '{}' for test mapping auto-creation",
+                            form.getDefaultConfigId());
+                }
+            }
 
             Analyzer createdAnalyzer = analyzerService.get(analyzerId);
             if (createdAnalyzer == null) {
@@ -352,12 +366,14 @@ public class AnalyzerRestController extends BaseRestController {
             }
 
             // Manual validation for optional fields
-            if (form.getIpAddress() != null && !form.getIpAddress().matches("^(\\d{1,3}\\.){3}\\d{1,3}$")) {
+            if (form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty()
+                    && !form.getIpAddress().matches("^(\\d{1,3}\\.){3}\\d{1,3}$")) {
                 Map<String, Object> error = new LinkedHashMap<>();
                 error.put("error", "Invalid IPv4 address format");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
-            if (form.getIpAddress() != null && NetworkValidationUtil.isBlockedAddress(form.getIpAddress())) {
+            if (form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty()
+                    && NetworkValidationUtil.isBlockedAddress(form.getIpAddress())) {
                 Map<String, Object> error = new LinkedHashMap<>();
                 error.put("error", "Connection to this address is not permitted");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -375,7 +391,7 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getAnalyzerType() != null && !form.getAnalyzerType().trim().isEmpty()) {
                 analyzer.setType(form.getAnalyzerType());
             }
-            if (form.getIpAddress() != null) {
+            if (form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty()) {
                 analyzer.setIpAddress(form.getIpAddress());
             }
             if (form.getPort() != null) {
@@ -400,7 +416,7 @@ public class AnalyzerRestController extends BaseRestController {
                 analyzer.setIdentifierPattern(form.getIdentifierPattern());
             }
             if (form.getPluginTypeId() != null && !form.getPluginTypeId().trim().isEmpty()) {
-                AnalyzerType pluginType = analyzerTypeService.get(form.getPluginTypeId());
+                AnalyzerType pluginType = resolvePluginType(form.getPluginTypeId());
                 if (pluginType != null) {
                     analyzer.setAnalyzerType(pluginType);
                 }
@@ -893,67 +909,145 @@ public class AnalyzerRestController extends BaseRestController {
      * </ul>
      */
     @GetMapping("/defaults/{protocol}/{name}")
+    @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> getDefaultConfig(@PathVariable String protocol,
             @PathVariable String name) {
         try {
-            // Validate protocol (allowlist, case-insensitive)
-            if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")) {
-                Map<String, Object> error = new LinkedHashMap<>();
-                error.put("error", "Invalid protocol: must be 'astm' or 'hl7'");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            Path templateFile = resolveConfigFilePath(protocol, name);
+            if (templateFile == null) {
+                // Determine specific error for HTTP response
+                if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(AnalyzerControllerHelper.wrapError("Invalid protocol: must be 'astm' or 'hl7'"));
+                }
+                if (!name.matches("^[a-zA-Z0-9\\-_.]+$")) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(AnalyzerControllerHelper
+                            .wrapError("Invalid filename: only alphanumeric, dash, underscore, and period allowed"));
+                }
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(AnalyzerControllerHelper.wrapError("Template not found: " + protocol + "/" + name));
             }
 
-            // Sanitize filename: only alphanumeric, dash, underscore, period
-            if (!name.matches("^[a-zA-Z0-9\\-_.]+$")) {
-                Map<String, Object> error = new LinkedHashMap<>();
-                error.put("error", "Invalid filename: only alphanumeric, dash, underscore, and period allowed");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-            }
-
-            // Ensure .json extension
-            String filename = name.endsWith(".json") ? name : name + ".json";
-
-            // Build path using Path.resolve() (handles separators automatically)
-            String defaultsDir = System.getenv("ANALYZER_DEFAULTS_DIR");
-            if (defaultsDir == null || defaultsDir.isEmpty()) {
-                defaultsDir = "/data/analyzer-defaults";
-            }
-
-            Path baseDir = Path.of(defaultsDir);
-            Path templateFile = baseDir.resolve(protocol).resolve(filename);
-
-            // Verify normalized path stays within base directory (prevents path traversal)
-            Path normalizedPath = templateFile.normalize();
-            Path normalizedBase = baseDir.normalize();
-            if (!normalizedPath.startsWith(normalizedBase)) {
-                Map<String, Object> error = new LinkedHashMap<>();
-                error.put("error", "Invalid path: template must be within defaults directory");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-            }
-
-            // Check file exists
-            if (!Files.exists(templateFile) || !Files.isRegularFile(templateFile)) {
-                Map<String, Object> error = new LinkedHashMap<>();
-                error.put("error", "Template not found: " + protocol + "/" + name);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-            }
-
-            // Read and parse JSON
             String jsonContent = Files.readString(templateFile, StandardCharsets.UTF_8);
-
             Map<String, Object> config = objectMapper.readValue(jsonContent, Map.class);
             return ResponseEntity.ok(config);
 
         } catch (IOException e) {
             logger.error("Error reading default config: {}/{}", protocol, name, e);
-            Map<String, Object> error = new LinkedHashMap<>();
-            error.put("error", "Failed to read template: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.wrapError("Failed to read template: " + e.getMessage()));
         } catch (Exception e) {
             logger.error("Error loading default config", e);
-            Map<String, Object> error = new LinkedHashMap<>();
-            error.put("error", "Failed to load template: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.wrapError("Failed to load template: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Resolve a pluginTypeId that may be numeric (database ID) or a well-known
+     * alias like "generic-astm". Returns null if unresolvable.
+     *
+     * <p>
+     * The frontend fallback list historically used string IDs ("generic-astm",
+     * "generic-hl7") instead of database numeric IDs. This method gracefully
+     * handles both formats to prevent NumberFormatException.
+     */
+    private AnalyzerType resolvePluginType(String pluginTypeId) {
+        if (pluginTypeId == null || pluginTypeId.trim().isEmpty()) {
+            return null;
+        }
+
+        // Try numeric ID first (normal path when frontend has real DB IDs)
+        try {
+            Integer.parseInt(pluginTypeId.trim());
+            return analyzerTypeService.get(pluginTypeId);
+        } catch (NumberFormatException e) {
+            logger.info("Non-numeric pluginTypeId '{}', attempting name-based lookup", pluginTypeId);
+        }
+
+        // Map well-known frontend aliases to database names
+        String lookupName;
+        switch (pluginTypeId.toLowerCase()) {
+        case "generic-astm":
+            lookupName = "Generic ASTM";
+            break;
+        case "generic-hl7":
+            lookupName = "Generic HL7";
+            break;
+        default:
+            lookupName = pluginTypeId;
+        }
+
+        AnalyzerType type = analyzerTypeService.getAnalyzerTypeByName(lookupName);
+        if (type == null) {
+            logger.warn("Could not resolve pluginTypeId '{}' (tried name '{}')", pluginTypeId, lookupName);
+        }
+        return type;
+    }
+
+    /**
+     * Resolve and validate a config template file path. Shared validation logic
+     * used by both the HTTP endpoint ({@code getDefaultConfig}) and internal
+     * callers ({@code loadDefaultConfigFile}).
+     *
+     * @param protocol Protocol name ("astm" or "hl7")
+     * @param name     Template filename (with or without .json extension)
+     * @return Validated Path to the template file, or null if validation fails or
+     *         file not found
+     */
+    private Path resolveConfigFilePath(String protocol, String name) {
+        if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")) {
+            return null;
+        }
+        if (!name.matches("^[a-zA-Z0-9\\-_.]+$")) {
+            return null;
+        }
+
+        String filename = name.endsWith(".json") ? name : name + ".json";
+        String defaultsDir = System.getenv("ANALYZER_DEFAULTS_DIR");
+        if (defaultsDir == null || defaultsDir.isEmpty()) {
+            defaultsDir = "/data/analyzer-defaults";
+        }
+
+        Path baseDir = Path.of(defaultsDir);
+        Path templateFile = baseDir.resolve(protocol).resolve(filename).normalize();
+        if (!templateFile.startsWith(baseDir.normalize())) {
+            return null;
+        }
+
+        if (!Files.exists(templateFile) || !Files.isRegularFile(templateFile)) {
+            return null;
+        }
+
+        return templateFile;
+    }
+
+    /**
+     * Load a default config JSON file from the filesystem. Returns null if
+     * validation fails or file not found.
+     *
+     * @param configId Config ID in "protocol/name" format (e.g.,
+     *                 "astm/genexpert-astm")
+     * @return Parsed JSON as Map, or null
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> loadDefaultConfigFile(String configId) {
+        if (configId == null || !configId.contains("/")) {
+            return null;
+        }
+
+        String[] parts = configId.split("/", 2);
+        Path templateFile = resolveConfigFilePath(parts[0], parts[1]);
+        if (templateFile == null) {
+            return null;
+        }
+
+        try {
+            String jsonContent = Files.readString(templateFile, StandardCharsets.UTF_8);
+            return objectMapper.readValue(jsonContent, Map.class);
+        } catch (IOException e) {
+            logger.error("Error reading default config file: {}", configId, e);
+            return null;
         }
     }
 
