@@ -1,25 +1,38 @@
 package org.openelisglobal.fhir.providers;
 
+import ca.uhn.fhir.model.api.Include;
 import ca.uhn.fhir.rest.annotation.Create;
+import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
+import ca.uhn.fhir.rest.annotation.IncludeParam;
+import ca.uhn.fhir.rest.annotation.OptionalParam;
+import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
+import ca.uhn.fhir.rest.annotation.Search;
 import ca.uhn.fhir.rest.annotation.Update;
 import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.param.DateRangeParam;
+import ca.uhn.fhir.rest.param.StringAndListParam;
+import ca.uhn.fhir.rest.param.TokenAndListParam;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashSet;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Encounter;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Practitioner;
+import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.ControllerUtills;
+import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
-import org.openelisglobal.dataexchange.fhir.service.FhirTransformServiceImpl;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.provider.service.ProviderService;
@@ -29,6 +42,9 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class PractitionerProvider implements IResourceProvider {
+
+    @Autowired
+    private FhirUtil util;
 
     @Autowired
     private FhirTransformService fhirTransformService;
@@ -44,6 +60,31 @@ public class PractitionerProvider implements IResourceProvider {
     @Override
     public Class<? extends IBaseResource> getResourceType() {
         return Practitioner.class;
+    }
+
+    @Read
+    public Practitioner getPractitionerByUUID(@IdParam IdType theId) {
+        String method = "Read";
+        try {
+            if (theId == null || !theId.hasIdPart()) {
+                LogEvent.logError(this.getClass().getSimpleName(), method, "Missing Practitioner ID for Read");
+                throw new InvalidRequestException("Practitioner ID must be provided for Read");
+            }
+            Provider provider = providerService.getProviderByFhirId(UUID.fromString(theId.getIdPart()));
+            if (provider == null) {
+                throw new ResourceNotFoundException("Provider is null " + theId.getIdPart());
+            }
+            Practitioner practitioner = fhirTransformService.transformProviderToPractitioner(provider);
+            return practitioner;
+        } catch (ResourceNotFoundException | InvalidRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "Unexpected error while Reading Practitioner: " + e.getMessage());
+            throw new InternalErrorException("Unexpected server error while Reading Practitioner", e);
+
+        }
+
     }
 
     @Create
@@ -64,31 +105,20 @@ public class PractitionerProvider implements IResourceProvider {
             }
 
             Provider provider = fhirTransformService.transformToProvider(practitioner);
-            provider.getPerson().setSysUserId(ControllerUtills.getSysUserId(request));
+            provider.getPerson().setSysUserId(FhirProviderUtils.getSysUserId(request));
             Person savedPerson = personService.save(provider.getPerson());
             provider.setPerson(savedPerson);
 
             Provider providerTosave = providerService.save(provider);
 
             Practitioner practitionerToSave = fhirTransformService.transformProviderToPractitioner(providerTosave);
-
-            try {
-                fhirPersistenceService.updateFhirResourceInFhirStore(practitionerToSave);
-            } catch (Exception syncEx) {
-                LogEvent.logError(this.getClass().getSimpleName(), method,
-                        "FHIR store sync failed (continuing anyway): " + syncEx.getMessage());
-            }
+            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, practitionerToSave,
+                    this.getClass().getSimpleName(), method);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), method,
                     "Successfully created Practitioner with UUID: " + provider.getFhirUuidAsString());
 
-            MethodOutcome outcome = new MethodOutcome();
-            outcome.setId(practitionerToSave.getIdElement());
-            outcome.setResource(practitionerToSave);
-            outcome.setCreated(true);
-            outcome.setResponseStatusCode(201);
-
-            return outcome;
+            return FhirProviderUtils.buildCreateOutcome(practitionerToSave);
 
         } catch (UnprocessableEntityException | InvalidRequestException e) {
             throw e;
@@ -112,12 +142,7 @@ public class PractitionerProvider implements IResourceProvider {
 
         try {
 
-            if (theId == null || !theId.hasIdPart()) {
-
-                LogEvent.logError(this.getClass().getSimpleName(), method, "Missing Practitioner ID for update");
-
-                throw new InvalidRequestException("Practitioner ID must be provided for update");
-            }
+            FhirProviderUtils.validateIdParam(theId, "Practitioner", this.getClass().getSimpleName(), method);
 
             practitioner.setId(theId);
 
@@ -125,31 +150,20 @@ public class PractitionerProvider implements IResourceProvider {
                     .getProviderByFhirId(UUID.fromString(practitioner.getIdElement().getIdPart()));
             Person existingPerson = personService.get(provider.getPerson().getId());
 
-            FhirTransformServiceImpl transForm = new FhirTransformServiceImpl();
-            transForm.addHumanNameToPerson(practitioner.getNameFirstRep(), existingPerson);
-            transForm.addTelecomToPerson(practitioner.getTelecom(), existingPerson);
-            existingPerson.setSysUserId(ControllerUtills.getSysUserId(request));
+            fhirTransformService.addHumanNameToPerson(practitioner.getNameFirstRep(), existingPerson);
+            fhirTransformService.addTelecomToPerson(practitioner.getTelecom(), existingPerson);
+            existingPerson.setSysUserId(FhirProviderUtils.getSysUserId(request));
             Person updatedPerson = personService.save(existingPerson);
             provider.setPerson(updatedPerson);
             Provider providerToUpdate = providerService.save(provider);
             Practitioner practitionerToSave = fhirTransformService.transformProviderToPractitioner(providerToUpdate);
-            try {
-                fhirPersistenceService.updateFhirResourceInFhirStore(practitionerToSave);
-            } catch (Exception syncEx) {
-                LogEvent.logError(this.getClass().getSimpleName(), method,
-                        "FHIR store sync failed during update (continuing anyway): " + syncEx.getMessage());
-            }
+            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, practitionerToSave,
+                    this.getClass().getSimpleName(), method);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), method,
                     "Successfully updated Practitioner with ID: " + theId.getIdPart());
 
-            MethodOutcome outcome = new MethodOutcome();
-            outcome.setId(practitionerToSave.getIdElement());
-            outcome.setResource(practitionerToSave);
-            outcome.setCreated(false);
-            outcome.setResponseStatusCode(200);
-
-            return outcome;
+            return FhirProviderUtils.buildUpdateOutcome(practitionerToSave);
 
         } catch (UnprocessableEntityException | InvalidRequestException e) {
             throw e;
@@ -163,4 +177,72 @@ public class PractitionerProvider implements IResourceProvider {
         }
     }
 
+    @Delete
+    public MethodOutcome delete(@IdParam IdType theId, HttpServletRequest request) {
+
+        String method = "delete";
+        LogEvent.logDebug(this.getClass().getSimpleName(), method,
+                "Received FHIR DELETE request for Practitioner ID: " + (theId != null ? theId.getIdPart() : "null"));
+
+        try {
+
+            FhirProviderUtils.validateIdParam(theId, "Practitioner", this.getClass().getSimpleName(), method);
+
+            Provider provider = providerService.getProviderByFhirId(UUID.fromString(theId.getIdPart()));
+
+            if (provider == null) {
+                throw new ResourceNotFoundException("Practitioner/" + theId.getIdPart());
+            }
+
+            provider.setActive(false);
+            provider.setSysUserId(FhirProviderUtils.getSysUserId(request));
+            providerService.save(provider);
+
+            Practitioner practitionerToDelete = fhirTransformService.transformProviderToPractitioner(provider);
+            practitionerToDelete.setActive(false);
+            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, practitionerToDelete,
+                    this.getClass().getSimpleName(), method);
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), method,
+                    "Successfully deleted Practitioner with ID: " + theId.getIdPart());
+
+            return FhirProviderUtils.buildDeleteOutcome(theId, "Practitioner");
+
+        } catch (ResourceNotFoundException | InvalidRequestException e) {
+            throw e;
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "Unexpected error while deleting Practitioner: " + e.getMessage());
+            throw new InternalErrorException("Unexpected server error while deleting Practitioner", e);
+        }
+    }
+
+    @Search
+    public Bundle searchPractitionerBundle(
+            @OptionalParam(name = Practitioner.SP_IDENTIFIER) TokenAndListParam identifier,
+            @OptionalParam(name = Practitioner.SP_GIVEN) StringAndListParam given,
+            @OptionalParam(name = Practitioner.SP_FAMILY) StringAndListParam family,
+            @OptionalParam(name = Practitioner.SP_RES_ID) TokenAndListParam id,
+            @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated,
+            @IncludeParam(reverse = true, allow = { "Encounter:" + Encounter.SP_PARTICIPANT,
+                    "ServiceRequest:" + ServiceRequest.SP_REQUESTER, }) HashSet<Include> revIncludes,
+            HttpServletRequest request) {
+
+        String methodName = "searchPractitionerBundle";
+        LogEvent.logDebug(this.getClass().getSimpleName(), methodName,
+                "Searching for Practitioners (returning Bundle)");
+
+        try {
+
+            Bundle bundle = util.forwardSearchToFhirStore(request);
+
+            return bundle;
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), methodName,
+                    "Error searching Practitioners: " + e.getMessage());
+            throw new InternalErrorException("Error searching Practitioners", e);
+        }
+    }
 }
