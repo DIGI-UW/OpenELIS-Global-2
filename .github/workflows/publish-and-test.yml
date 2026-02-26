@@ -443,6 +443,55 @@ jobs:
           cache-from: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-database:buildcache
           cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-database:buildcache,mode=max        
 
+  # Publish the classes JAR as a release asset so plugin developers can build
+  # without cloning/compiling the entire OE2 project.
+  # Used by: plugins/scripts/install-oe-jar.sh (tier 1: gh release download)
+  publish-classes-jar:
+    if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' && github.event_name == 'release' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: temurin
+
+      - name: Cache local Maven repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-classes-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-classes-
+
+      - name: Build dataexport
+        working-directory: dataexport
+        run: mvn clean install -DskipTests -Dmaven.test.skip=true -q
+
+      - name: Compile OpenELIS (classes only — no WAR packaging)
+        run: mvn clean compile -Dspotless.check.skip=true -q
+
+      - name: Create classes JAR
+        run: |
+          OE_VERSION="${{ github.event.release.tag_name }}"
+          jar cf "openelisglobal-${OE_VERSION}-classes.jar" -C target/classes .
+          echo "OE_VERSION=${OE_VERSION}" >> $GITHUB_ENV
+          echo "CLASSES_JAR=openelisglobal-${OE_VERSION}-classes.jar" >> $GITHUB_ENV
+
+      - name: Upload classes JAR as release asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ env.OE_VERSION }}" "${{ env.CLASSES_JAR }}" \
+            --clobber
+
   # build-installer-and-upload-installer:
   #   if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' && github.event_name == 'release' && github.event.action == 'published' }}
   #   needs: [frontend-qa]
