@@ -134,12 +134,23 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
         LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
                 "Total rows to process: " + totalRows);
 
-        // Track created organizations by their full path key to avoid duplicates
-        // Key format: "level1Name|level2Name|level3Name"
-        Map<String, Organization> pathToOrgMap = new LinkedHashMap<>();
+        // Track organization IDs by their full path key to avoid duplicates
+        // Key format: "level1Name|level2Name|level3Name", Value: organization ID (as String)
+        // Using IDs instead of full objects reduces memory and is safer across entityManager.clear()
+        Map<String, String> pathToOrgIdMap = new LinkedHashMap<>();
+
+        // Cache existing org->type links to avoid per-link database queries
+        // Key: "orgId:typeId", presence means link exists
+        java.util.Set<String> existingTypeLinks = new java.util.HashSet<>();
+
+        // Pre-load existing organizations and their type links to avoid per-row
+        // database queries
+        preloadExistingOrganizations(pathToOrgIdMap, levelTypeMap, existingTypeLinks);
+        LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration", "Pre-loaded " + pathToOrgIdMap.size()
+                + " existing organizations and " + existingTypeLinks.size() + " type links into memory");
 
         // Batch processing variables
-        List<Organization> batchToInsert = new ArrayList<>();
+        List<BatchOrganizationInfo> batchToInsert = new ArrayList<>();
         List<OrganizationTypeLinkInfo> typeLinksToCreate = new ArrayList<>();
         int rowsProcessed = 0;
         int organizationsCreated = 0;
@@ -151,7 +162,7 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
 
             try {
                 String[] values = parseCsvLine(csvLine);
-                BatchProcessingResult result = processHierarchyRowBatch(values, levelNames, levelTypeMap, pathToOrgMap,
+                BatchProcessingResult result = processHierarchyRowBatch(values, levelNames, levelTypeMap, pathToOrgIdMap,
                         batchToInsert, typeLinksToCreate);
 
                 organizationsCreated += result.newOrganizations;
@@ -159,11 +170,11 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
 
                 // Flush batch when it reaches the batch size
                 if (batchToInsert.size() >= BATCH_SIZE) {
-                    flushBatch(batchToInsert, typeLinksToCreate, pathToOrgMap);
+                    flushBatch(batchToInsert, typeLinksToCreate, pathToOrgIdMap, existingTypeLinks);
                     LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
                             "Flushed batch at row " + rowsProcessed + "/" + totalRows + " ("
                                     + String.format("%.1f", (100.0 * rowsProcessed / totalRows)) + "%), "
-                                    + "total orgs: " + pathToOrgMap.size());
+                                    + "total orgs: " + pathToOrgIdMap.size());
                 }
 
                 // Log progress periodically
@@ -176,7 +187,7 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
                     LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
                             "Progress: " + rowsProcessed + "/" + totalRows + " rows ("
                                     + String.format("%.1f", (100.0 * rowsProcessed / totalRows)) + "%), "
-                                    + "unique locations: " + pathToOrgMap.size() + ", " + "rate: "
+                                    + "unique locations: " + pathToOrgIdMap.size() + ", " + "rate: "
                                     + String.format("%.0f", rowsPerSecond) + " rows/sec, " + "ETA: "
                                     + String.format("%.0f", estimatedSecondsRemaining) + "s");
                 }
@@ -197,7 +208,7 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
         if (!batchToInsert.isEmpty()) {
             LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
                     "Flushing final batch of " + batchToInsert.size() + " organizations");
-            flushBatch(batchToInsert, typeLinksToCreate, pathToOrgMap);
+            flushBatch(batchToInsert, typeLinksToCreate, pathToOrgIdMap, existingTypeLinks);
         }
 
         DisplayListService.getInstance().refreshLists();
@@ -205,7 +216,7 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
         long totalTime = System.currentTimeMillis() - startTime;
         LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
                 "COMPLETED processing " + fileName + " in " + (totalTime / 1000) + " seconds: " + rowsProcessed
-                        + " rows processed, " + pathToOrgMap.size() + " unique locations created/updated, " + errors
+                        + " rows processed, " + pathToOrgIdMap.size() + " unique locations created/updated, " + errors
                         + " errors");
     }
 
@@ -224,6 +235,20 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
     }
 
     /**
+     * Helper class to track organizations in batch with their path keys.
+     * After flush, we update pathToOrgIdMap with the assigned IDs.
+     */
+    private static class BatchOrganizationInfo {
+        Organization organization;
+        String pathKey;
+
+        BatchOrganizationInfo(Organization org, String pathKey) {
+            this.organization = org;
+            this.pathKey = pathKey;
+        }
+    }
+
+    /**
      * Result of processing a single row in batch mode.
      */
     private static class BatchProcessingResult {
@@ -232,42 +257,66 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
     }
 
     /**
-     * Flush the current batch to the database.
+     * Flush the current batch to the database. Uses entityManager.persist()
+     * directly for true batch inserts instead of organizationService.insert() which
+     * flushes immediately.
      */
-    private void flushBatch(List<Organization> batchToInsert, List<OrganizationTypeLinkInfo> typeLinksToCreate,
-            Map<String, Organization> pathToOrgMap) {
+    private void flushBatch(List<BatchOrganizationInfo> batchToInsert, List<OrganizationTypeLinkInfo> typeLinksToCreate,
+            Map<String, String> pathToOrgIdMap, java.util.Set<String> existingTypeLinks) {
         try {
-            // Insert all organizations in batch
-            for (Organization org : batchToInsert) {
+            // Persist all organizations without flushing - allows Hibernate to batch
+            for (BatchOrganizationInfo batchInfo : batchToInsert) {
                 try {
-                    String orgId = organizationService.insert(org);
-                    org.setId(orgId);
-                } catch (Exception e) {
+                    entityManager.persist(batchInfo.organization);
+                } catch (jakarta.persistence.PersistenceException e) {
                     LogEvent.logError(this.getClass().getSimpleName(), "flushBatch",
-                            "Failed to insert organization: " + org.getOrganizationName() + " - " + e.getMessage());
+                            "Failed to persist organization '" + batchInfo.organization.getOrganizationName() + "': "
+                                    + e.getMessage());
                     throw e;
                 }
             }
 
-            // Flush to database
-            entityManager.flush();
+            // Single flush for all organizations - Hibernate can batch the INSERTs
+            try {
+                entityManager.flush();
+            } catch (jakarta.persistence.PersistenceException e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "flushBatch", "Database flush failed for batch of "
+                        + batchToInsert.size() + " organizations: " + e.getMessage());
+                // Log the first few org names to help identify the problem
+                StringBuilder orgNames = new StringBuilder("Organizations in failed batch: ");
+                int count = 0;
+                for (BatchOrganizationInfo batchInfo : batchToInsert) {
+                    if (count++ >= 5) {
+                        orgNames.append("... and ").append(batchToInsert.size() - 5).append(" more");
+                        break;
+                    }
+                    orgNames.append(batchInfo.organization.getOrganizationName()).append(", ");
+                }
+                LogEvent.logError(this.getClass().getSimpleName(), "flushBatch", orgNames.toString());
+                throw e;
+            }
+
+            // After flush, organizations now have IDs - update pathToOrgIdMap
+            for (BatchOrganizationInfo batchInfo : batchToInsert) {
+                if (batchInfo.organization.getId() != null) {
+                    pathToOrgIdMap.put(batchInfo.pathKey, batchInfo.organization.getId());
+                }
+            }
+
+            // Clear persistence context to free memory
+            entityManager.clear();
 
             // Create type links after organizations have IDs
+            // Note: linkOrganizationAndType uses direct SQL, no flush needed
             for (OrganizationTypeLinkInfo linkInfo : typeLinksToCreate) {
                 try {
-                    ensureOrganizationTypeLink(linkInfo.organization, linkInfo.orgType);
+                    ensureOrganizationTypeLink(linkInfo.organization, linkInfo.orgType, existingTypeLinks);
                 } catch (Exception e) {
                     LogEvent.logError(this.getClass().getSimpleName(), "flushBatch",
                             "Failed to link organization " + linkInfo.organization.getOrganizationName() + " to type "
                                     + linkInfo.orgType.getName() + " - " + e.getMessage());
                 }
             }
-
-            // Flush type links
-            entityManager.flush();
-
-            // Clear persistence context to free memory
-            entityManager.clear();
 
             // Clear batch lists
             batchToInsert.clear();
@@ -349,13 +398,18 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
      * Process a single row of the hierarchy CSV in batch mode. Creates
      * organizations for each level and sets up parent-child relationships.
      * Organizations are added to the batch list for later insertion.
+     *
+     * Uses entity references (getReference) for parents when possible to reduce memory
+     * and avoid issues across entityManager.clear() calls.
      */
     private BatchProcessingResult processHierarchyRowBatch(String[] values, String[] levelNames,
-            Map<Integer, OrganizationType> levelTypeMap, Map<String, Organization> pathToOrgMap,
-            List<Organization> batchToInsert, List<OrganizationTypeLinkInfo> typeLinksToCreate) {
+            Map<Integer, OrganizationType> levelTypeMap, Map<String, String> pathToOrgIdMap,
+            List<BatchOrganizationInfo> batchToInsert, List<OrganizationTypeLinkInfo> typeLinksToCreate) {
 
         BatchProcessingResult result = new BatchProcessingResult();
-        Organization parent = null;
+        // Track parent: either an ID (for flushed orgs) or the actual org (for unflushed batch orgs)
+        String parentId = null;
+        Organization parentOrgInBatch = null;
         StringBuilder pathBuilder = new StringBuilder();
 
         for (int i = 0; i < Math.min(values.length, levelNames.length); i++) {
@@ -385,9 +439,21 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
             pathBuilder.append(name);
             String pathKey = pathBuilder.toString();
 
-            // Check if we already processed this location
-            if (pathToOrgMap.containsKey(pathKey)) {
-                parent = pathToOrgMap.get(pathKey);
+            // Check if we already have this location (either pre-loaded or in current batch)
+            if (pathToOrgIdMap.containsKey(pathKey)) {
+                // This is a flushed organization with a known ID
+                parentId = pathToOrgIdMap.get(pathKey);
+                parentOrgInBatch = null;
+                result.skippedOrganizations++;
+                continue;
+            }
+
+            // Check if it's in the current unflushed batch
+            BatchOrganizationInfo batchOrg = findInBatch(batchToInsert, pathKey);
+            if (batchOrg != null) {
+                // Parent is in unflushed batch - reference the actual object
+                parentId = null;
+                parentOrgInBatch = batchOrg.organization;
                 result.skippedOrganizations++;
                 continue;
             }
@@ -400,17 +466,6 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
                 continue;
             }
 
-            // Check if organization already exists in database
-            Organization existingOrg = findExistingOrganization(name, code, parent);
-            if (existingOrg != null) {
-                pathToOrgMap.put(pathKey, existingOrg);
-                parent = existingOrg;
-                result.skippedOrganizations++;
-                // Still need to ensure type link exists
-                typeLinksToCreate.add(new OrganizationTypeLinkInfo(existingOrg, orgType));
-                continue;
-            }
-
             // Create new organization (but don't insert yet - add to batch)
             Organization newOrg = new Organization();
             newOrg.setOrganizationName(name);
@@ -418,14 +473,26 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
             newOrg.setShortName(name.length() > 15 ? name.substring(0, 15) : name);
             newOrg.setIsActive("Y");
             newOrg.setMlsSentinelLabFlag("N");
-            newOrg.setOrganization(parent);
             newOrg.setSysUserId("1");
 
-            // Add to batch
-            batchToInsert.add(newOrg);
-            pathToOrgMap.put(pathKey, newOrg);
+            // Set parent using lightweight reference when possible
+            if (parentId != null) {
+                // Parent has been flushed - use getReference for lightweight proxy
+                // Organization uses String as its ID type
+                newOrg.setOrganization(entityManager.getReference(Organization.class, parentId));
+            } else if (parentOrgInBatch != null) {
+                // Parent is in unflushed batch - must reference actual object
+                newOrg.setOrganization(parentOrgInBatch);
+            }
+            // else no parent (top-level)
+
+            // Add to batch with path key for later ID mapping
+            batchToInsert.add(new BatchOrganizationInfo(newOrg, pathKey));
             typeLinksToCreate.add(new OrganizationTypeLinkInfo(newOrg, orgType));
-            parent = newOrg;
+
+            // This new org becomes the parent for next level
+            parentId = null;
+            parentOrgInBatch = newOrg;
             result.newOrganizations++;
         }
 
@@ -433,30 +500,110 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
     }
 
     /**
-     * Find an existing organization by code or by name+parent combination.
+     * Find an organization in the current unflushed batch by its path key.
      */
-    private Organization findExistingOrganization(String name, String code, Organization parent) {
-        // First try to find by code
-        Organization existingOrg = organizationService.getOrganizationByCode(code);
-        if (existingOrg != null) {
-            return existingOrg;
+    private BatchOrganizationInfo findInBatch(List<BatchOrganizationInfo> batch, String pathKey) {
+        for (BatchOrganizationInfo info : batch) {
+            if (pathKey.equals(info.pathKey)) {
+                return info;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Pre-load existing address hierarchy organizations into the pathToOrgIdMap. Also
+     * pre-loads existing organization-type links to avoid per-link database
+     * queries. This trades memory for reduced database queries during batch
+     * processing. Organizations are loaded once and their path keys are computed by
+     * traversing parent chains. Only IDs are stored (not full objects) to reduce memory.
+     */
+    private void preloadExistingOrganizations(Map<String, String> pathToOrgIdMap,
+            Map<Integer, OrganizationType> levelTypeMap, java.util.Set<String> existingTypeLinks) {
+        if (levelTypeMap.isEmpty()) {
+            return;
         }
 
-        // Try to find by name and parent combination
-        Organization orgByName = new Organization();
-        orgByName.setOrganizationName(name);
-        existingOrg = organizationService.getOrganizationByName(orgByName, true);
-        if (existingOrg != null) {
-            // Check if it has the same parent
-            boolean sameParent = (parent == null && existingOrg.getOrganization() == null)
-                    || (parent != null && existingOrg.getOrganization() != null && parent.getId() != null
-                            && parent.getId().equals(existingOrg.getOrganization().getId()));
-            if (sameParent) {
-                return existingOrg;
+        // Get all organization type IDs for address hierarchy levels
+        List<String> hierarchyTypeIds = new ArrayList<>();
+        for (OrganizationType orgType : levelTypeMap.values()) {
+            if (orgType.getId() != null) {
+                hierarchyTypeIds.add(orgType.getId());
             }
         }
 
-        return null;
+        if (hierarchyTypeIds.isEmpty()) {
+            return;
+        }
+
+        // Collect all org IDs that belong to any hierarchy type (one query per type)
+        // Also populate existingTypeLinks with the org:type pairs
+        java.util.Set<String> hierarchyOrgIds = new java.util.HashSet<>();
+        for (String typeId : hierarchyTypeIds) {
+            List<String> orgIds = organizationTypeService.getOrganizationIdsForType(typeId);
+            hierarchyOrgIds.addAll(orgIds);
+            // Cache these links - format: "orgId:typeId"
+            for (String orgId : orgIds) {
+                existingTypeLinks.add(orgId + ":" + typeId);
+            }
+        }
+
+        if (hierarchyOrgIds.isEmpty()) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "preloadExistingOrganizations",
+                    "No existing address hierarchy organizations found");
+            return;
+        }
+
+        // Load all organizations once (needed to build path keys via parent traversal)
+        List<Organization> allOrganizations = organizationService.getAllOrganizations();
+
+        // Build a map of org ID to org for parent chain traversal
+        Map<String, Organization> orgById = new HashMap<>();
+        for (Organization org : allOrganizations) {
+            if (org.getId() != null) {
+                orgById.put(org.getId(), org);
+            }
+        }
+
+        // For each organization that belongs to a hierarchy type, compute its path key
+        // Store only the ID (not the full object) to reduce memory
+        for (String orgId : hierarchyOrgIds) {
+            Organization org = orgById.get(orgId);
+            if (org == null || !"Y".equals(org.getIsActive())) {
+                continue;
+            }
+
+            // Build path key by traversing parent chain
+            String pathKey = buildPathKeyForOrganization(org, orgById);
+            if (pathKey != null && !pathKey.isEmpty()) {
+                pathToOrgIdMap.put(pathKey, orgId);
+            }
+        }
+    }
+
+    /**
+     * Build the path key for an organization by traversing its parent chain. Path
+     * format: "grandparent|parent|child"
+     */
+    private String buildPathKeyForOrganization(Organization org, Map<String, Organization> orgById) {
+        List<String> pathParts = new ArrayList<>();
+        Organization current = org;
+        int maxDepth = 20; // Safety limit to prevent infinite loops
+
+        while (current != null && maxDepth > 0) {
+            pathParts.add(0, current.getOrganizationName()); // Add to front
+
+            // Get parent - might be a proxy, so look up in our map
+            Organization parent = current.getOrganization();
+            if (parent != null && parent.getId() != null) {
+                current = orgById.get(parent.getId());
+            } else {
+                current = null;
+            }
+            maxDepth--;
+        }
+
+        return String.join("|", pathParts);
     }
 
     /**
@@ -474,22 +621,27 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
 
     /**
      * Ensure an organization is linked to the specified type. Only links if not
-     * already linked.
+     * already linked. Uses the pre-cached existingTypeLinks set to avoid database
+     * queries.
      */
-    private void ensureOrganizationTypeLink(Organization org, OrganizationType orgType) {
+    private void ensureOrganizationTypeLink(Organization org, OrganizationType orgType,
+            java.util.Set<String> existingTypeLinks) {
         if (org.getId() == null) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "ensureOrganizationTypeLink",
                     "Cannot link organization without ID: " + org.getOrganizationName());
             return;
         }
 
-        // Check if already linked by querying the database directly
-        List<String> existingTypeIds = organizationService.getTypeIdsForOrganizationId(org.getId());
-        if (existingTypeIds != null && existingTypeIds.contains(orgType.getId())) {
+        // Check if already linked using pre-cached set (avoids database query)
+        String linkKey = org.getId() + ":" + orgType.getId();
+        if (existingTypeLinks.contains(linkKey)) {
             return; // Already linked
         }
+
         // Not linked, add the link
         organizationService.linkOrganizationAndType(org, orgType.getId());
+        // Add to cache so we don't try to create it again
+        existingTypeLinks.add(linkKey);
     }
 
     /**
