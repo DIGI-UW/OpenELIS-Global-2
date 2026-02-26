@@ -37,7 +37,6 @@ if ! curl -sf "$API_URL/health" > /dev/null 2>&1; then
     echo "Start with:"
     echo "  docker compose -f docker-compose.dev.yml \\"
     echo "    -f docker-compose.analyzer-test.yml \\"
-    echo "    -f docker-compose.genexpert.yml \\"
     echo "    --profile genexpert up -d"
     exit 1
 fi

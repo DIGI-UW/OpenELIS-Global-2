@@ -23,17 +23,15 @@ services:
       retries: 3
       start_period: 10s
 
-  # GeneXpert ASTM simulator — template-driven, spec-compliant GeneXpert messages.
-  # Supports both push (client) and pull (server) ASTM workflows:
-  #   Pull: Bridge connects to port 5000, mock responds with GeneXpert ASTM data
-  #   Push: HTTP API on port 8080 triggers ASTM TCP push to bridge or HTTP push to OE
-  # Activate with: --profile genexpert (and use docker-compose.genexpert.yml overlay)
+  # GeneXpert ASTM simulator — template-driven, spec-compliant messages.
+  # Pushes to bridge's ASTM listen port (12001) just like a real analyzer.
+  # Activate with: --profile genexpert
   genexpert-simulator:
     build:
       context: ../../tools/analyzer-mock-server
       dockerfile: Dockerfile
     ports:
-      - "5010:5000" # ASTM listen port (bridge connects here for pull mode)
+      - "5010:5000" # ASTM listen port (for pull-based queries)
       - "8085:8080" # HTTP API (trigger pushes, health check)
     environment:
       - ASTM_PORT=5000
