@@ -4,6 +4,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -38,6 +39,9 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
+
+    @Autowired
+    private org.openelisglobal.test.service.TestService testService;
 
     AnalyzerServiceImpl() {
         super(Analyzer.class);
@@ -251,5 +255,57 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
                 + " status manually changed from " + oldStatus + " to " + status + " by user " + userId);
 
         return analyzer;
+    }
+
+    @Override
+    @Transactional
+    @SuppressWarnings("unchecked")
+    public void autoCreateTestMappings(String analyzerId, Map<String, Object> config, String sysUserId) {
+        Object mappingsObj = config.get("default_test_mappings");
+        if (!(mappingsObj instanceof List)) {
+            return;
+        }
+
+        List<Map<String, Object>> mappings = (List<Map<String, Object>>) mappingsObj;
+        int created = 0;
+
+        for (Map<String, Object> mapping : mappings) {
+            String analyzerCode = (String) mapping.get("analyzer_code");
+            String loinc = (String) mapping.get("loinc");
+
+            if (analyzerCode == null || loinc == null || analyzerCode.isEmpty() || loinc.isEmpty()) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                        "Skipping test mapping with missing analyzer_code or loinc");
+                continue;
+            }
+
+            List<org.openelisglobal.test.valueholder.Test> tests = testService.getActiveTestsByLoinc(loinc);
+            if (tests == null || tests.isEmpty()) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                        "No active test found for LOINC '" + loinc + "' (analyzer_code '" + analyzerCode + "')");
+                continue;
+            }
+
+            org.openelisglobal.test.valueholder.Test test = tests.get(0);
+
+            AnalyzerTestMapping atm = new AnalyzerTestMapping();
+            atm.setAnalyzerId(analyzerId);
+            atm.setAnalyzerTestName(analyzerCode);
+            atm.setTestId(test.getId());
+            atm.setSysUserId(sysUserId);
+
+            try {
+                analyzerMappingService.insert(atm);
+                created++;
+            } catch (Exception e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                        "Failed to create test mapping for analyzer_code '" + analyzerCode + "': " + e.getMessage());
+            }
+        }
+
+        if (created > 0) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                    "Auto-created " + created + " test mappings for analyzer " + analyzerId);
+        }
     }
 }

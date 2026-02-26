@@ -27,9 +27,7 @@ export class AnalyzerFormPage {
     this.page = page;
     this.modal = page.locator('[data-testid="analyzer-form"]');
     this.header = page.locator('[data-testid="analyzer-form-header"]');
-    this.nameInput = page.locator(
-      '[data-testid="analyzer-form-name-input"] input',
-    );
+    this.nameInput = page.locator('[data-testid="analyzer-form-name-input"]');
     this.typeDropdown = page.locator(
       '[data-testid="analyzer-form-type-dropdown"]',
     );
@@ -40,17 +38,15 @@ export class AnalyzerFormPage {
       '[data-testid="analyzer-form-default-config-dropdown"]',
     );
     this.identifierPatternInput = page.locator(
-      '[data-testid="analyzer-form-identifier-pattern-input"] input',
+      '[data-testid="analyzer-form-identifier-pattern-input"]',
     );
     this.protocolVersionDropdown = page.locator(
       '[data-testid="analyzer-form-protocol-version-dropdown"]',
     );
     this.ipAddressInput = page.locator(
-      '[data-testid="analyzer-form-ip-input"] input',
+      '[data-testid="analyzer-form-ip-input"]',
     );
-    this.portInput = page.locator(
-      '[data-testid="analyzer-form-port-input"] input',
-    );
+    this.portInput = page.locator('[data-testid="analyzer-form-port-input"]');
     this.statusDropdown = page.locator(
       '[data-testid="analyzer-form-status-dropdown"]',
     );
@@ -77,9 +73,7 @@ export class AnalyzerFormPage {
   /** Select an item from a Carbon Dropdown by visible text */
   private async selectDropdownItem(dropdown: Locator, text: string) {
     await dropdown.click();
-    const item = this.page.locator(`.cds--list-box__menu-item`).filter({
-      hasText: text,
-    });
+    const item = this.page.getByRole("option", { name: text });
     await item.first().click();
   }
 
