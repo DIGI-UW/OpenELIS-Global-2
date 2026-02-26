@@ -69,6 +69,7 @@
 	<field name="correctedResult" class="java.lang.Boolean"/>
 	<field name="parentMarker" class="java.lang.Boolean"/>
 	<field name="alerts" class="java.lang.String"/>
+	<field name="resultIndicator" class="java.lang.String"/>
 	<field name="subjectNumber" class="java.lang.String"/>
 	<field name="billingNumber" class="java.lang.String"/>
 	<field name="healthRegion" class="java.lang.String"/>
@@ -809,7 +810,7 @@
 					</graphicElement>
 				</rectangle>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" x="146" y="0" width="117" height="18"/>
+					<reportElement stretchType="RelativeToTallestObject" x="146" y="0" width="100" height="18"/>
 					<box topPadding="2" bottomPadding="2" rightPadding="4">
 						<topPen lineWidth="0.0" lineColor="#CCCCCC"/>
 						<leftPen lineWidth="0.5"/>
@@ -849,15 +850,15 @@
 					<textFieldExpression class="java.lang.String"><![CDATA[$F{testRefRange}]]></textFieldExpression>
 				</textField>
 				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-					<reportElement stretchType="RelativeToTallestObject" mode="Transparent" x="323" y="0" width="34" height="18" backcolor="#FFFFFF"/>
+					<reportElement stretchType="RelativeToTallestObject" mode="Transparent" x="296" y="0" width="61" height="18" backcolor="#FFFFFF"/>
 					<box>
 						<leftPen lineWidth="0.5"/>
 						<rightPen lineWidth="0.5"/>
 					</box>
-					<textElement textAlignment="Center" verticalAlignment="Middle" markup="html">
-						<font fontName="SansSerif" size="9" isBold="true"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font fontName="SansSerif" size="8" isBold="true"/>
 					</textElement>
-					<textFieldExpression class="java.lang.String"><![CDATA[$F{alerts}]]></textFieldExpression>
+					<textFieldExpression class="java.lang.String"><![CDATA[$F{resultIndicator}]]></textFieldExpression>
 				</textField>
 				<textField isBlankWhenNull="true">
 					<reportElement stretchType="RelativeToTallestObject" x="474" y="0" width="79" height="18"/>
@@ -873,7 +874,7 @@
 					<textFieldExpression class="java.lang.String"><![CDATA[$F{uom}]]></textFieldExpression>
 				</textField>
 				<textField isBlankWhenNull="true">
-					<reportElement x="263" y="0" width="60" height="18"/>
+					<reportElement x="246" y="0" width="50" height="18"/>
 					<textElement textAlignment="Center" verticalAlignment="Middle">
 						<font size="9"/>
 					</textElement>
@@ -919,7 +920,7 @@
 				<textElement verticalAlignment="Middle">
 					<font size="8"/>
 				</textElement>
-				<textFieldExpression class="java.lang.String"><![CDATA["B = " + $R{report.belowNormal} + "  E = " + $R{report.aboveNormal} + "  * = " + $R{report.abnormal}]]></textFieldExpression>
+				<textFieldExpression class="java.lang.String"><![CDATA[$R{report.status.high} + " = " + $R{report.aboveNormal} + "  " + $R{report.status.low} + " = " + $R{report.belowNormal} + "  * = " + $R{report.abnormal}]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="63" y="16" width="489" height="14"/>

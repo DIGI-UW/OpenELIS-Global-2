@@ -44,6 +44,48 @@ const Validation = (props) => {
     };
   }, []);
 
+  const renderResultStatus = (row) => {
+    if (row.resultType !== "N" || !row.result) {
+      return null;
+    }
+    var value = parseFloat(String(row.result).replace(/[<>]/g, ""));
+    if (isNaN(value)) {
+      return null;
+    }
+    // Parse normalRange display string (format: "3.50 - 11.00")
+    if (!row.normalRange || !row.normalRange.includes("-")) {
+      return null;
+    }
+    var rangeParts = row.normalRange.split("-").map((s) => s.trim());
+    if (rangeParts.length < 2) {
+      return null;
+    }
+    var lower = parseFloat(rangeParts[0]);
+    var upper = parseFloat(rangeParts[1]);
+    if (isNaN(lower) || isNaN(upper) || lower === upper) {
+      return null;
+    }
+    if (value < lower) {
+      return (
+        <span style={{ color: "#0043ce", fontWeight: "bold" }}>
+          {intl.formatMessage({ id: "result.status.low" })}
+        </span>
+      );
+    } else if (value > upper) {
+      return (
+        <span style={{ color: "#da1e28", fontWeight: "bold" }}>
+          {intl.formatMessage({ id: "result.status.high" })}
+        </span>
+      );
+    } else {
+      return (
+        <span style={{ color: "#198038", fontWeight: "bold" }}>
+          {intl.formatMessage({ id: "result.status.normal" })}
+        </span>
+      );
+    }
+  };
+
   const columns = [
     {
       id: "sampleInfo",
@@ -71,6 +113,14 @@ const Validation = (props) => {
       selector: (row) => row.normalRange,
       sortable: true,
       width: "8rem",
+    },
+    {
+      id: "resultStatus",
+      name: intl.formatMessage({ id: "column.name.resultStatus" }),
+      cell: (row) => {
+        return renderResultStatus(row);
+      },
+      width: "6rem",
     },
     {
       id: "result",
