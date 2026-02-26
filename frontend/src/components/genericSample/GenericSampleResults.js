@@ -323,8 +323,8 @@ function GenericSampleResults({
               (formatLabNum
                 ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
                 : row.accessionNumber) +
-              "-" +
-              row.sequenceNumber}
+                "-" +
+                row.sequenceNumber}
             <br />
             {row.patientName}
             <br />
@@ -478,7 +478,11 @@ function GenericSampleResults({
         id: "currentResult",
         name: intl.formatMessage({ id: "column.name.currentResult" }),
         cell: (row) => {
-          if (row.resultType === "D" && row.resultValue && row.dictionaryResults) {
+          if (
+            row.resultType === "D" &&
+            row.resultValue &&
+            row.dictionaryResults
+          ) {
             // Dictionary - resolve single ID to label
             const dictItem = row.dictionaryResults.find(
               (dict) => dict.id === row.resultValue,
@@ -615,16 +619,16 @@ function GenericSampleResults({
               </Column>
             </Grid>
 
-            <Formik initialValues={{}} onSubmit={() => { }} onChange={() => { }}>
+            <Formik initialValues={{}} onSubmit={() => {}} onChange={() => {}}>
               {({ handleChange }) => (
                 <Form onChange={handleChange}>
                   <DataTable
                     data={
                       showPagination
                         ? results.testResult.slice(
-                          (page - 1) * pageSize,
-                          page * pageSize,
-                        )
+                            (page - 1) * pageSize,
+                            page * pageSize,
+                          )
                         : results.testResult
                     }
                     columns={columns}
