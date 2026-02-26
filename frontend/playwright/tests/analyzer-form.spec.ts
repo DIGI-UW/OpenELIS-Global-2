@@ -39,8 +39,11 @@ test.describe("Analyzer Form", () => {
     // Save with empty form — should show validation error
     await form.save();
 
-    // Verify validation error is shown to the user
-    await expect(page.getByText("Analyzer name is required")).toBeVisible();
+    // Carbon TextInput renders .cds--form-requirement when invalid
+    const nameError = page.locator(
+      '[data-testid="analyzer-form-name-input"] .cds--form-requirement',
+    );
+    await expect(nameError).toBeVisible();
 
     await form.cancelButton.click();
     await expect(form.modal).not.toBeVisible();
