@@ -75,6 +75,8 @@ public class OrganizationProvider implements IResourceProvider {
             }
             Organization fhirOrganization = fhirTransformService.transformToFhirOrganization(organization);
             return fhirOrganization;
+        } catch (ResourceNotFoundException | InvalidRequestException e) {
+            throw e;
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while Reading Organization: " + e.getMessage());

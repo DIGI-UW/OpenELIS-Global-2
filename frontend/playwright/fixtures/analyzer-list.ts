@@ -95,7 +95,7 @@ export class AnalyzerListPage {
 
   /** Type into the search input */
   async search(term: string) {
-    await this.searchInput.locator("input").fill(term);
+    await this.searchInput.fill(term);
   }
 
   /** Click the Add Analyzer button */

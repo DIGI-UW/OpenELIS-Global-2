@@ -163,8 +163,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Act & Assert: GET endpoint should return analyzer
         mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON))
@@ -198,8 +201,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Update analyzer
         String updateBody = "{\"name\":\"Updated Name\",\"analyzerType\":\"Hematology Analyzer\",\"active\":false}";
@@ -231,8 +237,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Act & Assert: POST delete endpoint returns 200 with deletion result
         // (fresh analyzer has no recent results → hard delete → 200 with message)
@@ -265,8 +274,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Mock service to return job ID
         String mockJobId = "test-job-id-123";
@@ -304,8 +316,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         String jobId = "test-job-id-456";
 
@@ -344,8 +359,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         String invalidJobId = "invalid-job-id";
 
@@ -413,8 +431,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Act & Assert: pluginLoaded should be false (no plugin JAR loaded)
         mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON))
@@ -461,8 +482,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Act: Update with non-numeric pluginTypeId "generic-astm"
         String updateBody = "{\"pluginTypeId\":\"generic-astm\"}";
