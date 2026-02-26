@@ -147,10 +147,12 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getAnalyzerType() == null || form.getAnalyzerType().trim().isEmpty()) {
                 validationErrors.add("Analyzer type is required");
             }
-            if (form.getIpAddress() != null && !form.getIpAddress().matches("^(\\d{1,3}\\.){3}\\d{1,3}$")) {
+            if (form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty()
+                    && !form.getIpAddress().matches("^(\\d{1,3}\\.){3}\\d{1,3}$")) {
                 validationErrors.add("Invalid IPv4 address format");
             }
-            if (form.getIpAddress() != null && NetworkValidationUtil.isBlockedAddress(form.getIpAddress())) {
+            if (form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty()
+                    && NetworkValidationUtil.isBlockedAddress(form.getIpAddress())) {
                 validationErrors.add("Connection to this address is not permitted");
             }
             if (form.getPort() != null && (form.getPort() < 1 || form.getPort() > 65535)) {
@@ -363,12 +365,14 @@ public class AnalyzerRestController extends BaseRestController {
             }
 
             // Manual validation for optional fields
-            if (form.getIpAddress() != null && !form.getIpAddress().matches("^(\\d{1,3}\\.){3}\\d{1,3}$")) {
+            if (form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty()
+                    && !form.getIpAddress().matches("^(\\d{1,3}\\.){3}\\d{1,3}$")) {
                 Map<String, Object> error = new LinkedHashMap<>();
                 error.put("error", "Invalid IPv4 address format");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
-            if (form.getIpAddress() != null && NetworkValidationUtil.isBlockedAddress(form.getIpAddress())) {
+            if (form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty()
+                    && NetworkValidationUtil.isBlockedAddress(form.getIpAddress())) {
                 Map<String, Object> error = new LinkedHashMap<>();
                 error.put("error", "Connection to this address is not permitted");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
