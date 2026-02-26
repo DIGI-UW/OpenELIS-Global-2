@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <status_of_sample id="1" description="Sample Entered"
+        code="1" status_type="SAMPLE" lastupdated="2024-01-01"
+        name="SampleEntered" display_key="status.sample.entered" is_active="Y" />
+    <!-- sample 401: has accession number, no status (null status) -->
+    <sample id="401" accession_number="ACC-401"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2024-06-03 12:00:00" />
+    <!-- sample 402: has accession number, no status -->
+    <sample id="402" accession_number="ACC-402"
+        received_date="2024-06-04 00:00:00.0"
+        entered_date="2024-06-04 00:00:00.0"
+        collection_date="2024-06-04 00:00:00.0"
+        lastupdated="2024-06-04 12:00:00" />
+</dataset>
