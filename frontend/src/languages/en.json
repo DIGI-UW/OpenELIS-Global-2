@@ -3107,5 +3107,21 @@
   "workplan.title": "Workplan",
   "workplan.unit.title": "Workplan By Unit",
   "workplan.unit.types": "Unit Type",
-  "yes.option": "Yes"
+  "yes.option": "Yes",
+  "customfield.title": "Custom Fields",
+  "customfield.admin.title": "Custom Field Management",
+  "customfield.admin.add": "Add Custom Field",
+  "customfield.admin.edit": "Edit Custom Field",
+  "customfield.admin.delete": "Deactivate Custom Field",
+  "customfield.name": "Field Name",
+  "customfield.label": "Label Key",
+  "customfield.type": "Field Type",
+  "customfield.options": "Options (JSON)",
+  "customfield.sortorder": "Sort Order",
+  "customfield.required": "Required",
+  "customfield.active": "Active",
+  "customfield.save.success": "Custom field saved successfully",
+  "customfield.delete.success": "Custom field deactivated successfully",
+  "customfield.no": "No",
+  "customfield.yes": "Yes"
 }

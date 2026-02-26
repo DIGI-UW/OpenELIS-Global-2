@@ -3107,5 +3107,21 @@
   "workplan.title": "Plan de Travail",
   "workplan.unit.title": "Plan de travail par unité",
   "workplan.unit.types": "Unité",
-  "yes.option": "Oui"
+  "yes.option": "Oui",
+  "customfield.title": "Champs personnalisés",
+  "customfield.admin.title": "Gestion des champs personnalisés",
+  "customfield.admin.add": "Ajouter un champ personnalisé",
+  "customfield.admin.edit": "Modifier le champ personnalisé",
+  "customfield.admin.delete": "Désactiver le champ personnalisé",
+  "customfield.name": "Nom du champ",
+  "customfield.label": "Clé d'étiquette",
+  "customfield.type": "Type de champ",
+  "customfield.options": "Options (JSON)",
+  "customfield.sortorder": "Ordre de tri",
+  "customfield.required": "Obligatoire",
+  "customfield.active": "Actif",
+  "customfield.save.success": "Champ personnalisé enregistré avec succès",
+  "customfield.delete.success": "Champ personnalisé désactivé avec succès",
+  "customfield.no": "Non",
+  "customfield.yes": "Oui"
 }

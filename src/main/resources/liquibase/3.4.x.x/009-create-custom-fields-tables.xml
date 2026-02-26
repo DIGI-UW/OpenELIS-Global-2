@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="009-1-create-custom-field-table" author="princegarg">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="custom_field"/>
+      </not>
+    </preConditions>
+    <createTable tableName="custom_field">
+      <column name="id" type="INTEGER" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="name" type="VARCHAR(100)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="label_key" type="VARCHAR(200)">
+        <constraints nullable="true"/>
+      </column>
+      <column name="field_type" type="VARCHAR(30)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="options" type="TEXT">
+        <constraints nullable="true"/>
+      </column>
+      <column name="sort_order" type="INTEGER" defaultValueNumeric="0"/>
+      <column name="is_required" type="BOOLEAN" defaultValueBoolean="false"/>
+      <column name="is_active" type="BOOLEAN" defaultValueBoolean="true"/>
+      <column name="applicable_to" type="VARCHAR(30)" defaultValue="SAMPLE"/>
+      <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="009-2-create-custom-field-value-table" author="princegarg">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="custom_field_value"/>
+      </not>
+    </preConditions>
+    <createTable tableName="custom_field_value">
+      <column name="id" type="INTEGER" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="custom_field_id" type="INTEGER">
+        <constraints nullable="false" foreignKeyName="fk_cfv_custom_field"
+                     references="custom_field(id)"/>
+      </column>
+      <column name="sample_id" type="INTEGER">
+        <constraints nullable="false" foreignKeyName="fk_cfv_sample"
+                     references="sample(id)"/>
+      </column>
+      <column name="field_value" type="TEXT">
+        <constraints nullable="true"/>
+      </column>
+      <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()"/>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="009-3-create-custom-field-value-indexes" author="princegarg">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <indexExists indexName="idx_cfv_sample"/>
+      </not>
+    </preConditions>
+    <createIndex tableName="custom_field_value" indexName="idx_cfv_sample">
+      <column name="sample_id"/>
+    </createIndex>
+    <createIndex tableName="custom_field_value" indexName="idx_cfv_field">
+      <column name="custom_field_id"/>
+    </createIndex>
+  </changeSet>
+
+</databaseChangeLog>
