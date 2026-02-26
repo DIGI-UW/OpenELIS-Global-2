@@ -139,19 +139,14 @@ public class PatientSearchPopulateRestController {
         patientInfo.setHealthRegion(identityMap.getIdentityValue(identityList, "HEALTH REGION"));
         patientInfo.setGuid(identityMap.getIdentityValue(identityList, "GUID"));
 
-        // Retrieve dynamic address hierarchy values (ADDRESS_HIERARCHY_0,
-        // ADDRESS_HIERARCHY_1, etc.)
-        // Use a simpler approach - just check for known identity types
-        System.out.println("DEBUG: Retrieving address hierarchy for patient " + patient.getId());
+        // Retrieve dynamic address hierarchy values (ADDRESS_HIERARCHY_0, ADDRESS_HIERARCHY_1, etc.)
         for (int i = 0; i < 10; i++) {
             String identityTypeName = "ADDRESS_HIERARCHY_" + i;
             String value = getIdentityValueSafe(identityList, identityTypeName);
-            System.out.println("DEBUG: " + identityTypeName + " = '" + value + "'");
             if (value != null && !value.isEmpty()) {
                 patientInfo.getAddressHierarchy().put("addressHierarchy_" + i, value);
             }
         }
-        System.out.println("DEBUG: Final addressHierarchy map: " + patientInfo.getAddressHierarchy());
 
         if (patientContacts.size() >= 1) {
             PatientContact contact = patientContacts.get(0);
@@ -202,29 +197,22 @@ public class PatientSearchPopulateRestController {
      */
     private String getIdentityValueSafe(List<PatientIdentity> identityList, String typeName) {
         if (typeName == null || identityList == null) {
-            System.out.println("DEBUG getIdentityValueSafe: typeName or identityList is null");
             return "";
         }
         try {
             PatientIdentityTypeService identityTypeService = SpringContext.getBean(PatientIdentityTypeService.class);
             var identityType = identityTypeService.getNamedIdentityType(typeName.toUpperCase());
             if (identityType == null) {
-                System.out.println("DEBUG getIdentityValueSafe: identity type '" + typeName + "' does not exist");
-                return ""; // Type doesn't exist yet
+                return "";
             }
             String typeId = identityType.getId();
-            System.out.println("DEBUG getIdentityValueSafe: Found type '" + typeName + "' with ID " + typeId);
             for (PatientIdentity identity : identityList) {
                 if (typeId.equals(identity.getIdentityTypeId())) {
                     String data = identity.getIdentityData();
-                    System.out.println("DEBUG getIdentityValueSafe: Found identity data: " + data);
                     return data != null ? data : "";
                 }
             }
-            System.out.println("DEBUG getIdentityValueSafe: No identity found for type " + typeName);
         } catch (Exception e) {
-            System.out.println("DEBUG getIdentityValueSafe: Exception: " + e.getMessage());
-            e.printStackTrace();
         }
         return "";
     }

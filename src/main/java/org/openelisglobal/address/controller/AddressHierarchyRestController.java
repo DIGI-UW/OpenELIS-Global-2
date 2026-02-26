@@ -89,28 +89,20 @@ public class AddressHierarchyRestController {
     private String getDefaultValueForLevel(int level) {
         String siteInfoName = AddressHierarchyConfigurationHandler.getDefaultValueSiteInfoName(level);
         SiteInformation siteInfo = siteInformationService.getSiteInformationByName(siteInfoName);
-        String value = siteInfo != null ? siteInfo.getValue() : null;
-        System.out.println(
-                "DEBUG getDefaultValueForLevel: level=" + level + " siteInfoName=" + siteInfoName + " value=" + value);
-        return value;
+        return siteInfo != null ? siteInfo.getValue() : null;
     }
 
     private String resolveDefaultValueToId(String defaultValue, String typeName) {
         if (GenericValidator.isBlankOrNull(defaultValue) || GenericValidator.isBlankOrNull(typeName)) {
-            System.out.println("DEBUG resolveDefaultValueToId: defaultValue or typeName is blank, returning null");
             return null;
         }
         // Find the organization with this name and type
         List<Organization> orgs = organizationService.getOrganizationsByTypeName("organizationName", typeName);
-        System.out.println("DEBUG resolveDefaultValueToId: looking for '" + defaultValue + "' in " + orgs.size()
-                + " orgs of type '" + typeName + "'");
         for (Organization org : orgs) {
             if (defaultValue.equals(org.getOrganizationName())) {
-                System.out.println("DEBUG resolveDefaultValueToId: FOUND match, id=" + org.getId());
                 return org.getId();
             }
         }
-        System.out.println("DEBUG resolveDefaultValueToId: NO match found for '" + defaultValue + "'");
         return null;
     }
 
@@ -274,8 +266,6 @@ public class AddressHierarchyRestController {
             }
         } catch (Exception e) {
             // Lazy loading exception - fall back to counting parents
-            System.out.println("DEBUG getOrganizationLevel: LazyInit exception for org " + org.getId()
-                    + ", falling back to parent count");
         }
 
         return countParentLevels(org);
@@ -294,7 +284,6 @@ public class AddressHierarchyRestController {
             }
         } catch (Exception e) {
             // If we can't traverse parents, return what we have
-            System.out.println("DEBUG countParentLevels: Exception traversing parents for org " + org.getId());
         }
         return level;
     }
@@ -338,7 +327,6 @@ public class AddressHierarchyRestController {
             }
         } catch (Exception e) {
             // Lazy loading exception - assume not part of hierarchy
-            System.out.println("DEBUG isAddressHierarchyOrganization: Exception for org " + org.getId());
             return false;
         }
         return false;

@@ -262,11 +262,6 @@ function CreatePatientForm(props) {
   const handleAddressSearchSelect = (hierarchyLevels, setFieldValue) => {
     if (!hierarchyLevels || hierarchyLevels.length === 0) return;
 
-    console.log(
-      "DEBUG handleAddressSearchSelect: selected levels:",
-      hierarchyLevels,
-    );
-
     // Set field values for each level
     hierarchyLevels.forEach((level) => {
       const levelIndex = level.level - 1; // Convert 1-based to 0-based index
@@ -310,7 +305,6 @@ function CreatePatientForm(props) {
   };
 
   const fetchAddressHierarchyLevels = (levels) => {
-    console.log("DEBUG fetchAddressHierarchyLevels: levels received:", levels);
     if (componentMounted.current && levels && levels.length > 0) {
       setAddressHierarchyLevels(levels);
       // Fetch top level values
@@ -322,19 +316,9 @@ function CreatePatientForm(props) {
 
           // Check if any level has defaults configured
           const hasDefaults = levels.some((lvl) => lvl.defaultId);
-          console.log(
-            "DEBUG fetchAddressHierarchyLevels: hasDefaults=",
-            hasDefaults,
-            "patientPK=",
-            props.selectedPatient?.patientPK,
-          );
 
           // Apply defaults for new patients only
-          // Only apply if not editing an existing patient and defaults exist
           if (!props.selectedPatient?.patientPK && hasDefaults) {
-            console.log(
-              "DEBUG fetchAddressHierarchyLevels: Applying defaults for new patient",
-            );
             applyAddressHierarchyDefaults(levels);
           }
         }
@@ -343,14 +327,11 @@ function CreatePatientForm(props) {
   };
 
   const applyAddressHierarchyDefaults = (levels) => {
-    console.log("DEBUG: Applying address hierarchy defaults for new patient");
-
     // Build the defaults object and fetch child values for each level
     const defaults = {};
     const fetchChildrenForDefaultLevel = (levelIndex) => {
       if (levelIndex >= levels.length) {
         // All defaults applied, update patientDetails
-        console.log("DEBUG: Final defaults to apply:", defaults);
         if (Object.keys(defaults).length > 0) {
           setPatientDetails((prev) => ({
             ...prev,
@@ -363,9 +344,6 @@ function CreatePatientForm(props) {
       const level = levels[levelIndex];
       if (level.defaultId) {
         defaults[`addressHierarchy_${levelIndex}`] = level.defaultId;
-        console.log(
-          `DEBUG: Set default for level ${levelIndex}: ${level.defaultId} (${level.defaultValue})`,
-        );
 
         // Fetch children for next level if this level has a default
         if (levelIndex < levels.length - 1) {
@@ -377,18 +355,15 @@ function CreatePatientForm(props) {
                   ...prev,
                   [levelIndex + 1]: children,
                 }));
-                // Continue to next level
                 fetchChildrenForDefaultLevel(levelIndex + 1);
               }
             },
           );
         } else {
-          // Last level, finish
           fetchChildrenForDefaultLevel(levelIndex + 1);
         }
       } else {
         // No default for this level, stop cascading
-        console.log(`DEBUG: No default for level ${levelIndex}, stopping`);
         if (Object.keys(defaults).length > 0) {
           setPatientDetails((prev) => ({
             ...prev,
@@ -398,7 +373,6 @@ function CreatePatientForm(props) {
       }
     };
 
-    // Start from level 0
     fetchChildrenForDefaultLevel(0);
   };
 
@@ -477,24 +451,11 @@ function CreatePatientForm(props) {
   }
 
   useEffect(() => {
-    console.log(
-      "DEBUG CreatePatientForm: selectedPatient changed:",
-      props.selectedPatient,
-    );
-    console.log(
-      "DEBUG CreatePatientForm: addressHierarchy:",
-      props.selectedPatient?.addressHierarchy,
-    );
-
     // Reset address hierarchy initialization when patient changes
     if (
       props.selectedPatient?.patientPK &&
       addressHierarchyInitialized !== props.selectedPatient.patientPK
     ) {
-      console.log(
-        "DEBUG: Resetting addressHierarchyInitialized for new patient",
-        props.selectedPatient.patientPK,
-      );
       setAddressHierarchyInitialized(null);
     }
 
@@ -526,17 +487,9 @@ function CreatePatientForm(props) {
       // Flatten addressHierarchy map into top-level form fields
       const flattenedAddressHierarchy = {};
       if (patient.addressHierarchy) {
-        console.log(
-          "DEBUG CreatePatientForm: Flattening addressHierarchy:",
-          patient.addressHierarchy,
-        );
         Object.entries(patient.addressHierarchy).forEach(([key, value]) => {
           flattenedAddressHierarchy[key] = value;
         });
-        console.log(
-          "DEBUG CreatePatientForm: Flattened:",
-          flattenedAddressHierarchy,
-        );
       }
       patient = {
         ...patientDetails,
@@ -574,14 +527,10 @@ function CreatePatientForm(props) {
         props.orderFormValues.patientProperties.firstName !== "" ||
         props.orderFormValues.patientProperties.guid !== ""
       ) {
-        // Flatten addressHierarchy map into top-level form fields (same as selectedPatient useEffect)
+        // Flatten addressHierarchy map into top-level form fields
         const patient = props.orderFormValues.patientProperties;
         const flattenedAddressHierarchy = {};
         if (patient.addressHierarchy) {
-          console.log(
-            "DEBUG repopulatePatientInfo: Flattening addressHierarchy:",
-            patient.addressHierarchy,
-          );
           Object.entries(patient.addressHierarchy).forEach(([key, value]) => {
             flattenedAddressHierarchy[key] = value;
           });
@@ -611,17 +560,10 @@ function CreatePatientForm(props) {
 
   // Fetch address hierarchy levels when configurationProperties changes
   useEffect(() => {
-    console.log(
-      "DEBUG: USE_NEW_ADDRESS_HIERARCHY =",
-      configurationProperties.USE_NEW_ADDRESS_HIERARCHY,
-      "componentMounted =",
-      componentMounted.current,
-    );
     if (
       configurationProperties.USE_NEW_ADDRESS_HIERARCHY === "true" &&
       componentMounted.current
     ) {
-      console.log("DEBUG: Fetching address hierarchy levels...");
       getFromOpenElisServer(
         "/rest/address-hierarchy/levels",
         fetchAddressHierarchyLevels,
@@ -630,34 +572,13 @@ function CreatePatientForm(props) {
   }, [configurationProperties.USE_NEW_ADDRESS_HIERARCHY]);
 
   // Initialize address hierarchy values when editing a patient
+  // Initialize address hierarchy values when editing a patient
   useEffect(() => {
     const patientPK = props.selectedPatient?.patientPK;
     const addressHierarchy = props.selectedPatient?.addressHierarchy;
 
-    console.log(
-      "DEBUG: Address hierarchy init useEffect triggered. Conditions:",
-      {
-        USE_NEW_ADDRESS_HIERARCHY:
-          configurationProperties.USE_NEW_ADDRESS_HIERARCHY,
-        patientPK: patientPK,
-        addressHierarchy: addressHierarchy,
-        addressHierarchyKeysLength: addressHierarchy
-          ? Object.keys(addressHierarchy).length
-          : 0,
-        addressHierarchyLevelsLength: addressHierarchyLevels.length,
-        addressHierarchyValues0: addressHierarchyValues[0],
-        addressHierarchyValues0Length: addressHierarchyValues[0]?.length,
-        alreadyInitialized: addressHierarchyInitialized === patientPK,
-      },
-    );
-
     // Skip if already initialized for this patient
     if (addressHierarchyInitialized === patientPK) {
-      console.log(
-        "DEBUG: Already initialized for patient",
-        patientPK,
-        ", skipping",
-      );
       return;
     }
 
@@ -667,61 +588,44 @@ function CreatePatientForm(props) {
       addressHierarchy &&
       Object.keys(addressHierarchy).length > 0 &&
       addressHierarchyLevels.length > 0 &&
-      addressHierarchyValues[0] && // Ensure level 0 options are loaded
+      addressHierarchyValues[0] &&
       addressHierarchyValues[0].length > 0
     ) {
-      console.log(
-        "DEBUG: All conditions met! Initializing address hierarchy with saved values:",
-        addressHierarchy,
-      );
-
       // Mark as initialized for this patient to prevent re-running
       setAddressHierarchyInitialized(patientPK);
 
       // For each saved level, fetch the children to populate the next dropdown
-      // Use a recursive approach with callbacks to ensure sequential execution
       const fetchChildrenForLevel = (levelIndex) => {
         if (levelIndex >= addressHierarchyLevels.length - 1) {
-          console.log("DEBUG: Reached last level, done fetching children");
           return;
         }
         const value = addressHierarchy[`addressHierarchy_${levelIndex}`];
-        console.log(`DEBUG: Level ${levelIndex} saved value: ${value}`);
         if (value) {
           getFromOpenElisServer(
             `/rest/address-hierarchy/children?parentId=${value}`,
             (children) => {
-              console.log(
-                `DEBUG: Fetched ${children ? children.length : 0} children for level ${levelIndex + 1}`,
-              );
               if (componentMounted.current && children) {
                 setAddressHierarchyValues((prev) => ({
                   ...prev,
                   [levelIndex + 1]: children,
                 }));
                 // Continue to next level after state update
-                // Use setTimeout to allow React to process state update
                 setTimeout(() => {
                   fetchChildrenForLevel(levelIndex + 1);
                 }, 100);
               }
             },
           );
-        } else {
-          console.log(`DEBUG: No value for level ${levelIndex}, stopping`);
         }
       };
 
-      // Start fetching from level 0
       fetchChildrenForLevel(0);
-    } else {
-      console.log("DEBUG: Conditions NOT met, skipping address hierarchy init");
     }
   }, [
     props.selectedPatient?.patientPK,
     props.selectedPatient?.addressHierarchy,
     addressHierarchyLevels,
-    addressHierarchyValues[0], // Re-run when level 0 options are loaded
+    addressHierarchyValues[0],
     configurationProperties.USE_NEW_ADDRESS_HIERARCHY,
     addressHierarchyInitialized,
   ]);
@@ -799,7 +703,6 @@ function CreatePatientForm(props) {
     if ("days" in values) {
       delete values.days;
     }
-    console.log(JSON.stringify(values));
     postToOpenElisServer(
       "/rest/PatientManagement",
       JSON.stringify(values),
