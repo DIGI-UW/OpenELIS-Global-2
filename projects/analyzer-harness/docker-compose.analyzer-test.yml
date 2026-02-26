@@ -23,6 +23,44 @@ services:
       retries: 3
       start_period: 10s
 
+  # GeneXpert ASTM simulator — template-driven, spec-compliant GeneXpert messages.
+  # Supports both push (client) and pull (server) ASTM workflows:
+  #   Pull: Bridge connects to port 5000, mock responds with GeneXpert ASTM data
+  #   Push: HTTP API on port 8080 triggers ASTM TCP push to bridge or HTTP push to OE
+  # Activate with: --profile genexpert (and use docker-compose.genexpert.yml overlay)
+  genexpert-simulator:
+    build:
+      context: ../../tools/analyzer-mock-server
+      dockerfile: Dockerfile
+    ports:
+      - "5010:5000" # ASTM listen port (bridge connects here for pull mode)
+      - "8085:8080" # HTTP API (trigger pushes, health check)
+    environment:
+      - ASTM_PORT=5000
+      - ASTM_TEMPLATE=genexpert_astm
+      - RESPONSE_DELAY_MS=100
+    command: >
+      python -u server.py
+      --port 5000
+      --api-port 8080
+      --push https://oe:8443
+      --verbose
+    profiles:
+      - genexpert
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   openelis-analyzer-bridge:
     build:
       context: ../../tools/openelis-analyzer-bridge
@@ -67,4 +105,3 @@ services:
 volumes:
   serial-vol:
     driver: local
-
