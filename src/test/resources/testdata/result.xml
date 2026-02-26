@@ -57,7 +57,6 @@
         name_localization_id="2" reporting_description=""
         active_begin="2013-11-01" active_end="2013-12-01"
         lastupdated="2023-10-01 12:00:00" />
-
     <status_of_sample id="1"
         description="Sample Description 1" code="1" status_type="SampleType1"
         lastupdated="2025-03-18" name="Status 1"
@@ -66,6 +65,9 @@
         description="Sample Description 2" code="1" status_type="SampleType2"
         lastupdated="2025-03-18" name="Status 2"
         display_key="sample_display_key_2" is_active="Y" />
+    <status_of_sample id="6" description="Finalized"
+        code="6" status_type="ANALYSIS" lastupdated="2025-03-18"
+        name="Finalized" display_key="status.analysis.finalized" is_active="Y" />
 
     <type_of_sample id="1" description="Blood Sample"
         domain="H" name_localization_id="1" lastupdated="2023-12-01 12:00:00" />
@@ -172,37 +174,23 @@
     <panel id="2" name="Duplicate Panel"
         description="Duplicate description" name_localization_id="1"
         loinc="67890" />
-
-    <analysis id="1" sampitem_id="601" test_sect_id="1"
-        test_id="1" revision="1" status="1" started_date="2025-07-07 10:00:00"
+    <analysis id="1" sampitem_id="601" test_id="1"
+        test_sect_id="1" revision="1" status_id="6" analysis_type="ROUTINE"
+        started_date="2025-07-07 10:00:00"
         completed_date="2025-07-07 12:00:00"
         released_date="2025-07-07 13:00:00" printed_date="2025-07-07 14:00:00"
-        so_send_ready_date="2025-07-07 11:00:00" so_client_reference="REF001"
-        so_notify_received_date="2025-07-07 12:30:00"
-        so_notify_send_date="2025-07-07 11:30:00"
-        so_send_date="2025-07-07 11:45:00" so_send_entry_by="Dr. Doe"
-        so_send_entry_date="2025-07-07 11:45:00" analysis_type="ROUTINE"
-        lastupdated="2025-07-07 14:00:00" parent_analysis_id="1"
-        is_reportable="Y" reflex_trigger="false" status_id="1"
-        entry_date="2025-07-07 09:00:00" panel_id="1" referred_out="true"
-        type_of_sample_name="Blood Sample" corrected="false"
-        fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01"
-        result_calculated="false" method_id="1" />
-    <analysis id="2" sampitem_id="602" test_sect_id="2"
-        test_id="2" revision="1" status="3" started_date="2025-07-07 11:00:00"
+        entry_date="2025-07-07 09:00:00" panel_id="1" is_reportable="Y"
+        method_id="1" lastupdated="2025-07-07 14:00:00"
+        fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01" />
+
+    <analysis id="2" sampitem_id="602" test_id="2"
+        test_sect_id="2" revision="1" status_id="6" analysis_type="CONFIRM"
+        started_date="2025-07-07 11:00:00"
         completed_date="2025-07-07 13:00:00"
         released_date="2025-07-07 14:00:00" printed_date="2025-07-07 15:00:00"
-        so_send_ready_date="2025-07-07 12:00:00" so_client_reference="REF002"
-        so_notify_received_date="2025-07-07 13:30:00"
-        so_notify_send_date="2025-07-07 12:30:00"
-        so_send_date="2025-07-07 12:45:00" so_send_entry_by="Dr. Smith"
-        so_send_entry_date="2025-07-07 12:45:00" analysis_type="CONFIRM"
-        lastupdated="2025-07-07 14:00:00" parent_analysis_id="2"
-        is_reportable="Y" reflex_trigger="false" status_id="3"
-        entry_date="2025-07-07 10:00:00" panel_id="2" referred_out="true"
-        type_of_sample_name="Urine Sample" corrected="false"
-        fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02"
-        result_calculated="false" method_id="2" />
+        entry_date="2025-07-07 10:00:00" panel_id="2" is_reportable="Y"
+        method_id="2" lastupdated="2025-07-07 14:00:00"
+        fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02" />
 
     <result id="3" analysis_id="1" sort_order="1" result_type="N"
         value="85.0" analyte_id="3" test_result_id="1" is_reportable="Y"
@@ -216,7 +204,6 @@
         parent_id="3" significant_digits="1" grouping="0"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
-
     <result_signature id="2" result_id="3"
         system_user_id="1" is_supervisor="true"
         lastupdated="2025-07-07 17:45:00.000" non_user_name="" />
@@ -225,5 +212,16 @@
         system_user_id="2" is_supervisor="false"
         lastupdated="2025-07-06 08:00:00.000" non_user_name="External Doctor" />
 
+    <!-- Person -->
+    <person id="1" last_name="Doe" first_name="John"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Patient -->
+    <patient id="1" person_id="1" lastupdated="2023-11-01 12:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440001" />
+
+    <!-- Sample Human -->
+    <sample_human id="1" samp_id="1" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
 
 </dataset>
