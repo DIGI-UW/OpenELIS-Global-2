@@ -135,8 +135,10 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
                 "Total rows to process: " + totalRows);
 
         // Track organization IDs by their full path key to avoid duplicates
-        // Key format: "level1Name|level2Name|level3Name", Value: organization ID (as String)
-        // Using IDs instead of full objects reduces memory and is safer across entityManager.clear()
+        // Key format: "level1Name|level2Name|level3Name", Value: organization ID (as
+        // String)
+        // Using IDs instead of full objects reduces memory and is safer across
+        // entityManager.clear()
         Map<String, String> pathToOrgIdMap = new LinkedHashMap<>();
 
         // Cache existing org->type links to avoid per-link database queries
@@ -162,8 +164,8 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
 
             try {
                 String[] values = parseCsvLine(csvLine);
-                BatchProcessingResult result = processHierarchyRowBatch(values, levelNames, levelTypeMap, pathToOrgIdMap,
-                        batchToInsert, typeLinksToCreate);
+                BatchProcessingResult result = processHierarchyRowBatch(values, levelNames, levelTypeMap,
+                        pathToOrgIdMap, batchToInsert, typeLinksToCreate);
 
                 organizationsCreated += result.newOrganizations;
                 organizationsSkipped += result.skippedOrganizations;
@@ -235,8 +237,8 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
     }
 
     /**
-     * Helper class to track organizations in batch with their path keys.
-     * After flush, we update pathToOrgIdMap with the assigned IDs.
+     * Helper class to track organizations in batch with their path keys. After
+     * flush, we update pathToOrgIdMap with the assigned IDs.
      */
     private static class BatchOrganizationInfo {
         Organization organization;
@@ -269,9 +271,8 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
                 try {
                     entityManager.persist(batchInfo.organization);
                 } catch (jakarta.persistence.PersistenceException e) {
-                    LogEvent.logError(this.getClass().getSimpleName(), "flushBatch",
-                            "Failed to persist organization '" + batchInfo.organization.getOrganizationName() + "': "
-                                    + e.getMessage());
+                    LogEvent.logError(this.getClass().getSimpleName(), "flushBatch", "Failed to persist organization '"
+                            + batchInfo.organization.getOrganizationName() + "': " + e.getMessage());
                     throw e;
                 }
             }
@@ -399,15 +400,16 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
      * organizations for each level and sets up parent-child relationships.
      * Organizations are added to the batch list for later insertion.
      *
-     * Uses entity references (getReference) for parents when possible to reduce memory
-     * and avoid issues across entityManager.clear() calls.
+     * Uses entity references (getReference) for parents when possible to reduce
+     * memory and avoid issues across entityManager.clear() calls.
      */
     private BatchProcessingResult processHierarchyRowBatch(String[] values, String[] levelNames,
             Map<Integer, OrganizationType> levelTypeMap, Map<String, String> pathToOrgIdMap,
             List<BatchOrganizationInfo> batchToInsert, List<OrganizationTypeLinkInfo> typeLinksToCreate) {
 
         BatchProcessingResult result = new BatchProcessingResult();
-        // Track parent: either an ID (for flushed orgs) or the actual org (for unflushed batch orgs)
+        // Track parent: either an ID (for flushed orgs) or the actual org (for
+        // unflushed batch orgs)
         String parentId = null;
         Organization parentOrgInBatch = null;
         StringBuilder pathBuilder = new StringBuilder();
@@ -439,7 +441,8 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
             pathBuilder.append(name);
             String pathKey = pathBuilder.toString();
 
-            // Check if we already have this location (either pre-loaded or in current batch)
+            // Check if we already have this location (either pre-loaded or in current
+            // batch)
             if (pathToOrgIdMap.containsKey(pathKey)) {
                 // This is a flushed organization with a known ID
                 parentId = pathToOrgIdMap.get(pathKey);
@@ -512,11 +515,12 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
     }
 
     /**
-     * Pre-load existing address hierarchy organizations into the pathToOrgIdMap. Also
-     * pre-loads existing organization-type links to avoid per-link database
+     * Pre-load existing address hierarchy organizations into the pathToOrgIdMap.
+     * Also pre-loads existing organization-type links to avoid per-link database
      * queries. This trades memory for reduced database queries during batch
      * processing. Organizations are loaded once and their path keys are computed by
-     * traversing parent chains. Only IDs are stored (not full objects) to reduce memory.
+     * traversing parent chains. Only IDs are stored (not full objects) to reduce
+     * memory.
      */
     private void preloadExistingOrganizations(Map<String, String> pathToOrgIdMap,
             Map<Integer, OrganizationType> levelTypeMap, java.util.Set<String> existingTypeLinks) {
