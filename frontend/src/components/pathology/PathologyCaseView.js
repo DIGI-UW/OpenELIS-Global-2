@@ -337,6 +337,7 @@ function PathologyCaseView() {
   return (
     <>
     <div className="app-shell">
+      {notificationVisible === true ? <AlertDialog /> : ""}
       <header className="page-header">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
           <Grid fullWidth={true}>
@@ -377,7 +378,7 @@ function PathologyCaseView() {
       </header>
 
       <div className= "body-wrapper">
-        <SideNav  className="pathology-sidebar">
+        <SideNav isFixedNav={false} expanded={true}  isChildOfHeader={false} className="pathology-sidebar">
           <SideNavItems>
             <SideNavLink href="#case-info">Case Information</SideNavLink>
               <SideNavLink href="#grossing">Grossing</SideNavLink>
@@ -392,7 +393,6 @@ function PathologyCaseView() {
 
         <Content className="scrollable-content">
             {loading && <Loading description="Loading..." />}
-            {notificationVisible === true ? <AlertDialog /> : ""}
 
             <Accordion align="start">
             <AccordionItem title="Case Information" id="case-info" open>
@@ -1167,6 +1167,26 @@ function PathologyCaseView() {
 
             </Accordion>
 
+            <Grid fullWidth={true} className="orderLegendBody" style={{ marginTop: '2rem' }}>
+              {pathologySampleInfo.assignedPathologistId &&
+                pathologySampleInfo.assignedTechnicianId && (
+                  <Column lg={16} md={8} sm={4}>
+                    <Checkbox
+                      labelText={intl.formatMessage({
+                        id: "pathology.label.release",
+                      })}
+                      id="release"
+                      onChange={() => {
+                        setPathologySampleInfo({
+                          ...pathologySampleInfo,
+                          release: !pathologySampleInfo.release,
+                        });
+                      }}
+                    />
+                  </Column>
+                )}
+            </Grid>
+
         </Content>
       </div>
 
@@ -1184,28 +1204,6 @@ function PathologyCaseView() {
         </Button>
       </div>
     </div>
-      
-      <Grid fullWidth={true} className="orderLegendBody">
-        {notificationVisible === true ? <AlertDialog /> : ""}
-        {loading && <Loading description="Loading Dasboard..." />} 
-        {pathologySampleInfo.assignedPathologistId &&
-          pathologySampleInfo.assignedTechnicianId && (
-            <Column lg={16} md={8} sm={4}>
-              <Checkbox
-                labelText={intl.formatMessage({
-                  id: "pathology.label.release",
-                })}
-                id="release"
-                onChange={() => {
-                  setPathologySampleInfo({
-                    ...pathologySampleInfo,
-                    release: !pathologySampleInfo.release,
-                  });
-                }}
-              />
-            </Column>
-          )}
-      </Grid>
     </>
   );
 }
