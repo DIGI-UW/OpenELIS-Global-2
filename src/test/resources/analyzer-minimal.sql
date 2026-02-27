@@ -72,18 +72,18 @@ UPDATE analyzer SET analyzer_type_id = (
 -- =============================================================================
 -- 4. TEST MAPPINGS for GeneXpert ASTM (analyzer_test_map composite PK)
 -- =============================================================================
--- analyzer_test_map has composite PK: (analyzer_id, analyzer_test_name)
+-- analyzer_test_map has composite PK: (analyzer_type_id, analyzer_test_name)
 -- test_id references clinlims.test (FK constraint).
 -- Using Liquibase-seeded test IDs: 3=Glucose, 5=Amylase, 192=CD4 absolute count.
 -- These are placeholder mappings for E2E routing validation, not clinical accuracy.
 
-INSERT INTO analyzer_test_map (analyzer_id, analyzer_test_name, test_id, last_updated)
+INSERT INTO analyzer_test_map (analyzer_type_id, analyzer_id, analyzer_test_name, test_id, last_updated)
 VALUES
-  ('2013', 'MTB-RIF',  '3',   NOW()),
-  ('2013', 'RIF',      '5',   NOW()),
-  ('2013', 'HIV-VL',   '192', NOW()),
-  ('2013', 'COVID19',  '3',   NOW())
-ON CONFLICT (analyzer_id, analyzer_test_name) DO NOTHING;
+  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'MTB-RIF',  '3',   NOW()),
+  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'RIF',      '5',   NOW()),
+  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'HIV-VL',   '192', NOW()),
+  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'COVID19',  '3',   NOW())
+ON CONFLICT (analyzer_type_id, analyzer_test_name) DO NOTHING;
 
 -- =============================================================================
 -- 5. ADVANCE SEQUENCE (avoid ID collisions with future inserts)

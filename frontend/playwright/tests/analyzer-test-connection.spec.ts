@@ -7,11 +7,15 @@ import { AnalyzerFormPage } from "../fixtures/analyzer-form";
  *
  * Two test scenarios:
  * 1. Mock: fixture-loaded GeneXpert at 172.20.1.100:9600 (ASTM mock in Docker)
- * 2. Real: dynamically-created analyzer at 35.82.68.83:1200 (GeneXpert Dx VM)
- *    Skipped in CI — requires the physical VM to be running.
+ * 2. Real: dynamically-created analyzer pointing to a real device.
+ *    Requires GENEXPERT_HOST and GENEXPERT_PORT env vars to be set.
+ *    Skipped automatically when not configured or in CI.
  *
  * Both require the analyzer harness (bridge) to be running.
  */
+
+const GENEXPERT_HOST = process.env.GENEXPERT_HOST;
+const GENEXPERT_PORT = process.env.GENEXPERT_PORT || "1200";
 test.describe("Analyzer Test Connection", () => {
   test("GeneXpert test-connection succeeds via ASTM mock", async ({ page }) => {
     const GENEXPERT_ID = "2013";
@@ -54,14 +58,19 @@ test.describe("Analyzer Test Connection", () => {
 /**
  * Real GeneXpert Dx VM Test Connection
  *
- * Creates an analyzer pointing to a real GeneXpert Dx v6.5 Windows VM,
- * tests the connection (which triggers ASTM line contention handling),
- * and cleans up. Requires the VM at 35.82.68.83:1200 to be running.
+ * Creates an analyzer pointing to a real GeneXpert device and tests the
+ * connection (which triggers ASTM line contention handling).
  *
- * Skipped in CI — the GeneXpert VM is only reachable from the dev server.
+ * Configure via environment variables:
+ *   GENEXPERT_HOST=35.82.68.83  GENEXPERT_PORT=1200  npx playwright test analyzer-test-connection
+ *
+ * Skipped when GENEXPERT_HOST is not set or in CI.
  */
 test.describe("Real GeneXpert Test Connection", () => {
-  test.skip(!!process.env.CI, "Real GeneXpert VM not available in CI");
+  test.skip(
+    !GENEXPERT_HOST || !!process.env.CI,
+    "Set GENEXPERT_HOST (and optionally GENEXPERT_PORT) to run real device tests",
+  );
   test.describe.configure({ mode: "serial" });
 
   const uniqueSuffix = Date.now();
@@ -100,8 +109,8 @@ test.describe("Real GeneXpert Test Connection", () => {
     await pluginOption.first().click();
 
     await form.selectType("Molecular");
-    await form.fillIpAddress("35.82.68.83");
-    await form.fillPort("1200");
+    await form.fillIpAddress(GENEXPERT_HOST!);
+    await form.fillPort(GENEXPERT_PORT);
 
     await form.save();
     await form.expectSuccessNotification();
@@ -147,8 +156,8 @@ test.describe("Real GeneXpert Test Connection", () => {
 
     // Verify analyzer info shows the real GeneXpert details
     const info = page.locator('[data-testid="test-connection-analyzer-info"]');
-    await expect(info).toContainText("35.82.68.83");
-    await expect(info).toContainText("1200");
+    await expect(info).toContainText(GENEXPERT_HOST!);
+    await expect(info).toContainText(GENEXPERT_PORT);
 
     // Click Test — bridge will handle ASTM line contention with real GeneXpert
     const testButton = page.locator(
