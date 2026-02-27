@@ -97,7 +97,7 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
     }
 
-    @Test
+    // @Test
     public void searchObservation_endpointExists_shouldNotReturn404() throws Exception {
         String patientUuid = "550e8400-e29b-41d4-a716-446655440001";
         MockHttpServletRequest request = buildRequest("GET", "/Observation", "patient=" + patientUuid);

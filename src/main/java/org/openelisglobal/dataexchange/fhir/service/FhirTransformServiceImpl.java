@@ -1583,6 +1583,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             fhirOrganization.addIdentifier(new Identifier().setSystem(fhirConfig.getOeFhirSystem() + "/org_uuid")
                     .setValue(organization.getFhirUuidAsString()));
         }
+        Identifier facilityId = createFacilityIdentifier();
+        if (facilityId != null) {
+            fhirOrganization.addIdentifier(facilityId);
+        }
     }
 
     private void setOeOrganizationTypes(Organization organization,
