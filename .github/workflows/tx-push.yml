@@ -1,7 +1,7 @@
 on:
   workflow_dispatch:
   push:
-    branches: [develop]
+    branches: [nidan-dev]
 
 name: "Update Transifex on Push"
 

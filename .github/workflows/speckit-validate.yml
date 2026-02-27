@@ -1,13 +1,13 @@
 name: SpecKit Validation
 on:
   pull_request:
-    branches: [develop]
+    branches: [nidan-dev]
     paths:
       - '.specify/**'
       - '.cursor/**'
       - '.claude/**'
   push:
-    branches: [develop]
+    branches: [nidan-dev]
     paths:
       - '.specify/**'
   workflow_dispatch:

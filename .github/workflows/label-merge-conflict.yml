@@ -6,9 +6,9 @@ permissions:
 
 on:
   push:
-    branches: [develop]
+    branches: [nidan-dev]
   pull_request:
-    branches: [develop]
+    branches: [nidan-dev]
 
 jobs:
   auto-label:

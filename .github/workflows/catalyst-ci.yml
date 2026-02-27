@@ -2,12 +2,12 @@ name: Catalyst CI Tests
 
 on:
   push:
-    branches: [develop]
+    branches: [nidan-dev]
     paths:
       - 'projects/catalyst/**'
       - '.github/workflows/catalyst-ci.yml'
   pull_request:
-    branches: [develop]
+    branches: [nidan-dev]
     paths:
       - 'projects/catalyst/**'
       - '.github/workflows/catalyst-ci.yml'

@@ -1,9 +1,9 @@
 name: OpenELIS-Global-2 CI Build
 on:
   push:
-    branches: [develop]
+    branches: [nidan-dev]
   pull_request:
-     branches: [develop]
+     branches: [nidan-dev]
   workflow_dispatch:
 
 jobs:
