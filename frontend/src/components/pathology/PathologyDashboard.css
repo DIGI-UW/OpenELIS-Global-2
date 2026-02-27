@@ -164,7 +164,8 @@
 
 .pathology-sidebar {
   position: relative !important;
-  left : 80 !important;
+  margin-inline-start: 4rem !important; 
+  left: 0 !important;  
   /* background-color: lightseagreen; */
   padding-top: 50px;
   padding-right: 30px;
