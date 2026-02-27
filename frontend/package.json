@@ -107,6 +107,7 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@testing-library/react-hooks": "^8.0.1",
+    "@types/jest": "^30.0.0",
     "cypress": "^15.9.0",
     "cypress-fail-fast": "^7.1.1",
     "cypress-xpath": "^2.0.1",
