@@ -35,6 +35,7 @@
     "react-avatar": "5.0.3",
     "react-confirm-alert": "^2.7.0",
     "react-data-table-component": "^7.5.3",
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "react-dom": "^17.0.2",
     "react-i18next": "11.x",
     "react-idle-timer": "^5.7.2",
