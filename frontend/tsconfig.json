@@ -16,6 +16,10 @@
       "es2018",
       "es2020"
     ],
+    "types": [
+      "jest",
+      "node"
+    ],
     "resolveJsonModule": true,
     "noEmit": true,
     "target": "esnext"
