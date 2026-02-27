@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.ContactPoint;
+import org.hl7.fhir.r4.model.HumanName;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.Reference;
@@ -72,8 +74,15 @@ public interface FhirTransformService {
 
     Provider transformToProvider(Practitioner practitioner);
 
+    void addHumanNameToPerson(HumanName humanName, org.openelisglobal.person.valueholder.Person person);
+
+    void addTelecomToPerson(List<ContactPoint> telecoms, org.openelisglobal.person.valueholder.Person person);
+
     PatientSearchResults transformToOpenElisPatientSearchResults(org.hl7.fhir.r4.model.Patient externalPatient);
 
     void transformAnalysisByIds(List<String> analysisIds) throws FhirTransformationException, FhirPersistanceException;
+
+    org.hl7.fhir.r4.model.Observation transformResultToObservation(org.openelisglobal.result.valueholder.Result result)
+            throws FhirTransformationException;
 
 }

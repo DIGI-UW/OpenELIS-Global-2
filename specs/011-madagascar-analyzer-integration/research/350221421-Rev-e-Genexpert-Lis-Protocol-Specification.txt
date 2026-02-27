@@ -1,0 +1,4094 @@
+9.3.1.4.4
+Field
+No.
+
+Field
+Name
+
+1
+
+Query
+Tag
+
+2
+
+3
+
+102
+
+Query Acknowledgment (QAK)
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Valued by the initiating system
+to identify the query, and used
+to match response messages to
+the originating query. The
+responding system is required to
+echo it back as the first field in
+the query acknowledgment
+segment (QAK).
+This field differs from MSA-2Message control ID in that its
+value remains constant for each
+message (i.e. all continuation
+messages) associated with the
+query, whereas MSA-2 Message
+control ID may vary with each
+continuation message, since it is
+associated with each individual
+message, not the query as a
+whole.
+
+1
+
+ST
+
+32
+
+R
+
+N
+
+Query Tag sent
+by the system in
+QPD-2.
+
+Query
+Response
+Status
+
+OK: Data found, no errors (this
+is the default)
+NF: No data found, no errors
+AE: Application error
+AR: Application reject
+
+1
+
+ID
+
+2
+
+R
+
+N
+
+‘OK’: The query
+was successful.
+(NF/AE/AR are
+not possible
+since they are
+sent in the
+MSA)
+
+Message
+Query
+Name
+
+This field contains the name of
+the query. These names are
+assigned by the functionspecific chapters of this specification. It is one to one with the
+conformance statement for this
+query name, and it is in fact an
+identifier for that conformance
+statement. Site-specific query
+names begin with the letter ‘Z.’
+
+1
+
+ST
+
+3
+
+R
+
+N
+
+‘Z01’- User
+defined trigger
+
+2
+
+ST
+
+100
+
+R
+
+N
+
+‘REQUEST
+TEST
+ORDERS’
+
+Description
+
+Allowed
+values
+
+301-2002, Rev. E, December 2014
+
+9.3.1.4.5
+Field
+No.
+1
+
+Field
+Name
+Message
+Query
+Name
+
+Query Parameter Definition (QPD)
+
+Description
+This field contains the name
+of the query. These names are
+assigned by the functionspecific chapters of this specification. It is one to one with
+the conformance statement
+for this query name, and it is
+in fact an identifier for that
+conformance statement. Sitespecific query names begin
+with the letter ‘Z.’
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed
+values
+
+1
+
+ST
+
+3
+
+R
+
+N
+
+‘Z01’- User
+defined trigger
+
+2
+
+ST
+
+100
+
+R
+
+N
+
+‘REQUEST
+TEST
+ORDERS’
+
+2
+
+Query Tag
+
+Valued by the initiating
+system to identify the query,
+and used to match response
+messages to the originating
+query. The responding system
+is required to echo it back as
+the first field in the query
+acknowledgment segment
+(QAK).
+This field differs from MSA2-Message control ID in that
+its value remains constant for
+each message (i.e. all continuation messages) associated
+with the query, whereas
+MSA-2 Message control ID
+may vary with each continuation message, since it is associated with each individual
+message, not the query as a
+whole.
+
+1
+
+ST
+
+32
+
+R
+
+N
+
+Query Tag sent
+by the System
+in QPD-2.
+
+3
+
+User
+Parameter
+1
+
+Indicates that all the order
+records must be retrieved
+
+1
+
+ST
+
+32
+
+R
+
+N
+
+‘ALL’
+
+9.3.1.4.6
+
+Example
+
+MSH|^~\&|LIS||ICU^GeneXpert^1.0||20070521100245||RSP^Z02|12YYDSSDF|P|2.5|||NE|NE
+MSA|AA|94799a8b48bb4b7fb2fce229c3a371c
+QAK|94799a8b48bb4b7fb2fce229c3a371c|OK|Z01^REQUEST TEST ORDERS
+QPD|Z01^REQUEST TEST ORDERS|234|ALL
+
+GeneXpert System Software LIS Interface Protocol Specification
+
+103
+
+9.3.1.5
+
+Upload Message – Instrument System Rejects Test Order Initiated From Query (ORU^R01 –
+ACK^R01)
+This message must be acknowledged by the LIS host using an ACK^R01 message. More information is included in the sections below.
+9.3.1.5.1
+
+ORU^R01 – Message Structure
+
+Message
+
+Comments
+
+MSH
+
+Message Header Segment
+
+{
+PID
+
+Patient Identification Segment
+
+{
+ORC
+
+Order Common Segment
+
+OBR
+
+Observation Request Segment
+
+NTE
+
+Error description (related to order)
+
+TQ1
+
+Timing / Quantity Segment
+
+SPM
+
+Specimen Segment
+
+}
+}
+
+9.3.1.5.2
+Field
+No.
+
+Field Name
+
+ORU^R01 – Message Header Record (MSH)
+
+Description
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+
+1
+
+Field
+Separator
+
+1
+
+ST
+
+1
+
+R
+
+N
+
+‘|’
+
+2
+
+Encoding
+Characters
+
+1
+
+ST
+
+4
+
+R
+
+N
+
+See 7.4.2 for more
+information
+
+3
+
+Sending
+Application
+
+System ID
+
+1
+
+ST
+
+50
+
+R
+
+N
+
+The System Name
+defined in the
+system configuration
+
+System Name
+
+2
+
+ST
+
+50
+
+R
+
+N
+
+‘GeneXpert’
+
+Software Version
+
+3
+
+ST
+
+16
+
+R
+
+N
+
+50
+
+R
+
+N
+
+R
+
+N
+
+5
+
+Receiver ID
+
+Name or ID of
+the receiver
+
+1
+
+ST
+
+7
+
+Date and time
+of Message
+
+Date and time the
+message was
+generated
+
+1
+
+TS
+
+9
+
+Message Type
+
+1
+
+ID
+
+3
+
+R
+
+N
+
+‘ORU’
+
+2
+
+ID
+
+3
+
+R
+
+N
+
+‘R32’
+
+3
+
+ID
+
+7
+
+O
+
+N
+
+‘ORU_R30’
+
+104
+
+The host ID
+defined in the
+system configuration
+
+301-2002, Rev. E, December 2014
+
+Field
+No.
+
+Field Name
+
+Description
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+10
+
+Message ID
+
+Unique message
+identifier
+
+1
+
+ST
+
+32
+
+R
+
+N
+
+11
+
+Processing ID
+
+1
+
+ID
+
+3
+
+R
+
+N
+
+‘P’ (Production)
+
+12
+
+Version
+Number
+
+1
+
+ID
+
+60
+
+R
+
+N
+
+‘2.5’
+
+15
+
+Accept Ackn.
+
+1
+
+ID
+
+2
+
+O
+
+N
+
+‘AL’ (Always)
+
+16
+
+Application
+Ack.
+
+1
+
+ID
+
+2
+
+O
+
+N
+
+‘NE’ (Never)
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+
+R
+
+N
+
+1,2,3 … n
+
+Version of
+protocol
+
+9.3.1.5.3
+Field
+No.
+
+Field Name
+
+Allowed values
+
+ORU^R01 – Patient Identification Record (PID)
+
+Description
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+1
+
+Sequence
+Number
+
+Defines the i’th
+occurrence of the
+associated record
+type
+
+SI
+
+2
+
+Patient ID 2
+
+Patient identification
+
+ST
+
+32
+
+0
+
+N
+
+3
+
+Patient ID 1
+
+Patient identification
+
+ST
+
+32
+
+O
+
+N
+
+5
+
+Family Name
+
+Patient last name
+
+1
+
+ST
+
+192
+
+O
+
+N
+
+Given Name
+
+Patient first name
+
+2
+
+ST
+
+30
+
+O
+
+N
+
+Second Given
+Name
+
+Middle name or
+initial
+
+3
+
+ST
+
+30
+
+O
+
+N
+
+Suffix
+
+e.g. JR or III
+
+4
+
+ST
+
+20
+
+O
+
+N
+
+Prefix
+
+e.g. DR
+
+5
+
+ST
+
+20
+
+O
+
+N
+
+7
+
+Date/Time of
+Birth
+
+Patient’s date and
+time of birth
+
+O
+
+N
+
+8
+
+Administrative Sex
+
+10
+
+Race
+
+Patient race
+
+11
+
+Patient
+Address
+
+Zip or Postal
+Code
+
+TS
+
+5
+
+GeneXpert System Software LIS Interface Protocol Specification
+
+ST
+
+1
+
+O
+
+N
+
+M – for male
+F – for female
+U or empty for
+unknown
+
+ST
+
+1
+
+O
+
+N
+
+A – for Asian or
+Pacific Islander
+B – for Black or
+African-American
+H – Hispanic
+I – American Indian
+or Alaska Native
+O – Other
+U – Unknown
+W – White
+
+ST
+
+12
+
+O
+
+N
+
+105
+
+9.3.1.5.4
+Field
+No.
+
+Field Name
+
+1
+
+ORU^R01 – Order Common Segment (ORC)
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+
+Order Control
+
+ID
+
+2
+
+R
+
+N
+
+‘OC’: order canceled
+
+2
+
+Order Number
+
+SI
+
+R
+
+N
+
+1,2,3,...n
+
+9
+
+Date / Time of
+the order
+
+TS
+
+R
+
+N
+
+Date time of the
+order
+
+Description
+
+9.3.1.5.5
+Field
+No.
+
+Field Name
+
+ORU^R01 – Observation Request Segment (OBR)
+
+Description
+
+1
+
+Sequence
+Number
+
+Defines the i’th
+occurrence of the
+associated record
+type
+
+4
+
+Universal Test
+ID
+
+System defined Test
+ID
+
+25
+
+Order Status
+
+9.3.1.5.6
+Field
+No.
+
+Field
+Name
+
+1
+
+Sequence
+Number
+
+2
+
+Source of
+Comment
+
+3
+
+Comment
+Text
+
+106
+
+Component
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+SI
+
+1
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+
+R
+
+N
+
+1
+
+ID
+
+15
+
+R
+
+N
+
+This field contains
+the identification
+of the test.
+
+ID
+
+1
+
+R
+
+N
+
+‘X’ (Order cannot
+be done, canceled)
+
+ORU^R01 – Notes and Comment Segment (NTE)
+
+Description
+
+Component
+
+Data
+Type
+
+Defines the
+i’th occurrence of the
+associated
+record type
+
+1
+
+SI
+
+1
+
+ID
+
+Comment ID
+
+1
+
+Comment
+Code
+
+Comment
+description
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+R
+
+N
+
+1
+
+1
+
+R
+
+N
+
+‘L’
+
+ID
+
+50
+
+R
+
+N
+
+’Error’
+
+2
+
+ST
+
+50
+
+R
+
+N
+
+‘InvalidSpecimenData’/
+‘DuplicatedTest’/
+‘InvalidTestData’/
+‘InvalidPatientData’/
+‘InvalidTransmissionInformation’
+
+3
+
+ST
+
+500
+
+O
+
+N
+
+‘Invalid Instrument Specimen
+ID or Specimen ID’ /
+‘Duplicated test order’/
+‘Test unknown, test disabled or
+inconsistent test’ /
+‘Invalid Patient identification’/
+‘The order has a bad format’
+
+Allowed values
+
+301-2002, Rev. E, December 2014
+
+9.3.1.5.7
+Field
+No.
+
+Field Name
+
+9
+
+Priority
+
+Description
+
+Field Name
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+ID
+
+1
+
+R
+
+N
+
+Component
+
+Describes the
+urgency of the
+request
+
+9.3.1.5.8
+Field
+No.
+
+ORU^R01 – Timing / Quantity Segment (TQ1)
+Allowed values
+‘S’ (Stat) or ‘R’
+(Normal)
+
+ORU^R01 – Specimen Segment (SPM)
+
+Description
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+
+SI
+
+64
+
+R
+
+N
+
+1,2,3,...n
+
+Component
+
+1
+
+Sequence
+Number
+
+2
+
+Specimen ID
+
+A unique identifier for the specimen assigned by
+the HOST
+
+1
+
+ST
+
+25
+
+R
+
+N
+
+Instrument
+Specimen ID
+
+A unique identifier for the specimen assigned by
+the system. This
+must be retrieved
+from the LIS if it
+is known.
+
+2
+
+ST
+
+32
+
+O
+
+N
+
+This field will be
+ignored if the Use
+Instrument Specimen ID option is
+disabled
+
+4
+
+Specimen
+Type
+
+ID
+
+5
+
+R
+
+N
+
+‘ORH’ (Other)
+(‘Other’ according
+to POCT1-A standard)
+
+11
+
+Specimen
+Role
+
+ID
+
+1
+
+R
+
+N
+
+‘Q’ (For Quality
+control)
+‘P’ (For Sample
+Patient)
+
+9.3.1.5.9
+
+LIS Host Acknowledgment (ACK^R01)
+
+9.3.1.5.9.1
+
+ACK^R01 – Message Structure
+
+Message
+
+Comments
+
+MSH
+
+Message Header
+
+MSA
+
+Message Acknowledgment
+
+GeneXpert System Software LIS Interface Protocol Specification
+
+107
+
+9.3.1.5.9.2
+Field
+No.
+
+Field Name
+
+ACK^R01 – Message Header Record (MSH)
+
+Description
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+
+1
+
+Field
+Separator
+
+1
+
+ST
+
+1
+
+R
+
+N
+
+‘|’
+
+2
+
+Encoding
+Characters
+
+1
+
+ST
+
+4
+
+R
+
+N
+
+See 7.4.2 for more
+information
+
+3
+
+Sending
+Application
+
+Name or ID of
+the sender
+
+1
+
+ST
+
+50
+
+R
+
+N
+
+The host ID defined
+in the instrument
+configuration
+
+5
+
+Receiver ID
+
+System ID
+
+1
+
+ST
+
+50
+
+R
+
+N
+
+The System Name
+defined in the
+system configuration
+
+System Name
+
+2
+
+ST
+
+50
+
+R
+
+N
+
+‘GeneXpert’
+
+Software Version
+
+3
+
+ST
+
+16
+
+R
+
+N
+
+Date and time the
+message was
+generated
+
+1
+
+TS
+
+R
+
+N
+
+1
+
+MSG
+
+3
+
+R
+
+N
+
+1
+
+ST
+
+32
+
+R
+
+N
+
+1
+
+ID
+
+3
+
+R
+
+N
+
+‘P’ (Production)
+
+1
+
+ID
+
+60
+
+R
+
+N
+
+‘2.5’
+
+7
+
+Date and
+time of
+Message
+
+9
+
+Message
+Type
+
+10
+
+Message ID
+
+11
+
+Processing ID
+
+12
+
+Version
+Number
+
+15
+
+Accept Ackn.
+
+1
+
+ID
+
+2
+
+O
+
+N
+
+‘NE’ (Never)
+
+16
+
+Application
+Ack.
+
+1
+
+ID
+
+2
+
+O
+
+N
+
+‘NE’ (Never)
+
+Unique message
+identifier
+
+Version of
+protocol
+
+9.3.1.5.9.3
+Field
+No.
+
+Field Name
+
+‘ACK’
+
+ACK^R01 – Message Acknowledgment (MSA)
+
+Description
+
+Data
+Type
+
+Component
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+‘CA'
+
+1
+
+Acknowledgment Code
+
+1
+
+ID
+
+2
+
+R
+
+N
+
+N
+
+2
+
+Message
+Control ID
+
+From MSH-10 of
+associated
+message
+
+1
+
+ST
+
+20
+
+R
+
+N
+
+108
+
+301-2002, Rev. E, December 2014
+
+9.3.1.5.10
+
+Example of ACK^R01 – Message Acknowledgment (MSA)
+GeneXpert message:
+
+MSH|^~\&|ICU^GeneXpert^1.0||LIS||20070521100245||ORU^R32^ORU_R30|48c0947bfa244b46977f81ce598879a3|P|2.5|||AL|NE
+PID|1||PatientID-1234
+ORC|OC|1|||||||20070521101245
+OBR|1|||MRSA IUO|||||||||||||||||||||X
+NTE|1|L|Error^invalidSpecimenData^Invalid Instrument Specimen ID or Specimen ID
+TQ1|||||||||R
+SPM|1|SpecimenID-888^Instr_SpecID-333||ORH|||||||P
+PID|2||
+ORC|OC|1|||||||20070521101246
+OBR|1|||MRSA IUO|||||||||||||||||||||X
+NTE|1|L|Error^invalidSpecimenData^Invalid Instrument Specimen ID or Specimen ID
+TQ1|||||||||R
+SPM|1|SpecimenID-888^Instr_SpecID-333||ORH|||||||P
+ORC|OC|2|||||||20070521201245
+OBR|2|||MRSA IUO|||||||||||||||||||||X
+NTE|1|L|Error^invalidSpecimenData^Invalid Instrument Specimen ID or Specimen ID
+TQ1|||||||||R
+SPM|2|SpecimenID-888^Instr_SpecID-333||ORH|||||||P
+
+LIS host acknowledgement:
+MSH|^~\&|LIS||ICU^GeneXpert^1.0||20070521101245||ACK|12YASSAQQWE|P|2.5|||NE|NE
+MSA|CA|48c0947bfa244b46977f81ce598879a3
+
+9.3.2 Instrument System Initiated Host Query for Specific Sample
+9.3.2.1
+
+Upload Message – Instrument System Sends Host Query (QBP^Z03)
+9.3.2.1.1
+
+Message Structure
+Message
+
+Comments
+
+MSH
+
+Message Header
+
+QPD
+
+Query Parameter Definition
+
+RCP
+
+Response Control Parameter
+
+GeneXpert System Software LIS Interface Protocol Specification
+
+109
+
+9.3.2.1.2
+Field
+No.
+
+Field Name
+
+Message Header Segment (MSH)
+
+Description
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+
+1
+
+Field
+Separator
+
+1
+
+ST
+
+1
+
+R
+
+N
+
+‘|’
+
+2
+
+Encoding
+Characters
+
+1
+
+ST
+
+4
+
+R
+
+N
+
+See 7.4.2 for more
+information
+
+3
+
+Sending
+Application
+
+System ID
+
+1
+
+ST
+
+50
+
+R
+
+N
+
+The System Name
+defined in the
+system configuration
+
+System Name
+
+2
+
+ST
+
+50
+
+R
+
+N
+
+‘GeneXpert’
+
+Software Version
+
+3
+
+ST
+
+16
+
+R
+
+N
+
+50
+
+R
+
+N
+
+R
+
+N
+
+5
+
+Receiver ID
+
+Name or ID of the
+receiver
+
+1
+
+ST
+
+7
+
+Date and time
+of Message
+
+Date and time the
+message was
+generated
+
+1
+
+TS
+
+9
+
+Message Type
+
+1
+
+ID
+
+3
+
+R
+
+N
+
+‘QBP’
+
+2
+
+ID
+
+3
+
+R
+
+N
+
+‘Z03’
+
+3
+
+ID
+
+7
+
+O
+
+N
+
+‘QBP_Z03’
+
+1
+
+ST
+
+32
+
+R
+
+N
+
+1
+
+ID
+
+3
+
+R
+
+N
+
+‘P’ (Production)
+
+1
+
+ID
+
+60
+
+R
+
+N
+
+‘2.5’
+
+10
+
+Message ID
+
+11
+
+Processing ID
+
+12
+
+Version
+Number
+
+110
+
+Unique message
+identifier
+
+Version of
+protocol
+
+The host ID
+defined in the
+system configuration
+
+301-2002, Rev. E, December 2014
+
+9.3.2.1.3
+Field
+No.
+1
+
+Query Parameter Definition (QPD)
+
+Field Name
+
+Description
+
+Message
+Query Name
+
+This field contains the
+name of the query.
+These names are
+assigned by the function-specific chapters of
+this specification. It is
+one to one with the
+conformance statement
+for this query name, and
+it is in fact an identifier
+for that conformance
+statement. Site-specific
+query names begin with
+the letter ‘Z.’
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+1
+
+ST
+
+3
+
+R
+
+N
+
+‘Z03’- User
+defined trigger
+
+2
+
+ST
+
+100
+
+R
+
+N
+
+‘HOST QUERY’
+Unique identifier
+
+2
+
+Query Tag
+
+Valued by the initiating
+system to identify the
+query, and used to
+match response
+messages to the originating query. The
+responding system is
+required to echo it back
+as the first field in the
+query acknowledgment
+segment (QAK).
+This field differs from
+MSA-2-Message
+control ID in that its
+value remains constant
+for each message (i.e. all
+continuation messages)
+associated with the
+query, whereas MSA-2
+Message control ID
+may vary with each
+continuation message,
+since it is associated
+with each individual
+message, not the query
+as a whole.
+
+1
+
+ST
+
+32
+
+R
+
+N
+
+3
+
+User Parameter 1
+
+Patient ID - Patient ID
+1
+
+1
+
+ST
+
+32
+
+O
+
+N
+
+4
+
+User Parameter 2
+
+Specimen ID
+
+1
+
+ST
+
+25
+
+R
+
+N
+
+5
+
+User Parameter 3
+
+Practice Assigned
+Patient ID-Patient ID 2
+
+1
+
+ST
+
+32
+
+O
+
+N
+
+GeneXpert System Software LIS Interface Protocol Specification
+
+Allowed values
+
+111
+
+9.3.2.1.4
+Field
+No.
+1
+
+Field Name
+
+Response Control Parameter (RCP)
+
+Description
+
+Query
+Priority
+
+Deferred (D) or
+Immediate (I)
+
+9.3.2.1.5
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+
+1
+
+ID
+
+1
+
+R
+
+N
+
+‘I’ – Immediate
+
+Example of a Response Control Parameter
+
+MSH|^~\&|ICU^GeneXpert^1.0||LIS||20070521100245||QBP^Z03^QBP_Z03|662f165ebb1b4354b100cba090f1e7e5|P|2.5
+QPD|Z03^HOST QUERY|662f165ebb1b4354b100cba090f1e7e5|PatientID-556|SpecimenID-888
+RCP|I
+
+9.3.2.2
+
+Upload Message – Instrument System Cancels Host Query (QCN^J01 / ACK^J01)
+This message is detailed in section 9.3.1.2. This message must also be acknowledged by the LIS
+Host.
+9.3.2.2.1
+
+Example of an Upload Message – Instrument System Cancels Host Query
+(QCN^J01 / ACK^J01)
+GeneXpert message:
+
+MSH|^~\&|ICU^GeneXpert^1.0||LIS||20070713114254||QCN^J01^QCN_J01|UDC000|P|2.5|||AL|NE
+QID|662f165ebb1b4354b100cba090f1e7e5|N/D
+
+LIS Acknowledgement:
+MSH|^~\&|LIS||ICU^GeneXpert^1.0||20070521101245||ACK|12Y|P|2.5|||NE|NE
+MSA|CA|UDC000
+
+9.3.2.3
+
+Download Message – Host Responds to Host Query with Test Order(s) (RSP^Z02)
+The LIS host retrieves data for the specified specimen IDs and sends the orders to the system. The
+response message has the structure of the message described in section 9.3.1.3. Note, if there is a
+multiple host query and there are specimens that have pending orders and other specimens that do
+not, the host query response only needs to retrieve the pending specimens. The system will assume
+that there are no orders for the specimens that are not listed in the host query response.
+9.3.2.3.1
+
+Example of Download Message – Host Responds to Host Query with Test Order(s)
+(RSP^Z02)
+System sends Host Query:
+
+MSH|^~\&|GeneXpert PC^GeneXpert^1.9.32 demo||LIS||20071121133825||QBP^Z03^QBP_Z0
+3|ODM-+ecJkZRA-07|P|2.5
+QPD|Z03^HOST QUERY|ODM-+ecJkZRA-07||s1
+RCP|I
+
+112
+
+301-2002, Rev. E, December 2014
+
+Host Responses with 2 new orders:
+MSH|^~\&|LIS||GeneXpert PC^GeneXpert^1.9.32 demo||20071121133826||RSP^Z02|4c49f0
+5b68bf4929a8df728f4a6d49af|P|2.5||||
+MSA|AA|ODM-+ecJkZRA-07|
+QAK|ODM-+ecJkZRA-07|OK|Z03^HOST QUERY
+QPD|Z03^HOST QUERY|ODM-+ecJkZRA-07||s1
+PID|1||p1
+ORC|NW|1|||||||20071116133208
+OBR|1|||FT|||||||A
+TQ1|||||||||R
+SPM|1|s1^||ORH|||||||P
+ORC|NW|2|||||||20071121104253
+OBR|2|||BC|||||||A
+TQ1|||||||||R
+SPM|2|s1^||ORH|||||||P
+
+9.3.2.4
+
+Download Message - Host Responds with No Available Test Order for Host Query (RSP^Z02)
+This message can appear when there is no test order to download for a specific specimen. Also
+note that if the LIS host does not transmit any response and the timeout is reached (60 seconds),
+the system will assume that the LIS host has no test orders to program. In this case, the system
+will cancel the request as specified in 9.3.1.2.
+Note: It is recommended that the LIS host developers always provide a response to a request; otherwise, the communication will be stopped until the 60 seconds timeout is reached.
+9.3.2.4.1
+
+Message Structure
+
+Message
+
+Comments
+
+MSH
+
+Message Header Segment
+
+MSA
+
+Message Acknowledgment
+
+QAK
+
+Query Acknowledgment
+
+QPD
+
+Query Parameter Definition Segment
+Message Header Segment
+
+GeneXpert System Software LIS Interface Protocol Specification
+
+113
+
+9.3.2.4.2
+Field
+No.
+
+Field Name
+
+Message Header Record (MSH)
+
+Description
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+
+1
+
+Field
+Separator
+
+1
+
+ST
+
+1
+
+R
+
+N
+
+'|'
+
+2
+
+Encoding
+Characters
+
+1
+
+ST
+
+4
+
+R
+
+N
+
+See 7.4.2 for
+more information
+
+3
+
+Sending
+Application
+
+Name or ID of
+the sender
+
+1
+
+ST
+
+50
+
+R
+
+N
+
+The host ID
+defined in the
+system configuration
+
+5
+
+Receiver ID
+
+System ID
+
+1
+
+ST
+
+50
+
+R
+
+N
+
+The System
+Name defined in
+the system
+configuration
+
+System Name
+
+2
+
+ST
+
+50
+
+R
+
+N
+
+'GeneXpert'
+
+Software
+Version
+
+3
+
+ST
+
+16
+
+R
+
+N
+
+Date and time
+the message was
+generated
+
+1
+
+TS
+
+R
+
+N
+
+If empty, the
+current date and
+time is assumed
+
+1
+
+ID
+
+3
+
+R
+
+N
+
+'RSP'
+
+2
+
+ID
+
+3
+
+R
+
+N
+
+'Z02'
+
+1
+
+ST
+
+32
+
+R
+
+N
+
+1
+
+ID
+
+3
+
+R
+
+N
+
+'P' (Production)
+
+1
+
+ID
+
+60
+
+R
+
+N
+
+'2.5'
+
+7
+
+Date and time
+of Message
+
+9
+
+Message Type
+
+10
+
+Message ID
+
+Unique message
+identifier
+
+11
+
+Processing ID
+
+12
+
+Version
+Number
+
+15
+
+Accept Ackn.
+
+1
+
+ID
+
+2
+
+O
+
+N
+
+'NE' (Never)
+
+16
+
+Application
+Ack.
+
+1
+
+ID
+
+2
+
+O
+
+N
+
+'NE' (Never)
+
+Version of protocol
+
+9.3.2.4.3
+Field
+No.
+
+Message Acknowledgment (MSA)
+
+Field Name
+
+Description
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+1
+
+Acknowledge
+ment Code
+
+'Acknowledgement Code
+
+1
+
+ID
+
+2
+
+R
+
+N
+
+1
+
+2
+
+Message Con
+trol ID
+
+From MSH-10
+of associated
+message
+
+1
+
+ST
+
+20
+
+R
+
+N
+
+2
+
+114
+
+Allow
+Repeat
+
+Allowed values
+
+301-2002, Rev. E, December 2014
+
+9.3.2.4.4
+Field
+No.
+
+Field
+Name
+
+Description
+
+1
+
+Query
+Tag
+
+2
+
+Query Acknowledgment (QAK)
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Valued by the initiating
+system to identify the
+query, and used to match
+response messages to the
+originating query. The
+responding system is
+required to echo it back as
+the first field in the query
+acknowledgment segment
+(QAK).
+This field differs from
+MSA-2-Message control
+ID in that its value remains
+constant for each message
+(i.e. all continuation
+messages) associated with
+the query, whereas MSA-2
+Message control ID may
+vary with each continuation message, since it is
+associated with each individual message, not the
+query as a whole.
+
+1
+
+ST
+
+32
+
+R
+
+N
+
+Query Tag
+sent by the
+system in
+QPD-2.
+
+Query
+Respons
+e Status
+
+OK: Data found, no errors
+(this is the default)
+NF: No data found, no
+errors
+AE: Application error
+AR: Application reject
+
+1
+
+ID
+
+2
+
+R
+
+N
+
+'OK': The
+query was
+successful.
+(NF/AE/AR
+are not
+possible since
+they are sent
+in the MSA)
+
+Message
+Query
+Name
+
+This field contains the
+name of the query. These
+names are assigned by the
+function-specific chapters
+of this specification. It is
+one to one with the
+conformance statement for
+this query name, and it is
+in fact an identifier for that
+conformance statement.
+Site-specific query names
+begin with the letter 'Z.'
+
+1
+
+ST
+
+3
+
+R
+
+N
+
+'Z03'- User
+defined trigger
+
+2
+
+ST
+
+100
+
+R
+
+N
+
+'HOST
+QUERY'
+
+GeneXpert System Software LIS Interface Protocol Specification
+
+Allow
+Repeat
+
+Allowed
+values
+
+115
+
+9.3.2.4.5
+Field
+No.
+
+Field
+Name
+
+1
+
+Query Parameter Definition (QPD)
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+This field contains the
+name of the query. These
+names are assigned by the
+function-specific chapters
+of this specification. It is
+one to one with the conformance statement for this
+query name, and it is in fact
+an identifier for that
+conformance statement.
+Site-specific query names
+begin with the letter 'Z.'
+
+1
+
+ST
+
+3
+
+R
+
+N
+
+'Z03'- User
+defined trigger
+
+2
+
+ST
+
+100
+
+R
+
+N
+
+'HOST
+QUERY'
+
+Description
+
+Allow
+Repeat
+
+Allowed
+values
+
+2
+
+Query Tag
+
+Valued by the initiating
+system to identify the
+query, and used to match
+response mes sages to the
+originating query. The
+responding system is
+required to echo it back as
+the first field in the query
+acknowledgment segment
+(QAK).
+This field differs from
+MSA-2-Message control
+ID in that its value remains
+constant for each message
+(i.e. all continuation
+messages) associated with
+the query, whereas MSA-2
+Message control ID may
+vary with each continuation message, since it is
+associated with each individual message, not the
+query as a whole.
+
+1
+
+ST
+
+32
+
+R
+
+N
+
+Query Tag
+sent by the
+System in
+QPD-2.
+
+3
+
+User
+Parameter
+1
+
+Indicates that all the order
+records must be retrieved
+
+1
+
+ST
+
+32
+
+R
+
+N
+
+'ALL'
+
+9.3.2.4.6
+
+An Example with No Available Test Orders
+
+MSH|^~\&|LIS||ICU^GeneXpert^1.0||20070521100245||RSP^Z02|12X|P|2.5|||NE|NE
+MSA|AA|662f165ebb1b4354b100cba090f1e7e5
+QAK|662f165ebb1b4354b100cba090f1e7e5|OK|Z03^HOST QUERY
+QPD|Z03^HOST QUERY|662f165ebb1b4354b100cba090f1e7e5|PatientID-1234|SpecimenID-888
+
+9.3.2.5
+
+Upload Message – Instrument System Rejects Test Order Initiated From Host
+Query (ORU^R01 – ACK^R01)
+If the orders are malformed, or they request an invalid test the instrument reports a rejection of the
+orders with the same rules described in section 9.3.1.5. Upload message - Instrument system
+rejects test order initiated from query (ORU^R01 - ACK^R01).
+
+116
+
+301-2002, Rev. E, December 2014
+
+9.3.3 Instrument System Returns Instrument Specimen ID for a Downloaded Order
+
+Warning
+
+9.3.3.1
+
+A test order with a blank Patient ID will not be downloaded during host query test order
+download if all of the following apply:
+1. ISID is enabled
+2. There are multiple matching test orders using the same Sample ID
+3. One of these matching test orders has a blank Patient ID
+
+Upload Message – Instrument System Responds with Instrument Specimen ID for a Downloaded
+Order (SSU^U03/ACK^U03)
+This message will be sent only if the Use Instrument Specimen ID option is enabled in the GeneXpert software.
+This message must be acknowledged by the LIS host using an ACK^J01 message. More information is included in the sections below.
+9.3.3.1.1
+
+SSU^U03 – Message Structure
+
+Message
+
+Comments
+
+MSH
+
+Message Header
+
+EQU
+
+Equipment Detail
+
+{
+SAC
+
+Specimen and Container Detail
+
+SPM
+
+Specimen
+
+}
+
+9.3.3.1.2
+Field
+No.
+
+Field Name
+
+SSU^U03 – Message Header Segment (MSH)
+
+Description
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+
+1
+
+Field
+Separator
+
+1
+
+ST
+
+1
+
+R
+
+N
+
+‘|’
+
+2
+
+Encoding
+Characters
+
+1
+
+ST
+
+4
+
+R
+
+N
+
+See 7.4.2 for more
+information
+
+3
+
+Sending
+Application
+
+System ID
+
+1
+
+ST
+
+50
+
+R
+
+N
+
+The System Name
+defined in the
+system configuration
+
+System Name
+
+2
+
+ST
+
+50
+
+R
+
+N
+
+‘GeneXpert’
+
+Software
+Version
+
+3
+
+ST
+
+16
+
+R
+
+N
+
+50
+
+R
+
+N
+
+R
+
+N
+
+5
+
+Receiver ID
+
+Name or ID of
+the receiver
+
+1
+
+ST
+
+7
+
+Date and time
+of Message
+
+Date and time
+the message was
+generated
+
+1
+
+TS
+
+GeneXpert System Software LIS Interface Protocol Specification
+
+The host ID
+defined in the
+system configuration
+
+117
+
+Field
+No.
+
+Field Name
+
+9
+
+Message Type
+
+Description
+
+Unique message
+identifier
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+1
+
+ID
+
+3
+
+R
+
+N
+
+‘SSU’
+
+2
+
+ID
+
+3
+
+R
+
+N
+
+‘U03’
+
+3
+
+ID
+
+7
+
+O
+
+N
+
+‘SSU_U03’
+
+1
+
+ST
+
+32
+
+R
+
+N
+
+1
+
+ID
+
+3
+
+R
+
+N
+
+‘P’ (Production)
+
+1
+
+ID
+
+60
+
+R
+
+N
+
+‘2.5’
+
+Allowed values
+
+10
+
+Message ID
+
+11
+
+Processing ID
+
+12
+
+Version
+Number
+
+15
+
+Accept Ackn.
+
+1
+
+ID
+
+2
+
+O
+
+N
+
+‘AL’ (Always)
+
+16
+
+Application
+Ack.
+
+1
+
+ID
+
+2
+
+O
+
+N
+
+‘NE’ (Never)
+
+Version of
+protocol
+
+9.3.3.1.3
+Field
+No.
+
+Field Name
+
+SSU^U03 – Equipment Detail Segment (EQU)
+
+Description
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+
+50
+
+R
+
+N
+
+Not used
+
+R
+
+N
+
+Current datetime.
+
+1
+
+Equipment
+Instance Identifier
+
+1
+
+ST
+
+2
+
+Event Date/
+Time
+
+1
+
+TS
+
+9.3.3.1.4
+
+Field
+No.
+1
+
+118
+
+SSU^U03 – Specimen Container Detail Segment (SAC) [Dummy field, for HL7
+compliance]
+
+Field Name
+
+Description
+
+External accession
+
+This field identifies the laboratory
+accession
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+
+1
+
+String
+
+50
+
+O
+
+N
+
+Not used
+
+301-2002, Rev. E, December 2014
+
+9.3.3.1.5
+Field
+No.
+
+Field Name
+
+SSU^U03 – Specimen Segment (SPM)
+
+Description
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+
+SI
+
+64
+
+R
+
+N
+
+1,2,3,...n
+
+1
+
+Sequence
+Number
+
+2
+
+Specimen ID
+
+A unique identifier for the specimen assigned by
+the HOST
+
+1
+
+ST
+
+25
+
+R
+
+N
+
+Instrument
+Specimen ID
+
+A unique identifier for the specimen assigned by
+the system. This
+must be retrieved
+from the LIS if it
+is known.
+
+2
+
+ST
+
+32
+
+R
+
+N
+
+4
+
+Specimen Type
+
+ID
+
+5
+
+R
+
+N
+
+‘ORH’ (Other)
+(‘Other’ according
+to POCT1-A
+standard)
+
+11
+
+Specimen Role
+
+ID
+
+1
+
+R
+
+N
+
+‘Q’ (For Quality
+control)
+‘P’ (For Sample
+Patient)
+
+9.3.3.1.6
+
+LIS Acknowledgment (ACK^U03)
+
+9.3.3.1.6.1
+
+ACK^U03 – Message Structure
+Message
+
+Comments
+
+MSH
+MSA
+
+GeneXpert System Software LIS Interface Protocol Specification
+
+119
+
+9.3.3.1.6.2
+Field
+No.
+
+Field Name
+
+ACK^U03 – Message Header Record (MSH)
+
+Description
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+
+1
+
+Field
+Separator
+
+1
+
+ST
+
+1
+
+R
+
+N
+
+‘|’
+
+2
+
+Encoding
+Characters
+
+1
+
+ST
+
+4
+
+R
+
+N
+
+See 7.4.2 for more
+information
+
+3
+
+Sending
+Application
+
+Name or ID of
+the sender
+
+1
+
+ST
+
+50
+
+R
+
+N
+
+The host ID
+defined in the
+instrument configuration
+
+5
+
+Receiver ID
+
+System ID
+
+1
+
+ST
+
+50
+
+R
+
+N
+
+The System Name
+defined in the
+system configuration
+
+System Name
+
+2
+
+ST
+
+50
+
+R
+
+N
+
+‘GeneXpert’
+
+Software Version
+
+3
+
+ST
+
+16
+
+R
+
+N
+
+Date and time
+the message was
+generated
+
+1
+
+TS
+
+R
+
+N
+
+If empty, the
+current date and
+time is used.
+
+1
+
+MSG
+
+3
+
+R
+
+N
+
+‘ACK’
+
+1
+
+ST
+
+32
+
+R
+
+N
+
+1
+
+ID
+
+3
+
+R
+
+N
+
+‘P’ (Production)
+
+1
+
+ID
+
+60
+
+R
+
+N
+
+‘2.5’
+
+7
+
+Date and time
+of Message
+
+9
+
+Message Type
+
+10
+
+Message ID
+
+11
+
+Processing ID
+
+12
+
+Version
+Number
+
+15
+
+Accept Ackn.
+
+1
+
+ID
+
+2
+
+O
+
+N
+
+‘NE’ (Never)
+
+16
+
+Application
+Ack.
+
+1
+
+ID
+
+2
+
+O
+
+N
+
+‘NE’ (Never)
+
+Unique message
+identifier
+
+Version of
+protocol
+
+9.3.3.1.7
+Field
+No.
+
+Field Name
+
+ACK^U03 – Message Acknowledgment (MSA)
+
+Description
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+‘CA'
+
+1
+
+Acknowledgment Code
+
+Acknowledgment Code
+
+1
+
+ID
+
+2
+
+R
+
+N
+
+2
+
+Message
+Control ID
+
+From MSH-10
+of associated
+message
+
+1
+
+ST
+
+32
+
+R
+
+N
+
+120
+
+301-2002, Rev. E, December 2014
+
+9.3.3.1.8
+
+Example of Upload Message – Instrument System Responds with Instrument Specimen ID for a Downloaded Order (SSU^U03/ACK^U03)
+GeneXpert message:
+
+MSH|^~\&|ICU^GeneXpert^1.0||LIS||20070521100245||SSU^U03^SSU_U03|a8c20c78490741c881d77b66207a66c8|P|2.5|||AL|NE
+EQU|N/D|20070713120450
+SAC|N/D
+SPM|1|SpecimenID-777^Instr_SpecID-555||ORH|||||||P
+SAC|N/D
+SPM|2|SpecimenID-888^Instr_SpecID-333||ORH|||||||P
+
+LIS Host acknowledgement
+MSH|^~\&|LIS||ICU^GeneXpert^1.0||20070521101245||ACK|12Y|P||||NE|NE
+MSA|CA| a8c20c78490741c881d77b66207a66c8
+
+9.3.4 Instrument System Uploads Test Results
+9.3.4.1
+
+Upload Message – Instrument System Uploads Results (ORU^R01 – ACK^R01)
+The instrument can upload two types of test results: single-result test results and multi-result test
+results.
+•
+
+For a single or multiple result(s) test, each Test Order record is followed by a Result
+Record. For Quantitative Assay, two test results (Main Result) will be uploaded, the first
+result is identified by the assay host test code; the second result is identified by the assay
+host test code and “LOG” in the Complementary Result Name.
+
+•
+
+Secondary results including analyte result, Ct, endPt, deltaCt will not be uploaded to LIS.
+LDA total values for LDA assay will not be uploaded to LIS. Complementary result with
+Conc/LOG names will be uploaded if applicable.
+
+•
+
+Instrumentation Identification data including computer system name, module S/N, cartridge S/N, reagent Lot ID and expiration date will not be uploaded to LIS. Instrument S/
+N will be the only instrument data uploaded to LIS.
+
+•
+
+Errors and Notes related to the order are reported on the Comment Records following the
+Order record. For a test which has one or more test error(s), the individual test error will
+not be uploaded to LIS. A generic error will be appended to the test as comment on the
+Comment record and uploaded to LIS. The generic error will have empty error code,
+empty error details, the error description will be "Error" and the time stamp will be the log
+time of the 1st error occurred.
+
+If the system is reporting a panel or battery of tests, each result has the structure described above.
+In this case, the Order Record contains information about the panel/battery and it is followed by
+each test result.
+9.3.4.1.1
+
+ORU^R01 – Message Structure
+
+Message
+
+Comments
+
+MSH
+
+Message Header Segment
+
+{
+PID
+
+Patient Identification Segment
+
+{
+
+GeneXpert System Software LIS Interface Protocol Specification
+
+121
+
+Message
+
+Comments
+
+ORC
+
+Order Common Segment
+
+OBR
+
+Observation Request Segment
+
+[NTE]
+
+Notes and comments (related to order)
+
+TQ1
+
+Timing/Quantity
+
+{
+OBX
+
+Observation Result Segment
+
+[NTE]
+
+Notes and comments (related to result)
+
+SPM
+
+Specimen Segment
+
+}
+
+}
+}
+
+9.3.4.1.2
+Field
+No.
+
+Field Name
+
+ORU^R01 – Message Header Record (MSH)
+
+Description
+
+Component
+
+Data
+Type
+
+Max.
+Length
+
+Req
+
+Allow
+Repeat
+
+Allowed values
+
+1
+
+Field
+Separator
+
+1
+
+ST
+
+1
+
+R
+
+N
+
+‘|’
+
+2
+
+Encoding
+Characters
+
+1
+
+ST
+
+4
+
+R
+
+N
+
+See 7.4.2 for more
+information
+
+3
+
+Sending
+Application
+
+System ID
+
+1
+
+ST
+
+50
+
+R
+
+N
+
+The System
+Name defined in
+the system configuration
+
+System Name
+
+2
+
+ST
+
+50
+
+R
+
+N
+
+‘GeneXpert’
+
+Software Version
+
+3
+
+ST
+
+16
+
+R
+
+N
+
+50
+
+R
+
+N
+
+The host ID
+defined in the
+system configuration
+
+R
+
+N
+
+If empty, the
+current date and
+time is used.
+
+5
+
+Receiver ID
+
+Name or ID of
+the receiver
+
+1
+
+ST
+
+7
+
+Date and time
+of Message
+
+Date and time
+the message was
+generated
+
+1
+
+TS
+
+9
+
+Message Type
+
+1
+
+ID
+
+3
+
+R
+
+N
+
+‘ORU’
+
+2
+
+ID
+
+3
+
+R
+
+N
+
+‘R32’
+
+3
+
+ID
+
+7
+
+O
+
+N
+
+‘ORU_R30’
+
+1
+
+ST
+
+32
+
+R
+
+N
+
+1
+
+ID
+
+3
+
+R
+
+N
+
+‘P’ (Production)
+
+1
+
+ID
+
+60
+
+R
+
+N
+
+‘2.5’
+
+10
+
+Message ID
+
+11
+
+Processing ID
+
+12
+
+Version
+Number
+
+122
+
+Unique message
+identifier
+
+Version of
+protocol
+
+301-2002, Rev. E, December 2014
+
+
