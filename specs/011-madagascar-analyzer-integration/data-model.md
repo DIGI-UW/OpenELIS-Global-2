@@ -50,7 +50,7 @@ analyzer (Device Instance + Operational Config — MERGED)
      analyzer_type_id (FK),
      ip_address, port, protocol_version, status,
      identifier_pattern, test_unit_ids, last_activated_date
-     Status: INACTIVE | SETUP | VALIDATION | ACTIVE | ERROR_PENDING | OFFLINE
+     Status: INACTIVE | SETUP | VALIDATION | ACTIVE | ERROR_PENDING | OFFLINE | DELETED
 ```
 
 **Removed**: `analyzer_configuration` table, `is_generic_plugin` on config
