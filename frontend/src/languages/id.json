@@ -30,11 +30,7 @@
   "aliquot.quantity.not.balanced": "Jumlah tidak seimbang untuk jenis sampel",
   "aliquot.save.error": "Error saat menyimpan data alikuot.",
   "aliquot.save.success": "Data pembuatan alikuot sukses tersimpan.",
-<<<<<<< HEAD
   "aliquot.tests.not.assigned": "Pemeriksaan tidak diterapkan pada jenis sampel",
-=======
-  "aliquot.tests.not.assigned": "Tidak menugaskan pemeriksaan pada jenis sampel",
->>>>>>> 9a76e0ed9f6457992c4ba3741729debd471e9106
   "aliquot.validation.errors": "Kesalahan Validasi",
   "aliquoting": "Pembuatan alikuot",
   "aliquoting.section": "Bagian pembuatan alikuot",
