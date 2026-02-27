@@ -32,6 +32,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import "./../pathology/PathologyDashboard.css";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { navigateTo } from "../utils/Navigation";
 
 function ImmunohistochemistryDashboard() {
   const componentMounted = useRef(false);
@@ -131,7 +132,7 @@ function ImmunohistochemistryDashboard() {
   ) => {
     postToOpenElisServerFullResponse(
       "/rest/immunohistochemistry/assignTechnician?immunohistochemistrySampleId=" +
-        immunohistochemistrySampleId,
+      immunohistochemistrySampleId,
       {},
       refreshItems,
     );
@@ -143,7 +144,7 @@ function ImmunohistochemistryDashboard() {
   ) => {
     postToOpenElisServerFullResponse(
       "/rest/immunohistochemistry/assignPathologist?immunohistochemistrySampleId=" +
-        immunohistochemistrySampleId,
+      immunohistochemistrySampleId,
       {},
       refreshItems,
     );
@@ -237,7 +238,7 @@ function ImmunohistochemistryDashboard() {
   };
 
   const openCaseView = (id) => {
-    window.location.href = "/ImmunohistochemistryCaseView/" + id;
+    navigateTo("/ImmunohistochemistryCaseView/" + id);
   };
 
   useEffect(() => {
@@ -324,44 +325,52 @@ function ImmunohistochemistryDashboard() {
               })}
             />
           </Column>
-          <Column lg={8} md={4} sm={2}>
-            <div className="inlineDivBlock">
-              <div>Filters:</div>
-              <Checkbox
-                labelText={intl.formatMessage({
-                  id: "label.filters.mycases",
-                })}
-                id="filterMyCases"
-                value={filters.myCases}
-                onChange={(e) =>
-                  setFilters({ ...filters, myCases: e.target.checked })
-                }
-              />
-              <Select
-                id="statusFilter"
-                name="statusFilter"
-                labelText={intl.formatMessage({
-                  id: "label.filters.status",
-                })}
-                value={
-                  filters.statuses.length > 1 ? "All" : filters.statuses[0].id
-                }
-                onChange={setStatusFilter}
-                noLabel
-              >
-                <SelectItem disabled value="placeholder" text="Status" />
-                <SelectItem text="All" value="All" />
-                {statuses.map((status, index) => {
-                  return (
-                    <SelectItem
-                      key={index}
-                      text={status.value}
-                      value={status.id}
-                    />
-                  );
-                })}
-              </Select>
-            </div>
+          <Column lg={8} md={4} sm={4}>
+            <Grid fullWidth={true}>
+              <Column lg={1} md={1} sm={1}>
+                <div style={{ marginTop: "9px" }}>
+                  <FormattedMessage id="filters.label" />
+                </div>
+              </Column>
+              <div style={{ marginTop: "4px" }}>
+                <Checkbox
+                  labelText={intl.formatMessage({
+                    id: "label.filters.mycases",
+                  })}
+                  id="filterMyCases"
+                  value={filters.myCases}
+                  onChange={(e) =>
+                    setFilters({ ...filters, myCases: e.target.checked })
+                  }
+                />
+              </div>
+              <Column lg={3} md={2} sm={2}>
+                <Select
+                  id="statusFilter"
+                  name="statusFilter"
+                  labelText={intl.formatMessage({
+                    id: "label.filters.status",
+                  })}
+                  value={
+                    filters.statuses.length > 1 ? "All" : filters.statuses[0].id
+                  }
+                  onChange={setStatusFilter}
+                  noLabel
+                >
+                  <SelectItem disabled value="placeholder" text="Status" />
+                  <SelectItem text="All" value="All" />
+                  {statuses.map((status, index) => {
+                    return (
+                      <SelectItem
+                        key={index}
+                        text={status.value}
+                        value={status.id}
+                      />
+                    );
+                  })}
+                </Select>
+              </Column>
+            </Grid>
           </Column>
 
           <Column lg={16} md={8} sm={4}>

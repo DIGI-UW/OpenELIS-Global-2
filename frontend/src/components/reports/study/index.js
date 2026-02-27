@@ -20,6 +20,7 @@ import PageBreadCrumb from "../../common/PageBreadCrumb";
 import AuditTrailReport from "../auditTrailReport/AuditTrailReport";
 import ReportByDateCSV from "../common/ReportByDateCSV";
 import IntermediateByService from "./IntermediateByService";
+import { navigateTo } from "../../utils/Navigation";
 
 export const StudyReports = (props) => {
   const { type, report } = props;
@@ -224,7 +225,7 @@ const StudyIndex = () => {
       }
       setIsLoading(false);
     } else {
-      window.location.href = "/StudyReports";
+      navigateTo("/StudyReports");
     }
   }, [type, report]);
 

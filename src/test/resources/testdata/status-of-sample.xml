@@ -1,6 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
     <!-- Status data -->
+    <status_of_sample id="1"
+        description="The sample has been entered into the system" code="1"
+        status_type="SAMPLE" lastupdated="2012-05-14 11:24:08.768263"
+        name="SampleEntered" display_key="status.sample.entered" is_active="Y" />
     <status_of_sample id="100"
         description="The sample has been entered into the system" code="1"
         status_type="SAMPLE" lastupdated="2012-05-14 11:24:08.768263"

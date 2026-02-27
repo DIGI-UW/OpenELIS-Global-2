@@ -1,0 +1,65 @@
+version: "3.9"
+
+services:
+  catalyst-gateway:
+    build: ./catalyst-gateway
+    env_file:
+      - ./env.recommended
+    environment:
+      - CATALYST_ROUTER_URL=http://catalyst-router:9100
+    ports:
+      - "${GATEWAY_PORT:-8000}:8000"
+    depends_on:
+      - catalyst-router
+
+  catalyst-router:
+    build: ./catalyst-agents
+    env_file:
+      - ./env.recommended
+    environment:
+      - CATALYST_ROUTER_URL=http://catalyst-router:9100
+      - CATALYST_AGENT_URL=http://catalyst-agent:9101
+    command:
+      [
+        "poetry",
+        "run",
+        "uvicorn",
+        "src.agents.router_server:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "9100",
+      ]
+    ports:
+      - "${ROUTER_PORT:-9100}:9100"
+
+  catalyst-agent:
+    build: ./catalyst-agents
+    env_file:
+      - ./env.recommended
+    environment:
+      - CATALYST_ROUTER_URL=http://catalyst-router:9100
+      - CATALYST_AGENT_URL=http://catalyst-agent:9101
+      - MCP_URL=http://catalyst-mcp:9102
+    command:
+      [
+        "poetry",
+        "run",
+        "uvicorn",
+        "src.agents.catalyst_server:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "9101",
+      ]
+    ports:
+      - "${CATALYST_AGENT_PORT:-9101}:9101"
+    depends_on:
+      - catalyst-mcp
+
+  catalyst-mcp:
+    build: ./catalyst-mcp
+    env_file:
+      - ./env.recommended
+    ports:
+      - "${MCP_PORT:-9102}:9102"

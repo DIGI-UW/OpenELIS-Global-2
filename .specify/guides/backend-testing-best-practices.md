@@ -1,7 +1,7 @@
 # Backend Testing Best Practices Quick Reference
 
-**Quick Reference Guide** for common backend Java/Spring Boot testing patterns
-in OpenELIS Global 2.
+**Quick Reference Guide** for common backend Java testing patterns in OpenELIS
+Global 2.
 
 **For Comprehensive Guidance**: See
 [Testing Roadmap](.specify/guides/testing-roadmap.md) for detailed patterns and
@@ -16,94 +16,90 @@ examples.
 
 **CRITICAL**: Use focused test slices when possible for faster execution.
 
-1. **Testing REST controller HTTP layer only?** → Use `@WebMvcTest` ✅
-2. **Testing DAO/repository persistence layer only?** → Use `@DataJpaTest` ✅
-3. **Testing complete workflow with full application context?** → Use
-   `@SpringBootTest` ✅
-4. **Legacy integration tests with Testcontainers/DBUnit?** → Use
-   `BaseWebContextSensitiveTest` ⚠️
+**Repository reality**: OpenELIS Global 2 uses **Traditional Spring MVC** (not
+Spring Boot). Spring Boot test slices (`@WebMvcTest`, `@DataJpaTest`,
+`@SpringBootTest`) are **not** the standard for this repo. Use
+`BaseWebContextSensitiveTest` for Spring-context tests.
+
+1. **Testing REST controller HTTP layer only?** → Use
+   `BaseWebContextSensitiveTest` + MockMvc ✅
+2. **Testing DAO/persistence layer only?** → Use `BaseWebContextSensitiveTest` +
+   real DAO beans ✅
+3. **Testing complete workflow (service → DAO → DB)?** → Use
+   `BaseWebContextSensitiveTest` ✅
 
 **When to Use Each**:
 
-| Test Type          | Annotation                    | Use Case               | Speed  | Context        |
-| ------------------ | ----------------------------- | ---------------------- | ------ | -------------- |
-| Controller         | `@WebMvcTest`                 | HTTP layer only        | Fast   | Web layer only |
-| DAO                | `@DataJpaTest`                | Persistence layer only | Fast   | JPA layer only |
-| Integration        | `@SpringBootTest`             | Full workflow          | Medium | Full context   |
-| Legacy Integration | `BaseWebContextSensitiveTest` | Testcontainers/DBUnit  | Slow   | Full context   |
+| Test Type   | Base Class/Pattern            | Use Case                         | Speed  | Context      |
+| ----------- | ----------------------------- | -------------------------------- | ------ | ------------ |
+| Controller  | `BaseWebContextSensitiveTest` | HTTP mapping/validation          | Medium | Full context |
+| DAO         | `BaseWebContextSensitiveTest` | HQL queries, CRUD, relationships | Medium | Full context |
+| Integration | `BaseWebContextSensitiveTest` | Full workflow (service→DAO→DB)   | Medium | Full context |
 
 ---
 
 ## Annotation Cheat Sheet
 
-### @WebMvcTest
+### Controller Tests (HTTP layer)
 
-**Use for**: REST controller HTTP layer testing.
+**Use for**: REST controller request/response mapping (with real Spring
+context).
 
 ```java
-@RunWith(SpringRunner.class)
-@WebMvcTest(StorageLocationRestController.class)
-public class StorageLocationRestControllerTest {
-    @Autowired
-    private MockMvc mockMvc;
+public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTest {
+  @Autowired
+  private MockMvc mockMvc;
 
-    @MockBean  // ✅ Use @MockBean (NOT @Mock)
-    private StorageLocationService storageLocationService;
+  @MockBean // ✅ Mock service for HTTP-only tests
+  private StorageLocationService storageLocationService;
 }
 ```
 
 **Key Points**:
 
 - Use `@MockBean` for Spring context mocking
-- Fast execution (no full application context)
-- Focus on HTTP layer only
+- Focus on routing/validation/status codes/JSON shape
+- This test does NOT prove persistence (service is mocked)
 
-### @DataJpaTest
+### DAO Tests (Persistence layer)
 
-**Use for**: DAO/repository persistence layer testing.
+**Use for**: Real HQL query behavior and persistence layer correctness.
 
 ```java
-@RunWith(SpringRunner.class)
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-public class StorageLocationDAOTest {
-    @Autowired
-    private TestEntityManager entityManager;
-
-    @Autowired
-    private StorageLocationDAO storageLocationDAO;
+public class StorageLocationDAOTest extends BaseWebContextSensitiveTest {
+  @Autowired
+  private StorageLocationDAO storageLocationDAO;
 }
 ```
 
 **Key Points**:
 
-- Use `TestEntityManager` for test data (NOT JdbcTemplate)
-- Automatic transaction rollback
-- Fast execution (no full application context)
+- Use DBUnit datasets for complex setup:
+  `executeDataSetWithStateManagement("testdata/<file>.xml")`
+- Use `EntityManager`/`JdbcTemplate` only when necessary and clean up properly
 
-### @SpringBootTest
+### Integration Tests (Full workflow)
 
-**Use for**: Full integration testing.
+**Use for**: Service → DAO → DB workflows with real persistence.
 
 ```java
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@Transactional  // ✅ PREFERRED: Automatic rollback
-public class StorageLocationServiceIntegrationTest {
-    @Autowired
-    private StorageLocationService storageLocationService;
+public class StorageLocationServiceIntegrationTest extends BaseWebContextSensitiveTest {
+  @Autowired
+  private StorageLocationService storageLocationService;
 }
 ```
 
 **Key Points**:
 
-- Use `@Transactional` for automatic rollback (preferred)
-- Full Spring context loaded
-- Test complete workflows
+- Must include at least one “real-effect assertion” (read-after-write / DB state
+  change)
+- Prefer DBUnit-managed datasets for setup/cleanup; otherwise do targeted
+  cleanup
 
 ### @MockBean vs @Mock
 
-**@MockBean**: Use in Spring context tests (`@WebMvcTest`, `@SpringBootTest`)
+**@MockBean**: Use in Spring context tests (extends
+`BaseWebContextSensitiveTest`)
 
 ```java
 @MockBean  // ✅ Spring context test
@@ -124,25 +120,6 @@ private StorageLocationServiceImpl storageLocationService;
 
 1. Spring context test? → Use `@MockBean` ✅
 2. Isolated unit test? → Use `@Mock` ✅
-
-### @Transactional
-
-**PREFERRED**: Use for automatic rollback in `@SpringBootTest` and
-`@DataJpaTest`.
-
-```java
-@SpringBootTest
-@Transactional  // ✅ Automatic rollback
-public class StorageLocationServiceIntegrationTest {
-    // No manual cleanup needed
-}
-```
-
-**Key Points**:
-
-- Automatic rollback after each test
-- No manual cleanup needed
-- Use for `@SpringBootTest` and `@DataJpaTest`
 
 ---
 
@@ -294,21 +271,9 @@ jdbcTemplate.update(
 
 ## Transaction Management
 
-### @Transactional (PREFERRED)
+### Manual Cleanup (BaseWebContextSensitiveTest)
 
-**DO**: Use `@Transactional` for automatic rollback.
-
-```java
-@SpringBootTest
-@Transactional  // ✅ Automatic rollback
-public class StorageLocationServiceIntegrationTest {
-    // No manual cleanup needed
-}
-```
-
-### Manual Cleanup (When @Transactional Doesn't Work)
-
-**Use when**: Using `BaseWebContextSensitiveTest` (legacy pattern).
+**Use when**: You create rows outside DBUnit-managed datasets.
 
 ```java
 @Before
@@ -376,36 +341,27 @@ public void tearDown() throws Exception {
 
 - [ ] ❌ Using `@Mock` in Spring context tests (use `@MockBean`)
 - [ ] ❌ Using `@MockBean` in isolated unit tests (use `@Mock`)
-- [ ] ❌ Using `@SpringBootTest` when `@WebMvcTest` or `@DataJpaTest` would work
-- [ ] ❌ Manual cleanup when `@Transactional` would work
+- [ ] ❌ Introducing Spring Boot test slices (`@WebMvcTest`, `@DataJpaTest`,
+      `@SpringBootTest`) in this repo
 - [ ] ❌ Hardcoded test data instead of builders/factories
-- [ ] ❌ Using `JdbcTemplate` in `@DataJpaTest` (use `TestEntityManager`)
 - [ ] ❌ Testing implementation details instead of behavior
 - [ ] ❌ Inconsistent test naming (use
       `test{MethodName}_{Scenario}_{ExpectedResult}`)
-- [ ] ❌ Missing transaction management (use `@Transactional` when possible)
 - [ ] ❌ Not using builders/factories for test data
 
 ---
 
 ## Quick Decision Trees
 
-### Which Test Annotation to Use?
+### Which Test Base to Use?
 
-1. **Testing HTTP layer only?** → `@WebMvcTest` ✅
-2. **Testing persistence layer only?** → `@DataJpaTest` ✅
-3. **Testing full workflow?** → `@SpringBootTest` ✅
-4. **Legacy Testcontainers/DBUnit?** → `BaseWebContextSensitiveTest` ⚠️
+1. **Need Spring context?** → `BaseWebContextSensitiveTest` ✅
+2. **Isolated unit logic only?** → `@RunWith(MockitoJUnitRunner.class)` ✅
 
 ### Which Mock Annotation to Use?
 
-1. **Spring context test?** (`@WebMvcTest`, `@SpringBootTest`) → `@MockBean` ✅
+1. **Spring context test?** (`BaseWebContextSensitiveTest`) → `@MockBean` ✅
 2. **Isolated unit test?** (`@RunWith(MockitoJUnitRunner.class)`) → `@Mock` ✅
-
-### Which Transaction Management to Use?
-
-1. **Using `@SpringBootTest` or `@DataJpaTest`?** → `@Transactional` ✅
-2. **Using `BaseWebContextSensitiveTest`?** → Manual cleanup in `@After` ⚠️
 
 ---
 

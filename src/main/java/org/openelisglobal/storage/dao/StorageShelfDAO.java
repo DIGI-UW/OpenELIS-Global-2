@@ -35,4 +35,12 @@ public interface StorageShelfDAO extends BaseDAO<StorageShelf, Integer> {
 
     StorageShelf findByLabelAndParentDeviceId(String label, Integer parentDeviceId);
 
+    /**
+     * Find shelf by code (for code uniqueness validation)
+     *
+     * @param code Shelf code
+     * @return StorageShelf or null if not found
+     */
+    StorageShelf findByCode(String code);
+
 }

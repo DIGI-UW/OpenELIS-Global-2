@@ -9,6 +9,7 @@ import { Loading, Modal } from "@carbon/react/";
 import config from "../../config.json";
 import { Roles } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
+import { navigateTo } from "../utils/Navigation";
 
 const idleTimeout = 1000 * 60 * 30; // milliseconds until idle warning will appear
 const idleWarningTimeout = 1000 * 60; // milliseconds until logout is automatically processed from idle warning
@@ -41,7 +42,7 @@ function SecureRoute(props) {
           !userSessionDetails.loginLabUnit &&
           !userSessionDetails.roles.includes(Roles.GLOBAL_ADMIN)
         ) {
-          window.location.href = "/landing";
+          navigateTo("/landing");
         }
       } else {
         const options = {
@@ -51,7 +52,7 @@ function SecureRoute(props) {
             {
               label: intl.formatMessage({ id: "accessDenied.okButton" }),
               onClick: () => {
-                window.location.href = window.location.origin;
+                navigateTo("/");
               },
             },
           ],
@@ -62,7 +63,7 @@ function SecureRoute(props) {
       }
       setPermissionGranted(hasPermission());
     } else if ("authenticated" in userSessionDetails) {
-      window.location.href = config.loginRedirect;
+      navigateTo(config.loginRedirect);
     }
   }, [userSessionDetails, errorLoadingSessionDetails]);
 

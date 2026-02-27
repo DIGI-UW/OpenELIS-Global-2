@@ -32,6 +32,7 @@ import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { navigateTo } from "../utils/Navigation";
 
 function CytologyDashboard() {
   const componentMounted = useRef(false);
@@ -95,7 +96,7 @@ function CytologyDashboard() {
   const assignCurrentUserAsPathologist = (event, pathologySampleId) => {
     postToOpenElisServerFullResponse(
       "/rest/cytology/assignCytoPathologist?cytologySampleId=" +
-        pathologySampleId,
+      pathologySampleId,
       {},
       refreshItems,
     );
@@ -181,7 +182,7 @@ function CytologyDashboard() {
   const getSelectedValue = () => {
     const selectedValue =
       filters.statuses.length === inProgressStatuses.length &&
-      filters.statuses.every((status) => inProgressStatuses.includes(status.id))
+        filters.statuses.every((status) => inProgressStatuses.includes(status.id))
         ? "IN_PROGRESS"
         : filters.statuses.length > 1
           ? "All"
@@ -211,7 +212,7 @@ function CytologyDashboard() {
   };
 
   const openCaseView = (id) => {
-    window.location.href = "/CytologyCaseView/" + id;
+    navigateTo("/CytologyCaseView/" + id);
   };
 
   useEffect(() => {

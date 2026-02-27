@@ -42,6 +42,7 @@ import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import CustomCheckBox from "../../common/CustomCheckBox.js";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
+import { getFullPath } from "../../utils/Navigation";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -86,21 +87,21 @@ function PanelManagement() {
             <Column lg={16} md={8} sm={4}>
               <UnorderedList>
                 <ClickableTile
-                  href="/MasterListsPage/PanelCreate"
+                  href={getFullPath("/MasterListsPage/PanelCreate")}
                   id="PanelCreate"
                 >
                   <FormattedMessage id="configuration.panel.create" />
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/PanelOrder"
+                  href={getFullPath("/MasterListsPage/PanelOrder")}
                   id="PanelOrder"
                 >
                   <FormattedMessage id="configuration.panel.order" />
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/PanelTestAssign"
+                  href={getFullPath("/MasterListsPage/PanelTestAssign")}
                   id="PanelTestAssign"
                 >
                   <FormattedMessage id="configuration.panel.assign" />

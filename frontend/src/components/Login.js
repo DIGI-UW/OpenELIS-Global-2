@@ -20,6 +20,7 @@ import { Formik } from "formik";
 import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./layout/Layout";
+import { navigateTo } from "./utils/Navigation";
 
 function Login(props) {
   const { notificationVisible, addNotification, setNotificationVisible } =
@@ -55,17 +56,11 @@ function Login(props) {
 
   useEffect(() => {
     firstInput?.current?.focus();
-
-    const interval = setInterval(() => {
-      checkLogin();
-    }, 1000 * 3);
-
-    return () => clearInterval(interval); // clear your interval to prevent memory leaks.
   }, []);
 
   useEffect(() => {
     if (userSessionDetails.authenticated) {
-      window.location.href = "/";
+      navigateTo("/");
     }
   }, [userSessionDetails]);
 
@@ -113,7 +108,7 @@ function Login(props) {
         // get json response here
         let data = await response.json();
         if (response.status === 200) {
-          window.location.href = "/";
+          navigateTo("/");
         } else {
           addNotification({
             title: props.intl.formatMessage({
@@ -216,18 +211,6 @@ function Login(props) {
                   }}
                   onSubmit={(values) => {
                     doLogin(values);
-                    fetch(config.serverBaseUrl + "/LoginPage", {
-                      //includes the browser sessionId in the Header for Authentication on the backend server
-                      credentials: "include",
-                      method: "GET",
-                    })
-                      .then((response) => response.status)
-                      .then(() => {
-                        doLogin(values);
-                      })
-                      .catch((error) => {
-                        console.error(error);
-                      });
                   }}
                 >
                   {({ isValid, handleChange, handleSubmit }) => (
@@ -286,7 +269,7 @@ function Login(props) {
                                 data-cy="changePassword"
                                 type="button"
                                 onClick={() => {
-                                  window.location.href = "/ChangePasswordLogin";
+                                  navigateTo("/ChangePasswordLogin");
                                 }}
                               >
                                 <FormattedMessage id="label.button.changepassword" />
@@ -296,7 +279,7 @@ function Login(props) {
                         )}
                         {configurationProperties?.useSaml == "true" &&
                           configurationProperties?.useSamlLoginPage !==
-                            "false" && (
+                          "false" && (
                             <Button
                               type="button"
                               renderIcon={HardwareSecurityModule}

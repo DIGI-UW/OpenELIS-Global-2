@@ -16,7 +16,7 @@ public class StorageRackForm {
     private String label;
 
     @Size(max = 10, message = "Short code must not exceed 10 characters")
-    private String shortCode;
+    private String code; // Renamed from shortCode per spec Session 2025-11-16 simplification
 
     private Boolean active = true;
 
@@ -41,12 +41,12 @@ public class StorageRackForm {
         this.label = label;
     }
 
-    public String getShortCode() {
-        return shortCode;
+    public String getCode() {
+        return code;
     }
 
-    public void setShortCode(String shortCode) {
-        this.shortCode = shortCode;
+    public void setCode(String code) {
+        this.code = code;
     }
 
     public Boolean getActive() {

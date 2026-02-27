@@ -159,8 +159,10 @@ public class SampleStorageServiceDisposalTest {
     public void testDisposeSampleItem_AlreadyDisposed_ThrowsException() {
         // Arrange - external ID lookup is mocked in setUp()
         testSampleItem.setStatusId(DISPOSED_STATUS_ID);
+        // Override the blanket false mock - this specific mock takes precedence
+        when(statusService.matches(DISPOSED_STATUS_ID, SampleStatus.Disposed)).thenReturn(true);
 
-        // Act
+        // Act - should throw LIMSRuntimeException because sample is already disposed
         sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null);
     }
 

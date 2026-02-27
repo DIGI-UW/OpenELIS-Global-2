@@ -23,6 +23,7 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import config from "../../config.json";
+import { navigateTo } from "../utils/Navigation";
 
 const Validation = (props) => {
   const componentMounted = useRef(false);
@@ -132,7 +133,7 @@ const Validation = (props) => {
     if (status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      window.location.href = "/validation" + props.params;
+      navigateTo("/validation") + props.params;
     }
     addNotification({
       kind: kind,

@@ -39,6 +39,50 @@ controller/DAO/integration tests.
 - **Clean State**: Tests must be isolated and use builders/factories for data
 - **Checkpoint Validation**: Tests must pass at each SDD phase checkpoint
 
+### Test Type Contracts (What each test MUST prove)
+
+This project uses “E2E” to mean **real browser + real backend + real database**.
+If the backend is stubbed, the test is **not** end-to-end (it is a
+mocked-backend UI test).
+
+- **Unit tests (mocked collaborators allowed)**:
+
+  - Prove **business logic** (branching, validation, transformations).
+  - Should fail if you delete/short-circuit the core logic.
+  - **Anti-pattern**: “returns what the mock returned” without verifying any
+    logic.
+
+- **Controller HTTP tests (service mocked)**:
+
+  - Prove **request/response mapping**: routing, validation, status codes, JSON
+    shape.
+  - Do **not** prove persistence (service is mocked by design).
+
+- **Backend integration tests (real service + DAO + DB)**:
+
+  - Prove **persistence and transactions**: read-after-write, constraints,
+    rollback behavior.
+  - Must include at least one “real-effect assertion” (database state changed as
+    expected).
+
+- **Cypress E2E tests (`frontend/cypress/e2e/`)**:
+  - Prove the full chain: **UI action → real HTTP → backend logic → DB update →
+    UI reflects result**.
+  - Must include at least one “real-effect assertion” after mutations (see
+    Cypress section).
+
+### Mocking and Stubbing Rules (project-wide)
+
+- **Default rule**: do not stub the part you are trying to validate.
+- **Acceptable mocking**:
+  - Unit tests: mock external collaborators (DAOs, FHIR services, etc.) to
+    isolate business logic.
+  - Controller tests: mock the service layer to isolate HTTP mapping/validation.
+- **Not acceptable**:
+  - Calling a test “integration” or “E2E” while stubbing the system under test.
+  - Stubbing success responses for the mutation you are validating in a Cypress
+    E2E test.
+
 ### For AI Agents
 
 This roadmap provides explicit rules, patterns, and code examples. Follow the
@@ -575,15 +619,16 @@ public void testGetLocation_ReturnsLocation() {
 - Use `create()` static method for fluent API
 - Use `build()` to create entity instance
 
-#### DBUnit (Legacy Pattern)
+#### DBUnit (Backend Integration Tests)
 
-**Use when**: Complex test data requiring multiple related entities.
+**Use when**: Complex test data requiring multiple related entities in **backend
+integration tests**.
 
 **When to Use**:
 
 - Existing tests using `BaseWebContextSensitiveTest`
 - Complex test data with many relationships
-- Reusable test datasets
+- Reusable test datasets for backend integration tests
 
 **Pattern**:
 
@@ -602,10 +647,54 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
 **Key Points**:
 
 - Use for complex test data (multiple related entities)
-- XML datasets in `src/test/resources/`
+- XML datasets in `src/test/resources/testdata/*.xml`
 - Load via `executeDataSetWithStateManagement()`
 - No extra manual cleanup should be needed for tables included in the dataset
   (the helper truncates/refreshes them)
+
+#### Generated SQL (E2E Tests)
+
+**Use when**: E2E tests (Cypress) need to load DBUnit XML fixtures **without
+Java/Maven dependencies**.
+
+**Problem**: E2E CI (`frontend-qa.yml`) doesn't have Maven/Java, but needs same
+fixtures as backend tests.
+
+**Solution**: Generate SQL on-demand from authoritative DBUnit XML:
+
+- **Authoritative Source**: `testdata/storage-e2e.xml` (DBUnit XML)
+- **Generated Output**: `testdata/storage-e2e.generated.sql` (never committed,
+  see `.gitignore`)
+- **Converter**: `testdata/xml-to-sql.py` (Python 3 script)
+- **Loading**: `load-test-fixtures.sh` generates SQL then loads via `psql`
+
+**Pattern (Cypress)**:
+
+```javascript
+// frontend/cypress/support/commands.js
+Cypress.Commands.add("loadStorageFixtures", () => {
+  cy.task("loadStorageTestData"); // Calls load-test-fixtures.sh
+});
+
+// Test file
+before(() => {
+  cy.login("admin", "adminADMIN!");
+  cy.loadStorageFixtures(); // Auto-generates SQL from XML, loads via psql
+});
+```
+
+**Key Points**:
+
+- **Single source of truth**: DBUnit XML (edit XML, SQL auto-generated)
+- **No drift**: SQL regenerated every test run
+- **No Maven in CI**: Only needs Python 3 + psql (both pre-installed in GitHub
+  Actions)
+- **Never commit generated SQL**: `.gitignore` blocks `*.generated.sql` files
+- **Same data across test types**: Backend (XML) and E2E (generated SQL) use
+  identical fixtures
+
+**Reference**:
+[specs/001-sample-storage/test-fixtures-implementation.md](../../specs/001-sample-storage/test-fixtures-implementation.md)
 
 #### JdbcTemplate (Direct Database Operations)
 
@@ -1677,6 +1766,16 @@ cy.visit("/storage");
 cy.wait("@getRooms");
 ```
 
+**Important clarification**:
+
+- Fixture-backed intercepts are acceptable for **read-only page bootstrapping**
+  when you are not validating backend behavior.
+- If you stub responses that your user story is meant to validate (especially
+  mutation success), the test is **not** an E2E test and must not live in
+  `frontend/cypress/e2e/`.
+- For real E2E environments, prefer the unified fixture loader (see
+  `src/test/resources/FIXTURE_LOADER_README.md`).
+
 **Smart Fixture Management**: Check if fixtures exist before loading, skip
 loading if fixtures already present, use environment variables for control
 (`CYPRESS_SKIP_FIXTURES`, `CYPRESS_FORCE_FIXTURES`).
@@ -1768,6 +1867,43 @@ cy.intercept("GET", "/rest/storage/rooms", { fixture: "rooms.json" }).as(
 );
 cy.visit("/storage");
 cy.wait("@getRooms");
+```
+
+#### Cypress Network Policy (Spy-first; no stubbing the operation under test)
+
+**Rule for `frontend/cypress/e2e/`**:
+
+- `cy.intercept()` is **spy-first**: use it to alias and assert
+  requests/responses.
+- **DO NOT** stub the primary mutation endpoint under test
+  (`PUT|POST|PATCH|DELETE`) with a fabricated success response.
+- If you must stub backend responses to validate UI-only behavior, that belongs
+  in a **mocked-backend UI** test suite (not `frontend/cypress/e2e/`) and must
+  be labeled accordingly.
+
+**Spy-only mutation example** (valid E2E):
+
+```javascript
+cy.intercept("PUT", "**/rest/storage/rooms/**").as("updateRoom");
+cy.get('[data-testid="edit-location-save-button"]').click();
+cy.wait("@updateRoom").its("response.statusCode").should("eq", 200);
+```
+
+#### “Real-effect assertions” (required for E2E mutations)
+
+After a successful mutation, prove it was real by doing **at least one**:
+
+- Reload/revisit and verify the updated state is still present.
+- `cy.request()` a read endpoint and verify the updated field
+  (read-after-write).
+
+Example:
+
+```javascript
+cy.request("GET", `/rest/storage/rooms/${roomId}`)
+  .its("body")
+  .its("name")
+  .should("eq", newName);
 ```
 
 #### Test Simplification (Happy Path Focus)

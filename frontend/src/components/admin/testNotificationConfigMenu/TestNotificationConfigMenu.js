@@ -40,6 +40,7 @@ import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import { Settings } from "@carbon/icons-react";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
+import { assignTo } from "../../utils/Navigation.js";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -126,7 +127,7 @@ function TestNotificationConfigMenu() {
   }, [testNamesList]);
 
   const handleEditButtonClick = (id) => {
-    window.location.assign(
+    assignTo(
       `/MasterListsPage/testNotificationConfig?testId=${id}`,
     );
   };
@@ -288,7 +289,7 @@ function TestNotificationConfigMenu() {
                 </Button>{" "}
                 <Button
                   onClick={() =>
-                    window.location.assign(
+                    assignTo(
                       "/MasterListsPage/testNotificationConfigMenu",
                     )
                   }
@@ -459,7 +460,7 @@ function TestNotificationConfigMenu() {
               </Button>{" "}
               <Button
                 onClick={() =>
-                  window.location.assign(
+                  assignTo(
                     "/MasterListsPage/testNotificationConfigMenu",
                   )
                 }

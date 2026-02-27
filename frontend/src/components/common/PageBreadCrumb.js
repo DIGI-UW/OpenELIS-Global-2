@@ -1,6 +1,7 @@
 import { Breadcrumb, BreadcrumbItem, Column, Grid } from "@carbon/react";
 import React from "react";
 import { useIntl } from "react-intl";
+import { getFullPath } from "../utils/Navigation";
 
 const PageBreadCrumb = ({ breadcrumbs }) => {
   const intl = useIntl();
@@ -11,7 +12,7 @@ const PageBreadCrumb = ({ breadcrumbs }) => {
         <Breadcrumb>
           {breadcrumbs.map((breadcrumb, index) => {
             return (
-              <BreadcrumbItem key={index} href={breadcrumb.link}>
+              <BreadcrumbItem key={index} href={getFullPath(breadcrumb.link)}>
                 {intl.formatMessage({ id: `${breadcrumb.label}` })}
               </BreadcrumbItem>
             );

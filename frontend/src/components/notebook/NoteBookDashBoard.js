@@ -28,6 +28,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import "../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomDatePicker from "../common/CustomDatePicker";
+import { navigateTo } from "../utils/Navigation";
 import {
   UserAvatar,
   Document,
@@ -169,23 +170,23 @@ function NoteBookDashBoard() {
   };
 
   const openNoteBookView = (id) => {
-    window.location.href = "/NoteBookEntryForm/" + id;
+    navigateTo("/NoteBookEntryForm/") + id;
   };
 
   const openNoteBookEntryForm = () => {
-    window.location.href = "/NoteBookEntryForm";
+    navigateTo("/NoteBookEntryForm");
   };
 
   const openNoteBookInstanceEntryForm = () => {
-    window.location.href = "/NoteBookInstanceEntryForm/" + selectedNoteBook.id;
+    navigateTo("/NoteBookInstanceEntryForm/") + selectedNoteBook.id;
   };
 
   const openNoteBookInstanceView = (id) => {
-    window.location.href = "/NoteBookInstanceEditForm/" + id + "?mode=view";
+    navigateTo("/NoteBookInstanceEditForm/") + id + "?mode=view";
   };
 
   const openNoteBookInstanceEdit = (id) => {
-    window.location.href = "/NoteBookInstanceEditForm/" + id + "?mode=edit";
+    navigateTo("/NoteBookInstanceEditForm/") + id + "?mode=edit";
   };
 
   useEffect(() => {

@@ -41,6 +41,7 @@ import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import CustomCheckBox from "../../common/CustomCheckBox.js";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
+import { assignTo } from "../../utils/Navigation.js";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -85,7 +86,7 @@ function MethodManagement() {
             <UnorderedList>
               <ListItem
                 onClick={() => {
-                  window.location.assign("/MasterListsPage/MethodCreate");
+                  assignTo("/MasterListsPage/MethodCreate");
                 }}
               >
                 <FormattedMessage id="configuration.method.create" />

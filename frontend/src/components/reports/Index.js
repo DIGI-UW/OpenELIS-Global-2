@@ -6,6 +6,7 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import { StudyReports } from "./study/index";
 import { RoutineReports } from "./routine/Index";
 import { Loading } from "@carbon/react";
+import { navigateTo } from "../utils/Navigation";
 
 const ReportIndex = () => {
   const intl = useIntl();
@@ -26,7 +27,7 @@ const ReportIndex = () => {
     if (paramType && paramReport) {
       setIsLoading(false);
     } else {
-      window.location.href = "/";
+      navigateTo("/");
     }
   }, []);
 

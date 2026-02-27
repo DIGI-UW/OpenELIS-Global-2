@@ -7,7 +7,6 @@ export const TestFormData = {
   panels: [],
   uom: "",
   loinc: "",
-  price: "",
   resultType: "",
   orderable: "Y",
   notifyResults: "N",
@@ -103,10 +102,6 @@ export const mapTestCatBeanToFormData = (test) => {
         : [],
     uom: test.uom || "",
     loinc: test.loinc || "",
-    price:
-      test.price !== undefined && test.price !== null
-        ? String(test.price)
-        : "",
     resultType: test.resultType || "",
     orderable: test.orderable === "Orderable" ? "Y" : "N",
     notifyResults: test.notifyResults ? "Y" : "N",
@@ -114,8 +109,9 @@ export const mapTestCatBeanToFormData = (test) => {
     antimicrobialResistance: test.antimicrobialResistance ? "Y" : "N",
     active: test.active === "Active" ? "Y" : "N",
     dictionary: test.dictionaryValues || [],
-    dictionaryReference:
-      test.referenceValue !== "n/a" ? test.referenceValue : "",
+    dictionaryReference: Number.isNaN(Number(test.referenceValue))
+      ? ""
+      : test.referenceValue,
     defaultTestResult: "",
     sampleTypes: test.sampleType ? [test.sampleType] : [],
     lowValid: extractRange(test.resultLimits?.[0]?.validRange)[0],

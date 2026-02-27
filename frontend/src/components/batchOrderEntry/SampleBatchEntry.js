@@ -27,6 +27,7 @@ import {
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import PatientInfo from "../addOrder/PatientInfo";
 import OrderEntryValidationSchema from "../formModel/validationSchema/OrderEntryValidationSchema";
+import { navigateTo } from "../utils/Navigation";
 
 const SampleBatchEntry = (props) => {
   const { orderFormValues, setOrderFormValues } = props;
@@ -495,7 +496,7 @@ const SampleBatchEntry = (props) => {
                 <Button
                   data-cy="finishButton"
                   onClick={() =>
-                    (window.location.href = "/SampleBatchEntrySetup")
+                    (navigateTo("/SampleBatchEntrySetup"))
                   }
                 >
                   <FormattedMessage id="label.button.finish" />

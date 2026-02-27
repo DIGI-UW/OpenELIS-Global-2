@@ -256,12 +256,17 @@ public class DbUnitFixtureLoader {
             IDataSet dataset = new FlatXmlDataSet(inputStream);
             String[] tableNames = dataset.getTableNames();
 
-            // Truncate tables (same as executeDataSetWithStateManagement)
-            logger.info("Truncating {} table(s) in dataset", tableNames.length);
-            cleanRowsInConnection(dbUnitConnection, tableNames);
-
-            // Refresh dataset
-            logger.info("Refreshing dataset into database");
+            // IMPORTANT: Do NOT truncate tables here.
+            //
+            // This loader is used for Cypress/manual testing against a long-lived dev DB.
+            // Truncating tables based on dataset contents is dangerous because datasets may
+            // include shared reference tables (e.g., localization) and would wipe unrelated
+            // application data, potentially preventing the webapp from starting.
+            //
+            // Instead, we rely on:
+            // - DatabaseOperation.REFRESH to upsert rows by primary key
+            // - reset-test-database.sh (optional) to clean test-owned rows when needed
+            logger.info("Refreshing dataset into database (no truncation)");
             DatabaseOperation.REFRESH.execute(dbUnitConnection, dataset);
 
         } finally {

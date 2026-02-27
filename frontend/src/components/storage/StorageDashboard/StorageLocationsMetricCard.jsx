@@ -25,13 +25,13 @@ const StorageLocationsMetricCard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadLocationCounts();
-  }, []);
+    let isMounted = true;
 
-  const loadLocationCounts = () => {
     getFromOpenElisServer(
       "/rest/storage/dashboard/location-counts",
       (response) => {
+        if (!isMounted) return;
+
         if (response) {
           const newCounts = {
             rooms: response.rooms || 0,
@@ -58,7 +58,11 @@ const StorageLocationsMetricCard = () => {
         setLoading(false);
       },
     );
-  };
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   if (loading) {
     return (

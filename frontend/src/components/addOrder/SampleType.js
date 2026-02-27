@@ -144,10 +144,6 @@ const SampleType = (props) => {
     updateSampleXml(sampleXml, index);
   }, [sampleXml]);
 
-  const handleRemoveSampleTest = (index) => {
-    removeSample(index);
-  };
-
   const handleReferralRequest = () => {
     setRequestTestReferral(!requestTestReferral);
     if (selectedTests.length > 0) {
@@ -249,20 +245,6 @@ const SampleType = (props) => {
       index++;
     }
   };
-
-  function addReferralRequest(test) {
-    setReferralRequests([
-      ...referralRequests,
-      {
-        reasonForReferral: referralReasons[0].id,
-        referrer:
-          userSessionDetails.firstName + " " + userSessionDetails.lastName,
-        institute: referralOrganizations[0].id,
-        sentDate: "",
-        testId: test.id,
-      },
-    ]);
-  }
 
   function removeReferralRequest(test) {
     let index = 0;
@@ -684,7 +666,7 @@ const SampleType = (props) => {
                         <Tile className={"emptyFilterTests"}>
                           <span>
                             <FormattedMessage id="sample.panel.search.error.msg" />{" "}
-                            <strong>"{panelSearchTerm}"</strong>{" "}
+                            <strong>&quot;{panelSearchTerm}&quot;</strong>{" "}
                           </span>
                         </Tile>
                       </Layer>
@@ -784,7 +766,7 @@ const SampleType = (props) => {
                       <Tile className={"emptyFilterTests"}>
                         <span>
                           <FormattedMessage id="title.notestfoundmatching" />
-                          <strong> "{testSearchTerm}"</strong>{" "}
+                          <strong> &quot;{testSearchTerm}&quot;</strong>{" "}
                         </span>
                       </Tile>
                     </Layer>

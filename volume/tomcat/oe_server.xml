@@ -66,9 +66,12 @@
          AJP  Connector: /docs/config/ajp.html
          Define a non-SSL/TLS HTTP/1.1 Connector on port 8080
     -->
-          <!-- <Connector port="8080" protocol="HTTP/1.1"
+          <Connector port="8080" protocol="HTTP/1.1"
                connectionTimeout="20000"
-               redirectPort="8443" /> -->
+               secure="true"
+               scheme="https"
+               proxyName="localhost"
+               proxyPort="8443" />
           <!-- A "Connector" using the shared thread pool-->
           <!--
     <Connector executor="tomcatThreadPool"
@@ -138,9 +141,8 @@
                <Host name="localhost" appBase="webapps"
                     unpackWARs="true" autoDeploy="true">
 
-                    <Context docBase="ROOT" path="/api" />
                     <Context docBase="OpenELIS-Global"
-                         path="/api/OpenELIS-Global/" logEffectiveWebXml="true">
+                         path="/OpenELIS-Global" logEffectiveWebXml="true">
                          <Resources cacheMaxSize="102400" />
                          <Resource auth="Container"
                               driverClassName="org.postgresql.Driver" maxTotal="20" maxIdle="10"

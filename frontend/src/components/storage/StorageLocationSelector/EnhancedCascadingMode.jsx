@@ -117,17 +117,12 @@ const EnhancedCascadingMode = ({
 
   // Load rooms on mount
   useEffect(() => {
-    getFromOpenElisServer(
-      "/rest/storage/rooms",
-      (response) => {
-        // Filter out inactive rooms (only show active ones in creation form)
-        const activeRooms = (response || []).filter((r) => r.active !== false);
-        setRooms(activeRooms);
-      },
-      () => {
-        setRooms([]);
-      },
-    );
+    getFromOpenElisServer("/rest/storage/rooms", (response) => {
+      // Filter out inactive rooms (only show active ones in creation form)
+      // Note: callback receives undefined on error, so use || [] fallback
+      const activeRooms = (response || []).filter((r) => r.active !== false);
+      setRooms(activeRooms);
+    });
   }, []); // Only run on mount
 
   // When rooms load and we have a selectedLocation with type='room',
@@ -317,7 +312,6 @@ const EnhancedCascadingMode = ({
                     setDeviceInput(foundDevice.name || "");
                   }
                 },
-                () => {},
               );
             }
           }
@@ -372,7 +366,6 @@ const EnhancedCascadingMode = ({
               onLocationChange(buildLocationWithFlexibleFields(locationObj));
             }
           },
-          () => {},
         );
       }
     }
@@ -386,13 +379,11 @@ const EnhancedCascadingMode = ({
         `/rest/storage/devices?roomId=${selectedRoom.id}`,
         (response) => {
           // Filter out inactive devices (only show active ones in creation form)
+          // Note: callback receives undefined on error, so use || [] fallback
           const activeDevices = (response || []).filter(
             (d) => d.active !== false,
           );
           setDevices(activeDevices);
-        },
-        () => {
-          setDevices([]);
         },
       );
       // Reset child selections only if this is a new room selection (not restoring from selectedLocation)
@@ -434,13 +425,11 @@ const EnhancedCascadingMode = ({
         `/rest/storage/shelves?deviceId=${selectedDevice.id}`,
         (response) => {
           // Filter out inactive shelves (only show active ones in creation form)
+          // Note: callback receives undefined on error, so use || [] fallback
           const activeShelves = (response || []).filter(
             (s) => s.active !== false,
           );
           setShelves(activeShelves);
-        },
-        () => {
-          setShelves([]);
         },
       );
       setSelectedShelf(null);
@@ -467,13 +456,11 @@ const EnhancedCascadingMode = ({
         `/rest/storage/racks?shelfId=${selectedShelf.id}`,
         (response) => {
           // Filter out inactive racks (only show active ones in creation form)
+          // Note: callback receives undefined on error, so use || [] fallback
           const activeRacks = (response || []).filter(
             (r) => r.active !== false,
           );
           setRacks(activeRacks);
-        },
-        () => {
-          setRacks([]);
         },
       );
       setSelectedRack(null);

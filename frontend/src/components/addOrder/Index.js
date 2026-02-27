@@ -60,16 +60,11 @@ const Index = () => {
 
   let SampleTypes = [];
   let sampleTypeMap = {};
-  let initializePanelTests = false;
-  let allTestsMap = {};
-  let panelTestsMap = {};
-  let crossTestSampleTypeTestIdMap = {};
-  let sampleTypeTestIdMap = {};
+  let CrossPanels = [];
+  let CrossTests = [];
   let sampleTypeOrder;
   let crossSampleTypeMap = {};
   let crossSampleTypeOrderMap = {};
-  let CrossPanels = [];
-  let CrossTests = [];
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -378,7 +373,9 @@ const Index = () => {
 
   const getLabOrder = (orderNumber, success, failure) => {
     if (!failure) {
-      failure = () => {};
+      failure = () => {
+        // Default failure handler - no-op
+      };
     }
 
     fetch(
@@ -559,7 +556,9 @@ const Index = () => {
     };
     getFromOpenElisServer(
       "/rest/departments-for-site?refferingSiteId=" + requestingOrg.id,
-      () => {},
+      () => {
+        // Departments loaded - handled elsewhere
+      },
     );
   };
 
@@ -570,7 +569,9 @@ const Index = () => {
     };
     getFromOpenElisServer(
       "/rest/departments-for-site?refferingSiteId=" + location.id,
-      () => {},
+      () => {
+        // Departments loaded - handled elsewhere
+      },
     );
   };
 

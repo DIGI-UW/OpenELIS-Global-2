@@ -3,7 +3,7 @@ package org.openelisglobal.storage.form.response;
 public class StorageRackResponse {
     private Integer id;
     private String label;
-    private String shortCode;
+    private String code; // Renamed from shortCode per spec Session 2025-11-16 simplification
     private Boolean active;
     private String fhirUuid;
     private Integer parentShelfId;
@@ -34,12 +34,12 @@ public class StorageRackResponse {
         this.label = label;
     }
 
-    public String getShortCode() {
-        return shortCode;
+    public String getCode() {
+        return code;
     }
 
-    public void setShortCode(String shortCode) {
-        this.shortCode = shortCode;
+    public void setCode(String code) {
+        this.code = code;
     }
 
     public Boolean getActive() {

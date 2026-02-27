@@ -101,6 +101,14 @@ cy.visit("/storage");
 cy.wait("@getRooms");
 ```
 
+**Important clarification**:
+
+- In `frontend/cypress/e2e/`, `cy.intercept()` is **spy-first**.
+- Do **not** stub the mutation endpoint under test (`PUT|POST|PATCH|DELETE`)
+  with fabricated success responses.
+- If backend responses are stubbed for the workflow you are validating, that
+  test is a mocked-backend UI test (not real E2E).
+
 **Cleanup**:
 
 ```javascript
@@ -204,6 +212,8 @@ cy.intercept("GET", "/rest/rooms", { fixture: "rooms.json" }).as("getRooms");
 
 **DO NOT**:
 
+- ❌ Stub mutation endpoints (`PUT|POST|PATCH|DELETE`) under test — makes it a
+  mocked-backend UI test, not E2E
 - ❌ Use CSS selectors (use data-testid)
 - ❌ Use `cy.wait(5000)` (use `.should()`)
 - ❌ Set up intercepts after actions

@@ -37,6 +37,12 @@ public class BaseStorageTestValidationTest extends BaseWebContextSensitiveTest {
         super.setUp();
         jdbcTemplate = new JdbcTemplate(dataSource);
         executeDataSetWithStateManagement("testdata/user-role.xml");
+        // Load type_of_sample data (required for sample_item typeosamp_id foreign key)
+        executeDataSetWithStateManagement("testdata/typeofsample.xml");
+        // Load status_of_sample data (required for sample/sample_item status_id foreign
+        // key)
+        executeDataSetWithStateManagement("testdata/status-of-sample.xml");
+        // Load storage hierarchy + E2E test data via DBUnit
         executeDataSetWithStateManagement("testdata/storage-e2e.xml");
     }
 

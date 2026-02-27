@@ -1,5 +1,6 @@
 {
-  "title": "Cote d'Ivoire Regional Laboratory LIS",
-  "loginRedirect": "/login",
+  "title": "Nidan Laboratory LIS",
+  "loginRedirect": "/openelis/login",
+  "logoutRedirect": "/openelis/login",
   "serverBaseUrl": "/api/OpenELIS-Global"
 }

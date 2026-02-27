@@ -17,15 +17,10 @@ import {
   TableSelectRow,
   TableSelectAll,
   TableContainer,
-  Pagination,
-  Search,
   TextInput,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
 import {
@@ -36,6 +31,7 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification.js";
+import { assignTo } from "../../utils/Navigation.js";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
@@ -94,7 +90,7 @@ function OrganizationAddModify() {
       );
     } else {
       setTimeout(() => {
-        window.location.assign("/MasterListsPage/organizationManagement");
+        assignTo("/MasterListsPage/organizationManagement");
       }, 1000);
     }
     return () => {
@@ -390,7 +386,7 @@ function OrganizationAddModify() {
       kind: NotificationKinds.success,
     });
     setTimeout(() => {
-      window.location.assign("/MasterListsPage/organizationManagement");
+      assignTo("/MasterListsPage/organizationManagement");
     }, 200);
     setNotificationVisible(true);
   };
@@ -654,8 +650,8 @@ function OrganizationAddModify() {
                       }
                       value={
                         typeOfActivity &&
-                        typeOfActivity.organization &&
-                        typeOfActivity.organization.organizationName != ""
+                          typeOfActivity.organization &&
+                          typeOfActivity.organization.organizationName != ""
                           ? typeOfActivity.organization.organizationName
                           : ""
                       }
@@ -747,9 +743,9 @@ function OrganizationAddModify() {
                             indeterminate={
                               selectedRowIds.length > 0 &&
                               selectedRowIds.length <
-                                typeOfActivityShow
-                                  .slice((page - 1) * pageSize, page * pageSize)
-                                  .filter((row) => !row.disabled).length
+                              typeOfActivityShow
+                                .slice((page - 1) * pageSize, page * pageSize)
+                                .filter((row) => !row.disabled).length
                             }
                             onSelect={() => {
                               setSaveButton(false);
@@ -830,8 +826,8 @@ function OrganizationAddModify() {
               </Button>{" "}
               <Button
                 onClick={() =>
-                  window.location.assign(
-                    "/MasterListsPage/organizationManagement",
+                  assignTo(
+                    `/rest/GetOrganizationCSV?ID=${selectedRowIds.join(",")}`,
                   )
                 }
                 kind="tertiary"

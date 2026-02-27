@@ -5,7 +5,7 @@ import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import * as ServiceWorker from "./serviceWorkerRegistration";
 
-ServiceWorker.registerServiceWorker();
+ServiceWorker.unregisterServiceWorker();
 
 ReactDOM.render(
   <React.StrictMode>
