@@ -68,8 +68,8 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
     }
 
     @Override
-    public boolean canProcess(String fileName) {
-        return fileName.endsWith("-levels.csv");
+    public String getFileMatcher() {
+        return "*-levels.csv";
     }
 
     @Override

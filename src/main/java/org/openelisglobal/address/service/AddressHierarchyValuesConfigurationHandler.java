@@ -50,8 +50,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Notes: - First line is the header defining level names - Each column
  * represents a hierarchy level (left to right = top to bottom) - Duplicate
  * entries at any level are automatically deduplicated - Parent-child
- * relationships are inferred from the row structure - Files ending with
- * "-levels.csv" are skipped (handled by AddressHierarchyConfigurationHandler)
+ * relationships are inferred from the row structure
  *
  * <p>
  * Performance: Uses batch processing with configurable batch size for large
@@ -86,12 +85,6 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
     @Override
     public int getLoadOrder() {
         return 55; // After levels are created (50)
-    }
-
-    @Override
-    public boolean canProcess(String fileName) {
-        // Process all CSV files EXCEPT level configuration files
-        return !fileName.endsWith("-levels.csv");
     }
 
     @Override
