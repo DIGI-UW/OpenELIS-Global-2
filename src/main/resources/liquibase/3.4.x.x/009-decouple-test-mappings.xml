@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      Decouple analyzer_test_map from phantom Analyzer rows.
+
+      Currently keyed by (analyzer_id, analyzer_test_name) where analyzer_id
+      references phantom rows created by plugin connect(). Test mappings are
+      really a property of the plugin TYPE, not a physical device instance.
+
+      This migration re-keys to (analyzer_type_id, analyzer_test_name) and
+      deletes the phantom Analyzer rows that cluttered the dashboard.
+    -->
+
+    <!-- Step 1: Add analyzer_type_id column -->
+    <changeSet id="011-009-01-add-analyzer-type-id-column" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="analyzer_test_map" columnName="analyzer_type_id"/>
+            </not>
+        </preConditions>
+        <comment>Add analyzer_type_id to analyzer_test_map for type-level test mappings</comment>
+        <addColumn tableName="analyzer_test_map">
+            <column name="analyzer_type_id" type="NUMERIC(10,0)"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Step 2: Populate analyzer_type_id from analyzer.analyzer_type_id -->
+    <changeSet id="011-009-02-populate-analyzer-type-id" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="analyzer_test_map" columnName="analyzer_type_id"/>
+        </preConditions>
+        <comment>Migrate existing test mappings: copy analyzer_type_id from parent analyzer row</comment>
+        <sql>
+            UPDATE analyzer_test_map atm
+            SET analyzer_type_id = a.analyzer_type_id
+            FROM analyzer a
+            WHERE atm.analyzer_id = a.id
+            AND a.analyzer_type_id IS NOT NULL;
+        </sql>
+    </changeSet>
+
+    <!-- Step 3: Drop old PK and FK, make analyzer_id nullable -->
+    <changeSet id="011-009-03-drop-old-pk-and-fk" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <primaryKeyExists tableName="analyzer_test_map" primaryKeyName="analyzer_test_map_pk"/>
+        </preConditions>
+        <comment>Drop old PK (analyzer_id, analyzer_test_name) and FK to analyzer</comment>
+        <dropPrimaryKey tableName="analyzer_test_map" constraintName="analyzer_test_map_pk"/>
+        <dropForeignKeyConstraint baseTableName="analyzer_test_map"
+                                  constraintName="analyzer_test_map_analyzer_fk"/>
+        <dropNotNullConstraint tableName="analyzer_test_map"
+                               columnName="analyzer_id"
+                               columnDataType="NUMERIC(10,0)"/>
+    </changeSet>
+
+    <!--
+      Step 4: Deduplicate before creating new PK.
+
+      Multi-analyzer plugins (e.g., Cobas4800 creates both Cobas4800VLAnalyzer
+      and Cobas4800EIDAnalyzer) share the same analyzer_type_id. Their test
+      mappings may collide on (analyzer_type_id, analyzer_test_name). Keep one
+      row per (analyzer_type_id, analyzer_test_name).
+    -->
+    <changeSet id="011-009-04-deduplicate-mappings" author="madagascar-analyzer-integration">
+        <comment>Remove duplicate (analyzer_type_id, analyzer_test_name) rows before creating new PK</comment>
+        <sql>
+            DELETE FROM analyzer_test_map a
+            USING analyzer_test_map b
+            WHERE a.ctid &lt; b.ctid
+            AND a.analyzer_type_id = b.analyzer_type_id
+            AND a.analyzer_test_name = b.analyzer_test_name;
+        </sql>
+    </changeSet>
+
+    <!-- Step 5: Create new PK on (analyzer_type_id, analyzer_test_name) -->
+    <changeSet id="011-009-05-create-new-pk" author="madagascar-analyzer-integration">
+        <comment>New PK: test mappings are keyed by plugin type, not physical device</comment>
+        <addNotNullConstraint tableName="analyzer_test_map"
+                              columnName="analyzer_type_id"
+                              columnDataType="NUMERIC(10,0)"/>
+        <addPrimaryKey tableName="analyzer_test_map"
+                       columnNames="analyzer_type_id, analyzer_test_name"
+                       constraintName="analyzer_test_map_pk"/>
+        <addForeignKeyConstraint baseTableName="analyzer_test_map"
+                                 baseColumnNames="analyzer_type_id"
+                                 constraintName="analyzer_test_map_analyzer_type_fk"
+                                 referencedTableName="analyzer_type"
+                                 referencedColumnNames="id"/>
+    </changeSet>
+
+    <!--
+      Step 6: Delete phantom Analyzer rows.
+
+      These were auto-created by legacy plugin connect() calls. They have no IP
+      address, no port, and exist only because a plugin JAR was loaded. After
+      migrating test mappings to analyzer_type_id, these rows serve no purpose.
+    -->
+    <changeSet id="011-009-06-delete-phantom-analyzer-rows" author="madagascar-analyzer-integration">
+        <comment>Delete phantom analyzer rows (no IP, no port) that were auto-created by plugin connect()</comment>
+        <sql>
+            DELETE FROM analyzer
+            WHERE ip_address IS NULL
+            AND port IS NULL
+            AND analyzer_type_id IS NOT NULL;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

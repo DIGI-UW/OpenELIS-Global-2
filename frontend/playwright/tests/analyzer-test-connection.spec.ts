@@ -7,7 +7,8 @@ import { AnalyzerFormPage } from "../fixtures/analyzer-form";
  *
  * Two test scenarios:
  * 1. Mock: fixture-loaded GeneXpert at 172.20.1.100:9600 (ASTM mock in Docker)
- * 2. Real: dynamically-created analyzer at 172.31.26.237:1200 (GeneXpert Dx VM)
+ * 2. Real: dynamically-created analyzer at 35.82.68.83:1200 (GeneXpert Dx VM)
+ *    Skipped in CI — requires the physical VM to be running.
  *
  * Both require the analyzer harness (bridge) to be running.
  */
@@ -55,9 +56,12 @@ test.describe("Analyzer Test Connection", () => {
  *
  * Creates an analyzer pointing to a real GeneXpert Dx v6.5 Windows VM,
  * tests the connection (which triggers ASTM line contention handling),
- * and cleans up. Requires the VM at 172.31.26.237:1200 to be running.
+ * and cleans up. Requires the VM at 35.82.68.83:1200 to be running.
+ *
+ * Skipped in CI — the GeneXpert VM is only reachable from the dev server.
  */
 test.describe("Real GeneXpert Test Connection", () => {
+  test.skip(!!process.env.CI, "Real GeneXpert VM not available in CI");
   test.describe.configure({ mode: "serial" });
 
   const uniqueSuffix = Date.now();
@@ -65,6 +69,7 @@ test.describe("Real GeneXpert Test Connection", () => {
   let createdAnalyzerId: string;
 
   test.afterAll(async ({ request }) => {
+    if (process.env.SKIP_CLEANUP) return;
     if (createdAnalyzerId) {
       try {
         await request.post(
@@ -95,7 +100,7 @@ test.describe("Real GeneXpert Test Connection", () => {
     await pluginOption.first().click();
 
     await form.selectType("Molecular");
-    await form.fillIpAddress("172.31.26.237");
+    await form.fillIpAddress("35.82.68.83");
     await form.fillPort("1200");
 
     await form.save();
@@ -142,7 +147,7 @@ test.describe("Real GeneXpert Test Connection", () => {
 
     // Verify analyzer info shows the real GeneXpert details
     const info = page.locator('[data-testid="test-connection-analyzer-info"]');
-    await expect(info).toContainText("172.31.26.237");
+    await expect(info).toContainText("35.82.68.83");
     await expect(info).toContainText("1200");
 
     // Click Test — bridge will handle ASTM line contention with real GeneXpert
