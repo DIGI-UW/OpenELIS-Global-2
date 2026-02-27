@@ -21,7 +21,7 @@ services:
     environment:
       - ASTM_PORT=9600
       - ASTM_TEMPLATE=genexpert_astm
-      - RESPONSE_DELAY_MS=100
+      - RESPONSE_DELAY_MS=0
     command: >
       python -u server.py
       --port 9600
@@ -89,7 +89,7 @@ services:
   # OE joins both default (proxy/db/fhir/frontend) and analyzer-net (mock/bridge).
   oe:
     environment:
-      - ANALYZER_BRIDGE_URL=https://openelis-analyzer-bridge:8443
+      - ANALYZER_BRIDGE_URL=http://openelis-analyzer-bridge:8443
     networks:
       default:
       analyzer-net:
