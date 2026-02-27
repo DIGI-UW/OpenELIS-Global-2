@@ -39,15 +39,16 @@ public interface DomainConfigurationHandler {
     }
 
     /**
-     * Checks if this handler can process the given file. This is used when multiple
-     * handlers share the same domain to filter which files each handler should
-     * process. By default, all files matching the extension are accepted.
+     * Returns an Ant-style glob pattern that determines which files this handler
+     * processes. When multiple handlers share the same domain, more-specific
+     * patterns (from handlers with lower load order) claim files first; broader
+     * patterns only see unclaimed files.
      *
-     * @param fileName the name of the file
-     * @return true if this handler should process the file, false to skip
+     * @return Ant-style glob pattern (e.g., {@code "*.csv"},
+     *         {@code "*-levels.csv"})
      */
-    default boolean canProcess(String fileName) {
-        return true;
+    default String getFileMatcher() {
+        return "*." + getFileExtension();
     }
 
     /**
