@@ -57,6 +57,8 @@ import ProgramDashboard from "./components/program/programDashboard.jsx";
 import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
 import { getFullPath, navigateTo } from "./components/utils/Navigation";
+import LabDashboard from "./components/home/LabDashboard.tsx";
+import IncomingOrders from "./components/incomingOrders/Index";
 
 export default function App() {
   const defaultLocale =
@@ -134,6 +136,7 @@ export default function App() {
     if (userSessionDetails.loginMethod === "SAML") {
       fetch(config.serverBaseUrl + "/Logout?useSAML=true", {
         //includes the browser sessionId in the Header for Authentication on the backend server
+        credentials: "include",
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -142,18 +145,19 @@ export default function App() {
       })
         .then((response) => response.text())
         .then((html) => {
-          const POPUP_HEIGHT = 700;
-          const POPUP_WIDTH = 600;
-          const top =
-            window.outerHeight / 2 + window.screenY - POPUP_HEIGHT / 2;
-          const left = window.outerWidth / 2 + window.screenX - POPUP_WIDTH / 2;
-          const newWindow = window.open(
-            "",
-            "SAML Popup",
-            `height=${POPUP_HEIGHT},width=${POPUP_WIDTH},top=${top},left=${left}`,
-          );
-          newWindow.document.write(html);
-          newWindow.document.close();
+          // Use a hidden iframe instead of a popup to process SAML SLO silently
+          const iframe = document.createElement("iframe");
+          iframe.style.display = "none";
+          iframe.name = "saml-logout-frame";
+          document.body.appendChild(iframe);
+          iframe.contentDocument.write(html);
+          iframe.contentDocument.close();
+          // Remove the iframe after a short delay to allow the logout request to complete
+          setTimeout(() => {
+            if (iframe.parentNode) {
+              iframe.parentNode.removeChild(iframe);
+            }
+          }, 5000);
           getUserSessionDetails();
           navigateTo(config.loginRedirect);
         })
@@ -161,22 +165,19 @@ export default function App() {
           console.error(error);
         });
     } else {
-      fetch(config.serverBaseUrl + "/Logout", {
-        //includes the browser sessionId in the Header for Authentication on the backend server
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": localStorage.getItem("CSRF"),
-        },
-      })
-        .then((response) => response.status)
-        .then(() => {
-          getUserSessionDetails();
-          navigateTo(config.loginRedirect);
-        })
-        .catch((error) => {
-          console.error(error);
-        });
+      // Use form POST so the browser handles the full request/redirect cycle.
+      // This ensures the session is invalidated before the login page loads,
+      // avoiding the race where fetch + navigate left session valid and Login redirected to dashboard.
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = config.serverBaseUrl + "/Logout";
+      const csrfInput = document.createElement("input");
+      csrfInput.type = "hidden";
+      csrfInput.name = "_csrf";
+      csrfInput.value = localStorage.getItem("CSRF") || "";
+      form.appendChild(csrfInput);
+      document.body.appendChild(form);
+      form.submit();
     }
   };
 
@@ -381,6 +382,7 @@ export default function App() {
                   path="/NoteBookInstanceEditForm/:notebookentryid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
+                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
@@ -457,6 +459,13 @@ export default function App() {
                   path="/ElectronicOrders"
                   exact
                   component={() => <EOrderPage />}
+                  role={Roles.RECEPTION}
+                />
+
+                <SecureRoute
+                  path="/IncomingOrders"
+                  exact
+                  component={() => <IncomingOrders />}
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute

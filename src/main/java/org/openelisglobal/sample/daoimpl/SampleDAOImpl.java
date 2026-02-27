@@ -625,12 +625,13 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
     @Transactional(readOnly = true)
     public Sample getSampleByReferringId(String referringId) throws LIMSRuntimeException {
 
-        String sql = "from Sample s where s.referringId = :referringId";
         try {
+            String sql = "from Sample s where s.referringId = :referringId order by s.enteredDate desc, s.id desc";
             Query<Sample> query = entityManager.unwrap(Session.class).createQuery(sql, Sample.class);
             query.setParameter("referringId", referringId);
-            Sample sample = query.uniqueResult();
-            return sample;
+            query.setMaxResults(1);
+            List<Sample> list = query.list();
+            return list == null || list.isEmpty() ? null : list.get(0);
         } catch (HibernateException e) {
             handleException(e, "getSampleByReferringId");
         }

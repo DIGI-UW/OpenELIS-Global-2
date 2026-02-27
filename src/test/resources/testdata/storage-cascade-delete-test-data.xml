@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- System User - ONLY columns that exist -->
+    <system_user id="1" login_name="testadmin"
+        last_name="Admin" first_name="Test" is_active="Y" is_employee="Y"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Storage Room -->
+    <storage_room id="10000" name="Test Room" code="TESTROOM"
+        description="Test room" active="true"
+        fhir_uuid="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <!-- Storage Device -->
+    <storage_device id="10000" name="Test Device"
+        code="TESTDEV" type="freezer" parent_room_id="10000" active="true"
+        fhir_uuid="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <!-- Storage Shelf -->
+    <storage_shelf id="10000" label="Test Shelf"
+        code="TESTSHELF" parent_device_id="10000" active="true"
+        fhir_uuid="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+    <storage_shelf id="10001" label="Cascade Delete Shelf"
+        code="CDSHELF" parent_device_id="10000" active="true"
+        fhir_uuid="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <!-- Storage Rack -->
+    <storage_rack id="10000" label="Test Rack" code="TESTRACK"
+        parent_shelf_id="10000" active="true"
+        fhir_uuid="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+    <storage_rack id="10004" label="Child Rack"
+        code="CHILDRACK" parent_shelf_id="10001" active="true"
+        fhir_uuid="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <!-- Sample - need to check its schema too but let's assume basic columns -->
+    <sample id="10000" accession_number="TEST-001"
+        received_date="2024-01-01 00:00:00" entered_date="2024-01-01 00:00:00"
+        lastupdated="2024-01-01 00:00:00" sys_user_id="1" />
+
+    <!-- Sample Item -->
+    <sample_item id="10000" samp_id="10000" sort_order="1"
+        status_id="1" lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Sample Storage Assignment - simplified (omit nullable columns with
+        defaults) -->
+    <sample_storage_assignment id="10000"
+        sample_item_id="10000" location_id="10004" location_type="rack"
+        assigned_by_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <!-- Sample Storage Movement - simplified -->
+    <sample_storage_movement id="10000"
+        sample_item_id="10000" previous_location_id="10000"
+        previous_location_type="rack" new_location_id="10004"
+        new_location_type="rack" moved_by_user_id="1"
+        last_updated="2024-01-02 00:00:00" />
+</dataset>

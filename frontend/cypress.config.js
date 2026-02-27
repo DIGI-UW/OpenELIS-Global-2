@@ -6,9 +6,9 @@ const path = require("path");
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 
 module.exports = defineConfig({
-  defaultCommandTimeout: 30000, // Increased timeout for slow operations
-  viewportWidth: 1200,
-  viewportHeight: 700,
+  defaultCommandTimeout: 3000, // 3 seconds - use Cypress retry-ability instead of long timeouts
+  viewportWidth: 1920, // Large desktop for full modal visibility (including warnings/checkboxes)
+  viewportHeight: 1080,
   video: false, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
   watchForFileChanges: false,
   screenshotOnRunFailure: true, // Take screenshots on failure (required per Constitution V.5)
@@ -36,11 +36,11 @@ module.exports = defineConfig({
       // Storage tasks below remain registered but won't be called (harmless)
       // To re-enable: Uncomment imports in e2e.js and remove excludeSpecPattern
 
-      // Task to log messages to terminal (for console.log capture)
-      // This is used to forward browser console logs to terminal
+      // Register all Cypress tasks in ONE handler (Cypress does not merge task handlers).
+      // This keeps logging/diagnostics and fixture utilities available across specs.
       on("task", {
+        // Log messages to the Node process stdout (captured by CI/tee logs)
         log(message, options = {}) {
-          // Only log if not explicitly disabled
           if (options.log !== false) {
             console.log(message);
           }
@@ -50,18 +50,14 @@ module.exports = defineConfig({
           console.log(JSON.stringify(obj, null, 2));
           return null;
         },
-      });
 
-      // Task to load storage test fixtures
-      on("task", {
+        // Storage test fixture helpers
         loadStorageTestData() {
           const { execSync } = require("child_process");
-          // Use unified fixture loader script
           const loaderScript = path.join(
             PROJECT_ROOT,
             "src/test/resources/load-test-fixtures.sh",
           );
-          // Verify script exists
           if (!fs.existsSync(loaderScript)) {
             throw new Error(
               `Fixture loader script not found: ${loaderScript} (PROJECT_ROOT: ${PROJECT_ROOT})`,
@@ -78,26 +74,51 @@ module.exports = defineConfig({
             console.error("Error loading test fixtures:", error);
             console.error("Loader script path:", loaderScript);
             console.error("Project root:", PROJECT_ROOT);
-            return null;
+            // Throw error to fail the test immediately with a clear message
+            // This prevents tests from running with missing fixtures
+            throw new Error(
+              `Failed to load test fixtures: ${error.message || error}. Check logs above for details.`,
+            );
           }
         },
         checkStorageFixturesExist() {
           const { execSync } = require("child_process");
-          // Check if E2E test data exists (quick check for a known test room)
           const checkSql = `
-            SELECT COUNT(*) as count FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');
+            SELECT
+              (SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE')) AS rooms,
+              (SELECT COUNT(*) FROM storage_device WHERE id BETWEEN 10 AND 20) AS devices,
+              (SELECT COUNT(*) FROM storage_shelf WHERE id BETWEEN 20 AND 30) AS shelves,
+              (SELECT COUNT(*) FROM storage_rack WHERE id BETWEEN 30 AND 40) AS racks,
+              (SELECT COUNT(*) FROM storage_box WHERE id BETWEEN 100 AND 10000) AS boxes;
           `;
           try {
             const result = execSync(
-              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -c "${checkSql}"`,
+              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -A -F "," -c "${checkSql}"`,
               {
                 cwd: PROJECT_ROOT,
                 shell: "/bin/bash",
                 encoding: "utf8",
               },
             );
-            const count = parseInt(result.trim(), 10);
-            return count >= 2; // At least 2 test rooms exist
+            const raw = (result || "").trim();
+            const [rooms, devices, shelves, racks, boxes] = raw
+              .split(",")
+              .map((v) => parseInt((v || "").trim(), 10));
+
+            // Fixtures are only considered present if the FULL hierarchy exists.
+            // (Rooms alone are not sufficient; shelves/racks/boxes are critical for location CRUD + box grid tests.)
+            return (
+              Number.isFinite(rooms) &&
+              Number.isFinite(devices) &&
+              Number.isFinite(shelves) &&
+              Number.isFinite(racks) &&
+              Number.isFinite(boxes) &&
+              rooms >= 2 &&
+              devices >= 1 &&
+              shelves >= 1 &&
+              racks >= 1 &&
+              boxes >= 1
+            );
           } catch (error) {
             console.error("Error checking storage fixtures:", error);
             return false;
@@ -132,6 +153,194 @@ module.exports = defineConfig({
             return null;
           } catch (error) {
             console.error("Error cleaning storage test data:", error);
+            return null;
+          }
+        },
+      });
+
+      // Patient Merge tasks
+      on("task", {
+        loadPatientMergeTestData() {
+          const { execSync } = require("child_process");
+          const sqlFile = path.join(
+            __dirname,
+            "cypress/support/patient-merge-setup.sql",
+          );
+          if (!fs.existsSync(sqlFile)) {
+            throw new Error(`Patient merge SQL fixture not found: ${sqlFile}`);
+          }
+          try {
+            execSync(
+              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims < "${sqlFile}"`,
+              {
+                stdio: "inherit",
+                cwd: PROJECT_ROOT,
+                shell: "/bin/bash",
+              },
+            );
+            return null;
+          } catch (error) {
+            console.error("Error loading patient merge test data:", error);
+            return null;
+          }
+        },
+        checkPatientMergeFixturesExist() {
+          const { execSync } = require("child_process");
+          const checkSql = `SELECT COUNT(*) as count FROM clinlims.patient WHERE national_id LIKE 'UG-MERGE-%';`;
+          try {
+            const result = execSync(
+              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -c "${checkSql}"`,
+              {
+                cwd: PROJECT_ROOT,
+                shell: "/bin/bash",
+                encoding: "utf8",
+              },
+            );
+            const count = parseInt(result.trim(), 10);
+            return count >= 2; // Both Alice and Bob exist
+          } catch (error) {
+            console.error("Error checking patient merge fixtures:", error);
+            return false;
+          }
+        },
+        cleanPatientMergeTestData() {
+          const { execSync } = require("child_process");
+          const sql = `
+            DELETE FROM clinlims.sample_human WHERE patient_id IN (SELECT id FROM clinlims.patient WHERE national_id LIKE 'UG-MERGE-%');
+            DELETE FROM clinlims.patient_identity WHERE patient_id IN (SELECT id FROM clinlims.patient WHERE national_id LIKE 'UG-MERGE-%');
+            DELETE FROM clinlims.patient WHERE national_id LIKE 'UG-MERGE-%';
+            DELETE FROM clinlims.person WHERE email LIKE '%@testmerge.com';
+            DELETE FROM clinlims.sample WHERE accession_number LIKE 'MERGE-%';
+          `;
+          try {
+            execSync(
+              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -c "${sql}"`,
+              {
+                stdio: "inherit",
+                cwd: PROJECT_ROOT,
+                shell: "/bin/bash",
+              },
+            );
+            return null;
+          } catch (error) {
+            console.error("Error cleaning patient merge test data:", error);
+            return null;
+          }
+        },
+        // Verification task: Get sample count for a patient by national ID
+        getPatientSampleCount(nationalId) {
+          const { execSync } = require("child_process");
+          const sql = `
+            SELECT COUNT(*) as sample_count
+            FROM clinlims.sample_human sh
+            JOIN clinlims.patient p ON sh.patient_id = p.id
+            WHERE p.national_id = '${nationalId}';
+          `;
+          try {
+            const result = execSync(
+              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -c "${sql}"`,
+              {
+                cwd: PROJECT_ROOT,
+                shell: "/bin/bash",
+                encoding: "utf8",
+              },
+            );
+            return parseInt(result.trim(), 10);
+          } catch (error) {
+            console.error("Error getting patient sample count:", error);
+            return -1;
+          }
+        },
+        // Verification task: Get patient demographics by national ID
+        getPatientDemographics(nationalId) {
+          const { execSync } = require("child_process");
+          const sql = `
+            SELECT
+              per.first_name,
+              per.last_name,
+              per.primary_phone,
+              per.email,
+              per.street_address,
+              per.city,
+              p.national_id,
+              p.is_merged,
+              per.work_phone,
+              per.fax
+            FROM clinlims.patient p
+            JOIN clinlims.person per ON p.person_id = per.id
+            WHERE p.national_id = '${nationalId}';
+          `;
+          try {
+            const result = execSync(
+              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -A -F '|' -c "${sql}"`,
+              {
+                cwd: PROJECT_ROOT,
+                shell: "/bin/bash",
+                encoding: "utf8",
+              },
+            );
+            const parts = result.trim().split("|");
+            if (parts.length >= 7) {
+              return {
+                firstName: parts[0],
+                lastName: parts[1],
+                phone: parts[2],
+                email: parts[3],
+                address: parts[4],
+                city: parts[5],
+                nationalId: parts[6],
+                isMerged: parts[7] === "t" || parts[7] === "true",
+                workPhone: parts[8] || null,
+                fax: parts[9] || null,
+              };
+            }
+            return null;
+          } catch (error) {
+            console.error("Error getting patient demographics:", error);
+            return null;
+          }
+        },
+        // Verification task: Check if merge audit record exists
+        getMergeAuditRecord(mergedPatientNationalId) {
+          const { execSync } = require("child_process");
+          // Column names per Liquibase schema (016-patient-merge-create-audit-table.xml):
+          // - reason (not merge_reason)
+          // - merge_date (not merged_at)
+          const sql = `
+            SELECT
+              pma.id,
+              pma.primary_patient_id,
+              pma.merged_patient_id,
+              pma.reason,
+              pma.merge_date
+            FROM clinlims.patient_merge_audit pma
+            JOIN clinlims.patient p ON pma.merged_patient_id = p.id
+            WHERE p.national_id = '${mergedPatientNationalId}'
+            ORDER BY pma.merge_date DESC
+            LIMIT 1;
+          `;
+          try {
+            const result = execSync(
+              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -A -F '|' -c "${sql}"`,
+              {
+                cwd: PROJECT_ROOT,
+                shell: "/bin/bash",
+                encoding: "utf8",
+              },
+            );
+            const parts = result.trim().split("|");
+            if (parts.length >= 4) {
+              return {
+                auditId: parts[0],
+                primaryPatientId: parts[1],
+                mergedPatientId: parts[2],
+                mergeReason: parts[3],
+                mergedAt: parts[4],
+              };
+            }
+            return null;
+          } catch (error) {
+            console.error("Error getting merge audit record:", error);
             return null;
           }
         },
@@ -187,9 +396,8 @@ module.exports = defineConfig({
     },
     baseUrl: "https://localhost",
     testIsolation: false,
-    // DISABLED: Exclude storage tests (001-sample-storage feature)
-    // Remove "**/storage*.cy.js" from this array to re-enable storage tests
-    excludeSpecPattern: ["**/storage*.cy.js"],
+    // Storage tests are now enabled for M2 frontend verification
+    // No excludeSpecPattern - all storage tests should run
     env: {
       STARTUP_WAIT_MILLISECONDS: 300000,
     },

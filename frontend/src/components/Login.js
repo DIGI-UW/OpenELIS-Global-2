@@ -56,12 +56,6 @@ function Login(props) {
 
   useEffect(() => {
     firstInput?.current?.focus();
-
-    const interval = setInterval(() => {
-      checkLogin();
-    }, 1000 * 3);
-
-    return () => clearInterval(interval); // clear your interval to prevent memory leaks.
   }, []);
 
   useEffect(() => {
@@ -217,18 +211,6 @@ function Login(props) {
                   }}
                   onSubmit={(values) => {
                     doLogin(values);
-                    fetch(config.serverBaseUrl + "/LoginPage", {
-                      //includes the browser sessionId in the Header for Authentication on the backend server
-                      credentials: "include",
-                      method: "GET",
-                    })
-                      .then((response) => response.status)
-                      .then(() => {
-                        doLogin(values);
-                      })
-                      .catch((error) => {
-                        console.error(error);
-                      });
                   }}
                 >
                   {({ isValid, handleChange, handleSubmit }) => (

@@ -35,4 +35,12 @@ public interface StorageRackDAO extends BaseDAO<StorageRack, Integer> {
 
     StorageRack findByLabelAndParentShelfId(String label, Integer parentShelfId);
 
+    /**
+     * Find rack by code (for code uniqueness validation)
+     *
+     * @param code Rack code
+     * @return StorageRack or null if not found
+     */
+    StorageRack findByCode(String code);
+
 }

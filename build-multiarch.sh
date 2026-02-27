@@ -6,7 +6,7 @@
 set -e
 
 # Configuration
-DOCKERHUB_USER="dipakthapa"
+DOCKERHUB_USER="trigonaltechnology"
 VERSION="${1:-latest}"
 PLATFORMS="linux/amd64,linux/arm64"
 

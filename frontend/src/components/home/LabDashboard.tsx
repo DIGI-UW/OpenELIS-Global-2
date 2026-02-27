@@ -34,6 +34,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { useHistory } from "react-router-dom";
 
 interface DashBoardProps {}
 
@@ -48,7 +49,8 @@ type MetricType =
   | "ORDERS_IN_PROGRESS"
   | "ORDERS_READY_FOR_VALIDATION"
   | "ORDERS_COMPLETED_TODAY"
-  | "INCOMING_ORDERS";
+  | "INCOMING_ORDERS"
+  | "SAMPLES_TO_COLLECT";
 
 interface UserSessionDetails {
   userSessionDetails: any;
@@ -62,6 +64,7 @@ interface Notification {
 
 const LabDashboard: React.FC<DashBoardProps> = () => {
   const intl = useIntl();
+  const history = useHistory();
 
   const [counts, setCounts] = useState({
     ordersInProgress: 0,
@@ -74,6 +77,7 @@ const LabDashboard: React.FC<DashBoardProps> = () => {
     incomigOrders: 0,
     averageTurnAroudTime: 0,
     delayedTurnAround: 0,
+    samplesToCollect: 0,
   });
 
   const [timeMetrics, setTimeMetrics] = useState({
@@ -110,6 +114,16 @@ const LabDashboard: React.FC<DashBoardProps> = () => {
 
   useEffect(() => {
     getFromOpenElisServer("/rest/home-dashboard/metrics", loadCount);
+    getFromOpenElisServer("/rest/incoming-orders", (data) => {
+      if (!componentMounted.current) {
+        return;
+      }
+      const list = Array.isArray(data) ? data : [];
+      setCounts((prev) => ({
+        ...prev,
+        samplesToCollect: list.length,
+      }));
+    });
 
     return () => {
       // This code runs when component is unmounted
@@ -263,7 +277,13 @@ const LabDashboard: React.FC<DashBoardProps> = () => {
       subTitle: <FormattedMessage id="label.electronic.orders" />,
       type: "INCOMING_ORDERS",
       value: counts.incomigOrders,
-    }
+    },
+    {
+      title: <FormattedMessage id="dashboard.samplesToCollect.label" />,
+      subTitle: <FormattedMessage id="dashboard.samplesToCollect.subtitle.label" />,
+      type: "SAMPLES_TO_COLLECT",
+      value: counts.samplesToCollect,
+    },
   ];
 
   const tilesWithTabs = [
@@ -281,6 +301,10 @@ const LabDashboard: React.FC<DashBoardProps> = () => {
   };
 
   const handleMaximizeClick = (tile) => {
+    if (tile?.type === "SAMPLES_TO_COLLECT") {
+      history.push("/IncomingOrders");
+      return;
+    }
     if (
       testSections?.length > 0 ||
       hasRole(userSessionDetails, "Global Administrator")

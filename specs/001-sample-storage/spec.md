@@ -227,7 +227,8 @@ information displayed for context and sorting/grouping capabilities.
 - Q: Which fields should be editable vs read-only in the Edit modal? → A: Code
   and Parent are read-only (only name/description/attributes editable, prevents
   structural changes). [NOTE: Superseded by Session 2025-11-16 - Code is now
-  editable in edit modal; Parent remains read-only]
+  editable in edit modal. Superseded by Session 2025-12-16 - Parent is now
+  editable with constraint warnings for downstream samples]
 
 ### Session 2025-11-06
 
@@ -1588,18 +1589,22 @@ operations.
   - **Device**: Name (editable), Code (editable, ≤10 chars, auto-generated on
     create), Type (editable), Temperature setting (optional, editable), Capacity
     limit (optional, editable), Active/Inactive status (editable), Parent Room
-    (read-only)
+    (editable via dropdown, with constraint warning if samples exist downstream)
   - **Shelf**: Name (editable), Code (editable, ≤10 chars, auto-generated on
     create), Capacity limit (optional, editable), Active/Inactive status
-    (editable), Parent Device (read-only)
+    (editable), Parent Device (editable via dropdown, with constraint warning if
+    samples exist downstream)
   - **Rack**: Name (editable), Code (editable, ≤10 chars, auto-generated on
     create), Dimensions (rows, columns, editable), Position schema hint
     (optional, editable), Active/Inactive status (editable), Parent Shelf
-    (read-only)
+    (editable via dropdown, with constraint warning if samples exist downstream)
 - **FR-037l1**: Code field MUST be editable in Edit modal (see Session
   2025-11-16 for code/short-code simplification). Parent relationship fields
-  MUST be read-only in Edit modal to prevent structural changes that could break
-  references or hierarchy integrity
+  MUST be editable via dropdown selector in both Create and Edit modals. When
+  changing parent in Edit modal, system MUST check for downstream samples and
+  display warning if samples are assigned to child locations (similar to delete
+  constraint checking). User MUST acknowledge warning before saving parent
+  change.
 - **FR-037m**: Edit modal MUST validate code uniqueness within parent scope and
   parent-child relationships before saving
 - **FR-037n**: Edit modal MUST display Cancel and "Save Changes" buttons in

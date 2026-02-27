@@ -35,6 +35,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
@@ -312,10 +313,17 @@ public class SamplePatientUpdateData {
         sample.setAccessionNumber(accessionNumber);
         sample.setReferringId(referringId);
 
+        LogEvent.logInfo(this.getClass().getSimpleName(), "createPopulatedSample",
+                "accessionNumber=" + accessionNumber + ", updateData.referringId=" + referringId
+                        + ", sampleOrder.externalOrderNumber=" + sampleOrder.getExternalOrderNumber()
+                        + ", sampleOrder.requesterSampleID=" + sampleOrder.getRequesterSampleID());
+
         sample.setEnteredDate(DateUtil.getNowAsSqlDate());
 
         sample.setReceivedTimestamp(DateUtil.convertStringDateToTimestamp(receivedDate));
-        sample.setReferringId(sampleOrder.getRequesterSampleID());
+        if (GenericValidator.isBlankOrNull(sample.getReferringId())) {
+            sample.setReferringId(sampleOrder.getRequesterSampleID());
+        }
 
         if (useReceiveDateForCollectionDate) {
             sample.setCollectionDateForDisplay(collectionDateFromReceiveDate);

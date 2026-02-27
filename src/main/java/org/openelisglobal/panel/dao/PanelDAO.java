@@ -65,4 +65,6 @@ public interface PanelDAO extends BaseDAO<Panel, String> {
     void clearIDMaps();
 
     Panel getPanelByLoincCode(String loincCode);
+
+    Panel getPanelByGUID(String guid);
 }

@@ -5,6 +5,12 @@
     <localization id="2" english="Test Localization 2"
         french="Localisation de Test 2" lastupdated="2023-12-01 12:00:00" />
 
+    <!-- Status of Sample - Required for foreign key constraint -->
+    <status_of_sample id="1" code="100"
+        status_type="Received" lastupdated="2023-12-01 12:00:00" />
+    <status_of_sample id="2" code="200"
+        status_type="In Progress" lastupdated="2023-12-01 12:00:00" />
+
     <type_of_sample id="901" description="Blood Sample"
         name_localization_id="1" lastupdated="2023-12-01 12:00:00" />
     <type_of_sample id="902" description="Urine Sample"
@@ -24,12 +30,14 @@
         received_date="2024-06-03 00:00:00.0"
         entered_date="2024-06-03 00:00:00.0"
         collection_date="2024-06-03 00:00:00.0"
-        lastupdated="2023-11-01 12:00:00" />
+        lastupdated="2023-11-01 12:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440010" />
     <sample id="2" accession_number="13333" status_id="2"
         received_date="2024-06-04 00:00:00.0"
         entered_date="2024-06-03 00:00:00.0"
         collection_date="2024-06-03 00:00:00.0"
-        lastupdated="2023-11-01 12:00:00" />
+        lastupdated="2023-11-01 12:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440011" />
 
     <!-- Sample Item -->
     <sample_item id="201" sort_order="1" status_id="1"

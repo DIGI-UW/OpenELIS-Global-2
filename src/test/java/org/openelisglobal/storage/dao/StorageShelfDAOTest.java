@@ -55,31 +55,31 @@ public class StorageShelfDAOTest extends BaseWebContextSensitiveTest {
         jdbcTemplate = new JdbcTemplate(dataSource);
         cleanTestData();
 
-        // Create test room
-        testRoomId = 2100;
+        // Create test room - use high IDs (9100+) to avoid conflicts with other tests
+        testRoomId = 9100;
         jdbcTemplate.update(
                 "INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) "
                         + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                testRoomId, "Test Room", "TEST-ROOM", true, 1);
+                testRoomId, "Test Room", "TSTRM-SHF", true, 1);
         testRoom = storageRoomDAO.get(testRoomId).orElse(null);
 
         // Create test device
-        testDeviceId = 2101;
+        testDeviceId = 9101;
         jdbcTemplate.update(
                 "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                testDeviceId, "Test Device", "TEST-DEV", "freezer", testRoomId, true, 1);
+                testDeviceId, "Test Device", "TSTDEV-SHF", "freezer", testRoomId, true, 1);
         testDevice = storageDeviceDAO.get(testDeviceId).orElse(null);
 
         // Create test shelves
-        testShelf1Id = 2102;
+        testShelf1Id = 9102;
         jdbcTemplate.update(
                 "INSERT INTO storage_shelf (id, label, code, parent_device_id, active, sys_user_id, last_updated, fhir_uuid) "
                         + "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
                 testShelf1Id, "Shelf A", "SHELF-A", testDeviceId, true, 1);
         testShelf1 = storageShelfDAO.get(testShelf1Id).orElse(null);
 
-        testShelf2Id = 2103;
+        testShelf2Id = 9103;
         jdbcTemplate.update(
                 "INSERT INTO storage_shelf (id, label, code, parent_device_id, active, sys_user_id, last_updated, fhir_uuid) "
                         + "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
@@ -94,11 +94,14 @@ public class StorageShelfDAOTest extends BaseWebContextSensitiveTest {
 
     private void cleanTestData() {
         try {
-            jdbcTemplate.execute("DELETE FROM storage_shelf WHERE id IN (2102, 2103)");
-            jdbcTemplate.execute("DELETE FROM storage_device WHERE id = 2101");
-            jdbcTemplate.execute("DELETE FROM storage_room WHERE id = 2100");
+            // Delete in FK order: shelf -> device -> room
+            // Use both code and id to handle leftover records from previous test runs
+            jdbcTemplate
+                    .execute("DELETE FROM storage_shelf WHERE code IN ('SHELF-A', 'SHELF-B') OR id IN (9102, 9103)");
+            jdbcTemplate.execute("DELETE FROM storage_device WHERE code = 'TSTDEV-SHF' OR id = 9101");
+            jdbcTemplate.execute("DELETE FROM storage_room WHERE code = 'TSTRM-SHF' OR id = 9100");
         } catch (Exception e) {
-            // Ignore cleanup errors
+            // Ignore cleanup errors - next test run will retry
         }
     }
 

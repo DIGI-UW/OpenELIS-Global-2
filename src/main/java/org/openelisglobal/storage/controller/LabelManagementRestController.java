@@ -192,7 +192,7 @@ public class LabelManagementRestController extends BaseRestController {
         } else if (location instanceof StorageShelf) {
             return ((StorageShelf) location).getCode();
         } else if (location instanceof StorageRack) {
-            return ((StorageRack) location).getShortCode();
+            return ((StorageRack) location).getCode();
         }
         return null;
     }

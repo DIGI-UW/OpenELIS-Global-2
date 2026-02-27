@@ -17,6 +17,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService;
+import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.action.BatchTestStatusChangeBean;
@@ -46,6 +47,9 @@ public class BatchTestReassignmentRestController extends BaseController {
 
     @Autowired
     private AnalysisService analysisService;
+
+    @Autowired
+    private FhirTransformService fhirTransformService;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -89,6 +93,20 @@ public class BatchTestReassignmentRestController extends BaseController {
             analysisService.updateAnalysises(cancelAnalysis, newAnalysis, getSysUserId(request));
 
         } catch (LIMSRuntimeException e) {
+            LogEvent.logError(e);
+        }
+
+        try {
+            List<String> analysisIds = new ArrayList<>();
+            for (Analysis analysis : cancelAnalysis) {
+                analysisIds.add(analysis.getId());
+            }
+            for (Analysis analysis : newAnalysis) {
+                analysisIds.add(analysis.getId());
+            }
+
+            fhirTransformService.transformAnalysisByIds(analysisIds);
+        } catch (Exception e) {
             LogEvent.logError(e);
         }
 

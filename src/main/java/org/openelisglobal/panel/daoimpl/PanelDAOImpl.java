@@ -335,4 +335,23 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
 
         return null;
     }
+
+    @Override
+    public Panel getPanelByGUID(String guid) {
+        if (guid == null) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "getPanelByGUID", "guid is null");
+        }
+        LogEvent.logDebug(this.getClass().getSimpleName(), "getPanelByGUID", "guid is: " + guid);
+
+        String sql = "From Panel p where p.guid = :guid";
+        try {
+            Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
+            query.setParameter("guid", guid);
+            return query.uniqueResult();
+        } catch (HibernateException e) {
+            handleException(e, "getPanelByGUID");
+        }
+
+        return null;
+    }
 }

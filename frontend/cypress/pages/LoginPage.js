@@ -83,6 +83,7 @@ class LoginPage {
     cy.wait(800);
   }
   clearInputs() {
+    cy.wait(4000);
     this.getUsernameElement().clear();
     this.getPasswordElement().clear();
   }
