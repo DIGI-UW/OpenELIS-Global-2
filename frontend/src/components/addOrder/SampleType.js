@@ -65,22 +65,23 @@ const SampleType = (props) => {
     sample?.sampleXML != null
       ? sample.sampleXML
       : {
-          collectionDate:
-            configurationProperties?.AUTOFILL_COLLECTION_DATE === "true"
-              ? configurationProperties.currentDateAsText
-              : "",
-          collector: "",
-          quantity: "",
-          uom: "",
-          rejected: false,
-          rejectionReason: "",
-          collectionTime:
-            configurationProperties?.AUTOFILL_COLLECTION_DATE === "true"
-              ? configurationProperties.currentTimeAsText
-              : "",
-        },
+        collectionDate:
+          configurationProperties?.AUTOFILL_COLLECTION_DATE === "true"
+            ? configurationProperties.currentDateAsText
+            : "",
+        collector: "",
+        quantity: "",
+        uom: "",
+        rejected: false,
+        rejectionReason: "",
+        collectionTime:
+          configurationProperties?.AUTOFILL_COLLECTION_DATE === "true"
+            ? configurationProperties.currentTimeAsText
+            : "",
+      },
   );
   const [loading, setLoading] = useState(true);
+  const [quantityError, setQuantityError] = useState("");
 
   const defaultSelect = { id: "", value: "Choose Rejection Reason" };
 
@@ -146,10 +147,20 @@ const SampleType = (props) => {
   }
 
   function handleQuantity(value) {
-    setSampleXml({
-      ...sampleXml,
-      quantity: value.target.value,
-    });
+    const raw = value.target.value;
+    if (raw === "") {
+      setQuantityError("");
+      setSampleXml({ ...sampleXml, quantity: "" });
+      return;
+    }
+    const num = Number(raw);
+    if (num < 0) {
+      setQuantityError("Quantity should not be negative.");
+      setSampleXml({ ...sampleXml, quantity: "0" });
+      return;
+    }
+    setQuantityError("");
+    setSampleXml({ ...sampleXml, quantity: raw });
   }
 
   function handleUom(value) {
@@ -527,20 +538,34 @@ const SampleType = (props) => {
           />
         )}
         <div className="inlineDiv" style={{ display: "flex", gap: "1rem" }}>
-          <TextInput
-            value={sampleXml.quantity}
-            name="quantity"
-            labelText={intl.formatMessage({
-              id: "sample.quantity.label",
-            })}
-            id="quantity"
-            type="number"
-            min="0"
-            onChange={(value) => handleQuantity(value)}
-            placeholder={intl.formatMessage({
-              id: "sample.quantity.label",
-            })}
-          />
+          <div style={{ flex: 1 }}>
+            <TextInput
+              value={sampleXml.quantity}
+              name="quantity"
+              labelText={intl.formatMessage({
+                id: "sample.quantity.label",
+              })}
+              id="quantity"
+              type="number"
+              min="0"
+              onChange={(value) => handleQuantity(value)}
+              onKeyDown={(e) => {
+                if (e.key === "-" || e.key === "e") e.preventDefault();
+              }}
+              onPaste={(e) => {
+                const pasted = e.clipboardData.getData("text");
+                if (pasted.includes("-")) e.preventDefault();
+              }}
+              placeholder={intl.formatMessage({
+                id: "sample.quantity.label",
+              })}
+            />
+            {quantityError && (
+              <p style={{ color: "#da1e28", fontSize: "0.75rem", marginTop: "0.25rem" }}>
+                {quantityError}
+              </p>
+            )}
+          </div>
 
           <CustomSelect
             id={"uomId_" + index}

@@ -5,6 +5,7 @@ import {
   Section,
   Heading,
   TextInput,
+  NumberInput,
   Button,
   InlineNotification,
 } from "@carbon/react";
@@ -114,6 +115,7 @@ export default function GenericSampleOrder({
 
   // Success state
   const [successData, setSuccessData] = useState(null);
+  const [quantityError, setQuantityError] = useState("");
 
   // Default breadcrumbs
   const defaultBreadcrumbs = [
@@ -209,6 +211,23 @@ export default function GenericSampleOrder({
 
   const updateDefaultField = (key, value) => {
     setDefaultForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleQuantityChange = (e, { value, direction }) => {
+    const raw = value !== undefined ? String(value) : "";
+    if (raw === "") {
+      setQuantityError("");
+      updateDefaultField("quantity", "");
+      return;
+    }
+    const num = Number(raw);
+    if (num < 0) {
+      setQuantityError("Quantity should not be negative.");
+      updateDefaultField("quantity", "0");
+      return;
+    }
+    setQuantityError("");
+    updateDefaultField("quantity", raw);
   };
 
   const handleAnswerChange = (e) => {
@@ -608,13 +627,13 @@ export default function GenericSampleOrder({
                 >
                   {labNoLoading
                     ? intl.formatMessage({
-                        id: "generating",
-                        defaultMessage: "Generating...",
-                      })
+                      id: "generating",
+                      defaultMessage: "Generating...",
+                    })
                     : intl.formatMessage({
-                        id: "genericSample.order.generateLabNo",
-                        defaultMessage: "Generate Lab Number",
-                      })}
+                      id: "genericSample.order.generateLabNo",
+                      defaultMessage: "Generate Lab Number",
+                    })}
                 </Button>
               )}
             </Column>
@@ -645,20 +664,25 @@ export default function GenericSampleOrder({
             <Grid fullWidth={true}>
               {showQuantity && (
                 <Column lg={8} md={8} sm={4}>
-                  <TextInput
+                  <NumberInput
                     id="quantity"
-                    labelText={
+                    label={
                       <FormattedMessage
                         id="sample.quantity.label"
                         defaultMessage="Quantity"
                       />
                     }
-                    type="number"
-                    value={defaultForm.quantity}
-                    onChange={(e) =>
-                      updateDefaultField("quantity", e.target.value)
-                    }
+                    min={0}
+                    value={defaultForm.quantity === "" ? "" : Number(defaultForm.quantity)}
+                    onChange={handleQuantityChange}
+                    hideSteppers={false}
+                    allowEmpty
                   />
+                  {quantityError && (
+                    <p style={{ color: "#da1e28", fontSize: "0.75rem", marginTop: "0.25rem" }}>
+                      {quantityError}
+                    </p>
+                  )}
                 </Column>
               )}
               {showUom && (
