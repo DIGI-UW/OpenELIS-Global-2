@@ -123,15 +123,22 @@ services:
       - analyzer-net
     restart: unless-stopped
 
-  # OE service stub — joins analyzer network and configures bridge URL
-  # so all outbound analyzer communication routes through the bridge.
+  # OE service stub — joins analyzer network (for test-connection to mocks at
+  # static IPs) while keeping default network (for proxy, db, fhir, frontend).
   oe:
     environment:
       - ANALYZER_BRIDGE_URL=https://openelis-analyzer-bridge:8443
     networks:
-      - analyzer-net
+      default:
+      analyzer-net:
     volumes:
       - serial-vol:/dev/serial
+
+  # Proxy needs analyzer-net to reach OE (which is on both networks).
+  proxy:
+    networks:
+      default:
+      analyzer-net:
 
 networks:
   analyzer-net:
