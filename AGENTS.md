@@ -1998,6 +1998,71 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
+## Cursor Cloud specific instructions
+
+### System dependencies (pre-installed in VM snapshot)
+
+- **Java 21** (OpenJDK, via system apt) — verified at `/usr/lib/jvm/java-21-openjdk-amd64`
+- **Maven 3.8.7** (via `sudo apt-get install -y maven`)
+- **Node.js 22.x** (pre-installed, compatible with `engines` in `frontend/package.json`)
+- **Docker CE 28.x + Docker Compose v5** — requires `fuse-overlayfs` storage driver and `iptables-legacy` for the nested Docker-in-Docker environment
+
+### Docker daemon startup
+
+The Docker daemon must be started manually in Cloud Agent VMs:
+
+```bash
+sudo dockerd &>/tmp/dockerd.log &
+sleep 3
+sudo chmod 666 /var/run/docker.sock
+```
+
+### Starting the full dev stack
+
+After the update script has run (which handles `git submodule update`, Maven builds, and `npm install`):
+
+```bash
+cp .env.example .env   # if .env doesn't exist
+docker compose -f dev.docker-compose.yml up -d
+```
+
+The webapp container takes ~60–90 seconds to fully deploy (WAR + Liquibase migrations). Monitor readiness with:
+
+```bash
+docker logs -f openelisglobal-webapp
+```
+
+Look for `Server startup in [XXXXX] milliseconds` in the logs.
+
+### Access points
+
+| Service | URL | Credentials |
+|---|---|---|
+| React UI | `https://localhost/` | `admin` / `adminADMIN!` |
+| Legacy UI | `https://localhost/api/OpenELIS-Global/` | same |
+| Backend direct | `https://localhost:8443/` | — |
+| FHIR Server | `http://localhost:8081/fhir/` | — |
+| PostgreSQL | `localhost:15432` | `clinlims` / `clinlims` |
+
+### Non-obvious gotchas
+
+- **Self-signed SSL**: All HTTPS endpoints use self-signed certs. Use `curl -sk` or browser exception flow.
+- **Backend unit tests**: `mvn test` runs ~3100 tests; ~7 integration tests (`PatientDAORedirectIntegrationTest`) fail without a running database — this is expected when running outside Docker.
+- **Frontend ESLint**: Pre-existing lint warnings/errors exist (420 errors, 1052 warnings). These are in the existing codebase and not regressions.
+- **Checksum permission errors**: The webapp logs `Permission denied` errors for `ocl-checksums.properties` and `questionnaires-checksums.properties` on startup — these are non-fatal and do not affect functionality.
+- **Hot reload**: After backend changes, rebuild the WAR and recreate the webapp container:
+  ```bash
+  mvn clean install -DskipTests -Dmaven.test.skip=true
+  docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+  ```
+- **Frontend hot reload**: Changes in `frontend/src/` are automatically picked up by the dev container via volume mount.
+
+### Standard commands reference
+
+See the "Common Development Commands" and "Quick Reference Card" sections above in this file for all build/test/lint/format commands.
+
+---
+
 **Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync
