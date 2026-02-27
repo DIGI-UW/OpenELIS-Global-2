@@ -16,7 +16,7 @@
       "es2018",
       "es2020"
     ],
-    "types": ["jest", "node"],
+    "types": ["jest", "@testing-library/jest-dom", "node"],
     "resolveJsonModule": true,
     "noEmit": true,
     "target": "esnext"
