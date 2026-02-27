@@ -127,6 +127,7 @@ public class PluginAnalyzerService {
      * @return The AnalyzerType ID, or null if the type wasn't found
      */
     public String addAnalyzerDatabaseParts(String name, String description, List<TestMapping> nameMappings) {
+        loadNamingMappingsFromCSV(nameMappings, name);
         return addAnalyzerDatabasePartsInternal(name, nameMappings);
     }
 

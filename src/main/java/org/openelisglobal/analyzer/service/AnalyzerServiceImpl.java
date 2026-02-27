@@ -89,6 +89,11 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Transactional
     public void persistTestMappings(String analyzerTypeId, List<AnalyzerTestMapping> testMappings,
             List<AnalyzerTestMapping> existingMappings) {
+        if (analyzerTypeId == null) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "persistTestMappings",
+                    "analyzerTypeId is null — skipping " + testMappings.size() + " mapping(s)");
+            return;
+        }
         for (AnalyzerTestMapping mapping : testMappings) {
             mapping.setAnalyzerTypeId(analyzerTypeId);
             if (newMapping(mapping, existingMappings)) {

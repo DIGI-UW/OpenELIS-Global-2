@@ -67,8 +67,12 @@
       row per (analyzer_type_id, analyzer_test_name).
     -->
     <changeSet id="011-009-04-deduplicate-mappings" author="madagascar-analyzer-integration">
-        <comment>Remove duplicate (analyzer_type_id, analyzer_test_name) rows before creating new PK</comment>
+        <comment>Remove orphan rows (NULL analyzer_type_id) and duplicates before creating new PK</comment>
         <sql>
+            <!-- Delete orphan rows that couldn't be linked to an analyzer_type -->
+            DELETE FROM analyzer_test_map WHERE analyzer_type_id IS NULL;
+
+            <!-- Deduplicate on (analyzer_type_id, analyzer_test_name) -->
             DELETE FROM analyzer_test_map a
             USING analyzer_test_map b
             WHERE a.ctid &lt; b.ctid
