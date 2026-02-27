@@ -2,15 +2,13 @@
 <!-- Madagascar Analyzer Test Data (DBUnit Flat XML Dataset) Feature: specs/011-madagascar-analyzer-integration
     Usage: executeDataSetWithStateManagement("testdata/madagascar-analyzer-test-data.xml")
     Contents: - 5 Active Analyzers (IDs 2006-2008, 2012-2013) using ONLY GenericASTM
-    / GenericHL7 plugins - 5 Analyzer Configurations (protocol metadata) - 4
-    Test Mappings for GeneXpert ASTM (analyzer_test_map) ID Range: 2006-2013
-    (reserved for Feature 011, avoids conflict with Feature 004 IDs 1000-1004)
-    NOTE: identifier_pattern is on the analyzer row (not analyzer_configuration)
-    because the runtime DAO query (AnalyzerDAOImpl.findGenericAnalyzersWithPatterns)
-    reads analyzer.identifier_pattern joined with analyzer_type.is_generic_plugin.
-    NOTE: analyzer_type_id is set post-load by LINK_ANALYZER_TYPES_SQL in load-test-fixtures.sh,
-    which matches by plugin_class_name on analyzer_type (auto-created at startup
-    by PluginRegistryService). Reference: specs/011-madagascar-analyzer-integration/plans/genexpert-astm-e2e-readiness.md -->
+    / GenericHL7 plugins - 4 Test Mappings for GeneXpert ASTM (analyzer_test_map)
+    ID Range: 2006-2013 (reserved for Feature 011, avoids conflict with Feature
+    004 IDs 1000-1004) Schema: 2-table model (analyzer_type + analyzer) after
+    PR #2802 merge. Config columns (ip_address, port, protocol_version, status)
+    live on the analyzer row. NOTE: analyzer_type_id is set post-load by analyzer-type-linking.sql
+    (or LINK_ANALYZER_TYPES_SQL), which matches by plugin_class_name on analyzer_type
+    (auto-created at startup by PluginRegistryService). Reference: specs/011-madagascar-analyzer-integration/plans/genexpert-astm-e2e-readiness.md -->
 <dataset>
     <!-- ================================================================= -->
     <!-- ANALYZERS (GenericASTM + GenericHL7 only) -->
@@ -21,62 +19,36 @@
     <analyzer id="2006" name="Mindray BA-88A"
         analyzer_type="CHEMISTRY" DESCRIPTION="ASTM over RS232 Serial"
         identifier_pattern="MINDRAY.*BA-88A|BA88A" is_active="true"
-        last_updated="2026-02-02 00:00:00" />
+        ip_address="172.20.1.100" port="9600" protocol_version="ASTM_LIS2_A2"
+        status="ACTIVE" last_updated="2026-02-02 00:00:00" />
 
     <!-- ID 2007: Mindray BC-5380 (GenericHL7 / HEMATOLOGY) -->
     <analyzer id="2007" name="Mindray BC-5380"
         analyzer_type="HEMATOLOGY" DESCRIPTION="HL7 v2.3.1 over TCP/IP (MLLP)"
         identifier_pattern="MINDRAY.*BC.?5380|BC5380" is_active="true"
-        last_updated="2026-02-02 00:00:00" />
+        ip_address="172.20.1.101" port="5562" protocol_version="HL7_V2_3_1"
+        status="ACTIVE" last_updated="2026-02-02 00:00:00" />
 
     <!-- ID 2008: Mindray BS-360E (GenericHL7 / CHEMISTRY) -->
     <analyzer id="2008" name="Mindray BS-360E"
         analyzer_type="CHEMISTRY" DESCRIPTION="HL7 v2.3.1 over TCP/IP (MLLP)"
         identifier_pattern="MINDRAY.*BS.?360E|BS360E" is_active="true"
-        last_updated="2026-02-02 00:00:00" />
+        ip_address="172.20.1.102" port="5563" protocol_version="HL7_V2_3_1"
+        status="ACTIVE" last_updated="2026-02-02 00:00:00" />
 
     <!-- ID 2012: Mindray BC2000 (GenericHL7 / HEMATOLOGY) -->
     <analyzer id="2012" name="Mindray BC2000"
         analyzer_type="HEMATOLOGY" DESCRIPTION="HL7 v2.3.1 over TCP/IP (MLLP)"
         identifier_pattern="MINDRAY.*BC.?2000" is_active="true"
-        last_updated="2026-02-02 00:00:00" />
+        ip_address="172.20.1.103" port="5564" protocol_version="HL7_V2_3_1"
+        status="ACTIVE" last_updated="2026-02-02 00:00:00" />
 
-    <!-- ID 2013: GeneXpert ASTM Mode (GenericASTM / MOLECULAR) — NEW -->
+    <!-- ID 2013: GeneXpert ASTM Mode (GenericASTM / MOLECULAR) -->
     <analyzer id="2013" name="Cepheid GeneXpert (ASTM Mode)"
-        analyzer_type="MOLECULAR" DESCRIPTION="ASTM E-1394-97 over TCP/IP"
+        analyzer_type="MOLECULAR" DESCRIPTION="ASTM LIS2-A2 over TCP/IP"
         identifier_pattern="GENEXPERT|CEPHEID" is_active="true"
-        last_updated="2026-02-02 00:00:00" />
-
-    <!-- ================================================================= -->
-    <!-- ANALYZER CONFIGURATIONS (protocol metadata only) -->
-    <!-- identifier_pattern and is_generic_plugin removed — runtime reads -->
-    <!-- these from analyzer and analyzer_type tables respectively. -->
-    <!-- ================================================================= -->
-
-    <!-- CONFIG-2006: Mindray BA-88A (ASTM RS232) -->
-    <analyzer_configuration id="CONFIG-2006"
-        analyzer_id="2006" protocol_version="ASTM LIS2-A2" status="ACTIVE"
-        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
-
-    <!-- CONFIG-2007: Mindray BC-5380 (HL7 TCP) -->
-    <analyzer_configuration id="CONFIG-2007"
-        analyzer_id="2007" protocol_version="HL7 v2.3.1" status="ACTIVE"
-        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
-
-    <!-- CONFIG-2008: Mindray BS-360E (HL7 TCP) -->
-    <analyzer_configuration id="CONFIG-2008"
-        analyzer_id="2008" protocol_version="HL7 v2.3.1" status="ACTIVE"
-        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
-
-    <!-- CONFIG-2012: Mindray BC2000 (HL7 TCP) -->
-    <analyzer_configuration id="CONFIG-2012"
-        analyzer_id="2012" protocol_version="HL7 v2.3.1" status="ACTIVE"
-        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
-
-    <!-- CONFIG-2013: GeneXpert ASTM Mode (TCP/IP or RS232) -->
-    <analyzer_configuration id="CONFIG-2013"
-        analyzer_id="2013" protocol_version="ASTM E-1394-97" status="ACTIVE"
-        sys_user_id="1" last_updated="2026-02-02 00:00:00" />
+        ip_address="172.20.1.110" port="9600" protocol_version="ASTM_LIS2_A2"
+        status="ACTIVE" last_updated="2026-02-02 00:00:00" />
 
     <!-- ================================================================= -->
     <!-- TEST MAPPINGS for GeneXpert ASTM (ID 2013) -->
@@ -84,23 +56,27 @@
     <!-- test_id = FK to clinlims.test (using foundational test IDs) -->
     <!-- ================================================================= -->
 
-    <!-- MTB-RIF → Blood Test (placeholder test_id=101) -->
-    <analyzer_test_map analyzer_id="2013"
-        analyzer_test_name="MTB-RIF" test_id="101"
+    <!-- Analyzer Type data (required for analyzer_test_map PK) -->
+    <analyzer_type id="2901" name="GenericASTM Type"
+        plugin_class_name="oe.plugin.analyzer.GenericASTM" />
+
+    <!-- MTB-RIF → Glucose (test_id=3, placeholder for E2E routing) -->
+    <analyzer_test_map analyzer_type_id="2901"
+        analyzer_id="2013" analyzer_test_name="MTB-RIF" test_id="3"
         last_updated="2026-02-02 00:00:00" />
 
-    <!-- RIF → Urine Test (placeholder test_id=102) -->
-    <analyzer_test_map analyzer_id="2013"
-        analyzer_test_name="RIF" test_id="102"
+    <!-- RIF → Amylase (test_id=5, placeholder for E2E routing) -->
+    <analyzer_test_map analyzer_type_id="2901"
+        analyzer_id="2013" analyzer_test_name="RIF" test_id="5"
         last_updated="2026-02-02 00:00:00" />
 
-    <!-- HIV-VL → Glucose Test (placeholder test_id=103) -->
-    <analyzer_test_map analyzer_id="2013"
-        analyzer_test_name="HIV-VL" test_id="103"
+    <!-- HIV-VL → CD4 absolute count (test_id=192, placeholder for E2E routing) -->
+    <analyzer_test_map analyzer_type_id="2901"
+        analyzer_id="2013" analyzer_test_name="HIV-VL" test_id="192"
         last_updated="2026-02-02 00:00:00" />
 
-    <!-- COVID19 → Blood Test (placeholder test_id=101) -->
-    <analyzer_test_map analyzer_id="2013"
-        analyzer_test_name="COVID19" test_id="101"
+    <!-- COVID19 → Glucose (test_id=3, placeholder for E2E routing) -->
+    <analyzer_test_map analyzer_type_id="2901"
+        analyzer_id="2013" analyzer_test_name="COVID19" test_id="3"
         last_updated="2026-02-02 00:00:00" />
 </dataset>
