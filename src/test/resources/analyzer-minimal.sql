@@ -50,8 +50,10 @@ VALUES
    '172.20.1.101', 5562, 'HL7_V2_3_1', 'ACTIVE',
    'MINDRAY.*BC.?5380|BC5380', NOW()),
   -- GeneXpert ASTM Mode: GenericASTM, molecular, TCP/IP
+  -- Same IP as astm-simulator (172.20.1.100) — one mock serves all ASTM templates.
+  -- OE identifies the analyzer from the ASTM H-record, not the source IP.
   (2013, 'Cepheid GeneXpert (ASTM Mode)', 'MOLECULAR', 'ASTM LIS2-A2 over TCP/IP', true,
-   '172.20.1.110', 9600, 'ASTM_LIS2_A2', 'ACTIVE',
+   '172.20.1.100', 9600, 'ASTM_LIS2_A2', 'ACTIVE',
    'GENEXPERT|CEPHEID', NOW())
 ON CONFLICT (id) DO NOTHING;
 

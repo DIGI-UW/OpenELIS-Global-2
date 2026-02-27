@@ -1,62 +1,22 @@
 # Analyzer Testing Services
 #
-# Mock analyzers, ASTM bridge, and virtual serial ports for E2E testing.
-# Static IPs match fixture data in src/test/resources/analyzer-minimal.sql.
-# All simulators start by default — no profiles needed.
+# One ASTM mock server, ASTM bridge, and virtual serial ports for E2E testing.
+# The mock supports all ASTM templates via its HTTP API — trigger any analyzer:
+#   GET/POST http://localhost:8085/simulate/astm/genexpert_astm
+#   GET/POST http://localhost:8085/simulate/astm/mindray_ba88a
 #
-# Network: 172.20.1.0/24
-#   .100 = astm-simulator   (Mindray BA-88A, fixture ID 2006)
-#   .110 = genexpert-simulator (GeneXpert ASTM, fixture ID 2013)
-#
-# HTTP APIs:
-#   localhost:8086 = astm-simulator API
-#   localhost:8085 = genexpert-simulator API
-#   Both support: GET/POST /simulate/astm/<template>
+# ASTM_TEMPLATE env var sets the default template for the ASTM listen port
+# (what the bridge gets when it connects). All other templates available via API.
 
 services:
-  # Mindray BA-88A mock (fixture ID 2006, 172.20.1.100:9600)
-  # ASTM listen on 9600 (responds to ENQ/ACK) + HTTP simulate API on 8080
+  # ASTM mock server — serves all ASTM analyzer templates.
+  # Default template: genexpert_astm (GeneXpert ASTM, fixture ID 2013)
   astm-simulator:
     build:
       context: ../../tools/analyzer-mock-server
       dockerfile: Dockerfile
     ports:
       - "5000:9600" # ASTM listen (fixture port=9600)
-      - "8086:8080" # HTTP simulate API
-    environment:
-      - ASTM_PORT=9600
-      - ANALYZER_TYPE=HEMATOLOGY
-      - RESPONSE_DELAY_MS=100
-    command: >
-      python -u server.py
-      --port 9600
-      --simulate-api-port 8080
-      --verbose
-    networks:
-      analyzer-net:
-        ipv4_address: 172.20.1.100
-    restart: unless-stopped
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')",
-        ]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-
-  # GeneXpert ASTM mock (fixture ID 2013, 172.20.1.110:9600)
-  # ASTM listen on 9600 (template-driven via ASTM_TEMPLATE) + HTTP simulate API on 8080
-  genexpert-simulator:
-    build:
-      context: ../../tools/analyzer-mock-server
-      dockerfile: Dockerfile
-    ports:
-      - "5010:9600" # ASTM listen (fixture port=9600)
       - "8085:8080" # HTTP simulate API
     environment:
       - ASTM_PORT=9600
@@ -69,7 +29,7 @@ services:
       --verbose
     networks:
       analyzer-net:
-        ipv4_address: 172.20.1.110
+        ipv4_address: 172.20.1.100
     restart: unless-stopped
     healthcheck:
       test:
@@ -103,7 +63,6 @@ services:
       - LOGGING_LEVEL_ORG_ITECH=INFO
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe:8443/api/OpenELIS-Global/analyzer/astm
       - ORG_ITECH_AHB_LISTEN_ASTM_SERVER_PORT=12001
-      # Outbound default (when OE query omits forwardAddress)
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_HOST_NAME=astm-simulator
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_PORT=9600
     networks:
@@ -127,7 +86,7 @@ services:
       - analyzer-net
     restart: unless-stopped
 
-  # OE joins both default (proxy/db/fhir/frontend) and analyzer-net (mocks/bridge).
+  # OE joins both default (proxy/db/fhir/frontend) and analyzer-net (mock/bridge).
   oe:
     environment:
       - ANALYZER_BRIDGE_URL=https://openelis-analyzer-bridge:8443
