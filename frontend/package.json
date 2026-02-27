@@ -106,7 +106,6 @@
     "**/@types/react": "16.14.5"
   },
   "devDependencies": {
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@playwright/test": "^1.58.2",
     "@testing-library/react-hooks": "^8.0.1",
     "@types/jest": "^30.0.0",
