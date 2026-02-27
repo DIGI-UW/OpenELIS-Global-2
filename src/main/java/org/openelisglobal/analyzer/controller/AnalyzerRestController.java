@@ -235,7 +235,9 @@ public class AnalyzerRestController extends BaseRestController {
                 }
             }
 
-            Analyzer createdAnalyzer = analyzerService.get(analyzerId);
+            // Use getWithType() to eagerly fetch AnalyzerType within the service
+            // transaction — prevents LazyInitializationException in analyzerToMap()
+            Analyzer createdAnalyzer = analyzerService.getWithType(analyzerId).orElse(null);
             if (createdAnalyzer == null) {
                 throw new LIMSRuntimeException("Failed to retrieve created analyzer");
             }
@@ -734,8 +736,9 @@ public class AnalyzerRestController extends BaseRestController {
             logger.info("Testing connection via bridge: {} -> {}:{}", bridgeEndpoint, analyzer.getIpAddress(),
                     analyzer.getPort());
 
-            // Send minimal ASTM header as test payload
-            String testMessage = "H|\\^&|||TEST|||||||LIS2-A2";
+            // Empty body = ping; bridge treats contention + empty message as SUCCESS
+            // (per CLSI LIS1-A §8.2.7.1, instrument has priority on contention)
+            String testMessage = "";
 
             URL url = new URL(bridgeEndpoint);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -761,7 +764,9 @@ public class AnalyzerRestController extends BaseRestController {
             conn.setRequestProperty("Content-Type", "text/plain; charset=utf-8");
             conn.setDoOutput(true);
             conn.setConnectTimeout(10000);
-            conn.setReadTimeout(10000);
+            // Bridge needs up to 35s for ASTM line contention handling:
+            // ~15s establishment + 20s LINE_CONTENTION_REATTEMPT_TIMEOUT
+            conn.setReadTimeout(45000);
 
             try (OutputStream os = conn.getOutputStream()) {
                 os.write(testMessage.getBytes(StandardCharsets.UTF_8));
