@@ -26,3 +26,40 @@
   padding-top: 3rem;
   background: var(--cds-background);
 }
+
+@media (max-width: 672px) {
+  .cds--modal-container.cds--modal-container--lg {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    min-width: 0 !important;
+    margin: 0 auto !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .cds--modal-container.cds--modal-container--lg {
+    width: 100% !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+  }
+
+  .cds--modal-content {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}
+
+@media (max-width: 381px) {
+  .cds--modal-footer .cds--btn {
+    flex: 0 1 45% !important;
+    max-width: none !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .cds--modal-footer .cds--btn {
+    flex: 0 1 43% !important;
+    max-width: none !important;
+  }
+}
