@@ -87,6 +87,13 @@ test.describe("Real GeneXpert Test Connection", () => {
 
     // Fill form with real GeneXpert VM details
     await form.fillName(analyzerName);
+
+    // Plugin Type loads async — wait for options before selecting
+    await form.pluginTypeDropdown.click();
+    const pluginOption = page.getByRole("option", { name: /Generic ASTM/ });
+    await expect(pluginOption.first()).toBeVisible({ timeout: 10_000 });
+    await pluginOption.first().click();
+
     await form.selectType("Molecular");
     await form.fillIpAddress("172.31.26.237");
     await form.fillPort("1200");
@@ -110,6 +117,12 @@ test.describe("Real GeneXpert Test Connection", () => {
     }
 
     expect(createdAnalyzerId).toBeTruthy();
+
+    // Verify no "Plugin Missing" warning on the created analyzer
+    const pluginWarning = page.locator(
+      `[data-testid="plugin-warning-${createdAnalyzerId}"]`,
+    );
+    await expect(pluginWarning).not.toBeVisible();
   });
 
   test("test-connection succeeds to real GeneXpert Dx VM", async ({ page }) => {

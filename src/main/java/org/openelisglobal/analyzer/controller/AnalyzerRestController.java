@@ -235,7 +235,9 @@ public class AnalyzerRestController extends BaseRestController {
                 }
             }
 
-            Analyzer createdAnalyzer = analyzerService.get(analyzerId);
+            // Use getWithType() to eagerly fetch AnalyzerType within the service
+            // transaction — prevents LazyInitializationException in analyzerToMap()
+            Analyzer createdAnalyzer = analyzerService.getWithType(analyzerId).orElse(null);
             if (createdAnalyzer == null) {
                 throw new LIMSRuntimeException("Failed to retrieve created analyzer");
             }

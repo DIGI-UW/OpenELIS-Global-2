@@ -71,12 +71,15 @@ public class AnalyzerTypeRestController extends BaseRestController {
         try {
             List<AnalyzerType> types;
 
+            // Use getAllWithInitializedInstances() to eagerly load the instances
+            // collection within the service transaction, preventing
+            // LazyInitializationException in analyzerTypeToMap()
             if (Boolean.TRUE.equals(genericOnly)) {
                 types = analyzerTypeService.getGenericPluginTypes();
             } else if (Boolean.TRUE.equals(active)) {
-                types = analyzerTypeService.getAllActiveTypes();
+                types = analyzerTypeService.getAllWithInitializedInstances();
             } else {
-                types = analyzerTypeService.getAll();
+                types = analyzerTypeService.getAllWithInitializedInstances();
             }
 
             List<Map<String, Object>> response = new ArrayList<>();
