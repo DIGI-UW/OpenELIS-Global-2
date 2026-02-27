@@ -138,16 +138,19 @@
   overflow: hidden;   
   display: flex;
   flex-direction: column;
-  margin: -1rem; /* Negate Carbon Content padding if needed */
+  margin: -1rem; 
   position: relative;
-  color: #e0e0e0;;
+  color: green;;
+  overflow-x: hidden !important;
+  margin: 0 !important;
+  max-width: 100vw;  
 }
 
 .page-header {
   flex-shrink: 0;
   border-bottom: 1px solid #e0e0e0;
   padding: 1rem;
-  background: white;
+  /* background: green; */
   z-index: 10;
 }
 
@@ -156,49 +159,49 @@
   flex: 1;
   overflow: hidden;
   position: relative;
-  color: #e0e0e0;;
+  /* color: blue;; */
 }
 
 .pathology-sidebar {
   position: relative !important;
-  left: 1rem;
-  margin: 6rem 2rem 2rem 2rem; 
+  left : 80 !important;
+  /* background-color: lightseagreen; */
+  padding-top: 50px;
+  padding-right: 30px;
+  padding-bottom: 50px;
+  padding-left: 50px;
 }
 
 .scrollable-content {
   flex: 1;
   overflow-y: auto;
-  padding: 2rem 2rem 2rem 2rem;
-  background-color: #f4f4f4;
+  /* background-color: yellow; */
   height: 100%;
   display: flex;
   flex-direction: column;
   z-index: 0;
   scroll-behavior: smooth;
   padding-bottom: 80vh !important; 
+  margin-top: 0 !important;
+  margin-left:  0 !important;
 }
 
 .sticky-footer {
-  height: 70px;
-  flex-shrink: 0;
-  border-top: 1px solid #e0e0e0;
-  background: white;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
+  height: 100px;
+  /* background: red; */
   padding: 0 2rem;
-  z-index: 9999;
+  align-items: center;
+  display: flex;
 }
 
-.bx--accordion {
-  min-width: 600px;
-  font-size: 1.1rem;
+.sticky-footer button:first-child {
+  margin-right: auto; 
 }
 
-.bx--accordion__item {
-  min-height: 800px;
+.scrollable-content .cds--accordion__title {
+  font-size: 2.1rem !important;
 }
 
-.bx--accordion__content {
-  min-height: 120px;
+.pathology-sidebar .cds--side-nav__link {
+  height: 3.2rem !important; 
 }

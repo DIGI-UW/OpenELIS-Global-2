@@ -378,7 +378,7 @@ function PathologyCaseView() {
       </header>
 
       <div className= "body-wrapper">
-        <SideNav isFixedNav={false} expanded={true}  isChildOfHeader={false} className="pathology-sidebar">
+        <SideNav expanded={true}  isChildOfHeader={false} className="pathology-sidebar">
           <SideNavItems>
             <SideNavLink href="#case-info">Case Information</SideNavLink>
               <SideNavLink href="#grossing">Grossing</SideNavLink>
@@ -1191,7 +1191,7 @@ function PathologyCaseView() {
       </div>
 
       <div className="sticky-footer">
-        <Button kind="ghost">Discard Changes</Button>
+        <Button kind="secondary">Discard Changes</Button>
         <Button 
           kind="secondary" 
           disabled={isSubmitting} 
