@@ -103,13 +103,13 @@
 
 **Depends on**: M1
 
-- [ ] T035 [M2] Update analyzer UI flows to consume plugin-config APIs (not astm-config APIs).
+- [x] T035 [M2] Update analyzer UI flows to consume plugin-config APIs (not astm-config APIs).
 - [ ] T036 [P] [M2] Implement/adjust UI for QC rules, transforms, extraction, aggregation, flag mappings.
-- [ ] T037 [P] [M2] Extend simulator UI to show v1.2 preview payload.
-- [ ] T038 [P] [M2] Add pending-code UI workflow.
-- [ ] T039 [M2] Update i18n keys for new/changed labels.
-- [ ] T040 [M2] Remove profile-library and lab-unit UI/API assumptions from M2 scope.
-- [ ] T041 [M2] Jest tests for updated UI components.
+- [x] T037 [P] [M2] Extend simulator UI to show v1.2 preview payload.
+- [x] T038 [P] [M2] Add pending-code UI workflow.
+- [x] T039 [M2] Update i18n keys for new/changed labels.
+- [x] T040 [M2] Remove profile-library and lab-unit UI/API assumptions from M2 scope.
+- [x] T041 [M2] Jest tests for updated UI components.
 - [ ] T042 [M2] Playwright tests for revised analyzer setup + simulator paths.
 - [ ] T043 [M2] Run M2 build/tests and GeneXpert regression gate.
 - [ ] T044 [M2] Open M2 PR.

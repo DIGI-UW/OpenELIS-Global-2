@@ -315,4 +315,38 @@ describe("TestMappingModal", () => {
     // Assert: Active mappings count should be displayed
     expect(screen.getByText(/15 active mappings/i)).toBeTruthy();
   });
+
+  test("testPreview_WithPluginConfigSnapshot_DisplaysSnapshotSection", async () => {
+    const mockPreviewResult = {
+      parsedFields: [],
+      appliedMappings: [],
+      entityPreview: {},
+      pluginConfigSnapshot: {
+        aggregationMode: "PER_MESSAGE",
+        qcRules: [{ id: "rule-1", isActive: true }],
+      },
+      warnings: [],
+      errors: [],
+    };
+
+    previewMapping.mockImplementation((analyzerId, data, callback) => {
+      callback(mockPreviewResult, null);
+    });
+
+    renderWithIntl(<TestMappingModal {...defaultProps} />);
+
+    const messageInput = await screen.findByTestId("test-mapping-message-input");
+    await userEvent.type(messageInput, "H|\\^&|||PSM^Micro^2.0|");
+
+    const previewButton = await screen.findByTestId(
+      "test-mapping-preview-button",
+    );
+    await userEvent.click(previewButton);
+
+    const snapshotSection = await screen.findByTestId(
+      "test-mapping-plugin-config-snapshot",
+    );
+    expect(snapshotSection).toBeTruthy();
+    expect(screen.getByText(/aggregationMode/i)).toBeTruthy();
+  });
 });
