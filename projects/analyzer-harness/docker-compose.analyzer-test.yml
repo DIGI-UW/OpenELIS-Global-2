@@ -1,69 +1,35 @@
 # Analyzer Testing Services
 #
-# Provides mock analyzers, ASTM bridge, and virtual serial ports for E2E testing.
-# Static IPs match fixture data in src/test/resources/analyzer-minimal.sql so that
-# OE's test-connection (direct TCP) and bridge routing both work out of the box.
+# One ASTM mock server, ASTM bridge, and virtual serial ports for E2E testing.
+# The mock supports all ASTM templates via its HTTP API — trigger any analyzer:
+#   GET/POST http://localhost:8085/simulate/astm/genexpert_astm
+#   GET/POST http://localhost:8085/simulate/astm/mindray_ba88a
 #
-# Network: 172.20.1.0/24
-#   .100 = astm-simulator (Mindray BA-88A fixture, ID 2006)
-#   .110 = genexpert-simulator (GeneXpert ASTM fixture, ID 2013)
+# ASTM_TEMPLATE env var sets the default template for the ASTM listen port
+# (what the bridge gets when it connects). All other templates available via API.
 
 services:
-  # Default ASTM mock — Mindray BA-88A (fixture ID 2006)
+  # ASTM mock server — serves all ASTM analyzer templates.
+  # Default template: genexpert_astm (GeneXpert ASTM, fixture ID 2013)
   astm-simulator:
     build:
       context: ../../tools/analyzer-mock-server
       dockerfile: Dockerfile
     ports:
-      - "5000:9600" # Host 5000 → container 9600 (matches fixture port)
-    environment:
-      - ASTM_PORT=9600
-      - ANALYZER_TYPE=HEMATOLOGY
-      - RESPONSE_DELAY_MS=100
-    networks:
-      analyzer-net:
-        ipv4_address: 172.20.1.100
-    restart: unless-stopped
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 9600)); s.close()",
-        ]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-
-  # GeneXpert ASTM simulator — template-driven, spec-compliant messages.
-  # Supports both push (client) and pull (server) ASTM workflows:
-  #   Pull: OE/bridge connects to 172.20.1.110:9600, mock responds with data
-  #   Push: HTTP API on port 8080 triggers ASTM TCP push to bridge:12001
-  # Activate with: --profile genexpert
-  genexpert-simulator:
-    build:
-      context: ../../tools/analyzer-mock-server
-      dockerfile: Dockerfile
-    ports:
-      - "5010:9600" # ASTM listen (matches fixture port=9600)
-      - "8085:8080" # HTTP API (trigger pushes, health check)
+      - "5000:9600" # ASTM listen (fixture port=9600)
+      - "8085:8080" # HTTP simulate API
     environment:
       - ASTM_PORT=9600
       - ASTM_TEMPLATE=genexpert_astm
-      - RESPONSE_DELAY_MS=100
+      - RESPONSE_DELAY_MS=0
     command: >
       python -u server.py
       --port 9600
-      --api-port 8080
-      --push https://oe:8443
+      --simulate-api-port 8080
       --verbose
     networks:
       analyzer-net:
-        ipv4_address: 172.20.1.110
-    profiles:
-      - genexpert
+        ipv4_address: 172.20.1.100
     restart: unless-stopped
     healthcheck:
       test:
@@ -81,8 +47,7 @@ services:
   # ASTM-HTTP Bridge — always running, handles all analyzers.
   # Inbound: listens on 12001, any analyzer connects, forwards to OE via HTTP.
   # Outbound: OE sends ?forwardAddress={ip}&forwardPort={port} from DB,
-  #   bridge opens TCP to that analyzer. forward-astm-server is just the
-  #   default fallback when no forwardAddress is specified.
+  #   bridge opens TCP to that analyzer.
   openelis-analyzer-bridge:
     build:
       context: ../../tools/openelis-analyzer-bridge
@@ -96,10 +61,8 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - LOGGING_LEVEL_ORG_ITECH=INFO
-      # Inbound: forward received ASTM data to OE
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe:8443/api/OpenELIS-Global/analyzer/astm
       - ORG_ITECH_AHB_LISTEN_ASTM_SERVER_PORT=12001
-      # Outbound default (when OE query omits forwardAddress)
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_HOST_NAME=astm-simulator
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_PORT=9600
     networks:
@@ -123,18 +86,17 @@ services:
       - analyzer-net
     restart: unless-stopped
 
-  # OE service stub — joins analyzer network (for test-connection to mocks at
-  # static IPs) while keeping default network (for proxy, db, fhir, frontend).
+  # OE joins both default (proxy/db/fhir/frontend) and analyzer-net (mock/bridge).
   oe:
     environment:
-      - ANALYZER_BRIDGE_URL=https://openelis-analyzer-bridge:8443
+      - ANALYZER_BRIDGE_URL=http://openelis-analyzer-bridge:8443
     networks:
       default:
       analyzer-net:
     volumes:
       - serial-vol:/dev/serial
 
-  # Proxy needs analyzer-net to reach OE (which is on both networks).
+  # Proxy needs both networks to reach OE.
   proxy:
     networks:
       default:

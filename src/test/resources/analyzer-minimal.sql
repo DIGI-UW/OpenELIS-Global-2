@@ -50,8 +50,10 @@ VALUES
    '172.20.1.101', 5562, 'HL7_V2_3_1', 'ACTIVE',
    'MINDRAY.*BC.?5380|BC5380', NOW()),
   -- GeneXpert ASTM Mode: GenericASTM, molecular, TCP/IP
+  -- Same IP as astm-simulator (172.20.1.100) — one mock serves all ASTM templates.
+  -- OE identifies the analyzer from the ASTM H-record, not the source IP.
   (2013, 'Cepheid GeneXpert (ASTM Mode)', 'MOLECULAR', 'ASTM LIS2-A2 over TCP/IP', true,
-   '172.20.1.110', 9600, 'ASTM_LIS2_A2', 'ACTIVE',
+   '172.20.1.100', 9600, 'ASTM_LIS2_A2', 'ACTIVE',
    'GENEXPERT|CEPHEID', NOW())
 ON CONFLICT (id) DO NOTHING;
 
@@ -70,18 +72,18 @@ UPDATE analyzer SET analyzer_type_id = (
 -- =============================================================================
 -- 4. TEST MAPPINGS for GeneXpert ASTM (analyzer_test_map composite PK)
 -- =============================================================================
--- analyzer_test_map has composite PK: (analyzer_id, analyzer_test_name)
+-- analyzer_test_map has composite PK: (analyzer_type_id, analyzer_test_name)
 -- test_id references clinlims.test (FK constraint).
 -- Using Liquibase-seeded test IDs: 3=Glucose, 5=Amylase, 192=CD4 absolute count.
 -- These are placeholder mappings for E2E routing validation, not clinical accuracy.
 
-INSERT INTO analyzer_test_map (analyzer_id, analyzer_test_name, test_id, last_updated)
+INSERT INTO analyzer_test_map (analyzer_type_id, analyzer_id, analyzer_test_name, test_id, last_updated)
 VALUES
-  ('2013', 'MTB-RIF',  '3',   NOW()),
-  ('2013', 'RIF',      '5',   NOW()),
-  ('2013', 'HIV-VL',   '192', NOW()),
-  ('2013', 'COVID19',  '3',   NOW())
-ON CONFLICT (analyzer_id, analyzer_test_name) DO NOTHING;
+  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'MTB-RIF',  '3',   NOW()),
+  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'RIF',      '5',   NOW()),
+  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'HIV-VL',   '192', NOW()),
+  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'COVID19',  '3',   NOW())
+ON CONFLICT (analyzer_type_id, analyzer_test_name) DO NOTHING;
 
 -- =============================================================================
 -- 5. ADVANCE SEQUENCE (avoid ID collisions with future inserts)
