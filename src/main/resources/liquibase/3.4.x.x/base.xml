@@ -14,5 +14,6 @@
   <include relativeToChangelogFile="true" file="006-create-indexes.xml"/>
   <include relativeToChangelogFile="true" file="007-insert-seed-data.xml"/>
   <include relativeToChangelogFile="true" file="008-normalize-protocol-version-enum.xml"/>
-  <include relativeToChangelogFile="true" file="009-create-custom-fields-tables.xml"/>
+  <include relativeToChangelogFile="true" file="009-decouple-test-mappings.xml"/>
+  <include relativeToChangelogFile="true" file="010-create-custom-fields-tables.xml"/>
 </databaseChangeLog>

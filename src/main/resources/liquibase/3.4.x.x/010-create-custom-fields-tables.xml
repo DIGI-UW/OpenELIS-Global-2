@@ -4,7 +4,7 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-  <changeSet id="009-1-create-custom-field-table" author="princegarg">
+  <changeSet id="010-1-create-custom-field-table" author="princegarg">
     <preConditions onFail="MARK_RAN">
       <not>
         <tableExists tableName="custom_field"/>
@@ -34,7 +34,7 @@
     </createTable>
   </changeSet>
 
-  <changeSet id="009-2-create-custom-field-value-table" author="princegarg">
+  <changeSet id="010-2-create-custom-field-value-table" author="princegarg">
     <preConditions onFail="MARK_RAN">
       <not>
         <tableExists tableName="custom_field_value"/>
@@ -59,7 +59,7 @@
     </createTable>
   </changeSet>
 
-  <changeSet id="009-3-create-custom-field-value-indexes" author="princegarg">
+  <changeSet id="010-3-create-custom-field-value-indexes" author="princegarg">
     <preConditions onFail="MARK_RAN">
       <not>
         <indexExists indexName="idx_cfv_sample"/>
