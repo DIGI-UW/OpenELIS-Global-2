@@ -44,6 +44,9 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Autowired
     private org.openelisglobal.test.service.TestService testService;
 
+    @Autowired
+    private AnalyzerPluginConfigService analyzerPluginConfigService;
+
     AnalyzerServiceImpl() {
         super(Analyzer.class);
     }
@@ -275,6 +278,8 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Transactional
     @SuppressWarnings("unchecked")
     public void autoCreateTestMappings(String analyzerId, Map<String, Object> config, String sysUserId) {
+        analyzerPluginConfigService.applyConfigDefaults(analyzerId, config.get("configDefaults"), sysUserId);
+
         Object mappingsObj = config.get("default_test_mappings");
         if (!(mappingsObj instanceof List)) {
             return;

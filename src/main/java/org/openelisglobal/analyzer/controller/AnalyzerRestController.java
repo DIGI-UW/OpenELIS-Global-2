@@ -970,19 +970,22 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/defaults List available default configuration templates
+     * GET /rest/analyzer/profiles List available analyzer profile templates
      * from filesystem.
      *
      * <p>
      * Returns minimal metadata for each template: id (e.g., "astm/mindray-ba88a"),
      * protocol ("ASTM" or "HL7"), analyzer_name (from JSON).
      */
-    @GetMapping("/defaults")
+    @GetMapping({ "/profiles", "/defaults" })
     public ResponseEntity<?> getDefaults() {
         try {
-            String defaultsDir = System.getenv("ANALYZER_DEFAULTS_DIR");
+            String defaultsDir = System.getenv("ANALYZER_PROFILES_DIR");
             if (defaultsDir == null || defaultsDir.isEmpty()) {
-                defaultsDir = "/data/analyzer-defaults";
+                defaultsDir = System.getenv("ANALYZER_DEFAULTS_DIR");
+            }
+            if (defaultsDir == null || defaultsDir.isEmpty()) {
+                defaultsDir = "/data/analyzer-profiles";
             }
 
             Path baseDir = Path.of(defaultsDir);
@@ -1015,7 +1018,7 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/defaults/{protocol}/{name} Load specific default
+     * GET /rest/analyzer/profiles/{protocol}/{name} Load specific profile
      * configuration template from filesystem.
      *
      * <p>
@@ -1028,7 +1031,7 @@ public class AnalyzerRestController extends BaseRestController {
      * base directory</li>
      * </ul>
      */
-    @GetMapping("/defaults/{protocol}/{name}")
+    @GetMapping({ "/profiles/{protocol}/{name}", "/defaults/{protocol}/{name}" })
     @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> getDefaultConfig(@PathVariable String protocol,
             @PathVariable String name) {
@@ -1124,9 +1127,12 @@ public class AnalyzerRestController extends BaseRestController {
         }
 
         String filename = name.endsWith(".json") ? name : name + ".json";
-        String defaultsDir = System.getenv("ANALYZER_DEFAULTS_DIR");
+        String defaultsDir = System.getenv("ANALYZER_PROFILES_DIR");
         if (defaultsDir == null || defaultsDir.isEmpty()) {
-            defaultsDir = "/data/analyzer-defaults";
+            defaultsDir = System.getenv("ANALYZER_DEFAULTS_DIR");
+        }
+        if (defaultsDir == null || defaultsDir.isEmpty()) {
+            defaultsDir = "/data/analyzer-profiles";
         }
 
         Path baseDir = Path.of(defaultsDir);
