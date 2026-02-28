@@ -1,5 +1,10 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "profileMeta": {
+    "id": "abbott-architect-hl7",
+    "version": "1.0.0",
+    "displayName": "Abbott Architect"
+  },
   "analyzer_name": "Abbott Architect",
   "manufacturer": "Abbott",
   "category": "IMMUNOLOGY",

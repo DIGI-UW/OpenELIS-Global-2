@@ -1,5 +1,10 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "profileMeta": {
+    "id": "sysmex-xn-astm",
+    "version": "1.0.0",
+    "displayName": "Sysmex XN Series (XN-L, XN-1000)"
+  },
   "analyzer_name": "Sysmex XN Series (XN-L, XN-1000)",
   "manufacturer": "Sysmex",
   "category": "HEMATOLOGY",

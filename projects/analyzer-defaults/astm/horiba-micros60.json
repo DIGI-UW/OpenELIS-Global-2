@@ -1,5 +1,10 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "profileMeta": {
+    "id": "horiba-micros60-astm",
+    "version": "1.0.0",
+    "displayName": "Horiba ABX Micros 60"
+  },
   "analyzer_name": "Horiba ABX Micros 60",
   "manufacturer": "Horiba ABX",
   "category": "HEMATOLOGY",

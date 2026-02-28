@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="012-011-01-create-analyzer-profile-application-table" author="speckit">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="analyzer_profile_application"/>
+            </not>
+        </preConditions>
+        <comment>Create provenance table for profile application snapshots</comment>
+        <createTable tableName="analyzer_profile_application">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_analyzer_profile_app_analyzer"
+                    references="analyzer(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="source_profile_id" type="VARCHAR(36)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_analyzer_profile_app_profile"
+                    references="analyzer_profile(id)"/>
+            </column>
+            <column name="source_profile_meta_id" type="VARCHAR(120)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_profile_version" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="applied_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="applied_by" type="VARCHAR(36)"/>
+        </createTable>
+        <rollback>
+            <dropTable tableName="analyzer_profile_application"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

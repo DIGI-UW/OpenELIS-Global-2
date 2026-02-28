@@ -88,6 +88,9 @@ public class AnalyzerRestController extends BaseRestController {
     @Value("${analyzer.bridge.url:}")
     private String analyzerBridgeUrl;
 
+    @Value("${analyzer.bridge.trustSelfSigned:false}")
+    private boolean trustSelfSigned;
+
     /** ASTM LIS2-A2 Enquiry — initiates transmission. */
     private static final byte ENQ = 0x05;
 
@@ -742,8 +745,8 @@ public class AnalyzerRestController extends BaseRestController {
 
             URL url = new URL(bridgeEndpoint);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            // Trust self-signed certs in dev (bridge uses HTTPS)
-            if (conn instanceof javax.net.ssl.HttpsURLConnection) {
+            // Trust self-signed certificates only when explicitly enabled for dev.
+            if (trustSelfSigned && conn instanceof javax.net.ssl.HttpsURLConnection) {
                 javax.net.ssl.HttpsURLConnection httpsConn = (javax.net.ssl.HttpsURLConnection) conn;
                 javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
                 sslContext.init(null, new javax.net.ssl.TrustManager[] { new javax.net.ssl.X509TrustManager() {

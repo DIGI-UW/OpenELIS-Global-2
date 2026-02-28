@@ -1,5 +1,10 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "profileMeta": {
+    "id": "stago-start4-astm",
+    "version": "1.0.0",
+    "displayName": "Stago STart 4"
+  },
   "analyzer_name": "Stago STart 4",
   "manufacturer": "Stago",
   "category": "COAGULATION",

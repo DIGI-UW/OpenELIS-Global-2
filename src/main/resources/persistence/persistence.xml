@@ -87,6 +87,11 @@
         <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
 
+        <!-- Profile Library entities (012-generic-astm-plugin-profiles M1) -->
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerProfile</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerProfileApplication</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerLabUnit</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />

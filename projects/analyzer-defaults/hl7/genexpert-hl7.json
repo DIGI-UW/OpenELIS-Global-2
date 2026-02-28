@@ -1,5 +1,10 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "profileMeta": {
+    "id": "genexpert-hl7",
+    "version": "1.0.0",
+    "displayName": "Cepheid GeneXpert (HL7 Mode)"
+  },
   "analyzer_name": "Cepheid GeneXpert (HL7 Mode)",
   "manufacturer": "Cepheid",
   "category": "MOLECULAR",

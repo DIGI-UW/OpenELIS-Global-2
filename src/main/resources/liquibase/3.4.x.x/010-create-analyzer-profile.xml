@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="012-010-01-create-analyzer-profile-table" author="speckit">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="analyzer_profile"/>
+            </not>
+        </preConditions>
+        <comment>Create profile library table for built-in/site/community artifacts</comment>
+        <createTable tableName="analyzer_profile">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="profile_meta_id" type="VARCHAR(120)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="profile_meta_version" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="display_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="compat_min_version" type="VARCHAR(40)"/>
+            <column name="compat_max_version" type="VARCHAR(40)"/>
+            <column name="is_latest" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_mutable" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="profile_json" type="JSONB">
+                <constraints nullable="false"/>
+            </column>
+            <column name="checksum_sha256" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="VARCHAR(36)"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_by" type="VARCHAR(36)"/>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="analyzer_profile"
+            columnNames="profile_meta_id, profile_meta_version"
+            constraintName="uq_analyzer_profile_meta_version"/>
+
+        <sql>
+            ALTER TABLE clinlims.analyzer_profile
+            ADD CONSTRAINT chk_analyzer_profile_source
+            CHECK (source IN ('BUILT_IN', 'SITE', 'COMMUNITY'));
+        </sql>
+
+        <!-- Allow only one "latest" row per lineage -->
+        <sql>
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_analyzer_profile_latest
+            ON clinlims.analyzer_profile (profile_meta_id)
+            WHERE is_latest = true;
+        </sql>
+
+        <rollback>
+            <dropTable tableName="analyzer_profile"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

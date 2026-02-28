@@ -1,5 +1,10 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "profileMeta": {
+    "id": "horiba-pentra60-astm",
+    "version": "1.0.0",
+    "displayName": "Horiba ABX Pentra 60 C+"
+  },
   "analyzer_name": "Horiba ABX Pentra 60 C+",
   "manufacturer": "Horiba ABX",
   "category": "HEMATOLOGY",

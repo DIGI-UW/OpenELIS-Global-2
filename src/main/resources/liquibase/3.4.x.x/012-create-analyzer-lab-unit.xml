@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="012-012-01-create-analyzer-lab-unit-table" author="speckit">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="analyzer_lab_unit"/>
+            </not>
+        </preConditions>
+        <comment>Create junction table for analyzer-lab unit many-to-many</comment>
+        <createTable tableName="analyzer_lab_unit">
+            <column name="analyzer_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_analyzer_lab_unit_analyzer"
+                    references="analyzer(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="lab_unit_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="analyzer_lab_unit"
+            columnNames="analyzer_id, lab_unit_id"
+            constraintName="pk_analyzer_lab_unit"/>
+        <rollback>
+            <dropTable tableName="analyzer_lab_unit"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
