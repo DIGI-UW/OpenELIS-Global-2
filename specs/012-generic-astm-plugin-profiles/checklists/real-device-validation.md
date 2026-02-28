@@ -3,7 +3,7 @@
 **Feature**: 012 — Generic ASTM Plugin Profiles v1.2  
 **Gate**: Bidirectional GeneXpert ASTM MVP  
 **Reference**: GeneXpert Rev-E LIS Protocol Specification
-(`docs/analyzers/012/`)  
+(`specs/012-generic-astm-plugin-profiles/docs/`)  
 **Status**: Template (execute before MVP sign-off)
 
 ---

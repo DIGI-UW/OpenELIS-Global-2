@@ -30,7 +30,7 @@ The unified v1.2 scope includes:
   analyzer organization.
 
 Primary design references are the mockup and addendum documents in
-`docs/analyzers/012/`.
+`specs/012-generic-astm-plugin-profiles/docs/`.
 
 ---
 
@@ -623,9 +623,10 @@ All new endpoints MUST enforce role authorization consistent with CR-007.
 ### Assumptions
 
 1. Behavior for FR-14 through FR-21 is sourced from Jira OGC-337 and the mockup
-   in `docs/analyzers/012/analyzer-mapping-templates-mockup.jsx`.
+   in
+   `specs/012-generic-astm-plugin-profiles/docs/analyzer-mapping-templates-mockup.jsx`.
 2. Behavior for FR-22 through FR-25 is sourced from
-   `docs/analyzers/012/astm-analyzer-mapping-addendum-v1_2.md`.
+   `specs/012-generic-astm-plugin-profiles/docs/astm-analyzer-mapping-addendum-v1_2.md`.
 3. Existing Feature 004 analyzer mapping infrastructure and status model remain
    the base extension point.
 4. Analyzer model from spec 011 / PR #2802 (analyzer + analyzer_type) remains
@@ -648,9 +649,9 @@ All new endpoints MUST enforce role authorization consistent with CR-007.
 
 ## References
 
-- `docs/analyzers/012/analyzer-mapping-templates-mockup.jsx`
-- `docs/analyzers/012/astm-analyzer-mapping-addendum-v1_2.md`
-- `docs/analyzers/012/astm-crosswalk-gap-analysis.md.pdf`
+- `specs/012-generic-astm-plugin-profiles/docs/analyzer-mapping-templates-mockup.jsx`
+- `specs/012-generic-astm-plugin-profiles/docs/astm-analyzer-mapping-addendum-v1_2.md`
+- `specs/012-generic-astm-plugin-profiles/docs/astm-crosswalk-gap-analysis.md.pdf`
 - `specs/004-astm-analyzer-mapping/spec.md`
 - `specs/011-madagascar-analyzer-integration/spec.md`
 - `.specify/memory/constitution.md`

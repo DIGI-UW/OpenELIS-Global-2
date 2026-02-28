@@ -362,7 +362,8 @@ MVP is complete only when **GeneXpert ASTM bidirectional** is validated with:
 
 - **Mock (required)**: all 4 pathways green in harness.
 - **Real device (required)**: all 4 pathways validated end-to-end and
-  cross-checked to the GeneXpert Rev-E LIS spec PDF (`docs/analyzers/012/`).
+  cross-checked to the GeneXpert Rev-E LIS spec PDF
+  (`specs/012-generic-astm-plugin-profiles/docs/`).
 
 ### Out of Scope for MVP
 
