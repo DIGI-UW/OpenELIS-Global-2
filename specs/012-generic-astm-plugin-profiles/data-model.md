@@ -1,201 +1,174 @@
-# Data Model: Generic ASTM Plugin Profiles v1.2
+# Data Model: Generic ASTM Plugin Profiles v1.2 (Simplified)
 
 ## Design Principles
 
 1. Keep `Analyzer` as the runtime instance aggregate root.
-2. Keep plugin-type baseline mappings (`analyzer_test_map`) intact from 011.
-3. Add v1.2 configuration entities for analyzer-instance behavior.
-4. Keep profile lineage/version semantics explicit: `profile_meta_id` +
-   `profile_meta_version`.
+2. Keep plugin-type baseline mappings in `analyzer_test_map`.
+3. Store v1.2 per-instance behavior in one protocol-agnostic JSONB config table.
+4. Keep pending unmapped-code lifecycle in a dedicated queue table.
+5. Keep analyzer-type profile configuration in filesystem JSON templates; no DB profile library in MVP.
 
-## Entities
+## Prerequisite Migration
 
-## `AnalyzerProfile`
+### `009-decouple-test-mappings.xml` (mandatory before v1.2 tables)
 
-Portable profile artifact (Built-in or Site Library entry).
+`develop` currently keys `analyzer_test_map` by `(analyzer_id, analyzer_test_name)`.  
+v1.2 foundations require `(analyzer_type_id, analyzer_test_name)` to map by plugin type.
 
-| Field                  | Type           | Notes                            |
-| ---------------------- | -------------- | -------------------------------- |
-| `id`                   | `VARCHAR(36)`  | PK                               |
-| `profile_meta_id`      | `VARCHAR(120)` | Stable lineage/family ID         |
-| `profile_meta_version` | `VARCHAR(40)`  | SemVer-like artifact version     |
-| `display_name`         | `VARCHAR(255)` | Human-readable name              |
-| `source`               | `VARCHAR(20)`  | `BUILT_IN`, `SITE`, `COMMUNITY`  |
-| `compat_min_version`   | `VARCHAR(40)`  | Minimum OpenELIS compatibility   |
-| `compat_max_version`   | `VARCHAR(40)`  | Maximum OpenELIS compatibility   |
-| `is_latest`            | `BOOLEAN`      | Designated latest within lineage |
-| `is_mutable`           | `BOOLEAN`      | False for built-ins              |
-| `profile_json`         | `JSONB`        | Canonical profile payload        |
-| `checksum_sha256`      | `VARCHAR(64)`  | Integrity + duplicate detection  |
-| `created_by`           | `VARCHAR(36)`  | Audit                            |
-| `created_at`           | `TIMESTAMP`    | Audit                            |
-| `updated_by`           | `VARCHAR(36)`  | Audit                            |
-| `updated_at`           | `TIMESTAMP`    | Audit                            |
+Migration responsibilities:
+- add `analyzer_type_id` to `analyzer_test_map`
+- backfill from `analyzer.analyzer_type_id`
+- deduplicate collisions
+- replace old PK/FK with analyzer-type-based key
+- remove stale phantom analyzer rows created by legacy connect paths
 
-**Constraints**
+This migration is a hard dependency for profile-default mapping behavior.
 
-- Unique: (`profile_meta_id`, `profile_meta_version`)
-- One designated latest per lineage (`profile_meta_id`, `is_latest=true`)
+## Existing Entities Retained
 
-## `AnalyzerProfileApplication` (provenance)
+- **Analyzer**: existing instance entity with connection/runtime fields.
+- **AnalyzerTestMapping** (`analyzer_test_map`): existing type-level analyzer test code -> OpenELIS test mapping.
+- **AnalyzerField** and **AnalyzerFieldMapping**: existing per-analyzer field discovery/mapping artifacts.
+- **AnalyzerError**: existing error/failure records (separate from pending-code queue).
 
-Snapshot provenance when profile is applied to analyzer.
+## New Entities
 
-| Field                    | Type           | Notes                       |
-| ------------------------ | -------------- | --------------------------- |
-| `id`                     | `VARCHAR(36)`  | PK                          |
-| `analyzer_id`            | `NUMERIC`      | FK -> `analyzer.id`         |
-| `source_profile_id`      | `VARCHAR(36)`  | FK -> `analyzer_profile.id` |
-| `source_profile_meta_id` | `VARCHAR(120)` | Denormalized lineage        |
-| `source_profile_version` | `VARCHAR(40)`  | Denormalized version        |
-| `applied_at`             | `TIMESTAMP`    | Application timestamp       |
-| `applied_by`             | `VARCHAR(36)`  | User                        |
+## `AnalyzerPluginConfig` (table: `analyzer_plugin_config`)
 
-## `AstmAnalyzerConfig`
+One row per analyzer instance. Holds protocol-agnostic v1.2 config in JSONB.
 
-Analyzer runtime ASTM configuration that is not plugin-type global.
+| Field | Type | Notes |
+|---|---|---|
+| `analyzer_id` | `NUMERIC` | PK, FK -> `analyzer.id` |
+| `config` | `JSONB` | NOT NULL, default `{}` |
+| `sys_user_id` | `INT` | audit |
+| `last_updated` | `TIMESTAMP` | audit |
 
-| Field                        | Type          | Notes                                      |
-| ---------------------------- | ------------- | ------------------------------------------ |
-| `id`                         | `VARCHAR(36)` | PK                                         |
-| `analyzer_id`                | `NUMERIC`     | Unique FK -> `analyzer.id`                 |
-| `connection_role`            | `VARCHAR(10)` | `SERVER` or `CLIENT`                       |
-| `server_listen_port`         | `INTEGER`     | Used when role is `SERVER`                 |
-| `client_target_ip`           | `VARCHAR(64)` | Used when role is `CLIENT`                 |
-| `client_target_port`         | `INTEGER`     | Used when role is `CLIENT`                 |
-| `aggregation_mode`           | `VARCHAR(20)` | `PER_MESSAGE`, `BY_SPECIMEN`, `BY_SESSION` |
-| `aggregation_window_seconds` | `INTEGER`     | Required for `BY_SESSION`                  |
-| `created_by`/`created_at`    | audit         |                                            |
-| `updated_by`/`updated_at`    | audit         |                                            |
+### `config` JSONB structure
 
-## `AstmFieldExtractionConfig`
+```json
+{
+  "connectionRole": "SERVER",
+  "serverListenPort": 9100,
+  "clientTargetIp": null,
+  "clientTargetPort": null,
+  "aggregationMode": "PER_MESSAGE",
+  "aggregationWindowSeconds": null,
+  "qcRules": [
+    {
+      "id": "uuid",
+      "ruleType": "SPECIMEN_ID_PREFIX",
+      "targetField": "SPECIMEN_ID_FIELD",
+      "operand": "QC",
+      "isActive": true,
+      "sortOrder": 1
+    }
+  ],
+  "extractionOverrides": {
+    "SPECIMEN_ID_FIELD": { "fieldIndex": 3, "componentIndex": null },
+    "TEST_ID_COMPONENT": { "fieldIndex": 3, "componentIndex": 4 }
+  },
+  "flagMappings": {
+    "H": "HIGH",
+    "L": "LOW",
+    "N": "NORMAL"
+  },
+  "transforms": {
+    "MTB-RIF": { "type": "PASS_THROUGH" }
+  }
+}
+```
 
-Per-analyzer field reference overrides.
+## `AnalyzerPendingCode` (table: `analyzer_pending_code`)
 
-| Field             | Type          | Notes                                         |
-| ----------------- | ------------- | --------------------------------------------- |
-| `id`              | `VARCHAR(36)` | PK                                            |
-| `analyzer_id`     | `NUMERIC`     | FK                                            |
-| `key`             | `VARCHAR(60)` | e.g. `SPECIMEN_ID_FIELD`, `TEST_ID_COMPONENT` |
-| `field_index`     | `INTEGER`     | ASTM 1-indexed field                          |
-| `component_index` | `INTEGER`     | ASTM 1-indexed component, nullable            |
-| `is_default`      | `BOOLEAN`     | True when unchanged from baseline             |
+Observed unmapped analyzer codes queue with lifecycle independent from config.
 
-**Constraints**
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `VARCHAR(36)` | PK |
+| `analyzer_id` | `NUMERIC` | FK -> `analyzer.id` |
+| `analyzer_test_name` | `VARCHAR(120)` | Unmapped analyzer code |
+| `first_seen_at` | `TIMESTAMP` | first observation |
+| `last_seen_at` | `TIMESTAMP` | last observation |
+| `seen_count` | `INTEGER` | occurrence count |
+| `sample_payload` | `TEXT` | optional truncated evidence |
+| `status` | `VARCHAR(20)` | `PENDING`, `RESOLVED`, `IGNORED` |
+| `sys_user_id` | `INT` | audit |
+| `last_updated` | `TIMESTAMP` | audit |
 
-- Unique: (`analyzer_id`, `key`)
-- Validation: `field_index >= 1`,
-  `component_index IS NULL OR component_index >= 1`
+Rules:
+- max active pending entries: 100 per analyzer
+- purge pending entries older than 30 days
 
-**Standard Keys and ASTM Defaults** (FR-017):
+## Profile JSON Schema (MVP)
 
-| Key                      | Default Record | Default field_index | Default component_index | Description                                     |
-| ------------------------ | -------------- | ------------------- | ----------------------- | ----------------------------------------------- |
-| `SPECIMEN_ID_FIELD`      | O (Order)      | 3                   | NULL                    | Specimen/sample ID                              |
-| `TEST_ID_FIELD`          | R (Result)     | 3                   | NULL                    | Universal Test ID field                         |
-| `TEST_ID_COMPONENT`      | R (Result)     | 3                   | 4                       | Component within Test ID (typically assay code) |
-| `RESULT_VALUE_FIELD`     | R (Result)     | 4                   | NULL                    | Measurement/observation value                   |
-| `RESULT_UNITS_FIELD`     | R (Result)     | 5                   | NULL                    | Units of measurement                            |
-| `ABNORMAL_FLAG_FIELD`    | R (Result)     | 7                   | NULL                    | Abnormal/flag indicator                         |
-| `RESULT_STATUS_FIELD`    | R (Result)     | 9                   | NULL                    | Result status code                              |
-| `RESULT_TIMESTAMP_FIELD` | R (Result)     | 13                  | NULL                    | Date/time of observation                        |
-| `SENDER_FIELD`           | H (Header)     | 5                   | NULL                    | Sender/instrument identification                |
+Profiles are filesystem templates in `projects/analyzer-profiles/{astm,hl7}/`.
 
-## `AstmQcRule`
+### Required v1.2 metadata
 
-QC sample identification rules.
+```json
+{
+  "profileMeta": {
+    "id": "genexpert-cepheid-astm",
+    "version": "1.2.0",
+    "displayName": "Cepheid GeneXpert (ASTM)"
+  }
+}
+```
 
-| Field          | Type           | Notes                                                                         |
-| -------------- | -------------- | ----------------------------------------------------------------------------- |
-| `id`           | `VARCHAR(36)`  | PK                                                                            |
-| `analyzer_id`  | `NUMERIC`      | FK                                                                            |
-| `rule_type`    | `VARCHAR(40)`  | `FIELD_EQUALS`, `SPECIMEN_ID_PREFIX`, `SPECIMEN_ID_PATTERN`, `FIELD_CONTAINS` |
-| `target_field` | `VARCHAR(60)`  | Which ASTM-extracted field to evaluate                                        |
-| `operand`      | `VARCHAR(255)` | Prefix/regex/value                                                            |
-| `is_active`    | `BOOLEAN`      |                                                                               |
-| `sort_order`   | `INTEGER`      | UI/order stability                                                            |
+### Optional instance defaults
 
-## `AstmTestMappingConfig` (table: `astm_test_mapping_config`)
+```json
+{
+  "configDefaults": {
+    "connectionRole": "SERVER",
+    "aggregationMode": "PER_MESSAGE",
+    "qcRules": [],
+    "extractionOverrides": {},
+    "flagMappings": {},
+    "transforms": {}
+  }
+}
+```
 
-Analyzer-instance transform overlay by analyzer code. Supplements the
-plugin-type-level `analyzer_test_map`; does not replace it.
+Profiles without `configDefaults` remain valid and produce empty `{}` plugin config at apply time.
 
-| Field                | Type           | Notes                                                                                  |
-| -------------------- | -------------- | -------------------------------------------------------------------------------------- |
-| `id`                 | `VARCHAR(36)`  | PK                                                                                     |
-| `analyzer_id`        | `NUMERIC`      | FK                                                                                     |
-| `analyzer_test_name` | `VARCHAR(120)` | Analyzer code                                                                          |
-| `transform_type`     | `VARCHAR(40)`  | `PASS_THROUGH`, `GREATER_LESS_FLAG`, `VALUE_MAP`, `THRESHOLD_CLASSIFY`, `CODED_LOOKUP` |
-| `transform_config`   | `JSONB`        | Type-specific validated payload                                                        |
-| `is_active`          | `BOOLEAN`      |                                                                                        |
+## Type-Level vs Instance-Level Ownership
 
-**Note**: This supplements, not replaces, plugin-type `analyzer_test_map`.
+### Stays in profile JSON (type-level)
 
-## `AstmFlagMapping`
+- `profileMeta`
+- analyzer identity/type descriptors (`analyzer_name`, `manufacturer`, `category`)
+- protocol and transport descriptors
+- notes and static profile documentation
 
-Analyzer abnormal flag to OpenELIS interpretation mapping.
+### Applied to DB on profile selection (instance defaults)
 
-| Field           | Type          | Notes                     |
-| --------------- | ------------- | ------------------------- |
-| `id`            | `VARCHAR(36)` | PK                        |
-| `analyzer_id`   | `NUMERIC`     | FK                        |
-| `analyzer_flag` | `VARCHAR(30)` | Raw flag                  |
-| `openelis_flag` | `VARCHAR(30)` | Interpreted code          |
-| `is_custom`     | `BOOLEAN`     | Tracks user-defined flags |
+| Profile JSON field | DB destination |
+|---|---|
+| `identifier_pattern` | `analyzer.identifier_pattern` |
+| `protocol.name` | `analyzer.protocol_version` |
+| `default_test_mappings[].analyzer_code/loinc` | `analyzer_test_map` rows |
+| `configDefaults.*` | `analyzer_plugin_config.config` |
 
-## `AstmPendingCode`
+After create/save, DB state is authoritative for the instance.
 
-Observed unmapped analyzer codes queue.
+## Validation and State Rules
 
-| Field                | Type           | Notes                            |
-| -------------------- | -------------- | -------------------------------- |
-| `id`                 | `VARCHAR(36)`  | PK                               |
-| `analyzer_id`        | `NUMERIC`      | FK                               |
-| `analyzer_test_name` | `VARCHAR(120)` | Unmapped code                    |
-| `first_seen_at`      | `TIMESTAMP`    |                                  |
-| `last_seen_at`       | `TIMESTAMP`    |                                  |
-| `seen_count`         | `INTEGER`      |                                  |
-| `sample_payload`     | `TEXT`         | Optional truncated evidence      |
-| `status`             | `VARCHAR(20)`  | `PENDING`, `RESOLVED`, `IGNORED` |
-
-**Rules**
-
-- Max active pending entries: 100 per analyzer.
-- Purge pending entries older than 30 days.
-
-## `AnalyzerLabUnit`
-
-Many-to-many analyzer assignment to lab units.
-
-| Field         | Type      | Notes                                        |
-| ------------- | --------- | -------------------------------------------- |
-| `analyzer_id` | `NUMERIC` | FK -> `analyzer.id`                          |
-| `lab_unit_id` | `VARCHAR` | References existing lab unit source of truth |
-
-**Constraints**
-
-- Unique composite PK: (`analyzer_id`, `lab_unit_id`)
-
-## State and Validation Rules
-
-1. **Activation Gate**: Analyzer cannot transition to `ACTIVE` without at least
-   one active QC rule.
-2. **Role Validation**:
-   - `SERVER` requires `server_listen_port`.
-   - `CLIENT` requires `client_target_ip` + `client_target_port`.
-3. **Aggregation Validation**:
-   - `BY_SESSION` requires `aggregation_window_seconds` in `[5, 300]`.
-4. **Profile Import Validation**:
-   - Reject duplicate (`profile_meta_id`, `profile_meta_version`).
-   - Accept same lineage with new version.
-   - Resolve designated latest by highest valid SemVer unless admin override.
+1. **Activation gate**: cannot transition analyzer to `ACTIVE` without at least one active QC rule.
+2. **Role validation**:
+   - `SERVER` requires `serverListenPort`
+   - `CLIENT` requires `clientTargetIp` + `clientTargetPort`
+3. **Aggregation validation**:
+   - `BY_SESSION` requires `aggregationWindowSeconds` in `[5, 300]`
+4. **Pending-code lifecycle**:
+   - cap and purge constraints are enforced per analyzer
 
 ## Migration Notes
 
-1. Keep existing `analyzer.test_unit_ids` during transition; new junction table
-   becomes source of truth for v1.2 UI/API.
-2. No live rewrite of historical analyzers required; profile application
-   provenance starts when v1.2 is used.
-3. Backfill built-in profiles from `projects/analyzer-profiles/{astm,hl7}` at
-   startup/bootstrap (renamed from `projects/analyzer-defaults/` per plan.md
-   Profiles-as-Config-Files Alignment section).
+1. Apply 009 migration before any 010/011 changesets.
+2. Add new changesets:
+   - `010-create-analyzer-plugin-config.xml`
+   - `011-create-analyzer-pending-code.xml`
+3. No DB profile bootstrap is needed for MVP; built-in profiles are read from `projects/analyzer-profiles/`.
+4. DB-backed profile library (`analyzer_profile*`) and lab-unit model are deferred.
