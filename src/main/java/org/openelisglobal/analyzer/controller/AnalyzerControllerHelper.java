@@ -33,9 +33,24 @@ final class AnalyzerControllerHelper {
      * Build a standard error envelope: {@code {status: "error", error: message}}.
      */
     static Map<String, Object> wrapError(String message) {
+        return error("GENERIC_ERROR", message);
+    }
+
+    static Map<String, Object> error(String code, String detail) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("status", "error");
-        response.put("error", message);
+        response.put("code", code);
+        response.put("detail", detail);
+        // Keep legacy key for compatibility while callers migrate to code/detail.
+        response.put("error", detail);
+        return response;
+    }
+
+    static Map<String, Object> error(String code, String detail, Map<String, Object> context) {
+        Map<String, Object> response = error(code, detail);
+        if (context != null && !context.isEmpty()) {
+            response.put("context", context);
+        }
         return response;
     }
 
@@ -54,16 +69,16 @@ final class AnalyzerControllerHelper {
     static ResponseEntity<Map<String, Object>> mapExceptionToResponse(LIMSRuntimeException e) {
         Throwable cause = e.getCause();
         if (cause instanceof IllegalArgumentException) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(wrapError(e.getMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error("VALIDATION_ERROR", e.getMessage()));
         }
         if (cause instanceof org.hibernate.StaleObjectStateException) {
-            Map<String, Object> body = wrapError("Concurrent edit detected. Please reload and try again.");
-            body.put("code", "CONCURRENT_EDIT");
+            Map<String, Object> body = error("CONCURRENT_EDIT",
+                    "Concurrent edit detected. Please reload and try again.");
             return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
         }
         if (cause instanceof org.hibernate.exception.ConstraintViolationException) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(wrapError(e.getMessage()));
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(error("CONSTRAINT_VIOLATION", e.getMessage()));
         }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(wrapError(e.getMessage()));
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error("INTERNAL_ERROR", e.getMessage()));
     }
 }

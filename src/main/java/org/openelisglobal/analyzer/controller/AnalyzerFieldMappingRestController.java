@@ -347,6 +347,10 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("parsedFields", result.getParsedFields());
             response.put("appliedMappings", result.getAppliedMappings());
+            response.put("transformResults", result.getTransformResults());
+            response.put("qcRuleEvaluation", result.getQcRuleEvaluation());
+            response.put("extractionApplied", result.getExtractionApplied());
+            response.put("flagMappings", result.getFlagMappings());
             response.put("entityPreview", result.getEntityPreview());
             response.put("warnings", result.getWarnings());
             response.put("errors", result.getErrors());

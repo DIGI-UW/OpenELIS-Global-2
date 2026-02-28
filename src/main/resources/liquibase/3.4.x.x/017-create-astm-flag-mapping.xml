@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- FR-019: Abnormal flag mapping (analyzer_flag -> openelis_flag) -->
+    <changeSet id="012-017-01-create-astm-flag-mapping" author="generic-astm-plugin-profiles">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="astm_flag_mapping"/>
+            </not>
+        </preConditions>
+        <comment>Create astm_flag_mapping table for abnormal flag interpretation</comment>
+        <createTable tableName="astm_flag_mapping">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="analyzer_flag" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="openelis_flag" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_custom" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="astm_flag_mapping"
+            baseColumnNames="analyzer_id"
+            constraintName="astm_flag_mapping_analyzer_fk"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"/>
+        <rollback>
+            <dropTable tableName="astm_flag_mapping"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

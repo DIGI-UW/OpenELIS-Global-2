@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- FR-014..018: ASTM analyzer runtime config (connection role, aggregation) -->
+    <changeSet id="012-013-01-create-astm-analyzer-config" author="generic-astm-plugin-profiles">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="astm_analyzer_config"/>
+            </not>
+        </preConditions>
+        <comment>Create astm_analyzer_config table for analyzer runtime ASTM configuration</comment>
+        <createTable tableName="astm_analyzer_config">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="NUMERIC(10,0)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="connection_role" type="VARCHAR(10)" defaultValue="SERVER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="server_listen_port" type="INTEGER"/>
+            <column name="client_target_ip" type="VARCHAR(64)"/>
+            <column name="client_target_port" type="INTEGER"/>
+            <column name="aggregation_mode" type="VARCHAR(20)" defaultValue="PER_MESSAGE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="aggregation_window_seconds" type="INTEGER"/>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="astm_analyzer_config"
+            baseColumnNames="analyzer_id"
+            constraintName="astm_analyzer_config_analyzer_fk"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"/>
+        <rollback>
+            <dropTable tableName="astm_analyzer_config"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

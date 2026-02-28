@@ -52,9 +52,6 @@ const CompactFileInput: React.FC<CompactFileInputProps> = memo(
         );
 
         if (itemIndex === -1) {
-          console.warn(
-            `[CompactFileInput] Accession number "${data.accessionNumber}" not found in results array.`,
-          );
           return;
         }
 
@@ -76,10 +73,8 @@ const CompactFileInput: React.FC<CompactFileInputProps> = memo(
             updatedResults.testResult[itemIndex].resultFile,
         }));
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        console.error(
-          `[CompactFileInput] Failed to convert file to base64: ${errorMessage}`,
-        );
+        // Keep UI stable for failed file conversion and let form validation handle feedback.
+        void err;
       }
     };
 

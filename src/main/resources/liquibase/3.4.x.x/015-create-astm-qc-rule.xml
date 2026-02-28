@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- FR-015: QC sample identification rules -->
+    <changeSet id="012-015-01-create-astm-qc-rule" author="generic-astm-plugin-profiles">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="astm_qc_rule"/>
+            </not>
+        </preConditions>
+        <comment>Create astm_qc_rule table for QC sample identification rules</comment>
+        <createTable tableName="astm_qc_rule">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rule_type" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="target_field" type="VARCHAR(60)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="operand" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sort_order" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="astm_qc_rule"
+            baseColumnNames="analyzer_id"
+            constraintName="astm_qc_rule_analyzer_fk"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"/>
+        <rollback>
+            <dropTable tableName="astm_qc_rule"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

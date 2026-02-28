@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- FR-021: Auto-detected unmapped test codes queue -->
+    <changeSet id="012-018-01-create-astm-pending-code" author="generic-astm-plugin-profiles">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="astm_pending_code"/>
+            </not>
+        </preConditions>
+        <comment>Create astm_pending_code table for unmapped code queue</comment>
+        <createTable tableName="astm_pending_code">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="analyzer_test_name" type="VARCHAR(120)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="first_seen_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_seen_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="seen_count" type="INTEGER" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sample_payload" type="TEXT"/>
+            <column name="status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="astm_pending_code"
+            baseColumnNames="analyzer_id"
+            constraintName="astm_pending_code_analyzer_fk"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"/>
+        <rollback>
+            <dropTable tableName="astm_pending_code"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

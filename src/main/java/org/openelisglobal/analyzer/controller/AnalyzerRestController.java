@@ -263,9 +263,8 @@ public class AnalyzerRestController extends BaseRestController {
         try {
             Analyzer analyzer = analyzerService.get(id);
             if (analyzer == null) {
-                Map<String, Object> error = new LinkedHashMap<>();
-                error.put("error", "Analyzer not found: " + id);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                        AnalyzerControllerHelper.error("ANALYZER_NOT_FOUND", "Analyzer not found", Map.of("id", id)));
             }
 
             // Transport-first routing: check config entities, then use message
@@ -288,7 +287,8 @@ public class AnalyzerRestController extends BaseRestController {
             } else {
                 response = new LinkedHashMap<>();
                 response.put("success", false);
-                response.put("message", "No transport configured (missing IP/port, file import, or serial config)");
+                response.put("code", "TRANSPORT_NOT_CONFIGURED");
+                response.put("detail", "No transport configured");
             }
 
             response.put("analyzerId", id);
@@ -307,9 +307,8 @@ public class AnalyzerRestController extends BaseRestController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error testing connection", e);
-            Map<String, Object> error = new LinkedHashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.error("TEST_CONNECTION_ERROR", e.getMessage(), Map.of("id", id)));
         }
     }
 
@@ -603,7 +602,8 @@ public class AnalyzerRestController extends BaseRestController {
 
         if (NetworkValidationUtil.isBlockedAddress(ipAddress)) {
             response.put("success", false);
-            response.put("message", "Connection to this address is not permitted");
+            response.put("code", "CONNECTION_ADDRESS_BLOCKED");
+            response.put("detail", "Connection to this address is not permitted");
             return response;
         }
 
@@ -624,35 +624,45 @@ public class AnalyzerRestController extends BaseRestController {
 
             if (responseByte == ACK) {
                 response.put("success", true);
-                response.put("message", "Connection successful - ACK received");
+                response.put("code", "CONNECTION_OK_ACK");
+                response.put("detail", "ACK received");
                 logger.info("Connection test successful for {}:{} - ACK received", ipAddress, port);
             } else {
                 response.put("success", false);
-                response.put("message", "Connection established but invalid response: 0x"
-                        + String.format("%02X", responseByte & 0xFF) + " (expected ACK 0x06)");
+                response.put("code", "CONNECTION_INVALID_RESPONSE");
+                response.put("detail", "Received non-ACK handshake response");
+                response.put("context",
+                        Map.of("responseHex", String.format("%02X", responseByte & 0xFF), "expectedHex", "06"));
                 logger.warn("Connection test failed for {}:{} - Invalid response: 0x{}", ipAddress, port,
                         String.format("%02X", responseByte & 0xFF));
             }
 
         } catch (SocketTimeoutException e) {
             response.put("success", false);
-            response.put("message", "Connection timeout - No response from analyzer");
+            response.put("code", "CONNECTION_TIMEOUT");
+            response.put("detail", "No response from analyzer");
             logger.warn("Connection test timeout for {}:{}", ipAddress, port, e);
         } catch (java.net.ConnectException e) {
             response.put("success", false);
-            response.put("message", "Connection refused - Analyzer not reachable at " + ipAddress + ":" + port);
+            response.put("code", "CONNECTION_REFUSED");
+            response.put("detail", "Analyzer not reachable");
+            response.put("context", Map.of("ipAddress", ipAddress, "port", port));
             logger.warn("Connection test failed for {}:{} - Connection refused", ipAddress, port, e);
         } catch (java.net.UnknownHostException e) {
             response.put("success", false);
-            response.put("message", "Unknown host - Cannot resolve " + ipAddress);
+            response.put("code", "CONNECTION_UNKNOWN_HOST");
+            response.put("detail", "Cannot resolve analyzer host");
+            response.put("context", Map.of("ipAddress", ipAddress));
             logger.warn("Connection test failed for {}:{} - Unknown host", ipAddress, port, e);
         } catch (IOException e) {
             response.put("success", false);
-            response.put("message", "Connection error: " + e.getMessage());
+            response.put("code", "CONNECTION_IO_ERROR");
+            response.put("detail", e.getMessage());
             logger.error("Connection test error for {}:{}", ipAddress, port, e);
         } catch (Exception e) {
             response.put("success", false);
-            response.put("message", "Unexpected error: " + e.getMessage());
+            response.put("code", "CONNECTION_UNEXPECTED_ERROR");
+            response.put("detail", e.getMessage());
             logger.error("Unexpected error during connection test for {}:{}", ipAddress, port, e);
         } finally {
             if (socket != null && !socket.isClosed()) {
@@ -681,7 +691,8 @@ public class AnalyzerRestController extends BaseRestController {
     private Map<String, Object> testHl7Connection(Analyzer analyzer) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
-        response.put("message", "HL7 analyzers are push-based; validate by sending an HL7 message to OpenELIS");
+        response.put("code", "HL7_PUSH_MODE");
+        response.put("detail", "HL7 analyzers are push-based");
         return response;
     }
 
@@ -696,7 +707,8 @@ public class AnalyzerRestController extends BaseRestController {
         if (analyzer.getIpAddress() == null || analyzer.getPort() == null) {
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", false);
-            response.put("message", "ASTM configuration incomplete - missing IP address or port");
+            response.put("code", "ASTM_CONFIG_INCOMPLETE");
+            response.put("detail", "Missing IP address or port");
             return response;
         }
 
@@ -782,26 +794,33 @@ public class AnalyzerRestController extends BaseRestController {
 
             if (status >= 200 && status < 300) {
                 response.put("success", true);
-                response.put("message", "Connection successful via bridge");
+                response.put("code", "BRIDGE_CONNECTION_OK");
+                response.put("detail", "Bridge accepted test request");
                 logger.info("Bridge test-connection succeeded for {}:{}", analyzer.getIpAddress(), analyzer.getPort());
             } else {
                 response.put("success", false);
-                response.put("message", "Bridge returned HTTP " + status + ": " + body);
+                response.put("code", "BRIDGE_HTTP_ERROR");
+                response.put("detail", "Bridge returned non-success status");
+                response.put("context", Map.of("httpStatus", status, "responseBody", body));
                 logger.warn("Bridge test-connection failed for {}:{} — HTTP {}: {}", analyzer.getIpAddress(),
                         analyzer.getPort(), status, body);
             }
         } catch (java.net.ConnectException e) {
             response.put("success", false);
-            response.put("message", "Cannot reach bridge at " + analyzerBridgeUrl + " — " + e.getMessage());
+            response.put("code", "BRIDGE_UNREACHABLE");
+            response.put("detail", e.getMessage());
+            response.put("context", Map.of("bridgeUrl", analyzerBridgeUrl));
             logger.error("Bridge unreachable: {}", analyzerBridgeUrl, e);
         } catch (SocketTimeoutException e) {
             response.put("success", false);
-            response.put("message", "Bridge timeout — analyzer may be unreachable at " + analyzer.getIpAddress() + ":"
-                    + analyzer.getPort());
+            response.put("code", "BRIDGE_TIMEOUT");
+            response.put("detail", "Bridge timeout");
+            response.put("context", Map.of("ipAddress", analyzer.getIpAddress(), "port", analyzer.getPort()));
             logger.warn("Bridge test-connection timeout for {}:{}", analyzer.getIpAddress(), analyzer.getPort(), e);
         } catch (Exception e) {
             response.put("success", false);
-            response.put("message", "Bridge connection error: " + e.getMessage());
+            response.put("code", "BRIDGE_CONNECTION_ERROR");
+            response.put("detail", e.getMessage());
             logger.error("Bridge test-connection error for {}:{}", analyzer.getIpAddress(), analyzer.getPort(), e);
         }
 
@@ -826,7 +845,8 @@ public class AnalyzerRestController extends BaseRestController {
 
             if (!fileConfigOpt.isPresent()) {
                 response.put("success", false);
-                response.put("message", "File import configuration not found for analyzer");
+                response.put("code", "FILE_IMPORT_CONFIG_NOT_FOUND");
+                response.put("detail", "File import configuration not found");
                 return response;
             }
 
@@ -835,7 +855,8 @@ public class AnalyzerRestController extends BaseRestController {
 
             if (importDir == null || importDir.trim().isEmpty()) {
                 response.put("success", false);
-                response.put("message", "Import directory not configured");
+                response.put("code", "FILE_IMPORT_DIR_NOT_CONFIGURED");
+                response.put("detail", "Import directory not configured");
                 return response;
             }
 
@@ -843,18 +864,21 @@ public class AnalyzerRestController extends BaseRestController {
             Path directory = Path.of(importDir);
             if (Files.exists(directory) && Files.isDirectory(directory) && Files.isReadable(directory)) {
                 response.put("success", true);
-                response.put("message", "File import directory accessible: " + importDir);
+                response.put("code", "FILE_IMPORT_DIRECTORY_ACCESSIBLE");
+                response.put("detail", "File import directory accessible");
                 response.put("importDirectory", importDir);
                 response.put("filePattern", fileConfig.getFilePattern());
             } else {
                 response.put("success", false);
-                response.put("message", "Import directory not accessible: " + importDir);
+                response.put("code", "FILE_IMPORT_DIRECTORY_INACCESSIBLE");
+                response.put("detail", "Import directory not accessible");
                 response.put("importDirectory", importDir);
             }
 
         } catch (Exception e) {
             response.put("success", false);
-            response.put("message", "Error checking file configuration: " + e.getMessage());
+            response.put("code", "FILE_IMPORT_CHECK_ERROR");
+            response.put("detail", e.getMessage());
             logger.error("Error testing file configuration for analyzer {}", analyzer.getId(), e);
         }
 
@@ -883,7 +907,8 @@ public class AnalyzerRestController extends BaseRestController {
 
             if (!serialConfigOpt.isPresent()) {
                 response.put("success", false);
-                response.put("message", "Serial port configuration not found for analyzer");
+                response.put("code", "SERIAL_CONFIG_NOT_FOUND");
+                response.put("detail", "Serial port configuration not found");
                 return response;
             }
 
@@ -892,7 +917,8 @@ public class AnalyzerRestController extends BaseRestController {
 
             if (portName == null || portName.trim().isEmpty()) {
                 response.put("success", false);
-                response.put("message", "Serial port name not configured");
+                response.put("code", "SERIAL_PORT_NOT_CONFIGURED");
+                response.put("detail", "Serial port name not configured");
                 return response;
             }
 
@@ -901,7 +927,8 @@ public class AnalyzerRestController extends BaseRestController {
 
             if (portExists) {
                 response.put("success", true);
-                response.put("message", "Serial port accessible: " + portName);
+                response.put("code", "SERIAL_PORT_ACCESSIBLE");
+                response.put("detail", "Serial port accessible");
                 response.put("portName", portName);
                 response.put("baudRate", serialConfig.getBaudRate());
                 response.put("dataBits", serialConfig.getDataBits());
@@ -909,14 +936,15 @@ public class AnalyzerRestController extends BaseRestController {
                 response.put("stopBits", serialConfig.getStopBits());
             } else {
                 response.put("success", false);
-                response.put("message", "Serial port not accessible: " + portName
-                        + " (check hardware connection or virtual serial setup)");
+                response.put("code", "SERIAL_PORT_INACCESSIBLE");
+                response.put("detail", "Serial port not accessible");
                 response.put("portName", portName);
             }
 
         } catch (Exception e) {
             response.put("success", false);
-            response.put("message", "Error checking serial configuration: " + e.getMessage());
+            response.put("code", "SERIAL_CONFIG_CHECK_ERROR");
+            response.put("detail", e.getMessage());
             logger.error("Error testing serial configuration for analyzer {}", analyzerId, e);
         }
 

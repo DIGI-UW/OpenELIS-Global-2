@@ -162,6 +162,19 @@
 
         <!-- ASTM Analyzer Mapping mappings (004-astm-analyzer-mapping) -->
         <!-- All analyzer entities now use JPA annotations per Constitution IV -->
+        <!-- Generic ASTM Plugin Profiles runtime configuration mappings (012) -->
+        <mapping
+            class="org.openelisglobal.analyzer.valueholder.AstmAnalyzerConfig" />
+        <mapping
+            class="org.openelisglobal.analyzer.valueholder.AstmFieldExtractionConfig" />
+        <mapping
+            class="org.openelisglobal.analyzer.valueholder.AstmQcRule" />
+        <mapping
+            class="org.openelisglobal.analyzer.valueholder.AstmTestMappingConfig" />
+        <mapping
+            class="org.openelisglobal.analyzer.valueholder.AstmFlagMapping" />
+        <mapping
+            class="org.openelisglobal.analyzer.valueholder.AstmPendingCode" />
 
     </session-factory>
 

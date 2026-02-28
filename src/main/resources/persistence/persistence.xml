@@ -86,6 +86,13 @@
         <!-- Migrated from HBM to JPA annotations (004-astm-analyzer-mapping) -->
         <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
+        <!-- Generic ASTM Plugin Profiles runtime configuration entities (012) -->
+        <class>org.openelisglobal.analyzer.valueholder.AstmAnalyzerConfig</class>
+        <class>org.openelisglobal.analyzer.valueholder.AstmFieldExtractionConfig</class>
+        <class>org.openelisglobal.analyzer.valueholder.AstmQcRule</class>
+        <class>org.openelisglobal.analyzer.valueholder.AstmTestMappingConfig</class>
+        <class>org.openelisglobal.analyzer.valueholder.AstmFlagMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.AstmPendingCode</class>
 
         <properties>
             <property name="hibernate.cfg_xml_file"

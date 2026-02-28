@@ -15,4 +15,10 @@
   <include relativeToChangelogFile="true" file="007-insert-seed-data.xml"/>
   <include relativeToChangelogFile="true" file="008-normalize-protocol-version-enum.xml"/>
   <include relativeToChangelogFile="true" file="009-decouple-test-mappings.xml"/>
+  <include relativeToChangelogFile="true" file="013-create-astm-analyzer-config.xml"/>
+  <include relativeToChangelogFile="true" file="014-create-astm-field-extraction-config.xml"/>
+  <include relativeToChangelogFile="true" file="015-create-astm-qc-rule.xml"/>
+  <include relativeToChangelogFile="true" file="016-create-astm-test-mapping-config.xml"/>
+  <include relativeToChangelogFile="true" file="017-create-astm-flag-mapping.xml"/>
+  <include relativeToChangelogFile="true" file="018-create-astm-pending-code.xml"/>
 </databaseChangeLog>

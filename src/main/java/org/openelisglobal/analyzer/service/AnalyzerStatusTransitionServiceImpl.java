@@ -5,6 +5,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,9 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
 
     @Autowired
     private ApplicationEventPublisher eventPublisher;
+
+    @Autowired(required = false)
+    private ApplicationContext applicationContext;
 
     @Override
     public Analyzer transitionToValidation(String analyzerId) {
@@ -47,6 +51,20 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
         if (currentStatus != AnalyzerStatus.VALIDATION) {
             throw new IllegalStateException("Cannot transition to ACTIVE: analyzer " + analyzerId + " is in "
                     + currentStatus + " status (expected VALIDATION)");
+        }
+
+        if (applicationContext != null) {
+            try {
+                AstmConfigService astmConfigService = applicationContext.getBean(AstmConfigService.class);
+                if (!astmConfigService.hasActiveQcRules(analyzerId)) {
+                    throw new IllegalStateException(
+                            "Cannot activate: at least one QC identification rule is required (BR-12)");
+                }
+            } catch (Exception e) {
+                if (e instanceof IllegalStateException) {
+                    throw (IllegalStateException) e;
+                }
+            }
         }
 
         analyzer.setLastActivatedDate(new Date());

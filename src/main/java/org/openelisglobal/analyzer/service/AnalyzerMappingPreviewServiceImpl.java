@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -9,6 +10,9 @@ import org.openelisglobal.analyzer.dao.AnalyzerFieldDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerFieldMappingDAO;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
+import org.openelisglobal.analyzer.valueholder.AstmFieldExtractionConfig;
+import org.openelisglobal.analyzer.valueholder.AstmFlagMapping;
+import org.openelisglobal.analyzer.valueholder.AstmTestMappingConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +30,15 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
 
     private final AnalyzerFieldMappingDAO analyzerFieldMappingDAO;
     private final AnalyzerFieldDAO analyzerFieldDAO;
+
+    @Autowired(required = false)
+    private AstmConfigService astmConfigService;
+
+    @Autowired(required = false)
+    private AstmQcRuleService astmQcRuleService;
+
+    @Autowired(required = false)
+    private AstmTestMappingConfigService astmTestMappingConfigService;
 
     @Autowired
     public AnalyzerMappingPreviewServiceImpl(AnalyzerFieldMappingDAO analyzerFieldMappingDAO,
@@ -60,6 +73,7 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
             result.setEntityPreview(entityPreview);
 
             validateMappings(parsedFields, mappings, result);
+            enrichWithAstmV12Outputs(analyzerId, astmMessage, result);
 
         } catch (Exception e) {
             result.getErrors().add("Error processing ASTM message: " + e.getMessage());
@@ -221,5 +235,181 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
         if (!hasResultValueMapping) {
             result.getWarnings().add("Required mapping missing: Result Value");
         }
+    }
+
+    private void enrichWithAstmV12Outputs(String analyzerId, String astmMessage, MappingPreviewResult result) {
+        if (astmConfigService == null || astmTestMappingConfigService == null || astmQcRuleService == null) {
+            return;
+        }
+
+        List<String[]> segments = parseSegments(astmMessage);
+        List<AstmFieldExtractionConfig> extractionConfigs = astmConfigService.getExtractionConfigs(analyzerId);
+        Map<String, String> extracted = extractConfiguredFields(segments, extractionConfigs);
+
+        List<Map<String, Object>> extractionApplied = new ArrayList<>();
+        for (AstmFieldExtractionConfig config : extractionConfigs) {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("key", config.getKey());
+            entry.put("fieldIndex", config.getFieldIndex());
+            entry.put("componentIndex", config.getComponentIndex());
+            entry.put("value", extracted.get(config.getKey()));
+            extractionApplied.add(entry);
+        }
+        result.setExtractionApplied(extractionApplied);
+
+        boolean isQc = astmQcRuleService.evaluateAsQc(analyzerId, extracted);
+        Map<String, Object> qcEvaluation = new LinkedHashMap<>();
+        qcEvaluation.put("isQc", isQc);
+        qcEvaluation.put("evaluatedFields", extracted);
+        result.setQcRuleEvaluation(qcEvaluation);
+
+        List<AstmTestMappingConfig> transforms = astmTestMappingConfigService.findByAnalyzerId(analyzerId);
+        List<Map<String, Object>> transformResults = new ArrayList<>();
+        List<Map<String, Object>> flagResults = new ArrayList<>();
+        List<AstmFlagMapping> configuredFlagMappings = astmConfigService.getFlagMappings(analyzerId);
+
+        for (String[] segment : segments) {
+            if (segment.length == 0 || !"R".equals(segment[0])) {
+                continue;
+            }
+            String testCode = getValueWithExtractionFallback(segment, "R", "TEST_ID_COMPONENT", extractionConfigs,
+                    extracted);
+            if (testCode == null || testCode.trim().isEmpty()) {
+                testCode = getValueWithExtractionFallback(segment, "R", "TEST_ID_FIELD", extractionConfigs, extracted);
+            }
+            String rawValue = getValueWithExtractionFallback(segment, "R", "RESULT_VALUE_FIELD", extractionConfigs,
+                    extracted);
+            String abnormalFlag = getValueWithExtractionFallback(segment, "R", "ABNORMAL_FLAG_FIELD", extractionConfigs,
+                    extracted);
+
+            if (testCode == null || testCode.trim().isEmpty()) {
+                continue;
+            }
+
+            String transformed = astmTestMappingConfigService.applyTransform(testCode, rawValue, transforms);
+            Map<String, Object> transformResult = new LinkedHashMap<>();
+            transformResult.put("analyzerTestName", testCode);
+            transformResult.put("rawValue", rawValue);
+            transformResult.put("transformedValue", transformed);
+            transformResult.put("transformType", resolveTransformType(transforms, testCode));
+            transformResults.add(transformResult);
+
+            if (resolveTransformType(transforms, testCode) == null) {
+                result.getWarnings().add("Unmapped analyzer test code detected: " + testCode);
+            }
+
+            if (abnormalFlag != null && !abnormalFlag.trim().isEmpty()) {
+                String mappedFlag = resolveOpenelisFlag(configuredFlagMappings, abnormalFlag);
+                Map<String, Object> flagResult = new LinkedHashMap<>();
+                flagResult.put("analyzerFlag", abnormalFlag);
+                flagResult.put("openelisFlag", mappedFlag);
+                flagResult.put("analyzerTestName", testCode);
+                flagResults.add(flagResult);
+            }
+        }
+
+        result.setTransformResults(transformResults);
+        result.setFlagMappings(flagResults);
+    }
+
+    private List<String[]> parseSegments(String astmMessage) {
+        List<String[]> segments = new ArrayList<>();
+        if (astmMessage == null || astmMessage.trim().isEmpty()) {
+            return segments;
+        }
+        String[] lines = astmMessage.split("[\r\n]+");
+        for (String line : lines) {
+            if (line == null || line.trim().isEmpty()) {
+                continue;
+            }
+            segments.add(line.split("\\|", -1));
+        }
+        return segments;
+    }
+
+    private Map<String, String> extractConfiguredFields(List<String[]> segments,
+            List<AstmFieldExtractionConfig> configs) {
+        Map<String, String> extracted = new LinkedHashMap<>();
+        Map<String, AstmFieldExtractionConfig> byKey = configs.stream()
+                .collect(Collectors.toMap(AstmFieldExtractionConfig::getKey, c -> c, (a, b) -> a));
+        for (Map.Entry<String, AstmFieldExtractionConfig> entry : byKey.entrySet()) {
+            String key = entry.getKey();
+            AstmFieldExtractionConfig cfg = entry.getValue();
+            String recordType = key.startsWith("SENDER") ? "H" : key.startsWith("SPECIMEN") ? "O" : "R";
+            String value = extractFromRecord(segments, recordType, cfg.getFieldIndex(), cfg.getComponentIndex());
+            extracted.put(key, value);
+        }
+        return extracted;
+    }
+
+    private String extractFromRecord(List<String[]> segments, String recordType, Integer fieldIndex,
+            Integer componentIndex) {
+        if (fieldIndex == null || fieldIndex < 1) {
+            return null;
+        }
+        for (String[] segment : segments) {
+            if (segment.length == 0 || !recordType.equals(segment[0])) {
+                continue;
+            }
+            if (fieldIndex >= segment.length) {
+                return null;
+            }
+            String field = segment[fieldIndex];
+            if (componentIndex == null) {
+                return field;
+            }
+            if (componentIndex < 1) {
+                return null;
+            }
+            String[] components = field.split("\\^", -1);
+            if (componentIndex - 1 >= components.length) {
+                return null;
+            }
+            return components[componentIndex - 1];
+        }
+        return null;
+    }
+
+    private String getValueWithExtractionFallback(String[] segment, String recordType, String key,
+            List<AstmFieldExtractionConfig> configs, Map<String, String> extracted) {
+        String configured = extracted.get(key);
+        if (configured != null && !configured.isEmpty()) {
+            return configured;
+        }
+        AstmFieldExtractionConfig cfg = configs.stream().filter(c -> key.equals(c.getKey())).findFirst().orElse(null);
+        if (cfg == null || cfg.getFieldIndex() == null || !recordType.equals(segment[0])) {
+            return null;
+        }
+        if (cfg.getFieldIndex() >= segment.length) {
+            return null;
+        }
+        String field = segment[cfg.getFieldIndex()];
+        if (cfg.getComponentIndex() == null) {
+            return field;
+        }
+        String[] components = field.split("\\^", -1);
+        int componentPos = cfg.getComponentIndex() - 1;
+        if (componentPos < 0 || componentPos >= components.length) {
+            return null;
+        }
+        return components[componentPos];
+    }
+
+    private String resolveTransformType(List<AstmTestMappingConfig> transforms, String testCode) {
+        for (AstmTestMappingConfig transform : transforms) {
+            if (Boolean.TRUE.equals(transform.getIsActive()) && testCode.equals(transform.getAnalyzerTestName())) {
+                return transform.getTransformType();
+            }
+        }
+        return null;
+    }
+
+    private String resolveOpenelisFlag(List<AstmFlagMapping> mappings, String analyzerFlag) {
+        for (AstmFlagMapping mapping : mappings) {
+            if (analyzerFlag.equals(mapping.getAnalyzerFlag())) {
+                return mapping.getOpenelisFlag();
+            }
+        }
+        return analyzerFlag;
     }
 }
