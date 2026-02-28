@@ -406,7 +406,6 @@ function PathologyCaseView() {
             </AccordionItem>
 
             <AccordionItem title="Grossing" id="grossing">
-                <Column lg={16} md={8} sm={4}>
                   <Grid fullWidth={true} className="gridBoundary">
                     <Column lg={16} md={8} sm={4}>
                       <TextArea
@@ -437,8 +436,6 @@ function PathologyCaseView() {
                       />
                     </Column>
                   </Grid>
-                </Column>
-
             </AccordionItem>
 
             <AccordionItem title={`Blocks (${(pathologySampleInfo.blocks || []).length})`} id="blocks">
@@ -583,7 +580,6 @@ function PathologyCaseView() {
               </Grid>
             </AccordionItem>
 
-     
             <AccordionItem title={`Slides (${(pathologySampleInfo.slides || []).length})`} id="slides">
                           <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
@@ -985,10 +981,6 @@ function PathologyCaseView() {
                         </div>
                       </Column>
                     )}
-                    <Column lg={16}>
-                      <br />
-                      <br />
-                    </Column>
                   </Grid>
                 </Column>
                 <Column lg={16} md={8} sm={4}>
@@ -1015,7 +1007,7 @@ function PathologyCaseView() {
 
 
             <AccordionItem title="Pathologist Review" id="review">
-              <Grid>
+              <Grid fullWidth={true} className="gridBoundary">
                 <Column lg={4} md={2} sm={2}>
                   <Select
                     id="status"
@@ -1090,45 +1082,45 @@ function PathologyCaseView() {
             </AccordionItem>
               
 
-            <AccordionItem title="Findings & Conclusions" id="findings">
-              <Grid>
-                  <Column lg={4} md={8} sm={4}>
-                      {initialMount && (
-                        <FilterableMultiSelect
-                          id="conclusion"
-                          titleText={
-                            <FormattedMessage id="pathology.label.conclusion" />
-                          }
-                          items={conclusions}
-                          itemToString={(item) => (item ? item.value : "")}
-                          initialSelectedItems={pathologySampleInfo.conclusions}
-                          onChange={(changes) => {
-                            setPathologySampleInfo({
-                              ...pathologySampleInfo,
-                              conclusions: changes.selectedItems,
-                            });
-                          }}
-                          selectionFeedback="top-after-reopen"
-                        />
-                      )}
-                    </Column>
-                    <Column lg={12} md={8} sm={4}>
-                      {pathologySampleInfo.conclusions &&
-                        pathologySampleInfo.conclusions.map((conclusion, index) => (
-                          <Tag
-                            key={index}
-                            filter
-                            onClose={() => {
-                              var info = { ...pathologySampleInfo };
-                              info["conclusions"].splice(index, 1);
-                              setPathologySampleInfo(info);
-                            }}
-                          >
-                            {conclusion.value}
-                          </Tag>
-                        ))}
-                    </Column>
-              </Grid>
+            <AccordionItem title="Findings & Conclusions" id="findings"> 
+                  <Grid fullWidth={true} className="gridBoundary">
+                      <Column lg={4} md={8} sm={4}>
+                          {initialMount && (
+                            <FilterableMultiSelect
+                              id="conclusion"
+                              titleText={
+                                <FormattedMessage id="pathology.label.conclusion" />
+                              }
+                              items={conclusions}
+                              itemToString={(item) => (item ? item.value : "")}
+                              initialSelectedItems={pathologySampleInfo.conclusions}
+                              onChange={(changes) => {
+                                setPathologySampleInfo({
+                                  ...pathologySampleInfo,
+                                  conclusions: changes.selectedItems,
+                                });
+                              }}
+                              selectionFeedback="top-after-reopen"
+                            />
+                          )}
+                        </Column>
+                        <Column lg={12} md={8} sm={4}>
+                          {pathologySampleInfo.conclusions &&
+                            pathologySampleInfo.conclusions.map((conclusion, index) => (
+                              <Tag
+                                key={index}
+                                filter
+                                onClose={() => {
+                                  var info = { ...pathologySampleInfo };
+                                  info["conclusions"].splice(index, 1);
+                                  setPathologySampleInfo(info);
+                                }}
+                              >
+                                {conclusion.value}
+                              </Tag>
+                            ))}
+                        </Column>
+                  </Grid>
             </AccordionItem>
 
 
