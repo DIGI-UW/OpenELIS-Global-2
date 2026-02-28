@@ -1,8 +1,6 @@
 @use "@carbon/react/scss/themes";
-@use "@carbon/react/scss/theme" with (
-  $fallback: themes.$g100,
-  $theme: (
-    background: #295785,
+@use "@carbon/react/scss/theme" with ($fallback: themes.$g100,
+  $theme: (background: #295785,
     text-primary: #ffffff,
     text-secondary: #ffffff,
     icon-primary: #ffffff,
@@ -10,8 +8,7 @@
     background-hover: #072655,
     layer-01: #295785,
     layer-hover-01: #072655,
-  )
-);
+  ));
 
 @use "@carbon/react";
 
@@ -25,4 +22,30 @@
 .changePasswordPage {
   padding-top: 3rem;
   background: var(--cds-background);
+}
+
+@media (max-width: 480px) {
+  .cds--modal-container.cds--modal-container--lg {
+    width: 80%;
+    max-width: 80%;
+    min-width: 0;
+  }
+
+  .cds--modal-content {
+    padding-left: 12px;
+    padding-right: 12px;
+    overflow-x: hidden;
+  }
+
+  .cds--modal-footer .cds--btn {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 400px) {
+  .cds--modal-container.cds--modal-container--lg {
+    width: 70%;
+    max-width: 70%;
+  }
 }
