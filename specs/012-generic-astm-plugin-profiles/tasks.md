@@ -110,7 +110,7 @@
 - [x] T039 [M2] Update i18n keys for new/changed labels.
 - [x] T040 [M2] Remove profile-library and lab-unit UI/API assumptions from M2 scope.
 - [x] T041 [M2] Jest tests for updated UI components.
-- [ ] T042 [M2] Playwright tests for revised analyzer setup + simulator paths.
+- [x] T042 [M2] Playwright tests for revised analyzer setup + simulator paths.
 - [ ] T043 [M2] Run M2 build/tests and GeneXpert regression gate.
 - [ ] T044 [M2] Open M2 PR.
 

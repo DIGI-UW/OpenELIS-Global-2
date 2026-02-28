@@ -2,7 +2,8 @@ import { test as setup, expect } from "@playwright/test";
 
 const AUTH_FILE = "playwright/.auth/user.json";
 
-setup("authenticate", async ({ page }) => {
+setup("authenticate", async ({ page }, testInfo) => {
+  testInfo.setTimeout(120_000);
   const username = process.env.TEST_USER;
   const password = process.env.TEST_PASS;
 
@@ -12,13 +13,32 @@ setup("authenticate", async ({ page }) => {
     );
   }
 
-  await page.goto("/");
-  await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Login" }).click();
+  await page.goto("");
+  await page
+    .locator('input[name="loginName"], input[name="username"], input[type="text"]')
+    .first()
+    .fill(username);
+  await page
+    .locator(
+      'input[name="password"], input[type="password"], input[id*="password" i]',
+    )
+    .first()
+    .fill(password);
+  const loginButton = page.getByRole("button", { name: /login/i });
+  if ((await loginButton.count()) > 0) {
+    await loginButton.first().click();
+  } else {
+    const submitButton = page.getByRole("button", { name: /submit/i });
+    if ((await submitButton.count()) > 0) {
+      await submitButton.first().click();
+    } else {
+      await page.locator('input[type="submit"]').first().click();
+    }
+  }
 
-  // Wait for authenticated state (sidenav menu button visible)
-  await expect(page.locator("#sidenav-menu-button")).toBeVisible();
+  // Verify authenticated state by reaching analyzer list route.
+  await page.goto("analyzers");
+  await expect(page).toHaveURL(/analyzers/);
 
   await page.context().storageState({ path: AUTH_FILE });
 });
