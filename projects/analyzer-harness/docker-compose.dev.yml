@@ -55,7 +55,7 @@ services:
       - ./volume/configuration:/var/lib/openelis-global/configuration
       - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
       - ./volume/analyzer-imports:/data/analyzer-imports
-      - ../../projects/analyzer-defaults:/data/analyzer-defaults:ro
+      - ../../projects/analyzer-profiles:/data/analyzer-profiles:ro
     secrets:
       - source: datasource.password
       - source: common.properties

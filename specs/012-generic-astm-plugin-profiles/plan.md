@@ -54,6 +54,10 @@ graph LR
 3. Open one replacement PR for new M1 foundation, referencing both closed PRs for traceability.
 4. Keep old branches until replacement PR is merged, then clean up.
 
+M2/M3/M4 remediation continuity:
+- M2 remediation is still required and is not dropped by the M1 replacement PR.
+- Legacy M1/M2 branches remain reference inputs only; implementation continues on remediated milestone branches.
+
 ## Critical Foundations for New M1
 
 ### 1) Manual-apply from M1 reference branch (no cherry-pick commits)
@@ -108,6 +112,9 @@ src/main/resources/liquibase/3.4.x.x/
 ## Naming Decision
 
 Use `projects/analyzer-profiles/` only. Rename from `projects/analyzer-defaults/` and remove legacy references. No compatibility alias/fallback is required for this feature.
+
+M1 exit criterion for naming:
+- Runtime, build, and test references must use `analyzer-profiles` exclusively before M2 starts.
 
 ## Security Decision
 

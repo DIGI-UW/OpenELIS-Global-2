@@ -982,9 +982,6 @@ public class AnalyzerRestController extends BaseRestController {
         try {
             String defaultsDir = System.getenv("ANALYZER_PROFILES_DIR");
             if (defaultsDir == null || defaultsDir.isEmpty()) {
-                defaultsDir = System.getenv("ANALYZER_DEFAULTS_DIR");
-            }
-            if (defaultsDir == null || defaultsDir.isEmpty()) {
                 defaultsDir = "/data/analyzer-profiles";
             }
 
@@ -1128,9 +1125,6 @@ public class AnalyzerRestController extends BaseRestController {
 
         String filename = name.endsWith(".json") ? name : name + ".json";
         String defaultsDir = System.getenv("ANALYZER_PROFILES_DIR");
-        if (defaultsDir == null || defaultsDir.isEmpty()) {
-            defaultsDir = System.getenv("ANALYZER_DEFAULTS_DIR");
-        }
         if (defaultsDir == null || defaultsDir.isEmpty()) {
             defaultsDir = "/data/analyzer-profiles";
         }

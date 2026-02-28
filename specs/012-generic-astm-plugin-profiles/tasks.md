@@ -65,6 +65,9 @@
 - [ ] T019 [M1] Enhance `AnalyzerServiceImpl.autoCreateTestMappings()` to populate `configDefaults`.
 - [ ] T020 [M1] Enforce activation gate in analyzer status transition (BR-12 via JSONB config).
 - [ ] T021 [M1] Extend `AnalyzerMappingPreviewServiceImpl` with v1.2 outputs from JSONB config.
+- [ ] T060 [M1] Implement port conflict validation for active analyzer listeners (BR-11).
+- [ ] T061 [M1] Implement profile schema validation on profile read/apply path (BR-18).
+- [ ] T062 [M1] Enforce built-in profile immutability in runtime profile APIs (BR-20).
 
 ### Controllers and RBAC
 
@@ -80,6 +83,12 @@
 - [ ] T028 [P] [M1] Controller tests for plugin-config APIs and RBAC.
 - [ ] T029 [M1] Integration test: profile apply -> mappings + plugin config defaults.
 - [ ] T030 [M1] Integration test: activation gate + preview extension behavior.
+- [ ] T063 [P] [M1] Validation tests for aggregation window bounds (`BY_SESSION` 5-300) (BR-14).
+- [ ] T064 [P] [M1] Integration tests for pending-code cap/purge behavior and status transitions (BR-16).
+- [ ] T065 [P] [M1] Parsing/preview tests for 1-indexed ASTM field/component extraction references (BR-17).
+- [ ] T066 [P] [M1] Negative tests for profile schema validation failures (BR-18).
+- [ ] T067 [P] [M1] Tests that profile mutation/update APIs reject writes to built-in filesystem templates (BR-20).
+- [ ] T068 [P] [M1] Tests for active analyzer port conflict detection and conflict response payload (BR-11).
 
 ### Build and gate
 

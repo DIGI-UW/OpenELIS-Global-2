@@ -951,7 +951,7 @@
                 <configuration>
                     <skipTests>${skipTests}</skipTests>
                     <environmentVariables>
-                        <ANALYZER_PROFILES_DIR>${project.basedir}/projects/analyzer-defaults</ANALYZER_PROFILES_DIR>
+                        <ANALYZER_PROFILES_DIR>${project.basedir}/projects/analyzer-profiles</ANALYZER_PROFILES_DIR>
                     </environmentVariables>
                 </configuration>
             </plugin>

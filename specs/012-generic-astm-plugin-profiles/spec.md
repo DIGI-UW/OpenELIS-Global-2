@@ -59,21 +59,54 @@ As a laboratory administrator, I want to add/edit an analyzer by selecting a fil
 
 As a laboratory administrator, I want to configure transforms, extraction fields, aggregation mode, and flag mappings so one generic parser can correctly interpret analyzer-specific messages.
 
+**Independent Test**: Configure each core mapping section for a generic analyzer, save, reload, and verify values are persisted and reflected in simulator preview output.
+
+**Acceptance Scenarios**:
+1. **Given** analyzer plugin config is open, **When** I define extraction overrides and transform rules, **Then** save succeeds only for valid transform payloads.
+2. **Given** aggregation mode is `BY_SESSION`, **When** window value is out of range, **Then** save is rejected with validation error.
+3. **Given** abnormal flag mappings are configured, **When** simulator preview runs, **Then** preview output reflects mapped interpretation values.
+
 ### User Story 3 - Enforce QC identification before activation (Priority: P1)
 
 As a laboratory supervisor, I want QC identification rules required before activation so QC samples are reliably separated from patient samples.
+
+**Independent Test**: Attempt analyzer status transition to `ACTIVE` first without QC rules, then with at least one active valid QC rule.
+
+**Acceptance Scenarios**:
+1. **Given** analyzer is in `VALIDATION` and has no active QC rule, **When** activation is requested, **Then** transition is blocked with actionable error.
+2. **Given** analyzer is in `VALIDATION` and has one active valid QC rule, **When** activation is requested, **Then** transition to `ACTIVE` succeeds.
 
 ### User Story 4 - Simulate and validate parsing safely (Priority: P2)
 
 As a laboratory administrator, I want to paste raw ASTM payloads into simulator preview so I can validate configuration before live traffic.
 
+**Independent Test**: Submit simulator payload containing mapped and unmapped values and verify preview shows parsed output without writing clinical/QC rows.
+
+**Acceptance Scenarios**:
+1. **Given** valid ASTM payload is submitted to preview, **When** parsing completes, **Then** response includes parsed fields, mapping application results, and plugin-config snapshot context.
+2. **Given** simulator endpoint is used, **When** preview is run repeatedly, **Then** no analyzer result/QC persistence side effects occur.
+
 ### User Story 5 - Detect and resolve unmapped live test codes (Priority: P2)
 
 As a laboratory administrator, I want passive auto-detect of unknown test codes with quick mapping workflow so production drift is resolved without parser code updates.
 
+**Independent Test**: Feed repeated unknown analyzer codes, verify queue behavior (create/increment/cap/purge), then resolve and ignore entries through API actions.
+
+**Acceptance Scenarios**:
+1. **Given** an unmapped analyzer code is seen, **When** ingestion occurs, **Then** pending-code queue stores or increments entry for that analyzer/code pair.
+2. **Given** queue size reaches cap, **When** additional unknown codes arrive, **Then** retention/cap policy is enforced deterministically.
+3. **Given** pending code action is `MAP` or `IGNORE`, **When** API action is executed, **Then** status transitions and timestamps update accordingly.
+
 ### User Story 7 - Bidirectional ASTM communication with GeneXpert (Priority: P1)
 
 As a laboratory administrator, I want OpenELIS to support bidirectional ASTM communication with GeneXpert analyzers so orders can be sent and results can be queried.
+
+**Independent Test**: Execute all four pathways (results push, orders pull, orders push, results pull) against mock analyzer and confirm real-device verification evidence for release.
+
+**Acceptance Scenarios**:
+1. **Given** GeneXpert initiates ASTM communication, **When** OpenELIS receives results push payloads, **Then** messages are processed through configured mapping flow.
+2. **Given** query/order operations are triggered, **When** bidirectional endpoints are exercised, **Then** all four pathways succeed with protocol-compliant exchange.
+3. **Given** release readiness checks run, **When** pathway validations complete, **Then** mock and real-device evidence is captured for sign-off.
 
 ## Deferred User Stories
 
@@ -90,13 +123,13 @@ Deferred to a future feature. MVP does not include DB-backed profile library, im
 #### Core Configuration Surface (FR-014 to FR-021)
 
 - **FR-014 Connection Role**: Support `SERVER` and `CLIENT` roles with conditional fields.
-- **FR-015 QC Rules**: Support `FIELD_EQUALS`, `SPECIMEN_ID_PREFIX`, `SPECIMEN_ID_PATTERN`, `FIELD_CONTAINS`; OR semantics; activation blocked without valid QC rules.
+- **FR-015 QC Rules**: Support `FIELD_EQUALS`, `SPECIMEN_ID_PREFIX`, `SPECIMEN_ID_PATTERN`, `FIELD_CONTAINS`; OR semantics for rule evaluation.
 - **FR-016 Value Transforms**: Support `PASS_THROUGH`, `GREATER_LESS_FLAG`, `VALUE_MAP`, `THRESHOLD_CLASSIFY`, `CODED_LOOKUP` with per-type validation.
 - **FR-017 Field Extraction Config**: Support editable ASTM field/component references with sensible defaults.
 - **FR-018 Aggregation Mode**: Support `PER_MESSAGE`, `BY_SPECIMEN`, `BY_SESSION`; session mode requires window.
 - **FR-019 Abnormal Flag Mapping**: Editable analyzer-flag to OpenELIS interpretation mapping.
 - **FR-020 Simulator**: Preview-only parse of raw ASTM with no persistence.
-- **FR-021 Auto-Detect Codes**: Detect/store unmapped codes, cap queue at 100 per analyzer, purge stale entries.
+- **FR-021 Auto-Detect Codes**: Detect/store unmapped codes and expose API workflow to resolve or ignore pending entries.
 
 #### Bidirectional ASTM Communication (FR-026)
 
@@ -152,6 +185,12 @@ All new endpoints enforce role authorization per CR-007.
 - Extended mapping preview endpoint for simulator outputs.
 - Pending code query/action/cleanup APIs.
 - Profile file read endpoint(s) under analyzer defaults/profiles surface.
+
+Pending-code action semantics for MVP:
+- `MAP`: mark pending entry as mapped and associate mapping workflow completion metadata.
+- `IGNORE`: mark pending entry as ignored without creating a test mapping.
+- `PENDING`: default state for newly detected unmapped codes.
+- Invalid status transitions return validation error payloads and do not mutate state.
 
 #### Deferred APIs
 
@@ -226,7 +265,7 @@ All new endpoints enforce role authorization per CR-007.
 
 ## Success Criteria _(mandatory)_
 
-- **SC-001**: Built-in profile onboarding path can be completed in under 10 minutes (manual walkthrough target).
+- **SC-001**: Built-in profile onboarding path can be completed in under 10 minutes, measured from opening Add Analyzer to successful save using a standard built-in profile on local dev environment with seeded baseline data.
 - **SC-002**: Profile-based analyzer creation deterministically applies defaults.
 - **SC-003**: Activation blocked when QC rules are missing/invalid.
 - **SC-004**: Simulator preview does not persist records.
