@@ -434,6 +434,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     @Async
     @Override
     public void transformPersistOrganization(Organization organization) throws FhirLocalPersistingException {
+        String method = "transformPersistOrganization";
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformPersistOrganization",
                 "transformPersistOrganization called");
 
@@ -441,7 +442,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         FhirOperations fhirOperations = new FhirOperations();
         org.hl7.fhir.r4.model.Organization fhirOrg = transformToFhirOrganization(organization);
         this.addToOperations(fhirOperations, tempIdGenerator, fhirOrg);
-        Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+        try {
+            Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+        } catch (FhirLocalPersistingException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method, "Local fhirStore current unavalable");
+        }
     }
 
     @Override
@@ -486,6 +491,12 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             Practitioner requester = transformProviderToPractitioner(updateData.getProvider().getId());
             this.addToOperations(fhirOperations, tempIdGenerator, requester);
             orderEntryObjects.requester = requester;
+        }
+
+        // new organization created during order entry (free-text site)
+        if (updateData.getNewOrganization() != null) {
+            org.hl7.fhir.r4.model.Organization fhirOrg = transformToFhirOrganization(updateData.getNewOrganization());
+            this.addToOperations(fhirOperations, tempIdGenerator, fhirOrg);
         }
 
         // Specimens and service requests
@@ -1376,7 +1387,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return transformResultToObservation(resultService.get(resultId));
     }
 
-    private Observation transformResultToObservation(Result result) {
+    public Observation transformResultToObservation(Result result) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformResultToObservation",
                 "transformResultToObservation called");
 
@@ -1571,6 +1582,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         if (!GenericValidator.isBlankOrNull(organization.getCode())) {
             fhirOrganization.addIdentifier(new Identifier().setSystem(fhirConfig.getOeFhirSystem() + "/org_uuid")
                     .setValue(organization.getFhirUuidAsString()));
+        }
+        Identifier facilityId = createFacilityIdentifier();
+        if (facilityId != null) {
+            fhirOrganization.addIdentifier(facilityId);
         }
     }
 

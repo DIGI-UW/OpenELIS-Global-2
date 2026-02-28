@@ -1506,3 +1506,29 @@ milestones**: M19-M22
       dropdown
 - [x] T326 [M22] Update InstanceAwareAnalyzerRouterTest for merged model
       (stacked PR fix)
+
+### M-BF1: Analyzer Config Form Fix (1 day)
+
+**Branch**: `fix/011-analyzer-config-form` **Goal**: Fix NumberFormatException
+with non-numeric pluginTypeId, separate config vs instance fields in form,
+auto-create test mappings from default configs **Depends On**: M22
+
+- [x] T327 [M-BF1] RED: Write backend test for non-numeric pluginTypeId
+      (`AnalyzerRestControllerTest`)
+- [x] T328 [M-BF1] GREEN: Add `resolvePluginType()` to `AnalyzerRestController`
+      — graceful numeric/alias resolution
+- [x] T329 [M-BF1] RED: Write Playwright E2E tests for GeneXpert form
+      (`analyzer-form.spec.ts`)
+- [x] T330 [M-BF1] GREEN: Frontend — remove `FALLBACK_PLUGIN_TYPES` (root cause
+      of NumberFormatException)
+- [x] T331 [M-BF1] GREEN: Frontend — enable default config loading in edit mode
+- [x] T332 [M-BF1] GREEN: Frontend — fix `handleDefaultConfigSelect` to set
+      plugin fields only (identifierPattern, category, protocol), not instance
+      fields (name, port)
+- [x] T333 [M-BF1] GREEN: Frontend — reorder form fields (Instance Identity →
+      Plugin Config → Connection)
+- [x] T334 [M-BF1] Add `defaultConfigId` field to `AnalyzerForm.java`
+- [x] T335 [M-BF1] Add `autoCreateTestMappings()` + `loadDefaultConfigFile()` to
+      controller
+- [x] T336 [M-BF1] Wire test mapping auto-creation in create endpoint
+- [x] T337 [M-BF1] Update spec/plan/tasks docs
