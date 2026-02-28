@@ -24,7 +24,8 @@ import {
   SideNavMenuItem,
   SideNavLink,
   SideNavMenu, 
-  Content, 
+  Content,
+  Theme,  
   Accordion,
   AccordionItem
 } from "@carbon/react";
@@ -393,7 +394,6 @@ function PathologyCaseView() {
 
         <Content className="scrollable-content">
             {loading && <Loading description="Loading..." />}
-
             <Accordion align="start">
             <AccordionItem title="Case Information" id="case-info" open>
                   <div className="patient-header2">
@@ -440,9 +440,6 @@ function PathologyCaseView() {
                 </Column>
 
             </AccordionItem>
-
-
-
 
             <AccordionItem title={`Blocks (${(pathologySampleInfo.blocks || []).length})`} id="blocks">
                                 <Grid fullWidth={true} className="gridBoundary">
@@ -584,10 +581,9 @@ function PathologyCaseView() {
                   </Button>
                 </Column>
               </Grid>
-              </AccordionItem>
+            </AccordionItem>
 
-              
-              
+     
             <AccordionItem title={`Slides (${(pathologySampleInfo.slides || []).length})`} id="slides">
                           <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
@@ -1166,8 +1162,7 @@ function PathologyCaseView() {
             </AccordionItem>
 
             </Accordion>
-
-            <Grid fullWidth={true} className="orderLegendBody" style={{ marginTop: '2rem' }}>
+            {/* <Grid fullWidth={true} className="orderLegendBody" style={{ marginTop: '2rem' }}>
               {pathologySampleInfo.assignedPathologistId &&
                 pathologySampleInfo.assignedTechnicianId && (
                   <Column lg={16} md={8} sm={4}>
@@ -1185,8 +1180,7 @@ function PathologyCaseView() {
                     />
                   </Column>
                 )}
-            </Grid>
-
+            </Grid> */}
         </Content>
       </div>
 
