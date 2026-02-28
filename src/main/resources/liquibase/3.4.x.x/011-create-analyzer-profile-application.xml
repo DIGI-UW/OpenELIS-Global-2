@@ -37,6 +37,9 @@
                 <constraints nullable="false"/>
             </column>
             <column name="applied_by" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
         <rollback>
             <dropTable tableName="analyzer_profile_application"/>

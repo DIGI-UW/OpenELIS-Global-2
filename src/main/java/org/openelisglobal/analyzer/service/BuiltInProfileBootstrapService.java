@@ -39,7 +39,10 @@ public class BuiltInProfileBootstrapService {
 
     /**
      * Resilient bootstrap by design: a bad file is logged and skipped so other
-     * valid built-in profiles still load at startup.
+     * valid built-in profiles still load at startup. Note: @Transactional has no
+     * effect when invoked via @PostConstruct (runs before proxy). Bootstrap uses
+     * DAO directly; for full transaction semantics this could be moved to an
+     * ApplicationListener.
      */
     @PostConstruct
     @Transactional
@@ -60,9 +63,8 @@ public class BuiltInProfileBootstrapService {
             if (!Files.exists(protocolDir) || !Files.isDirectory(protocolDir)) {
                 continue;
             }
-            try {
-                List<Path> jsonFiles = Files.list(protocolDir).filter(p -> p.getFileName().toString().endsWith(".json"))
-                        .toList();
+            try (var stream = Files.list(protocolDir)) {
+                List<Path> jsonFiles = stream.filter(p -> p.getFileName().toString().endsWith(".json")).toList();
                 for (Path file : jsonFiles) {
                     try {
                         if (upsertProfileFromFile(file)) {
@@ -92,21 +94,33 @@ public class BuiltInProfileBootstrapService {
     }
 
     private Path resolveDefaultsDir() {
-        String dir = System.getenv("ANALYZER_DEFAULTS_DIR");
+        // Prefer new profiles env var, then legacy defaults env var, then system
+        // property.
+        String dir = System.getenv("ANALYZER_PROFILES_DIR");
         if (dir == null || dir.isEmpty()) {
-            dir = System.getenv("ANALYZER_PROFILES_DIR");
+            dir = System.getenv("ANALYZER_DEFAULTS_DIR");
         }
         if (dir == null || dir.isEmpty()) {
             dir = System.getProperty("analyzer.defaults.dir");
         }
         if (dir == null || dir.isEmpty()) {
-            dir = "/data/analyzer-defaults";
+            dir = "/data/analyzer-profiles";
         }
         Path base = Path.of(dir);
         if (!Files.exists(base)) {
-            Path relative = Path.of("projects/analyzer-defaults");
-            if (Files.exists(relative)) {
-                return relative.toAbsolutePath();
+            if ("/data/analyzer-profiles".equals(dir)) {
+                Path legacyDefault = Path.of("/data/analyzer-defaults");
+                if (Files.exists(legacyDefault)) {
+                    return legacyDefault;
+                }
+            }
+            Path relativeProfiles = Path.of("projects/analyzer-profiles");
+            if (Files.exists(relativeProfiles)) {
+                return relativeProfiles.toAbsolutePath();
+            }
+            Path relativeDefaults = Path.of("projects/analyzer-defaults");
+            if (Files.exists(relativeDefaults)) {
+                return relativeDefaults.toAbsolutePath();
             }
         }
         return base;
@@ -117,6 +131,8 @@ public class BuiltInProfileBootstrapService {
         @SuppressWarnings("unchecked")
         Map<String, Object> payload = OBJECT_MAPPER.readValue(jsonContent, Map.class);
 
+        // M1 requires profileMeta in all built-in JSON files; fallback to
+        // protocol/filename is post-M1.
         @SuppressWarnings("unchecked")
         Map<String, Object> profileMeta = (Map<String, Object>) payload.get("profileMeta");
         if (profileMeta == null) {
@@ -147,11 +163,13 @@ public class BuiltInProfileBootstrapService {
             existing.setProfileJson(profileJson);
             existing.setChecksumSha256(checksum);
             existing.setDisplayName(displayName);
+            existing.setUpdatedBy("system");
             existing.setLastupdatedFields();
             analyzerProfileDAO.update(existing);
             return true;
         }
 
+        analyzerProfileDAO.clearLatestForMetaId(profileMetaId);
         AnalyzerProfile profile = new AnalyzerProfile();
         profile.setProfileMetaId(profileMetaId);
         profile.setProfileMetaVersion(profileMetaVersion);

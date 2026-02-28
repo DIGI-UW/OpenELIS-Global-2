@@ -16,4 +16,8 @@ public interface AnalyzerProfileService extends BaseObjectService<AnalyzerProfil
     String importProfile(Map<String, Object> profilePayload, String source, String sysUserId);
 
     void applyProfileToAnalyzer(String analyzerId, String profileId, String sysUserId);
+
+    boolean hasApplications(String profileId);
+
+    void setDesignatedLatest(String profileId);
 }

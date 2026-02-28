@@ -15,4 +15,6 @@ public interface AnalyzerProfileDAO extends BaseDAO<AnalyzerProfile, String> {
     AnalyzerProfile findByMetaIdAndVersion(String profileMetaId, String profileMetaVersion);
 
     boolean existsByMetaIdAndVersion(String profileMetaId, String profileMetaVersion);
+
+    void clearLatestForMetaId(String profileMetaId);
 }

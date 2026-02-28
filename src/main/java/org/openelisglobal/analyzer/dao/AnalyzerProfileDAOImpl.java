@@ -57,4 +57,14 @@ public class AnalyzerProfileDAOImpl extends BaseDAOImpl<AnalyzerProfile, String>
     public boolean existsByMetaIdAndVersion(String profileMetaId, String profileMetaVersion) {
         return findByMetaIdAndVersion(profileMetaId, profileMetaVersion) != null;
     }
+
+    @Override
+    public void clearLatestForMetaId(String profileMetaId) {
+        List<AnalyzerProfile> current = getAllMatching(
+                Map.of("profileMetaId", profileMetaId, "isLatest", Boolean.TRUE));
+        for (AnalyzerProfile p : current) {
+            p.setIsLatest(false);
+            update(p);
+        }
+    }
 }

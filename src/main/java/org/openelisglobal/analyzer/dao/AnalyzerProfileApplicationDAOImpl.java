@@ -27,4 +27,10 @@ public class AnalyzerProfileApplicationDAOImpl extends BaseDAOImpl<AnalyzerProfi
         List<AnalyzerProfileApplication> list = getAllMatchingOrdered("analyzerId", analyzerId, "appliedAt", true);
         return list.isEmpty() ? null : list.get(0);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsBySourceProfileId(String sourceProfileId) {
+        return !getAllMatching("sourceProfileId", sourceProfileId).isEmpty();
+    }
 }

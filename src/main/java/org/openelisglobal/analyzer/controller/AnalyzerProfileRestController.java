@@ -27,7 +27,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * REST controller for analyzer profile library. Endpoints per API contract:
- * GET/POST /profiles, GET/PUT/DELETE /profiles/{id}, profile-apply.
+ * GET/POST /profiles, GET/PUT/DELETE /profiles/{id}, profile-apply. MVP: all
+ * endpoints require GLOBAL_ADMIN; tiered RBAC (e.g. read for lab roles)
+ * deferred to post-MVP.
  */
 @RestController
 @RequestMapping("/rest/analyzer")
@@ -121,12 +123,13 @@ public class AnalyzerProfileRestController extends BaseRestController {
             if (request.containsKey("displayName")) {
                 profile.setDisplayName((String) request.get("displayName"));
             }
-            if (request.containsKey("isLatest")) {
-                profile.setIsLatest((Boolean) request.get("isLatest"));
-            }
             profile.setUpdatedBy(getSysUserId(httpRequest));
             profile.setUpdatedAt(new java.sql.Timestamp(System.currentTimeMillis()));
             analyzerProfileService.update(profile);
+            if (request.containsKey("isLatest") && Boolean.TRUE.equals(request.get("isLatest"))) {
+                analyzerProfileService.setDesignatedLatest(profileId);
+            }
+            profile = analyzerProfileService.get(profileId);
             return ResponseEntity.ok(profileToMap(profile));
         } catch (org.hibernate.ObjectNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -140,11 +143,15 @@ public class AnalyzerProfileRestController extends BaseRestController {
     }
 
     @DeleteMapping("/profiles/{profileId}")
-    public ResponseEntity<Void> deleteProfile(@PathVariable String profileId) {
+    public ResponseEntity<?> deleteProfile(@PathVariable String profileId) {
         try {
             AnalyzerProfile profile = analyzerProfileService.get(profileId);
             if (!Boolean.TRUE.equals(profile.getIsMutable())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (analyzerProfileService.hasApplications(profileId)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(AnalyzerControllerHelper
+                        .wrapError("Profile cannot be deleted: one or more analyzers have applied this profile"));
             }
             analyzerProfileService.delete(profile);
             return ResponseEntity.noContent().build();

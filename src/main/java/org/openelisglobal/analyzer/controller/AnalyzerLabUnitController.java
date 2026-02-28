@@ -22,7 +22,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * REST controller for analyzer lab unit assignments. Endpoints: GET/PUT
- * /analyzers/{id}/lab-units.
+ * /analyzers/{id}/lab-units. MVP: GLOBAL_ADMIN only; tiered RBAC deferred to
+ * post-MVP.
  */
 @RestController
 @RequestMapping("/rest/analyzer")

@@ -9,4 +9,6 @@ public interface AnalyzerProfileApplicationDAO extends BaseDAO<AnalyzerProfileAp
     List<AnalyzerProfileApplication> findByAnalyzerId(Integer analyzerId);
 
     AnalyzerProfileApplication findLatestByAnalyzerId(Integer analyzerId);
+
+    boolean existsBySourceProfileId(String sourceProfileId);
 }

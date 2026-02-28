@@ -58,8 +58,13 @@ public class AnalyzerProfileServiceImpl extends BaseObjectServiceImpl<AnalyzerPr
         return analyzerProfileDAO.findLatestByMetaId(profileMetaId);
     }
 
+    private static final List<String> VALID_SOURCES = List.of("BUILT_IN", "SITE", "COMMUNITY");
+
     @Override
     public String importProfile(Map<String, Object> profilePayload, String source, String sysUserId) {
+        if (source == null || !VALID_SOURCES.contains(source)) {
+            throw new LIMSRuntimeException("source must be one of BUILT_IN, SITE, COMMUNITY; got: " + source);
+        }
         @SuppressWarnings("unchecked")
         Map<String, Object> meta = (Map<String, Object>) profilePayload.get("profileMeta");
         if (meta == null) {
@@ -129,6 +134,20 @@ public class AnalyzerProfileServiceImpl extends BaseObjectServiceImpl<AnalyzerPr
         app.setAppliedBy(sysUserId);
 
         analyzerProfileApplicationDAO.insert(app);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean hasApplications(String profileId) {
+        return analyzerProfileApplicationDAO.existsBySourceProfileId(profileId);
+    }
+
+    @Override
+    public void setDesignatedLatest(String profileId) {
+        AnalyzerProfile profile = get(profileId);
+        analyzerProfileDAO.clearLatestForMetaId(profile.getProfileMetaId());
+        profile.setIsLatest(true);
+        analyzerProfileDAO.update(profile);
     }
 
     private static String computeSha256(String input) {
