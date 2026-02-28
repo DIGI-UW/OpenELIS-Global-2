@@ -29,8 +29,9 @@ public class HibernateConfig {
             emf = new LocalContainerEntityManagerFactoryBean();
             emf.setDataSource(dataSource);
             emf.setPersistenceXmlLocation("classpath:persistence/persistence.xml");
-            // Register annotated entities beyond legacy hbm mappings.
-            emf.setPackagesToScan("org.openelisglobal");
+            // ASTM entities are registered in persistence.xml; do NOT use setPackagesToScan
+            // here — it causes "No PersistenceProvider specified" in some Spring/JPA
+            // setups.
         }
 
         return emf;
