@@ -206,3 +206,10 @@
 .pathology-sidebar .cds--side-nav__link {
   height: 3.2rem !important; 
 }
+
+.gridBoundary {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 4rem;
+  margin-top: 1rem;
+}
