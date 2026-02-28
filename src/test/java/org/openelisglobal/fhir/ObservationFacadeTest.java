@@ -107,7 +107,6 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
         assertEquals("Observation", jsonResponse.get("resourceType").asText());
 
-        // Verify DB was updated
         Result updatedResult = resultService.getResultByFhirUuid(fhirUuid);
         assertEquals("99.0", updatedResult.getValue());
     }
@@ -148,7 +147,6 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
 
         assertEquals(204, response.getStatus());
 
-        // Verify data still exists (soft delete)
         Result deletedResult = resultService.getResultByFhirUuid(fhirUuid);
         assertNotNull("Result should still exist after soft-delete", deletedResult);
     }

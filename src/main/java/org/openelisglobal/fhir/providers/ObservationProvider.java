@@ -31,7 +31,9 @@ import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Observation.ObservationStatus;
 import org.hl7.fhir.r4.model.Patient;
+import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
@@ -74,6 +76,12 @@ public class ObservationProvider implements IResourceProvider {
 
     @Autowired
     private ResultService resultService;
+
+    @Autowired
+    private AnalysisService analysisService;
+
+    @Autowired
+    private IStatusService statusService;
 
     @Autowired
     private FhirUtil util;
@@ -170,7 +178,6 @@ public class ObservationProvider implements IResourceProvider {
                 throw new ResourceNotFoundException("Observation/" + theId.getIdPart());
             }
 
-            // Soft delete — mark as cancelled, preserve data
             result.setSysUserId(FhirProviderUtils.getSysUserId(request));
             resultService.save(result);
 
