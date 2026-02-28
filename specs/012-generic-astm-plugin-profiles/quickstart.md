@@ -40,7 +40,7 @@ Focus areas per milestone:
 
 ```bash
 cd frontend
-npm test -- --watch=false
+CI=true npm test
 npm run format
 ```
 

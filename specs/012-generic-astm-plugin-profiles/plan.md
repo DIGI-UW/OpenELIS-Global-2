@@ -25,7 +25,7 @@ Technical strategy is evolutionary, not a rewrite:
 
 ## Technical Context
 
-**Language/Version**: Java 21 (Spring MVC 6.2.2), React 17, PostgreSQL 14+  
+**Language/Version**: Java 21 (Spring MVC 6.2.11), React 17, PostgreSQL 14+  
 **Primary Dependencies**: Hibernate/JPA, Liquibase, Carbon (`@carbon/react`),
 React Intl, analyzer plugin submodule, analyzer mock submodule, analyzer bridge
 submodule  

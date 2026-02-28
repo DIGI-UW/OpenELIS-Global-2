@@ -29,7 +29,7 @@ The unified v1.2 scope includes:
   selection/import/export in analyzer setup, and lab unit assignment for
   analyzer organization.
 
-Primary design references are the mockup and addendum documents in
+Primary design references (kept local, not in repo): mockup and addendum in
 `specs/012-generic-astm-plugin-profiles/docs/`.
 
 ---
