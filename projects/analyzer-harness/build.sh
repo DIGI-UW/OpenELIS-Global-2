@@ -67,7 +67,7 @@ else
   echo ""
 fi
 
-if [ "$SKIP_WAR" != true ] && [ "$SKIP_PLUGINS" != true ]; then
+if [ "$SKIP_PLUGINS" != true ]; then
   PLUGINS_DIR="$REPO_ROOT/plugins"
   if [ -d "$PLUGINS_DIR" ] && [ -f "$PLUGINS_DIR/pom.xml" ]; then
     echo "[2/3] Building analyzer plugins..."
@@ -79,11 +79,8 @@ if [ "$SKIP_WAR" != true ] && [ "$SKIP_PLUGINS" != true ]; then
     echo "[2/3] Skipping plugins (submodule not initialized — run: git submodule update --init plugins)"
     echo ""
   fi
-elif [ "$SKIP_PLUGINS" = true ]; then
-  echo "[2/3] Skipping plugin build (--skip-plugins)"
-  echo ""
 else
-  echo "[2/3] Skipping plugin build (WAR build was skipped)"
+  echo "[2/3] Skipping plugin build (--skip-plugins)"
   echo ""
 fi
 

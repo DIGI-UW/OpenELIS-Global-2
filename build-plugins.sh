@@ -29,8 +29,21 @@ for arg in "$@"; do
   esac
 done
 
-# Check if classes JAR exists in local Maven cache
-OE_VERSION="3.2.1.2"
+# Extract OpenELIS version from root pom.xml properties (avoids hardcoding)
+OE_VERSION="$(
+  grep -oP '<major\.version>\K[^<]+' "$REPO_ROOT/pom.xml"
+).$(
+  grep -oP '<minor\.version>\K[^<]+' "$REPO_ROOT/pom.xml"
+).$(
+  grep -oP '<state\.version>\K[^<]+' "$REPO_ROOT/pom.xml"
+).$(
+  grep -oP '<fix\.version>\K[^<]+' "$REPO_ROOT/pom.xml"
+)"
+
+if [ -z "$OE_VERSION" ] || [ "$OE_VERSION" = "..." ]; then
+  echo "Error: Could not determine OpenELIS version from pom.xml" >&2
+  exit 1
+fi
 CLASSES_JAR="$HOME/.m2/repository/org/openelisglobal/openelisglobal/$OE_VERSION/openelisglobal-${OE_VERSION}.jar"
 
 if [ ! -f "$CLASSES_JAR" ] || [ "$REBUILD_OE" = true ]; then
