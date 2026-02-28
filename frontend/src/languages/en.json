@@ -1148,6 +1148,7 @@
   "header.label.study.ciexport": "Export a CSV File by Date",
   "header.label.study.vlloadtrends": "Viral Load Data Export Report",
   "header.label.version": "Version:",
+  "footer.copyright": "© {year} OpenELIS Global. All rights reserved.",
   "header.reject": "Reject",
   "header.rejection.reason": "Reject Reason",
   "header.results.recorded": "Results Recorded",

@@ -19,6 +19,9 @@
   margin-top: 3rem;
   padding: 0;
   background-color: #f5f6f8;
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .loginPageContent,

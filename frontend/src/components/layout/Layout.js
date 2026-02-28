@@ -118,10 +118,10 @@ export default function Layout(props) {
           />
           {/* Theme wrapper creates white theme zone for content area */}
           {/* Global SCSS theme = blue header/nav, this = light content */}
-          <Theme theme="white">
+          <Theme theme="white" className="d-flex flex-column flex-grow-1">
             <Content
               data-testid="content-wrapper"
-              className={isLocked ? "content-nav-locked" : ""}
+              className={`flex-grow-1 d-flex flex-column ${isLocked ? "content-nav-locked" : ""}`}
             >
               {children}
             </Content>
