@@ -1,5 +1,10 @@
 If any guidance conflicts with the core SpecKit command, follow this section.
 
+- **Spec-first worktrees:** Milestone worktrees MUST have `specs/{NNN}-*/` with
+  spec.md, plan.md, tasks.md. If specs are missing (e.g. worktrees created
+  before specs were committed), prompt: "Run
+  `/setup-milestone-worktrees --recover` from the main worktree to rebase
+  milestone branches onto the feature branch that has the committed specs."
 - Use `.specify/memory/constitution.md` Principle IX to enforce milestone
   boundaries (one milestone per PR).
 - Before implementation, validate scope against the current branch:
