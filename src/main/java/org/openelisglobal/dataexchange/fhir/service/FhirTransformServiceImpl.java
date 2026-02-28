@@ -493,6 +493,12 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             orderEntryObjects.requester = requester;
         }
 
+        // new organization created during order entry (free-text site)
+        if (updateData.getNewOrganization() != null) {
+            org.hl7.fhir.r4.model.Organization fhirOrg = transformToFhirOrganization(updateData.getNewOrganization());
+            this.addToOperations(fhirOperations, tempIdGenerator, fhirOrg);
+        }
+
         // Specimens and service requests
         for (SampleTestCollection sampleTest : updateData.getSampleItemsTests()) {
             FhirSampleEntryObjects fhirSampleEntryObjects = new FhirSampleEntryObjects();
@@ -1381,7 +1387,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return transformResultToObservation(resultService.get(resultId));
     }
 
-    private Observation transformResultToObservation(Result result) {
+    public Observation transformResultToObservation(Result result) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformResultToObservation",
                 "transformResultToObservation called");
 
@@ -1576,6 +1582,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         if (!GenericValidator.isBlankOrNull(organization.getCode())) {
             fhirOrganization.addIdentifier(new Identifier().setSystem(fhirConfig.getOeFhirSystem() + "/org_uuid")
                     .setValue(organization.getFhirUuidAsString()));
+        }
+        Identifier facilityId = createFacilityIdentifier();
+        if (facilityId != null) {
+            fhirOrganization.addIdentifier(facilityId);
         }
     }
 

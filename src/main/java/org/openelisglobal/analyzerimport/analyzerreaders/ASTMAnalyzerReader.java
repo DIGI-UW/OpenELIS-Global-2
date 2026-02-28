@@ -213,9 +213,12 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                     .getBean(MappingApplicationService.class);
             if (mappingApplicationService != null
                     && mappingApplicationService.hasActiveMappings(analyzer.get().getId())) {
+                // MappingAwareAnalyzerLineInserter constructor injects context ID
                 return new MappingAwareAnalyzerLineInserter(originalInserter, analyzer.get());
             }
 
+            // No mappings but analyzer identified — inject context ID for result stamping
+            originalInserter.setContextAnalyzerId(analyzer.get().getId());
             return originalInserter;
 
         } catch (Exception e) {
