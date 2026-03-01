@@ -55,21 +55,6 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
   const [pluginTypes, setPluginTypes] = useState([]);
   const [loadingPluginTypes, setLoadingPluginTypes] = useState(false);
 
-  const FALLBACK_PLUGIN_TYPES = [
-    {
-      id: "generic-astm",
-      name: "Generic ASTM",
-      protocol: "ASTM",
-      isGenericPlugin: true,
-    },
-    {
-      id: "generic-hl7",
-      name: "Generic HL7",
-      protocol: "HL7",
-      isGenericPlugin: true,
-    },
-  ];
-
   // Analyzer type options (must match DB analyzer_type column values)
   const analyzerTypeOptions = [
     { id: "HEMATOLOGY", text: "Hematology" },
@@ -162,8 +147,8 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
           }
           setPluginTypes(typesToUse);
         } else {
-          // Fallback to hardcoded list if API returns empty
-          setPluginTypes(FALLBACK_PLUGIN_TYPES);
+          // No plugin types loaded — plugin system may not be initialized yet
+          setPluginTypes([]);
         }
       });
     }
@@ -175,7 +160,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
   const isGenericPlugin = selectedPluginType?.isGenericPlugin === true;
 
   useEffect(() => {
-    if (!isEditMode && open) {
+    if (open) {
       setLoadingDefaults(true);
       getDefaultConfigs((data) => {
         setLoadingDefaults(false);
@@ -186,7 +171,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         }
       });
     }
-  }, [isEditMode, open]);
+  }, [open]);
 
   const validateIPAddress = (ip) => {
     const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
@@ -230,16 +215,22 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
 
     getDefaultConfig(protocol, name, (configData) => {
       if (configData && !configData.error) {
+        // Set plugin/protocol-level fields only — NOT instance-level (name, port, IP)
+        const protocolUpper = protocol.toUpperCase();
+        // Auto-resolve pluginTypeId from config protocol
+        const matchingPluginType = pluginTypes.find(
+          (t) =>
+            t.isGenericPlugin && t.protocol?.toUpperCase() === protocolUpper,
+        );
+
         setFormData((prev) => ({
           ...prev,
-          name: configData.analyzer_name || prev.name,
+          identifierPattern:
+            configData.identifier_pattern || prev.identifierPattern,
           analyzerType: configData.category || prev.analyzerType,
           protocolVersion:
-            PLUGIN_PROTOCOL_DEFAULTS[protocol.toUpperCase()] ||
-            prev.protocolVersion,
-          port: configData.default_port
-            ? String(configData.default_port)
-            : prev.port,
+            PLUGIN_PROTOCOL_DEFAULTS[protocolUpper] || prev.protocolVersion,
+          pluginTypeId: matchingPluginType?.id || prev.pluginTypeId,
         }));
 
         setNotification({
@@ -308,6 +299,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     const submitData = {
       ...formData,
       port: formData.port ? parseInt(formData.port, 10) : null,
+      defaultConfigId: selectedDefault?.id || null,
     };
 
     const callback = (response, extraParams) => {
@@ -371,6 +363,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
             />
           )}
 
+          {/* Section 1 — Instance Identity */}
           <FormGroup legendText="">
             <TextInput
               id="analyzer-name"
@@ -387,27 +380,33 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
             />
 
             <Dropdown
-              id="analyzer-type"
-              data-testid="analyzer-form-type-dropdown"
-              titleText={intl.formatMessage({ id: "analyzer.form.type" })}
-              label={intl.formatMessage({
-                id: "analyzer.form.type.placeholder",
+              id="analyzer-status"
+              data-testid="analyzer-form-status-dropdown"
+              titleText={intl.formatMessage({
+                id: "analyzer.form.status",
               })}
-              items={analyzerTypeOptions}
-              selectedItem={
-                analyzerTypeOptions.find(
-                  (opt) => opt.id === formData.analyzerType,
-                ) || null
-              }
+              label={intl.formatMessage({
+                id: "analyzer.form.status",
+              })}
+              items={statusOptions}
               itemToString={(item) => (item ? item.text : "")}
-              onChange={({ selectedItem }) =>
-                handleFieldChange("analyzerType", selectedItem?.id || "")
+              selectedItem={
+                statusOptions.find((opt) => opt.id === formData.status) ||
+                statusOptions[1] // Default to SETUP
               }
-              invalid={!!errors.analyzerType}
-              invalidText={errors.analyzerType}
-              required
+              onChange={({ selectedItem }) => {
+                if (selectedItem) {
+                  handleFieldChange("status", selectedItem.id);
+                }
+              }}
+              helperText={intl.formatMessage({
+                id: "analyzer.form.status.helperText",
+              })}
             />
+          </FormGroup>
 
+          {/* Section 2 — Plugin Configuration */}
+          <FormGroup legendText="">
             <Dropdown
               id="analyzer-plugin-type"
               data-testid="analyzer-form-plugin-type-dropdown"
@@ -446,7 +445,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
               })}
             />
 
-            {!isEditMode && isGenericPlugin && (
+            {isGenericPlugin && (
               <Dropdown
                 id="analyzer-default-config"
                 data-testid="analyzer-form-default-config-dropdown"
@@ -496,6 +495,28 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
             )}
 
             <Dropdown
+              id="analyzer-type"
+              data-testid="analyzer-form-type-dropdown"
+              titleText={intl.formatMessage({ id: "analyzer.form.type" })}
+              label={intl.formatMessage({
+                id: "analyzer.form.type.placeholder",
+              })}
+              items={analyzerTypeOptions}
+              selectedItem={
+                analyzerTypeOptions.find(
+                  (opt) => opt.id === formData.analyzerType,
+                ) || null
+              }
+              itemToString={(item) => (item ? item.text : "")}
+              onChange={({ selectedItem }) =>
+                handleFieldChange("analyzerType", selectedItem?.id || "")
+              }
+              invalid={!!errors.analyzerType}
+              invalidText={errors.analyzerType}
+              required
+            />
+
+            <Dropdown
               id="analyzer-protocol-version"
               data-testid="analyzer-form-protocol-version-dropdown"
               titleText={intl.formatMessage({
@@ -515,7 +536,10 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
                 }
               }}
             />
+          </FormGroup>
 
+          {/* Section 3 — Connection */}
+          <FormGroup legendText="">
             <div
               className="connection-fields"
               data-testid="analyzer-form-connection-fields"
@@ -556,31 +580,6 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
                 {intl.formatMessage({ id: "analyzer.form.testConnection" })}
               </Button>
             </div>
-
-            <Dropdown
-              id="analyzer-status"
-              data-testid="analyzer-form-status-dropdown"
-              titleText={intl.formatMessage({
-                id: "analyzer.form.status",
-              })}
-              label={intl.formatMessage({
-                id: "analyzer.form.status",
-              })}
-              items={statusOptions}
-              itemToString={(item) => (item ? item.text : "")}
-              selectedItem={
-                statusOptions.find((opt) => opt.id === formData.status) ||
-                statusOptions[1] // Default to SETUP
-              }
-              onChange={({ selectedItem }) => {
-                if (selectedItem) {
-                  handleFieldChange("status", selectedItem.id);
-                }
-              }}
-              helperText={intl.formatMessage({
-                id: "analyzer.form.status.helperText",
-              })}
-            />
           </FormGroup>
         </ModalBody>
         <ModalFooter>
