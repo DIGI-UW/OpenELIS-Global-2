@@ -41,7 +41,7 @@ import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
+import lombok.NonNull;
 /**
  * FHIR R4 Resource Provider for Observation resources.
  *
@@ -122,11 +122,11 @@ public class ObservationProvider implements IResourceProvider {
     }
 
     @Update
-    public MethodOutcome update(@IdParam IdType theId, @ResourceParam Observation fhirObservation,
+    public MethodOutcome update(@NonNull @IdParam IdType theId, @ResourceParam Observation fhirObservation,
             HttpServletRequest request) {
         String method = "update";
         LogEvent.logDebug(this.getClass().getSimpleName(), method,
-                "Received FHIR UPDATE request for Observation ID: " + (theId != null ? theId.getIdPart() : "null"));
+                "Received FHIR UPDATE request for Observation ID: " + theId.getIdPart());
         try {
             FhirProviderUtils.validateIdParam(theId, "Observation", this.getClass().getSimpleName(), method);
 
@@ -166,10 +166,10 @@ public class ObservationProvider implements IResourceProvider {
     }
 
     @Delete
-    public MethodOutcome delete(@IdParam IdType theId, HttpServletRequest request) {
+    public MethodOutcome delete(@NonNull @IdParam IdType theId, HttpServletRequest request) {
         String method = "delete";
         LogEvent.logDebug(this.getClass().getSimpleName(), method,
-                "Received FHIR DELETE request for Observation ID: " + (theId != null ? theId.getIdPart() : "null"));
+                "Received FHIR DELETE request for Observation ID: " + theId.getIdPart());
         try {
             FhirProviderUtils.validateIdParam(theId, "Observation", this.getClass().getSimpleName(), method);
 
