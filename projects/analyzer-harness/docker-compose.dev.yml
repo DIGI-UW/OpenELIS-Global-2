@@ -30,8 +30,12 @@ services:
   oe:
     image: itechuw/openelis-global-2-dev:develop
     depends_on:
-      - db
-      - certs
+      db:
+        condition: service_healthy
+      certs:
+        condition: service_started
+      fhir:
+        condition: service_healthy
     ports:
       - "8080:8080"
       - "8443:8443"
@@ -83,6 +87,12 @@ services:
       - ../../tomcat/hapi_server.xml:/opt/bitnami/tomcat/conf/server.xml
     secrets:
       - source: hapi_application.yaml
+    healthcheck:
+      test: ["CMD-SHELL", "(command -v curl >/dev/null 2>&1 && curl -fk https://localhost:8443/fhir/metadata >/dev/null) || (command -v wget >/dev/null 2>&1 && wget --no-check-certificate -qO- https://localhost:8443/fhir/metadata >/dev/null)"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
 
   frontend:
     image: itechuw/openelis-global-2-frontend-dev:develop
