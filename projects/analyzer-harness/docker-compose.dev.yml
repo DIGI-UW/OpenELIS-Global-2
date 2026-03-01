@@ -88,7 +88,7 @@ services:
     secrets:
       - source: hapi_application.yaml
     healthcheck:
-      test: ["CMD-SHELL", "(command -v curl >/dev/null 2>&1 && curl -fk https://localhost:8443/fhir/metadata >/dev/null) || (command -v wget >/dev/null 2>&1 && wget --no-check-certificate -qO- https://localhost:8443/fhir/metadata >/dev/null)"]
+      test: ["CMD-SHELL", "pgrep -f org.apache.catalina.startup.Bootstrap >/dev/null"]
       interval: 15s
       timeout: 10s
       retries: 20
@@ -116,7 +116,10 @@ services:
       - ../../volume/letsencrypt:/etc/letsencrypt:ro
     restart: unless-stopped
     depends_on:
-      - certs
+      certs:
+        condition: service_started
+      oe:
+        condition: service_started
 
 secrets:
   datasource.password:

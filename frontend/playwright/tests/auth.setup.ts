@@ -44,11 +44,12 @@ setup("authenticate", async ({ page }, testInfo) => {
   await usernameInput.fill(username);
   await passwordInput.fill(password);
 
+  const authSubmit = page.getByRole("button", { name: /^(login|submit)$/i }).first();
   await Promise.all([
     page.waitForURL((url) => !url.pathname.endsWith("/login"), {
       timeout: 15_000,
     }),
-    page.getByRole("button", { name: /login/i }).first().click(),
+    authSubmit.click(),
   ]);
 
   // Verify authenticated state by reaching analyzer list route and ensuring
