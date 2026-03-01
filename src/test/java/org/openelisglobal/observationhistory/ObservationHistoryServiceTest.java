@@ -2,6 +2,7 @@ package org.openelisglobal.observationhistory;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -187,5 +188,148 @@ public class ObservationHistoryServiceTest extends BaseWebContextSensitiveTest {
 
         List<ObservationHistory> observationHistories = observationHistoryService.getAll(patient, sample, type.getId());
         assertTrue(observationHistories.size() == 1);
+    }
+
+    // ----------------------------------------------------------------
+    // NEW TESTS — covering previously untested methods
+    // ----------------------------------------------------------------
+
+    @Test
+    public void getRawValueForSample_shouldReturnRawValueForSample() {
+        // observation id=3 has value="Engineer" for sample id=3, type requestDate
+        String rawValue = observationHistoryService.getRawValueForSample(ObservationType.REQUEST_DATE, "3");
+
+        assertNotNull(rawValue);
+        assertEquals("Engineer", rawValue);
+    }
+
+    @Test
+    public void getRawValueForSample_shouldReturnNullWhenNoObservationExists() {
+        // sample id=1 has type initialSampleCondition, not REQUEST_DATE
+        // so getRawValue for REQUEST_DATE on sample 1 should return null
+        String rawValue = observationHistoryService.getRawValueForSample(ObservationType.REQUEST_DATE, "1");
+
+        assertNull(rawValue);
+    }
+
+    @Test
+    public void getObservationHistoriesBySampleIdAndType_shouldReturnObservationForSampleAndType() {
+        // observation id=1: sample_id=1, observation_history_type_id=1
+        ObservationHistory result = observationHistoryService.getObservationHistoriesBySampleIdAndType("1", "1");
+
+        assertNotNull(result);
+        assertEquals("University", result.getValue());
+        assertEquals("1", result.getSampleId());
+        assertEquals("1", result.getObservationHistoryTypeId());
+    }
+
+    @Test
+    public void getObservationHistoriesBySampleIdAndType_shouldReturnNullWhenNoMatch() {
+        // sample id=1 has no observation of type 3 (requestDate)
+        ObservationHistory result = observationHistoryService.getObservationHistoriesBySampleIdAndType("1", "3");
+
+        assertNull(result);
+    }
+
+    @Test
+    public void getObservationHistoriesByPatientIdAndType_shouldReturnObservationsForPatientAndType() {
+        // observation id=1: patient_id=1, observation_history_type_id=1
+        List<ObservationHistory> results = observationHistoryService.getObservationHistoriesByPatientIdAndType("1",
+                "1");
+
+        assertNotNull(results);
+        assertEquals(1, results.size());
+        assertEquals("University", results.get(0).getValue());
+    }
+
+    @Test
+    public void getObservationHistoriesByPatientIdAndType_shouldReturnEmptyListWhenNoMatch() {
+        // patient id=1 has no observation of type 3 (requestDate)
+        List<ObservationHistory> results = observationHistoryService.getObservationHistoriesByPatientIdAndType("1",
+                "3");
+
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    public void getObservationHistoryByDictionaryValues_shouldReturnObservationsForDictionaryValue() {
+        // observations with value_type="L" (LITERAL) store plain text values
+        // none of the test data uses dictionary (D) value_type, so result should be
+        // empty
+        List<ObservationHistory> results = observationHistoryService
+                .getObservationHistoryByDictonaryValues("University");
+
+        assertNotNull(results);
+    }
+
+    @Test
+    public void getObservationHistoriesBySampleId_shouldReturnEmptyListForUnknownSample() {
+        List<ObservationHistory> results = observationHistoryService.getObservationHistoriesBySampleId("9999");
+
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    public void getObservationHistoriesBySampleId_shouldReturnCorrectValueForSample() {
+        // observation id=2: sample_id=2, value="Married"
+        List<ObservationHistory> results = observationHistoryService.getObservationHistoriesBySampleId("2");
+
+        assertEquals(1, results.size());
+        assertEquals("Married", results.get(0).getValue());
+    }
+
+    @Test
+    public void getObservationsByTypeAndValue_shouldReturnNullWhenTypeNotInDatabase() {
+        // TB_ORDER_REASON is not in the test dataset's observation_history_type table
+        // so getObservationTypeIdForType returns null, and the method should return
+        // null
+        List<ObservationHistory> results = observationHistoryService
+                .getObservationsByTypeAndValue(ObservationType.TB_ORDER_REASON, "someValue");
+
+        assertNull(results);
+    }
+
+    @Test
+    public void getObservationForSample_shouldReturnNullWhenTypeNotInDatabase() {
+        // TB_ORDER_REASON is not in test data so typeId will be null
+        ObservationHistory result = observationHistoryService.getObservationForSample(ObservationType.TB_ORDER_REASON,
+                "1");
+
+        assertNull(result);
+    }
+
+    @Test
+    public void getLastObservationForPatient_shouldReturnNullWhenTypeNotInDatabase() {
+        // TB_ORDER_REASON is not in test data so typeId will be null
+        ObservationHistory result = observationHistoryService
+                .getLastObservationForPatient(ObservationType.TB_ORDER_REASON, "1");
+
+        assertNull(result);
+    }
+
+    @Test
+    public void getRawValueForSample_shouldReturnNullWhenTypeNotInDatabase() {
+        String result = observationHistoryService.getRawValueForSample(ObservationType.TB_ORDER_REASON, "1");
+
+        assertNull(result);
+    }
+
+    @Test
+    public void insert_shouldTrimWhitespaceFromValue() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "observation_history" });
+
+        ObservationHistory observationHistory = new ObservationHistory();
+        observationHistory.setPatientId("1");
+        observationHistory.setSampleId("1");
+        observationHistory.setObservationHistoryTypeId("1");
+        observationHistory.setValueType("L");
+        observationHistory.setValue("  trimmed value  ");
+
+        String id = observationHistoryService.insert(observationHistory);
+        ObservationHistory saved = observationHistoryService.get(id);
+
+        assertEquals("trimmed value", saved.getValue());
     }
 }
