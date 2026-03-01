@@ -24,7 +24,6 @@ import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashSet;
-import lombok.NonNull;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.DiagnosticReport;
 import org.hl7.fhir.r4.model.Encounter;
@@ -32,9 +31,7 @@ import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Observation.ObservationStatus;
 import org.hl7.fhir.r4.model.Patient;
-import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
@@ -79,12 +76,6 @@ public class ObservationProvider implements IResourceProvider {
     private ResultService resultService;
 
     @Autowired
-    private AnalysisService analysisService;
-
-    @Autowired
-    private IStatusService statusService;
-
-    @Autowired
     private FhirUtil util;
 
     @Override
@@ -123,11 +114,11 @@ public class ObservationProvider implements IResourceProvider {
     }
 
     @Update
-    public MethodOutcome update(@NonNull @IdParam IdType theId, @ResourceParam Observation fhirObservation,
+    public MethodOutcome update(@IdParam IdType theId, @ResourceParam Observation fhirObservation,
             HttpServletRequest request) {
         String method = "update";
         LogEvent.logDebug(this.getClass().getSimpleName(), method,
-                "Received FHIR UPDATE request for Observation ID: " + theId.getIdPart());
+                "Received FHIR UPDATE request for Observation ID: " + (theId != null ? theId.getIdPart() : "null"));
         try {
             FhirProviderUtils.validateIdParam(theId, "Observation", this.getClass().getSimpleName(), method);
 
@@ -136,7 +127,6 @@ public class ObservationProvider implements IResourceProvider {
                 throw new ResourceNotFoundException("Observation/" + theId.getIdPart());
             }
 
-            // Update value fields only — preserve all other Result state
             if (fhirObservation.hasValueQuantity()) {
                 existingResult.setValue(fhirObservation.getValueQuantity().getValue().toPlainString());
                 existingResult.setResultType("N");
@@ -149,6 +139,7 @@ public class ObservationProvider implements IResourceProvider {
             Result updatedResult = resultService.save(existingResult);
 
             Observation resultObservation = fhirTransformService.transformResultToObservation(updatedResult);
+            resultObservation.setId(theId);
             FhirProviderUtils.syncToFhirStore(fhirPersistenceService, resultObservation,
                     this.getClass().getSimpleName(), method);
 
@@ -167,10 +158,10 @@ public class ObservationProvider implements IResourceProvider {
     }
 
     @Delete
-    public MethodOutcome delete(@NonNull @IdParam IdType theId, HttpServletRequest request) {
+    public MethodOutcome delete(@IdParam IdType theId, HttpServletRequest request) {
         String method = "delete";
         LogEvent.logDebug(this.getClass().getSimpleName(), method,
-                "Received FHIR DELETE request for Observation ID: " + theId.getIdPart());
+                "Received FHIR DELETE request for Observation ID: " + (theId != null ? theId.getIdPart() : "null"));
         try {
             FhirProviderUtils.validateIdParam(theId, "Observation", this.getClass().getSimpleName(), method);
 
