@@ -78,9 +78,12 @@
     <!-- ========================================================= -->
     <changeSet id="panel-003-add-unique-sampletype-panel" author="Agaba-Derrick">
         <preConditions onFail="MARK_RAN">
-            <not>
-                <uniqueConstraintExists tableName="sampletype_panel" constraintName="uq_sampletype_panel"/>
-            </not>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE constraint_name = 'uq_sampletype_panel'
+                AND table_name = 'sampletype_panel'
+                AND constraint_schema = 'clinlims'
+            </sqlCheck>
         </preConditions>
 
         <addUniqueConstraint
