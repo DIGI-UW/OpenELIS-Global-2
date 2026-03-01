@@ -14,8 +14,8 @@
 
 ## Phase 1: Setup and Baseline
 
-- [ ] T001 Verify environment and submodules per quickstart.
-- [ ] T002 Run baseline GeneXpert regression (test-connection) before any
+- [x] T001 Verify environment and submodules per quickstart.
+- [x] T002 Run baseline GeneXpert regression (test-connection) before any
       feature work.
 
 ---
@@ -26,10 +26,10 @@
 
 ### Foundation sync from reference branches (manual apply only)
 
-- [ ] T003 [M1] Manual-apply RBAC infra from old M1:
+- [x] T003 [M1] Manual-apply RBAC infra from old M1:
   - `src/main/java/org/openelisglobal/security/SecurityConfig.java`
   - `src/main/java/org/openelisglobal/security/login/CustomUserDetailsService.java`
-- [ ] T004 [M1] Manual-apply 009 decouple mapping set:
+- [x] T004 [M1] Manual-apply 009 decouple mapping set:
   - `src/main/resources/liquibase/3.4.x.x/009-decouple-test-mappings.xml`
   - `src/main/java/org/openelisglobal/analyzerimport/valueholder/AnalyzerTestMappingPK.java`
   - `src/main/java/org/openelisglobal/analyzerimport/valueholder/AnalyzerTestMapping.java`
@@ -37,35 +37,35 @@
   - `src/main/java/org/openelisglobal/analyzerimport/util/AnalyzerTestNameCache.java`
   - `src/main/java/org/openelisglobal/analyzerimport/analyzerreaders/AnalyzerLineInserter.java`
   - `src/main/java/org/openelisglobal/analyzerimport/analyzerreaders/ASTMAnalyzerReader.java`
-- [ ] T005 [M1] Manual-apply `AnalyzerControllerHelper.java` from old M2.
-- [ ] T006 [M1] Manual-apply `profileMeta` updates in 11 profile JSON files.
+- [x] T005 [M1] Manual-apply `AnalyzerControllerHelper.java` from old M2.
+- [x] T006 [M1] Manual-apply `profileMeta` updates in 11 profile JSON files.
 
 ### Directory and naming cleanup
 
-- [ ] T007 [M1] Rename `projects/analyzer-defaults/` ->
+- [x] T007 [M1] Rename `projects/analyzer-defaults/` ->
       `projects/analyzer-profiles/`.
-- [ ] T008 [P] [M1] Update backend references (`AnalyzerRestController`, env var
+- [x] T008 [P] [M1] Update backend references (`AnalyzerRestController`, env var
       usage, config paths).
-- [ ] T009 [P] [M1] Update build and infra references (`pom.xml`, docker
+- [x] T009 [P] [M1] Update build and infra references (`pom.xml`, docker
       compose, harness references).
-- [ ] T010 [P] [M1] Update frontend service path references to
+- [x] T010 [P] [M1] Update frontend service path references to
       `analyzer-profiles`.
 
 ### Liquibase and schema
 
-- [ ] T011 [M1] Ensure `base.xml` includes changesets in order: 009, 010, 011.
-- [ ] T012 [M1] Create `010-create-analyzer-plugin-config.xml`.
-- [ ] T013 [P] [M1] Create `011-create-analyzer-pending-code.xml`.
+- [x] T011 [M1] Ensure `base.xml` includes changesets in order: 009, 010, 011.
+- [x] T012 [M1] Create `010-create-analyzer-plugin-config.xml`.
+- [x] T013 [P] [M1] Create `011-create-analyzer-pending-code.xml`.
 
 ### Entities and DAOs
 
-- [ ] T014 [M1] Add `AnalyzerPluginConfig` valueholder/entity.
-- [ ] T015 [P] [M1] Add `AnalyzerPendingCode` valueholder/entity.
-- [ ] T016 [P] [M1] Add DAO interfaces/impls for plugin config and pending code.
+- [x] T014 [M1] Add `AnalyzerPluginConfig` valueholder/entity.
+- [x] T015 [P] [M1] Add `AnalyzerPendingCode` valueholder/entity.
+- [x] T016 [P] [M1] Add DAO interfaces/impls for plugin config and pending code.
 
 ### Services and business logic
 
-- [ ] T017 [M1] Implement `AnalyzerPluginConfigService` (CRUD + validation +
+- [x] T017 [M1] Implement `AnalyzerPluginConfigService` (CRUD + validation +
       QC/transform evaluators).
 - [ ] T018 [P] [M1] Implement `AnalyzerPendingCodeService`
       (detect/increment/cap/purge/resolve/ignore).
@@ -84,10 +84,10 @@
 
 ### Controllers and RBAC
 
-- [ ] T022 [M1] Implement `AnalyzerPluginConfigRestController`.
-- [ ] T023 [M1] Apply `@PreAuthorize("hasRole('GLOBAL_ADMIN')")` to new
+- [x] T022 [M1] Implement `AnalyzerPluginConfigRestController`.
+- [x] T023 [M1] Apply `@PreAuthorize("hasRole('GLOBAL_ADMIN')")` to new
       endpoints.
-- [ ] T024 [M1] Standardize structured error responses via
+- [x] T024 [M1] Standardize structured error responses via
       `AnalyzerControllerHelper`.
 
 ### Tests
@@ -114,10 +114,10 @@
 
 ### Build and gate
 
-- [ ] T031 [M1] Run backend formatting/build.
+- [x] T031 [M1] Run backend formatting/build.
 - [ ] T032 [M1] Run target M1 tests.
 - [ ] T033 [M1] Run GeneXpert regression gate.
-- [ ] T034 [M1] Open replacement PR referencing closed #2969 and #2970.
+- [x] T034 [M1] Open replacement PR referencing closed #2969 and #2970.
 
 ---
 

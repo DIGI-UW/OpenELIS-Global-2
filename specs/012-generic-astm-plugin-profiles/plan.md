@@ -1,6 +1,6 @@
 # Implementation Plan: Generic ASTM Plugin Profiles v1.2 (Simplified)
 
-**Branch**: `feat/012-generic-astm-plugin-profiles`  
+**Branch**: `feat/012-ogc-337-generic-astm-plugin-profiles-m1-plugin-config`  
 **Date**: 2026-02-27  
 **Spec**: [spec.md](./spec.md)  
 **Jira**: OGC-337

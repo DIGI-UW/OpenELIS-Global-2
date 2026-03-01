@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.dao;
 
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode;
@@ -9,4 +10,8 @@ public interface AnalyzerPendingCodeDAO extends BaseDAO<AnalyzerPendingCode, Str
     List<AnalyzerPendingCode> findByAnalyzerId(String analyzerId);
 
     Optional<AnalyzerPendingCode> findByAnalyzerAndCode(String analyzerId, String analyzerTestName);
+
+    long countByAnalyzerIdAndStatus(String analyzerId, AnalyzerPendingCode.Status status);
+
+    int deletePendingOlderThan(String analyzerId, Timestamp cutoff);
 }

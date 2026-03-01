@@ -1,5 +1,10 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "profileMeta": {
+    "id": "horiba-pentra60",
+    "version": "1.2.0",
+    "displayName": "Horiba ABX Pentra 60 C+"
+  },
   "analyzer_name": "Horiba ABX Pentra 60 C+",
   "manufacturer": "Horiba ABX",
   "category": "HEMATOLOGY",
@@ -71,5 +76,6 @@
       "unit": "%"
     }
   ],
+  "configDefaults": {},
   "notes": "Requires USB-to-serial adapter + ASTM-HTTP Bridge for RS232-to-TCP conversion. 20 fields total (5-part differential). Confirmed ASTM E-1381/E-1394 support."
 }

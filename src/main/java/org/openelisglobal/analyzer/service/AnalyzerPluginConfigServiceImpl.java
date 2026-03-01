@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.analyzer.dao.AnalyzerPluginConfigDAO;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,10 +21,15 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<Map<String, Object>>() {
     };
+    private static final Set<String> ALLOWED_TRANSFORM_TYPES = Set.of("PASS_THROUGH", "GREATER_LESS_FLAG", "VALUE_MAP",
+            "THRESHOLD_CLASSIFY", "CODED_LOOKUP");
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     private AnalyzerPluginConfigDAO analyzerPluginConfigDAO;
+
+    @Autowired
+    private AnalyzerService analyzerService;
 
     public AnalyzerPluginConfigServiceImpl() {
         super(AnalyzerPluginConfig.class);
@@ -47,6 +54,7 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
 
     @Override
     public AnalyzerPluginConfig upsert(String analyzerId, Map<String, Object> config, String sysUserId) {
+        validateConfig(analyzerId, config);
         AnalyzerPluginConfig entity = getOrCreate(analyzerId, sysUserId);
         entity.setConfig(toJson(config));
         entity.setSysUserId(sysUserId);
@@ -115,6 +123,154 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
             return objectMapper.writeValueAsString(data == null ? Map.of() : data);
         } catch (Exception e) {
             return "{}";
+        }
+    }
+
+    private void validateConfig(String analyzerId, Map<String, Object> config) {
+        if (config == null) {
+            return;
+        }
+        validateAggregationWindow(config);
+        validateTransforms(config);
+        validateConnectionRole(analyzerId, config);
+    }
+
+    private void validateAggregationWindow(Map<String, Object> config) {
+        String aggregationMode = normalizedString(config.get("aggregationMode"));
+        if (!"BY_SESSION".equals(aggregationMode)) {
+            return;
+        }
+        Integer aggregationWindow = toPositiveInteger(config.get("aggregationWindowSeconds"), false, null);
+        if (aggregationWindow == null || aggregationWindow < 5 || aggregationWindow > 300) {
+            throw new IllegalArgumentException(
+                    "aggregationWindowSeconds must be an integer between 5 and 300 when aggregationMode is BY_SESSION");
+        }
+    }
+
+    private void validateTransforms(Map<String, Object> config) {
+        Object transformsObject = config.get("transforms");
+        if (transformsObject == null) {
+            return;
+        }
+        if (!(transformsObject instanceof Map<?, ?> transformsMap)) {
+            throw new IllegalArgumentException("transforms must be an object map");
+        }
+        for (Map.Entry<?, ?> entry : transformsMap.entrySet()) {
+            String transformKey = String.valueOf(entry.getKey());
+            if (!(entry.getValue() instanceof Map<?, ?> transformDef)) {
+                throw new IllegalArgumentException("Transform '" + transformKey + "' must be an object");
+            }
+
+            String transformType = normalizedString(transformDef.get("type"));
+            if (transformType == null || !ALLOWED_TRANSFORM_TYPES.contains(transformType)) {
+                throw new IllegalArgumentException("Transform '" + transformKey
+                        + "' has invalid type. Allowed: PASS_THROUGH, GREATER_LESS_FLAG, VALUE_MAP, THRESHOLD_CLASSIFY, CODED_LOOKUP");
+            }
+
+            if ("VALUE_MAP".equals(transformType)) {
+                Object valueMap = transformDef.get("valueMap");
+                if (!(valueMap instanceof Map<?, ?> valueMapObj) || valueMapObj.isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "Transform '" + transformKey + "' of type VALUE_MAP requires a non-empty valueMap");
+                }
+            }
+            if ("THRESHOLD_CLASSIFY".equals(transformType) && !isNumeric(transformDef.get("threshold"))) {
+                throw new IllegalArgumentException(
+                        "Transform '" + transformKey + "' of type THRESHOLD_CLASSIFY requires numeric threshold");
+            }
+            if ("CODED_LOOKUP".equals(transformType)) {
+                Object lookupTable = transformDef.get("lookupTable");
+                if (!(lookupTable instanceof Map<?, ?> lookupTableObj) || lookupTableObj.isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "Transform '" + transformKey + "' of type CODED_LOOKUP requires a non-empty lookupTable");
+                }
+            }
+        }
+    }
+
+    private void validateConnectionRole(String analyzerId, Map<String, Object> config) {
+        String connectionRole = normalizedString(config.get("connectionRole"));
+        if (connectionRole == null) {
+            return;
+        }
+        if ("SERVER".equals(connectionRole)) {
+            Integer listenPort = toPositiveInteger(config.get("serverListenPort"), true,
+                    "serverListenPort is required and must be > 0 when connectionRole is SERVER");
+            Analyzer conflictingAnalyzer = analyzerService.findActiveByListenPort(listenPort).orElse(null);
+            if (conflictingAnalyzer != null
+                    && !String.valueOf(conflictingAnalyzer.getId()).equals(String.valueOf(analyzerId))) {
+                throw new IllegalArgumentException(
+                        "serverListenPort " + listenPort + " is already used by active analyzer '"
+                                + conflictingAnalyzer.getName() + "' (id " + conflictingAnalyzer.getId() + ")");
+            }
+            return;
+        }
+        if ("CLIENT".equals(connectionRole)) {
+            String targetIp = normalizedString(config.get("clientTargetIp"));
+            Integer targetPort = toPositiveInteger(config.get("clientTargetPort"), true,
+                    "clientTargetPort is required and must be > 0 when connectionRole is CLIENT");
+            if (targetIp == null) {
+                throw new IllegalArgumentException("clientTargetIp is required when connectionRole is CLIENT");
+            }
+            if (targetPort == null) {
+                throw new IllegalArgumentException("clientTargetPort is required when connectionRole is CLIENT");
+            }
+            return;
+        }
+        throw new IllegalArgumentException("connectionRole must be SERVER or CLIENT");
+    }
+
+    private String normalizedString(Object value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = String.valueOf(value).trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        return normalized.toUpperCase();
+    }
+
+    private Integer toPositiveInteger(Object value, boolean required, String requiredMessage) {
+        if (value == null || String.valueOf(value).trim().isEmpty()) {
+            if (required) {
+                throw new IllegalArgumentException(requiredMessage);
+            }
+            return null;
+        }
+        Integer parsed = toInteger(value);
+        if (parsed == null || parsed < 1) {
+            if (required) {
+                throw new IllegalArgumentException(requiredMessage);
+            }
+            return null;
+        }
+        return parsed;
+    }
+
+    private Integer toInteger(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return Integer.valueOf(String.valueOf(value).trim());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private boolean isNumeric(Object value) {
+        if (value instanceof Number) {
+            return true;
+        }
+        if (value == null) {
+            return false;
+        }
+        try {
+            Double.parseDouble(String.valueOf(value).trim());
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 }

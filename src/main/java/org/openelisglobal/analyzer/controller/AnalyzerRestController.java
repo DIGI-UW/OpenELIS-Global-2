@@ -976,6 +976,10 @@ public class AnalyzerRestController extends BaseRestController {
      * <p>
      * Returns minimal metadata for each template: id (e.g., "astm/mindray-ba88a"),
      * protocol ("ASTM" or "HL7"), analyzer_name (from JSON).
+     *
+     * <p>
+     * Built-in profiles are intentionally immutable and exposed via read-only GET
+     * endpoints. There are no write endpoints for /profiles/**.
      */
     @GetMapping({ "/profiles", "/defaults" })
     public ResponseEntity<?> getDefaults() {
@@ -1050,6 +1054,11 @@ public class AnalyzerRestController extends BaseRestController {
 
             String jsonContent = Files.readString(templateFile, StandardCharsets.UTF_8);
             Map<String, Object> config = objectMapper.readValue(jsonContent, Map.class);
+            String schemaValidationError = validateProfileMeta(config, protocol + "/" + name);
+            if (schemaValidationError != null) {
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                        .body(AnalyzerControllerHelper.wrapError(schemaValidationError));
+            }
             return ResponseEntity.ok(config);
 
         } catch (IOException e) {
@@ -1184,6 +1193,11 @@ public class AnalyzerRestController extends BaseRestController {
                 try {
                     String jsonContent = Files.readString(file, StandardCharsets.UTF_8);
                     Map<String, Object> config = objectMapper.readValue(jsonContent, Map.class);
+                    String schemaValidationError = validateProfileMeta(config, protocol + "/" + file.getFileName());
+                    if (schemaValidationError != null) {
+                        logger.warn("Skipping profile template due to invalid schema: {}", schemaValidationError);
+                        return;
+                    }
 
                     Map<String, Object> template = new LinkedHashMap<>();
                     String filename = file.getFileName().toString().replace(".json", "");
@@ -1201,5 +1215,25 @@ public class AnalyzerRestController extends BaseRestController {
         } catch (IOException e) {
             logger.warn("Failed to list template files in {}: {}", directory, e.getMessage());
         }
+    }
+
+    private String validateProfileMeta(Map<String, Object> config, String templateId) {
+        if (config == null) {
+            return "Invalid profile template '" + templateId + "': content is empty";
+        }
+        Object profileMetaObj = config.get("profileMeta");
+        if (!(profileMetaObj instanceof Map<?, ?> profileMeta)) {
+            return "Invalid profile template '" + templateId + "': missing required profileMeta object";
+        }
+        if (isBlank(profileMeta.get("id")) || isBlank(profileMeta.get("version"))
+                || isBlank(profileMeta.get("displayName"))) {
+            return "Invalid profile template '" + templateId
+                    + "': profileMeta must include non-empty id, version, and displayName";
+        }
+        return null;
+    }
+
+    private boolean isBlank(Object value) {
+        return value == null || String.valueOf(value).trim().isEmpty();
     }
 }

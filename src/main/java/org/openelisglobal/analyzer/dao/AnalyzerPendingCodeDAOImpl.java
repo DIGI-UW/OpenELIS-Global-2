@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.dao;
 
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 import org.hibernate.Session;
@@ -45,5 +46,34 @@ public class AnalyzerPendingCodeDAOImpl extends BaseDAOImpl<AnalyzerPendingCode,
         query.setParameter("analyzerId", analyzerId.trim());
         query.setParameter("analyzerTestName", analyzerTestName);
         return Optional.ofNullable(query.uniqueResultOptional().orElse(null));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countByAnalyzerIdAndStatus(String analyzerId, AnalyzerPendingCode.Status status) {
+        if (analyzerId == null || analyzerId.trim().isEmpty() || status == null) {
+            return 0;
+        }
+        String sql = "SELECT COUNT(*) FROM clinlims.analyzer_pending_code WHERE analyzer_id = CAST(:analyzerId AS NUMERIC) "
+                + "AND status = :status";
+        Query<Number> query = entityManager.unwrap(Session.class).createNativeQuery(sql);
+        query.setParameter("analyzerId", analyzerId.trim());
+        query.setParameter("status", status.name());
+        Number count = query.uniqueResult();
+        return count == null ? 0 : count.longValue();
+    }
+
+    @Override
+    public int deletePendingOlderThan(String analyzerId, Timestamp cutoff) {
+        if (analyzerId == null || analyzerId.trim().isEmpty() || cutoff == null) {
+            return 0;
+        }
+        String sql = "DELETE FROM clinlims.analyzer_pending_code WHERE analyzer_id = CAST(:analyzerId AS NUMERIC) "
+                + "AND status = :status AND last_seen_at < :cutoff";
+        Query<?> query = entityManager.unwrap(Session.class).createNativeQuery(sql);
+        query.setParameter("analyzerId", analyzerId.trim());
+        query.setParameter("status", AnalyzerPendingCode.Status.PENDING.name());
+        query.setParameter("cutoff", cutoff);
+        return query.executeUpdate();
     }
 }

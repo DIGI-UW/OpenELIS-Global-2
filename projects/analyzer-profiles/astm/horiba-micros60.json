@@ -1,5 +1,10 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "profileMeta": {
+    "id": "horiba-micros60",
+    "version": "1.2.0",
+    "displayName": "Horiba ABX Micros 60"
+  },
   "analyzer_name": "Horiba ABX Micros 60",
   "manufacturer": "Horiba ABX",
   "category": "HEMATOLOGY",
@@ -59,5 +64,6 @@
       "unit": "%"
     }
   ],
+  "configDefaults": {},
   "notes": "Requires USB-to-serial adapter + ASTM-HTTP Bridge for RS232-to-TCP conversion. 16 fields total (3-part differential)."
 }

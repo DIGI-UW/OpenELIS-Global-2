@@ -228,6 +228,10 @@ import/export sharing, or community profile exchange.
   - MVP source is filesystem-only built-in profiles.
   - No DB profile library, no community import pipeline in MVP.
   - Built-in catalog includes 11 files (6 ASTM + 5 HL7) validated in repository.
+  - ASTM filenames: `genexpert-astm`, `horiba-micros60`, `horiba-pentra60`,
+    `mindray-ba88a`, `stago-start4`, `sysmex-xn`.
+  - HL7 filenames: `abbott-architect`, `genexpert-hl7`, `mindray-bc2000`,
+    `mindray-bc5380`, `mindray-bs360e`.
 - **FR-024 Profile Selection**:
   - Add Analyzer MUST allow built-in profile selection and "None (Start from
     Scratch)".

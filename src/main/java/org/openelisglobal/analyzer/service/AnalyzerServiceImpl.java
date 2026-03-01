@@ -137,6 +137,12 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<Analyzer> findActiveByListenPort(Integer port) {
+        return baseObjectDAO.findActiveByPort(port);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<Analyzer> findByIdentifierPatternMatch(String analyzerIdentifier) {
         if (analyzerIdentifier == null || analyzerIdentifier.trim().isEmpty()) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",

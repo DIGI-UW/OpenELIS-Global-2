@@ -1,5 +1,10 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "profileMeta": {
+    "id": "mindray-bc5380",
+    "version": "1.2.0",
+    "displayName": "Mindray BC-5380"
+  },
   "analyzer_name": "Mindray BC-5380",
   "manufacturer": "Mindray",
   "category": "HEMATOLOGY",
@@ -90,5 +95,6 @@
       "unit": "%"
     }
   ],
+  "configDefaults": {},
   "notes": "Requires MLLP framing (0x0B start, 0x1C 0x0D end). MSH-3 sending application = 'MINDRAY'. Complete CBC panel with 5-part differential."
 }

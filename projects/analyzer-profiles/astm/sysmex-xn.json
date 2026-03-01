@@ -1,5 +1,10 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "profileMeta": {
+    "id": "sysmex-xn",
+    "version": "1.2.0",
+    "displayName": "Sysmex XN Series (XN-L, XN-1000)"
+  },
   "analyzer_name": "Sysmex XN Series (XN-L, XN-1000)",
   "manufacturer": "Sysmex",
   "category": "HEMATOLOGY",
@@ -90,5 +95,6 @@
       "unit": "%"
     }
   ],
+  "configDefaults": {},
   "notes": "RESEARCH CORRECTION: Only ASTM over TCP/IP confirmed in vendor specifications. Original HL7 claim could not be verified. TCP/IP mode uses ASTM E1394-97 presentation layer + E1381-02 data link layer. RS-232 mode also available with baud rate 19200."
 }

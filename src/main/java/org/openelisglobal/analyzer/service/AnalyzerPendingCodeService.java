@@ -10,4 +10,6 @@ public interface AnalyzerPendingCodeService extends BaseObjectService<AnalyzerPe
     AnalyzerPendingCode track(String analyzerId, String analyzerTestName, String samplePayload, String sysUserId);
 
     AnalyzerPendingCode updateStatus(String pendingCodeId, AnalyzerPendingCode.Status status, String sysUserId);
+
+    int purgeExpired(String analyzerId);
 }
