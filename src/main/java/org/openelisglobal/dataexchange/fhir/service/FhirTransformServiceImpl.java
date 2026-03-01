@@ -1443,7 +1443,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return transformResultToObservation(resultService.get(resultId));
     }
 
-    private Observation transformResultToObservation(Result result) {
+    public Observation transformResultToObservation(Result result) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformResultToObservation",
                 "transformResultToObservation called");
 
@@ -1638,6 +1638,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         if (!GenericValidator.isBlankOrNull(organization.getCode())) {
             fhirOrganization.addIdentifier(new Identifier().setSystem(fhirConfig.getOeFhirSystem() + "/org_uuid")
                     .setValue(organization.getFhirUuidAsString()));
+        }
+        Identifier facilityId = createFacilityIdentifier();
+        if (facilityId != null) {
+            fhirOrganization.addIdentifier(facilityId);
         }
     }
 

@@ -54,7 +54,7 @@ public class OrganizationAddressServiceTest extends BaseWebContextSensitiveTest 
 
     @Test
     public void getAddressPartsByOrganizationId_shouldReturnAddressPartsByOrganizationId() throws Exception {
-        List<OrganizationAddress> orgAddresses = addressService.getAddressPartsByOrganizationId("3");
+        List<OrganizationAddress> orgAddresses = addressService.getAddressPartsByOrganizationId("1000");
 
         Assert.assertEquals(2, orgAddresses.size());
         Assert.assertEquals("The first element should be Amore", orgAddresses.get(0).getValue(), "Amore");
