@@ -27,7 +27,12 @@ setup("authenticate", async ({ page }, testInfo) => {
   // OE can render the login shell before form inputs are hydrated right after restarts.
   // Retry a few times to avoid flaky setup failures during harness warm-up.
   let formReady = false;
-  for (let attempt = 1; attempt <= 6; attempt++) {
+  for (let attempt = 1; attempt <= 12; attempt++) {
+    const currentUrl = page.url();
+    if (!currentUrl.includes("/login")) {
+      formReady = true;
+      break;
+    }
     if (
       (await usernameInput.count()) > 0 &&
       (await passwordInput.count()) > 0 &&
@@ -37,20 +42,24 @@ setup("authenticate", async ({ page }, testInfo) => {
       formReady = true;
       break;
     }
-    await page.waitForTimeout(5_000);
+    await page.waitForTimeout(3_000);
     await page.goto("login", { waitUntil: "domcontentloaded" });
   }
   expect(formReady, "Login form inputs should be visible before auth setup").toBeTruthy();
-  await usernameInput.fill(username);
-  await passwordInput.fill(password);
+  if (page.url().includes("/login")) {
+    await usernameInput.fill(username);
+    await passwordInput.fill(password);
 
-  const authSubmit = page.getByRole("button", { name: /^(login|submit)$/i }).first();
-  await Promise.all([
-    page.waitForURL((url) => !url.pathname.endsWith("/login"), {
-      timeout: 15_000,
-    }),
-    authSubmit.click(),
-  ]);
+    const authSubmit = page
+      .getByRole("button", { name: /^(login|submit)$/i })
+      .first();
+    await Promise.all([
+      page.waitForURL((url) => !url.pathname.endsWith("/login"), {
+        timeout: 15_000,
+      }),
+      authSubmit.click(),
+    ]);
+  }
 
   // Verify authenticated state by reaching analyzer list route and ensuring
   // we're not bounced back to /login after async auth checks complete.
