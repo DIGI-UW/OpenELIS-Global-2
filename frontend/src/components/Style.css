@@ -408,6 +408,33 @@ button {
   overflow: visible !important;
   min-width: 40px !important;
   display: inline-flex !important;
+  white-space: normal !important;
+  word-wrap: break-word;
+  line-height: 1.3;
+}
+
+/* Allow submenu titles to wrap as well */
+.cds--side-nav__submenu-title {
+  white-space: normal !important;
+  word-wrap: break-word;
+  line-height: 1.3;
+  overflow: visible !important;
+}
+
+/* Ensure sidebar links can grow to accommodate wrapped text */
+.cds--side-nav__link {
+  min-height: 2rem;
+  height: auto !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+/* Ensure submenu buttons can grow to accommodate wrapped text */
+.cds--side-nav__submenu {
+  min-height: 2rem;
+  height: auto !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
 }
 
 .cds--side-nav__link a {
@@ -518,6 +545,11 @@ button {
 }
 
 .cds--side-nav__navigation {
+  overflow-y: auto !important;
+  overflow-x: visible !important;
+}
+
+.cds--side-nav__items {
   overflow-y: auto !important;
   overflow-x: visible !important;
 }
