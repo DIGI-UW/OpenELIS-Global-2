@@ -45,7 +45,10 @@ setup("authenticate", async ({ page }, testInfo) => {
     await page.waitForTimeout(3_000);
     await page.goto("login", { waitUntil: "domcontentloaded" });
   }
-  expect(formReady, "Login form inputs should be visible before auth setup").toBeTruthy();
+  expect(
+    formReady,
+    "Login form inputs should be visible before auth setup",
+  ).toBeTruthy();
   if (page.url().includes("/login")) {
     await usernameInput.fill(username);
     await passwordInput.fill(password);

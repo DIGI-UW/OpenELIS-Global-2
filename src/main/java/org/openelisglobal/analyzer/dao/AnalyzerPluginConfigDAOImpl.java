@@ -24,8 +24,8 @@ public class AnalyzerPluginConfigDAOImpl extends BaseDAOImpl<AnalyzerPluginConfi
             return Optional.empty();
         }
         String sql = "SELECT * FROM clinlims.analyzer_plugin_config WHERE analyzer_id = CAST(:analyzerId AS NUMERIC)";
-        Query<AnalyzerPluginConfig> query = entityManager.unwrap(Session.class)
-                .createNativeQuery(sql, AnalyzerPluginConfig.class);
+        Query<AnalyzerPluginConfig> query = entityManager.unwrap(Session.class).createNativeQuery(sql,
+                AnalyzerPluginConfig.class);
         query.setParameter("analyzerId", analyzerId.trim());
         return Optional.ofNullable(query.uniqueResultOptional().orElse(null));
     }

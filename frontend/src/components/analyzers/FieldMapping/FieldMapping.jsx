@@ -326,7 +326,9 @@ const FieldMapping = () => {
                 id: "analyzer.fieldMapping.stats.pendingCodes",
               })}
             </div>
-            <div className="stat-value stat-value-small">{activePendingCodes}</div>
+            <div className="stat-value stat-value-small">
+              {activePendingCodes}
+            </div>
           </Tile>
         </Column>
       </Grid>

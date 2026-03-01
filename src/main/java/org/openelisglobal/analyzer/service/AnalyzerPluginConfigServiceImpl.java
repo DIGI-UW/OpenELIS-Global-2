@@ -56,10 +56,8 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> getConfigAsMap(String analyzerId) {
-        return analyzerPluginConfigDAO.findByAnalyzerId(analyzerId)
-                .map(AnalyzerPluginConfig::getConfig)
-                .map(this::parseConfigMap)
-                .orElseGet(LinkedHashMap::new);
+        return analyzerPluginConfigDAO.findByAnalyzerId(analyzerId).map(AnalyzerPluginConfig::getConfig)
+                .map(this::parseConfigMap).orElseGet(LinkedHashMap::new);
     }
 
     @Override

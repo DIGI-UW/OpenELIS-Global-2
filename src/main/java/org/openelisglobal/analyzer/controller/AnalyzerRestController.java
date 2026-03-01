@@ -970,8 +970,8 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/profiles List available analyzer profile templates
-     * from filesystem.
+     * GET /rest/analyzer/profiles List available analyzer profile templates from
+     * filesystem.
      *
      * <p>
      * Returns minimal metadata for each template: id (e.g., "astm/mindray-ba88a"),

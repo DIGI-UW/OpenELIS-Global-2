@@ -15,7 +15,8 @@
 ## Phase 1: Setup and Baseline
 
 - [ ] T001 Verify environment and submodules per quickstart.
-- [ ] T002 Run baseline GeneXpert regression (test-connection) before any feature work.
+- [ ] T002 Run baseline GeneXpert regression (test-connection) before any
+      feature work.
 
 ---
 
@@ -41,10 +42,14 @@
 
 ### Directory and naming cleanup
 
-- [ ] T007 [M1] Rename `projects/analyzer-defaults/` -> `projects/analyzer-profiles/`.
-- [ ] T008 [P] [M1] Update backend references (`AnalyzerRestController`, env var usage, config paths).
-- [ ] T009 [P] [M1] Update build and infra references (`pom.xml`, docker compose, harness references).
-- [ ] T010 [P] [M1] Update frontend service path references to `analyzer-profiles`.
+- [ ] T007 [M1] Rename `projects/analyzer-defaults/` ->
+      `projects/analyzer-profiles/`.
+- [ ] T008 [P] [M1] Update backend references (`AnalyzerRestController`, env var
+      usage, config paths).
+- [ ] T009 [P] [M1] Update build and infra references (`pom.xml`, docker
+      compose, harness references).
+- [ ] T010 [P] [M1] Update frontend service path references to
+      `analyzer-profiles`.
 
 ### Liquibase and schema
 
@@ -60,20 +65,30 @@
 
 ### Services and business logic
 
-- [ ] T017 [M1] Implement `AnalyzerPluginConfigService` (CRUD + validation + QC/transform evaluators).
-- [ ] T018 [P] [M1] Implement `AnalyzerPendingCodeService` (detect/increment/cap/purge/resolve/ignore).
-- [ ] T019 [M1] Enhance `AnalyzerServiceImpl.autoCreateTestMappings()` to populate `configDefaults`.
-- [ ] T020 [M1] Enforce activation gate in analyzer status transition (BR-12 via JSONB config).
-- [ ] T021 [M1] Extend `AnalyzerMappingPreviewServiceImpl` with v1.2 outputs from JSONB config.
-- [ ] T060 [M1] Implement port conflict validation for active analyzer listeners (BR-11).
-- [ ] T061 [M1] Implement profile schema validation on profile read/apply path (BR-18).
-- [ ] T062 [M1] Enforce built-in profile immutability in runtime profile APIs (BR-20).
+- [ ] T017 [M1] Implement `AnalyzerPluginConfigService` (CRUD + validation +
+      QC/transform evaluators).
+- [ ] T018 [P] [M1] Implement `AnalyzerPendingCodeService`
+      (detect/increment/cap/purge/resolve/ignore).
+- [ ] T019 [M1] Enhance `AnalyzerServiceImpl.autoCreateTestMappings()` to
+      populate `configDefaults`.
+- [ ] T020 [M1] Enforce activation gate in analyzer status transition (BR-12 via
+      JSONB config).
+- [ ] T021 [M1] Extend `AnalyzerMappingPreviewServiceImpl` with v1.2 outputs
+      from JSONB config.
+- [ ] T060 [M1] Implement port conflict validation for active analyzer listeners
+      (BR-11).
+- [ ] T061 [M1] Implement profile schema validation on profile read/apply path
+      (BR-18).
+- [ ] T062 [M1] Enforce built-in profile immutability in runtime profile APIs
+      (BR-20).
 
 ### Controllers and RBAC
 
 - [ ] T022 [M1] Implement `AnalyzerPluginConfigRestController`.
-- [ ] T023 [M1] Apply `@PreAuthorize("hasRole('GLOBAL_ADMIN')")` to new endpoints.
-- [ ] T024 [M1] Standardize structured error responses via `AnalyzerControllerHelper`.
+- [ ] T023 [M1] Apply `@PreAuthorize("hasRole('GLOBAL_ADMIN')")` to new
+      endpoints.
+- [ ] T024 [M1] Standardize structured error responses via
+      `AnalyzerControllerHelper`.
 
 ### Tests
 
@@ -81,14 +96,21 @@
 - [ ] T026 [P] [M1] Service unit tests for plugin config service.
 - [ ] T027 [P] [M1] Service unit tests for pending code service.
 - [ ] T028 [P] [M1] Controller tests for plugin-config APIs and RBAC.
-- [ ] T029 [M1] Integration test: profile apply -> mappings + plugin config defaults.
+- [ ] T029 [M1] Integration test: profile apply -> mappings + plugin config
+      defaults.
 - [ ] T030 [M1] Integration test: activation gate + preview extension behavior.
-- [ ] T063 [P] [M1] Validation tests for aggregation window bounds (`BY_SESSION` 5-300) (BR-14).
-- [ ] T064 [P] [M1] Integration tests for pending-code cap/purge behavior and status transitions (BR-16).
-- [ ] T065 [P] [M1] Parsing/preview tests for 1-indexed ASTM field/component extraction references (BR-17).
-- [ ] T066 [P] [M1] Negative tests for profile schema validation failures (BR-18).
-- [ ] T067 [P] [M1] Tests that profile mutation/update APIs reject writes to built-in filesystem templates (BR-20).
-- [ ] T068 [P] [M1] Tests for active analyzer port conflict detection and conflict response payload (BR-11).
+- [ ] T063 [P] [M1] Validation tests for aggregation window bounds (`BY_SESSION`
+      5-300) (BR-14).
+- [ ] T064 [P] [M1] Integration tests for pending-code cap/purge behavior and
+      status transitions (BR-16).
+- [ ] T065 [P] [M1] Parsing/preview tests for 1-indexed ASTM field/component
+      extraction references (BR-17).
+- [ ] T066 [P] [M1] Negative tests for profile schema validation failures
+      (BR-18).
+- [ ] T067 [P] [M1] Tests that profile mutation/update APIs reject writes to
+      built-in filesystem templates (BR-20).
+- [ ] T068 [P] [M1] Tests for active analyzer port conflict detection and
+      conflict response payload (BR-11).
 
 ### Build and gate
 
@@ -103,12 +125,15 @@
 
 **Depends on**: M1
 
-- [x] T035 [M2] Update analyzer UI flows to consume plugin-config APIs (not astm-config APIs).
-- [ ] T036 [P] [M2] Implement/adjust UI for QC rules, transforms, extraction, aggregation, flag mappings.
+- [x] T035 [M2] Update analyzer UI flows to consume plugin-config APIs (not
+      astm-config APIs).
+- [ ] T036 [P] [M2] Implement/adjust UI for QC rules, transforms, extraction,
+      aggregation, flag mappings.
 - [x] T037 [P] [M2] Extend simulator UI to show v1.2 preview payload.
 - [x] T038 [P] [M2] Add pending-code UI workflow.
 - [x] T039 [M2] Update i18n keys for new/changed labels.
-- [x] T040 [M2] Remove profile-library and lab-unit UI/API assumptions from M2 scope.
+- [x] T040 [M2] Remove profile-library and lab-unit UI/API assumptions from M2
+      scope.
 - [x] T041 [M2] Jest tests for updated UI components.
 - [x] T042 [M2] Playwright tests for revised analyzer setup + simulator paths.
 - [ ] T043 [M2] Run M2 build/tests and GeneXpert regression gate.
@@ -123,11 +148,13 @@
 - [ ] T045 [M3] Implement Q-segment detection/responder path.
 - [ ] T046 [P] [M3] Implement order send service (`send-order`).
 - [ ] T047 [P] [M3] Implement results query service (`query-results`).
-- [ ] T048 [P] [M3] Add/update mock-server and harness scripts for all 4 pathways.
+- [ ] T048 [P] [M3] Add/update mock-server and harness scripts for all 4
+      pathways.
 - [ ] T049 [M3] Add controller endpoints and RBAC checks.
 - [ ] T050 [M3] Add unit/integration tests for each pathway.
 - [ ] T051 [M3] Validate all 4 pathways against mock analyzer.
-- [ ] T052 [M3] Validate all 4 pathways against real GeneXpert and capture evidence.
+- [ ] T052 [M3] Validate all 4 pathways against real GeneXpert and capture
+      evidence.
 - [ ] T053 [M3] Run build/tests and open M3 PR.
 
 ---

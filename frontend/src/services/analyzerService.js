@@ -766,7 +766,8 @@ export const updatePluginConfig = (
             status: response.status,
             statusCode: response.status,
             statusText: response.statusText,
-            error: json.error || `HTTP ${response.status}: ${response.statusText}`,
+            error:
+              json.error || `HTTP ${response.status}: ${response.statusText}`,
           },
           extraParams,
         );
@@ -830,7 +831,8 @@ export const updatePendingCodeStatus = (
             status: response.status,
             statusCode: response.status,
             statusText: response.statusText,
-            error: json.error || `HTTP ${response.status}: ${response.statusText}`,
+            error:
+              json.error || `HTTP ${response.status}: ${response.statusText}`,
           },
           extraParams,
         );

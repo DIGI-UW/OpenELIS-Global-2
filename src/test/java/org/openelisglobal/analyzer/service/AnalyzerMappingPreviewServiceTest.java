@@ -42,8 +42,8 @@ public class AnalyzerMappingPreviewServiceTest {
 
     @Before
     public void setUp() {
-        analyzerMappingPreviewService = new AnalyzerMappingPreviewServiceImpl(analyzerFieldMappingDAO,
-                analyzerFieldDAO, analyzerPluginConfigService);
+        analyzerMappingPreviewService = new AnalyzerMappingPreviewServiceImpl(analyzerFieldMappingDAO, analyzerFieldDAO,
+                analyzerPluginConfigService);
         when(analyzerPluginConfigService.getConfigAsMap(anyString())).thenReturn(new java.util.HashMap<>());
         when(analyzerPluginConfigService.hasAtLeastOneActiveQcRule(anyString())).thenReturn(false);
 

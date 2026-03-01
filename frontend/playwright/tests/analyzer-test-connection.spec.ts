@@ -48,7 +48,11 @@ test.describe("Analyzer Test Connection", () => {
     const successText = page.getByText(/Connection Successful/i);
     const errorTag = page.locator('[data-testid="test-connection-error"]');
     const logsButton = page.getByRole("button", { name: /connection logs/i });
-    const retryButton = page.locator('[data-testid="test-connection-test-button"], button:has-text("Test Again")').first();
+    const retryButton = page
+      .locator(
+        '[data-testid="test-connection-test-button"], button:has-text("Test Again")',
+      )
+      .first();
 
     // Test connection can be briefly flaky right after harness restarts.
     // Retry a few times, but fail with explicit UI error details if it never succeeds.
@@ -80,7 +84,8 @@ test.describe("Analyzer Test Connection", () => {
         }
       }
       if (await errorTag.isVisible()) {
-        lastError = (await errorTag.textContent())?.trim() || "Connection failed";
+        lastError =
+          (await errorTag.textContent())?.trim() || "Connection failed";
       }
       if (attempt < 3 && (await retryButton.isVisible())) {
         await retryButton.click();
@@ -103,7 +108,10 @@ test.describe("Analyzer Test Connection", () => {
       }
     }
 
-    expect(connected, `Mock GeneXpert test-connection should succeed. Last error: ${lastError}`).toBeTruthy();
+    expect(
+      connected,
+      `Mock GeneXpert test-connection should succeed. Last error: ${lastError}`,
+    ).toBeTruthy();
     await expect(errorTag).not.toBeVisible();
 
     const closeButton = page.locator(

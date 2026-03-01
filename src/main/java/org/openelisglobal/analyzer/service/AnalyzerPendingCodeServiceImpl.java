@@ -33,7 +33,8 @@ public class AnalyzerPendingCodeServiceImpl extends BaseObjectServiceImpl<Analyz
     }
 
     @Override
-    public AnalyzerPendingCode track(String analyzerId, String analyzerTestName, String samplePayload, String sysUserId) {
+    public AnalyzerPendingCode track(String analyzerId, String analyzerTestName, String samplePayload,
+            String sysUserId) {
         Timestamp now = new Timestamp(System.currentTimeMillis());
         AnalyzerPendingCode code = analyzerPendingCodeDAO.findByAnalyzerAndCode(analyzerId, analyzerTestName)
                 .orElseGet(() -> {

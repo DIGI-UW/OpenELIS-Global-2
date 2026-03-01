@@ -11,7 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class AnalyzerPendingCodeDAOImpl extends BaseDAOImpl<AnalyzerPendingCode, String> implements AnalyzerPendingCodeDAO {
+public class AnalyzerPendingCodeDAOImpl extends BaseDAOImpl<AnalyzerPendingCode, String>
+        implements AnalyzerPendingCodeDAO {
 
     public AnalyzerPendingCodeDAOImpl() {
         super(AnalyzerPendingCode.class);
@@ -25,8 +26,8 @@ public class AnalyzerPendingCodeDAOImpl extends BaseDAOImpl<AnalyzerPendingCode,
         }
         String sql = "SELECT * FROM clinlims.analyzer_pending_code WHERE analyzer_id = CAST(:analyzerId AS NUMERIC) "
                 + "ORDER BY last_seen_at DESC";
-        Query<AnalyzerPendingCode> query = entityManager.unwrap(Session.class)
-                .createNativeQuery(sql, AnalyzerPendingCode.class);
+        Query<AnalyzerPendingCode> query = entityManager.unwrap(Session.class).createNativeQuery(sql,
+                AnalyzerPendingCode.class);
         query.setParameter("analyzerId", analyzerId.trim());
         return query.getResultList();
     }
@@ -39,8 +40,8 @@ public class AnalyzerPendingCodeDAOImpl extends BaseDAOImpl<AnalyzerPendingCode,
         }
         String sql = "SELECT * FROM clinlims.analyzer_pending_code WHERE analyzer_id = CAST(:analyzerId AS NUMERIC) "
                 + "AND analyzer_test_name = :analyzerTestName";
-        Query<AnalyzerPendingCode> query = entityManager.unwrap(Session.class)
-                .createNativeQuery(sql, AnalyzerPendingCode.class);
+        Query<AnalyzerPendingCode> query = entityManager.unwrap(Session.class).createNativeQuery(sql,
+                AnalyzerPendingCode.class);
         query.setParameter("analyzerId", analyzerId.trim());
         query.setParameter("analyzerTestName", analyzerTestName);
         return Optional.ofNullable(query.uniqueResultOptional().orElse(null));

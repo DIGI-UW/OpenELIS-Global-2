@@ -32,7 +32,8 @@ public class AnalyzerPluginConfigRestController extends BaseRestController {
 
     @GetMapping("/analyzers/{analyzerId}/plugin-config")
     @PreAuthorize("hasRole('GLOBAL_ADMIN')")
-    public ResponseEntity<Map<String, Object>> getPluginConfig(@PathVariable String analyzerId, HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> getPluginConfig(@PathVariable String analyzerId,
+            HttpServletRequest request) {
         try {
             analyzerPluginConfigService.getOrCreate(analyzerId, getSysUserId(request));
             return ResponseEntity.ok(analyzerPluginConfigService.getConfigAsMap(analyzerId));

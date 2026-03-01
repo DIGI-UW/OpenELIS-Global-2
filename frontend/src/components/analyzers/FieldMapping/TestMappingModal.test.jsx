@@ -335,7 +335,9 @@ describe("TestMappingModal", () => {
 
     renderWithIntl(<TestMappingModal {...defaultProps} />);
 
-    const messageInput = await screen.findByTestId("test-mapping-message-input");
+    const messageInput = await screen.findByTestId(
+      "test-mapping-message-input",
+    );
     await userEvent.type(messageInput, "H|\\^&|||PSM^Micro^2.0|");
 
     const previewButton = await screen.findByTestId(

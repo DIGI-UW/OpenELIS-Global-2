@@ -24,13 +24,17 @@ test.describe("Analyzer Simulator", () => {
     await list.openOverflowMenu(GENEXPERT_ID);
     await list.clickAction(GENEXPERT_ID, "mappings");
 
-    await expect(page).toHaveURL(new RegExp(`/analyzers/${GENEXPERT_ID}/mappings`));
+    await expect(page).toHaveURL(
+      new RegExp(`/analyzers/${GENEXPERT_ID}/mappings`),
+    );
     await expect(page.locator('[data-testid="field-mapping"]')).toBeVisible();
 
     await page
       .locator('[data-testid="field-mapping-test-button"]')
       .click({ timeout: 10_000 });
-    await expect(page.locator('[data-testid="test-mapping-modal"]')).toBeVisible();
+    await expect(
+      page.locator('[data-testid="test-mapping-modal"]'),
+    ).toBeVisible();
 
     await page
       .locator('[data-testid="test-mapping-message-input"]')

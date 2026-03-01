@@ -284,8 +284,7 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
             // Strategy 3: Identifier pattern match (GenericASTM/GenericHL7)
             String identifier = parseIdentifierFromAstmHeader();
             if (identifier != null && !identifier.trim().isEmpty()) {
-                Optional<Analyzer> analyzerOpt =
-                        analyzerService.findByIdentifierPatternMatch(identifier.trim());
+                Optional<Analyzer> analyzerOpt = analyzerService.findByIdentifierPatternMatch(identifier.trim());
                 if (analyzerOpt.isPresent()) {
                     LogEvent.logDebug(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
                             "Identified analyzer from identifier pattern: " + identifier);
