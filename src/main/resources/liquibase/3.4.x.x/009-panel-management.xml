@@ -77,6 +77,12 @@
     <!-- Panel ↔ Sample Type Mapping                               -->
     <!-- ========================================================= -->
     <changeSet id="panel-003-add-unique-sampletype-panel" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <uniqueConstraintExists tableName="sampletype_panel" constraintName="uq_sampletype_panel"/>
+            </not>
+        </preConditions>
+
         <addUniqueConstraint
                 tableName="sampletype_panel"
                 columnNames="panel_id, sample_type_id"
@@ -230,6 +236,17 @@
             <column name="lastupdated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
         </addColumn>
         <rollback><dropColumn tableName="panel_lab_unit" columnName="lastupdated"/></rollback>
+    </changeSet>
+
+    <!-- panel-011: add lastupdated to panel_import_log (required by Hibernate version mapping) -->
+    <changeSet id="panel-011-add-lastupdated-to-panel-import-log" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="panel_import_log" columnName="lastupdated"/></not>
+        </preConditions>
+        <addColumn tableName="panel_import_log">
+            <column name="lastupdated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </addColumn>
+        <rollback><dropColumn tableName="panel_import_log" columnName="lastupdated"/></rollback>
     </changeSet>
 
 </databaseChangeLog>
