@@ -1,0 +1,618 @@
+openapi: 3.0.3
+info:
+  title: OpenELIS Analyzer Profiles API
+  version: 0.1.0
+  description: >
+    Contract draft for Feature 012 (Generic ASTM Plugin Profiles v1.2).
+    This contract focuses on profile library operations and analyzer runtime
+    ASTM configuration endpoints.
+servers:
+  - url: /rest/analyzer
+
+paths:
+  /profiles:
+    get:
+      summary: List profiles by source and lineage
+      parameters:
+        - in: query
+          name: source
+          schema:
+            type: string
+            enum: [BUILT_IN, SITE, COMMUNITY]
+        - in: query
+          name: profileMetaId
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Profile list
+    post:
+      summary: Import profile JSON into site library
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileImportRequest'
+      responses:
+        "201":
+          description: Imported
+        "409":
+          description: Duplicate (profileMetaId, profileMetaVersion)
+
+  /profiles/{profileId}:
+    get:
+      summary: Get profile metadata and payload
+      parameters:
+        - $ref: '#/components/parameters/ProfileId'
+      responses:
+        "200":
+          description: Profile detail
+    put:
+      summary: Update mutable profile metadata or latest designation
+      parameters:
+        - $ref: '#/components/parameters/ProfileId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      responses:
+        "200":
+          description: Updated
+    delete:
+      summary: Delete site profile (not allowed for built-ins)
+      parameters:
+        - $ref: '#/components/parameters/ProfileId'
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Built-in profile cannot be deleted
+
+  /analyzers/{analyzerId}/profile-apply:
+    post:
+      summary: Apply profile snapshot to analyzer instance
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [profileId]
+              properties:
+                profileId:
+                  type: string
+      responses:
+        "200":
+          description: Snapshot applied
+
+  /analyzers/{analyzerId}/profile-export:
+    get:
+      summary: Export analyzer configuration as sanitized profile JSON
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+      responses:
+        "200":
+          description: Export payload
+
+  /analyzers/{analyzerId}/astm-config:
+    get:
+      summary: Get analyzer ASTM runtime configuration
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+      responses:
+        "200":
+          description: Runtime config
+    put:
+      summary: Update connection role, extraction, aggregation and flag settings
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AstmConfigUpdateRequest'
+      responses:
+        "200":
+          description: Updated
+        "400":
+          description: Validation failure
+
+  /analyzers/{analyzerId}/qc-rules:
+    get:
+      summary: List QC rules for analyzer
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+      responses:
+        "200":
+          description: QC rules
+    post:
+      summary: Create QC rule
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QcRule'
+      responses:
+        "201":
+          description: Created
+
+  /analyzers/{analyzerId}/qc-rules/{ruleId}:
+    put:
+      summary: Update an existing QC rule
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+        - in: path
+          name: ruleId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QcRule'
+      responses:
+        "200":
+          description: Updated
+    delete:
+      summary: Delete a QC rule
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+        - in: path
+          name: ruleId
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /analyzers/{analyzerId}/test-mapping-configs:
+    get:
+      summary: List per-test-code transform configurations for analyzer
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+      responses:
+        "200":
+          description: Transform configuration list
+    post:
+      summary: Create transform configuration for a test code
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestMappingConfig'
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Transform config validation failure
+
+  /analyzers/{analyzerId}/test-mapping-configs/{configId}:
+    put:
+      summary: Update transform configuration
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+        - in: path
+          name: configId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestMappingConfig'
+      responses:
+        "200":
+          description: Updated
+        "400":
+          description: Transform config validation failure
+    delete:
+      summary: Delete transform configuration
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+        - in: path
+          name: configId
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /analyzers/{analyzerId}/pending-codes:
+    get:
+      summary: List pending unmapped analyzer codes
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+      responses:
+        "200":
+          description: Pending code queue
+
+  /analyzers/{analyzerId}/pending-codes/{pendingCodeId}/map:
+    post:
+      summary: Resolve pending code by mapping to OpenELIS test
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+        - in: path
+          name: pendingCodeId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [openelisTestId]
+              properties:
+                openelisTestId:
+                  type: string
+      responses:
+        "200":
+          description: Pending code resolved
+
+  /analyzers/{analyzerId}/pending-codes/{pendingCodeId}/status:
+    put:
+      summary: Update pending code status (e.g. dismiss/ignore)
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+        - in: path
+          name: pendingCodeId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [IGNORED]
+      responses:
+        "200":
+          description: Status updated
+
+  /analyzers/{analyzerId}/preview-mapping:
+    post:
+      summary: >
+        Preview parse raw ASTM payload with current analyzer configuration.
+        Extends existing endpoint (011) with v1.2 outputs: transform results,
+        QC rule evaluation, extraction override application, aggregation mode,
+        abnormal flag mapping, and unmapped code warnings.
+        Non-persistent (simulator mode).
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [astmMessage]
+              properties:
+                astmMessage:
+                  type: string
+                  maxLength: 10240
+                includeDetailedParsing:
+                  type: boolean
+                  default: false
+                validateAllMappings:
+                  type: boolean
+                  default: false
+      responses:
+        "200":
+          description: >
+            Preview result including parsedFields, appliedMappings,
+            transformResults, qcRuleEvaluation, flagMappings,
+            entityPreview, warnings, and errors. Non-persistent.
+        "413":
+          description: ASTM message exceeds 10KB limit
+
+  /analyzers/{analyzerId}/send-order:
+    post:
+      summary: >
+        Send ASTM order message to analyzer via bridge. Constructs a spec-compliant
+        ASTM message (H/P/O/L) for the given accession and sends via bridge HTTP→TCP.
+        Part of GeneXpert bidirectional MVP (orders-push pathway).
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accessionNumber]
+              properties:
+                accessionNumber:
+                  type: string
+                  description: Sample accession number to send orders for
+                  maxLength: 60
+      responses:
+        "201":
+          description: Order message sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  orderCount:
+                    type: integer
+                    description: Number of test orders included in the message
+        "400":
+          description: Missing accession number or no pending orders for sample
+        "502":
+          description: Bridge communication error (unreachable, timeout, or analyzer rejected)
+
+  /analyzers/{analyzerId}/query-results:
+    post:
+      summary: >
+        Query analyzer for results via ASTM Q-segment. Constructs a Q-segment query
+        for the given accession, sends via bridge, captures response, and feeds into
+        the standard ASTM ingest pipeline to persist results.
+        Part of GeneXpert bidirectional MVP (results-pull pathway).
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accessionNumber]
+              properties:
+                accessionNumber:
+                  type: string
+                  description: Sample accession number to query results for
+                  maxLength: 60
+                testCodes:
+                  type: array
+                  items:
+                    type: string
+                  description: >
+                    Optional filter for specific test codes. If omitted, queries
+                    ALL results (equivalent to Q-segment "ALL" test code).
+      responses:
+        "200":
+          description: >
+            Query completed. If analyzer returned results, they are ingested and
+            importedResultCount > 0. If analyzer had no results, importedResultCount is 0.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  importedResultCount:
+                    type: integer
+                    description: Number of results imported from analyzer response (0 if no results available)
+                  rawResponse:
+                    type: string
+                    description: Raw ASTM response (for debugging, only in dev mode)
+        "502":
+          description: Bridge communication error
+
+  /analyzers/{analyzerId}/lab-units:
+    get:
+      summary: List assigned lab units for analyzer
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+      responses:
+        "200":
+          description: Assigned lab units
+    put:
+      summary: Replace analyzer lab unit assignments
+      parameters:
+        - $ref: '#/components/parameters/AnalyzerId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [labUnitIds]
+              properties:
+                labUnitIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: Updated
+
+components:
+  parameters:
+    AnalyzerId:
+      in: path
+      name: analyzerId
+      required: true
+      schema:
+        type: string
+    ProfileId:
+      in: path
+      name: profileId
+      required: true
+      schema:
+        type: string
+
+  schemas:
+    ProfileImportRequest:
+      type: object
+      required: [profile]
+      properties:
+        profile:
+          $ref: '#/components/schemas/ProfilePayload'
+    ProfilePayload:
+      type: object
+      required: [profileMeta, protocol]
+      properties:
+        profileMeta:
+          type: object
+          required: [id, version, displayName]
+          properties:
+            id:
+              type: string
+              description: Stable lineage/family identifier
+              maxLength: 120
+            version:
+              type: string
+              description: SemVer-like artifact version
+              maxLength: 40
+            displayName:
+              type: string
+              maxLength: 255
+            compatMinVersion:
+              type: string
+              description: Minimum OpenELIS compatibility version
+            compatMaxVersion:
+              type: string
+              description: Maximum OpenELIS compatibility version
+        protocol:
+          type: string
+          enum: [ASTM, HL7]
+        connectionDefaults:
+          type: object
+          properties:
+            connectionRole:
+              type: string
+              enum: [SERVER, CLIENT]
+            serverListenPort:
+              type: integer
+            clientTargetIp:
+              type: string
+            clientTargetPort:
+              type: integer
+        extractionDefaults:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExtractionOverride'
+        aggregationDefaults:
+          type: object
+          properties:
+            mode:
+              type: string
+              enum: [PER_MESSAGE, BY_SPECIMEN, BY_SESSION]
+            windowSeconds:
+              type: integer
+        testMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/TestMappingConfig'
+        qcRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/QcRule'
+        flagMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlagMappingEntry'
+    ExtractionOverride:
+      type: object
+      required: [key, fieldIndex]
+      properties:
+        key:
+          type: string
+          description: e.g. SPECIMEN_ID_FIELD, TEST_ID_COMPONENT
+          maxLength: 60
+        fieldIndex:
+          type: integer
+          minimum: 1
+        componentIndex:
+          type: integer
+          minimum: 1
+    FlagMappingEntry:
+      type: object
+      required: [analyzerFlag, openelisFlag]
+      properties:
+        analyzerFlag:
+          type: string
+          maxLength: 30
+        openelisFlag:
+          type: string
+          maxLength: 30
+    ProfileUpdateRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+        isLatest:
+          type: boolean
+    AstmConfigUpdateRequest:
+      type: object
+      properties:
+        connectionRole:
+          type: string
+          enum: [SERVER, CLIENT]
+        serverListenPort:
+          type: integer
+        clientTargetIp:
+          type: string
+        clientTargetPort:
+          type: integer
+        aggregationMode:
+          type: string
+          enum: [PER_MESSAGE, BY_SPECIMEN, BY_SESSION]
+        aggregationWindowSeconds:
+          type: integer
+        extractionOverrides:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExtractionOverride'
+        flagMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlagMappingEntry'
+    QcRule:
+      type: object
+      required: [ruleType, targetField, operand]
+      properties:
+        ruleType:
+          type: string
+          enum: [FIELD_EQUALS, SPECIMEN_ID_PREFIX, SPECIMEN_ID_PATTERN, FIELD_CONTAINS]
+        targetField:
+          type: string
+        operand:
+          type: string
+    TestMappingConfig:
+      type: object
+      required: [analyzerTestName, transformType]
+      properties:
+        analyzerTestName:
+          type: string
+        transformType:
+          type: string
+          enum: [PASS_THROUGH, GREATER_LESS_FLAG, VALUE_MAP, THRESHOLD_CLASSIFY, CODED_LOOKUP]
+        transformConfig:
+          type: object
+          additionalProperties: true
+        isActive:
+          type: boolean
+          default: true
