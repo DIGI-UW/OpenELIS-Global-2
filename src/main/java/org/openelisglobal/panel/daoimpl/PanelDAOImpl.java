@@ -181,6 +181,9 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
     @Override
     public boolean duplicatePanelExists(Panel panel) throws LIMSRuntimeException {
         try {
+            if (StringUtil.isNullorNill(panel.getPanelName())) {
+                return false;
+            }
 
             List<Panel> list = new ArrayList<>();
 
@@ -228,6 +231,9 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
     @Override
     public boolean duplicatePanelDescriptionExists(Panel panel) throws LIMSRuntimeException {
         try {
+            if (StringUtil.isNullorNill(panel.getDescription())) {
+                return false;
+            }
 
             List<Panel> list = new ArrayList<>();
 
