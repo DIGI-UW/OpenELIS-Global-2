@@ -180,4 +180,99 @@ public class SampleHumanServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals("2", sHumanToUpdate.getPatientId());
 
     }
+
+    // ----------------------------------------------------------------
+    // NEW TESTS — covering previously untested methods
+    // ----------------------------------------------------------------
+
+    @Test
+    public void getProviderForSample_shouldReturnProviderForSample() throws Exception {
+        // sample id=1 is linked to provider id=1 (person_id=4, Jane Linn) in test data
+        Sample sample = sampleService.get("1");
+
+        Provider provider = humanService.getProviderForSample(sample);
+
+        Assert.assertNotNull(provider);
+        Assert.assertEquals("1", provider.getId());
+        Assert.assertEquals("Jane", provider.getPerson().getFirstName());
+        Assert.assertEquals("Linn", provider.getPerson().getLastName());
+    }
+
+    @Test
+    public void getProviderForSample_shouldReturnCorrectProviderType() throws Exception {
+        // sample id=1 is linked to provider id=1 with type "P"
+        Sample sample = sampleService.get("1");
+
+        Provider provider = humanService.getProviderForSample(sample);
+
+        Assert.assertEquals("P", provider.getProviderType());
+    }
+
+    @Test
+    public void getProviderForSample_shouldReturnDifferentProvidersForDifferentSamples() throws Exception {
+        Sample sample1 = sampleService.get("1");
+        Sample sample2 = sampleService.get("2");
+
+        Provider provider1 = humanService.getProviderForSample(sample1);
+        Provider provider2 = humanService.getProviderForSample(sample2);
+
+        Assert.assertNotNull(provider1);
+        Assert.assertNotNull(provider2);
+        Assert.assertNotEquals(provider1.getId(), provider2.getId());
+    }
+
+    @Test
+    public void getAllPatientsWithSampleEnteredMissingFhirUuid_shouldReturnPatientsMissingFhirUuid() throws Exception {
+        // None of the test data patients have a fhir_uuid set, so all 3 should be
+        // returned
+        List<Patient> patients = humanService.getAllPatientsWithSampleEnteredMissingFhirUuid();
+
+        Assert.assertNotNull(patients);
+        Assert.assertEquals(3, patients.size());
+    }
+
+    @Test
+    public void getAllPatientsWithSampleEnteredMissingFhirUuid_shouldReturnEmptyAfterFhirUuidSet() throws Exception {
+        // Assign fhir uuids to all patients then verify list is empty
+        List<Patient> allPatients = humanService.getAllPatientsWithSampleEntered();
+        for (Patient patient : allPatients) {
+            patient.setFhirUuid(java.util.UUID.randomUUID());
+            patientService.save(patient);
+        }
+
+        List<Patient> missingFhir = humanService.getAllPatientsWithSampleEnteredMissingFhirUuid();
+
+        Assert.assertNotNull(missingFhir);
+        Assert.assertEquals(0, missingFhir.size());
+    }
+
+    @Test
+    public void getSamplesForPatient_shouldReturnEmptyListForPatientWithNoSamples() throws Exception {
+        // patient id=2 has sample id=2 in the dataset, use a non-existent patient id
+        List<Sample> samples = humanService.getSamplesForPatient("9999");
+
+        Assert.assertNotNull(samples);
+        Assert.assertTrue(samples.isEmpty());
+    }
+
+    @Test
+    public void getSamplesForPatient_shouldReturnCorrectAccessionNumber() throws Exception {
+        // patient id=2 is linked to sample id=2 with accession number "13333"
+        List<Sample> samples = humanService.getSamplesForPatient("2");
+
+        Assert.assertEquals(1, samples.size());
+        Assert.assertEquals("13333", samples.get(0).getAccessionNumber());
+    }
+
+    @Test
+    public void getDataBySample_shouldReturnNullForSampleWithNoLink() throws Exception {
+        // Create a sample human with a non-existent sample id
+        SampleHuman sampleHuman = new SampleHuman();
+        sampleHuman.setSampleId("9999");
+
+        SampleHuman result = humanService.getDataBySample(sampleHuman);
+
+        Assert.assertNull(result);
+    }
+
 }
