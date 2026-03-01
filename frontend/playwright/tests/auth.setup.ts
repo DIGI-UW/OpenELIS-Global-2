@@ -13,32 +13,51 @@ setup("authenticate", async ({ page }, testInfo) => {
     );
   }
 
-  await page.goto("");
-  await page
-    .locator('input[name="loginName"], input[name="username"], input[type="text"]')
-    .first()
-    .fill(username);
-  await page
+  await page.goto("login", { waitUntil: "domcontentloaded" });
+  const usernameInput = page
     .locator(
-      'input[name="password"], input[type="password"], input[id*="password" i]',
+      'input[name="loginName"], input[name="username"], input[aria-label="Username"], input[id*="user" i], input[type="text"]',
     )
-    .first()
-    .fill(password);
-  const loginButton = page.getByRole("button", { name: /login/i });
-  if ((await loginButton.count()) > 0) {
-    await loginButton.first().click();
-  } else {
-    const submitButton = page.getByRole("button", { name: /submit/i });
-    if ((await submitButton.count()) > 0) {
-      await submitButton.first().click();
-    } else {
-      await page.locator('input[type="submit"]').first().click();
+    .first();
+  const passwordInput = page
+    .locator(
+      'input[name="password"], input[aria-label="Password"], input[id*="password" i], input[type="password"]',
+    )
+    .first();
+  // OE can render the login shell before form inputs are hydrated right after restarts.
+  // Retry a few times to avoid flaky setup failures during harness warm-up.
+  let formReady = false;
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    if (
+      (await usernameInput.count()) > 0 &&
+      (await passwordInput.count()) > 0 &&
+      (await usernameInput.first().isVisible()) &&
+      (await passwordInput.first().isVisible())
+    ) {
+      formReady = true;
+      break;
     }
+    await page.waitForTimeout(5_000);
+    await page.goto("login", { waitUntil: "domcontentloaded" });
   }
+  expect(formReady, "Login form inputs should be visible before auth setup").toBeTruthy();
+  await usernameInput.fill(username);
+  await passwordInput.fill(password);
 
-  // Verify authenticated state by reaching analyzer list route.
-  await page.goto("analyzers");
-  await expect(page).toHaveURL(/analyzers/);
+  await Promise.all([
+    page.waitForURL((url) => !url.pathname.endsWith("/login"), {
+      timeout: 15_000,
+    }),
+    page.getByRole("button", { name: /login/i }).first().click(),
+  ]);
+
+  // Verify authenticated state by reaching analyzer list route and ensuring
+  // we're not bounced back to /login after async auth checks complete.
+  await page.goto("analyzers", { waitUntil: "networkidle" });
+  await expect(page).not.toHaveURL(/\/login(?:\?|$)/, { timeout: 15_000 });
+  await expect(page.locator('[data-testid="analyzers-list"]')).toBeVisible({
+    timeout: 45_000,
+  });
 
   await page.context().storageState({ path: AUTH_FILE });
 });

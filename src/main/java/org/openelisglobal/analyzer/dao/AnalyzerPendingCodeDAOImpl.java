@@ -20,19 +20,29 @@ public class AnalyzerPendingCodeDAOImpl extends BaseDAOImpl<AnalyzerPendingCode,
     @Override
     @Transactional(readOnly = true)
     public List<AnalyzerPendingCode> findByAnalyzerId(String analyzerId) {
-        String hql = "FROM AnalyzerPendingCode p WHERE p.analyzerId = :analyzerId ORDER BY p.lastSeenAt DESC";
-        Query<AnalyzerPendingCode> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerPendingCode.class);
-        query.setParameter("analyzerId", analyzerId);
+        if (analyzerId == null || analyzerId.trim().isEmpty()) {
+            return List.of();
+        }
+        String sql = "SELECT * FROM clinlims.analyzer_pending_code WHERE analyzer_id = CAST(:analyzerId AS NUMERIC) "
+                + "ORDER BY last_seen_at DESC";
+        Query<AnalyzerPendingCode> query = entityManager.unwrap(Session.class)
+                .createNativeQuery(sql, AnalyzerPendingCode.class);
+        query.setParameter("analyzerId", analyzerId.trim());
         return query.getResultList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<AnalyzerPendingCode> findByAnalyzerAndCode(String analyzerId, String analyzerTestName) {
-        String hql = "FROM AnalyzerPendingCode p WHERE p.analyzerId = :analyzerId AND p.analyzerTestName = :analyzerTestName";
-        Query<AnalyzerPendingCode> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerPendingCode.class);
-        query.setParameter("analyzerId", analyzerId);
+        if (analyzerId == null || analyzerId.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        String sql = "SELECT * FROM clinlims.analyzer_pending_code WHERE analyzer_id = CAST(:analyzerId AS NUMERIC) "
+                + "AND analyzer_test_name = :analyzerTestName";
+        Query<AnalyzerPendingCode> query = entityManager.unwrap(Session.class)
+                .createNativeQuery(sql, AnalyzerPendingCode.class);
+        query.setParameter("analyzerId", analyzerId.trim());
         query.setParameter("analyzerTestName", analyzerTestName);
-        return Optional.ofNullable(query.uniqueResult());
+        return Optional.ofNullable(query.uniqueResultOptional().orElse(null));
     }
 }

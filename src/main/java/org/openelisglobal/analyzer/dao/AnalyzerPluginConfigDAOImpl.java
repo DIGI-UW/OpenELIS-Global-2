@@ -23,10 +23,10 @@ public class AnalyzerPluginConfigDAOImpl extends BaseDAOImpl<AnalyzerPluginConfi
         if (analyzerId == null || analyzerId.trim().isEmpty()) {
             return Optional.empty();
         }
-        String hql = "FROM AnalyzerPluginConfig c WHERE c.analyzerId = :analyzerId";
-        Query<AnalyzerPluginConfig> query = entityManager.unwrap(Session.class).createQuery(hql,
-                AnalyzerPluginConfig.class);
+        String sql = "SELECT * FROM clinlims.analyzer_plugin_config WHERE analyzer_id = CAST(:analyzerId AS NUMERIC)";
+        Query<AnalyzerPluginConfig> query = entityManager.unwrap(Session.class)
+                .createNativeQuery(sql, AnalyzerPluginConfig.class);
         query.setParameter("analyzerId", analyzerId.trim());
-        return Optional.ofNullable(query.uniqueResult());
+        return Optional.ofNullable(query.uniqueResultOptional().orElse(null));
     }
 }

@@ -18,7 +18,7 @@ const GENEXPERT_HOST = process.env.GENEXPERT_HOST;
 const GENEXPERT_PORT = process.env.GENEXPERT_PORT || "1200";
 test.describe("Analyzer Test Connection", () => {
   test.skip(
-    !!process.env.CI,
+    process.env.CI === "true",
     "Requires analyzer harness with fixture data (not available in CI)",
   );
 
@@ -73,7 +73,7 @@ test.describe("Analyzer Test Connection", () => {
  */
 test.describe("Real GeneXpert Test Connection", () => {
   test.skip(
-    !GENEXPERT_HOST || !!process.env.CI,
+    !GENEXPERT_HOST || process.env.CI === "true",
     "Set GENEXPERT_HOST (and optionally GENEXPERT_PORT) to run real device tests",
   );
   test.describe.configure({ mode: "serial" });
