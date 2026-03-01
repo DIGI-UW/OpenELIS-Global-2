@@ -156,37 +156,58 @@
     </changeSet>
 
     <!-- ========================================================= -->
-    <!-- Indexes                                                   -->
+    <!-- Indexes - Split into individual guarded changesets for idempotency -->
     <!-- ========================================================= -->
-    <changeSet id="panel-006-create-indexes" author="Agaba-Derrick">
+
+    <changeSet id="panel-006a-create-idx-panel-lab-unit-panel" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_panel_lab_unit_panel" tableName="panel_lab_unit"/></not>
+        </preConditions>
         <createIndex indexName="idx_panel_lab_unit_panel" tableName="panel_lab_unit">
             <column name="panel_id"/>
         </createIndex>
+        <rollback><dropIndex indexName="idx_panel_lab_unit_panel" tableName="panel_lab_unit"/></rollback>
+    </changeSet>
 
+    <changeSet id="panel-006b-create-idx-panel-lab-unit-lab-unit" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_panel_lab_unit_lab_unit" tableName="panel_lab_unit"/></not>
+        </preConditions>
         <createIndex indexName="idx_panel_lab_unit_lab_unit" tableName="panel_lab_unit">
             <column name="lab_unit_id"/>
         </createIndex>
+        <rollback><dropIndex indexName="idx_panel_lab_unit_lab_unit" tableName="panel_lab_unit"/></rollback>
+    </changeSet>
 
+    <changeSet id="panel-006c-create-idx-sampletype-panel-panel" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_sampletype_panel_panel" tableName="sampletype_panel"/></not>
+        </preConditions>
         <createIndex indexName="idx_sampletype_panel_panel" tableName="sampletype_panel">
             <column name="panel_id"/>
         </createIndex>
+        <rollback><dropIndex indexName="idx_sampletype_panel_panel" tableName="sampletype_panel"/></rollback>
+    </changeSet>
 
+    <changeSet id="panel-006d-create-idx-panel-item-panel" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_panel_item_panel" tableName="panel_item"/></not>
+        </preConditions>
         <createIndex indexName="idx_panel_item_panel" tableName="panel_item">
             <column name="panel_id"/>
         </createIndex>
+        <rollback><dropIndex indexName="idx_panel_item_panel" tableName="panel_item"/></rollback>
+    </changeSet>
 
+    <changeSet id="panel-006e-create-idx-panel-item-sort-order" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_panel_item_sort_order" tableName="panel_item"/></not>
+        </preConditions>
         <createIndex indexName="idx_panel_item_sort_order" tableName="panel_item">
             <column name="panel_id"/>
             <column name="sort_order"/>
         </createIndex>
-
-        <rollback>
-            <dropIndex indexName="idx_panel_lab_unit_panel" tableName="panel_lab_unit"/>
-            <dropIndex indexName="idx_panel_lab_unit_lab_unit" tableName="panel_lab_unit"/>
-            <dropIndex indexName="idx_sampletype_panel_panel" tableName="sampletype_panel"/>
-            <dropIndex indexName="idx_panel_item_panel" tableName="panel_item"/>
-            <dropIndex indexName="idx_panel_item_sort_order" tableName="panel_item"/>
-        </rollback>
+        <rollback><dropIndex indexName="idx_panel_item_sort_order" tableName="panel_item"/></rollback>
     </changeSet>
 
     <!-- ========================================================= -->
