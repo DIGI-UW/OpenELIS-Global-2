@@ -53,4 +53,9 @@ public class ReportDefinitionServiceImpl extends AuditableBaseObjectServiceImpl<
     public List<ReportDefinition> getDefinitionsByCategory(String category) {
         return baseObjectDAO.getDefinitionsByCategory(category);
     }
+
+    @Override
+    public ReportDefinition getActiveByReportType(String reportType) {
+        return baseObjectDAO.getActiveByReportType(reportType);
+    }
 }

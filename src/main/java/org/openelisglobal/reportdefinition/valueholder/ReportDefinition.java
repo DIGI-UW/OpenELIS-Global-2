@@ -52,6 +52,12 @@ public class ReportDefinition extends BaseObject<String> {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
+    @Column(name = "report_type", length = 50)
+    private String reportType;
+
+    @Column(name = "is_public")
+    private Boolean isPublic;
+
     @Override
     public String getId() {
         return id;
@@ -116,6 +122,22 @@ public class ReportDefinition extends BaseObject<String> {
 
     public void setIsActive(Boolean isActive) {
         this.isActive = isActive;
+    }
+
+    public String getReportType() {
+        return reportType;
+    }
+
+    public void setReportType(String reportType) {
+        this.reportType = reportType;
+    }
+
+    public Boolean getIsPublic() {
+        return isPublic;
+    }
+
+    public void setIsPublic(Boolean isPublic) {
+        this.isPublic = isPublic;
     }
 
     @Override

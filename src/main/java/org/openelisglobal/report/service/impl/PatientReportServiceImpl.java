@@ -7,9 +7,12 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.report.ReportColumn;
+import org.openelisglobal.report.ReportDefinitionColumnParser;
 import org.openelisglobal.report.ReportRow;
 import org.openelisglobal.report.ReportingData;
 import org.openelisglobal.report.service.PatientReportService;
+import org.openelisglobal.reportdefinition.service.ReportDefinitionService;
+import org.openelisglobal.reportdefinition.valueholder.ReportDefinition;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -22,8 +25,15 @@ import org.openelisglobal.test.beanItems.TestResultItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+/** Report type constant for patient results report definition lookup. */
+final class PatientReportConstants {
+    static final String REPORT_TYPE_PATIENT = "PATIENT";
+}
+
 /**
- * Default implementation of {@link PatientReportService}.
+ * Default implementation of {@link PatientReportService}. Column definitions
+ * are read from report_definition when report_type=PATIENT; otherwise a default
+ * column set is used.
  */
 @Service
 public class PatientReportServiceImpl implements PatientReportService {
@@ -43,6 +53,9 @@ public class PatientReportServiceImpl implements PatientReportService {
     @Autowired
     private ProviderService providerService;
 
+    @Autowired
+    private ReportDefinitionService reportDefinitionService;
+
     @Override
     public ReportingData buildPatientResultsReport(String patientId, String sysUserId) {
         Patient patient = patientService.getData(patientId);
@@ -55,13 +68,27 @@ public class PatientReportServiceImpl implements PatientReportService {
 
         List<TestResultItem> results = resultsUtility.getGroupedTestsForPatient(patient);
 
-        return mapToReportingData(results, patient);
+        List<ReportColumn> columns = resolveColumns();
+        return mapToReportingData(results, patient, columns);
     }
 
-    private ReportingData mapToReportingData(List<TestResultItem> results, Patient patient) {
-        ReportingData data = new ReportingData();
+    /**
+     * Resolve report columns from the active PATIENT report definition, or return
+     * default columns if none is configured.
+     */
+    private List<ReportColumn> resolveColumns() {
+        ReportDefinition definition = reportDefinitionService
+                .getActiveByReportType(PatientReportConstants.REPORT_TYPE_PATIENT);
+        if (definition != null && definition.getDefinitionJson() != null) {
+            List<ReportColumn> parsed = ReportDefinitionColumnParser.parseColumns(definition.getDefinitionJson());
+            if (!parsed.isEmpty()) {
+                return parsed;
+            }
+        }
+        return getDefaultPatientReportColumns();
+    }
 
-        // Define Canonical Columns
+    private static List<ReportColumn> getDefaultPatientReportColumns() {
         List<ReportColumn> columns = new ArrayList<>();
         columns.add(new ReportColumn("accessionNumber", "Accession Number", "String"));
         columns.add(new ReportColumn("patientName", "Patient Name", "String"));
@@ -76,6 +103,12 @@ public class PatientReportServiceImpl implements PatientReportService {
         columns.add(new ReportColumn("testDescription", "Test Description", "String"));
         columns.add(new ReportColumn("analysisStatus", "Status", "String"));
         columns.add(new ReportColumn("resultValue", "Result Value", "String"));
+        return columns;
+    }
+
+    private ReportingData mapToReportingData(List<TestResultItem> results, Patient patient,
+            List<ReportColumn> columns) {
+        ReportingData data = new ReportingData();
         data.setColumns(columns);
 
         // Define Rows
@@ -119,40 +152,52 @@ public class PatientReportServiceImpl implements PatientReportService {
                 collectionDate = sample.getCollectionDateForDisplay();
             }
 
-            // Populate mapping (Order doesn't matter for the map, but we'll be consistent)
-            row.addData("accessionNumber", item.getAccessionNumber());
-            row.addData("patientName", item.getPatientName());
-            row.addData("patientExternalId", patient.getExternalId());
-            row.addData("patientGender", patient.getGender());
-            row.addData("patientDateOfBirth", patient.getBirthDateForDisplay());
-            row.addData("organizationName", orgName);
-            row.addData("sampleCollectionDate", collectionDate);
-            row.addData("sampleReceivedDate", item.getReceivedDate());
-            row.addData("clinicianName", clinician);
-            row.addData("testName", item.getTestName());
-            row.addData("testDescription", item.getTestName());
-            row.addData("analysisStatus", item.getAnalysisStatusId());
-            row.addData("resultValue", item.getResultValue());
-
-            // Also populate cells in same order as columns for UI compatibility
-            row.addCell(item.getAccessionNumber());
-            row.addCell(item.getPatientName());
-            row.addCell(patient.getExternalId());
-            row.addCell(patient.getGender());
-            row.addCell(patient.getBirthDateForDisplay());
-            row.addCell(orgName);
-            row.addCell(collectionDate);
-            row.addCell(item.getReceivedDate());
-            row.addCell(clinician);
-            row.addCell(item.getTestName());
-            row.addCell(item.getTestName());
-            row.addCell(item.getAnalysisStatusId());
-            row.addCell(item.getResultValue());
-
+            // Build row data by column key so order matches definition
+            for (ReportColumn col : columns) {
+                String value = getCellValue(col.getKey(), item, patient, orgName, clinician, collectionDate);
+                row.addData(col.getKey(), value);
+                row.addCell(value);
+            }
             rows.add(row);
         }
         data.setRows(rows);
-
         return data;
+    }
+
+    private static String getCellValue(String key, TestResultItem item, Patient patient, String orgName,
+            String clinician, String collectionDate) {
+        if (key == null) {
+            return "";
+        }
+        switch (key) {
+        case "accessionNumber":
+            return item.getAccessionNumber() != null ? item.getAccessionNumber() : "";
+        case "patientName":
+            return item.getPatientName() != null ? item.getPatientName() : "";
+        case "patientExternalId":
+            return patient.getExternalId() != null ? patient.getExternalId() : "";
+        case "patientGender":
+            return patient.getGender() != null ? patient.getGender() : "";
+        case "patientDateOfBirth":
+            return patient.getBirthDateForDisplay() != null ? patient.getBirthDateForDisplay() : "";
+        case "organizationName":
+            return orgName != null ? orgName : "";
+        case "sampleCollectionDate":
+            return collectionDate != null ? collectionDate : "";
+        case "sampleReceivedDate":
+            return item.getReceivedDate() != null ? item.getReceivedDate() : "";
+        case "clinicianName":
+            return clinician != null ? clinician : "";
+        case "testName":
+            return item.getTestName() != null ? item.getTestName() : "";
+        case "testDescription":
+            return item.getTestName() != null ? item.getTestName() : "";
+        case "analysisStatus":
+            return item.getAnalysisStatusId() != null ? item.getAnalysisStatusId() : "";
+        case "resultValue":
+            return item.getResultValue() != null ? item.getResultValue() : "";
+        default:
+            return "";
+        }
     }
 }

@@ -68,4 +68,60 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="reporting-002-add-report-type-and-visibility" author="Agaba_derrick">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="report_definition" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="report_definition" columnName="report_type" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add report_type and is_public to report_definition for filtering and visibility</comment>
+        <addColumn tableName="report_definition" schemaName="clinlims">
+            <column name="report_type" type="VARCHAR(50)"/>
+        </addColumn>
+        <addColumn tableName="report_definition" schemaName="clinlims">
+            <column name="is_public" type="BOOLEAN" defaultValueBoolean="true"/>
+        </addColumn>
+        <createIndex tableName="report_definition" schemaName="clinlims" indexName="idx_report_def_report_type">
+            <column name="report_type"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="report_definition" indexName="idx_report_def_report_type" schemaName="clinlims"/>
+            <dropColumn tableName="report_definition" schemaName="clinlims">
+                <column name="report_type"/>
+            </dropColumn>
+            <dropColumn tableName="report_definition" schemaName="clinlims">
+                <column name="is_public"/>
+            </dropColumn>
+        </rollback>
+    </changeSet>
+
+    <!-- Seed default Patient Results report so server demo works without manual DB setup -->
+    <changeSet id="reporting-003-seed-default-patient-report" author="Agaba_derrick">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="report_definition" schemaName="clinlims"/>
+            <columnExists tableName="report_definition" columnName="report_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.report_definition WHERE id = 'REP-PATIENT-DEFAULT'</sqlCheck>
+        </preConditions>
+        <comment>Insert default PATIENT report definition for ad-hoc patient results (demo/production)</comment>
+        <insert tableName="report_definition" schemaName="clinlims">
+            <column name="id" value="REP-PATIENT-DEFAULT"/>
+            <column name="name" value="Patient Results Report"/>
+            <column name="description" value="Default ad-hoc patient results report"/>
+            <column name="category" value="Patient"/>
+            <column name="definition_json" value='{"columns":[{"key":"accessionNumber","header":"Accession Number","type":"String"},{"key":"patientName","header":"Patient Name","type":"String"},{"key":"patientExternalId","header":"External ID","type":"String"},{"key":"patientGender","header":"Gender","type":"String"},{"key":"patientDateOfBirth","header":"Date of Birth","type":"String"},{"key":"organizationName","header":"Organization Name","type":"String"},{"key":"sampleCollectionDate","header":"Collection Date","type":"String"},{"key":"sampleReceivedDate","header":"Received Date","type":"String"},{"key":"clinicianName","header":"Clinician Name","type":"String"},{"key":"testName","header":"Test Name","type":"String"},{"key":"testDescription","header":"Test Description","type":"String"},{"key":"analysisStatus","header":"Status","type":"String"},{"key":"resultValue","header":"Result Value","type":"String"}]}'/>
+            <column name="created_by" value="system"/>
+            <column name="created_date" valueDate="CURRENT_TIMESTAMP"/>
+            <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="report_type" value="PATIENT"/>
+            <column name="is_public" valueBoolean="true"/>
+        </insert>
+        <rollback>
+            <delete tableName="report_definition" schemaName="clinlims">
+                <where>id = 'REP-PATIENT-DEFAULT'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>
