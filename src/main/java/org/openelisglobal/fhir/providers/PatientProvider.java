@@ -1,6 +1,7 @@
 package org.openelisglobal.fhir.providers;
 
 import ca.uhn.fhir.model.api.Include;
+import ca.uhn.fhir.rest.annotation.Create;
 import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
 import ca.uhn.fhir.rest.annotation.IncludeParam;
@@ -17,26 +18,39 @@ import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
-import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.lang.reflect.InvocationTargetException;
+import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
+import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.lang.StringUtils;
+import org.hibernate.StaleObjectStateException;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Encounter;
 import org.hl7.fhir.r4.model.IdType;
+import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
+import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
-import org.openelisglobal.person.service.PersonService;
+import org.openelisglobal.patientidentity.service.PatientIdentityService;
+import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
 import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.validation.BindException;
+import org.springframework.validation.Errors;
+import org.springframework.validation.ObjectError;
 
 /**
  * HAPI FHIR resource provider for the Patient resource. Handles Read, Search,
@@ -69,7 +83,7 @@ public class PatientProvider implements IResourceProvider {
     private PatientService patientService;
 
     @Autowired
-    private PersonService personService;
+    private PatientIdentityService patientIdentityService;
 
     @Override
     public Class<? extends IBaseResource> getResourceType() {
@@ -96,6 +110,80 @@ public class PatientProvider implements IResourceProvider {
                     "Unexpected error while Reading Patient: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error while Reading Patient", e);
         }
+    }
+
+    @Create
+    public MethodOutcome createPatient(@ResourceParam org.hl7.fhir.r4.model.Patient fhirPatient,
+            HttpServletRequest request) {
+        String method = "Create";
+
+        MethodOutcome outcome = new MethodOutcome();
+        OperationOutcome operationOutcome = new OperationOutcome();
+
+        try {
+
+            if (fhirPatient == null) {
+                LogEvent.logError(this.getClass().getSimpleName(), method, "Patient resource is null");
+                throw new InvalidRequestException("Patient resource cannot be null");
+
+            } else if (fhirPatient.getIdElement().getIdPart() == null) {
+                fhirPatient.setId(UUID.randomUUID().toString());
+            }
+
+            PatientManagementInfo patientInfo = fhirTransformService.createOePatientManagementInfo(fhirPatient);
+
+            if (StringUtils.isBlank(patientInfo.getPatientPK())) {
+                patientInfo.setPatientUpdateStatus(PatientUpdateStatus.ADD);
+            }
+
+            Errors errors = new BindException(patientInfo, "patientInfo");
+            ValidatePatientInfo.validatePatientInfo(errors, patientInfo);
+
+            if (errors.hasErrors()) {
+                for (ObjectError error : errors.getAllErrors()) {
+                    operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
+                            .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getDefaultMessage());
+                }
+
+                outcome.setOperationOutcome(operationOutcome);
+                outcome.setCreated(false);
+                return outcome;
+            }
+
+            Patient patient = new Patient();
+            preparePatientData(patientInfo, patient, request);
+
+            patientService.persistPatientData(patientInfo, patient, FhirProviderUtils.getSysUserId(request));
+
+            fhirTransformService.transformPersistPatient(patientInfo, true);
+            Patient savedPatient = getPatientByFhirId(patient.getFhirUuidAsString());
+            if (savedPatient == null) {
+                throw new InternalErrorException("Saved patient is null");
+            }
+
+            org.hl7.fhir.r4.model.Patient savedFhirPatient = fhirTransformService
+                    .transformToFhirPatient(savedPatient.getId());
+
+            IdType id = new IdType("Patient", patient.getId());
+            outcome.setId(id);
+            outcome.setCreated(true);
+            outcome.setResource(savedFhirPatient);
+
+            operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.INFORMATION)
+                    .setCode(OperationOutcome.IssueType.INFORMATIONAL).setDiagnostics("Patient created successfully");
+
+            outcome.setOperationOutcome(operationOutcome);
+
+        } catch (Exception e) {
+
+            operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
+                    .setCode(OperationOutcome.IssueType.EXCEPTION).setDiagnostics(e.getMessage());
+
+            outcome.setOperationOutcome(operationOutcome);
+            outcome.setCreated(false);
+        }
+
+        return outcome;
     }
 
     @Search
@@ -129,54 +217,85 @@ public class PatientProvider implements IResourceProvider {
     }
 
     @Update
-    public MethodOutcome update(@IdParam IdType theId, @ResourceParam org.hl7.fhir.r4.model.Patient fhirPatient,
+    public MethodOutcome updatePatient(@IdParam IdType theId, @ResourceParam org.hl7.fhir.r4.model.Patient fhirPatient,
             HttpServletRequest request) {
 
-        String method = "update";
-        LogEvent.logDebug(this.getClass().getSimpleName(), method,
-                "Received FHIR UPDATE request for Patient ID: " + (theId != null ? theId.getIdPart() : "null"));
+        MethodOutcome outcome = new MethodOutcome();
+        OperationOutcome operationOutcome = new OperationOutcome();
 
         try {
 
-            FhirProviderUtils.validateIdParam(theId, "Patient", this.getClass().getSimpleName(), method);
-
-            fhirPatient.setId(theId);
-
-            Patient existingPatient = getPatientByFhirId(theId.getIdPart());
-            if (existingPatient == null) {
-                throw new ResourceNotFoundException("Patient/" + theId.getIdPart());
+            if (theId == null || !theId.hasIdPart()) {
+                throw new InvalidRequestException("Patient ID must be provided for update");
             }
 
-            Person existingPerson = personService.get(existingPatient.getPerson().getId());
+            String fhirUuid = theId.getIdPart();
 
-            fhirTransformService.addHumanNameToPerson(fhirPatient.getNameFirstRep(), existingPerson);
-            fhirTransformService.addTelecomToPerson(fhirPatient.getTelecom(), existingPerson);
-            existingPerson.setSysUserId(FhirProviderUtils.getSysUserId(request));
-            personService.save(existingPerson);
+            Patient existingPatient = getPatientByFhirId(fhirUuid);
 
-            existingPatient.setSysUserId(FhirProviderUtils.getSysUserId(request));
-            patientService.save(existingPatient);
+            if (existingPatient == null) {
+                throw new ResourceNotFoundException("Patient/" + fhirUuid);
+            }
 
-            org.hl7.fhir.r4.model.Patient resultFhirPatient = fhirTransformService
-                    .transformToFhirPatient(existingPatient.getId());
-            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, resultFhirPatient,
-                    this.getClass().getSimpleName(), method);
+            PatientManagementInfo patientInfo = fhirTransformService.createOePatientManagementInfo(fhirPatient);
 
-            LogEvent.logInfo(this.getClass().getSimpleName(), method,
-                    "Successfully updated Patient with ID: " + theId.getIdPart());
+            patientInfo.setPatientPK(existingPatient.getId());
+            patientInfo.setPatientUpdateStatus(PatientUpdateStatus.UPDATE);
 
-            return FhirProviderUtils.buildUpdateOutcome(resultFhirPatient);
+            Errors errors = new BindException(patientInfo, "patientInfo");
+            ValidatePatientInfo.validatePatientInfo(errors, patientInfo);
 
-        } catch (ResourceNotFoundException | UnprocessableEntityException | InvalidRequestException e) {
+            if (errors.hasErrors()) {
+                for (ObjectError error : errors.getAllErrors()) {
+                    operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
+                            .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getDefaultMessage());
+                }
+                outcome.setOperationOutcome(operationOutcome);
+                return outcome;
+            }
+
+            Patient workingPatient = new Patient();
+
+            preparePatientData(patientInfo, workingPatient, request);
+
+            patientService.persistPatientData(patientInfo, workingPatient, FhirProviderUtils.getSysUserId(request));
+
+            fhirTransformService.transformPersistPatient(patientInfo, false);
+
+            Patient savedPatient = patientService.get(existingPatient.getId());
+
+            org.hl7.fhir.r4.model.Patient savedFhirPatient = fhirTransformService
+                    .transformToFhirPatient(savedPatient.getId());
+
+            outcome.setId(new IdType("Patient", savedPatient.getFhirUuidAsString()));
+            outcome.setCreated(false);
+            outcome.setResource(savedFhirPatient);
+
+            operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.INFORMATION)
+                    .setCode(OperationOutcome.IssueType.INFORMATIONAL).setDiagnostics("Patient updated successfully");
+
+            outcome.setOperationOutcome(operationOutcome);
+
+        } catch (ResourceNotFoundException e) {
             throw e;
+
+        } catch (StaleObjectStateException e) {
+
+            operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
+                    .setCode(OperationOutcome.IssueType.CONFLICT)
+                    .setDiagnostics("Patient was modified by another user");
+
+            outcome.setOperationOutcome(operationOutcome);
 
         } catch (Exception e) {
 
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Unexpected error while updating Patient: " + e.getMessage());
+            operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
+                    .setCode(OperationOutcome.IssueType.EXCEPTION).setDiagnostics(e.getMessage());
 
-            throw new InternalErrorException("Unexpected server error while updating Patient", e);
+            outcome.setOperationOutcome(operationOutcome);
         }
+
+        return outcome;
     }
 
     @Delete
@@ -231,5 +350,76 @@ public class PatientProvider implements IResourceProvider {
     private Patient getPatientByFhirId(String fhirUuid) {
         List<Patient> matches = patientService.getAllMatching("fhirUuid", UUID.fromString(fhirUuid));
         return matches.isEmpty() ? null : matches.get(0);
+    }
+
+    private void preparePatientData(PatientManagementInfo patientInfo, Patient patient, HttpServletRequest request)
+            throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+
+        String sysUserId = FhirProviderUtils.getSysUserId(request);
+
+        if (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.UPDATE
+                && StringUtils.isNotBlank(patientInfo.getPatientPK())) {
+
+            Patient dbPatient = patientService.get(patientInfo.getPatientPK());
+
+            if (dbPatient == null) {
+                throw new IllegalStateException("Patient not found for update");
+            }
+
+            PropertyUtils.copyProperties(patient, dbPatient);
+
+            List<PatientIdentity> identities = patientIdentityService.getPatientIdentitiesForPatient(dbPatient.getId());
+
+            patientInfo.setPatientIdentities(identities != null ? identities : new ArrayList<>());
+        }
+
+        if (patient.getPerson() == null) {
+            patient.setPerson(new Person());
+        }
+
+        PropertyUtils.copyProperties(patient, patientInfo);
+
+        if (patient.getPerson() != null) {
+            PropertyUtils.copyProperties(patient.getPerson(), patientInfo);
+        }
+
+        setAuditFields(patient, patientInfo, sysUserId);
+
+        applyOptimisticLocking(patientInfo, patient);
+    }
+
+    private void setAuditFields(Patient patient, PatientManagementInfo patientInfo, String sysUserId) {
+
+        patient.setSysUserId(sysUserId);
+
+        if (patient.getPerson() != null) {
+            patient.getPerson().setSysUserId(sysUserId);
+        }
+
+        if (patientInfo.getPatientIdentities() != null) {
+            for (PatientIdentity identity : patientInfo.getPatientIdentities()) {
+                identity.setSysUserId(sysUserId);
+            }
+        }
+
+        if (patientInfo.getPatientContact() != null) {
+            patientInfo.getPatientContact().setSysUserId(sysUserId);
+        }
+    }
+
+    private void applyOptimisticLocking(PatientManagementInfo patientInfo, Patient patient) {
+
+        if (patientInfo.getPatientUpdateStatus() != PatientUpdateStatus.UPDATE) {
+            return;
+        }
+
+        if (StringUtils.isNotBlank(patientInfo.getPatientLastUpdated())) {
+            patient.setLastupdated(Timestamp.valueOf(patientInfo.getPatientLastUpdated()));
+        }
+
+        if (StringUtils.isNotBlank(patientInfo.getPersonLastUpdated()) && patient.getPerson() != null) {
+
+            patient.getPerson().setLastupdated(Timestamp.valueOf(patientInfo.getPersonLastUpdated()));
+        }
     }
 }

@@ -82,4 +82,6 @@ public interface FhirTransformService {
 
     void transformAnalysisByIds(List<String> analysisIds) throws FhirTransformationException, FhirPersistanceException;
 
+    PatientManagementInfo createOePatientManagementInfo(org.hl7.fhir.r4.model.Patient fhirPatient);
+
 }
