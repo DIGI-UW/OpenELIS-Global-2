@@ -150,7 +150,7 @@ function ShipmentReceptionForm({
   );
 
   const handleSubmit = useCallback(
-    async (e) => {
+    (e) => {
       e.preventDefault();
 
       if (!validateForm()) {
@@ -160,53 +160,44 @@ function ShipmentReceptionForm({
       setLoading(true);
       setError(null);
 
-      try {
-        const shipmentData = {
-          deliveryReference: formData.deliveryReference.trim(),
-          senderName: formData.senderName.trim(),
-          senderOrganization: formData.senderOrganization.trim() || null,
-          packagingCondition: formData.packagingCondition,
-          packagingConditionNotes:
-            formData.packagingConditionNotes.trim() || null,
-          transportTemperature: formData.transportTemperature,
-          expectedSampleCount: formData.expectedSampleCount,
-        };
+      const shipmentData = {
+        deliveryReference: formData.deliveryReference.trim(),
+        senderName: formData.senderName.trim(),
+        senderOrganization: formData.senderOrganization.trim() || null,
+        packagingCondition: formData.packagingCondition,
+        packagingConditionNotes:
+          formData.packagingConditionNotes.trim() || null,
+        transportTemperature: formData.transportTemperature,
+        expectedSampleCount: formData.expectedSampleCount,
+      };
 
-        const response = await postToOpenElisServerJsonResponse(
-          "/rest/biorepository/shipment/receive",
-          JSON.stringify(shipmentData),
-        );
-
-        if (response.error) {
-          setError(response.error);
-        } else {
-          // Reload shipments and go back to list
-          loadShipments();
-          setViewMode("list");
-          // Reset form
-          setFormData({
-            deliveryReference: "",
-            senderName: "",
-            senderOrganization: "",
-            packagingCondition: "INTACT",
-            packagingConditionNotes: "",
-            transportTemperature: null,
-            expectedSampleCount: null,
-          });
-          if (onShipmentCreated) {
-            onShipmentCreated(response);
+      postToOpenElisServerJsonResponse(
+        "/rest/biorepository/shipment/receive",
+        JSON.stringify(shipmentData),
+        (response) => {
+          setLoading(false);
+          if (response.error) {
+            setError(response.error);
+          } else {
+            // Reload shipments and go back to list
+            loadShipments();
+            setViewMode("list");
+            // Reset form
+            setFormData({
+              deliveryReference: "",
+              senderName: "",
+              senderOrganization: "",
+              packagingCondition: "INTACT",
+              packagingConditionNotes: "",
+              transportTemperature: null,
+              expectedSampleCount: null,
+            });
+            if (onShipmentCreated) {
+              onShipmentCreated(response);
+            }
           }
-        }
-      } catch (err) {
-        setError(
-          intl.formatMessage({
-            id: "biorepository.shipment.error.submit",
-            defaultMessage: "Failed to receive shipment. Please try again.",
-          }),
-        );
-      } finally {
-        setLoading(false);
-      }
+        },
+      );
     },
     [formData, validateForm, onShipmentCreated, intl, loadShipments],
   );

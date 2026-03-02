@@ -574,8 +574,8 @@ const StorageLocationModal = ({
               <TextInput
                 id="device-name"
                 labelText={intl.formatMessage({
-                  id: "storage.location.name",
-                  defaultMessage: "Name",
+                  id: "storage.device.name",
+                  defaultMessage: "Device Name",
                 })}
                 value={formData.name || ""}
                 onChange={(e) => handleFieldChange("name", e.target.value)}
@@ -586,8 +586,8 @@ const StorageLocationModal = ({
               <TextInput
                 id="device-code"
                 labelText={intl.formatMessage({
-                  id: "storage.location.code",
-                  defaultMessage: "Code",
+                  id: "storage.device.code",
+                  defaultMessage: "Device Code",
                 })}
                 value={formData.code || ""}
                 onChange={(e) => {

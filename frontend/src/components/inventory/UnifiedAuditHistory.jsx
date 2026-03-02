@@ -360,7 +360,6 @@ const UnifiedAuditHistory = () => {
             <div style={{ flex: 1 }}>
               <DatePicker
                 datePickerType="single"
-                value={filters.startDate}
                 onChange={(dates) => {
                   const date = dates[0];
                   handleFilterChange(
@@ -383,7 +382,6 @@ const UnifiedAuditHistory = () => {
             <div style={{ flex: 1 }}>
               <DatePicker
                 datePickerType="single"
-                value={filters.endDate}
                 onChange={(dates) => {
                   const date = dates[0];
                   handleFilterChange(

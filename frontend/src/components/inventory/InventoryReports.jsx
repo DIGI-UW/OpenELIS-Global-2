@@ -213,6 +213,7 @@ const InventoryReports = () => {
                   label={intl.formatMessage({ id: "reports.format.select" })}
                   items={exportFormats}
                   selectedItem={formData.exportFormat}
+                  itemToString={(item) => (item ? item.text : "")}
                   onChange={({ selectedItem }) =>
                     handleChange("exportFormat", selectedItem)
                   }

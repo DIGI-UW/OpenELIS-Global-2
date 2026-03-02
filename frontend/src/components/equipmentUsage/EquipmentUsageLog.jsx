@@ -504,7 +504,10 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                       {usageRows.map((row) => (
                         <tr key={row.id}>
                           <td>
-                            <DatePicker dateFormat="mm/dd/yyyy">
+                            <DatePicker
+                              datePickerType="single"
+                              dateFormat="mm/dd/yyyy"
+                            >
                               <DatePickerInput
                                 id={`date-picker-${row.id}`}
                                 labelText="Date"
@@ -614,7 +617,10 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                             />
                           </td>
                           <td>
-                            <DatePicker dateFormat="mm/dd/yyyy">
+                            <DatePicker
+                              datePickerType="single"
+                              dateFormat="mm/dd/yyyy"
+                            >
                               <DatePickerInput
                                 id={`approval-date-picker-${row.id}`}
                                 labelText="Approval Date"
