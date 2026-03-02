@@ -1,5 +1,10 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "profileMeta": {
+    "id": "genexpert-astm",
+    "version": "1.2.0",
+    "displayName": "Cepheid GeneXpert (ASTM Mode)"
+  },
   "analyzer_name": "Cepheid GeneXpert (ASTM Mode)",
   "manufacturer": "Cepheid",
   "category": "MOLECULAR",
@@ -36,5 +41,13 @@
       "unit": "copies/mL"
     }
   ],
+  "configDefaults": {
+    "connectionRole": "SERVER",
+    "aggregationMode": "PER_MESSAGE",
+    "qcRules": [],
+    "extractionOverrides": {},
+    "flagMappings": {},
+    "transforms": {}
+  },
   "notes": "Multi-protocol capable: FILE (primary), ASTM, HL7 all confirmed per Cepheid LIS spec. This config is for ASTM mode. Results are typically qualitative (Detected/Not Detected) for most assays. GeneXpert supports both RS-232 and TCP/IP transports."
 }

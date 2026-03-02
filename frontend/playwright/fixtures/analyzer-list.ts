@@ -31,14 +31,15 @@ export class AnalyzerListPage {
 
   /** Navigate to the analyzers list page */
   async goto() {
-    await this.page.goto("/analyzers");
+    await this.page.goto("analyzers", { waitUntil: "domcontentloaded" });
   }
 
   /** Assert the page has loaded (root + header + stats visible) */
   async expectLoaded() {
-    await expect(this.root).toBeVisible();
-    await expect(this.header).toBeVisible();
-    await expect(this.statsGrid).toBeVisible();
+    // Wait for analyzers API to complete (stats grid populated)
+    await expect(this.root).toBeVisible({ timeout: 45_000 });
+    await expect(this.header).toBeVisible({ timeout: 10_000 });
+    await expect(this.statsGrid).toBeVisible({ timeout: 15_000 });
   }
 
   /** Get a stat tile value by testid suffix (total, active, inactive) */

@@ -1,5 +1,10 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "profileMeta": {
+    "id": "mindray-ba88a",
+    "version": "1.2.0",
+    "displayName": "Mindray BA-88A"
+  },
   "analyzer_name": "Mindray BA-88A",
   "manufacturer": "Mindray",
   "category": "CHEMISTRY",
@@ -41,6 +46,7 @@
       "unit": "g/dL"
     }
   ],
+  "configDefaults": {},
   "notes": "CRITICAL: BA-88A is a 2008-era semi-automatic analyzer. LIS capabilities may be limited or absent. VERIFY with deployment team before configuring. This default config assumes ASTM/RS232 support. If analyzer has no LIS, manual entry required. May have been confused with BS-series models (BS-120, BS-360E) which have full LIS support.",
   "verification_required": true
 }
