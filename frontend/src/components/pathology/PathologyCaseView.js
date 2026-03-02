@@ -58,6 +58,7 @@ function PathologyCaseView() {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
 
   const [pathologySampleInfo, setPathologySampleInfo] = useState({});
+  const [originalData, setOriginalData] = useState(null);
 
   const [initialMount, setInitialMount] = useState(false);
 
@@ -240,9 +241,29 @@ function PathologyCaseView() {
         userSessionDetails.lastName + " " + userSessionDetails.firstName;
     }
     setPathologySampleInfo(e);
+    setOriginalData(JSON.parse(JSON.stringify(e)));
     setLoading(false);
     setInitialMount(true);
   };
+
+ const handleDiscard = (e) => {
+  e.preventDefault();
+  
+  const confirmDiscard = window.confirm(
+    "Are you sure you want to discard all unsaved changes?"
+  );
+
+  if (confirmDiscard) {
+    setPathologySampleInfo(JSON.parse(JSON.stringify(originalData)));
+    
+    addNotification({
+      kind: NotificationKinds.info,
+      title: "Changes Discarded",
+      message: "The form has been reset to the last saved state.",
+    });
+    setNotificationVisible(true);
+  }
+};
 
   useEffect(() => {
     componentMounted.current = true;
@@ -1173,7 +1194,7 @@ function PathologyCaseView() {
       </div>
 
       <div className="sticky-footer">
-        <Button kind="secondary">Discard Changes</Button>
+        <Button kind="secondary" onClick= {handleDiscard}>Discard Changes</Button>
         <Button 
           id = "pathology_save"
           kind="secondary" 
