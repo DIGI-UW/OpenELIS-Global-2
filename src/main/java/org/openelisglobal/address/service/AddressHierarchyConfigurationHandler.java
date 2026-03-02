@@ -43,7 +43,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class AddressHierarchyConfigurationHandler implements DomainConfigurationHandler {
 
-    private static final String ADDRESS_HIERARCHY_LEVEL_PREFIX = "Address Hierarchy Level ";
     private static final String ADDRESS_HIERARCHY_DEFAULT_PREFIX = "AddrHierarchyDefault_";
 
     @Autowired
@@ -80,7 +79,9 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         // Read and validate header
         String headerLine = reader.readLine();
         if (headerLine == null) {
-            throw new IllegalArgumentException("Address hierarchy levels file " + fileName + " is empty");
+            LogEvent.logWarn(this.getClass().getSimpleName(), "processConfiguration",
+                    "Address hierarchy levels file " + fileName + " is empty - skipping");
+            return;
         }
 
         String[] headers = parseCsvLine(headerLine);
@@ -229,8 +230,7 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
     }
 
     private void updateOrganizationType(OrganizationType orgType, int level, String[] values, int displayKeyIndex) {
-        // Store the level in the description field with a standard prefix for lookup
-        orgType.setDescription(ADDRESS_HIERARCHY_LEVEL_PREFIX + level);
+        orgType.setHierarchyLevel(level);
         orgType.setSysUserId("1");
     }
 
@@ -293,23 +293,16 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
     }
 
     /**
-     * Get the hierarchy level for an OrganizationType by parsing its description.
+     * Get the hierarchy level for an OrganizationType.
      *
      * @param orgType the organization type to check
      * @return the hierarchy level, or -1 if not an address hierarchy type
      */
     public static int getHierarchyLevel(OrganizationType orgType) {
-        if (orgType == null || orgType.getDescription() == null) {
+        if (orgType == null || orgType.getHierarchyLevel() == null) {
             return -1;
         }
-        if (orgType.getDescription().startsWith(ADDRESS_HIERARCHY_LEVEL_PREFIX)) {
-            try {
-                return Integer.parseInt(orgType.getDescription().substring(ADDRESS_HIERARCHY_LEVEL_PREFIX.length()));
-            } catch (NumberFormatException e) {
-                return -1;
-            }
-        }
-        return -1;
+        return orgType.getHierarchyLevel();
     }
 
     /**

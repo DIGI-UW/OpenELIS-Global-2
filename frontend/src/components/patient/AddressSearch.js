@@ -43,12 +43,6 @@ const AddressSearch = ({
     getFromOpenElisServer(
       `/rest/address-hierarchy/search?query=${encodeURIComponent(term)}&limit=20`,
       (results) => {
-        // Handle both success and error cases - Utils.js calls callback with undefined on error
-        if (results === undefined) {
-          setSearchResults([]);
-          setIsLoading(false);
-          return;
-        }
         const resultsArray = Array.isArray(results) ? results : [];
         setSearchResults(resultsArray);
         setIsLoading(false);

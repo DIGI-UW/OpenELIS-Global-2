@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.service.OrganizationTypeService;
@@ -190,7 +191,7 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
                 errors++;
                 LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
                         "Error processing row " + rowsProcessed + "/" + totalRows + ": " + e.getMessage()
-                                + " | Line content: " + truncate(csvLine, 100));
+                                + " | Line content: " + StringUtil.ellipsisString(csvLine, 100));
                 if (errors > 100) {
                     LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
                             "Too many errors (" + errors + "), aborting import");
@@ -215,37 +216,18 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
                         + " errors");
     }
 
-    /**
-     * Helper class to track type links that need to be created after organization
-     * insert.
-     */
-    private static class OrganizationTypeLinkInfo {
-        Organization organization;
-        OrganizationType orgType;
-
-        OrganizationTypeLinkInfo(Organization org, OrganizationType type) {
-            this.organization = org;
-            this.orgType = type;
-        }
+    /** Tracks type links that need to be created after organization insert. */
+    private record OrganizationTypeLinkInfo(Organization organization, OrganizationType orgType) {
     }
 
     /**
-     * Helper class to track organizations in batch with their path keys. After
-     * flush, we update pathToOrgIdMap with the assigned IDs.
+     * Tracks organizations in batch with their path keys for ID mapping after
+     * flush.
      */
-    private static class BatchOrganizationInfo {
-        Organization organization;
-        String pathKey;
-
-        BatchOrganizationInfo(Organization org, String pathKey) {
-            this.organization = org;
-            this.pathKey = pathKey;
-        }
+    private record BatchOrganizationInfo(Organization organization, String pathKey) {
     }
 
-    /**
-     * Result of processing a single row in batch mode.
-     */
+    /** Result of processing a single row in batch mode. */
     private static class BatchProcessingResult {
         int newOrganizations = 0;
         int skippedOrganizations = 0;
@@ -262,10 +244,10 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
             // Persist all organizations without flushing - allows Hibernate to batch
             for (BatchOrganizationInfo batchInfo : batchToInsert) {
                 try {
-                    entityManager.persist(batchInfo.organization);
+                    entityManager.persist(batchInfo.organization());
                 } catch (jakarta.persistence.PersistenceException e) {
                     LogEvent.logError(this.getClass().getSimpleName(), "flushBatch", "Failed to persist organization '"
-                            + batchInfo.organization.getOrganizationName() + "': " + e.getMessage());
+                            + batchInfo.organization().getOrganizationName() + "': " + e.getMessage());
                     throw e;
                 }
             }
@@ -284,7 +266,7 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
                         orgNames.append("... and ").append(batchToInsert.size() - 5).append(" more");
                         break;
                     }
-                    orgNames.append(batchInfo.organization.getOrganizationName()).append(", ");
+                    orgNames.append(batchInfo.organization().getOrganizationName()).append(", ");
                 }
                 LogEvent.logError(this.getClass().getSimpleName(), "flushBatch", orgNames.toString());
                 throw e;
@@ -292,8 +274,8 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
 
             // After flush, organizations now have IDs - update pathToOrgIdMap
             for (BatchOrganizationInfo batchInfo : batchToInsert) {
-                if (batchInfo.organization.getId() != null) {
-                    pathToOrgIdMap.put(batchInfo.pathKey, batchInfo.organization.getId());
+                if (batchInfo.organization().getId() != null) {
+                    pathToOrgIdMap.put(batchInfo.pathKey(), batchInfo.organization().getId());
                 }
             }
 
@@ -304,11 +286,11 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
             // Note: linkOrganizationAndType uses direct SQL, no flush needed
             for (OrganizationTypeLinkInfo linkInfo : typeLinksToCreate) {
                 try {
-                    ensureOrganizationTypeLink(linkInfo.organization, linkInfo.orgType, existingTypeLinks);
+                    ensureOrganizationTypeLink(linkInfo.organization(), linkInfo.orgType(), existingTypeLinks);
                 } catch (Exception e) {
                     LogEvent.logError(this.getClass().getSimpleName(), "flushBatch",
-                            "Failed to link organization " + linkInfo.organization.getOrganizationName() + " to type "
-                                    + linkInfo.orgType.getName() + " - " + e.getMessage());
+                            "Failed to link organization " + linkInfo.organization().getOrganizationName() + " to type "
+                                    + linkInfo.orgType().getName() + " - " + e.getMessage());
                 }
             }
 
@@ -449,7 +431,7 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
             if (batchOrg != null) {
                 // Parent is in unflushed batch - reference the actual object
                 parentId = null;
-                parentOrgInBatch = batchOrg.organization;
+                parentOrgInBatch = batchOrg.organization();
                 result.skippedOrganizations++;
                 continue;
             }
@@ -500,7 +482,7 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
      */
     private BatchOrganizationInfo findInBatch(List<BatchOrganizationInfo> batch, String pathKey) {
         for (BatchOrganizationInfo info : batch) {
-            if (pathKey.equals(info.pathKey)) {
+            if (pathKey.equals(info.pathKey())) {
                 return info;
             }
         }
@@ -608,9 +590,9 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
      * hierarchy.
      */
     private String generateCode(String name, int level, String parentPath) {
-        // Create a code from the name: uppercase, no spaces, max 20 chars
-        String baseCode = name.toUpperCase().replaceAll("[^A-Z0-9]", "").substring(0,
-                Math.min(name.replaceAll("[^A-Za-z0-9]", "").length(), 15));
+        // Create a code from the name: uppercase, no spaces, max 15 chars
+        String alphanumericName = name.toUpperCase().replaceAll("[^A-Z0-9]", "");
+        String baseCode = alphanumericName.substring(0, Math.min(alphanumericName.length(), 15));
 
         // Add level prefix to ensure uniqueness across levels
         return "L" + level + "_" + baseCode;
@@ -639,19 +621,6 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
         organizationService.linkOrganizationAndType(org, orgType.getId());
         // Add to cache so we don't try to create it again
         existingTypeLinks.add(linkKey);
-    }
-
-    /**
-     * Truncate a string for logging purposes.
-     */
-    private String truncate(String str, int maxLength) {
-        if (str == null) {
-            return "null";
-        }
-        if (str.length() <= maxLength) {
-            return str;
-        }
-        return str.substring(0, maxLength) + "...";
     }
 
     private String[] parseCsvLine(String line) {

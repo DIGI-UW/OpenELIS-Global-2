@@ -21,7 +21,6 @@ import org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap;
 import org.openelisglobal.patienttype.service.PatientPatientTypeService;
 import org.openelisglobal.patienttype.valueholder.PatientType;
 import org.openelisglobal.person.valueholder.Person;
-import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -48,6 +47,9 @@ public class PatientSearchPopulateRestController {
 
     @Autowired
     PatientPatientTypeService patientPatientTypeService;
+
+    @Autowired
+    PatientIdentityTypeService patientIdentityTypeService;
 
     private String ADDRESS_PART_VILLAGE_ID;
 
@@ -201,8 +203,7 @@ public class PatientSearchPopulateRestController {
             return "";
         }
         try {
-            PatientIdentityTypeService identityTypeService = SpringContext.getBean(PatientIdentityTypeService.class);
-            var identityType = identityTypeService.getNamedIdentityType(typeName.toUpperCase());
+            var identityType = patientIdentityTypeService.getNamedIdentityType(typeName.toUpperCase());
             if (identityType == null) {
                 return "";
             }
