@@ -135,11 +135,11 @@ public class AnalyzerDefaultsRestControllerTest extends BaseWebContextSensitiveT
     }
 
     /**
-     * Test that defaults API works with analyzer-defaults directory structure.
+     * Test that defaults API works with analyzer-profiles directory structure.
      *
      * <p>
-     * Validates expected directory structure: - analyzer-defaults/astm/*.json -
-     * analyzer-defaults/hl7/*.json
+     * Validates expected directory structure: - analyzer-profiles/astm/*.json -
+     * analyzer-profiles/hl7/*.json
      */
     @Test
     public void testGetDefaults_RespectsDirectoryStructure_AstmAndHl7Separated() throws Exception {
