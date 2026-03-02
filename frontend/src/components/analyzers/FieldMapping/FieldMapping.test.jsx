@@ -29,6 +29,8 @@ jest.mock("../../../services/analyzerService", () => ({
   updateMapping: jest.fn(),
   deleteMapping: jest.fn(),
   getFields: jest.fn(),
+  getPendingCodes: jest.fn(),
+  getPluginConfig: jest.fn(),
 }));
 
 // Mock react-router-dom
@@ -94,6 +96,12 @@ describe("FieldMapping", () => {
     jest.clearAllMocks();
     mockHistory.push.mockClear();
     mockHistory.replace.mockClear();
+    analyzerService.getPendingCodes.mockImplementation((id, callback) => {
+      callback([]);
+    });
+    analyzerService.getPluginConfig.mockImplementation((id, callback) => {
+      callback(null);
+    });
   });
 
   /**
