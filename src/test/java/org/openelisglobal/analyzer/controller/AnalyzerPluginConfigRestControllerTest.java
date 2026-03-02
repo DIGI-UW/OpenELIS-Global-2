@@ -55,9 +55,12 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
     }
 
     @Test
-    public void testGetPluginConfig_Unauthorized_Returns403() throws Exception {
+    public void testGetPluginConfig_WithoutAuthContext_Returns200InCurrentWebTestHarness() throws Exception {
         when(analyzerPluginConfigService.getConfigAsMap("101")).thenReturn(Map.of());
 
+        // BaseWebContextSensitiveTest does not apply the Spring Security test
+        // integration, so this verifies current harness behavior rather than
+        // full filter-chain authorization semantics.
         mockMvc.perform(get("/rest/analyzer/analyzers/101/plugin-config").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
     }
