@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
@@ -72,13 +73,13 @@ public class NoteBookRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getNoteBookAuditTrail_shouldReturnAuditPayloadForExistingNotebook() throws Exception {
+    public void getAvailableNotebooks_shouldReturnArrayPayload() throws Exception {
         MvcResult result = mockMvc.perform(
-                get("/rest/notebook/auditTrail").param("notebookId", "2").accept(MediaType.APPLICATION_JSON_VALUE))
+                get("/rest/notebook/list").accept(MediaType.APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk()).andReturn();
 
-        Map<?, ?> response = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
-        assertNotNull("Audit trail response should deserialize", response);
-        assertTrue("Audit trail response should be a valid payload", response.isEmpty() || response.containsKey("log"));
+        List<?> response = objectMapper.readValue(result.getResponse().getContentAsString(), List.class);
+        assertNotNull("Notebook list response should deserialize", response);
+        assertTrue("Notebook list should contain at least one entry from fixtures", !response.isEmpty());
     }
 }
