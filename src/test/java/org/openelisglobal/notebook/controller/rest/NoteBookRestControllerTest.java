@@ -67,14 +67,14 @@ public class NoteBookRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isOk());
 
         NoteBook after = noteBookService.get(2);
-        assertEquals("Status update endpoint should persist notebook status", NoteBookStatus.SUBMITTED, after.getStatus());
+        assertEquals("Status update endpoint should persist notebook status", NoteBookStatus.SUBMITTED,
+                after.getStatus());
     }
 
     @Test
     public void getNoteBookAuditTrail_shouldReturnAuditPayloadForExistingNotebook() throws Exception {
-        MvcResult result = mockMvc
-                .perform(get("/rest/notebook/auditTrail").param("notebookId", "2")
-                        .accept(MediaType.APPLICATION_JSON_VALUE))
+        MvcResult result = mockMvc.perform(
+                get("/rest/notebook/auditTrail").param("notebookId", "2").accept(MediaType.APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk()).andReturn();
 
         Map<?, ?> response = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
