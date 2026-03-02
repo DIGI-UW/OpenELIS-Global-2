@@ -74,8 +74,7 @@ public class NoteBookRestControllerTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAvailableNotebooks_shouldReturnArrayPayload() throws Exception {
-        MvcResult result = mockMvc.perform(
-                get("/rest/notebook/list").accept(MediaType.APPLICATION_JSON_VALUE))
+        MvcResult result = mockMvc.perform(get("/rest/notebook/list").accept(MediaType.APPLICATION_JSON_VALUE))
                 .andExpect(status().isOk()).andReturn();
 
         List<?> response = objectMapper.readValue(result.getResponse().getContentAsString(), List.class);
