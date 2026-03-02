@@ -1005,7 +1005,6 @@ function PathologyCaseView() {
             )}
             </AccordionItem>
 
-
             <AccordionItem title="Pathologist Review" id="review">
               <Grid fullWidth={true} className="gridBoundary">
                 <Column lg={4} md={2} sm={2}>
@@ -1081,7 +1080,6 @@ function PathologyCaseView() {
               </Grid>
             </AccordionItem>
               
-
             <AccordionItem title="Findings & Conclusions" id="findings"> 
                   <Grid fullWidth={true} className="gridBoundary">
                       <Column lg={4} md={8} sm={4}>
@@ -1121,8 +1119,26 @@ function PathologyCaseView() {
                             ))}
                         </Column>
                   </Grid>
+                  <Grid fullWidth={true} className="gridBoundary">
+                    {pathologySampleInfo.assignedPathologistId &&
+                      pathologySampleInfo.assignedTechnicianId && (
+                        <Column lg={16} md={8} sm={4}>
+                          <Checkbox
+                            labelText={intl.formatMessage({
+                              id: "pathology.label.release",
+                            })}
+                            id="release"
+                            onChange={() => {
+                              setPathologySampleInfo({
+                                ...pathologySampleInfo,
+                                release: !pathologySampleInfo.release,
+                              });
+                            }}
+                          />
+                        </Column>
+                      )}
+                  </Grid>
             </AccordionItem>
-
 
             <AccordionItem title="Reports" id="report">
                         <Grid fullWidth={true} className="gridBoundary">
@@ -1154,25 +1170,6 @@ function PathologyCaseView() {
             </AccordionItem>
 
             </Accordion>
-            {/* <Grid fullWidth={true} className="orderLegendBody" style={{ marginTop: '2rem' }}>
-              {pathologySampleInfo.assignedPathologistId &&
-                pathologySampleInfo.assignedTechnicianId && (
-                  <Column lg={16} md={8} sm={4}>
-                    <Checkbox
-                      labelText={intl.formatMessage({
-                        id: "pathology.label.release",
-                      })}
-                      id="release"
-                      onChange={() => {
-                        setPathologySampleInfo({
-                          ...pathologySampleInfo,
-                          release: !pathologySampleInfo.release,
-                        });
-                      }}
-                    />
-                  </Column>
-                )}
-            </Grid> */}
         </Content>
       </div>
 
