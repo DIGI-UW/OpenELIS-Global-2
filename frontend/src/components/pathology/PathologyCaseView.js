@@ -96,9 +96,9 @@ function PathologyCaseView() {
     setNotificationVisible(true);
     if (status == "200") {
       const save1 = document.getElementById("pathology_save");
-      const save2 = document.getElementById("pathology_save2");
+      // const save2 = document.getElementById("pathology_save2");
       save1.disabled = true;
-      save2.disabled = true;
+      // save2.disabled = true;
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -1175,6 +1175,7 @@ function PathologyCaseView() {
       <div className="sticky-footer">
         <Button kind="secondary">Discard Changes</Button>
         <Button 
+          id = "pathology_save"
           kind="secondary" 
           disabled={isSubmitting} 
           onClick={save}
