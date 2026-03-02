@@ -14,4 +14,7 @@
   <include relativeToChangelogFile="true" file="006-create-indexes.xml"/>
   <include relativeToChangelogFile="true" file="007-insert-seed-data.xml"/>
   <include relativeToChangelogFile="true" file="008-normalize-protocol-version-enum.xml"/>
+  <include relativeToChangelogFile="true" file="009-decouple-test-mappings.xml"/>
+  <include relativeToChangelogFile="true" file="010-create-analyzer-plugin-config.xml"/>
+  <include relativeToChangelogFile="true" file="011-create-analyzer-pending-code.xml"/>
 </databaseChangeLog>
