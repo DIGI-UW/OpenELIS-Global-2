@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<dataset>
+
+    <!-- ===================== -->
+    <!-- SYSTEM_USER (required) -->
+    <!-- ===================== -->
+    <system_user id="1" login_name="itest" last_name="User"
+        first_name="Integration" is_active="Y" is_employee="Y" />
+
+    <status_of_sample id="1"
+        description="No tests have been run for this order" code="1"
+        status_type="ORDER" lastupdated="2011-02-16 12:45:57.196561"
+        name="Test Entered" display_key="status.sample.notStarted"
+        is_active="Y" />
+
+    <status_of_sample id="24"
+        description="Sample has been physically disposed" code="1"
+        status_type="SAMPLE" lastupdated="2024-01-01 10:00:00"
+        name="SampleDisposed" display_key="status.sample.disposed"
+        is_active="Y" />
+
+    <!-- Minimal lookup rows to make sample_item inserts self-contained for
+        CI -->
+    <localization id="1" english="Blood" french="Sang" />
+
+    <type_of_sample id="1" description="whole blood"
+        domain="H" lastupdated="2023-11-01 12:00:00" local_abbrev="blood"
+        is_active="true" sort_order="4" name_localization_id="1"
+        display_key="sample.type.Blood" />
+
+    <!-- ===================== -->
+    <!-- STORAGE ROOMS (3 active, 1 inactive) -->
+    <!-- ===================== -->
+    <storage_room id="1"
+        fhir_uuid="11111111-1111-1111-1111-111111111111" name="Room A"
+        code="ROOM-A" active="true" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+    <storage_room id="2"
+        fhir_uuid="22222222-2222-2222-2222-222222222222" name="Room B"
+        code="ROOM-B" active="true" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+    <storage_room id="3"
+        fhir_uuid="33333333-3333-3333-3333-333333333333" name="Room C"
+        code="ROOM-C" active="true" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+    <storage_room id="4"
+        fhir_uuid="44444444-4444-4444-4444-444444444444" name="Room D"
+        code="ROOM-D" active="false" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+
+    <!-- ===================== -->
+    <!-- STORAGE DEVICES -->
+    <!-- 2 freezers in room 1 (ids 1,2) and 3 refrigerators total (ids 3,4,5) -->
+    <!-- ===================== -->
+    <storage_device id="1"
+        fhir_uuid="d1111111-0000-0000-0000-000000000001" name="Freezer A1"
+        code="FREEZER-A1" type="freezer" parent_room_id="1" active="true"
+        sys_user_id="1" last_updated="2025-12-22 00:00:00" />
+    <storage_device id="2"
+        fhir_uuid="d2222222-0000-0000-0000-000000000002" name="Freezer A2"
+        code="FREEZER-A2" type="freezer" parent_room_id="1" active="true"
+        sys_user_id="1" last_updated="2025-12-22 00:00:00" />
+    <storage_device id="3"
+        fhir_uuid="d3333333-0000-0000-0000-000000000003" name="Fridge B1"
+        code="FRIDGE-B1" type="refrigerator" parent_room_id="2" active="true"
+        sys_user_id="1" last_updated="2025-12-22 00:00:00" />
+    <storage_device id="4"
+        fhir_uuid="d4444444-0000-0000-0000-000000000004" name="Fridge C1"
+        code="FRIDGE-C1" type="refrigerator" parent_room_id="3" active="true"
+        sys_user_id="1" last_updated="2025-12-22 00:00:00" />
+    <storage_device id="5"
+        fhir_uuid="d5555555-0000-0000-0000-000000000005" name="Fridge A3"
+        code="FRIDGE-A3" type="refrigerator" parent_room_id="1" active="true"
+        sys_user_id="1" last_updated="2025-12-22 00:00:00" />
+
+    <!-- ===================== -->
+    <!-- STORAGE SHELVES -->
+    <!-- device 1: shelves 1,2 | device 2: shelves 3,4,5 | device 3: shelves
+        6,7 | device 4: shelves 8,9 -->
+    <!-- ===================== -->
+    <storage_shelf id="1"
+        fhir_uuid="11111111-0000-0000-0000-000000000001" label="Shelf A-1"
+        code="S-A1" parent_device_id="1" active="true" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+    <storage_shelf id="2"
+        fhir_uuid="22222222-0000-0000-0000-000000000002" label="Shelf A-2"
+        code="S-A2" parent_device_id="1" active="true" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+
+    <storage_shelf id="3"
+        fhir_uuid="33333333-0000-0000-0000-000000000003" label="Shelf A2-1"
+        code="S-A2-1" parent_device_id="2" active="true" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+    <storage_shelf id="4"
+        fhir_uuid="44444444-0000-0000-0000-000000000004" label="Shelf A2-2"
+        code="S-A2-2" parent_device_id="2" active="true" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+    <storage_shelf id="5"
+        fhir_uuid="55555555-0000-0000-0000-000000000005" label="Shelf A2-3"
+        code="S-A2-3" parent_device_id="2" active="true" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+
+    <storage_shelf id="6"
+        fhir_uuid="66666666-0000-0000-0000-000000000006" label="Shelf B-1"
+        code="S-B1" parent_device_id="3" active="true" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+    <storage_shelf id="7"
+        fhir_uuid="77777777-0000-0000-0000-000000000007" label="Shelf B-2"
+        code="S-B2" parent_device_id="3" active="true" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+
+    <storage_shelf id="8"
+        fhir_uuid="88888888-0000-0000-0000-000000000008" label="Shelf C-1"
+        code="S-C1" parent_device_id="4" active="true" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+    <storage_shelf id="9"
+        fhir_uuid="99999999-0000-0000-0000-000000000009" label="Shelf C-2"
+        code="S-C2" parent_device_id="4" active="true" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+
+    <!-- one inactive shelf for status-based tests -->
+    <storage_shelf id="99"
+        fhir_uuid="99999998-0000-0000-0000-000000000099"
+        label="Shelf Inactive" code="S-INACT" parent_device_id="5"
+        active="false" sys_user_id="1" last_updated="2025-12-22 00:00:00" />
+
+    <!-- ===================== -->
+    <!-- STORAGE RACKS -->
+    <!-- add at least one rack for shelf 1 (used in rack filter test) and a
+        few more -->
+    <!-- ===================== -->
+    <storage_rack id="1"
+        fhir_uuid="aaaaaaaa-0000-0000-0000-000000000001" label="Rack A-1-1"
+        code="R-A1-1" parent_shelf_id="1" active="true" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+    <storage_rack id="2"
+        fhir_uuid="bbbbbbbb-0000-0000-0000-000000000002" label="Rack A2-1"
+        code="R-A2-1" parent_shelf_id="3" active="true" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+    <storage_rack id="3"
+        fhir_uuid="cccccccc-0000-0000-0000-000000000003" label="Rack B-1-1"
+        code="R-B1-1" parent_shelf_id="6" active="true" sys_user_id="1"
+        last_updated="2025-12-22 00:00:00" />
+
+    <!-- ===================== -->
+    <!-- SAMPLES, SAMPLE_ITEMS, ASSIGNMENTS -->
+    <!-- Room A (room 1) should have 2 active samples -->
+    <!-- Room B (room 2) should have 3 samples total -->
+    <!-- A disposed sample with status_id=24 for status-only test -->
+    <!-- ===================== -->
+    <sample id="10" accession_number="A-001" status_id="1"
+        entered_date="2025-01-01 10:00:00" received_date="2025-01-01 10:00:00"
+        sys_user_id="1" />
+    <sample_item id="110" samp_id="10" sort_order="1"
+        external_id="A-001-1" typeosamp_id="1"
+        collection_date="2025-01-01 10:00:00" collector="Tech" quantity="1.0"
+        status_id="1" lastupdated="2025-01-01 12:00:00" />
+    <sample_storage_assignment id="210"
+        sample_item_id="110" location_id="1" location_type="rack"
+        position_coordinate="A1" assigned_by_user_id="1"
+        assigned_date="2025-01-01 12:00:00" last_updated="2025-01-01 12:00:00" />
+
+    <sample id="11" accession_number="A-002" status_id="1"
+        entered_date="2025-01-02 10:00:00" received_date="2025-01-02 10:00:00"
+        sys_user_id="1" />
+    <sample_item id="111" samp_id="11" sort_order="1"
+        external_id="A-002-1" typeosamp_id="1"
+        collection_date="2025-01-02 10:00:00" collector="Tech" quantity="1.0"
+        status_id="1" lastupdated="2025-01-02 12:00:00" />
+    <sample_storage_assignment id="211"
+        sample_item_id="111" location_id="2" location_type="rack"
+        position_coordinate="A1" assigned_by_user_id="1"
+        assigned_date="2025-01-02 12:00:00" last_updated="2025-01-02 12:00:00" />
+
+    <!-- Room B samples (3 samples) assigned to rack id 3 (which is in room
+        2 via shelf 6/device3) -->
+    <sample id="20" accession_number="B-001" status_id="1"
+        entered_date="2025-02-01 10:00:00" received_date="2025-02-01 10:00:00"
+        sys_user_id="1" />
+    <sample_item id="120" samp_id="20" sort_order="1"
+        external_id="B-001-1" typeosamp_id="1"
+        collection_date="2025-02-01 10:00:00" collector="Tech" quantity="1.0"
+        status_id="1" lastupdated="2025-02-01 12:00:00" />
+    <sample_storage_assignment id="220"
+        sample_item_id="120" location_id="3" location_type="rack"
+        position_coordinate="A1" assigned_by_user_id="1"
+        assigned_date="2025-02-01 12:00:00" last_updated="2025-02-01 12:00:00" />
+
+    <sample id="21" accession_number="B-002" status_id="1"
+        entered_date="2025-02-02 10:00:00" received_date="2025-02-02 10:00:00"
+        sys_user_id="1" />
+    <sample_item id="121" samp_id="21" sort_order="1"
+        external_id="B-002-1" typeosamp_id="1"
+        collection_date="2025-02-02 10:00:00" collector="Tech" quantity="1.0"
+        status_id="1" lastupdated="2025-02-02 12:00:00" />
+    <sample_storage_assignment id="221"
+        sample_item_id="121" location_id="3" location_type="rack"
+        position_coordinate="A2" assigned_by_user_id="1"
+        assigned_date="2025-02-02 12:00:00" last_updated="2025-02-02 12:00:00" />
+
+    <sample id="22" accession_number="B-003" status_id="1"
+        entered_date="2025-02-03 10:00:00" received_date="2025-02-03 10:00:00"
+        sys_user_id="1" />
+    <sample_item id="122" samp_id="22" sort_order="1"
+        external_id="B-003-1" typeosamp_id="1"
+        collection_date="2025-02-03 10:00:00" collector="Tech" quantity="1.0"
+        status_id="1" lastupdated="2025-02-03 12:00:00" />
+    <sample_storage_assignment id="222"
+        sample_item_id="122" location_id="3" location_type="rack"
+        position_coordinate="A3" assigned_by_user_id="1"
+        assigned_date="2025-02-03 12:00:00" last_updated="2025-02-03 12:00:00" />
+
+    <!-- Disposed sample (status_id 24) used by status-only test -->
+    <sample id="30" accession_number="DIS-001" status_id="24"
+        entered_date="2025-03-01 10:00:00" received_date="2025-03-01 10:00:00"
+        sys_user_id="1" />
+    <sample_item id="130" samp_id="30" sort_order="1"
+        external_id="DIS-001-1" typeosamp_id="1"
+        collection_date="2025-03-01 10:00:00" collector="Tech" quantity="1.0"
+        status_id="24" lastupdated="2025-03-01 12:00:00" />
+
+</dataset>

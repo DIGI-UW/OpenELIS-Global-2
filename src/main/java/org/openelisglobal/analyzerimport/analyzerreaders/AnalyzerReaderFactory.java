@@ -29,6 +29,9 @@ public class AnalyzerReaderFactory {
         if (name.equals("astm")) {
             return new ASTMAnalyzerReader();
         }
+        if (name.equals("hl7") || (name != null && name.toLowerCase().endsWith(".hl7"))) {
+            return new HL7AnalyzerReader();
+        }
         return new AnalyzerLineReader();
     }
 }
