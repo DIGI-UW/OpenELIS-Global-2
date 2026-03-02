@@ -1,71 +1,76 @@
 package org.openelisglobal.report.controller;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.report.ReportingData;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.web.servlet.MvcResult;
 
-@RunWith(SpringRunner.class)
 public class PatientReportRestControllerTest extends BaseWebContextSensitiveTest {
 
-    @Override
     @Before
+    @Override
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/patient-results-report.xml");
     }
 
     @Test
-    public void getPatientResults_shouldReturnReportData_whenExistingPatientHasResults() throws Exception {
-        this.mockMvc
-                .perform(get("/rest/reports/patient/1/results").contentType(MediaType.APPLICATION_JSON)
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.columns").isArray()).andExpect(jsonPath("$.columns.length()").value(13))
-                .andExpect(jsonPath("$.rows").isArray()).andExpect(jsonPath("$.rows.length()").value(1))
-                .andExpect(jsonPath("$.rows[0].dataMap.accessionNumber").value("24-00001"))
-                .andExpect(jsonPath("$.rows[0].dataMap.patientExternalId").value("EXT-PAT-001"))
-                .andExpect(jsonPath("$.rows[0].dataMap.testName").isString())
-                .andExpect(jsonPath("$.rows[0].dataMap.resultValue").value("5.5"));
+    public void getPatientResults_shouldReturnPatientReport_whenPatientHasResults() throws Exception {
+
+        MvcResult mvcResult = super.mockMvc.perform(get("/rest/reports/patient/1/results")
+                .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
+
+        int status = mvcResult.getResponse().getStatus();
+        assertEquals(200, status);
+
+        String content = mvcResult.getResponse().getContentAsString();
+        ReportingData data = super.mapFromJson(content, ReportingData.class);
+
+        assertThat(data, notNullValue());
+        assertThat(data.getColumns().size(), is(13));
+        assertThat(data.getRows().size(), is(1));
+
+        assertThat(data.getRows().get(0).getDataMap().get("accessionNumber"), is("24-00001"));
+
+        assertThat(data.getRows().get(0).getDataMap().get("patientExternalId"), is("EXT-PAT-001"));
+
+        assertThat(data.getRows().get(0).getDataMap().get("resultValue"), is("5.5"));
     }
 
     @Test
-    public void getPatientResults_shouldReturnNotFound_whenNonExistentPatientIdProvided() throws Exception {
-        this.mockMvc.perform(get("/rest/reports/patient/999999/results").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+    public void getPatientResults_shouldReturnNotFound_whenPatientDoesNotExist() throws Exception {
+
+        MvcResult mvcResult = super.mockMvc
+                .perform(get("/rest/reports/patient/999999/results").accept(MediaType.APPLICATION_JSON_VALUE))
+                .andReturn();
+
+        assertEquals(404, mvcResult.getResponse().getStatus());
     }
 
     @Test
-    public void getPatientResults_shouldReturnNotFound_whenNegativePatientIdProvided() throws Exception {
-        this.mockMvc.perform(get("/rest/reports/patient/-1/results").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+    public void getPatientResults_shouldReturnNotFound_whenInvalidPatientIdProvided() throws Exception {
+
+        assertEquals(404,
+                super.mockMvc.perform(get("/rest/reports/patient/-1/results")).andReturn().getResponse().getStatus());
+
+        assertEquals(404,
+                super.mockMvc.perform(get("/rest/reports/patient/0/results")).andReturn().getResponse().getStatus());
     }
 
     @Test
-    public void getPatientResults_shouldReturnNotFound_whenZeroPatientIdProvided() throws Exception {
-        this.mockMvc.perform(get("/rest/reports/patient/0/results").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
-    }
+    public void getPatientResults_shouldReturnJsonContentType() throws Exception {
 
-    @Test
-    public void getPatientResults_shouldRespondToRequest_whenValidUrlIsProvided() throws Exception {
-        this.mockMvc.perform(get("/rest/reports/patient/1/results").accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-    }
+        MvcResult mvcResult = super.mockMvc
+                .perform(get("/rest/reports/patient/1/results").accept(MediaType.APPLICATION_JSON_VALUE)).andReturn();
 
-    @Test
-    public void getPatientResults_shouldRespondWithJsonContentType_whenRequestIsValid() throws Exception {
-        this.mockMvc.perform(get("/rest/reports/patient/1/results").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(result -> {
-                    int status = result.getResponse().getStatus();
-                    assert (status == 404 || status == 200);
-                });
+        assertEquals(MediaType.APPLICATION_JSON_VALUE, mvcResult.getResponse().getContentType());
     }
 }

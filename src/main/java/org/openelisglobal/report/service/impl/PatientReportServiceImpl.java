@@ -22,6 +22,7 @@ import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
 import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.beanItems.TestResultItem;
+import org.openelisglobal.test.service.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -55,6 +56,9 @@ public class PatientReportServiceImpl implements PatientReportService {
 
     @Autowired
     private ReportDefinitionService reportDefinitionService;
+
+    @Autowired
+    private TestService testService;
 
     @Override
     public ReportingData buildPatientResultsReport(String patientId, String sysUserId) {
@@ -164,8 +168,8 @@ public class PatientReportServiceImpl implements PatientReportService {
         return data;
     }
 
-    private static String getCellValue(String key, TestResultItem item, Patient patient, String orgName,
-            String clinician, String collectionDate) {
+    private String getCellValue(String key, TestResultItem item, Patient patient, String orgName, String clinician,
+            String collectionDate) {
         if (key == null) {
             return "";
         }
@@ -191,7 +195,13 @@ public class PatientReportServiceImpl implements PatientReportService {
         case "testName":
             return item.getTestName() != null ? item.getTestName() : "";
         case "testDescription":
-            return item.getTestName() != null ? item.getTestName() : "";
+            if (item.getTestId() != null) {
+                org.openelisglobal.test.valueholder.Test test = testService.getTestById(item.getTestId());
+                if (test != null && test.getDescription() != null) {
+                    return test.getDescription();
+                }
+            }
+            return "";
         case "analysisStatus":
             return item.getAnalysisStatusId() != null ? item.getAnalysisStatusId() : "";
         case "resultValue":
