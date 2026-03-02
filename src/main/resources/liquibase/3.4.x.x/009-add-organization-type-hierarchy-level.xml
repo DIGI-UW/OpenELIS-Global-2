@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="reagan-meant" id="add-hierarchy-level-column">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="organization_type" schemaName="clinlims" />
+            <not>
+                <columnExists tableName="organization_type" columnName="hierarchy_level" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Add hierarchy_level column to organization_type table for address hierarchy support</comment>
+        <addColumn tableName="organization_type" schemaName="clinlims">
+            <column name="hierarchy_level" type="INTEGER" />
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>
