@@ -953,7 +953,6 @@ function PathologyCaseView() {
               </Grid>
             </Column>
                 </Column>
-
                 <Column lg={16} md={8} sm={4}>
                   <Grid fullWidth={true} className="gridBoundary">
                     {pagination && (
@@ -981,24 +980,6 @@ function PathologyCaseView() {
                         </div>
                       </Column>
                     )}
-                  </Grid>
-                </Column>
-                <Column lg={16} md={8} sm={4}>
-                  <Grid fullWidth={true} className="gridBoundary">
-                    <Column lg={16} md={8} sm={4}>
-                      <TextArea
-                        labelText={
-                          <FormattedMessage id="pathology.label.textconclusion" />
-                        }
-                        value={pathologySampleInfo.conclusionText}
-                        onChange={(e) => {
-                          setPathologySampleInfo({
-                            ...pathologySampleInfo,
-                            conclusionText: e.target.value,
-                          });
-                        }}
-                      />
-                    </Column>
                   </Grid>
                 </Column>
               </>
@@ -1119,6 +1100,24 @@ function PathologyCaseView() {
                             ))}
                         </Column>
                   </Grid>
+                                  <Column lg={16} md={8} sm={4}>
+                  <Grid fullWidth={true} className="gridBoundary">
+                    <Column lg={16} md={8} sm={4}>
+                      <TextArea
+                        labelText={
+                          <FormattedMessage id="pathology.label.textconclusion" />
+                        }
+                        value={pathologySampleInfo.conclusionText}
+                        onChange={(e) => {
+                          setPathologySampleInfo({
+                            ...pathologySampleInfo,
+                            conclusionText: e.target.value,
+                          });
+                        }}
+                      />
+                    </Column>
+                  </Grid>
+                </Column>
                   <Grid fullWidth={true} className="gridBoundary">
                     {pathologySampleInfo.assignedPathologistId &&
                       pathologySampleInfo.assignedTechnicianId && (
