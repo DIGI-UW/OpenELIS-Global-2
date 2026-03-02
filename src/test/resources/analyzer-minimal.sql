@@ -54,7 +54,7 @@ VALUES
   -- OE identifies the analyzer from the ASTM H-record, not the source IP.
   (2013, 'Cepheid GeneXpert (ASTM Mode)', 'MOLECULAR', 'ASTM LIS2-A2 over TCP/IP', true,
    '172.20.1.100', 9600, 'ASTM_LIS2_A2', 'ACTIVE',
-   'GENEXPERT|CEPHEID', NOW())
+   'GENEXPERT.*|CEPHEID.*', NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- =============================================================================

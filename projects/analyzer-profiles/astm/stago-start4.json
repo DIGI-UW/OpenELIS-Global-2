@@ -1,5 +1,10 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "profileMeta": {
+    "id": "stago-start4",
+    "version": "1.2.0",
+    "displayName": "Stago STart 4"
+  },
   "analyzer_name": "Stago STart 4",
   "manufacturer": "Stago",
   "category": "COAGULATION",
@@ -41,5 +46,6 @@
       "unit": "mg/L FEU"
     }
   ],
+  "configDefaults": {},
   "notes": "Older semi-automatic analyzer. Protocol details unclear from public sources. Per vendor spec, supports both ASTM and HL7, but RS232/ASTM mode prioritized. 5 coagulation fields. VERIFY protocol capabilities with deployment team."
 }
