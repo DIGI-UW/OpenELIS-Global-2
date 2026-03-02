@@ -1,10 +1,15 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
-  "analyzer_name": "Horiba ABX Pentra 60 C+",
+  "profileMeta": {
+    "id": "horiba-micros60",
+    "version": "1.2.0",
+    "displayName": "Horiba ABX Micros 60"
+  },
+  "analyzer_name": "Horiba ABX Micros 60",
   "manufacturer": "Horiba ABX",
   "category": "HEMATOLOGY",
   "protocol": { "name": "ASTM", "version": "LIS2-A2" },
-  "identifier_pattern": "ABX.*PENTRA.*60|PENTRA.*60",
+  "identifier_pattern": "ABX.*MICROS.*60|MICROS.*60",
   "transport": ["RS-232"],
   "transport_config": {
     "RS-232": { "default_baud_rate": 9600 }
@@ -41,35 +46,24 @@
       "unit": "10^3/uL"
     },
     {
-      "analyzer_code": "NEUT",
-      "test_name_hint": "Neutrophils",
-      "loinc": "751-8",
-      "unit": "%"
-    },
-    {
       "analyzer_code": "LYMPH",
       "test_name_hint": "Lymphocytes",
       "loinc": "736-9",
       "unit": "%"
     },
     {
-      "analyzer_code": "MONO",
-      "test_name_hint": "Monocytes",
-      "loinc": "742-7",
+      "analyzer_code": "MID",
+      "test_name_hint": "Mid Cells",
+      "loinc": "35058-2",
       "unit": "%"
     },
     {
-      "analyzer_code": "EOS",
-      "test_name_hint": "Eosinophils",
-      "loinc": "711-2",
-      "unit": "%"
-    },
-    {
-      "analyzer_code": "BASO",
-      "test_name_hint": "Basophils",
-      "loinc": "704-7",
+      "analyzer_code": "GRAN",
+      "test_name_hint": "Granulocytes",
+      "loinc": "19023-1",
       "unit": "%"
     }
   ],
-  "notes": "Requires USB-to-serial adapter + ASTM-HTTP Bridge for RS232-to-TCP conversion. 20 fields total (5-part differential). Confirmed ASTM E-1381/E-1394 support."
+  "configDefaults": {},
+  "notes": "Requires USB-to-serial adapter + ASTM-HTTP Bridge for RS232-to-TCP conversion. 16 fields total (3-part differential)."
 }

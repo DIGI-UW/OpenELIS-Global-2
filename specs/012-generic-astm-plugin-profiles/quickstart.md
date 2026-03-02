@@ -31,7 +31,6 @@ mvn test -Dtest=*Analyzer*Test
 
 Focus areas per milestone:
 
-- Profile library APIs and SemVer lineage policy.
 - Runtime ASTM config APIs (connection role, QC rules, transforms, extraction,
   aggregation, flags).
 - Pending code queue behavior.

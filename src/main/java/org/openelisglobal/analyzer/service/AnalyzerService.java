@@ -25,6 +25,8 @@ public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
 
     Optional<Analyzer> getByName(String name);
 
+    Optional<Analyzer> findActiveByListenPort(Integer port);
+
     Optional<Analyzer> findByIdentifierPatternMatch(String analyzerIdentifier);
 
     boolean hasRecentResults(String analyzerId);

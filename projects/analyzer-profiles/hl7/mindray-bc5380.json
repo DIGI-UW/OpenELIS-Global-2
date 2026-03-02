@@ -1,94 +1,100 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
-  "analyzer_name": "Sysmex XN Series (XN-L, XN-1000)",
-  "manufacturer": "Sysmex",
-  "category": "HEMATOLOGY",
-  "protocol": { "name": "ASTM", "version": "E1381-02" },
-  "identifier_pattern": "SYSMEX.*XN-L|XN-1000|XN.*Series",
-  "transport": ["RS-232", "TCP/IP"],
-  "transport_config": {
-    "RS-232": { "default_baud_rate": 19200 },
-    "TCP/IP": {}
+  "profileMeta": {
+    "id": "mindray-bc5380",
+    "version": "1.2.0",
+    "displayName": "Mindray BC-5380"
   },
+  "analyzer_name": "Mindray BC-5380",
+  "manufacturer": "Mindray",
+  "category": "HEMATOLOGY",
+  "protocol": { "name": "HL7", "version": "2.3.1" },
+  "identifier_pattern": "MINDRAY.*BC.?5380",
+  "transport": ["TCP/IP"],
+  "transport_config": {
+    "TCP/IP": { "default_port": 5380, "framing": "MLLP" }
+  },
+  "msh3_pattern": "MINDRAY",
   "default_test_mappings": [
     {
-      "analyzer_code": "WBC",
+      "obx_identifier": "WBC",
       "test_name_hint": "White Blood Cells",
       "loinc": "6690-2",
       "unit": "10^3/uL"
     },
     {
-      "analyzer_code": "RBC",
+      "obx_identifier": "RBC",
       "test_name_hint": "Red Blood Cells",
       "loinc": "789-8",
       "unit": "10^6/uL"
     },
     {
-      "analyzer_code": "HGB",
+      "obx_identifier": "HGB",
       "test_name_hint": "Hemoglobin",
       "loinc": "718-7",
       "unit": "g/dL"
     },
     {
-      "analyzer_code": "HCT",
+      "obx_identifier": "HCT",
       "test_name_hint": "Hematocrit",
       "loinc": "4544-3",
       "unit": "%"
     },
     {
-      "analyzer_code": "MCV",
+      "obx_identifier": "MCV",
       "test_name_hint": "Mean Corpuscular Volume",
       "loinc": "787-2",
       "unit": "fL"
     },
     {
-      "analyzer_code": "MCH",
+      "obx_identifier": "MCH",
       "test_name_hint": "Mean Corpuscular Hemoglobin",
       "loinc": "785-6",
       "unit": "pg"
     },
     {
-      "analyzer_code": "MCHC",
+      "obx_identifier": "MCHC",
       "test_name_hint": "Mean Corpuscular Hemoglobin Concentration",
       "loinc": "786-4",
       "unit": "g/dL"
     },
     {
-      "analyzer_code": "PLT",
+      "obx_identifier": "PLT",
       "test_name_hint": "Platelet Count",
       "loinc": "777-3",
       "unit": "10^3/uL"
     },
     {
-      "analyzer_code": "NEUT",
+      "obx_identifier": "NEUT",
       "test_name_hint": "Neutrophils",
       "loinc": "751-8",
       "unit": "%"
     },
     {
-      "analyzer_code": "LYMPH",
+      "obx_identifier": "LYMPH",
       "test_name_hint": "Lymphocytes",
       "loinc": "736-9",
       "unit": "%"
     },
     {
-      "analyzer_code": "MONO",
+      "obx_identifier": "MONO",
       "test_name_hint": "Monocytes",
       "loinc": "742-7",
       "unit": "%"
     },
     {
-      "analyzer_code": "EOS",
+      "obx_identifier": "EOS",
       "test_name_hint": "Eosinophils",
       "loinc": "711-2",
       "unit": "%"
     },
     {
-      "analyzer_code": "BASO",
+      "obx_identifier": "BASO",
       "test_name_hint": "Basophils",
       "loinc": "704-7",
       "unit": "%"
     }
   ],
-  "notes": "RESEARCH CORRECTION: Only ASTM over TCP/IP confirmed in vendor specifications. Original HL7 claim could not be verified. TCP/IP mode uses ASTM E1394-97 presentation layer + E1381-02 data link layer. RS-232 mode also available with baud rate 19200."
+  "configDefaults": {},
+  "notes": "Requires MLLP framing (0x0B start, 0x1C 0x0D end). MSH-3 sending application = 'MINDRAY'. Complete CBC panel with 5-part differential."
 }
