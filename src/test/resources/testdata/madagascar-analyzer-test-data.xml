@@ -46,7 +46,7 @@
     <!-- ID 2013: GeneXpert ASTM Mode (GenericASTM / MOLECULAR) -->
     <analyzer id="2013" name="Cepheid GeneXpert (ASTM Mode)"
         analyzer_type="MOLECULAR" DESCRIPTION="ASTM LIS2-A2 over TCP/IP"
-        identifier_pattern="GENEXPERT|CEPHEID" is_active="true"
+        identifier_pattern="GENEXPERT.*|CEPHEID.*" is_active="true"
         ip_address="172.20.1.110" port="9600" protocol_version="ASTM_LIS2_A2"
         status="ACTIVE" last_updated="2026-02-02 00:00:00" />
 
@@ -56,23 +56,27 @@
     <!-- test_id = FK to clinlims.test (using foundational test IDs) -->
     <!-- ================================================================= -->
 
+    <!-- Analyzer Type data (required for analyzer_test_map PK) -->
+    <analyzer_type id="2901" name="GenericASTM Type"
+        plugin_class_name="oe.plugin.analyzer.GenericASTM" />
+
     <!-- MTB-RIF → Glucose (test_id=3, placeholder for E2E routing) -->
-    <analyzer_test_map analyzer_id="2013"
-        analyzer_test_name="MTB-RIF" test_id="3"
+    <analyzer_test_map analyzer_type_id="2901"
+        analyzer_id="2013" analyzer_test_name="MTB-RIF" test_id="3"
         last_updated="2026-02-02 00:00:00" />
 
     <!-- RIF → Amylase (test_id=5, placeholder for E2E routing) -->
-    <analyzer_test_map analyzer_id="2013"
-        analyzer_test_name="RIF" test_id="5"
+    <analyzer_test_map analyzer_type_id="2901"
+        analyzer_id="2013" analyzer_test_name="RIF" test_id="5"
         last_updated="2026-02-02 00:00:00" />
 
     <!-- HIV-VL → CD4 absolute count (test_id=192, placeholder for E2E routing) -->
-    <analyzer_test_map analyzer_id="2013"
-        analyzer_test_name="HIV-VL" test_id="192"
+    <analyzer_test_map analyzer_type_id="2901"
+        analyzer_id="2013" analyzer_test_name="HIV-VL" test_id="192"
         last_updated="2026-02-02 00:00:00" />
 
     <!-- COVID19 → Glucose (test_id=3, placeholder for E2E routing) -->
-    <analyzer_test_map analyzer_id="2013"
-        analyzer_test_name="COVID19" test_id="3"
+    <analyzer_test_map analyzer_type_id="2901"
+        analyzer_id="2013" analyzer_test_name="COVID19" test_id="3"
         last_updated="2026-02-02 00:00:00" />
 </dataset>
