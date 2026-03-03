@@ -25,6 +25,13 @@ import org.openelisglobal.spring.util.SpringContext;
 public abstract class AnalyzerLineInserter {
 
     /**
+     * Real analyzer ID from import context (set by the reader/wrapper that
+     * identified which physical device sent the data). Injected into
+     * AnalyzerResults during persistImport if the plugin didn't set it.
+     */
+    private String contextAnalyzerId;
+
+    /**
      * Analyzer results service (lazy-initialized to allow unit testing without
      * Spring context).
      */
@@ -52,6 +59,14 @@ public abstract class AnalyzerLineInserter {
         getAnalyzerResultService().insertAnalyzerResults(results, systemUserId);
     }
 
+    public void setContextAnalyzerId(String contextAnalyzerId) {
+        this.contextAnalyzerId = contextAnalyzerId;
+    }
+
+    public String getContextAnalyzerId() {
+        return contextAnalyzerId;
+    }
+
     protected boolean persistImport(String currentUserId, List<AnalyzerResults> results) {
 
         if (results.size() > 0) {
@@ -59,6 +74,12 @@ public abstract class AnalyzerLineInserter {
                 if ("-1".equals(analyzerResults.getTestId())) {
                     analyzerResults.setTestId(null);
                     analyzerResults.setReadOnly(true);
+                }
+                // Inject real analyzer ID from import context. Always prefer
+                // contextAnalyzerId when set — it's the physical device identified
+                // by the reader, while the plugin may have set a type-level ID.
+                if (contextAnalyzerId != null) {
+                    analyzerResults.setAnalyzerId(contextAnalyzerId);
                 }
             }
 

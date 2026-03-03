@@ -1,5 +1,10 @@
 {
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "profileMeta": {
+    "id": "mindray-bs360e",
+    "version": "1.2.0",
+    "displayName": "Mindray BS-360E"
+  },
   "analyzer_name": "Mindray BS-360E",
   "manufacturer": "Mindray",
   "category": "CHEMISTRY",
@@ -60,5 +65,6 @@
       "unit": "mg/dL"
     }
   ],
+  "configDefaults": {},
   "notes": "DUAL PROTOCOL SUPPORT: Per Mindray LIS Interface Manual, BS-360E supports BOTH HL7 v2.3.1 AND ASTM E1381-95. This default config uses HL7 mode. For ASTM mode, use astm/mindray-bs360e.json. Requires MLLP framing for HL7 mode. MSH-3 = 'MINDRAY'."
 }

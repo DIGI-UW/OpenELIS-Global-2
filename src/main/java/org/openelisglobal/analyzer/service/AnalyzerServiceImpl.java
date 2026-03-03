@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -43,6 +44,9 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Autowired
     private org.openelisglobal.test.service.TestService testService;
 
+    @Autowired
+    private AnalyzerPluginConfigService analyzerPluginConfigService;
+
     AnalyzerServiceImpl() {
         super(Analyzer.class);
     }
@@ -80,8 +84,21 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             update(analyzer);
         }
 
+        persistTestMappings(analyzer.getAnalyzerType() != null ? analyzer.getAnalyzerType().getId() : null,
+                testMappings, existingMappings);
+    }
+
+    @Override
+    @Transactional
+    public void persistTestMappings(String analyzerTypeId, List<AnalyzerTestMapping> testMappings,
+            List<AnalyzerTestMapping> existingMappings) {
+        if (analyzerTypeId == null) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "persistTestMappings",
+                    "analyzerTypeId is null — skipping " + testMappings.size() + " mapping(s)");
+            return;
+        }
         for (AnalyzerTestMapping mapping : testMappings) {
-            mapping.setAnalyzerId(analyzer.getId());
+            mapping.setAnalyzerTypeId(analyzerTypeId);
             if (newMapping(mapping, existingMappings)) {
                 mapping.setSysUserId("1");
                 analyzerMappingService.insert(mapping);
@@ -96,7 +113,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     private boolean newMapping(AnalyzerTestMapping mapping, List<AnalyzerTestMapping> existingMappings) {
         for (AnalyzerTestMapping existingMap : existingMappings) {
-            if (existingMap.getAnalyzerId().equals(mapping.getAnalyzerId())
+            if (Objects.equals(existingMap.getAnalyzerTypeId(), mapping.getAnalyzerTypeId())
                     && existingMap.getAnalyzerTestName().equals(mapping.getAnalyzerTestName())) {
                 return false;
             }
@@ -116,6 +133,12 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Transactional(readOnly = true)
     public Optional<Analyzer> getByName(String name) {
         return baseObjectDAO.findByName(name);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findActiveByListenPort(Integer port) {
+        return baseObjectDAO.findActiveByPort(port);
     }
 
     @Override
@@ -261,6 +284,8 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Transactional
     @SuppressWarnings("unchecked")
     public void autoCreateTestMappings(String analyzerId, Map<String, Object> config, String sysUserId) {
+        analyzerPluginConfigService.applyConfigDefaults(analyzerId, config.get("configDefaults"), sysUserId);
+
         Object mappingsObj = config.get("default_test_mappings");
         if (!(mappingsObj instanceof List)) {
             return;
@@ -288,8 +313,13 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
             org.openelisglobal.test.valueholder.Test test = tests.get(0);
 
+            Analyzer analyzer = get(analyzerId);
+            String typeId = (analyzer != null && analyzer.getAnalyzerType() != null)
+                    ? analyzer.getAnalyzerType().getId()
+                    : null;
+
             AnalyzerTestMapping atm = new AnalyzerTestMapping();
-            atm.setAnalyzerId(analyzerId);
+            atm.setAnalyzerTypeId(typeId);
             atm.setAnalyzerTestName(analyzerCode);
             atm.setTestId(test.getId());
             atm.setSysUserId(sysUserId);
