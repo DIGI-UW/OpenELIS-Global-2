@@ -45,6 +45,7 @@ const AddOrder = (props) => {
   const [siteNames, setSiteNames] = useState([]);
   const [innitialized, setInnitialized] = useState(false);
   const [departments, setDepartments] = useState([]);
+  const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => {
     componentMounted.current = true;
@@ -120,24 +121,39 @@ const AddOrder = (props) => {
   }
 
   function handleRequesterWorkPhone(e) {
+    const value = e.target.value;
+    const digitsOnly = value.replace(/[^0-9]/g, "");
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
         ...orderFormValues.sampleOrderItems,
-        providerWorkPhone: e.target.value,
+        providerWorkPhone: digitsOnly,
       },
     });
+    if (value !== digitsOnly) {
+      setValidationErrors((prev) => ({ ...prev, phone: "Phone must contain only digits (0–9)." }));
+    } else if (digitsOnly.length > 0 && digitsOnly.length !== 10) {
+      setValidationErrors((prev) => ({ ...prev, phone: "Phone number must be exactly 10 digits." }));
+    } else {
+      setValidationErrors((prev) => { const next = { ...prev }; delete next.phone; return next; });
+    }
     setNotificationVisible(false);
   }
 
   function handleRequesterFirstName(e) {
+    const value = e.target.value;
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
         ...orderFormValues.sampleOrderItems,
-        providerFirstName: e.target.value,
+        providerFirstName: value,
       },
     });
+    if (value && !/^[A-Za-z\s]*$/.test(value)) {
+      setValidationErrors((prev) => ({ ...prev, firstName: "First Name must contain only letters (A–Z, a–z)." }));
+    } else {
+      setValidationErrors((prev) => { const next = { ...prev }; delete next.firstName; return next; });
+    }
   }
   function handleChange(path) {
     console.log([path]);
@@ -148,13 +164,19 @@ const AddOrder = (props) => {
   }
 
   function handleRequesterLastName(e) {
+    const value = e.target.value;
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
         ...orderFormValues.sampleOrderItems,
-        providerLastName: e.target.value,
+        providerLastName: value,
       },
     });
+    if (value && !/^[A-Za-z\s]*$/.test(value)) {
+      setValidationErrors((prev) => ({ ...prev, lastName: "Last Name must contain only letters (A–Z, a–z)." }));
+    } else {
+      setValidationErrors((prev) => { const next = { ...prev }; delete next.lastName; return next; });
+    }
   }
 
   const handleSamplingPerformed = (e) => {
@@ -320,7 +342,7 @@ const AddOrder = (props) => {
     if (value) {
       getFromOpenElisServer(
         "/rest/SampleEntryAccessionNumberValidation?ignoreYear=false&ignoreUsage=false&field=labNo&accessionNumber=" +
-          value,
+        value,
         accessionNumberValidationResults,
       );
     }
@@ -346,7 +368,7 @@ const AddOrder = (props) => {
         );
       getFromOpenElisServer(
         "/rest/PhoneNumberValidationProvider?fieldId=providerWorkPhoneID&value=" +
-          providerPhoneNo,
+        providerPhoneNo,
         fetchPhoneNoValidation,
       );
     }
@@ -384,7 +406,7 @@ const AddOrder = (props) => {
   useEffect(() => {
     getFromOpenElisServer(
       "/rest/departments-for-site?refferingSiteId=" +
-        (orderFormValues.sampleOrderItems.referringSiteId || ""),
+      (orderFormValues.sampleOrderItems.referringSiteId || ""),
       loadDepartments,
     );
   }, [orderFormValues.sampleOrderItems.referringSiteId]);
@@ -501,7 +523,7 @@ const AddOrder = (props) => {
                   id="labNo"
                   invalid={
                     changed["sampleOrderItems.labNo"] &&
-                    error("sampleOrderItems.labNo")
+                      error("sampleOrderItems.labNo")
                       ? true
                       : false
                   }
@@ -732,12 +754,13 @@ const AddOrder = (props) => {
                 }
                 value={orderFormValues.sampleOrderItems.providerFirstName}
                 invalid={
-                  changed["sampleOrderItems.providerFirstName"] &&
-                  error("sampleOrderItems.providerFirstName")
+                  !!validationErrors.firstName ||
+                  (changed["sampleOrderItems.providerFirstName"] &&
+                    error("sampleOrderItems.providerFirstName")
                     ? true
-                    : false
+                    : false)
                 }
-                invalidText={error("sampleOrderItems.providerFirstName")}
+                invalidText={validationErrors.firstName || error("sampleOrderItems.providerFirstName")}
                 id="requesterFirstName"
               />
             </Column>
@@ -765,12 +788,13 @@ const AddOrder = (props) => {
                 onChange={handleRequesterLastName}
                 id="requesterLastName"
                 invalid={
-                  changed["sampleOrderItems.providerLastName"] &&
-                  error("sampleOrderItems.providerLastName")
+                  !!validationErrors.lastName ||
+                  (changed["sampleOrderItems.providerLastName"] &&
+                    error("sampleOrderItems.providerLastName")
                     ? true
-                    : false
+                    : false)
                 }
-                invalidText={error("sampleOrderItems.providerLastName")}
+                invalidText={validationErrors.lastName || error("sampleOrderItems.providerLastName")}
               />
             </Column>
             <Column lg={16} md={8} sm={3}>
@@ -793,6 +817,8 @@ const AddOrder = (props) => {
                 labelText={intl.formatMessage({
                   id: "order.requester.phone.label",
                 })}
+                invalid={!!validationErrors.phone}
+                invalidText={validationErrors.phone}
                 id="providerWorkPhoneId"
               />
             </Column>
