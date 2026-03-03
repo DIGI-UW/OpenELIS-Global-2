@@ -178,7 +178,9 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     @Override
     @Transactional(readOnly = true)
     public String getResultType(Test test) {
-        String testResultType = TypeOfTestResultServiceImpl.ResultType.NUMERIC.getCharacterValue();
+        // Default to ALPHA (text) when no test results are configured.
+        // This is safer than NUMERIC as it accepts any input without validation errors.
+        String testResultType = TypeOfTestResultServiceImpl.ResultType.ALPHA.getCharacterValue();
         List<TestResult> testResults = getPossibleTestResults(test);
 
         if (testResults != null && !testResults.isEmpty()) {
