@@ -793,6 +793,16 @@ const AddOrder = (props) => {
                 labelText={intl.formatMessage({
                   id: "order.requester.phone.label",
                 })}
+                onBlur={() =>
+                  handleChange("sampleOrderItems.providerWorkPhone")
+                }
+                invalid={
+                  changed["sampleOrderItems.providerWorkPhone"] &&
+                  error("sampleOrderItems.providerWorkPhone")
+                    ? true
+                    : false
+                }
+                invalidText={error("sampleOrderItems.providerWorkPhone")}
                 id="providerWorkPhoneId"
               />
             </Column>
