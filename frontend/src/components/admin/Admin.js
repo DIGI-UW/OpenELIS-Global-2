@@ -89,6 +89,10 @@ import TestSectionRenameEntry from "./testManagementConfigMenu/TestSectionRename
 import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry.js";
 import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry.js";
 import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry.js";
+import {
+  LanguageManagement,
+  TranslationManagement,
+} from "./localizationManagement";
 
 function Admin() {
   const intl = useIntl();
@@ -356,6 +360,32 @@ function Admin() {
           >
             <FormattedMessage id="searchindexmanagement.label" />
           </SideNavLink>
+          <SideNavMenu
+            title={intl.formatMessage({
+              id: "sidenav.label.admin.localization",
+              defaultMessage: "Localization",
+            })}
+            renderIcon={TableOfContents}
+          >
+            <SideNavMenuItem
+              data-cy="languageManagement"
+              onClick={handleNavigation(`${path}/languageManagement`)}
+            >
+              <FormattedMessage
+                id="locale.management.title"
+                defaultMessage="Language Management"
+              />
+            </SideNavMenuItem>
+            <SideNavMenuItem
+              data-cy="translationManagement"
+              onClick={handleNavigation(`${path}/translationManagement`)}
+            >
+              <FormattedMessage
+                id="translation.management.title"
+                defaultMessage="Translation Management"
+              />
+            </SideNavMenuItem>
+          </SideNavMenu>
           <SideNavLink
             renderIcon={Catalog}
             target="_blank"
@@ -483,6 +513,14 @@ function Admin() {
         <Route
           path={`${path}/MethodRenameEntry`}
           component={MethodRenameEntry}
+        />
+        <Route
+          path={`${path}/languageManagement`}
+          component={LanguageManagement}
+        />
+        <Route
+          path={`${path}/translationManagement`}
+          component={TranslationManagement}
         />
         <Route
           path={`${path}/NonConformityConfigurationMenu`}
