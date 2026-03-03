@@ -218,6 +218,7 @@ const Validation = (props) => {
                 ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
                 : row.accessionNumber}
               <br></br>
+              {row.patientInfo}
               <br></br>
             </div>
             {row.nonconforming && (

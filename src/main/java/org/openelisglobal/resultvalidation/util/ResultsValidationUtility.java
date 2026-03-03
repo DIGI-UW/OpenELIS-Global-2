@@ -67,6 +67,7 @@ import org.openelisglobal.resultvalidation.action.util.ResultValidationItem;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.statusofsample.util.StatusRules;
 import org.openelisglobal.test.service.TestSectionService;
@@ -106,6 +107,8 @@ public class ResultsValidationUtility {
     protected AnalysisService analysisService;
     @Autowired
     protected ResultLimitService resultLimitService;
+    @Autowired
+    protected SampleHumanService sampleHumanService;
 
     private Patient currentPatient;
     protected String SAMPLE_STATUS_OBSERVATION_HISTORY_TYPE_ID;
@@ -686,6 +689,20 @@ public class ResultsValidationUtility {
         analysisResultItem.setQualifiedResultValue(testResultItem.getQualifiedResultValue());
         analysisResultItem.setQualifiedResultId(testResultItem.getQualificationResultId());
         analysisResultItem.setHasQualifiedResult(testResultItem.isHasQualifiedResult());
+
+        Analysis analysis = testResultItem.getAnalysis();
+        if (analysis != null && analysis.getSampleItem() != null && analysis.getSampleItem().getSample() != null) {
+            Patient patient = sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample());
+            if (patient != null) {
+                String nationalId = patientService.getNationalId(patient);
+                String gender = patientService.getGender(patient);
+                String birthday = patientService.getBirthdayForDisplay(patient);
+                String patientInfo = (nationalId != null ? nationalId : "") + ", "
+                        + (gender != null ? gender : "") + ", "
+                        + (birthday != null ? birthday : "");
+                analysisResultItem.setPatientInfo(patientInfo);
+            }
+        }
 
         return analysisResultItem;
     }
