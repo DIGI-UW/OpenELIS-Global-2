@@ -201,9 +201,11 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     public List<Test> getTests(String filter, boolean onlyTestsFullySetup) throws LIMSRuntimeException {
         List<Test> list;
         try {
-            String sql = "from Test t where (upper(t.localizedTestName.english) like upper(:param) or"
-                    + " upper(t.localizedTestName.french) like upper(:param)) and t.isActive='Y'";
-            Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
+            String sql = "SELECT DISTINCT t.* FROM clinlims.test t"
+                    + " JOIN clinlims.localization l ON t.name_localization_id = l.id"
+                    + " JOIN clinlims.localization_value lv ON l.id = lv.localization_id"
+                    + " WHERE upper(lv.value) LIKE upper(:param) AND t.is_active = 'Y'";
+            Query<Test> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Test.class);
             query.setParameter("param", filter + "%");
             list = query.list();
 
@@ -221,10 +223,12 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     public List<Test> getTestsByName(String testName) throws LIMSRuntimeException {
         // Use case-insensitive comparison to avoid duplicate tests with different
         // casing
-        String sql = "from Test t where (LOWER(t.localizedTestName.english) = LOWER(:testName) or"
-                + " LOWER(t.localizedTestName.french) = LOWER(:testName))";
+        String sql = "SELECT DISTINCT t.* FROM clinlims.test t"
+                + " JOIN clinlims.localization l ON t.name_localization_id = l.id"
+                + " JOIN clinlims.localization_value lv ON l.id = lv.localization_id"
+                + " WHERE LOWER(lv.value) = LOWER(:testName)";
         try {
-            Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
+            Query<Test> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Test.class);
             query.setParameter("testName", testName);
 
             return query.list();
@@ -240,10 +244,12 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     public List<Test> getActiveTestsByName(String testName) throws LIMSRuntimeException {
         // Use case-insensitive comparison to avoid duplicate tests with different
         // casing
-        String sql = "from Test t where (LOWER(t.localizedTestName.english) = LOWER(:testName) or"
-                + " LOWER(t.localizedTestName.french) = LOWER(:testName)) and t.isActive='Y'";
+        String sql = "SELECT DISTINCT t.* FROM clinlims.test t"
+                + " JOIN clinlims.localization l ON t.name_localization_id = l.id"
+                + " JOIN clinlims.localization_value lv ON l.id = lv.localization_id"
+                + " WHERE LOWER(lv.value) = LOWER(:testName) AND t.is_active = 'Y'";
         try {
-            Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
+            Query<Test> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Test.class);
             query.setParameter("testName", testName);
 
             return query.list();
@@ -276,15 +282,15 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     public Test getActiveTestByLocalizedName(String testName, Locale locale) throws LIMSRuntimeException {
         // Use case-insensitive comparison to avoid duplicate tests with different
         // casing
-        String sql;
-        if (Locale.ENGLISH.equals(locale)) {
-            sql = "from Test t where LOWER(t.localizedTestName.english) = LOWER(:testName) and t.isActive='Y'";
-        } else {
-            sql = "from Test t where LOWER(t.localizedTestName.french) = LOWER(:testName) and t.isActive='Y'";
-        }
+        String localeCode = locale.getLanguage();
+        String sql = "SELECT DISTINCT t.* FROM clinlims.test t"
+                + " JOIN clinlims.localization l ON t.name_localization_id = l.id"
+                + " JOIN clinlims.localization_value lv ON l.id = lv.localization_id"
+                + " WHERE LOWER(lv.value) = LOWER(:testName) AND lv.locale = :localeCode AND t.is_active = 'Y'";
         try {
-            Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
+            Query<Test> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Test.class);
             query.setParameter("testName", testName);
+            query.setParameter("localeCode", localeCode);
 
             List<Test> list = query.list();
             Test t = null;
@@ -307,15 +313,15 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     public Test getTestByLocalizedName(String testName, Locale locale) throws LIMSRuntimeException {
         // Use case-insensitive comparison to avoid duplicate tests with different
         // casing
-        String sql;
-        if (Locale.ENGLISH.equals(locale)) {
-            sql = "from Test t where LOWER(t.localizedTestName.english) = LOWER(:testName)";
-        } else {
-            sql = "from Test t where LOWER(t.localizedTestName.french) = LOWER(:testName)";
-        }
+        String localeCode = locale.getLanguage();
+        String sql = "SELECT DISTINCT t.* FROM clinlims.test t"
+                + " JOIN clinlims.localization l ON t.name_localization_id = l.id"
+                + " JOIN clinlims.localization_value lv ON l.id = lv.localization_id"
+                + " WHERE LOWER(lv.value) = LOWER(:testName) AND lv.locale = :localeCode";
         try {
-            Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
+            Query<Test> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Test.class);
             query.setParameter("testName", testName);
+            query.setParameter("localeCode", localeCode);
 
             List<Test> list = query.list();
             Test t = null;

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Generic Localization System - Phase 4 (FINAL)
+
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !! DANGER: DO NOT RUN THIS MIGRATION UNTIL:                         !!
+        !! 1. Phase 1 migration (001-add-localization-value-table.xml)      !!
+        !!    has been deployed and verified                                !!
+        !! 2. New Java code (Phases 2-3) has been deployed and is running   !!
+        !! 3. You have verified the application works correctly             !!
+        !! 4. You have a database backup                                    !!
+        !!                                                                  !!
+        !! Running this migration prematurely will break the application!   !!
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        This migration removes the legacy 'english' and 'french' columns from
+        the localization table. All translations now live in localization_value.
+
+        See: docs/database/generic-translation-plan.md
+    -->
+
+    <changeSet author="openelis" id="3.5.0-099-verify-data-migrated" runAlways="false">
+        <preConditions onFail="HALT">
+            <!-- Verify localization_value table exists and has data -->
+            <tableExists tableName="localization_value" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                <!-- Ensure no localizations are missing English translations in the new table -->
+                SELECT COUNT(*)
+                FROM clinlims.localization l
+                WHERE l.english IS NOT NULL
+                  AND l.english != ''
+                  AND NOT EXISTS (
+                    SELECT 1 FROM clinlims.localization_value lv
+                    WHERE lv.localization_id = l.id AND lv.locale = 'en'
+                  )
+            </sqlCheck>
+        </preConditions>
+        <comment>Verify data has been migrated to localization_value table before dropping columns</comment>
+        <sql>SELECT 1</sql>
+    </changeSet>
+
+    <changeSet author="openelis" id="3.5.0-099-drop-english-column">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="localization" schemaName="clinlims" columnName="english"/>
+        </preConditions>
+        <dropColumn tableName="localization" schemaName="clinlims" columnName="english"/>
+    </changeSet>
+
+    <changeSet author="openelis" id="3.5.0-099-drop-french-column">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="localization" schemaName="clinlims" columnName="french"/>
+        </preConditions>
+        <dropColumn tableName="localization" schemaName="clinlims" columnName="french"/>
+    </changeSet>
+
+</databaseChangeLog>

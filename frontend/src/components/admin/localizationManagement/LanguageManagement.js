@@ -19,7 +19,12 @@ import {
 } from "@carbon/react";
 import { Add, Edit, TrashCan, Star, StarFilled } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerFullResponse,
+  putToOpenElisServerFullResponse,
+  deleteFromOpenElisServerFullResponse,
+} from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
@@ -130,10 +135,11 @@ const LanguageManagement = () => {
   const confirmDelete = () => {
     if (!deleteTarget) return;
 
-    fetch(`/rest/supportedlocales/${deleteTarget.id}`, {
-      method: "DELETE",
-    })
-      .then((response) => {
+    deleteFromOpenElisServerFullResponse(
+      `/rest/supportedlocales/${deleteTarget.id}`,
+      (response) => {
+        setIsDeleteModalOpen(false);
+        setDeleteTarget(null);
         if (response.ok) {
           addNotification({
             kind: "success",
@@ -148,33 +154,27 @@ const LanguageManagement = () => {
           });
           fetchLocales();
         } else {
-          throw new Error("Failed to delete");
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "notification.error",
+              defaultMessage: "Error",
+            }),
+            message: intl.formatMessage({
+              id: "locale.delete.error",
+              defaultMessage: "Failed to delete language",
+            }),
+          });
         }
-      })
-      .catch((error) => {
-        addNotification({
-          kind: "error",
-          title: intl.formatMessage({
-            id: "notification.error",
-            defaultMessage: "Error",
-          }),
-          message: intl.formatMessage({
-            id: "locale.delete.error",
-            defaultMessage: "Failed to delete language",
-          }),
-        });
-      })
-      .finally(() => {
-        setIsDeleteModalOpen(false);
-        setDeleteTarget(null);
-      });
+      }
+    );
   };
 
   const handleSetFallback = (locale) => {
-    fetch(`/rest/supportedlocales/${locale.id}/setFallback`, {
-      method: "POST",
-    })
-      .then((response) => {
+    postToOpenElisServerFullResponse(
+      `/rest/supportedlocales/${locale.id}/setFallback`,
+      null,
+      (response) => {
         if (response.ok) {
           addNotification({
             kind: "success",
@@ -189,10 +189,50 @@ const LanguageManagement = () => {
           });
           fetchLocales();
         } else {
-          throw new Error("Failed to set fallback");
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "notification.error",
+              defaultMessage: "Error",
+            }),
+            message: intl.formatMessage({
+              id: "locale.fallback.error",
+              defaultMessage: "Failed to set fallback language",
+            }),
+          });
         }
-      })
-      .catch((error) => {
+      }
+    );
+  };
+
+  const handleSave = () => {
+    if (!validateForm()) return;
+
+    const url = editingLocale
+      ? `/rest/supportedlocales/${editingLocale.id}`
+      : "/rest/supportedlocales";
+
+    const callback = (response) => {
+      if (response.ok) {
+        addNotification({
+          kind: "success",
+          title: intl.formatMessage({
+            id: "notification.success",
+            defaultMessage: "Success",
+          }),
+          message: editingLocale
+            ? intl.formatMessage({
+                id: "locale.update.success",
+                defaultMessage: "Language updated successfully",
+              })
+            : intl.formatMessage({
+                id: "locale.create.success",
+                defaultMessage: "Language created successfully",
+              }),
+        });
+        setIsModalOpen(false);
+        fetchLocales();
+      } else {
         addNotification({
           kind: "error",
           title: intl.formatMessage({
@@ -200,64 +240,18 @@ const LanguageManagement = () => {
             defaultMessage: "Error",
           }),
           message: intl.formatMessage({
-            id: "locale.fallback.error",
-            defaultMessage: "Failed to set fallback language",
+            id: "locale.save.error",
+            defaultMessage: "Failed to save language",
           }),
         });
-      });
-  };
+      }
+    };
 
-  const handleSave = () => {
-    if (!validateForm()) return;
-
-    const method = editingLocale ? "PUT" : "POST";
-    const url = editingLocale
-      ? `/rest/supportedlocales/${editingLocale.id}`
-      : "/rest/supportedlocales";
-
-    fetch(url, {
-      method: method,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(formData),
-    })
-      .then((response) => {
-        if (response.ok) {
-          addNotification({
-            kind: "success",
-            title: intl.formatMessage({
-              id: "notification.success",
-              defaultMessage: "Success",
-            }),
-            message: editingLocale
-              ? intl.formatMessage({
-                  id: "locale.update.success",
-                  defaultMessage: "Language updated successfully",
-                })
-              : intl.formatMessage({
-                  id: "locale.create.success",
-                  defaultMessage: "Language created successfully",
-                }),
-          });
-          setIsModalOpen(false);
-          fetchLocales();
-        } else {
-          return response.json().then((data) => {
-            throw new Error(data.message || "Failed to save");
-          });
-        }
-      })
-      .catch((error) => {
-        addNotification({
-          kind: "error",
-          title: intl.formatMessage({
-            id: "notification.error",
-            defaultMessage: "Error",
-          }),
-          message: error.message,
-        });
-      });
+    if (editingLocale) {
+      putToOpenElisServerFullResponse(url, JSON.stringify(formData), callback);
+    } else {
+      postToOpenElisServerFullResponse(url, JSON.stringify(formData), callback);
+    }
   };
 
   const headers = [

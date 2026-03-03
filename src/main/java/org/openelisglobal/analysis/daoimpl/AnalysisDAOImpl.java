@@ -1396,12 +1396,14 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             return new ArrayList<>();
         }
 
-        String sql = "From Analysis a where (a.test.localizedTestName.english in (:testNames) or"
-                + " a.test.localizedTestName.french in (:testNames)) and a.completedDate BETWEEN"
-                + " :lowDate AND :highDate";
+        String sql = "SELECT DISTINCT a.* FROM clinlims.analysis a"
+                + " JOIN clinlims.test t ON a.test_id = t.id"
+                + " JOIN clinlims.localization l ON t.name_localization_id = l.id"
+                + " JOIN clinlims.localization_value lv ON l.id = lv.localization_id"
+                + " WHERE lv.value IN (:testNames) AND a.completed_date BETWEEN :lowDate AND :highDate";
 
         try {
-            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            Query<Analysis> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Analysis.class);
             query.setParameterList("testNames", testNames);
             query.setParameter("lowDate", lowDate);
             query.setParameter("highDate", highDate);

@@ -29,17 +29,10 @@
         <property name="description" column="description"
             type="java.lang.String" />
 
-        <!-- DEPRECATED: Legacy columns - kept for backwards compatibility during migration.
-             These will be removed in Phase 4 after the new code is deployed. -->
-        <property name="english" column="english"
-            type="java.lang.String" />
-        <property name="french" column="french"
-            type="java.lang.String" />
-
-        <!-- NEW: Normalized translation values from localization_value table.
-             This is a map keyed by locale code (e.g., "en", "fr") -->
-        <map name="values" table="localization_value" cascade="all-delete-orphan"
-            fetch="join" lazy="false">
+        <!-- Normalized translation values from localization_value table. This
+            is a map keyed by locale code (e.g., "en", "fr") -->
+        <map name="values" table="localization_value"
+            cascade="all-delete-orphan" fetch="join" lazy="false">
             <key column="localization_id" />
             <map-key column="locale" type="string" />
             <one-to-many class="LocalizationValue" />

@@ -29,7 +29,7 @@ import {
 } from "@carbon/react";
 import { Edit, Download, Upload, WarningAlt } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, putToOpenElisServerFullResponse } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
@@ -106,14 +106,10 @@ const TranslationManagement = () => {
   const handleSave = () => {
     if (!editingItem) return;
 
-    fetch(`/rest/localizations/${editingItem.id}/translations`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(editValues),
-    })
-      .then((response) => {
+    putToOpenElisServerFullResponse(
+      `/rest/localizations/${editingItem.id}/translations`,
+      JSON.stringify(editValues),
+      (response) => {
         if (response.ok) {
           addNotification({
             kind: "success",
@@ -130,22 +126,20 @@ const TranslationManagement = () => {
           fetchLocalizations();
           fetchStats();
         } else {
-          throw new Error("Failed to save");
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "notification.error",
+              defaultMessage: "Error",
+            }),
+            message: intl.formatMessage({
+              id: "translation.update.error",
+              defaultMessage: "Failed to update translation",
+            }),
+          });
         }
-      })
-      .catch((error) => {
-        addNotification({
-          kind: "error",
-          title: intl.formatMessage({
-            id: "notification.error",
-            defaultMessage: "Error",
-          }),
-          message: intl.formatMessage({
-            id: "translation.update.error",
-            defaultMessage: "Failed to update translation",
-          }),
-        });
-      });
+      }
+    );
   };
 
   const handleExport = () => {
