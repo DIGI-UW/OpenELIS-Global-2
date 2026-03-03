@@ -1,11 +1,12 @@
 package org.openelisglobal.localization.service;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.localization.dao.LocalizationDAO;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.localization.valueholder.SupportedLocale;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -41,6 +42,9 @@ public class LocalizationServiceImpl extends AuditableBaseObjectServiceImpl<Loca
 
     @Autowired
     private LocalizationDAO baseObjectDAO;
+
+    @Autowired
+    private SupportedLocaleService supportedLocaleService;
 
     LocalizationServiceImpl() {
         super(Localization.class);
@@ -143,6 +147,18 @@ public class LocalizationServiceImpl extends AuditableBaseObjectServiceImpl<Loca
 
     @Override
     public List<Locale> getAllActiveLocales() {
-        return Arrays.asList(Locale.ENGLISH, Locale.FRENCH);
+        try {
+            List<SupportedLocale> activeLocales = supportedLocaleService.getAllActive();
+            if (!activeLocales.isEmpty()) {
+                return activeLocales.stream()
+                        .map(SupportedLocale::toLocale)
+                        .collect(Collectors.toList());
+            }
+        } catch (Exception e) {
+            // Fall back to hardcoded values if the new table doesn't exist yet
+            // This allows backwards compatibility during migration
+        }
+        // Fallback for backwards compatibility (before migration runs)
+        return List.of(Locale.ENGLISH, Locale.FRENCH);
     }
 }

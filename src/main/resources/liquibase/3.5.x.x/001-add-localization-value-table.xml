@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Generic Localization System - Phase 1
+
+        This migration adds support for unlimited languages by normalizing translations
+        into a separate table. The existing 'english' and 'french' columns are preserved
+        for backwards compatibility until the Java code is updated.
+
+        SAFE TO RUN: This migration does NOT break existing code. Old code continues
+        to read from the 'english' and 'french' columns.
+
+        See: docs/database/generic-translation-plan.md
+    -->
+
+    <changeSet author="reagan-meant" id="3.5.0-001-create-supported-locale-seq">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="supported_locale_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <createSequence sequenceName="supported_locale_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet author="reagan-meant" id="3.5.0-002-create-localization-value-seq">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="localization_value_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <createSequence sequenceName="localization_value_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet author="reagan-meant" id="3.5.0-003-create-supported-locale-table">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="supported_locale" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <createTable tableName="supported_locale" schemaName="clinlims">
+            <column name="id" type="numeric">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="locale_code" type="varchar(10)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="display_name" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="boolean" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_fallback" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sort_order" type="integer" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="timestamp with time zone"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet author="reagan-meant" id="3.5.0-004-create-localization-value-table">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="localization_value" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <createTable tableName="localization_value" schemaName="clinlims">
+            <column name="id" type="numeric">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="localization_id" type="numeric">
+                <constraints nullable="false"
+                             foreignKeyName="fk_localization_value_localization"
+                             references="clinlims.localization(id)"
+                             deleteCascade="true"/>
+            </column>
+            <column name="locale" type="varchar(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="timestamp with time zone"/>
+        </createTable>
+        <addUniqueConstraint tableName="localization_value"
+                             schemaName="clinlims"
+                             columnNames="localization_id, locale"
+                             constraintName="uq_localization_value_locale"/>
+    </changeSet>
+
+    <changeSet author="reagan-meant" id="3.5.0-005-create-localization-value-indexes">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="localization_value" schemaName="clinlims"/>
+        </preConditions>
+        <createIndex tableName="localization_value" schemaName="clinlims" indexName="idx_localization_value_locale">
+            <column name="locale"/>
+        </createIndex>
+        <createIndex tableName="localization_value" schemaName="clinlims" indexName="idx_localization_value_localization_id">
+            <column name="localization_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet author="reagan-meant" id="3.5.0-006-seed-supported-locales">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="supported_locale" schemaName="clinlims"/>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM clinlims.supported_locale
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="supported_locale">
+            <column name="id" valueSequenceNext="supported_locale_seq"/>
+            <column name="locale_code" value="en"/>
+            <column name="display_name" value="English"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_fallback" valueBoolean="true"/>
+            <column name="sort_order" valueNumeric="1"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="supported_locale">
+            <column name="id" valueSequenceNext="supported_locale_seq"/>
+            <column name="locale_code" value="fr"/>
+            <column name="display_name" value="Francais"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_fallback" valueBoolean="false"/>
+            <column name="sort_order" valueNumeric="2"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="reagan-meant" id="3.5.0-007-migrate-english-translations">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="localization_value" schemaName="clinlims"/>
+                <columnExists tableName="localization" schemaName="clinlims" columnName="english"/>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM clinlims.localization_value WHERE locale = 'en'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.localization_value (id, localization_id, locale, value, lastupdated)
+            SELECT nextval('localization_value_seq'), id, 'en', english, COALESCE(lastupdated, now())
+            FROM clinlims.localization
+            WHERE english IS NOT NULL AND english != '';
+        </sql>
+    </changeSet>
+
+    <changeSet author="reagan-meant" id="3.5.0-008-migrate-french-translations">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="localization_value" schemaName="clinlims"/>
+                <columnExists tableName="localization" schemaName="clinlims" columnName="french"/>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM clinlims.localization_value WHERE locale = 'fr'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.localization_value (id, localization_id, locale, value, lastupdated)
+            SELECT nextval('localization_value_seq'), id, 'fr', french, COALESCE(lastupdated, now())
+            FROM clinlims.localization
+            WHERE french IS NOT NULL AND french != '';
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
