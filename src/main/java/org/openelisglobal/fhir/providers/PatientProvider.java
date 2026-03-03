@@ -19,13 +19,9 @@ import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
-import java.lang.reflect.InvocationTargetException;
-import java.sql.Timestamp;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
-import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.StaleObjectStateException;
 import org.hl7.fhir.instance.model.api.IBaseResource;
@@ -36,18 +32,17 @@ import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
+import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patient.valueholder.PatientContact;
-import org.openelisglobal.patientidentity.service.PatientIdentityService;
-import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
-import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.BindException;
@@ -83,9 +78,6 @@ public class PatientProvider implements IResourceProvider {
 
     @Autowired
     private PatientService patientService;
-
-    @Autowired
-    private PatientIdentityService patientIdentityService;
 
     @Autowired
     private PatientContactService patientContactService;
@@ -156,14 +148,17 @@ public class PatientProvider implements IResourceProvider {
             }
 
             Patient patient = new Patient();
-            preparePatientData(patientInfo, patient, request);
+            PatientUtil.preparePatientData(errors, request, patientInfo, patient);
             fhirTransformService.addTelecomToPerson(fhirPatient.getTelecom(), patient.getPerson());
 
             patientInfo.getPatientContact().setPerson(patient.getPerson());
 
             patientService.persistPatientData(patientInfo, patient, FhirProviderUtils.getSysUserId(request));
-
-            fhirTransformService.transformPersistPatient(patientInfo, true);
+            try {
+                fhirTransformService.transformPersistPatient(patientInfo, true);
+            } catch (FhirPersistanceException e) {
+                LogEvent.logDebug(this.getClass().getSimpleName(), method, "FhirStore currently un available");
+            }
             Patient savedPatient = getPatientByFhirId(patient.getFhirUuidAsString());
             if (savedPatient == null) {
                 throw new InternalErrorException("Saved patient is null");
@@ -227,7 +222,7 @@ public class PatientProvider implements IResourceProvider {
     @Update
     public MethodOutcome updatePatient(@IdParam IdType theId, @ResourceParam org.hl7.fhir.r4.model.Patient fhirPatient,
             HttpServletRequest request) {
-
+        String method = "updatePatient";
         MethodOutcome outcome = new MethodOutcome();
         OperationOutcome operationOutcome = new OperationOutcome();
 
@@ -264,16 +259,18 @@ public class PatientProvider implements IResourceProvider {
 
             Patient workingPatient = new Patient();
 
-            preparePatientData(patientInfo, workingPatient, request);
+            PatientUtil.preparePatientData(errors, request, patientInfo, workingPatient);
             fhirTransformService.addTelecomToPerson(fhirPatient.getTelecom(), workingPatient.getPerson());
             PatientContact contact = patientContactService.getForPatient(workingPatient.getId()).get(0);
             contact.setPerson(workingPatient.getPerson());
             patientInfo.setPatientContact(contact);
 
             patientService.persistPatientData(patientInfo, workingPatient, FhirProviderUtils.getSysUserId(request));
-
-            fhirTransformService.transformPersistPatient(patientInfo, false);
-
+            try {
+                fhirTransformService.transformPersistPatient(patientInfo, false);
+            } catch (FhirPersistanceException e) {
+                LogEvent.logDebug(this.getClass().getSimpleName(), method, "FhirStore currently un available");
+            }
             Patient savedPatient = patientService.get(existingPatient.getId());
 
             org.hl7.fhir.r4.model.Patient savedFhirPatient = fhirTransformService
@@ -364,75 +361,4 @@ public class PatientProvider implements IResourceProvider {
         return matches.isEmpty() ? null : matches.get(0);
     }
 
-    private void preparePatientData(PatientManagementInfo patientInfo, Patient patient, HttpServletRequest request)
-            throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-
-        String sysUserId = FhirProviderUtils.getSysUserId(request);
-
-        if (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.UPDATE
-                && StringUtils.isNotBlank(patientInfo.getPatientPK())) {
-
-            Patient dbPatient = patientService.get(patientInfo.getPatientPK());
-
-            if (dbPatient == null) {
-                throw new IllegalStateException("Patient not found for update");
-            }
-
-            PropertyUtils.copyProperties(patient, dbPatient);
-
-            List<PatientIdentity> identities = patientIdentityService.getPatientIdentitiesForPatient(dbPatient.getId());
-
-            patientInfo.setPatientIdentities(identities != null ? identities : new ArrayList<>());
-        }
-
-        if (patient.getPerson() == null) {
-            patient.setPerson(new Person());
-
-        }
-
-        PropertyUtils.copyProperties(patient, patientInfo);
-
-        if (patient.getPerson() != null) {
-            PropertyUtils.copyProperties(patient.getPerson(), patientInfo);
-        }
-
-        setAuditFields(patient, patientInfo, sysUserId);
-
-        applyOptimisticLocking(patientInfo, patient);
-    }
-
-    private void setAuditFields(Patient patient, PatientManagementInfo patientInfo, String sysUserId) {
-
-        patient.setSysUserId(sysUserId);
-
-        if (patient.getPerson() != null) {
-            patient.getPerson().setSysUserId(sysUserId);
-        }
-
-        if (patientInfo.getPatientIdentities() != null) {
-            for (PatientIdentity identity : patientInfo.getPatientIdentities()) {
-                identity.setSysUserId(sysUserId);
-            }
-        }
-
-        if (patientInfo.getPatientContact() != null) {
-            patientInfo.getPatientContact().setSysUserId(sysUserId);
-        }
-    }
-
-    private void applyOptimisticLocking(PatientManagementInfo patientInfo, Patient patient) {
-
-        if (patientInfo.getPatientUpdateStatus() != PatientUpdateStatus.UPDATE) {
-            return;
-        }
-
-        if (StringUtils.isNotBlank(patientInfo.getPatientLastUpdated())) {
-            patient.setLastupdated(Timestamp.valueOf(patientInfo.getPatientLastUpdated()));
-        }
-
-        if (StringUtils.isNotBlank(patientInfo.getPersonLastUpdated()) && patient.getPerson() != null) {
-
-            patient.getPerson().setLastupdated(Timestamp.valueOf(patientInfo.getPersonLastUpdated()));
-        }
-    }
 }

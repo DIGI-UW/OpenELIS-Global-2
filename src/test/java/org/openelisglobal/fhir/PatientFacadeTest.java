@@ -8,14 +8,25 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.ServletException;
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.fhir.providers.PatientProvider;
+import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.patient.valueholder.PatientContact;
+import org.openelisglobal.patientidentity.service.PatientIdentityService;
+import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
+import org.openelisglobal.patientidentitytype.service.PatientIdentityTypeService;
+import org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType;
 import org.openelisglobal.person.service.PersonService;
+import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -29,6 +40,15 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private PersonService personService;
+
+    @Autowired
+    private PatientIdentityService patientIdentityService;
+
+    @Autowired
+    private PatientContactService patientContactService;
+
+    @Autowired
+    private PatientIdentityTypeService patientIdentityTypeService;
 
     @Autowired
     private PatientProvider patientProvider;
@@ -65,10 +85,25 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
         return request;
     }
 
+    public void clearDataBase() {
+        List<PatientContact> contacts = patientContactService.getAll();
+        List<Patient> patients = patientService.getAll();
+        List<PatientIdentity> identities = patientIdentityService.getAll();
+        List<Person> persons = personService.getAll();
+        List<PatientIdentityType> identityTypes = patientIdentityTypeService.getAll();
+
+        patientIdentityService.deleteAll(identities);
+        patientContactService.deleteAll(contacts);
+        patientIdentityTypeService.deleteAll(identityTypes);
+        patientService.deleteAll(patients);
+        personService.deleteAll(persons);
+
+    }
+
     @Test
     public void readPatient_shouldReturnPatientResource() throws Exception {
         Patient existingPatient = patientService.get("1");
-        assertNotNull("Test patient with id=10 must exist", existingPatient);
+        assertNotNull("Test patient with id=1 must exist", existingPatient);
         String patientUuid = existingPatient.getFhirUuidAsString();
 
         MockHttpServletRequest request = buildRequest("GET", "/Patient/" + patientUuid);
@@ -92,6 +127,7 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void readPatient_withNonExistentId_shouldReturn404() throws Exception {
+
         String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
         MockHttpServletRequest request = buildRequest("GET", "/Patient/" + nonExistentUuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -102,6 +138,57 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
         JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
         assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
+    }
+
+    @Test
+    public void createPatient_withBirthDate_shouldPersistCorrectly() throws Exception {
+
+        clearDataBase();
+
+        MockHttpServletRequest request = buildRequest("POST", "/Patient");
+
+        String createJson = """
+                {
+                "resourceType": "Patient",
+                "identifier": [
+                    {
+                    "system": "http://openelis-global.org/pat_nationalId",
+                    "value": "NAT-999"
+                    }
+                ],
+                "name": [
+                    {
+                    "use": "official",
+                    "family": "Martin",
+                    "given": ["Joe"]
+                    }
+                ],
+                "gender": "male",
+                "birthDate": "1992-12-12"
+                }
+                """;
+
+        request.setContent(createJson.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        assertEquals(201, response.getStatus());
+
+        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+        assertEquals("Patient", jsonResponse.get("resourceType").asText());
+
+        String createdId = jsonResponse.get("id").asText();
+        assertNotNull(createdId);
+
+        // Verify DB
+        Patient savedPatient = patientService.getAllMatching("fhirUuid", UUID.fromString(createdId)).get(0);
+
+        Person person = personService.getAll().get(0);
+        assertEquals("Martin", person.getLastName());
+        assertEquals("Joe", person.getFirstName());
+
+        assertNotNull(savedPatient);
     }
 
     // @Test
@@ -253,43 +340,38 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
     // assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
     // }
 
-    // @Test
-    // public void deletePatient_shouldReturnSuccessAndMarkInactive() throws
-    // ServletException, IOException {
-    // Patient existingPatient = patientService.get("11");
-    // assertNotNull("Test patient with id=11 must exist", existingPatient);
-    // String patientUuid = existingPatient.getFhirUuidAsString();
+    @Test
+    public void deletePatient_shouldReturnSuccessAndMarkInactive() throws ServletException, IOException {
+        Patient existingPatient = patientService.get("1");
+        assertNotNull("Test patient with id=1 must exist", existingPatient);
+        String patientUuid = existingPatient.getFhirUuidAsString();
 
-    // MockHttpServletRequest request = buildRequest("DELETE", "/Patient/" +
-    // patientUuid);
-    // MockHttpServletResponse response = new MockHttpServletResponse();
+        MockHttpServletRequest request = buildRequest("DELETE", "/Patient/" + patientUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
 
-    // fhirServlet.service(request, response);
+        fhirServlet.service(request, response);
 
-    // assertEquals(204, response.getStatus());
+        assertEquals(204, response.getStatus());
 
-    // // Verify the person data is still intact (soft-delete preserves data)
-    // Patient deletedPatient = patientService.get("11");
-    // assertNotNull("Patient should still exist after soft-delete",
-    // deletedPatient);
-    // Person deletedPerson = personService.get(deletedPatient.getPerson().getId());
-    // assertEquals("grace.ochieng@example.com", deletedPerson.getEmail());
-    // assertEquals("Ochieng", deletedPerson.getLastName());
-    // }
+        // Verify the person data is still intact (soft-delete preserves data)
+        Patient deletedPatient = patientService.get("1");
+        assertNotNull("Patient should still exist after soft-delete", deletedPatient);
+        Person deletedPerson = personService.get(deletedPatient.getPerson().getId());
+        assertEquals("john@gmail.com", deletedPerson.getEmail());
+        assertEquals("Doe", deletedPerson.getLastName());
+    }
 
-    // @Test
-    // public void deletePatient_withNonExistentId_shouldReturn404() throws
-    // ServletException, IOException {
-    // String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
-    // MockHttpServletRequest request = buildRequest("DELETE", "/Patient/" +
-    // nonExistentUuid);
-    // MockHttpServletResponse response = new MockHttpServletResponse();
+    @Test
+    public void deletePatient_withNonExistentId_shouldReturn404() throws ServletException, IOException {
+        String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
+        MockHttpServletRequest request = buildRequest("DELETE", "/Patient/" + nonExistentUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
 
-    // fhirServlet.service(request, response);
+        fhirServlet.service(request, response);
 
-    // assertEquals(404, response.getStatus());
+        assertEquals(404, response.getStatus());
 
-    // JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
-    // assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
-    // }
+        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+        assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
+    }
 }
