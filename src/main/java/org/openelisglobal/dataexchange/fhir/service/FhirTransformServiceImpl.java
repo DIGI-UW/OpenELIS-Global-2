@@ -774,7 +774,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         patient.setLastName(results.getLastName());
         patient.setGender(results.getGender());
         patient.setBirthDateForDisplay(results.getBirthdate());
-        patient.setPatientContact(createPatientContact(fhirPatient));
+        patient.setPatientContact(new PatientContact());
 
         if (fhirPatient.hasAddress()) {
             Address address = fhirPatient.getAddressFirstRep();
@@ -796,16 +796,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
 
         return patient;
-
-    }
-
-    private PatientContact createPatientContact(org.hl7.fhir.r4.model.Patient fhirPatient) {
-        Person person = new Person();
-        addTelecomToPerson(fhirPatient.getTelecom(), person);
-        addHumanNameToPerson(fhirPatient.getNameFirstRep(), person);
-        PatientContact contact = new PatientContact();
-        contact.setPerson(person);
-        return contact;
 
     }
 

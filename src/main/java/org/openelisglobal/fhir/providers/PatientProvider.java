@@ -40,9 +40,11 @@ import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
+import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.patient.valueholder.PatientContact;
 import org.openelisglobal.patientidentity.service.PatientIdentityService;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
 import org.openelisglobal.person.valueholder.Person;
@@ -84,6 +86,9 @@ public class PatientProvider implements IResourceProvider {
 
     @Autowired
     private PatientIdentityService patientIdentityService;
+
+    @Autowired
+    private PatientContactService patientContactService;
 
     @Override
     public Class<? extends IBaseResource> getResourceType() {
@@ -152,6 +157,9 @@ public class PatientProvider implements IResourceProvider {
 
             Patient patient = new Patient();
             preparePatientData(patientInfo, patient, request);
+            fhirTransformService.addTelecomToPerson(fhirPatient.getTelecom(), patient.getPerson());
+
+            patientInfo.getPatientContact().setPerson(patient.getPerson());
 
             patientService.persistPatientData(patientInfo, patient, FhirProviderUtils.getSysUserId(request));
 
@@ -257,6 +265,10 @@ public class PatientProvider implements IResourceProvider {
             Patient workingPatient = new Patient();
 
             preparePatientData(patientInfo, workingPatient, request);
+            fhirTransformService.addTelecomToPerson(fhirPatient.getTelecom(), workingPatient.getPerson());
+            PatientContact contact = patientContactService.getForPatient(workingPatient.getId()).get(0);
+            contact.setPerson(workingPatient.getPerson());
+            patientInfo.setPatientContact(contact);
 
             patientService.persistPatientData(patientInfo, workingPatient, FhirProviderUtils.getSysUserId(request));
 
@@ -375,6 +387,7 @@ public class PatientProvider implements IResourceProvider {
 
         if (patient.getPerson() == null) {
             patient.setPerson(new Person());
+
         }
 
         PropertyUtils.copyProperties(patient, patientInfo);
