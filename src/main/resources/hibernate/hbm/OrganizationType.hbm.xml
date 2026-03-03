@@ -26,6 +26,10 @@
             <column name="DESCRIPTION" length="60" not-null="false" />
         </property>
 
+        <property name="hierarchyLevel" type="java.lang.Integer">
+            <column name="hierarchy_level" not-null="false" />
+        </property>
+
         <property name="nameKey" type="java.lang.String">
             <column name="name_display_key" length="60" not-null="false" />
         </property>

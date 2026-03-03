@@ -53,4 +53,6 @@
   <include relativeToChangelogFile="true" file="028-create-site-branding-table.xml"/>
 
   <include relativeToChangelogFile="true" file="029-add-gps-coordinates-to-sample.xml"/>
+  <!-- Address Hierarchy Configuration -->
+  <include relativeToChangelogFile="true" file="030-add-address-hierarchy-config.xml"/>
 </databaseChangeLog>
