@@ -14,6 +14,8 @@
 package org.openelisglobal.common.rest.provider.bean;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.valueholder.PatientContact;
 
@@ -52,6 +54,9 @@ public class PatientInfoBean implements Serializable {
     private String otherNationality;
     private PatientContact patientContact;
     private boolean readOnly = false;
+    // Dynamic address hierarchy fields (addressHierarchy_0, addressHierarchy_1,
+    // etc.)
+    private Map<String, String> addressHierarchy = new HashMap<>();
 
     public void setPatientType(String patientType) {
         this.patientType = patientType;
@@ -315,5 +320,13 @@ public class PatientInfoBean implements Serializable {
 
     public void setPatientContact(PatientContact patientContact) {
         this.patientContact = patientContact;
+    }
+
+    public Map<String, String> getAddressHierarchy() {
+        return addressHierarchy;
+    }
+
+    public void setAddressHierarchy(Map<String, String> addressHierarchy) {
+        this.addressHierarchy = addressHierarchy;
     }
 }

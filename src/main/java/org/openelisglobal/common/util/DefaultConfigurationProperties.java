@@ -331,6 +331,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.GPS_ENABLED, "false");
         properties.setPropertyValue(Property.GPS_ACCURACY_METERS, "100");
         properties.setPropertyValue(Property.GPS_TIMEOUT_SECONDS, "10");
+        properties.setPropertyValue(Property.USE_NEW_ADDRESS_HIERARCHY, "true"); // Default to new address hierarchy
         return properties;
     }
 
