@@ -14,32 +14,40 @@
         guid="a4d5e7c8-9f12-4b3e-8d67-1e23a4b5c6d7" is_active="Y"
         is_reportable="Y" orderable="true" lastUpdated="2023-12-01 12:00:00" />
 
+    <!-- Analyzer Type data (must come before analyzer for FK) -->
+    <analyzer_type id="901" name="Cobas 6800 Type"
+        plugin_class_name="oe.plugin.analyzer.Cobas6800" />
+    <analyzer_type id="902" name="ABL800 Type"
+        plugin_class_name="oe.plugin.analyzer.ABL800" />
+    <analyzer_type id="903" name="Sysmex XN-1000 Type"
+        plugin_class_name="oe.plugin.analyzer.SysmexXN1000" />
+
     <!-- Analyzer data -->
     <analyzer id="1" name="Cobas 6800" machine_id="COBAS6800-001"
-        analyzer_type="MOLECULAR"
+        analyzer_type="MOLECULAR" analyzer_type_id="901"
         description="Automated molecular analyzer for PCR testing"
         location="Main Laboratory - Room 101" is_active="true"
         has_setup_page="true" last_updated="2023-01-01 12:00:00" />
     <analyzer id="2" name="ABL800 FLEX" machine_id="ABL800-123"
-        analyzer_type="CHEMISTRY"
+        analyzer_type="CHEMISTRY" analyzer_type_id="902"
         description="Blood gas and electrolyte analyzer"
         location="Emergency Department - Station 3" is_active="true"
         has_setup_page="false" last_updated="2023-01-01 12:30:00" />
     <analyzer id="3" name="Sysmex XN-1000"
         machine_id="SYSMEX-XN1000-45" analyzer_type="HEMATOLOGY"
-        description="Automated hematology analyzer"
+        analyzer_type_id="903" description="Automated hematology analyzer"
         location="Hematology Lab - Room 203" is_active="false"
         has_setup_page="true" last_updated="2023-01-01 13:00:00" />
 
     <!-- Analyzer Test Map data -->
-    <analyzer_test_map analyzer_id="1"
-        analyzer_test_name="Glucose Test" test_id="101"
+    <analyzer_test_map analyzer_type_id="901"
+        analyzer_id="1" analyzer_test_name="Glucose Test" test_id="101"
         last_updated="2023-01-01 12:00:00" />
-    <analyzer_test_map analyzer_id="2"
-        analyzer_test_name="Hemoglobin Test" test_id="102"
+    <analyzer_test_map analyzer_type_id="902"
+        analyzer_id="2" analyzer_test_name="Hemoglobin Test" test_id="102"
         last_updated="2023-01-01 12:30:00" />
-    <analyzer_test_map analyzer_id="3"
-        analyzer_test_name="Potassium Test" test_id="103"
+    <analyzer_test_map analyzer_type_id="903"
+        analyzer_id="3" analyzer_test_name="Potassium Test" test_id="103"
         last_updated="2023-01-01 13:00:00" />
 
 </dataset>

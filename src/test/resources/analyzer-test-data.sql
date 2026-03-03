@@ -15,29 +15,26 @@ SET search_path TO clinlims;
 -- Note: This assumes the analyzer table already exists (legacy table)
 -- We'll create test analyzers with IDs starting from 1000 to avoid conflicts
 
--- Insert test analyzers (analyzer table: id, name, analyzer_type, is_active, last_updated after Liquibase 047)
+-- Insert test analyzers (2-table model: config columns merged onto analyzer row per PR #2802)
 -- Using INSERT ... ON CONFLICT DO NOTHING to allow re-running this script
 -- Note: analyzer_type must match form dropdown options: HEMATOLOGY, CHEMISTRY, IMMUNOLOGY, MICROBIOLOGY, OTHER
-INSERT INTO analyzer (id, name, analyzer_type, is_active, last_updated)
-VALUES
-  (1000, 'Mock Hematology Analyzer (ASTM Simulator)', 'HEMATOLOGY', true, NOW()),
-  (1001, 'Chemistry Analyzer 1', 'CHEMISTRY', true, NOW()),
-  (1002, 'Immunology Analyzer 1', 'IMMUNOLOGY', true, NOW()),
-  (1003, 'Microbiology Analyzer 1', 'MICROBIOLOGY', true, NOW()),
-  (1004, 'Hematology Analyzer 2 (Inactive)', 'HEMATOLOGY', false, NOW())
-ON CONFLICT (id) DO NOTHING;
-
--- Insert analyzer configurations
--- Note: status field uses unified AnalyzerStatus enum: INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE
--- Analyzer 1000 uses the mock server IP (172.20.1.100:5000) for testing
+-- Note: status uses AnalyzerStatus enum: INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE, DELETED
+-- Note: protocol_version uses ProtocolVersion enum: ASTM_LIS2_A2, HL7_V2_3_1, HL7_V2_5
 -- Analyzer 1000 is configured as "newly added" (SETUP status, no fields, no mappings) for testing the initial workflow
-INSERT INTO analyzer_configuration (id, analyzer_id, ip_address, port, protocol_version, test_unit_ids, status, sys_user_id, last_updated)
+INSERT INTO analyzer (id, name, analyzer_type, is_active,
+                      ip_address, port, protocol_version, status, test_unit_ids,
+                      last_updated)
 VALUES
-  ('CONFIG-001', 1000, '172.20.1.100', 5000, 'ASTM LIS2-A2', '1,2,3', 'SETUP', '1', NOW()),
-  ('CONFIG-002', 1001, '192.168.1.101', 8081, 'ASTM LIS2-A2', '1,2', 'ERROR_PENDING', '1', NOW()),
-  ('CONFIG-003', 1002, '192.168.1.102', 8082, 'ASTM LIS2-A2', '1,2,3,4', 'VALIDATION', '1', NOW()),
-  ('CONFIG-004', 1003, '192.168.1.103', 8083, 'ASTM LIS2-A2', '1,2', 'SETUP', '1', NOW()),
-  ('CONFIG-005', 1004, '192.168.1.104', 8084, 'ASTM LIS2-A2', NULL, 'INACTIVE', '1', NOW())
+  (1000, 'Mock Hematology Analyzer (ASTM Simulator)', 'HEMATOLOGY', true,
+   '172.20.1.100', 5000, 'ASTM_LIS2_A2', 'SETUP', '1,2,3', NOW()),
+  (1001, 'Chemistry Analyzer 1', 'CHEMISTRY', true,
+   '192.168.1.101', 8081, 'ASTM_LIS2_A2', 'ERROR_PENDING', '1,2', NOW()),
+  (1002, 'Immunology Analyzer 1', 'IMMUNOLOGY', true,
+   '192.168.1.102', 8082, 'ASTM_LIS2_A2', 'VALIDATION', '1,2,3,4', NOW()),
+  (1003, 'Microbiology Analyzer 1', 'MICROBIOLOGY', true,
+   '192.168.1.103', 8083, 'ASTM_LIS2_A2', 'SETUP', '1,2', NOW()),
+  (1004, 'Hematology Analyzer 2 (Inactive)', 'HEMATOLOGY', false,
+   '192.168.1.104', 8084, 'ASTM_LIS2_A2', 'INACTIVE', NULL, NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert analyzer fields (expanded for better testing)

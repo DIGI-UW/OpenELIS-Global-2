@@ -99,4 +99,8 @@ cypress-videos/
 # Vendor documentation (too large for git - 100MB+ PDFs)
 specs/*/research/AnalyzerDocs/
 
+# 012 analyzer docs (PDFs, large - keep local, not in repo)
+docs/analyzers/012/
+specs/012-generic-astm-plugin-profiles/docs/
+
 # Miscellaneous dev artifacts

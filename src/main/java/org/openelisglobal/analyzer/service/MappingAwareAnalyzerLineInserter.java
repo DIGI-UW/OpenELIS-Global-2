@@ -41,6 +41,10 @@ public class MappingAwareAnalyzerLineInserter extends AnalyzerLineInserter {
         this.qcResultExtractionService = SpringContext.getBean(QCResultExtractionService.class);
         this.qcResultProcessingService = SpringContext.getBean(QCResultProcessingService.class);
         this.error = null;
+
+        // Inject the real analyzer ID into the wrapped inserter so persistImport()
+        // stamps AnalyzerResults with the physical device's ID, not a phantom row
+        originalInserter.setContextAnalyzerId(analyzer.getId());
     }
 
     @Override
