@@ -1562,7 +1562,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         fhirOrganization
                 .setId(organization.getFhirUuid() == null ? organization.getId() : organization.getFhirUuidAsString());
         fhirOrganization.setName(organization.getOrganizationName());
-        fhirOrganization.setActive(organization.getIsActive() == IActionConstants.YES ? true : false);
+        fhirOrganization.setActive(organization.getIsActive().equals(IActionConstants.YES )? true : false);
         this.setFhirOrganizationIdentifiers(fhirOrganization, organization);
         this.setFhirAddressInfo(fhirOrganization, organization);
         this.setFhirOrganizationTypes(fhirOrganization, organization);
