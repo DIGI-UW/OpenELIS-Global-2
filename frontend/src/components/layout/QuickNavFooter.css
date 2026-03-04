@@ -2,7 +2,7 @@
 
 /* Add padding to content area to prevent footer overlap */
 .quick-nav-content {
-  padding-bottom: 80px !important; /* Height of footer + extra space */
+  padding-bottom: 100px !important; /* Height of footer + extra buffer to prevent overlap */
 }
 
 .quick-nav-footer {
@@ -15,6 +15,11 @@
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.08);
   z-index: 8000;
   padding: var(--cds-spacing-03, 0.5rem) var(--cds-spacing-05, 1rem);
+  pointer-events: none; /* Allow clicks to pass through to content below */
+}
+
+.quick-nav-footer > * {
+  pointer-events: auto; /* Re-enable clicks on footer children (buttons, nav) */
 }
 
 .quick-nav-container {
