@@ -81,4 +81,22 @@ public interface ResultDAO extends BaseDAO<Result, String> {
             throws LIMSRuntimeException;
 
     List<Result> getResultsByPatientUuid(String patientUuid) throws LIMSRuntimeException;
+
+    /**
+     * Find finalized results for a patient and test, optionally filtered by analyte
+     * and excluding a specific sample. Results are ordered most-recent-first.
+     *
+     * @param patientId         patient primary key (numeric)
+     * @param testId            test primary key (numeric)
+     * @param analyteId         analyte primary key, or null for test-level
+     *                          comparison
+     * @param excludeSampleId   sample primary key to exclude (current sample), or
+     *                          null
+     * @param maxResults        maximum number of results to return
+     * @param cutoffDate        earliest releasedDate to consider (comparison
+     *                          period)
+     * @param finalizedStatusId statusId value for the Finalized analysis status
+     */
+    List<Result> getPreviousResultsForPatient(Integer patientId, Integer testId, Integer analyteId,
+            Integer excludeSampleId, int maxResults, java.sql.Date cutoffDate, Integer finalizedStatusId);
 }

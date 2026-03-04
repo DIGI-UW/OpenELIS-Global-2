@@ -449,6 +449,14 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ACCURACY_METERS));
         configs.put(Property.GPS_TIMEOUT_SECONDS.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_TIMEOUT_SECONDS));
+        configs.put(Property.NCE_DELTA_CHECK_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.NCE_DELTA_CHECK_ENABLED));
+        configs.put(Property.NCE_DELTA_CHECK_THRESHOLD.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.NCE_DELTA_CHECK_THRESHOLD));
+        configs.put(Property.NCE_DELTA_CHECK_ABSOLUTE_THRESHOLD.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.NCE_DELTA_CHECK_ABSOLUTE_THRESHOLD));
+        configs.put(Property.NCE_DELTA_CHECK_COMPARISON_PERIOD.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.NCE_DELTA_CHECK_COMPARISON_PERIOD));
         return configs;
     }
 

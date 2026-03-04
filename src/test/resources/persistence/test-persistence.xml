@@ -126,6 +126,11 @@
         <!-- Generic Reporting Framework entities (reporting-framework) -->
         <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
 
+        <!-- NCE Integration entities (012-nce-integration-tables) -->
+        <class>org.openelisglobal.qaevent.valueholder.DeltaCheckAlert</class>
+        <class>org.openelisglobal.qaevent.valueholder.NceResultAssociation</class>
+        <class>org.openelisglobal.qaevent.valueholder.NcePromptDismissal</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />

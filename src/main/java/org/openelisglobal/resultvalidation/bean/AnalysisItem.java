@@ -49,6 +49,8 @@ public class AnalysisItem implements Serializable {
 
     private boolean isRejected = false;
 
+    private boolean noRetest = false;
+
     private boolean sampleIsAccepted = false;
 
     private boolean sampleIsRejected = false;
@@ -274,6 +276,14 @@ public class AnalysisItem implements Serializable {
 
     public boolean getIsRejected() {
         return isRejected;
+    }
+
+    public void setNoRetest(boolean noRetest) {
+        this.noRetest = noRetest;
+    }
+
+    public boolean isNoRetest() {
+        return noRetest;
     }
 
     public boolean isSampleIsAccepted() {

@@ -457,4 +457,41 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Result> getPreviousResultsForPatient(Integer patientId, Integer testId, Integer analyteId,
+            Integer excludeSampleId, int maxResults, java.sql.Date cutoffDate, Integer finalizedStatusId) {
+        try {
+            StringBuilder sql = new StringBuilder("FROM Result r " + "WHERE r.analysis.sampleItem.sample.id IN "
+                    + "  (SELECT sh.sampleId FROM SampleHuman sh WHERE sh.patientId = :patientId) "
+                    + "  AND r.analysis.test.id = :testId " + "  AND r.analysis.statusId = :finalizedStatusId "
+                    + "  AND r.analysis.releasedDate >= :cutoffDate");
+
+            if (excludeSampleId != null) {
+                sql.append(" AND r.analysis.sampleItem.sample.id != :excludeSampleId");
+            }
+            if (analyteId != null) {
+                sql.append(" AND r.analyte.id = :analyteId");
+            }
+            sql.append(" ORDER BY r.analysis.releasedDate DESC, r.analysis.id DESC");
+
+            Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql.toString(), Result.class);
+            query.setParameter("patientId", patientId);
+            query.setParameter("testId", testId);
+            query.setParameter("finalizedStatusId", finalizedStatusId);
+            query.setParameter("cutoffDate", cutoffDate);
+            if (excludeSampleId != null) {
+                query.setParameter("excludeSampleId", excludeSampleId);
+            }
+            if (analyteId != null) {
+                query.setParameter("analyteId", analyteId);
+            }
+            query.setMaxResults(maxResults);
+            return query.list();
+        } catch (RuntimeException e) {
+            handleException(e, "getPreviousResultsForPatient");
+            return new ArrayList<>();
+        }
+    }
+
 }
