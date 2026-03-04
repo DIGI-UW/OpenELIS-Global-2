@@ -12,7 +12,6 @@ export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
     },
   )
     .then((response) => {
-      console.debug("checking response");
       // if (response.url.includes("LoginPage")) {
       //     throw "No Login Session";
       // }
@@ -401,7 +400,6 @@ export const convertAlphaNumLabNumForDisplay = (labNumber) => {
     return labNumber;
   }
   if (labNumber.length > 15) {
-    console.warn("labNumber is not alphanumeric (too long), ignoring format");
     return labNumber;
   }
   //if dash made it into value, then it's part of the analysis number, not the base lab number
@@ -453,8 +451,6 @@ export function encodeDate(dateString) {
 }
 
 export function getDifferenceInDays(date1, date2) {
-  console.log("secondDate", date2);
-
   // Function to parse dates in DD/MM/YYYY format
   function parseDate(dateStr) {
     const [day, month, year] = dateStr.split("/").map(Number);

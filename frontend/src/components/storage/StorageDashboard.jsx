@@ -1472,11 +1472,6 @@ const StorageDashboard = () => {
               // Backward compatibility: if response is array (old format without pagination)
               setSamples(response);
               setTotalItems(response.length);
-              if (response.length === 0) {
-                console.warn(
-                  "Sample Items API returned empty array - no sample item assignments found matching filters",
-                );
-              }
             } else if (response.items && Array.isArray(response.items)) {
               // New format with pagination metadata (OGC-150)
               setSamples(response.items);
@@ -1485,11 +1480,6 @@ const StorageDashboard = () => {
                 response.totalElements ??
                 response.items.length;
               setTotalItems(total);
-              if (response.items.length === 0) {
-                console.warn(
-                  "Sample Items API returned empty items array - no sample item assignments found matching filters",
-                );
-              }
             } else {
               console.error(
                 "Sample Items API returned unexpected response format:",

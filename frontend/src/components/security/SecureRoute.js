@@ -94,18 +94,15 @@ function SecureRoute(props) {
 
   const onIdle = () => {
     setStillThereOpen(false);
-    console.debug("idleTimer now idle");
     logout();
   };
 
   const onActive = () => {
     setStillThereOpen(false);
-    console.debug("idleTimer now active");
   };
 
   const onPrompt = () => {
     setStillThereOpen(true);
-    console.debug("idleTimer now prompting");
   };
 
   const { activate } = useIdleTimer({
