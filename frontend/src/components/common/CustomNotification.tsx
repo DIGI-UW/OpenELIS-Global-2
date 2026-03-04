@@ -13,13 +13,22 @@ export type NotificationKind = keyof typeof NotificationKinds;
 
 export interface NotificationBody {
   title: string;
-  kind: "error" | "info" | "success" | "warning" | "info-square" | "success-alt" | "warning-alt";
+  kind:
+  | "error"
+  | "info"
+  | "success"
+  | "warning"
+  | "info-square"
+  | "success-alt"
+  | "warning-alt";
   subtitle?: React.ReactNode;
   message?: React.ReactNode;
 }
 
 export const AlertDialog: React.FC = () => {
-  const { notifications, removeNotification } = useContext(NotificationContext) as {
+  const { notifications, removeNotification } = useContext(
+    NotificationContext,
+  ) as {
     notifications: NotificationBody[];
     removeNotification: (index: number) => void;
   };
@@ -27,28 +36,32 @@ export const AlertDialog: React.FC = () => {
   return (
     <div className="toastDisplay">
       {notifications &&
-        notifications.map((notificationBody: NotificationBody, index: number) => {
-          return (
-            <ToastNotification
-              key={index}
-              title={notificationBody.title}
-              timeout={
-                notificationBody.kind !== NotificationKinds.error ? 2000 : 3000
-              }
-              onClose={() => false}
-              onCloseButtonClick={() => {
-                removeNotification(index);
-              }}
-              lowContrast={true}
-              kind={notificationBody.kind}
-              subtitle={notificationBody.subtitle}
-            >
-              {notificationBody.message}
-              <br />
-              <br />
-            </ToastNotification>
-          );
-        })}
+        notifications.map(
+          (notificationBody: NotificationBody, index: number) => {
+            return (
+              <ToastNotification
+                key={index}
+                title={notificationBody.title}
+                timeout={
+                  notificationBody.kind !== NotificationKinds.error
+                    ? 2000
+                    : 3000
+                }
+                onClose={() => false}
+                onCloseButtonClick={() => {
+                  removeNotification(index);
+                }}
+                lowContrast={true}
+                kind={notificationBody.kind}
+                subtitle={notificationBody.subtitle}
+              >
+                {notificationBody.message}
+                <br />
+                <br />
+              </ToastNotification>
+            );
+          },
+        )}
     </div>
   );
 };
