@@ -753,6 +753,9 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
     @Override
     public void insertNewPatientAddressInfo(String partId, String value, String type, Patient patient,
             String sysUserId) {
+        if (GenericValidator.isBlankOrNull(value) || GenericValidator.isBlankOrNull(partId)) {
+            return;
+        }
         PersonAddress address;
         address = new PersonAddress();
         address.setPersonId(patient.getPerson().getId());
@@ -765,6 +768,9 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
 
     public void persistIdentityType(String paramValue, String type, PatientManagementInfo patientInfo, Patient patient,
             String sysUserId) throws LIMSRuntimeException {
+        if (patientInfo.getPatientIdentities().isEmpty()) {
+            return;
+        }
 
         Boolean newIdentityNeeded = true;
         String typeID = PatientIdentityTypeMap.getInstance().getIDForType(type);
