@@ -438,6 +438,7 @@ public class DeltaCheckEvaluationServiceImplTest extends BaseWebContextSensitive
         analyte.setId(analyteId);
 
         Result result = new Result();
+        result.setId("1001");
         result.setValue("100.0");
         result.setAnalysis(analysis);
         result.setAnalyte(analyte);
