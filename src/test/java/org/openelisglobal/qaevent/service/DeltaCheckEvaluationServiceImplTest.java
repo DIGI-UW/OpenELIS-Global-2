@@ -28,6 +28,7 @@ public class DeltaCheckEvaluationServiceImplTest extends BaseWebContextSensitive
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/delta-check-alert.xml");
+        jdbcTemplate.execute("SELECT setval('delta_check_alert_id_seq', 1000, false)");
     }
 
     // --- calculatePercentageChange tests ---
