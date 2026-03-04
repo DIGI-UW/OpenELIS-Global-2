@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Result object for mapping preview operation
@@ -11,6 +12,7 @@ public class MappingPreviewResult {
     private List<ParsedField> parsedFields;
     private List<AppliedMapping> appliedMappings;
     private EntityPreview entityPreview;
+    private Map<String, Object> pluginConfigSnapshot;
     private List<String> warnings;
     private List<String> errors;
 
@@ -43,6 +45,14 @@ public class MappingPreviewResult {
 
     public void setEntityPreview(EntityPreview entityPreview) {
         this.entityPreview = entityPreview;
+    }
+
+    public Map<String, Object> getPluginConfigSnapshot() {
+        return pluginConfigSnapshot;
+    }
+
+    public void setPluginConfigSnapshot(Map<String, Object> pluginConfigSnapshot) {
+        this.pluginConfigSnapshot = pluginConfigSnapshot;
     }
 
     public List<String> getWarnings() {

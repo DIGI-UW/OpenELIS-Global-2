@@ -46,7 +46,7 @@
     <!-- ID 2013: GeneXpert ASTM Mode (GenericASTM / MOLECULAR) -->
     <analyzer id="2013" name="Cepheid GeneXpert (ASTM Mode)"
         analyzer_type="MOLECULAR" DESCRIPTION="ASTM LIS2-A2 over TCP/IP"
-        identifier_pattern="GENEXPERT|CEPHEID" is_active="true"
+        identifier_pattern="GENEXPERT.*|CEPHEID.*" is_active="true"
         ip_address="172.20.1.110" port="9600" protocol_version="ASTM_LIS2_A2"
         status="ACTIVE" last_updated="2026-02-02 00:00:00" />
 

@@ -39,6 +39,9 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
     @Transactional(readOnly = true)
     public List<AnalyzerResults> getDuplicateResultByAccessionAndTest(AnalyzerResults result) {
         try {
+            if (result.getAnalyzerId() == null || result.getAnalyzerId().trim().isEmpty()) {
+                return null;
+            }
 
             List<AnalyzerResults> list = new ArrayList<>();
 
