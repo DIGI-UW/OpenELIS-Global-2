@@ -70,7 +70,7 @@ export const NCECorrectiveAction = () => {
         getFromOpenElisServer(
           `/rest/NCECorrectiveAction?nceNumber=${selected}`,
           (data) => {
-            if (!data.cancelAction) {
+            if (!data?.cancelAction) {
               return;
             }
             setTData(null);
@@ -96,7 +96,7 @@ export const NCECorrectiveAction = () => {
       getFromOpenElisServer(
         `/rest/nonconformingcorrectiveaction?status=CAPA&${reportFormValues.type}=${reportFormValues.value}&uppressExternalSearch=false&${other}=undefined`,
         (responseData) => {
-          if (responseData.nceEventsSearchResults.length > 1) {
+          if (responseData.nceEventsSearchResults?.length > 1) {
             setSelected(null);
             setData(null);
             setTData(responseData);
@@ -351,7 +351,7 @@ export const NCECorrectiveAction = () => {
                               tData.reportingUnits.find(
                                 (obj) =>
                                   parseInt(obj.id) === row.reportingUnitId,
-                              ).value
+                              )?.value
                             }
                           </TableCell>
                         </TableRow>
@@ -425,7 +425,7 @@ export const NCECorrectiveAction = () => {
                   </span>
                 </div>
                 <div style={{ marginBottom: "10px" }}>
-                  {data.specimens[0].typeOfSample.description}
+                  {data.specimens?.[0]?.typeOfSample?.description}
                 </div>
               </Column>
               <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>

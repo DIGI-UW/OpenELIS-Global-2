@@ -28,6 +28,7 @@ import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import DataTable from "react-data-table-component";
 import { Formik } from "formik";
 import config from "../../config.json";
+import NCEBadge from "../results/NCEBadge/NCEBadge";
 
 /**
  * GenericSampleResults - Configurable result entry component for Generic Sample menu.
@@ -337,6 +338,7 @@ function GenericSampleResults({
                 />
               </picture>
             )}
+            <NCEBadge resultId={row.id} />
           </div>
         );
       },

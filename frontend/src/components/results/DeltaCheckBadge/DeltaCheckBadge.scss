@@ -1,0 +1,14 @@
+@use "@carbon/react/scss/spacing" as *;
+@use "@carbon/react/scss/theme" as *;
+
+.delta-check-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: $spacing-02;
+
+  &:focus {
+    outline: 2px solid $focus;
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}

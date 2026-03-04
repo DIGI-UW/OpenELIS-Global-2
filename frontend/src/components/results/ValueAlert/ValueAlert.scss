@@ -1,0 +1,103 @@
+@use "@carbon/react/scss/spacing" as *;
+@use "@carbon/react/scss/type" as *;
+@use "@carbon/react/scss/colors" as *;
+@use "@carbon/react/scss/motion" as *;
+
+.value-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-02;
+  margin: $spacing-02 3rem; // match expanded row horizontal bounds
+}
+
+.value-alert {
+  border-radius: 4px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: $spacing-04;
+  animation: value-slide-down $duration-moderate-01 motion(standard, productive);
+
+  &--critical {
+    border-left: 3px solid $red-60;
+    background-color: $red-10;
+    padding: $spacing-02 $spacing-03;
+
+    .value-alert__header svg {
+      color: $red-60;
+    }
+
+    .value-alert__title {
+      color: $red-60;
+    }
+  }
+
+  &--extreme {
+    border-left: 3px solid $orange-60;
+    background-color: $orange-10;
+    padding: $spacing-02 $spacing-03;
+
+    .value-alert__header svg {
+      color: $orange-60;
+    }
+
+    .value-alert__title {
+      color: $orange-60;
+    }
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-02;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    @include type-style("heading-compact-01");
+    white-space: nowrap;
+  }
+
+  &__values {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-02 $spacing-04;
+    flex: 1;
+  }
+
+  &__value-item {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: $spacing-01;
+  }
+
+  &__label {
+    @include type-style("label-01");
+    color: $gray-60;
+    white-space: nowrap;
+  }
+
+  &__number {
+    @include type-style("body-compact-01");
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: $spacing-02;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+}
+
+@keyframes value-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

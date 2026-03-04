@@ -1,0 +1,85 @@
+@use "@carbon/react/scss/spacing" as *;
+@use "@carbon/react/scss/type" as *;
+@use "@carbon/react/scss/colors" as *;
+@use "@carbon/react/scss/motion" as *;
+
+.delta-check-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-03;
+  margin: $spacing-03 0;
+}
+
+.delta-check-alert {
+  border-left: 3px solid $purple-60;
+  border-radius: 4px;
+  background-color: $purple-10;
+  padding: $spacing-04;
+  animation: delta-slide-down $duration-moderate-01 motion(standard, productive);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-02;
+    margin-bottom: $spacing-03;
+
+    svg {
+      color: $purple-60;
+    }
+  }
+
+  &__title {
+    @include type-style("heading-compact-01");
+    color: $purple-60;
+  }
+
+  &__message {
+    @include type-style("body-compact-01");
+    color: $gray-70;
+    margin-bottom: $spacing-03;
+  }
+
+  &__values {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-03 $spacing-05;
+    margin-bottom: $spacing-03;
+  }
+
+  &__value-item {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-01;
+  }
+
+  &__label {
+    @include type-style("label-01");
+    color: $gray-60;
+  }
+
+  &__number {
+    @include type-style("heading-compact-01");
+
+    &--change {
+      color: $red-60;
+      font-weight: 600;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-03;
+  }
+}
+
+@keyframes delta-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

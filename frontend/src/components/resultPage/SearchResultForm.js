@@ -1,45 +1,51 @@
-import React, { useContext, useEffect, useState, useRef } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import "../Style.css";
+import { ArrowLeft, ArrowRight, Copy } from "@carbon/icons-react";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-  convertAlphaNumLabNumForDisplay,
-  Roles,
-} from "../utils/Utils";
-import {
-  Form,
-  TextInput,
-  TextArea,
-  Checkbox,
   Button,
-  Grid,
+  Checkbox,
   Column,
-  Stack,
+  Form,
+  Grid,
+  Link,
+  Loading,
   Pagination,
   Select,
   SelectItem,
-  Loading,
-  Link,
-  FileUploader,
+  Stack,
+  Tag,
+  TextArea,
+  TextInput,
+  Tooltip,
 } from "@carbon/react";
-import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
-import CustomLabNumberInput from "../common/CustomLabNumberInput";
+import { Field, Formik } from "formik";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import DataTable from "react-data-table-component";
-import { Formik, Field } from "formik";
-import SearchResultFormValues from "../formModel/innitialValues/SearchResultFormValues";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
-import SearchPatientForm from "../patient/SearchPatientForm";
-import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
-import { ConfigurationContext } from "../layout/Layout";
+import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import config from "../../config.json";
-import CustomDatePicker from "../common/CustomDatePicker";
-import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
-import CompactFileInput from "./fileUpload/FileInput";
-import StorageLocationSelector from "../storage/StorageLocationSelector";
-import ResultMultiSelect from "../common/multiSelect";
+import { checkCriticalOrExtremeValue } from "../../services/NCEIntegrationService";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
+import CustomDatePicker from "../common/CustomDatePicker";
+import CustomLabNumberInput from "../common/CustomLabNumberInput";
+import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import ResultMultiSelect from "../common/multiSelect";
+import SearchResultFormValues from "../formModel/innitialValues/SearchResultFormValues";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
+import SearchPatientForm from "../patient/SearchPatientForm";
+import DeltaCheckAlert from "../results/DeltaCheckAlert/DeltaCheckAlert";
+import DeltaCheckBadge from "../results/DeltaCheckBadge/DeltaCheckBadge";
+import NCEBadge from "../results/NCEBadge/NCEBadge";
+import ResultNCEActions from "../results/ResultNCEActions/ResultNCEActions";
+import ValueAlert from "../results/ValueAlert/ValueAlert";
+import StorageLocationSelector from "../storage/StorageLocationSelector";
+import "../Style.css";
+import {
+  convertAlphaNumLabNumForDisplay,
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+  Roles,
+} from "../utils/Utils";
+import CompactFileInput from "./fileUpload/FileInput";
+import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
 
 function ResultSearchPage() {
   const [originalResultForm, setOriginalResultForm] = useState({
@@ -786,6 +792,17 @@ export function SearchResults(props) {
   const [rejectReasons, setRejectReasons] = useState([]);
   const [rejectedItems, setRejectedItems] = useState({});
   const [validationState, setValidationState] = useState({});
+  const [deltaCheckAlertsByResultId, setDeltaCheckAlertsByResultId] = useState(
+    {},
+  );
+  const handleDeltaCheckAlertsLoaded = useCallback((alerts) => {
+    const byResultId = {};
+    (alerts || []).forEach((a) => {
+      byResultId[a.resultId] = a;
+    });
+    setDeltaCheckAlertsByResultId(byResultId);
+  }, []);
+  const [nceCreatedForResult, setNceCreatedForResult] = useState({});
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -834,6 +851,13 @@ export function SearchResults(props) {
             value,
             row,
           ));
+
+          // Enrich with extreme value detection (FR-020)
+          const critCheck = checkCriticalOrExtremeValue(value, row);
+          if (critCheck?.isExtreme) {
+            validation.isExtreme = true;
+            validation.extremeReason = critCheck.reason;
+          }
 
           row.resultValue = validation.newValue;
           validation.style = {
@@ -972,6 +996,14 @@ export function SearchResults(props) {
       width: "20rem",
     },
     {
+      id: "flags",
+      name: intl.formatMessage({ id: "column.name.flags" }),
+      cell: (row, index, column, id) => {
+        return renderCell(row, index, column, id);
+      },
+      width: "10rem",
+    },
+    {
       id: "currentResult",
       name: intl.formatMessage({ id: "column.name.currentResult" }),
       cell: (row, index, column, id) => {
@@ -1067,6 +1099,84 @@ export function SearchResults(props) {
           </div>
         );
 
+      case "flags": {
+        const numericValue = parseFloat(row.resultValue);
+        const hasCritRange =
+          row.lowerCritical !== 0 || row.higherCritical !== 0;
+        const hasNormalRange =
+          row.lowerNormalRange !== 0 || row.upperNormalRange !== 0;
+        const isCritHigh =
+          !isNaN(numericValue) &&
+          hasCritRange &&
+          numericValue > row.higherCritical;
+        const isCritLow =
+          !isNaN(numericValue) &&
+          hasCritRange &&
+          numericValue < row.lowerCritical;
+        const isHigh =
+          !isNaN(numericValue) &&
+          !isCritHigh &&
+          hasNormalRange &&
+          numericValue > row.upperNormalRange;
+        const isLow =
+          !isNaN(numericValue) &&
+          !isCritLow &&
+          hasNormalRange &&
+          numericValue < row.lowerNormalRange;
+        return (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "0.25rem",
+              alignItems: "center",
+            }}
+          >
+            {isCritHigh && (
+              <Tooltip label={intl.formatMessage({ id: "flag.critH.tooltip" })}>
+                <span>
+                  <Tag type="red" size="sm">
+                    {intl.formatMessage({ id: "flag.critH" })}
+                  </Tag>
+                </span>
+              </Tooltip>
+            )}
+            {isCritLow && (
+              <Tooltip label={intl.formatMessage({ id: "flag.critL.tooltip" })}>
+                <span>
+                  <Tag type="red" size="sm">
+                    {intl.formatMessage({ id: "flag.critL" })}
+                  </Tag>
+                </span>
+              </Tooltip>
+            )}
+            {isHigh && (
+              <Tooltip label={intl.formatMessage({ id: "flag.high.tooltip" })}>
+                <span>
+                  <Tag type="magenta" size="sm">
+                    {intl.formatMessage({ id: "flag.high" })}
+                  </Tag>
+                </span>
+              </Tooltip>
+            )}
+            {isLow && (
+              <Tooltip label={intl.formatMessage({ id: "flag.low.tooltip" })}>
+                <span>
+                  <Tag type="blue" size="sm">
+                    {intl.formatMessage({ id: "flag.low" })}
+                  </Tag>
+                </span>
+              </Tooltip>
+            )}
+            <NCEBadge
+              key={`nce-${row.resultId}-${nceCreatedForResult[row.resultId] || 0}`}
+              resultId={row.resultId}
+            />
+            <DeltaCheckBadge alert={deltaCheckAlertsByResultId[row.resultId]} />
+          </div>
+        );
+      }
+
       case "accept":
         return (
           <>
@@ -1104,7 +1214,9 @@ export function SearchResults(props) {
                 id={"rejectReasonId" + row.id}
                 name={"testResult[" + row.id + "].rejectReasonId"}
                 //noLabel={true}
-                labelText={"Reason"}
+                labelText={intl.formatMessage({
+                  id: "header.rejection.reason",
+                })}
                 onChange={(e) => handleChange(e, row.id)}
               >
                 {/* {...updateShadowResult(e, this, param.rowId)} */}
@@ -1135,10 +1247,7 @@ export function SearchResults(props) {
                 rows={1}
                 onChange={(e) => handleChange(e, row.id)}
               ></TextArea>
-              <div
-                className="note"
-                dangerouslySetInnerHTML={{ __html: row.pastNotes }}
-              />
+              <div className="note">{row.pastNotes}</div>
             </div>
           </>
         );
@@ -1200,46 +1309,19 @@ export function SearchResults(props) {
                 type="number"
                 value={row.resultValue}
                 style={validationState[row.id]?.style}
-                onBlur={(e) => {
-                  if (
-                    validationState[row.id]?.isInvalid &&
+                invalid={
+                  !!(
+                    validationState[row.id]?.outsideValid &&
                     configurationProperties.ALERT_FOR_INVALID_RESULTS
-                  ) {
-                    addNotification({
-                      title: intl.formatMessage({ id: "notification.title" }),
-                      message:
-                        intl.formatMessage({
-                          id: "result.outOfValidRange.msg",
-                        }) +
-                        " " +
-                        row.testName +
-                        " : " +
-                        row.resultValue,
-                      kind: NotificationKinds.error,
-                    });
-                    setNotificationVisible(true);
-                  }
-                }}
+                  )
+                }
+                invalidText={
+                  intl.formatMessage({ id: "result.outOfValidRange.msg" }) +
+                  " " +
+                  row.testName
+                }
                 onChange={(e) => {
                   handleChange(e, row.id);
-                  if (
-                    validationState[row.id]?.isInvalid &&
-                    configurationProperties.ALERT_FOR_INVALID_RESULTS
-                  ) {
-                    addNotification({
-                      title: intl.formatMessage({ id: "notification.title" }),
-                      message:
-                        intl.formatMessage({
-                          id: "result.outOfValidRange.msg",
-                        }) +
-                        " " +
-                        row.testName +
-                        " : " +
-                        row.resultValue,
-                      kind: NotificationKinds.error,
-                    });
-                    setNotificationVisible(true);
-                  }
                 }}
               />
             );
@@ -1578,9 +1660,9 @@ export function SearchResults(props) {
             />
           </Column>
         </Grid>
-        {/* Storage Location Widget - INT-002: Integration point */}
+        {/* Storage Location + NCE Actions on same row */}
         <Grid style={{ marginTop: "1rem" }}>
-          <Column lg={16}>
+          <Column lg={12}>
             <StorageLocationSelector
               workflow="results"
               showQuickFind={true}
@@ -1591,7 +1673,7 @@ export function SearchResults(props) {
                     ? locationData.sampleItemExternalId
                     : null,
                 sampleAccessionNumber: data.accessionNumber,
-                sampleId: sampleItemId || data.accessionNumber, // Use sampleItemId
+                sampleId: sampleItemId || data.accessionNumber,
                 type: data.sampleType || "",
                 status: data.sampleStatus || "Active",
               }}
@@ -1602,6 +1684,36 @@ export function SearchResults(props) {
                   analysisId,
                   sampleItemId,
                 );
+              }}
+            />
+          </Column>
+          <Column
+            lg={4}
+            style={{ display: "flex", alignItems: "center", paddingTop: "1rem" }}
+          >
+            <ResultNCEActions
+              resultId={data.resultId}
+              deltaAlert={deltaCheckAlertsByResultId[data.resultId]}
+              context={{
+                labNumber: data.accessionNumber,
+                testName: data.testName,
+                resultValue: data.resultValue,
+                patientInfo: data.patientName,
+              }}
+              onNCECreated={(nceData) => {
+                setNceCreatedForResult((prev) => ({
+                  ...prev,
+                  [data.resultId]: (prev[data.resultId] || 0) + 1,
+                }));
+                addNotification({
+                  kind: NotificationKinds.success,
+                  title: intl.formatMessage({ id: "notification.title" }),
+                  message: intl.formatMessage(
+                    { id: "nce.inline.success" },
+                    { nceNumber: nceData?.nceNumber || "" },
+                  ),
+                });
+                setNotificationVisible(true);
               }}
             />
           </Column>
@@ -1817,7 +1929,6 @@ export function SearchResults(props) {
     console.debug("handleAcceptAsIsChange:" + acceptAsIs[rowId]);
     handleChange(e, rowId);
     if (acceptAsIs[rowId] == undefined) {
-      alert(intl.formatMessage({ id: "result.acceptasis.warning" }));
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "result.acceptasis.warning" }),
@@ -1835,8 +1946,15 @@ export function SearchResults(props) {
     if (isSubmitting) {
       return;
     }
+
+    submitResults(values);
+  };
+
+  const submitResults = (values) => {
     setIsSubmitting(true);
-    values.status = saveStatus;
+    if (values) {
+      values.status = saveStatus;
+    }
     var searchEndPoint = "/rest/LogbookResults";
     props.results.testResult.forEach((result) => {
       result.reportable = result.reportable === "N" ? false : true;
@@ -1947,6 +2065,21 @@ export function SearchResults(props) {
               onChange={handleChange}
               //onBlur={handleBlur}
             >
+              {configurationProperties.ENABLE_DELTA_CHECK_ALERTS && (
+                <DeltaCheckAlert
+                  analysisIds={(props.results?.testResult || [])
+                    .slice((page - 1) * pageSize, page * pageSize)
+                    .map((r) => r.analysisId)}
+                  onAlertsLoaded={handleDeltaCheckAlertsLoaded}
+                />
+              )}
+              <ValueAlert
+                results={(props.results?.testResult || []).slice(
+                  (page - 1) * pageSize,
+                  page * pageSize,
+                )}
+                validationState={validationState}
+              />
               <DataTable
                 data={props.results?.testResult?.slice(
                   (page - 1) * pageSize,
