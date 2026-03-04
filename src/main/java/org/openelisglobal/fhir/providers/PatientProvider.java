@@ -18,6 +18,7 @@ import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceVersionConflictException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashSet;
 import java.util.List;
@@ -113,7 +114,6 @@ public class PatientProvider implements IResourceProvider {
     public MethodOutcome createPatient(@ResourceParam org.hl7.fhir.r4.model.Patient fhirPatient,
             HttpServletRequest request) {
         String method = "Create";
-
         MethodOutcome outcome = new MethodOutcome();
         OperationOutcome operationOutcome = new OperationOutcome();
 
@@ -122,15 +122,19 @@ public class PatientProvider implements IResourceProvider {
             if (fhirPatient == null) {
                 LogEvent.logError(this.getClass().getSimpleName(), method, "Patient resource is null");
                 throw new InvalidRequestException("Patient resource cannot be null");
+            }
 
-            } else if (fhirPatient.getIdElement().getIdPart() == null) {
-                fhirPatient.setId(UUID.randomUUID().toString());
+            if (fhirPatient.getIdElement() == null || fhirPatient.getIdElement().getIdPart() == null) {
+                String generatedId = UUID.randomUUID().toString();
+                fhirPatient.setId(generatedId);
+                LogEvent.logInfo(this.getClass().getSimpleName(), method, "Generated new FHIR ID: " + generatedId);
             }
 
             PatientManagementInfo patientInfo = fhirTransformService.createOePatientManagementInfo(fhirPatient);
 
             if (StringUtils.isBlank(patientInfo.getPatientPK())) {
                 patientInfo.setPatientUpdateStatus(PatientUpdateStatus.ADD);
+                LogEvent.logInfo(this.getClass().getSimpleName(), method, "Patient set to ADD status");
             }
 
             Errors errors = new BindException(patientInfo, "patientInfo");
@@ -140,27 +144,41 @@ public class PatientProvider implements IResourceProvider {
                 for (ObjectError error : errors.getAllErrors()) {
                     operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
                             .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getDefaultMessage());
-                }
 
+                    LogEvent.logError(this.getClass().getSimpleName(), method,
+                            "Validation error: " + error.getDefaultMessage());
+                }
                 outcome.setOperationOutcome(operationOutcome);
-                outcome.setCreated(false);
                 return outcome;
             }
 
             Patient patient = new Patient();
             PatientUtil.preparePatientData(errors, request, patientInfo, patient);
-            fhirTransformService.addTelecomToPerson(fhirPatient.getTelecom(), patient.getPerson());
 
-            patientInfo.getPatientContact().setPerson(patient.getPerson());
+            if (fhirPatient.getTelecom() != null) {
+                fhirTransformService.addTelecomToPerson(fhirPatient.getTelecom(), patient.getPerson());
+            } else {
+                LogEvent.logInfo(this.getClass().getSimpleName(), method, "No telecom info provided for patient");
+            }
+
+            if (patientInfo.getPatientContact() != null) {
+                patientInfo.getPatientContact().setPerson(patient.getPerson());
+            } else {
+                LogEvent.logInfo(this.getClass().getSimpleName(), method, "No patient contact info provided");
+            }
 
             patientService.persistPatientData(patientInfo, patient, FhirProviderUtils.getSysUserId(request));
+            LogEvent.logInfo(this.getClass().getSimpleName(), method, "Patient persisted with ID: " + patient.getId());
+
             try {
                 fhirTransformService.transformPersistPatient(patientInfo, true);
             } catch (FhirPersistanceException e) {
-                LogEvent.logDebug(this.getClass().getSimpleName(), method, "FhirStore currently un available");
+                LogEvent.logWarn(this.getClass().getSimpleName(), method, "FHIR store unavailable: " + e.getMessage());
             }
+
             Patient savedPatient = getPatientByFhirId(patient.getFhirUuidAsString());
             if (savedPatient == null) {
+                LogEvent.logError(this.getClass().getSimpleName(), method, "Saved patient is null");
                 throw new InternalErrorException("Saved patient is null");
             }
 
@@ -177,13 +195,17 @@ public class PatientProvider implements IResourceProvider {
 
             outcome.setOperationOutcome(operationOutcome);
 
+            LogEvent.logInfo(this.getClass().getSimpleName(), method,
+                    "Patient creation completed successfully: " + patient.getId());
+
         } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "Exception during patient creation: " + e.getMessage());
 
             operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
                     .setCode(OperationOutcome.IssueType.EXCEPTION).setDiagnostics(e.getMessage());
 
             outcome.setOperationOutcome(operationOutcome);
-            outcome.setCreated(false);
         }
 
         return outcome;
@@ -222,25 +244,36 @@ public class PatientProvider implements IResourceProvider {
     @Update
     public MethodOutcome updatePatient(@IdParam IdType theId, @ResourceParam org.hl7.fhir.r4.model.Patient fhirPatient,
             HttpServletRequest request) {
+
         String method = "updatePatient";
-        MethodOutcome outcome = new MethodOutcome();
-        OperationOutcome operationOutcome = new OperationOutcome();
+
+        if (theId == null || !theId.hasIdPart()) {
+            throw new InvalidRequestException("Patient ID must be provided for update");
+        }
+
+        String fhirUuid = theId.getIdPart();
+
+        if (fhirUuid == null || fhirUuid.isBlank()) {
+            throw new InvalidRequestException("FHIR UUID cannot be null or blank");
+        }
+
+        if (fhirPatient == null) {
+            throw new InvalidRequestException("FHIR Patient resource body is required");
+        }
+
+        Patient existingPatient = getPatientByFhirId(fhirUuid);
+
+        if (existingPatient == null) {
+            throw new ResourceNotFoundException("Patient/" + fhirUuid);
+        }
 
         try {
 
-            if (theId == null || !theId.hasIdPart()) {
-                throw new InvalidRequestException("Patient ID must be provided for update");
-            }
-
-            String fhirUuid = theId.getIdPart();
-
-            Patient existingPatient = getPatientByFhirId(fhirUuid);
-
-            if (existingPatient == null) {
-                throw new ResourceNotFoundException("Patient/" + fhirUuid);
-            }
-
             PatientManagementInfo patientInfo = fhirTransformService.createOePatientManagementInfo(fhirPatient);
+
+            if (patientInfo == null) {
+                throw new InternalErrorException("Failed to transform FHIR Patient to OE model");
+            }
 
             patientInfo.setPatientPK(existingPatient.getId());
             patientInfo.setPatientUpdateStatus(PatientUpdateStatus.UPDATE);
@@ -249,62 +282,70 @@ public class PatientProvider implements IResourceProvider {
             ValidatePatientInfo.validatePatientInfo(errors, patientInfo);
 
             if (errors.hasErrors()) {
-                for (ObjectError error : errors.getAllErrors()) {
-                    operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
-                            .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getDefaultMessage());
-                }
-                outcome.setOperationOutcome(operationOutcome);
-                return outcome;
+                throw new InvalidRequestException(errors.getAllErrors().stream().map(ObjectError::getDefaultMessage)
+                        .reduce((a, b) -> a + "; " + b).orElse("Validation failed"));
             }
 
             Patient workingPatient = new Patient();
-
             PatientUtil.preparePatientData(errors, request, patientInfo, workingPatient);
-            fhirTransformService.addTelecomToPerson(fhirPatient.getTelecom(), workingPatient.getPerson());
-            PatientContact contact = patientContactService.getForPatient(workingPatient.getId()).get(0);
+
+            if (workingPatient.getPerson() == null) {
+                throw new InternalErrorException("Working patient person object is null");
+            }
+
+            if (fhirPatient.hasTelecom()) {
+                fhirTransformService.addTelecomToPerson(fhirPatient.getTelecom(), workingPatient.getPerson());
+            }
+
+            List<PatientContact> contacts = patientContactService.getForPatient(existingPatient.getId());
+
+            if (contacts == null || contacts.isEmpty()) {
+                throw new InternalErrorException("No PatientContact found for patient id=" + existingPatient.getId());
+            }
+
+            PatientContact contact = contacts.get(0);
             contact.setPerson(workingPatient.getPerson());
             patientInfo.setPatientContact(contact);
 
-            patientService.persistPatientData(patientInfo, workingPatient, FhirProviderUtils.getSysUserId(request));
+            String sysUserId = FhirProviderUtils.getSysUserId(request);
+            if (sysUserId == null) {
+                throw new InternalErrorException("System user ID is null");
+            }
+
+            patientService.persistPatientData(patientInfo, workingPatient, sysUserId);
+
             try {
                 fhirTransformService.transformPersistPatient(patientInfo, false);
             } catch (FhirPersistanceException e) {
-                LogEvent.logDebug(this.getClass().getSimpleName(), method, "FhirStore currently un available");
+                LogEvent.logDebug(this.getClass().getSimpleName(), method, "FHIR store unavailable: " + e.getMessage());
             }
+
             Patient savedPatient = patientService.get(existingPatient.getId());
+
+            if (savedPatient == null) {
+                throw new InternalErrorException("Saved patient could not be reloaded");
+            }
 
             org.hl7.fhir.r4.model.Patient savedFhirPatient = fhirTransformService
                     .transformToFhirPatient(savedPatient.getId());
 
+            if (savedFhirPatient == null) {
+                throw new InternalErrorException("Failed to transform saved patient back to FHIR");
+            }
+
+            MethodOutcome outcome = new MethodOutcome();
             outcome.setId(new IdType("Patient", savedPatient.getFhirUuidAsString()));
             outcome.setCreated(false);
             outcome.setResource(savedFhirPatient);
 
-            operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.INFORMATION)
-                    .setCode(OperationOutcome.IssueType.INFORMATIONAL).setDiagnostics("Patient updated successfully");
-
-            outcome.setOperationOutcome(operationOutcome);
-
-        } catch (ResourceNotFoundException e) {
-            throw e;
+            return outcome;
 
         } catch (StaleObjectStateException e) {
-
-            operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
-                    .setCode(OperationOutcome.IssueType.CONFLICT)
-                    .setDiagnostics("Patient was modified by another user");
-
-            outcome.setOperationOutcome(operationOutcome);
+            throw new ResourceVersionConflictException("Patient was modified by another user");
 
         } catch (Exception e) {
-
-            operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
-                    .setCode(OperationOutcome.IssueType.EXCEPTION).setDiagnostics(e.getMessage());
-
-            outcome.setOperationOutcome(operationOutcome);
+            throw new InternalErrorException("Update failed: " + e.getMessage(), e);
         }
-
-        return outcome;
     }
 
     @Delete
