@@ -42,10 +42,18 @@
   &__row--controls {
     align-items: flex-start;
 
-    > :nth-child(1) { flex: 1; }    // Category
-    > :nth-child(2) { flex: 1.5; }  // Subcategory
-    > :nth-child(3) { flex: 2; }    // Severity
-    > :nth-child(4) { flex: 1.5; }  // Sample Action
+    > :nth-child(1) {
+      flex: 1;
+    } // Category
+    > :nth-child(2) {
+      flex: 1.5;
+    } // Subcategory
+    > :nth-child(3) {
+      flex: 2;
+    } // Severity
+    > :nth-child(4) {
+      flex: 1.5;
+    } // Sample Action
   }
 
   &__severity,
