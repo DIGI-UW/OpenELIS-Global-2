@@ -29,12 +29,10 @@ const PatientHeader = (props) => {
   };
   return (
     <Grid fullWidth={true}>
-      <Column lg={16} md={8} sm={4}>
+      {/* <Column lg={16} md={8} sm={4}> */}
         <Section>
-          <Section>
             {id ? (
               <div className={className}>
-                <Grid>
                   <Column lg={1} md={2} sm={1}>
                     <AsyncAvatar
                       patientId={String(id)}
@@ -72,7 +70,6 @@ const PatientHeader = (props) => {
                           : dob}
                       </span>
                     </div>
-                    {/* <br/> */}
                     <div className="patient-id">
                       {nationalId && (
                         <Tag size="lg" type="blue" style={tagStyle}>
@@ -119,7 +116,6 @@ const PatientHeader = (props) => {
                       )}
                     </div>
                   </Column>
-                </Grid>
               </div>
             ) : (
               <div className={className}>
@@ -146,8 +142,7 @@ const PatientHeader = (props) => {
               </div>
             )}
           </Section>
-        </Section>
-      </Column>
+      {/* </Column> */}
     </Grid>
   );
 };
