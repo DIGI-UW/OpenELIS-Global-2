@@ -22,7 +22,7 @@ import {
 import {
   AlertDialog,
   NotificationKinds,
-} from "../../../common/CustomNotification.js";
+} from "../../../common/CustomNotification";
 import config from "../../../../config.json";
 import { NotificationContext } from "../../../layout/Layout.js";
 

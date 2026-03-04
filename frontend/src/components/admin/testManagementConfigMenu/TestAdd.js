@@ -5,7 +5,7 @@ import { NotificationContext } from "../../layout/Layout.js";
 import {
   AlertDialog,
   NotificationKinds,
-} from "../../common/CustomNotification.js";
+} from "../../common/CustomNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import { CustomShowGuide } from "./customComponents/CustomShowGuide.js";

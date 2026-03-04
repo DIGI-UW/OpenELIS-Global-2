@@ -23,7 +23,7 @@ import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import {
   AlertDialog,
   NotificationKinds,
-} from "../../common/CustomNotification.js";
+} from "../../common/CustomNotification";
 import {
   ConfigurationContext,
   NotificationContext,

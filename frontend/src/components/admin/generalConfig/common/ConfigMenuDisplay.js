@@ -27,7 +27,7 @@ import { NotificationContext } from "../../../layout/Layout.js";
 import {
   AlertDialog,
   NotificationKinds,
-} from "../../../common/CustomNotification.js";
+} from "../../../common/CustomNotification";
 import config from "../../../../config.json";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../../common/PageBreadCrumb.js";

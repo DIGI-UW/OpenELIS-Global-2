@@ -21,7 +21,7 @@ import { NotificationContext } from "../../layout/Layout.js";
 import {
   AlertDialog,
   NotificationKinds,
-} from "../../common/CustomNotification.js";
+} from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import { Field, Formik } from "formik";
 import * as Yup from "yup";

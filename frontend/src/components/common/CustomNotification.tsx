@@ -9,13 +9,25 @@ export const NotificationKinds = {
   warning: "warning",
 };
 
-export const AlertDialog = () => {
-  const { notifications, removeNotification } = useContext(NotificationContext);
+export type NotificationKind = keyof typeof NotificationKinds;
+
+export interface NotificationBody {
+  title: string;
+  kind: "error" | "info" | "success" | "warning" | "info-square" | "success-alt" | "warning-alt";
+  subtitle?: React.ReactNode;
+  message?: React.ReactNode;
+}
+
+export const AlertDialog: React.FC = () => {
+  const { notifications, removeNotification } = useContext(NotificationContext) as {
+    notifications: NotificationBody[];
+    removeNotification: (index: number) => void;
+  };
 
   return (
     <div className="toastDisplay">
       {notifications &&
-        notifications.map((notificationBody, index) => {
+        notifications.map((notificationBody: NotificationBody, index: number) => {
           return (
             <ToastNotification
               key={index}
@@ -23,10 +35,8 @@ export const AlertDialog = () => {
               timeout={
                 notificationBody.kind !== NotificationKinds.error ? 2000 : 3000
               }
-              onClose={(event) => {
-                return false;
-              }}
-              onCloseButtonClick={(event) => {
+              onClose={() => false}
+              onCloseButtonClick={() => {
                 removeNotification(index);
               }}
               lowContrast={true}
