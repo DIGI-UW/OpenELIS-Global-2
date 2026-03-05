@@ -10,6 +10,9 @@ import org.openelisglobal.common.exception.LIMSFrozenRecordException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.dictionary.dao.DictionaryDAO;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.service.LocalizationServiceImpl.LocalizationType;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +23,9 @@ public class DictionaryServiceImpl extends AuditableBaseObjectServiceImpl<Dictio
 
     @Autowired
     protected DictionaryDAO baseObjectDAO;
+
+    @Autowired
+    private LocalizationService localizationService;
 
     DictionaryServiceImpl() {
         super(Dictionary.class);
@@ -45,9 +51,22 @@ public class DictionaryServiceImpl extends AuditableBaseObjectServiceImpl<Dictio
     public String insert(Dictionary dictionary) {
         if (duplicateDictionaryExists(dictionary)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for " + dictionary.getDictEntry());
-        } else {
-            return super.insert(dictionary);
         }
+        // Auto-create localization record if not present
+        if (dictionary.getLocalizedDictionaryName() == null && dictionary.getDictEntry() != null) {
+            Localization localization = createLocalizationForDictionary(dictionary);
+            localization.setSysUserId(dictionary.getSysUserId());
+            localizationService.insert(localization);
+            dictionary.setLocalizedDictionaryName(localization);
+        }
+        return super.insert(dictionary);
+    }
+
+    private Localization createLocalizationForDictionary(Dictionary dictionary) {
+        Localization localization = new Localization();
+        localization.setDescription(LocalizationType.DICTIONARY_NAME.getDBDescription());
+        localization.setEnglish(dictionary.getDictEntry());
+        return localization;
     }
 
     @Override

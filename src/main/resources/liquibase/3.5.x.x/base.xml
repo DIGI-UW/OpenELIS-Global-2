@@ -9,6 +9,9 @@
   <!-- Phase 1: Create new tables and migrate data -->
   <include relativeToChangelogFile="true" file="001-add-localization-value-table.xml"/>
 
+  <!-- Phase 2: Add localization to dictionary entries -->
+  <include relativeToChangelogFile="true" file="002-add-dictionary-localization.xml"/>
+
   <!-- Phase 4: Drop legacy columns -->
   <include relativeToChangelogFile="true" file="099-drop-legacy-localization-columns.xml"/>
 

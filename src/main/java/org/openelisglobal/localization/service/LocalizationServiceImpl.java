@@ -20,7 +20,8 @@ public class LocalizationServiceImpl extends AuditableBaseObjectServiceImpl<Loca
 
     public enum LocalizationType {
         TEST_NAME("test name"), REPORTING_TEST_NAME("test report name"), BANNER_LABEL("Site information banner test"),
-        TEST_UNIT_NAME("test unit name"), PANEL_NAME("panel name"), BILL_REF_LABEL("Billing reference_label");
+        TEST_UNIT_NAME("test unit name"), PANEL_NAME("panel name"), BILL_REF_LABEL("Billing reference_label"),
+        DICTIONARY_NAME("dictionary name"), SAMPLE_TYPE_NAME("sample type name");
 
         String dbLabel;
 

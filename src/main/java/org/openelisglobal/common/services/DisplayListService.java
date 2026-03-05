@@ -649,6 +649,21 @@ public class DisplayListService implements LocaleChangeListener {
             typeToListMap.put(ListType.PATIENT_HEALTH_REGIONS, createPatientHealthRegions());
             break;
         }
+        case PATIENT_EDUCATION: {
+            typeToListMap.put(ListType.PATIENT_EDUCATION,
+                    createFromDictionaryCategoryLocalizedSort("Education Level Demographic Information"));
+            break;
+        }
+        case PATIENT_MARITAL_STATUS: {
+            typeToListMap.put(ListType.PATIENT_MARITAL_STATUS,
+                    createFromDictionaryCategoryLocalizedSort("Marital Status Demographic Information"));
+            break;
+        }
+        case PATIENT_NATIONALITY: {
+            typeToListMap.put(ListType.PATIENT_NATIONALITY,
+                    createFromDictionaryCategoryLocalizedSort("Nationality Demographic Information"));
+            break;
+        }
         case PROGRAM: {
             typeToListMap.put(ListType.PROGRAM, createProgramList());
         }

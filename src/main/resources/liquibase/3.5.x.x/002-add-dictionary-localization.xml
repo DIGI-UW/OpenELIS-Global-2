@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Dictionary Localization Migration
+
+        This migration creates localization records for existing dictionary entries
+        that do not have a name_localization_id set. This enables dictionary entries
+        (like education levels, marital status, etc.) to be translatable.
+
+        The dict_entry value is used as the initial English and French value.
+        Translators can then update translations via the admin UI.
+    -->
+
+    <changeSet author="reagan-meant" id="3.5.0-009-add-dictionary-localization">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="dictionary" schemaName="clinlims"/>
+                <tableExists tableName="localization" schemaName="clinlims"/>
+                <tableExists tableName="localization_value" schemaName="clinlims"/>
+                <sqlCheck expectedResult="0">
+                    <!-- Only run if there are dictionaries without localization -->
+                    SELECT CASE WHEN EXISTS (
+                        SELECT 1 FROM clinlims.dictionary
+                        WHERE name_localization_id IS NULL AND dict_entry IS NOT NULL
+                    ) THEN 0 ELSE 1 END
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <sql splitStatements="false">
+            DO $$
+            DECLARE
+                dict_record RECORD;
+                new_loc_id NUMERIC;
+            BEGIN
+                FOR dict_record IN
+                    SELECT id, dict_entry
+                    FROM clinlims.dictionary
+                    WHERE name_localization_id IS NULL AND dict_entry IS NOT NULL
+                LOOP
+                    -- Create localization record (include legacy english/french columns for backward compatibility)
+                    SELECT nextval('localization_seq') INTO new_loc_id;
+
+                    INSERT INTO clinlims.localization (id, description, english, french, lastupdated)
+                    VALUES (new_loc_id, 'dictionary name', dict_record.dict_entry, dict_record.dict_entry, now());
+
+                    -- Create English translation only (other languages to be added via translation UI)
+                    INSERT INTO clinlims.localization_value (id, localization_id, locale, value, lastupdated)
+                    VALUES (nextval('localization_value_seq'), new_loc_id, 'en', dict_record.dict_entry, now());
+
+                    -- Update dictionary with localization reference
+                    UPDATE clinlims.dictionary
+                    SET name_localization_id = new_loc_id
+                    WHERE id = dict_record.id;
+                END LOOP;
+            END $$;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
