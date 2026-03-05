@@ -26,12 +26,14 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
 
     private final AnalyzerFieldMappingDAO analyzerFieldMappingDAO;
     private final AnalyzerFieldDAO analyzerFieldDAO;
+    private final AnalyzerPluginConfigService analyzerPluginConfigService;
 
     @Autowired
     public AnalyzerMappingPreviewServiceImpl(AnalyzerFieldMappingDAO analyzerFieldMappingDAO,
-            AnalyzerFieldDAO analyzerFieldDAO) {
+            AnalyzerFieldDAO analyzerFieldDAO, AnalyzerPluginConfigService analyzerPluginConfigService) {
         this.analyzerFieldMappingDAO = analyzerFieldMappingDAO;
         this.analyzerFieldDAO = analyzerFieldDAO;
+        this.analyzerPluginConfigService = analyzerPluginConfigService;
     }
 
     @Override
@@ -58,8 +60,12 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
 
             EntityPreview entityPreview = buildEntityPreview(appliedMappings);
             result.setEntityPreview(entityPreview);
+            result.setPluginConfigSnapshot(analyzerPluginConfigService.getConfigAsMap(analyzerId));
 
             validateMappings(parsedFields, mappings, result);
+            if (!analyzerPluginConfigService.hasAtLeastOneActiveQcRule(analyzerId)) {
+                result.getWarnings().add("No active QC rule configured; activation gate will block ACTIVE transition");
+            }
 
         } catch (Exception e) {
             result.getErrors().add("Error processing ASTM message: " + e.getMessage());
