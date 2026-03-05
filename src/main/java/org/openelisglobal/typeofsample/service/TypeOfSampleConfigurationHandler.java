@@ -5,11 +5,14 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,28 +23,33 @@ import org.springframework.stereotype.Component;
  * CSV format for defining sample types.
  *
  * Expected CSV format:
- * description,localAbbreviation,domain,isActive,sortOrder,englishName,frenchName
+ * description,localAbbreviation,domain,isActive,sortOrder,localization:en,localization:fr
  * Whole Blood,WB,H,Y,1,Whole Blood,Sang Total Serum,SER,H,Y,2,Serum,Sérum
  * Plasma,PLS,H,Y,3,Plasma,Plasma Urine,UR,H,Y,4,Urine,Urine
  *
  * Notes: - First line is the header (required) - description and
  * localAbbreviation are required fields - domain defaults to "H" (Human) if not
  * specified - isActive defaults to "Y" if not specified - sortOrder is optional
- * (auto-assigned if not provided) - englishName is used for localization
- * (defaults to description if not provided) - frenchName is used for French
- * localization (defaults to englishName if not provided) - Existing sample
- * types with matching localAbbreviation and domain will be updated
+ * (auto-assigned if not provided) - localization:xx columns (where xx is a
+ * locale code like en, fr, es) provide translations - If no localization
+ * columns are provided, description is used as the default value for the
+ * fallback locale (en) - Existing sample types with matching localAbbreviation
+ * and domain will be updated
  */
 @Component
 public class TypeOfSampleConfigurationHandler implements DomainConfigurationHandler {
 
     private static final String DEFAULT_DOMAIN = "H"; // Human
+    private static final String LOCALIZATION_COLUMN_PREFIX = "localization:";
 
     @Autowired
     private TypeOfSampleService typeOfSampleService;
 
     @Autowired
     private LocalizationService localizationService;
+
+    @Autowired
+    private LocalizationValueService localizationValueService;
 
     @Override
     public String getDomainName() {
@@ -77,8 +85,9 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         int domainIndex = findColumnIndex(headers, "domain");
         int isActiveIndex = findColumnIndex(headers, "isActive");
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
-        int englishNameIndex = findColumnIndex(headers, "englishName");
-        int frenchNameIndex = findColumnIndex(headers, "frenchName");
+
+        // Detect localization columns (localization:en, localization:fr, etc.)
+        Map<String, Integer> localizationColumns = detectLocalizationColumns(headers);
 
         List<TypeOfSample> processedSampleTypes = new ArrayList<>();
         String line;
@@ -87,16 +96,15 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
 
         while ((line = reader.readLine()) != null) {
             lineNumber++;
-            // Skip empty lines
-            if (line.trim().isEmpty()) {
+            // Skip empty lines and comments
+            if (line.trim().isEmpty() || line.trim().startsWith("#")) {
                 continue;
             }
 
             try {
                 String[] values = parseCsvLine(line);
                 TypeOfSample sampleType = processCsvLine(values, descriptionIndex, localAbbreviationIndex, domainIndex,
-                        isActiveIndex, sortOrderIndex, englishNameIndex, frenchNameIndex, lineNumber, fileName,
-                        nextSortOrder);
+                        isActiveIndex, sortOrderIndex, localizationColumns, lineNumber, fileName, nextSortOrder);
                 if (sampleType != null) {
                     processedSampleTypes.add(sampleType);
                     nextSortOrder++;
@@ -170,6 +178,27 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         return -1;
     }
 
+    /**
+     * Detects localization columns from headers. Columns must be in the format
+     * "localization:xx" where xx is a locale code (e.g., en, fr, es).
+     *
+     * @param headers the CSV header row
+     * @return map of locale code to column index
+     */
+    private Map<String, Integer> detectLocalizationColumns(String[] headers) {
+        Map<String, Integer> localizationColumns = new HashMap<>();
+        for (int i = 0; i < headers.length; i++) {
+            String header = headers[i].trim().toLowerCase();
+            if (header.startsWith(LOCALIZATION_COLUMN_PREFIX)) {
+                String locale = header.substring(LOCALIZATION_COLUMN_PREFIX.length());
+                if (!locale.isEmpty()) {
+                    localizationColumns.put(locale, i);
+                }
+            }
+        }
+        return localizationColumns;
+    }
+
     private int getNextAvailableSortOrder() {
         List<TypeOfSample> allSampleTypes = typeOfSampleService.getAllTypeOfSamples();
         int maxSortOrder = 0;
@@ -182,7 +211,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
     }
 
     private TypeOfSample processCsvLine(String[] values, int descriptionIndex, int localAbbreviationIndex,
-            int domainIndex, int isActiveIndex, int sortOrderIndex, int englishNameIndex, int frenchNameIndex,
+            int domainIndex, int isActiveIndex, int sortOrderIndex, Map<String, Integer> localizationColumns,
             int lineNumber, String fileName, int defaultSortOrder) {
 
         // Get required fields
@@ -219,7 +248,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         if (existingSampleType != null) {
             // Update existing sample type
             updateSampleTypeFromCsv(existingSampleType, values, description, localAbbreviation, isActiveIndex,
-                    sortOrderIndex, englishNameIndex, frenchNameIndex, defaultSortOrder);
+                    sortOrderIndex, localizationColumns, defaultSortOrder);
             typeOfSampleService.update(existingSampleType);
             LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
                     "Updated existing sample type: " + description + " (" + localAbbreviation + ")");
@@ -227,7 +256,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         } else {
             // Create new sample type
             return createSampleType(values, description, localAbbreviation, domain, isActiveIndex, sortOrderIndex,
-                    englishNameIndex, frenchNameIndex, defaultSortOrder);
+                    localizationColumns, defaultSortOrder);
         }
     }
 
@@ -247,7 +276,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
     }
 
     private void updateSampleTypeFromCsv(TypeOfSample sampleType, String[] values, String description,
-            String localAbbreviation, int isActiveIndex, int sortOrderIndex, int englishNameIndex, int frenchNameIndex,
+            String localAbbreviation, int isActiveIndex, int sortOrderIndex, Map<String, Integer> localizationColumns,
             int defaultSortOrder) {
 
         sampleType.setDescription(description);
@@ -270,49 +299,32 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
             }
         }
 
-        // Update localization if provided
-        String englishName = getValueOrEmpty(values, englishNameIndex);
-        String frenchName = getValueOrEmpty(values, frenchNameIndex);
-
-        if (!englishName.isEmpty() || !frenchName.isEmpty()) {
-            Localization localization = sampleType.getLocalization();
-            if (localization != null) {
-                if (!englishName.isEmpty()) {
-                    localization.setEnglish(englishName);
-                }
-                if (!frenchName.isEmpty()) {
-                    localization.setFrench(frenchName);
-                }
-                localization.setSysUserId("1");
-                localizationService.update(localization);
-            }
-        }
-
         sampleType.setSysUserId("1"); // System user for configuration loading
+
+        // Handle localization
+        processLocalization(sampleType, values, description, localizationColumns);
     }
 
     private TypeOfSample createSampleType(String[] values, String description, String localAbbreviation, String domain,
-            int isActiveIndex, int sortOrderIndex, int englishNameIndex, int frenchNameIndex, int defaultSortOrder) {
+            int isActiveIndex, int sortOrderIndex, Map<String, Integer> localizationColumns, int defaultSortOrder) {
+
+        // Build translations map
+        Map<String, String> translations = buildTranslationsMap(values, description, localizationColumns);
 
         // Create localization first
-        String englishName = getValueOrEmpty(values, englishNameIndex);
-        String frenchName = getValueOrEmpty(values, frenchNameIndex);
-
-        // Default englishName to description if not provided
-        if (englishName.isEmpty()) {
-            englishName = description;
-        }
-        // Default frenchName to englishName if not provided
-        if (frenchName.isEmpty()) {
-            frenchName = englishName;
-        }
-
         Localization localization = new Localization();
         localization.setDescription("sampleType name");
-        localization.setEnglish(englishName);
-        localization.setFrench(frenchName);
+        // Set legacy en/fr fields for compatibility
+        localization.setEnglish(translations.getOrDefault("en", description));
+        localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", description)));
         localization.setSysUserId("1");
-        localizationService.insert(localization);
+        String localizationId = localizationService.insert(localization);
+        localization.setId(localizationId);
+
+        // Set all translations using the service (including any beyond en/fr)
+        for (Map.Entry<String, String> entry : translations.entrySet()) {
+            localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue());
+        }
 
         // Create sample type
         TypeOfSample sampleType = new TypeOfSample();
@@ -352,5 +364,68 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
                 "Created new sample type: " + description + " (" + localAbbreviation + ")");
 
         return sampleType;
+    }
+
+    /**
+     * Builds a map of translations from localization columns. If no translations
+     * are provided, uses the default name as the fallback (en) value.
+     */
+    private Map<String, String> buildTranslationsMap(String[] values, String defaultName,
+            Map<String, Integer> localizationColumns) {
+        Map<String, String> translations = new HashMap<>();
+
+        if (localizationColumns.isEmpty()) {
+            // No localization columns provided - use defaultName as the fallback (en) value
+            translations.put("en", defaultName);
+        } else {
+            // Process each localization column
+            for (Map.Entry<String, Integer> entry : localizationColumns.entrySet()) {
+                String locale = entry.getKey();
+                String translationValue = getValueOrEmpty(values, entry.getValue());
+                if (!translationValue.isEmpty()) {
+                    translations.put(locale, translationValue);
+                }
+            }
+
+            // If no valid translations found, use defaultName as fallback
+            if (translations.isEmpty()) {
+                translations.put("en", defaultName);
+            }
+        }
+
+        return translations;
+    }
+
+    /**
+     * Processes localization columns and sets up translations for the sample type.
+     */
+    private void processLocalization(TypeOfSample sampleType, String[] values, String description,
+            Map<String, Integer> localizationColumns) {
+
+        Map<String, String> translations = buildTranslationsMap(values, description, localizationColumns);
+
+        Localization localization = sampleType.getLocalization();
+        if (localization == null) {
+            // Create new localization
+            localization = new Localization();
+            localization.setDescription("sampleType name");
+            localization.setEnglish(translations.getOrDefault("en", description));
+            localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", description)));
+            localization.setSysUserId("1");
+            String localizationId = localizationService.insert(localization);
+            localization.setId(localizationId);
+            sampleType.setLocalization(localization);
+
+            // Set all translations
+            for (Map.Entry<String, String> entry : translations.entrySet()) {
+                localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue());
+            }
+        } else {
+            // Update existing localization translations
+            String localizationId = localization.getId();
+            for (Map.Entry<String, String> entry : translations.entrySet()) {
+                localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue());
+            }
+        }
     }
 }

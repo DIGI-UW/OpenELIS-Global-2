@@ -5,11 +5,14 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +23,7 @@ import org.springframework.stereotype.Component;
  * defining laboratory test sections/departments.
  *
  * Expected CSV format:
- * testSectionName,description,isActive,sortOrder,isExternal,englishName,frenchName
+ * testSectionName,description,isActive,sortOrder,isExternal,localization:en,localization:fr
  * Hematology,Hematology Department,Y,1,N,Hematology,Hématologie
  * Biochemistry,Biochemistry Department,Y,2,N,Biochemistry,Biochimie
  * Serology,Serology Department,Y,3,N,Serology,Sérologie
@@ -28,19 +31,25 @@ import org.springframework.stereotype.Component;
  * Notes: - First line is the header (required) - testSectionName is required -
  * description defaults to testSectionName if not provided - isActive defaults
  * to "Y" if not specified - sortOrder is optional (auto-assigned if not
- * provided) - isExternal defaults to "N" if not specified - englishName
- * defaults to testSectionName if not provided - frenchName defaults to
- * englishName if not provided - Existing test sections with matching name will
- * be updated
+ * provided) - isExternal defaults to "N" if not specified - localization:xx
+ * columns (where xx is a locale code like en, fr, es) provide translations - If
+ * no localization columns are provided, testSectionName is used as the default
+ * value for the fallback locale (en) - Existing test sections with matching
+ * name will be updated
  */
 @Component
 public class TestSectionConfigurationHandler implements DomainConfigurationHandler {
+
+    private static final String LOCALIZATION_COLUMN_PREFIX = "localization:";
 
     @Autowired
     private TestSectionService testSectionService;
 
     @Autowired
     private LocalizationService localizationService;
+
+    @Autowired
+    private LocalizationValueService localizationValueService;
 
     @Override
     public String getDomainName() {
@@ -76,8 +85,9 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
         int isActiveIndex = findColumnIndex(headers, "isActive");
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
         int isExternalIndex = findColumnIndex(headers, "isExternal");
-        int englishNameIndex = findColumnIndex(headers, "englishName");
-        int frenchNameIndex = findColumnIndex(headers, "frenchName");
+
+        // Detect localization columns (localization:en, localization:fr, etc.)
+        Map<String, Integer> localizationColumns = detectLocalizationColumns(headers);
 
         List<TestSection> processedSections = new ArrayList<>();
         String line;
@@ -86,15 +96,15 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
 
         while ((line = reader.readLine()) != null) {
             lineNumber++;
-            if (line.trim().isEmpty()) {
+            // Skip empty lines and comments
+            if (line.trim().isEmpty() || line.trim().startsWith("#")) {
                 continue;
             }
 
             try {
                 String[] values = parseCsvLine(line);
                 TestSection section = processCsvLine(values, testSectionNameIndex, descriptionIndex, isActiveIndex,
-                        sortOrderIndex, isExternalIndex, englishNameIndex, frenchNameIndex, lineNumber, fileName,
-                        nextSortOrder);
+                        sortOrderIndex, isExternalIndex, localizationColumns, lineNumber, fileName, nextSortOrder);
                 if (section != null) {
                     processedSections.add(section);
                     nextSortOrder++;
@@ -160,6 +170,27 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
         return -1;
     }
 
+    /**
+     * Detects localization columns from headers. Columns must be in the format
+     * "localization:xx" where xx is a locale code (e.g., en, fr, es).
+     *
+     * @param headers the CSV header row
+     * @return map of locale code to column index
+     */
+    private Map<String, Integer> detectLocalizationColumns(String[] headers) {
+        Map<String, Integer> localizationColumns = new HashMap<>();
+        for (int i = 0; i < headers.length; i++) {
+            String header = headers[i].trim().toLowerCase();
+            if (header.startsWith(LOCALIZATION_COLUMN_PREFIX)) {
+                String locale = header.substring(LOCALIZATION_COLUMN_PREFIX.length());
+                if (!locale.isEmpty()) {
+                    localizationColumns.put(locale, i);
+                }
+            }
+        }
+        return localizationColumns;
+    }
+
     private int getNextAvailableSortOrder() {
         List<TestSection> allSections = testSectionService.getAllTestSections();
         int maxSortOrder = 0;
@@ -172,7 +203,7 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
     }
 
     private TestSection processCsvLine(String[] values, int testSectionNameIndex, int descriptionIndex,
-            int isActiveIndex, int sortOrderIndex, int isExternalIndex, int englishNameIndex, int frenchNameIndex,
+            int isActiveIndex, int sortOrderIndex, int isExternalIndex, Map<String, Integer> localizationColumns,
             int lineNumber, String fileName, int defaultSortOrder) {
 
         String testSectionName = getValueOrEmpty(values, testSectionNameIndex);
@@ -188,14 +219,14 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
 
         if (existingSection != null) {
             updateTestSection(existingSection, values, testSectionName, descriptionIndex, isActiveIndex, sortOrderIndex,
-                    isExternalIndex, englishNameIndex, frenchNameIndex, defaultSortOrder);
+                    isExternalIndex, localizationColumns, defaultSortOrder);
             testSectionService.update(existingSection);
             LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
                     "Updated existing test section: " + testSectionName);
             return existingSection;
         } else {
             return createTestSection(values, testSectionName, descriptionIndex, isActiveIndex, sortOrderIndex,
-                    isExternalIndex, englishNameIndex, frenchNameIndex, defaultSortOrder);
+                    isExternalIndex, localizationColumns, defaultSortOrder);
         }
     }
 
@@ -208,7 +239,7 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
     }
 
     private void updateTestSection(TestSection section, String[] values, String testSectionName, int descriptionIndex,
-            int isActiveIndex, int sortOrderIndex, int isExternalIndex, int englishNameIndex, int frenchNameIndex,
+            int isActiveIndex, int sortOrderIndex, int isExternalIndex, Map<String, Integer> localizationColumns,
             int defaultSortOrder) {
 
         section.setTestSectionName(testSectionName);
@@ -242,35 +273,32 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
             section.setIsExternal("Y".equalsIgnoreCase(isExternal) || "true".equalsIgnoreCase(isExternal) ? "Y" : "N");
         }
 
-        // Update localization
-        String englishName = getValueOrEmpty(values, englishNameIndex);
-        String frenchName = getValueOrEmpty(values, frenchNameIndex);
-        updateLocalization(section, englishName, frenchName, testSectionName);
-
         section.setSysUserId("1");
+
+        // Handle localization
+        processLocalization(section, values, testSectionName, localizationColumns);
     }
 
     private TestSection createTestSection(String[] values, String testSectionName, int descriptionIndex,
-            int isActiveIndex, int sortOrderIndex, int isExternalIndex, int englishNameIndex, int frenchNameIndex,
+            int isActiveIndex, int sortOrderIndex, int isExternalIndex, Map<String, Integer> localizationColumns,
             int defaultSortOrder) {
 
+        // Build translations map
+        Map<String, String> translations = buildTranslationsMap(values, testSectionName, localizationColumns);
+
         // Create localization first
-        String englishName = getValueOrEmpty(values, englishNameIndex);
-        String frenchName = getValueOrEmpty(values, frenchNameIndex);
-
-        if (englishName.isEmpty()) {
-            englishName = testSectionName;
-        }
-        if (frenchName.isEmpty()) {
-            frenchName = englishName;
-        }
-
         Localization localization = new Localization();
         localization.setDescription("test section name");
-        localization.setEnglish(englishName);
-        localization.setFrench(frenchName);
+        localization.setEnglish(translations.getOrDefault("en", testSectionName));
+        localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", testSectionName)));
         localization.setSysUserId("1");
-        localizationService.insert(localization);
+        String localizationId = localizationService.insert(localization);
+        localization.setId(localizationId);
+
+        // Set all translations using the service (including any beyond en/fr)
+        for (Map.Entry<String, String> entry : translations.entrySet()) {
+            localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue());
+        }
 
         // Create test section
         TestSection section = new TestSection();
@@ -326,21 +354,66 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
         return section;
     }
 
-    private void updateLocalization(TestSection section, String englishName, String frenchName, String defaultName) {
-        if (englishName.isEmpty() && frenchName.isEmpty()) {
-            return;
+    /**
+     * Builds a map of translations from localization columns. If no translations
+     * are provided, uses the default name as the fallback (en) value.
+     */
+    private Map<String, String> buildTranslationsMap(String[] values, String defaultName,
+            Map<String, Integer> localizationColumns) {
+        Map<String, String> translations = new HashMap<>();
+
+        if (localizationColumns.isEmpty()) {
+            // No localization columns provided - use defaultName as the fallback (en) value
+            translations.put("en", defaultName);
+        } else {
+            // Process each localization column
+            for (Map.Entry<String, Integer> entry : localizationColumns.entrySet()) {
+                String locale = entry.getKey();
+                String translationValue = getValueOrEmpty(values, entry.getValue());
+                if (!translationValue.isEmpty()) {
+                    translations.put(locale, translationValue);
+                }
+            }
+
+            // If no valid translations found, use defaultName as fallback
+            if (translations.isEmpty()) {
+                translations.put("en", defaultName);
+            }
         }
 
+        return translations;
+    }
+
+    /**
+     * Processes localization columns and sets up translations for the test section.
+     */
+    private void processLocalization(TestSection section, String[] values, String testSectionName,
+            Map<String, Integer> localizationColumns) {
+
+        Map<String, String> translations = buildTranslationsMap(values, testSectionName, localizationColumns);
+
         Localization localization = section.getLocalization();
-        if (localization != null) {
-            if (!englishName.isEmpty()) {
-                localization.setEnglish(englishName);
-            }
-            if (!frenchName.isEmpty()) {
-                localization.setFrench(frenchName);
-            }
+        if (localization == null) {
+            // Create new localization
+            localization = new Localization();
+            localization.setDescription("test section name");
+            localization.setEnglish(translations.getOrDefault("en", testSectionName));
+            localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", testSectionName)));
             localization.setSysUserId("1");
-            localizationService.update(localization);
+            String localizationId = localizationService.insert(localization);
+            localization.setId(localizationId);
+            section.setLocalization(localization);
+
+            // Set all translations
+            for (Map.Entry<String, String> entry : translations.entrySet()) {
+                localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue());
+            }
+        } else {
+            // Update existing localization translations
+            String localizationId = localization.getId();
+            for (Map.Entry<String, String> entry : translations.entrySet()) {
+                localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue());
+            }
         }
     }
 }
