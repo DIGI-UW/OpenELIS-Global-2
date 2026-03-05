@@ -246,7 +246,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getResultsForAnalysisIdList_shouldReturnResultsForAnalysisIdList() {
-        List<Integer> analysisIdList = List.of(1, 2);
+        List<String> analysisIdList = List.of("1", "2");
         List<Result> results = resultService.getResultsForAnalysisIdList(analysisIdList);
         assertNotNull(results);
         assertEquals(2, results.size());
@@ -257,7 +257,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getResultForAnalyteInAnalysisSet_shouldReturnResultForAnalyteInAnalysisSet() {
         String analyteId = analyteService.get("3").getId();
-        List<Integer> analysisIDList = List.of(1, 2);
+        List<String> analysisIDList = List.of("1", "2");
         Result result = resultService.getResultForAnalyteInAnalysisSet(analyteId, analysisIDList);
         assertNotNull(result);
         assertEquals("3", result.getId());

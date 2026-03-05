@@ -91,8 +91,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAnalysesBySampleIdExcludedByStatusId_shouldReturnAnalysis() throws Exception {
-        Set<Integer> statusIds = new HashSet<>();
-        statusIds.add(2);
+        Set<String> statusIds = new HashSet<>();
+        statusIds.add("2");
         List<Analysis> analyses = aService.getAnalysesBySampleIdExcludedByStatusId("1", statusIds);
         Assert.assertNotNull(analyses);
         Assert.assertEquals(1, analyses.size());
@@ -101,7 +101,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAnalysisByTestIdAndTestSectionIdsAndStartedInDateRange_shouldReturnAnalysis() throws Exception {
-        List<Integer> testSectionIds = Arrays.asList(1);
+        List<String> testSectionIds = Arrays.asList("1");
         Date sqlDayOne = Date.valueOf("2023-11-15");
         Date sqlDayTwo = Date.valueOf("2023-11-16");
         List<Analysis> analyses = aService.getAnalysisByTestIdAndTestSectionIdsAndStartedInDateRange(sqlDayOne,
@@ -124,9 +124,9 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAnalysesBySampleIdTestIdAndStatusId_shouldReturnAnalysis() throws Exception {
-        List<Integer> testSectionIds = Arrays.asList(1, 2);
-        List<Integer> sampleIdList = Arrays.asList(1, 2);
-        List<Integer> statusIdList = Arrays.asList(1, 2);
+        List<String> testSectionIds = Arrays.asList("1", "2");
+        List<String> sampleIdList = Arrays.asList("1", "2");
+        List<String> statusIdList = Arrays.asList("1", "2");
         List<Analysis> analyses = aService.getAnalysesBySampleIdTestIdAndStatusId(sampleIdList, testSectionIds,
                 statusIdList);
 
@@ -139,8 +139,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getAnalysesBySampleItemsExcludingByStatusIds_shouldReturngAnalysesBySampleItemsExcludingByStatusIds() {
         SampleItem sampleItem = sampleItemService.get("1");
-        Set<Integer> statusIds = new HashSet<>();
-        statusIds.add(2);
+        Set<String> statusIds = new HashSet<>();
+        statusIds.add("2");
         List<Analysis> analyses = aService.getAnalysesBySampleItemsExcludingByStatusIds(sampleItem, statusIds);
         Assert.assertNotNull(analyses);
         Assert.assertEquals(1, analyses.size());
@@ -160,8 +160,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAnalysesBySampleStatusIdExcludingByStatusId_shouldReturnAnalysis() throws Exception {
-        Set<Integer> statusIds = new HashSet<>();
-        statusIds.add(2);
+        Set<String> statusIds = new HashSet<>();
+        statusIds.add("2");
         List<Analysis> analyses = aService.getAnalysesBySampleStatusIdExcludingByStatusId("1", statusIds);
         Assert.assertNotNull(analyses);
         Assert.assertEquals(1, analyses.size());
@@ -189,7 +189,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllAnalysisByTestAndExcludedStatus_shouldReturnAnalysis() throws Exception {
-        List<Integer> statusIdList = Arrays.asList(2);
+        List<String> statusIdList = Arrays.asList("2");
         List<Analysis> analyses = aService.getAllAnalysisByTestSectionAndExcludedStatus("1", statusIdList);
 
         Assert.assertNotNull(analyses);
@@ -217,8 +217,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAnalysesBySampleIdAndStatusId_shouldReturnAnalysis() throws Exception {
-        Set<Integer> statusIds = new HashSet<>();
-        statusIds.add(1);
+        Set<String> statusIds = new HashSet<>();
+        statusIds.add("1");
         List<Analysis> analyses = aService.getAnalysesBySampleIdAndStatusId("1", statusIds);
         Assert.assertNotNull(analyses);
         Assert.assertEquals(1, analyses.size());
@@ -227,7 +227,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAnalysesByPriorityAndStatusId_shouldReturnAnalysis() throws Exception {
-        List<Integer> statusIdList = Arrays.asList(1, 2);
+        List<String> statusIdList = Arrays.asList("1", "2");
         List<Analysis> analyses = aService.getAnalysesByPriorityAndStatusId(OrderPriority.ROUTINE, statusIdList);
         Assert.assertNotNull(analyses);
         Assert.assertEquals(2, analyses.size());
@@ -254,7 +254,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAnalysisBySampleAndTestIds_shouldReturnAnalysis() throws Exception {
-        List<Integer> testIds = Arrays.asList(1);
+        List<String> testIds = Arrays.asList("1");
         List<Analysis> analyses = aService.getAnalysisBySampleAndTestIds("1", testIds);
         Assert.assertNotNull(analyses);
         Assert.assertEquals(1, analyses.size());
@@ -287,7 +287,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getCountOfAnalysesForStatusIds_shouldReturnAnalysisCount() throws Exception {
-        List<Integer> statusIdList = Arrays.asList(1, 2);
+        List<String> statusIdList = Arrays.asList("1", "2");
         int analyses = aService.getCountOfAnalysesForStatusIds(statusIdList);
         Assert.assertNotNull(analyses);
         Assert.assertEquals(2, analyses);
@@ -311,7 +311,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllAnalysisByTestAndStatus_shouldReturnAnalysis() throws Exception {
-        List<Integer> statusIdList = Arrays.asList(1);
+        List<String> statusIdList = Arrays.asList("1");
         List<Analysis> analyses = aService.getAllAnalysisByTestAndStatus("1", statusIdList);
         Assert.assertNotNull(analyses);
         Assert.assertEquals(1, analyses.size());
@@ -320,7 +320,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllAnalysisByTestsAndStatus_shouldReturnAnalysis() throws Exception {
-        List<Integer> statusIdList = Arrays.asList(1, 2);
+        List<String> statusIdList = Arrays.asList("1", "2");
         List<String> testIdList = Arrays.asList("1", "2");
         List<Analysis> analyses = aService.getAllAnalysisByTestsAndStatus(testIdList, statusIdList);
         Assert.assertNotNull(analyses);
@@ -373,6 +373,49 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         Analysis updatedAnalysis = aService.update(analysis);
         Assert.assertEquals(analysis.getId(), updatedAnalysis.getId());
         Assert.assertEquals("resultfile.txt", updatedAnalysis.getResultFile().getFileName());
+    }
+
+    @Test
+    public void getAllAnalysisByTestIdAndExcludedStatus_shouldReturnAnalysis() throws Exception {
+        List<String> statusIdList = Arrays.asList("2");
+        List<Analysis> analyses = aService.getAllAnalysisByTestAndExcludedStatus("1", statusIdList);
+        Assert.assertNotNull(analyses);
+        Assert.assertEquals(1, analyses.size());
+        Assert.assertEquals("ROUTINE", analyses.get(0).getAnalysisType());
+    }
+
+    @Test
+    public void get_shouldReturnAnalysesForIdList() {
+        List<Analysis> analyses = aService.get(Arrays.asList("1", "2"));
+        Assert.assertNotNull(analyses);
+        Assert.assertEquals(2, analyses.size());
+    }
+
+    @Test
+    public void get_shouldReturnEmptyForEmptyIdList() {
+        List<Analysis> analyses = aService.get(Arrays.asList());
+        Assert.assertNotNull(analyses);
+        Assert.assertTrue(analyses.isEmpty());
+    }
+
+    @Test
+    public void getAllAnalysisByTestSectionAndStatus_withSortedByDate_shouldReturnAnalysis() throws Exception {
+        List<String> statusIdList = Arrays.asList("1");
+        List<Analysis> analyses = aService.getAllAnalysisByTestSectionAndStatus("1", statusIdList, true);
+        Assert.assertNotNull(analyses);
+        Assert.assertEquals(1, analyses.size());
+        Assert.assertEquals("ROUTINE", analyses.get(0).getAnalysisType());
+    }
+
+    @Test
+    public void getAllAnalysisByTestsAndStatus_withThreeLists_shouldReturnAnalysis() throws Exception {
+        List<String> testIdList = Arrays.asList("1", "2");
+        List<String> analysisStatusList = Arrays.asList("1", "2");
+        List<String> sampleStatusList = Arrays.asList("1", "2");
+        List<Analysis> analyses = aService.getAllAnalysisByTestsAndStatus(testIdList, analysisStatusList,
+                sampleStatusList);
+        Assert.assertNotNull(analyses);
+        Assert.assertEquals(2, analyses.size());
     }
 
     public Analysis createDemoAnalysis() {

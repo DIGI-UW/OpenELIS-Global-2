@@ -32,7 +32,7 @@ public class WorkplanRestController extends BaseRestController {
     @Autowired
     protected TestService testService;
 
-    protected static List<Integer> statusList;
+    protected static List<String> statusList;
     protected static boolean useReceptionTime = FormFields.getInstance().useField(Field.SampleEntryUseReceptionHour);
     protected static List<String> nfsTestIdList;
 
@@ -40,14 +40,11 @@ public class WorkplanRestController extends BaseRestController {
     private void initialize() {
         if (statusList == null) {
             statusList = new ArrayList<>();
-            statusList.add(Integer
-                    .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted)));
-            statusList.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
-            statusList.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
-            statusList.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated)));
+            statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
+            statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
+            statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
+            statusList.add(
+                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated));
         }
 
         if (nfsTestIdList == null) {

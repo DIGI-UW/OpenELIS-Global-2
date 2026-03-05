@@ -2,6 +2,7 @@ package org.openelisglobal.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -70,7 +71,7 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getTestsByTestSectionIds_ShouldReturnTestsByTestSectionIds() {
-        List<org.openelisglobal.test.valueholder.Test> tests = testService.getTestsByTestSectionIds(List.of(1, 2));
+        List<org.openelisglobal.test.valueholder.Test> tests = testService.getTestsByTestSectionIds(List.of("1", "2"));
         assertEquals(2, tests.size());
     }
 
@@ -282,6 +283,14 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
         org.openelisglobal.test.valueholder.Test test2 = testService.getTestByLocalizedName("Urinalysis",
                 Locale.FRENCH);
         assertEquals("Urine Test", test2.getDescription());
+    }
+
+    @Test
+    public void getPageOfSearchedTests_shouldReturnMatchingTests() {
+        List<org.openelisglobal.test.valueholder.Test> tests = testService.getPageOfSearchedTests(1, "*Blood*");
+        assertNotNull(tests);
+        assertTrue(tests.size() >= 1);
+        assertEquals("Blood Test", tests.get(0).getDescription());
     }
 
 }

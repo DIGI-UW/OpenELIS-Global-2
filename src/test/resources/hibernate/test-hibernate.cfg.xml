@@ -15,7 +15,6 @@
         <property name="hibernate.jdbc.batch_versioned_data">true</property>
         <!-- <property name="transaction.factory_class">org.hibernate.transaction.JDBCTransactionFactory</property>
             <property name="current_session_context_class">thread</property> -->
-        <property name="hibernate.query.factory_class">org.hibernate.hql.internal.classic.ClassicQueryTranslatorFactory</property>
         <property name="hibernate.cache.provider_class">org.hibernate.cache.NoCacheProvider</property>
         <property name="hibernate.cache.use_second_level_cache">false</property>
         <property name="hibernate.cache.use_query_cache">false</property>

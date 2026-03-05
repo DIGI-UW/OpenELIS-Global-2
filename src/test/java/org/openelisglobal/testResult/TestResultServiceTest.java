@@ -1,6 +1,8 @@
 package org.openelisglobal.testResult;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -10,6 +12,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -246,6 +249,35 @@ public class TestResultServiceTest extends BaseWebContextSensitiveTest {
         List<TestResult> testResults = testResultService.getAll();
         assertEquals(1, testResults.size());
         assertEquals("2", testResults.get(0).getId());
+    }
+
+    @Test
+    public void getTestResultsByTestAndResultGroup_shouldReturnMatchingResults() {
+        org.openelisglobal.test.valueholder.Test test = testService.get("1");
+        TestAnalyte testAnalyte = new TestAnalyte();
+        testAnalyte.setId("1");
+        testAnalyte.setTest(test);
+        testAnalyte.setResultGroup("1");
+        List<TestResult> results = testResultService.getTestResultsByTestAndResultGroup(testAnalyte);
+        assertNotNull(results);
+        assertEquals(1, results.size());
+        assertEquals("1", results.get(0).getId());
+    }
+
+    @Test
+    public void getTestResultsByTestAndResultGroup_shouldReturnEmptyForNullId() {
+        TestAnalyte testAnalyte = new TestAnalyte();
+        testAnalyte.setId(null);
+        testAnalyte.setResultGroup("1");
+        List<TestResult> results = testResultService.getTestResultsByTestAndResultGroup(testAnalyte);
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    public void getTestResultsByTestAndDictonaryResult_shouldReturnNullForNonDictionaryType() {
+        TestResult result = testResultService.getTestResultsByTestAndDictonaryResult("1", "1");
+        assertNull(result);
     }
 
 }

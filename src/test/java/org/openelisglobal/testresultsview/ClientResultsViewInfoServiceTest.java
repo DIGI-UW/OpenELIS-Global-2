@@ -31,7 +31,7 @@ public class ClientResultsViewInfoServiceTest extends BaseWebContextSensitiveTes
         executeDataSetWithStateManagement("testdata/client-results-view.xml");
 
         propertyValues = new HashMap<>();
-        propertyValues.put("result", 1001);
+        propertyValues.put("result.id", 1001);
         orderProperties = new ArrayList<>();
         orderProperties.add("password");
     }

@@ -123,7 +123,7 @@ public class BarcodeLabelMaker {
         return barcodeLabelService;
     }
 
-    private static final Set<Integer> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
+    private static final Set<String> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
     private static volatile boolean initialized = false;
 
     /**
@@ -134,7 +134,7 @@ public class BarcodeLabelMaker {
      * @return Set containing the status ID for SampleStatus.Entered, or empty set
      *         if initialization fails
      */
-    private static Set<Integer> getEnteredStatusSampleList() {
+    private static Set<String> getEnteredStatusSampleList() {
         if (!initialized) {
             synchronized (ENTERED_STATUS_SAMPLE_LIST) {
                 if (!initialized) {
@@ -144,10 +144,7 @@ public class BarcodeLabelMaker {
                             String statusId = statusService.getStatusID(SampleStatus.Entered);
 
                             if (statusId != null && !statusId.equals("-1") && !statusId.trim().isEmpty()) {
-                                int parsed = BarcodeConfigUtil.parseIntSafe(statusId, -1);
-                                if (parsed >= 0) {
-                                    ENTERED_STATUS_SAMPLE_LIST.add(parsed);
-                                }
+                                ENTERED_STATUS_SAMPLE_LIST.add(statusId);
                             } else {
                                 LogEvent.logError("BarcodeLabelMaker", "getEnteredStatusSampleList",
                                         "SampleStatus.Entered not found in database. Status ID: " + statusId);

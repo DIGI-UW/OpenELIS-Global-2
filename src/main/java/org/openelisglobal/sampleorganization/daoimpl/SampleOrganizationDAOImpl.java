@@ -83,7 +83,7 @@ public class SampleOrganizationDAOImpl extends BaseDAOImpl<SampleOrganization, S
             String sql = "from SampleOrganization so where samp_id = :param";
             Query<SampleOrganization> query = entityManager.unwrap(Session.class).createQuery(sql,
                     SampleOrganization.class);
-            query.setParameter("param", Integer.valueOf(sampleOrganization.getSample().getId()));
+            query.setParameter("param", sampleOrganization.getSample().getId());
             List<SampleOrganization> list = query.list();
             SampleOrganization so = null;
             if (list.size() > 0) {
@@ -104,7 +104,7 @@ public class SampleOrganizationDAOImpl extends BaseDAOImpl<SampleOrganization, S
         try {
             Query<SampleOrganization> query = entityManager.unwrap(Session.class).createQuery(sql,
                     SampleOrganization.class);
-            query.setParameter("sampleId", Integer.parseInt(sample.getId()));
+            query.setParameter("sampleId", sample.getId());
             List<SampleOrganization> sampleOrg = query.list();
             // There was a bug that allowed the same sample id / organization id to be
             // entered twice

@@ -228,8 +228,11 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getSamplesByStatusAndDomain_shouldReturnList() {
-        List<String> statuses = Arrays.asList("entered", "released");
-        List<Sample> results = sampleService.getSamplesByStatusAndDomain(statuses, "clinical");
+        // status column is NUMERIC (mapped via LIMSStringNumberUserType), so values
+        // must be numeric ID strings
+        // domain column is a single character (e.g. "H" for human)
+        List<String> statuses = Arrays.asList("1", "2");
+        List<Sample> results = sampleService.getSamplesByStatusAndDomain(statuses, "H");
         Assert.assertTrue(results.stream().allMatch(s -> statuses.contains(s.getStatus())));
     }
 

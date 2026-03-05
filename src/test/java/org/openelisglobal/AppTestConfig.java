@@ -1,6 +1,8 @@
 package org.openelisglobal;
 
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import ca.uhn.fhir.context.FhirContext;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -121,7 +123,11 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean
     @Profile("test")
     public TextEncryptor textEncryptor() {
-        return mock(TextEncryptor.class);
+        TextEncryptor encryptor = mock(TextEncryptor.class);
+        // Return input unchanged so JPA @Convert works with plain-text test data
+        when(encryptor.encrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(encryptor.decrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        return encryptor;
     }
 
     @Bean()

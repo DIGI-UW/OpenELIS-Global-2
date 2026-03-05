@@ -137,12 +137,12 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
         try {
             if (testAnalyte.getId() != null && testAnalyte.getResultGroup() != null) {
                 // bugzilla 1845 added testResult sortOrder
-                String sql = "from TestResult t where t.test = :testId and t.resultGroup = :resultGroup order by"
+                String sql = "from TestResult t where t.test.id = :testId and t.resultGroup = :resultGroup order by"
                         + " t.sortOrder";
                 Query<TestResult> query = entityManager.unwrap(Session.class).createQuery(sql, TestResult.class);
 
-                query.setParameter("testId", Integer.parseInt(testAnalyte.getTest().getId()));
-                query.setParameter("resultGroup", Integer.parseInt(testAnalyte.getResultGroup()));
+                query.setParameter("testId", testAnalyte.getTest().getId());
+                query.setParameter("resultGroup", testAnalyte.getResultGroup());
 
                 list = query.list();
             }
@@ -165,10 +165,10 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
 
         List<TestResult> list;
         try {
-            String sql = "from TestResult t where t.test = :testId and t.isActive = true order by t.resultGroup,"
+            String sql = "from TestResult t where t.test.id = :testId and t.isActive = true order by t.resultGroup,"
                     + " t.id asc";
             Query<TestResult> query = entityManager.unwrap(Session.class).createQuery(sql, TestResult.class);
-            query.setParameter("testId", Integer.parseInt(test.getId()));
+            query.setParameter("testId", test.getId());
 
             list = query.list();
         } catch (RuntimeException e) {
@@ -185,10 +185,10 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
         if (StringUtil.isInteger(result)) {
             List<TestResult> list;
             try {
-                String sql = "from TestResult t where  t.testResultType in ('D','M','Q') and t.test = :testId and"
+                String sql = "from TestResult t where  t.testResultType in ('D','M','Q') and t.test.id = :testId and"
                         + " t.value = :testValue";
                 Query<TestResult> query = entityManager.unwrap(Session.class).createQuery(sql, TestResult.class);
-                query.setParameter("testId", Integer.parseInt(testId));
+                query.setParameter("testId", testId);
                 query.setParameter("testValue", result);
 
                 list = query.list();
@@ -213,9 +213,9 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
     public List<TestResult> getActiveTestResultsByTest(String testId) throws LIMSRuntimeException {
         List<TestResult> list;
         try {
-            String sql = "from TestResult t where  t.test = :testId and t.isActive = true";
+            String sql = "from TestResult t where  t.test.id = :testId and t.isActive = true";
             Query<TestResult> query = entityManager.unwrap(Session.class).createQuery(sql, TestResult.class);
-            query.setParameter("testId", Integer.parseInt(testId));
+            query.setParameter("testId", testId);
 
             list = query.list();
 

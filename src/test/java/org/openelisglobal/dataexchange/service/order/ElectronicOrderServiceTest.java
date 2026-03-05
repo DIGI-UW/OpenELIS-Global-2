@@ -278,17 +278,17 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getCountOfElectronicOrdersByStatusList_ShouldReturnElectronicOrders_UsingListOfStatusIds() {
-        List<Integer> statusIds = new ArrayList<>();
-        statusIds.add(1);
+        List<String> statusIds = new ArrayList<>();
+        statusIds.add("1");
         NUMBER_OF_ELECTRONIC_ORDERS = electronicOrderService.getCountOfElectronicOrdersByStatusList(statusIds);
         assertEquals(2, NUMBER_OF_ELECTRONIC_ORDERS);
     }
 
     @Test
     public void getAllElectronicOrdersByStatusList_ShouldReturnElectronicOrders_WhenOrderIsSTATUS_ID() {
-        List<Integer> statusIds = new ArrayList<>();
-        statusIds.add(1);
-        statusIds.add(3);
+        List<String> statusIds = new ArrayList<>();
+        statusIds.add("1");
+        statusIds.add("3");
         electronicOrders = electronicOrderService.getAllElectronicOrdersByStatusList(statusIds,
                 ElectronicOrder.SortOrder.STATUS_ID);
         assertNotNull(electronicOrders);
@@ -298,9 +298,9 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllElectronicOrdersByStatusList_ShouldReturnElectronicOrders_WhenOrderIsLAST_UPDATED_ASC() {
-        List<Integer> statusIds = new ArrayList<>();
-        statusIds.add(1);
-        statusIds.add(3);
+        List<String> statusIds = new ArrayList<>();
+        statusIds.add("1");
+        statusIds.add("3");
         electronicOrders = electronicOrderService.getAllElectronicOrdersByStatusList(statusIds,
                 ElectronicOrder.SortOrder.LAST_UPDATED_ASC);
         assertNotNull(electronicOrders);
@@ -310,9 +310,9 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllElectronicOrdersByStatusList_ShouldReturnElectronicOrders_WhenOrderIsLAST_UPDATED_DESC() {
-        List<Integer> statusIds = new ArrayList<>();
-        statusIds.add(1);
-        statusIds.add(3);
+        List<String> statusIds = new ArrayList<>();
+        statusIds.add("1");
+        statusIds.add("3");
         electronicOrders = electronicOrderService.getAllElectronicOrdersByStatusList(statusIds,
                 ElectronicOrder.SortOrder.LAST_UPDATED_DESC);
         assertNotNull(electronicOrders);
@@ -322,9 +322,9 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllElectronicOrdersByStatusList_ShouldReturnElectronicOrders_WhenOrderIsEXTERNAL_ID() {
-        List<Integer> statusIds = new ArrayList<>();
-        statusIds.add(1);
-        statusIds.add(3);
+        List<String> statusIds = new ArrayList<>();
+        statusIds.add("1");
+        statusIds.add("3");
         electronicOrders = electronicOrderService.getAllElectronicOrdersByStatusList(statusIds,
                 ElectronicOrder.SortOrder.EXTERNAL_ID);
         assertNotNull(electronicOrders);

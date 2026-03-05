@@ -36,10 +36,10 @@ import org.owasp.encoder.Encode;
 
 public class PendingAnalysisForTestProvider extends BaseQueryProvider {
 
-    private static final List<Integer> NOT_STARTED;
-    private static final List<Integer> TECH_REJECT;
-    private static final List<Integer> BIO_REJECT;
-    private static final List<Integer> NOT_VALIDATED;
+    private static final List<String> NOT_STARTED;
+    private static final List<String> TECH_REJECT;
+    private static final List<String> BIO_REJECT;
+    private static final List<String> NOT_VALIDATED;
 
     protected AjaxServlet ajaxServlet = null;
     private AnalysisService analysisService = SpringContext.getBean(AnalysisService.class);
@@ -47,17 +47,16 @@ public class PendingAnalysisForTestProvider extends BaseQueryProvider {
     static {
         IStatusService statusService = SpringContext.getBean(IStatusService.class);
         NOT_STARTED = new ArrayList<>();
-        NOT_STARTED.add(Integer.parseInt(statusService.getStatusID(StatusService.AnalysisStatus.NotStarted)));
+        NOT_STARTED.add(statusService.getStatusID(StatusService.AnalysisStatus.NotStarted));
 
         TECH_REJECT = new ArrayList<>();
-        TECH_REJECT.add(Integer.parseInt(statusService.getStatusID(StatusService.AnalysisStatus.TechnicalRejected)));
+        TECH_REJECT.add(statusService.getStatusID(StatusService.AnalysisStatus.TechnicalRejected));
 
         BIO_REJECT = new ArrayList<>();
-        BIO_REJECT.add(Integer.parseInt(statusService.getStatusID(StatusService.AnalysisStatus.BiologistRejected)));
+        BIO_REJECT.add(statusService.getStatusID(StatusService.AnalysisStatus.BiologistRejected));
 
         NOT_VALIDATED = new ArrayList<>();
-        NOT_VALIDATED
-                .add(Integer.parseInt(statusService.getStatusID(StatusService.AnalysisStatus.TechnicalAcceptance)));
+        NOT_VALIDATED.add(statusService.getStatusID(StatusService.AnalysisStatus.TechnicalAcceptance));
     }
 
     @Override
@@ -101,7 +100,7 @@ public class PendingAnalysisForTestProvider extends BaseQueryProvider {
         return VALID;
     }
 
-    private void createPendingList(String testId, JSONObject jsonResult, String tag, List<Integer> statusList) {
+    private void createPendingList(String testId, JSONObject jsonResult, String tag, List<String> statusList) {
         List<Analysis> notStartedAnalysis = analysisService.getAllAnalysisByTestAndStatus(testId, statusList);
 
         JSONArray analysisArray = new JSONArray();

@@ -100,8 +100,8 @@ public class SampleItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getSampleItemsBySampleIdAndStatus_shouldReturnSampleItemsBySampleIdAndStatus() {
-        Set<Integer> includedStatusList = new HashSet<>();
-        includedStatusList.add(3);
+        Set<String> includedStatusList = new HashSet<>();
+        includedStatusList.add("3");
 
         List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleIdAndStatus("3", includedStatusList);
 
