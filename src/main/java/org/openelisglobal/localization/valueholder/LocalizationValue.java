@@ -19,9 +19,9 @@ package org.openelisglobal.localization.valueholder;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * Represents a single translation value for a specific locale.
- * Each Localization entry can have multiple LocalizationValue entries,
- * one per supported language.
+ * Represents a single translation value for a specific locale. Each
+ * Localization entry can have multiple LocalizationValue entries, one per
+ * supported language.
  */
 public class LocalizationValue extends BaseObject<String> {
 

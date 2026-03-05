@@ -35,7 +35,7 @@ public interface LocalizationValueDAO extends BaseDAO<LocalizationValue, String>
      * Get a specific translation value for a localization and locale.
      *
      * @param localizationId the ID of the parent Localization
-     * @param locale the locale code (e.g., "en", "fr")
+     * @param locale         the locale code (e.g., "en", "fr")
      * @return the LocalizationValue if found
      */
     Optional<LocalizationValue> getByLocalizationIdAndLocale(String localizationId, String locale);

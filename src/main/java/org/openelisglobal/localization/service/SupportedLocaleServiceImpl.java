@@ -54,9 +54,7 @@ public class SupportedLocaleServiceImpl extends BaseObjectServiceImpl<SupportedL
     @Override
     @Transactional(readOnly = true)
     public List<Locale> getAllActiveAsLocales() {
-        return getAllActive().stream()
-                .map(SupportedLocale::toLocale)
-                .collect(Collectors.toList());
+        return getAllActive().stream().map(SupportedLocale::toLocale).collect(Collectors.toList());
     }
 
     @Override
@@ -68,9 +66,7 @@ public class SupportedLocaleServiceImpl extends BaseObjectServiceImpl<SupportedL
     @Override
     @Transactional(readOnly = true)
     public String getFallbackLocaleCode() {
-        return getFallback()
-                .map(SupportedLocale::getLocaleCode)
-                .orElse(DEFAULT_FALLBACK_LOCALE);
+        return getFallback().map(SupportedLocale::getLocaleCode).orElse(DEFAULT_FALLBACK_LOCALE);
     }
 
     @Override

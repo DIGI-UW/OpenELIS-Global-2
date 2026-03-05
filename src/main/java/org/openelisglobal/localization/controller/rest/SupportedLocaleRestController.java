@@ -36,8 +36,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for managing supported locales/languages.
- * Allows administrators to add, remove, and configure available languages.
+ * REST controller for managing supported locales/languages. Allows
+ * administrators to add, remove, and configure available languages.
  */
 @RestController
 @RequestMapping("/rest/supportedlocales")
@@ -54,9 +54,7 @@ public class SupportedLocaleRestController extends BaseController {
     @GetMapping
     public ResponseEntity<List<SupportedLocaleDTO>> getAllLocales() {
         List<SupportedLocale> locales = supportedLocaleService.getAll();
-        List<SupportedLocaleDTO> dtos = locales.stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
+        List<SupportedLocaleDTO> dtos = locales.stream().map(this::toDTO).collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
 
@@ -68,9 +66,7 @@ public class SupportedLocaleRestController extends BaseController {
     @GetMapping("/active")
     public ResponseEntity<List<SupportedLocaleDTO>> getActiveLocales() {
         List<SupportedLocale> locales = supportedLocaleService.getAllActive();
-        List<SupportedLocaleDTO> dtos = locales.stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
+        List<SupportedLocaleDTO> dtos = locales.stream().map(this::toDTO).collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
 
@@ -98,8 +94,7 @@ public class SupportedLocaleRestController extends BaseController {
     @GetMapping("/fallback")
     public ResponseEntity<SupportedLocaleDTO> getFallbackLocale() {
         Optional<SupportedLocale> fallback = supportedLocaleService.getFallback();
-        return fallback.map(locale -> ResponseEntity.ok(toDTO(locale)))
-                .orElse(ResponseEntity.notFound().build());
+        return fallback.map(locale -> ResponseEntity.ok(toDTO(locale))).orElse(ResponseEntity.notFound().build());
     }
 
     /**
@@ -137,7 +132,7 @@ public class SupportedLocaleRestController extends BaseController {
     /**
      * Update an existing locale.
      *
-     * @param id the locale ID
+     * @param id  the locale ID
      * @param dto the updated locale data
      * @return the updated locale
      */
@@ -194,8 +189,8 @@ public class SupportedLocaleRestController extends BaseController {
 
             // Don't allow deleting the fallback locale
             if (existing.isFallback()) {
-                return ResponseEntity.badRequest()
-                        .body(new ErrorResponse("Cannot delete the fallback locale. Set another locale as fallback first."));
+                return ResponseEntity.badRequest().body(
+                        new ErrorResponse("Cannot delete the fallback locale. Set another locale as fallback first."));
             }
 
             supportedLocaleService.delete(existing);

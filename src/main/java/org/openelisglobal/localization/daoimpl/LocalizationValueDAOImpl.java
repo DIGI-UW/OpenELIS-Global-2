@@ -28,8 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class LocalizationValueDAOImpl extends BaseDAOImpl<LocalizationValue, String>
-        implements LocalizationValueDAO {
+public class LocalizationValueDAOImpl extends BaseDAOImpl<LocalizationValue, String> implements LocalizationValueDAO {
 
     public LocalizationValueDAOImpl() {
         super(LocalizationValue.class);

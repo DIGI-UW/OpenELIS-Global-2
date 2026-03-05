@@ -1396,8 +1396,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             return new ArrayList<>();
         }
 
-        String sql = "SELECT DISTINCT a.* FROM clinlims.analysis a"
-                + " JOIN clinlims.test t ON a.test_id = t.id"
+        String sql = "SELECT DISTINCT a.* FROM clinlims.analysis a" + " JOIN clinlims.test t ON a.test_id = t.id"
                 + " JOIN clinlims.localization l ON t.name_localization_id = l.id"
                 + " JOIN clinlims.localization_value lv ON l.id = lv.localization_id"
                 + " WHERE lv.value IN (:testNames) AND a.completed_date BETWEEN :lowDate AND :highDate";

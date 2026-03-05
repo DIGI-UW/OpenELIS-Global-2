@@ -74,9 +74,7 @@ public class LocalizationRestController extends BaseController {
             localizations = localizationService.getAll();
         }
 
-        List<LocalizationDTO> dtos = localizations.stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
+        List<LocalizationDTO> dtos = localizations.stream().map(this::toDTO).collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
 
@@ -109,9 +107,8 @@ public class LocalizationRestController extends BaseController {
 
         for (Localization loc : allLocalizations) {
             Map<String, LocalizationValue> values = loc.getValues();
-            if (values == null || !values.containsKey(locale) ||
-                    values.get(locale).getValue() == null ||
-                    values.get(locale).getValue().isEmpty()) {
+            if (values == null || !values.containsKey(locale) || values.get(locale).getValue() == null
+                    || values.get(locale).getValue().isEmpty()) {
                 missing.add(toDTO(loc));
             }
         }
@@ -141,9 +138,8 @@ public class LocalizationRestController extends BaseController {
 
             for (Localization loc : allLocalizations) {
                 Map<String, LocalizationValue> values = loc.getValues();
-                if (values != null && values.containsKey(localeCode) &&
-                        values.get(localeCode).getValue() != null &&
-                        !values.get(localeCode).getValue().isEmpty()) {
+                if (values != null && values.containsKey(localeCode) && values.get(localeCode).getValue() != null
+                        && !values.get(localeCode).getValue().isEmpty()) {
                     translated++;
                 } else {
                     missing++;
@@ -166,13 +162,12 @@ public class LocalizationRestController extends BaseController {
     /**
      * Update translations for a localization entry.
      *
-     * @param id the localization ID
+     * @param id           the localization ID
      * @param translations map of locale code to translation value
      * @return the updated localization
      */
     @PutMapping("/{id}/translations")
-    public ResponseEntity<?> updateTranslations(
-            @PathVariable String id,
+    public ResponseEntity<?> updateTranslations(@PathVariable String id,
             @RequestBody Map<String, String> translations) {
         try {
             Localization localization = localizationService.get(id);
@@ -207,15 +202,13 @@ public class LocalizationRestController extends BaseController {
     /**
      * Set a single translation for a localization entry.
      *
-     * @param id the localization ID
-     * @param locale the locale code
+     * @param id      the localization ID
+     * @param locale  the locale code
      * @param request the translation value
      * @return the updated localization
      */
     @PostMapping("/{id}/translations/{locale}")
-    public ResponseEntity<?> setTranslation(
-            @PathVariable String id,
-            @PathVariable String locale,
+    public ResponseEntity<?> setTranslation(@PathVariable String id, @PathVariable String locale,
             @RequestBody TranslationRequest request) {
         try {
             Localization localization = localizationService.get(id);
@@ -259,8 +252,8 @@ public class LocalizationRestController extends BaseController {
                     Localization localization = localizationService.get(item.getId());
                     if (localization != null) {
                         for (Map.Entry<String, String> entry : item.getTranslations().entrySet()) {
-                            LocalizationValue lv = localizationValueService.setTranslation(
-                                    item.getId(), entry.getKey(), entry.getValue());
+                            LocalizationValue lv = localizationValueService.setTranslation(item.getId(), entry.getKey(),
+                                    entry.getValue());
                             lv.setSysUserId(sysUserId);
                         }
                         updated++;

@@ -29,7 +29,10 @@ import {
 } from "@carbon/react";
 import { Edit, Download, Upload, WarningAlt } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer, putToOpenElisServerFullResponse } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  putToOpenElisServerFullResponse,
+} from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
@@ -138,7 +141,7 @@ const TranslationManagement = () => {
             }),
           });
         }
-      }
+      },
     );
   };
 
@@ -150,7 +153,12 @@ const TranslationManagement = () => {
       (response) => {
         if (response) {
           // Convert to CSV
-          const headers = ["ID", "Description", "Fallback Value", "Translation"];
+          const headers = [
+            "ID",
+            "Description",
+            "Fallback Value",
+            "Translation",
+          ];
           const rows = response.map((item) => [
             item.id,
             item.description || "",
@@ -161,7 +169,9 @@ const TranslationManagement = () => {
           const csv = [
             headers.join(","),
             ...rows.map((row) =>
-              row.map((cell) => `"${(cell || "").replace(/"/g, '""')}"`).join(",")
+              row
+                .map((cell) => `"${(cell || "").replace(/"/g, '""')}"`)
+                .join(","),
             ),
           ].join("\n");
 
@@ -183,7 +193,7 @@ const TranslationManagement = () => {
             }),
           });
         }
-      }
+      },
     );
   };
 
@@ -194,14 +204,14 @@ const TranslationManagement = () => {
       (item.description && item.description.toLowerCase().includes(search)) ||
       (item.id && item.id.includes(search)) ||
       Object.values(item.translations || {}).some(
-        (val) => val && val.toLowerCase().includes(search)
+        (val) => val && val.toLowerCase().includes(search),
       )
     );
   });
 
   const paginatedLocalizations = filteredLocalizations.slice(
     (currentPage - 1) * pageSize,
-    currentPage * pageSize
+    currentPage * pageSize,
   );
 
   const headers = [
@@ -290,37 +300,35 @@ const TranslationManagement = () => {
                   marginTop: "1rem",
                 }}
               >
-                {Object.entries(stats.localeStats || {}).map(
-                  ([code, stat]) => (
-                    <div
-                      key={code}
-                      style={{
-                        padding: "1rem",
-                        border: "1px solid #e0e0e0",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      <strong>
-                        {stat.displayName} ({code})
-                      </strong>
-                      <ProgressBar
-                        value={stat.percentage}
-                        max={100}
-                        helperText={`${stat.translated}/${stats.totalEntries} (${stat.percentage.toFixed(1)}%)`}
-                        style={{ marginTop: "0.5rem" }}
-                      />
-                      {stat.missing > 0 && (
-                        <Tag type="red" style={{ marginTop: "0.5rem" }}>
-                          {stat.missing}{" "}
-                          <FormattedMessage
-                            id="translation.missing"
-                            defaultMessage="missing"
-                          />
-                        </Tag>
-                      )}
-                    </div>
-                  )
-                )}
+                {Object.entries(stats.localeStats || {}).map(([code, stat]) => (
+                  <div
+                    key={code}
+                    style={{
+                      padding: "1rem",
+                      border: "1px solid #e0e0e0",
+                      borderRadius: "4px",
+                    }}
+                  >
+                    <strong>
+                      {stat.displayName} ({code})
+                    </strong>
+                    <ProgressBar
+                      value={stat.percentage}
+                      max={100}
+                      helperText={`${stat.translated}/${stats.totalEntries} (${stat.percentage.toFixed(1)}%)`}
+                      style={{ marginTop: "0.5rem" }}
+                    />
+                    {stat.missing > 0 && (
+                      <Tag type="red" style={{ marginTop: "0.5rem" }}>
+                        {stat.missing}{" "}
+                        <FormattedMessage
+                          id="translation.missing"
+                          defaultMessage="missing"
+                        />
+                      </Tag>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}

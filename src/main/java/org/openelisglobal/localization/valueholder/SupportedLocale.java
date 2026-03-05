@@ -20,8 +20,8 @@ import java.util.Locale;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * Represents a supported language/locale in the system.
- * This table drives which languages are available for metadata translations.
+ * Represents a supported language/locale in the system. This table drives which
+ * languages are available for metadata translations.
  */
 public class SupportedLocale extends BaseObject<String> {
 

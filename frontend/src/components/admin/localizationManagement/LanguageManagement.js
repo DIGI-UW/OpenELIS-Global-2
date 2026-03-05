@@ -166,7 +166,7 @@ const LanguageManagement = () => {
             }),
           });
         }
-      }
+      },
     );
   };
 
@@ -201,7 +201,7 @@ const LanguageManagement = () => {
             }),
           });
         }
-      }
+      },
     );
   };
 
@@ -327,15 +327,18 @@ const LanguageManagement = () => {
               onClick={handleAdd}
               size="sm"
             >
-              <FormattedMessage
-                id="locale.add"
-                defaultMessage="Add Language"
-              />
+              <FormattedMessage id="locale.add" defaultMessage="Add Language" />
             </Button>
           </div>
 
           <DataTable rows={locales} headers={headers}>
-            {({ rows, headers, getTableProps, getHeaderProps, getRowProps }) => (
+            {({
+              rows,
+              headers,
+              getTableProps,
+              getHeaderProps,
+              getRowProps,
+            }) => (
               <TableContainer>
                 <Table {...getTableProps()}>
                   <TableHead>

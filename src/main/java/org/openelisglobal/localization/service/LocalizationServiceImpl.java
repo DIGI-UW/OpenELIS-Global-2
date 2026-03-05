@@ -151,9 +151,7 @@ public class LocalizationServiceImpl extends AuditableBaseObjectServiceImpl<Loca
         try {
             List<SupportedLocale> activeLocales = supportedLocaleService.getAllActive();
             if (!activeLocales.isEmpty()) {
-                return activeLocales.stream()
-                        .map(SupportedLocale::toLocale)
-                        .collect(Collectors.toList());
+                return activeLocales.stream().map(SupportedLocale::toLocale).collect(Collectors.toList());
             }
         } catch (Exception e) {
             // Fall back to hardcoded values if the new table doesn't exist yet

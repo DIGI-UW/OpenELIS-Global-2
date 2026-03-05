@@ -39,16 +39,17 @@ public class Localization extends BaseObject<String> {
     private String description;
 
     /**
-     * New normalized translation values stored in localization_value table.
-     * Key is locale code (e.g., "en", "fr"), value is the LocalizationValue entity.
+     * New normalized translation values stored in localization_value table. Key is
+     * locale code (e.g., "en", "fr"), value is the LocalizationValue entity.
      */
     private Map<String, LocalizationValue> values = new HashMap<>();
 
     /**
-     * Legacy locale values map used by the old Hibernate mapping.
-     * This will be populated from the english/french columns during the transition period.
+     * Legacy locale values map used by the old Hibernate mapping. This will be
+     * populated from the english/french columns during the transition period.
      *
-     * @deprecated Use {@link #values} instead. This field will be removed after Phase 4.
+     * @deprecated Use {@link #values} instead. This field will be removed after
+     *             Phase 4.
      */
     @Deprecated
     private Map<Locale, String> localeValues = new HashMap<>();
@@ -85,8 +86,8 @@ public class Localization extends BaseObject<String> {
      * Get the French translation.
      *
      * @return the French translation, or empty string if not found
-     * @deprecated Use {@link #getLocalizedValue(Locale)} with Locale.FRENCH instead.
-     *             This method will be removed after Phase 4.
+     * @deprecated Use {@link #getLocalizedValue(Locale)} with Locale.FRENCH
+     *             instead. This method will be removed after Phase 4.
      */
     @Deprecated
     public String getFrench() {
@@ -108,8 +109,8 @@ public class Localization extends BaseObject<String> {
      * Set the French translation.
      *
      * @param french the French translation value
-     * @deprecated Use {@link #setLocalizedValue(String, String)} with "fr" locale instead.
-     *             This method will be removed after Phase 4.
+     * @deprecated Use {@link #setLocalizedValue(String, String)} with "fr" locale
+     *             instead. This method will be removed after Phase 4.
      */
     @Deprecated
     public void setFrench(String french) {
@@ -131,8 +132,8 @@ public class Localization extends BaseObject<String> {
      * Get the English translation.
      *
      * @return the English translation, or empty string if not found
-     * @deprecated Use {@link #getLocalizedValue(Locale)} with Locale.ENGLISH instead.
-     *             This method will be removed after Phase 4.
+     * @deprecated Use {@link #getLocalizedValue(Locale)} with Locale.ENGLISH
+     *             instead. This method will be removed after Phase 4.
      */
     @Deprecated
     public String getEnglish() {
@@ -154,8 +155,8 @@ public class Localization extends BaseObject<String> {
      * Set the English translation.
      *
      * @param english the English translation value
-     * @deprecated Use {@link #setLocalizedValue(String, String)} with "en" locale instead.
-     *             This method will be removed after Phase 4.
+     * @deprecated Use {@link #setLocalizedValue(String, String)} with "en" locale
+     *             instead. This method will be removed after Phase 4.
      */
     @Deprecated
     public void setEnglish(String english) {
@@ -177,7 +178,8 @@ public class Localization extends BaseObject<String> {
      * Get the legacy locale values map.
      *
      * @return map of Locale to translation value
-     * @deprecated Use {@link #getValues()} instead. This method will be removed after Phase 4.
+     * @deprecated Use {@link #getValues()} instead. This method will be removed
+     *             after Phase 4.
      */
     @Deprecated
     public Map<Locale, String> getLocaleValues() {
@@ -188,7 +190,8 @@ public class Localization extends BaseObject<String> {
      * Set the legacy locale values map.
      *
      * @param localeValues map of Locale to translation value
-     * @deprecated Use {@link #setValues(Map)} instead. This method will be removed after Phase 4.
+     * @deprecated Use {@link #setValues(Map)} instead. This method will be removed
+     *             after Phase 4.
      */
     @Deprecated
     public void setLocaleValues(Map<Locale, String> localeValues) {
@@ -213,8 +216,8 @@ public class Localization extends BaseObject<String> {
     }
 
     /**
-     * Get the localized value for a specific locale.
-     * Falls back to English if the requested locale is not found.
+     * Get the localized value for a specific locale. Falls back to English if the
+     * requested locale is not found.
      *
      * @param locale the desired locale
      * @return the translation, or empty string if not found
@@ -267,7 +270,7 @@ public class Localization extends BaseObject<String> {
      * Set the translation for a specific locale (legacy method).
      *
      * @param locale the locale
-     * @param value the translation value
+     * @param value  the translation value
      * @deprecated Use {@link #setLocalizedValue(String, String)} instead
      */
     @Deprecated
@@ -298,7 +301,7 @@ public class Localization extends BaseObject<String> {
      * Set the translation for a specific locale code.
      *
      * @param localeCode the locale code (e.g., "en", "fr")
-     * @param value the translation value
+     * @param value      the translation value
      */
     public void setLocalizedValue(String localeCode, String value) {
         // Update new values map

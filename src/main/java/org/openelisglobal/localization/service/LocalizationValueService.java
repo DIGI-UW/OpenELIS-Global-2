@@ -44,17 +44,17 @@ public interface LocalizationValueService extends BaseObjectService<Localization
      * Get a specific translation value for a localization and locale.
      *
      * @param localizationId the ID of the parent Localization
-     * @param locale the locale code (e.g., "en", "fr")
+     * @param locale         the locale code (e.g., "en", "fr")
      * @return the LocalizationValue if found
      */
     Optional<LocalizationValue> getByLocalizationIdAndLocale(String localizationId, String locale);
 
     /**
-     * Get the localized value for a localization entry.
-     * Falls back to the fallback locale (typically English) if not found.
+     * Get the localized value for a localization entry. Falls back to the fallback
+     * locale (typically English) if not found.
      *
      * @param localizationId the ID of the Localization
-     * @param locale the preferred locale code
+     * @param locale         the preferred locale code
      * @return the localized value, or empty string if not found
      */
     String getLocalizedValue(String localizationId, String locale);
@@ -63,8 +63,8 @@ public interface LocalizationValueService extends BaseObjectService<Localization
      * Set or update a translation value for a localization.
      *
      * @param localizationId the ID of the parent Localization
-     * @param locale the locale code
-     * @param value the translation value
+     * @param locale         the locale code
+     * @param value          the translation value
      * @return the saved LocalizationValue
      */
     LocalizationValue setTranslation(String localizationId, String locale, String value);

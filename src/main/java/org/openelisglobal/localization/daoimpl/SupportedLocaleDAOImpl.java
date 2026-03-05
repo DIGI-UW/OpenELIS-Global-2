@@ -26,8 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class SupportedLocaleDAOImpl extends BaseDAOImpl<SupportedLocale, String>
-        implements SupportedLocaleDAO {
+public class SupportedLocaleDAOImpl extends BaseDAOImpl<SupportedLocale, String> implements SupportedLocaleDAO {
 
     public SupportedLocaleDAOImpl() {
         super(SupportedLocale.class);

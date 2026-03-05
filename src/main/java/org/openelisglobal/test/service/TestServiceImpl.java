@@ -330,8 +330,8 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     /**
-     * Build augmented test name using current request's locale.
-     * This is a static helper that doesn't use instance state.
+     * Build augmented test name using current request's locale. This is a static
+     * helper that doesn't use instance state.
      */
     private static String buildAugmentedTestNameForLocale(Test test) {
         Localization localization = test.getLocalizedTestName();
@@ -352,7 +352,8 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         }
 
         try {
-            // This reads from LocaleContextHolder.getLocale() - the current request's locale
+            // This reads from LocaleContextHolder.getLocale() - the current request's
+            // locale
             return localization.getLocalizedValue() + sampleName;
         } catch (RuntimeException e) {
             LogEvent.logInfo("TestServiceImpl", "buildAugmentedTestNameForLocale", "augmented caught LAZY");

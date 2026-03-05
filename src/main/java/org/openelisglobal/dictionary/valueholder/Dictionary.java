@@ -16,12 +16,12 @@ package org.openelisglobal.dictionary.valueholder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.Comparator;
 import org.openelisglobal.common.action.IActionConstants;
-import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.localization.valueholder.Localization;
 
 public class Dictionary extends BaseObject<String> {
@@ -147,10 +147,9 @@ public class Dictionary extends BaseObject<String> {
     }
 
     /**
-     * Override to prioritize database localization over message bundle (display_key).
-     * Order of precedence:
-     * 1. Database localization (localization_value table)
-     * 2. Message bundle lookup via nameKey/display_key
+     * Override to prioritize database localization over message bundle
+     * (display_key). Order of precedence: 1. Database localization
+     * (localization_value table) 2. Message bundle lookup via nameKey/display_key
      * 3. dictEntry as final fallback
      */
     @Override
