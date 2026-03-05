@@ -19,8 +19,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.service.AnalyzerTypeService;
+import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -31,7 +31,7 @@ import org.openelisglobal.test.valueholder.Test;
 
 public class AnalyzerTestNameCache {
 
-    protected AnalyzerService analyzerService = SpringContext.getBean(AnalyzerService.class);
+    protected AnalyzerTypeService analyzerTypeService = SpringContext.getBean(AnalyzerTypeService.class);
     protected AnalyzerTestMappingService analyzerTestMappingService = SpringContext
             .getBean(AnalyzerTestMappingService.class);
     protected TestService testService = SpringContext.getBean(TestService.class);
@@ -80,8 +80,6 @@ public class AnalyzerTestNameCache {
     }
 
     public MappedTestName getMappedTest(String analyzerName, String analyzerTestName) {
-        // This will look for a mapping for the analyzer and if it is found will then
-        // look for a mapping for the test name
         Map<String, MappedTestName> testMap = getMappedTestsForAnalyzer(analyzerName);
 
         if (testMap != null) {
@@ -91,10 +89,16 @@ public class AnalyzerTestNameCache {
         return null;
     }
 
-    public void registerPluginAnalyzer(String analyzerName, String analyzerId) {
+    /**
+     * Register a plugin's analyzer type in the cache.
+     *
+     * @param analyzerName   The plugin/analyzer name
+     * @param analyzerTypeId The AnalyzerType ID (not a physical Analyzer ID)
+     */
+    public void registerPluginAnalyzer(String analyzerName, String analyzerTypeId) {
         requestTODBName.put(analyzerName, analyzerName);
         if (isMapped) {
-            analyzerNameToIdMap.put(analyzerName, analyzerId);
+            analyzerNameToIdMap.put(analyzerName, analyzerTypeId);
         }
     }
 
@@ -114,27 +118,40 @@ public class AnalyzerTestNameCache {
         isMapped = false;
     }
 
+    /**
+     * Load test mappings from AnalyzerType (not Analyzer). Test mappings are a
+     * property of the plugin type, keyed by analyzer_type_id.
+     */
     private void loadMaps() {
-        List<Analyzer> analyzerList = analyzerService.getAll();
+        List<AnalyzerType> typeList = analyzerTypeService.getAll();
         analyzerNameToTestNameMap.clear();
 
         analyzerNameToIdMap = new HashMap<>();
 
-        for (Analyzer analyzer : analyzerList) {
-            analyzerNameToIdMap.put(analyzer.getName(), analyzer.getId());
-            analyzerNameToTestNameMap.put(analyzer.getName(), new HashMap<String, MappedTestName>());
+        // Build type name → type ID map
+        Map<String, AnalyzerType> typeIdToType = new HashMap<>();
+        for (AnalyzerType type : typeList) {
+            analyzerNameToIdMap.put(type.getName(), type.getId());
+            analyzerNameToTestNameMap.put(type.getName(), new HashMap<String, MappedTestName>());
+            typeIdToType.put(type.getId(), type);
         }
 
+        // Load test mappings (now keyed by analyzer_type_id)
         List<AnalyzerTestMapping> mappingList = analyzerTestMappingService.getAll();
 
         for (AnalyzerTestMapping mapping : mappingList) {
             MappedTestName mappedTestName = createMappedTestName(testService, mapping);
 
-            Analyzer analyzer = new Analyzer();
-            analyzer.setId(mapping.getAnalyzerId());
-            analyzer = analyzerService.get(analyzer.getId());
+            String typeId = mapping.getAnalyzerTypeId();
+            if (typeId == null) {
+                continue;
+            }
+            AnalyzerType type = typeIdToType.get(typeId);
+            if (type == null) {
+                continue;
+            }
 
-            Map<String, MappedTestName> testMap = analyzerNameToTestNameMap.get(analyzer.getName());
+            Map<String, MappedTestName> testMap = analyzerNameToTestNameMap.get(type.getName());
             if (testMap != null) {
                 testMap.put(mapping.getAnalyzerTestName(), mappedTestName);
             }
@@ -146,7 +163,7 @@ public class AnalyzerTestNameCache {
         MappedTestName mappedTest = new MappedTestName();
         mappedTest.setAnalyzerTestName(mapping.getAnalyzerTestName());
         mappedTest.setTestId(mapping.getTestId());
-        mappedTest.setAnalyzerId(mapping.getAnalyzerId());
+        mappedTest.setAnalyzerId(mapping.getAnalyzerTypeId());
         if (mapping.getTestId() != null) {
             Test test = new Test();
             test.setId(mapping.getTestId());

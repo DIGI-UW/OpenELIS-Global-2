@@ -102,7 +102,34 @@ class DictionaryMenuPage {
   }
 
   validateColumnContent(columnKey, rowId, value) {
-    cy.get(`[data-cy="cell-${columnKey}-${rowId}"]`).should("contain", value);
+    // Support optional rowId: when rowId is undefined or "first", assert first row in column (CI-safe)
+    if (rowId === undefined || rowId === "first") {
+      cy.get(`[data-cy^="cell-${columnKey}-"]`, { timeout: 10000 })
+        .first()
+        .should("exist")
+        .and("contain", value);
+      return;
+    }
+    cy.get(`[data-cy="cell-${columnKey}-${rowId}"]`, { timeout: 10000 }).should(
+      "contain",
+      value,
+    );
+  }
+
+  getFirstDictionaryRowId() {
+    return cy
+      .get('[data-cy^="cell-dictEntry-"]')
+      .first()
+      .invoke("attr", "data-cy")
+      .then((dataCy) => {
+        return dataCy.split("-")[2];
+      });
+  }
+
+  validateFirstDictionaryColumnContent(columnKey, value) {
+    this.getFirstDictionaryRowId().then((rowId) => {
+      this.validateColumnContent(columnKey, rowId, value);
+    });
   }
 
   checkFirstDict() {

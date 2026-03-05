@@ -16,7 +16,7 @@
         <minor.version>2</minor.version>
         <state.version>1</state.version>
         <!-- 0 = alpha, 1 = beta, 2 = rc, 3 = deployable -->
-        <fix.version>2</fix.version>
+        <fix.version>3</fix.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
         <castor.version>1.4.1</castor.version>
@@ -27,10 +27,15 @@
         <postgresql.version>42.7.2</postgresql.version>
         <log4j.version>2.17.1</log4j.version>
         <springframework.version>6.2.11</springframework.version>
-        <springsecurity.version>6.0.4</springsecurity.version>
+        <springsecurity.version>6.2.7</springsecurity.version>
         <testContainersVersion>1.19.8</testContainersVersion>
     </properties>
     <dependencies>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>2.2</version>
+        </dependency>
         <dependency>
             <groupId>org.jsmpp</groupId>
             <artifactId>jsmpp</artifactId>
@@ -49,7 +54,7 @@
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
             <artifactId>hapi-fhir-structures-r4</artifactId>
-            <version>6.6.2</version>
+            <version>7.0.2</version>
             <exclusions>
                 <exclusion>
                     <groupId>xpp3</groupId>
@@ -60,7 +65,13 @@
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
             <artifactId>hapi-fhir-client</artifactId>
-            <version>6.6.2</version>
+            <version>7.0.2</version>
+        </dependency>
+        <dependency>
+            <groupId>ca.uhn.hapi.fhir</groupId>
+            <artifactId>hapi-fhir-server</artifactId>
+            <version>7.0.2</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
@@ -75,7 +86,7 @@
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
             <artifactId>hapi-fhir-base</artifactId>
-            <version>6.6.2</version>
+            <version>7.0.2</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -702,6 +713,10 @@
             <artifactId>xmlrpc-common</artifactId>
             <version>3.1.3</version>
         </dependency>
+        <!-- Plugin dependencies are defined in the 'with-plugins' profile below
+            to avoid chicken-and-egg: main project needs plugins, but plugins need main
+            JAR. CI builds main JAR first (without plugins), then plugins, then main
+            with tests. -->
     </dependencies>
     <repositories>
         <repository>
@@ -738,6 +753,23 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
                 <version>3.3.1</version>
+                <configuration>
+                    <!-- Produce classes jar for plugins to depend on -->
+                    <attachClasses>true</attachClasses>
+                </configuration>
+            </plugin>
+            <!-- Produce test-jar for plugins to use test infrastructure -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -863,8 +895,8 @@
                                 <exclude>bin/**</exclude>
                                 <exclude>tmp/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
-                                <exclude>tools/astm-http-bridge/**</exclude>
-                                <exclude>tools/astm-mock-server/**</exclude>
+                                <exclude>tools/openelis-analyzer-bridge/**</exclude>
+                                <exclude>tools/analyzer-mock-server/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                             </excludes>
@@ -883,8 +915,8 @@
                                 <exclude>.cursor/**</exclude>
                                 <exclude>.claude/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
-                                <exclude>tools/astm-http-bridge/**</exclude>
-                                <exclude>tools/astm-mock-server/**</exclude>
+                                <exclude>tools/openelis-analyzer-bridge/**</exclude>
+                                <exclude>tools/analyzer-mock-server/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                                 <exclude>frontend/**</exclude>
@@ -918,6 +950,9 @@
                 <version>3.2.5</version>
                 <configuration>
                     <skipTests>${skipTests}</skipTests>
+                    <environmentVariables>
+                        <ANALYZER_PROFILES_DIR>${project.basedir}/projects/analyzer-profiles</ANALYZER_PROFILES_DIR>
+                    </environmentVariables>
                 </configuration>
             </plugin>
             <plugin>
@@ -994,4 +1029,5 @@
         </dependencies>
 
     </dependencyManagement>
+
 </project>

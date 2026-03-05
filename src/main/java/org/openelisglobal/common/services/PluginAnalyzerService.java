@@ -29,7 +29,8 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.service.AnalyzerTypeService;
+import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
@@ -55,6 +56,8 @@ public class PluginAnalyzerService {
     @Autowired
     private AnalyzerService analyzerService;
     @Autowired
+    private AnalyzerTypeService analyzerTypeService;
+    @Autowired
     private TestService testService;
 
     private List<AnalyzerTestMapping> existingMappings;
@@ -68,6 +71,25 @@ public class PluginAnalyzerService {
 
     public List<AnalyzerImporterPlugin> getAnalyzerPlugins() {
         return analyzerPlugins;
+    }
+
+    /**
+     * Returns plugin list with generic plugins (GenericASTM, GenericHL7) first. Use
+     * when analyzer_configuration.prefer_generic_plugin is true so generic is tried
+     * before legacy.
+     */
+    public List<AnalyzerImporterPlugin> getAnalyzerPluginsWithGenericFirst() {
+        List<AnalyzerImporterPlugin> generic = new ArrayList<>();
+        List<AnalyzerImporterPlugin> legacy = new ArrayList<>();
+        for (AnalyzerImporterPlugin p : analyzerPlugins) {
+            if (p.isGenericPlugin()) {
+                generic.add(p);
+            } else {
+                legacy.add(p);
+            }
+        }
+        generic.addAll(legacy);
+        return generic;
     }
 
     @PostConstruct
@@ -94,68 +116,83 @@ public class PluginAnalyzerService {
         }
     }
 
+    /**
+     * Register test mappings for a plugin at the AnalyzerType level.
+     *
+     * <p>
+     * Does NOT create an Analyzer row. Test mappings are a property of the plugin
+     * type (capability), not a physical device. Physical Analyzer instances are
+     * created through the dashboard when a real device is configured.
+     *
+     * @return The AnalyzerType ID, or null if the type wasn't found
+     */
     public String addAnalyzerDatabaseParts(String name, String description, List<TestMapping> nameMappings) {
-        Analyzer analyzer = analyzerService.getAnalyzerByName(name);
-        if (analyzer != null && analyzer.getId() != null) {
-            analyzer.setActive(true);
-            registerAanlyzerInCache(name, analyzer.getId());
-        } else {
-            if (analyzer == null) {
-                analyzer = new Analyzer();
-                analyzer.setActive(true);
-                analyzer.setName(name);
-            }
-            analyzer.setDescription(description);
-        }
-
-        List<AnalyzerTestMapping> testMappings = createTestMappings(nameMappings);
-        if (!testMappings.isEmpty() && existingMappings == null) {
-            existingMappings = analyzerMappingService.getAll();
-        }
-
-        analyzer.setSysUserId("1");
-
-        try {
-            analyzerService.persistData(analyzer, testMappings, existingMappings);
-            registerAanlyzerInCache(name, analyzer.getId());
-        } catch (RuntimeException e) {
-            LogEvent.logError(e);
-        }
-        return analyzer.getId();
+        loadNamingMappingsFromCSV(nameMappings, name);
+        return addAnalyzerDatabasePartsInternal(name, nameMappings);
     }
 
     public String addAnalyzerDatabaseParts(String name, String description, List<TestMapping> nameMappings,
             boolean hasSetupPage) {
-        Analyzer analyzer = analyzerService.getAnalyzerByName(name);
-        if (analyzer != null && analyzer.getId() != null) {
-            analyzer.setActive(true);
-            analyzer.setHasSetupPage(hasSetupPage);
-            registerAanlyzerInCache(name, analyzer.getId());
-        } else {
-            if (analyzer == null) {
-                analyzer = new Analyzer();
-                analyzer.setActive(true);
-                analyzer.setName(name);
-                analyzer.setHasSetupPage(hasSetupPage);
-            }
-            analyzer.setDescription(description);
-        }
         loadNamingMappingsFromCSV(nameMappings, name);
+        return addAnalyzerDatabasePartsInternal(name, nameMappings);
+    }
+
+    private String addAnalyzerDatabasePartsInternal(String name, List<TestMapping> nameMappings) {
+        // Look up AnalyzerType by name (registered by PluginRegistryService)
+        String analyzerTypeId = resolveAnalyzerTypeId(name);
+        if (analyzerTypeId == null) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "addAnalyzerDatabaseParts",
+                    "No AnalyzerType found for plugin '" + name + "' — test mappings not persisted");
+            return null;
+        }
 
         List<AnalyzerTestMapping> testMappings = createTestMappings(nameMappings);
         if (!testMappings.isEmpty() && existingMappings == null) {
             existingMappings = analyzerMappingService.getAll();
         }
 
-        analyzer.setSysUserId("1");
-
         try {
-            analyzerService.persistData(analyzer, testMappings, existingMappings);
-            registerAanlyzerInCache(name, analyzer.getId());
+            analyzerService.persistTestMappings(analyzerTypeId, testMappings, existingMappings);
+            AnalyzerTestNameCache.getInstance().registerPluginAnalyzer(name, analyzerTypeId);
         } catch (RuntimeException e) {
             LogEvent.logError(e);
         }
-        return analyzer.getId();
+        return analyzerTypeId;
+    }
+
+    /**
+     * Resolve AnalyzerType ID for a plugin name. Tries multiple matching strategies
+     * since legacy plugin names don't always match AnalyzerType names exactly.
+     */
+    private String resolveAnalyzerTypeId(String pluginName) {
+        // Strategy 1: exact name match
+        AnalyzerType type = analyzerTypeService.getAnalyzerTypeByName(pluginName);
+        if (type != null) {
+            return type.getId();
+        }
+
+        // Strategy 2: strip "Analyzer" suffix (e.g., "CobasC111Analyzer" → "Cobas
+        // C111")
+        // PluginRegistryService derives names like "Cobas C111" from
+        // "CobasC111Analyzer"
+        // Legacy plugins pass "CobasC111Analyzer" as the name
+        for (AnalyzerType candidate : analyzerTypeService.getAll()) {
+            if (candidate.getPluginClassName() == null) {
+                continue;
+            }
+            String simpleName = candidate.getPluginClassName()
+                    .substring(candidate.getPluginClassName().lastIndexOf('.') + 1);
+            if (simpleName.equals(pluginName) || simpleName.equals(pluginName + "Analyzer")) {
+                return candidate.getId();
+            }
+            // Also match stripped: "Mindray" → "MindrayAnalyzer" class
+            String stripped = simpleName.replaceAll("Analyzer$", "");
+            if (stripped.equals(pluginName)) {
+                return candidate.getId();
+            }
+        }
+
+        return null;
     }
 
     private List<AnalyzerTestMapping> createTestMappings(List<TestMapping> nameMappings) {
@@ -192,10 +229,6 @@ public class PluginAnalyzerService {
         LogEvent.logError(this.getClass().getSimpleName(), "getIdForTestName",
                 "Unable to find test " + dbbTestName + " in test catalog");
         return null;
-    }
-
-    private void registerAanlyzerInCache(String name, String id) {
-        AnalyzerTestNameCache.getInstance().registerPluginAnalyzer(name, id);
     }
 
     public void loadNamingMappingsFromCSV(List<PluginAnalyzerService.TestMapping> nameMapping, String analyzerName) {

@@ -219,8 +219,10 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     @Override
     @Transactional(readOnly = true)
     public List<Test> getTestsByName(String testName) throws LIMSRuntimeException {
-        String sql = "from Test t where (t.localizedTestName.english = :testName or t.localizedTestName.french ="
-                + " :testName)";
+        // Use case-insensitive comparison to avoid duplicate tests with different
+        // casing
+        String sql = "from Test t where (LOWER(t.localizedTestName.english) = LOWER(:testName) or"
+                + " LOWER(t.localizedTestName.french) = LOWER(:testName))";
         try {
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
             query.setParameter("testName", testName);
@@ -236,8 +238,10 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     @Override
     @Transactional(readOnly = true)
     public List<Test> getActiveTestsByName(String testName) throws LIMSRuntimeException {
-        String sql = "from Test t where (t.localizedTestName.english = :testName or t.localizedTestName.french ="
-                + " :testName) and t.isActive='Y'";
+        // Use case-insensitive comparison to avoid duplicate tests with different
+        // casing
+        String sql = "from Test t where (LOWER(t.localizedTestName.english) = LOWER(:testName) or"
+                + " LOWER(t.localizedTestName.french) = LOWER(:testName)) and t.isActive='Y'";
         try {
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
             query.setParameter("testName", testName);
@@ -270,11 +274,13 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     @Override
     @Transactional(readOnly = true)
     public Test getActiveTestByLocalizedName(String testName, Locale locale) throws LIMSRuntimeException {
+        // Use case-insensitive comparison to avoid duplicate tests with different
+        // casing
         String sql;
         if (Locale.ENGLISH.equals(locale)) {
-            sql = "from Test t where t.localizedTestName.english = :testName and t.isActive='Y'";
+            sql = "from Test t where LOWER(t.localizedTestName.english) = LOWER(:testName) and t.isActive='Y'";
         } else {
-            sql = "from Test t where t.localizedTestName.french = :testName and t.isActive='Y'";
+            sql = "from Test t where LOWER(t.localizedTestName.french) = LOWER(:testName) and t.isActive='Y'";
         }
         try {
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
@@ -299,11 +305,13 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     @Override
     @Transactional(readOnly = true)
     public Test getTestByLocalizedName(String testName, Locale locale) throws LIMSRuntimeException {
+        // Use case-insensitive comparison to avoid duplicate tests with different
+        // casing
         String sql;
         if (Locale.ENGLISH.equals(locale)) {
-            sql = "from Test t where t.localizedTestName.english = :testName";
+            sql = "from Test t where LOWER(t.localizedTestName.english) = LOWER(:testName)";
         } else {
-            sql = "from Test t where t.localizedTestName.french = :testName";
+            sql = "from Test t where LOWER(t.localizedTestName.french) = LOWER(:testName)";
         }
         try {
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
@@ -623,7 +631,9 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     @Override
     @Transactional(readOnly = true)
     public Test getTestByDescription(String description) {
-        String sql = "From Test t where t.description = :description";
+        // Use case-insensitive comparison to avoid duplicate tests with different
+        // casing
+        String sql = "From Test t where LOWER(t.description) = LOWER(:description)";
         try {
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
             query.setParameter("description", description);
@@ -635,6 +645,26 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         }
 
         return null;
+    }
+
+    @Transactional(readOnly = true)
+    public Test getTestByNormalizedDescription(String description) {
+        if (description == null) {
+            return null;
+        }
+
+        String normalizedDescription = normalizeDescription(description);
+
+        try {
+            String hql = "FROM Test t WHERE LOWER(t.normalizedDescription) = :normalizedDescription";
+            Query<Test> query = entityManager.unwrap(Session.class).createQuery(hql, Test.class)
+                    .setParameter("normalizedDescription", normalizedDescription.toLowerCase());
+
+            return query.uniqueResult();
+        } catch (HibernateException e) {
+            handleException(e, "getTestByNormalizedDescription");
+            return null;
+        }
     }
 
     @Override
@@ -786,5 +816,37 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         }
 
         return null;
+    }
+
+    private String normalizeDescription(String description) {
+        if (description == null) {
+            return "";
+        }
+
+        String normalized;
+        String sampleType = "";
+
+        if (description.contains("(") && description.contains(")")) {
+            int startParen = description.indexOf("(");
+            int endParen = description.indexOf(")");
+
+            sampleType = description.substring(startParen + 1, endParen);
+            sampleType = normalizeText(sampleType);
+            normalized = description.substring(0, startParen);
+        } else {
+            normalized = description;
+        }
+
+        normalized = normalizeText(normalized);
+        return normalized + sampleType;
+    }
+
+    private String normalizeText(String text) {
+        if (text == null) {
+            return "";
+        }
+        // Remove accents and diacritics, then remove non-alphanumeric, then lowercase
+        return java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "").replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
     }
 }

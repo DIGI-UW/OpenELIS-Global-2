@@ -24,6 +24,7 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.hl7.fhir.r4.model.Address;
 import org.hl7.fhir.r4.model.Annotation;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.CodeType;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.ContactPoint;
@@ -31,11 +32,14 @@ import org.hl7.fhir.r4.model.ContactPoint.ContactPointSystem;
 import org.hl7.fhir.r4.model.ContactPoint.ContactPointUse;
 import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.DateType;
+import org.hl7.fhir.r4.model.DecimalType;
 import org.hl7.fhir.r4.model.DiagnosticReport;
 import org.hl7.fhir.r4.model.DiagnosticReport.DiagnosticReportStatus;
 import org.hl7.fhir.r4.model.Enumerations.AdministrativeGender;
+import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.HumanName;
 import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.IntegerType;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Observation.ObservationStatus;
 import org.hl7.fhir.r4.model.Practitioner;
@@ -98,6 +102,7 @@ import org.openelisglobal.patient.action.IPatientUpdate;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.patient.valueholder.PatientContact;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
@@ -430,6 +435,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     @Async
     @Override
     public void transformPersistOrganization(Organization organization) throws FhirLocalPersistingException {
+        String method = "transformPersistOrganization";
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformPersistOrganization",
                 "transformPersistOrganization called");
 
@@ -437,7 +443,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         FhirOperations fhirOperations = new FhirOperations();
         org.hl7.fhir.r4.model.Organization fhirOrg = transformToFhirOrganization(organization);
         this.addToOperations(fhirOperations, tempIdGenerator, fhirOrg);
-        Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+        try {
+            Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+        } catch (FhirLocalPersistingException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method, "Local fhirStore current unavalable");
+        }
     }
 
     @Override
@@ -482,6 +492,12 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             Practitioner requester = transformProviderToPractitioner(updateData.getProvider().getId());
             this.addToOperations(fhirOperations, tempIdGenerator, requester);
             orderEntryObjects.requester = requester;
+        }
+
+        // new organization created during order entry (free-text site)
+        if (updateData.getNewOrganization() != null) {
+            org.hl7.fhir.r4.model.Organization fhirOrg = transformToFhirOrganization(updateData.getNewOrganization());
+            this.addToOperations(fhirOperations, tempIdGenerator, fhirOrg);
         }
 
         // Specimens and service requests
@@ -736,6 +752,51 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     @Override
     public org.hl7.fhir.r4.model.Patient transformToFhirPatient(String patientId) {
         return transformToFhirPatient(patientService.get(patientId));
+    }
+
+    @Override
+    public PatientManagementInfo createOePatientManagementInfo(org.hl7.fhir.r4.model.Patient fhirPatient) {
+        PatientManagementInfo patient = new PatientManagementInfo();
+        LogEvent.logTrace(this.getClass().getSimpleName(), "setOePatientIdentifiers", "setOePatientIdentifiers called");
+        for (Identifier identifier : fhirPatient.getIdentifier()) {
+            if (identifier.getSystem().equals(fhirConfig.getOeFhirSystem() + "/pat_nationalId")) {
+                patient.setNationalId(identifier.getValue());
+            } else if (identifier.getSystem().equals(fhirConfig.getOeFhirSystem() + "/pat_subjectNumber")) {
+                patient.setSubjectNumber(identifier.getValue());
+            } else if (identifier.getSystem().equals(fhirConfig.getOeFhirSystem() + "/pat_stNumber")) {
+                patient.setSTnumber(identifier.getValue());
+            } else if (identifier.getSystem().equals(fhirConfig.getOeFhirSystem() + "/pat_guid")) {
+                patient.setGuid(identifier.getValue());
+            }
+        }
+        PatientSearchResults results = transformToOpenElisPatientSearchResults(fhirPatient);
+        patient.setFirstName(results.getFirstName());
+        patient.setLastName(results.getLastName());
+        patient.setGender(results.getGender());
+        patient.setBirthDateForDisplay(results.getBirthdate());
+        patient.setPatientContact(new PatientContact());
+
+        if (fhirPatient.hasAddress()) {
+            Address address = fhirPatient.getAddressFirstRep();
+            if (address != null) {
+                if (address.hasLine()) {
+                    patient.setStreetAddress(
+                            address.getLine().stream().map(StringType::getValue).collect(Collectors.joining(", ")));
+                }
+                if (address.hasCity()) {
+                    patient.setCity(address.getCity());
+                }
+                if (address.hasDistrict()) {
+                    patient.setCommune(address.getDistrict());
+                }
+                if (address.hasState()) {
+                    patient.setAddressDepartment(address.getState());
+                }
+            }
+        }
+
+        return patient;
+
     }
 
     private org.hl7.fhir.r4.model.Patient transformToFhirPatient(Patient patient) {
@@ -1074,7 +1135,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         specimen.setStatus(SpecimenStatus.AVAILABLE);
         specimen.setType(transformTypeOfSampleToCodeableConcept(sampleItem.getTypeOfSample()));
         specimen.setReceivedTime(new Date());
-        specimen.setCollection(transformToCollection(sampleItem.getCollectionDate(), sampleItem.getCollector()));
+        specimen.setCollection(transformToCollection(sampleItem.getCollectionDate(), sampleItem.getCollector(),
+                sampleItem.getSample()));
 
         for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
             specimen.addRequest(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
@@ -1112,14 +1174,69 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return condition;
     }
 
-    private SpecimenCollectionComponent transformToCollection(Timestamp collectionDate, String collector) {
+    private SpecimenCollectionComponent transformToCollection(Timestamp collectionDate, String collector,
+            Sample sample) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformToCollection", "transformToCollection called");
 
         SpecimenCollectionComponent specimenCollectionComponent = new SpecimenCollectionComponent();
         specimenCollectionComponent.setCollected(new DateTimeType(collectionDate));
         // TODO create a collector from this info
         // specimenCollectionComponent.setCollector(collector);
+
+        // Add GPS coordinates extension if available
+        if (sample != null && sample.hasGpsCoordinates()) {
+            Extension gpsExtension = createGpsExtension(sample);
+            specimenCollectionComponent.addExtension(gpsExtension);
+        }
+
         return specimenCollectionComponent;
+    }
+
+    /**
+     * Creates a FHIR extension for GPS coordinates according to FHIR R4 standards.
+     * Extension URL:
+     * http://openelis-global.org/fhir/StructureDefinition/collection-location-gps
+     *
+     * @param sample Sample with GPS coordinates
+     * @return Extension containing latitude, longitude, accuracy, method, and
+     *         timestamp
+     */
+    private Extension createGpsExtension(Sample sample) {
+        Extension gpsExtension = new Extension();
+        gpsExtension.setUrl("http://openelis-global.org/fhir/StructureDefinition/collection-location-gps");
+
+        // Latitude sub-extension (required if GPS data exists)
+        if (sample.getGpsLatitude() != null) {
+            Extension latitudeExt = new Extension("latitude", new DecimalType(sample.getGpsLatitude()));
+            gpsExtension.addExtension(latitudeExt);
+        }
+
+        // Longitude sub-extension (required if GPS data exists)
+        if (sample.getGpsLongitude() != null) {
+            Extension longitudeExt = new Extension("longitude", new DecimalType(sample.getGpsLongitude()));
+            gpsExtension.addExtension(longitudeExt);
+        }
+
+        // Accuracy sub-extension (optional)
+        if (sample.getGpsAccuracyMeters() != null) {
+            Extension accuracyExt = new Extension("accuracy", new IntegerType(sample.getGpsAccuracyMeters()));
+            gpsExtension.addExtension(accuracyExt);
+        }
+
+        // Capture method sub-extension (optional)
+        if (sample.getGpsCaptureMethod() != null) {
+            Extension methodExt = new Extension("method", new CodeType(sample.getGpsCaptureMethod()));
+            gpsExtension.addExtension(methodExt);
+        }
+
+        // Capture timestamp sub-extension (optional)
+        if (sample.getGpsCaptureTimestamp() != null) {
+            Extension timestampExt = new Extension("captureTimestamp",
+                    new DateTimeType(sample.getGpsCaptureTimestamp()));
+            gpsExtension.addExtension(timestampExt);
+        }
+
+        return gpsExtension;
     }
 
     private CodeableConcept transformTypeOfSampleToCodeableConcept(String typeOfSampleId) {
@@ -1316,7 +1433,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return transformResultToObservation(resultService.get(resultId));
     }
 
-    private Observation transformResultToObservation(Result result) {
+    public Observation transformResultToObservation(Result result) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformResultToObservation",
                 "transformResultToObservation called");
 
@@ -1445,7 +1562,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         fhirOrganization
                 .setId(organization.getFhirUuid() == null ? organization.getId() : organization.getFhirUuidAsString());
         fhirOrganization.setName(organization.getOrganizationName());
-        fhirOrganization.setActive(organization.getIsActive() == IActionConstants.YES ? true : false);
+        fhirOrganization.setActive(organization.getIsActive().equals(IActionConstants.YES) ? true : false);
         this.setFhirOrganizationIdentifiers(fhirOrganization, organization);
         this.setFhirAddressInfo(fhirOrganization, organization);
         this.setFhirOrganizationTypes(fhirOrganization, organization);
@@ -1511,6 +1628,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         if (!GenericValidator.isBlankOrNull(organization.getCode())) {
             fhirOrganization.addIdentifier(new Identifier().setSystem(fhirConfig.getOeFhirSystem() + "/org_uuid")
                     .setValue(organization.getFhirUuidAsString()));
+        }
+        Identifier facilityId = createFacilityIdentifier();
+        if (facilityId != null) {
+            fhirOrganization.addIdentifier(facilityId);
         }
     }
 
@@ -1696,12 +1817,14 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         public List<ServiceRequest> serviceRequests = new ArrayList<>();
     }
 
+    @Override
     public void addHumanNameToPerson(HumanName humanName, Person person) {
         person.setFirstName(
                 humanName.getGivenAsSingleString() == null ? "" : humanName.getGivenAsSingleString().strip());
         person.setLastName(humanName.getFamily() == null ? "" : humanName.getFamily().strip());
     }
 
+    @Override
     public void addTelecomToPerson(List<ContactPoint> telecoms, Person person) {
         for (ContactPoint contact : telecoms) {
             String contactValue = contact.getValue();

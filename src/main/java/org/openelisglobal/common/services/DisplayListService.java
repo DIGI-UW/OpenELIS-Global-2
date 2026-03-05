@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.address.service.AddressHierarchyConfigurationHandler;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -39,8 +40,10 @@ import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.organization.util.OrganizationTypeList;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.organization.valueholder.OrganizationType;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panel.valueholder.PanelSortOrderComparator;
@@ -90,10 +93,10 @@ public class DisplayListService implements LocaleChangeListener {
         TEST_SECTION_ACTIVE, TEST_SECTION_INACTIVE, TEST_SECTION_BY_NAME, HAITI_DEPARTMENTS, PATIENT_SEARCH_CRITERIA,
         PANELS, PANELS_ACTIVE, PANELS_INACTIVE, ORDERABLE_TESTS, ALL_TESTS, REJECTION_REASONS, REFERRAL_REASONS,
         REFERRAL_ORGANIZATIONS, TEST_LOCATION_CODE, DICTIONARY_PROGRAM, RESULT_TYPE_LOCALIZED, RESULT_TYPE_RAW,
-        UNIT_OF_MEASURE, UNIT_OF_MEASURE_ACTIVE, UNIT_OF_MEASURE_INACTIVE, DICTIONARY_TEST_RESULTS, LAB_COMPONENT,
-        SEVERITY_CONSEQUENCES_LIST, SEVERITY_RECURRENCE_LIST, ACTION_TYPE_LIST, LABORATORY_COMPONENT, SAMPLE_NATURE,
-        ELECTRONIC_ORDER_STATUSES, METHODS, METHODS_INACTIVE, METHOD_BY_NAME, PRACTITIONER_PERSONS, ORDER_PRIORITY,
-        PROGRAM, IMMUNOHISTOCHEMISTRY_STATUS, PATHOLOGY_STATUS, CYTOLOGY_SPECIMEN_ADEQUACY_SATISFACTION,
+        RESULT_TYPE_CODES, UNIT_OF_MEASURE, UNIT_OF_MEASURE_ACTIVE, UNIT_OF_MEASURE_INACTIVE, DICTIONARY_TEST_RESULTS,
+        LAB_COMPONENT, SEVERITY_CONSEQUENCES_LIST, SEVERITY_RECURRENCE_LIST, ACTION_TYPE_LIST, LABORATORY_COMPONENT,
+        SAMPLE_NATURE, ELECTRONIC_ORDER_STATUSES, METHODS, METHODS_INACTIVE, METHOD_BY_NAME, PRACTITIONER_PERSONS,
+        ORDER_PRIORITY, PROGRAM, IMMUNOHISTOCHEMISTRY_STATUS, PATHOLOGY_STATUS, CYTOLOGY_SPECIMEN_ADEQUACY_SATISFACTION,
         PATHOLOGY_TECHNIQUES, PATHOLOGIST_REQUESTS, PATHOLOGY_REQUEST_STATUS, PATHOLOGIST_CONCLUSIONS,
         IMMUNOHISTOCHEMISTRY_REPORT_TYPES, IMMUNOHISTOCHEMISTRY_MARKERS_TESTS, CYTOLOGY_STATUS, NOTEBOOK_STATUS,
         CYTOLOGY_SATISFACTORY_FOR_EVALUATION, CYTOLOGY_UN_SATISFACTORY_FOR_EVALUATION, CYTOLOGY_REPORT_TYPES,
@@ -142,6 +145,8 @@ public class DisplayListService implements LocaleChangeListener {
     private LocaleResolver localeResolver;
     @Autowired
     private AnalyzerService analyzerService;
+    @Autowired
+    private OrganizationTypeService organizationTypeService;
 
     @PostConstruct
     private void setupGlobalVariables() {
@@ -414,6 +419,19 @@ public class DisplayListService implements LocaleChangeListener {
         return typeList;
     }
 
+    private List<IdValuePair> createResultTypeCodesList() {
+        List<IdValuePair> typeList = new ArrayList<>();
+
+        List<TypeOfTestResult> typeOfTestResultList = typeOfTestResultService.getAll();
+        for (TypeOfTestResult typeOfTestResult : typeOfTestResultList) {
+            if (typeOfTestResult.getTestResultType() != null) {
+                typeList.add(new IdValuePair(typeOfTestResult.getId(), typeOfTestResult.getTestResultType()));
+            }
+        }
+
+        return typeList;
+    }
+
     private List<IdValuePair> createDictionaryListForCategory(String category) {
         List<IdValuePair> list = new ArrayList<>();
         List<Dictionary> dictionaryList = dictionaryService.getDictionaryEntrysByCategoryAbbreviation("categoryName",
@@ -494,6 +512,7 @@ public class DisplayListService implements LocaleChangeListener {
         typeToListMap.put(ListType.DICTIONARY_PROGRAM, createDictionaryListForCategory("programs"));
         typeToListMap.put(ListType.RESULT_TYPE_LOCALIZED, createLocalizedResultTypeList());
         typeToListMap.put(ListType.RESULT_TYPE_RAW, createRawResultTypeList());
+        typeToListMap.put(ListType.RESULT_TYPE_CODES, createResultTypeCodesList());
         typeToListMap.put(ListType.UNIT_OF_MEASURE, createUOMList());
         typeToListMap.put(ListType.UNIT_OF_MEASURE_ACTIVE, createUOMList());
         typeToListMap.put(ListType.UNIT_OF_MEASURE_INACTIVE, createUOMList());
@@ -641,6 +660,9 @@ public class DisplayListService implements LocaleChangeListener {
         }
         case ACTIVE_ORG_LIST: {
             typeToListMap.put(ListType.ACTIVE_ORG_LIST, createActiveOrganizationsList());
+        }
+        case RESULT_TYPE_CODES: {
+            typeToListMap.put(ListType.RESULT_TYPE_CODES, createResultTypeCodesList());
         }
         }
     }
@@ -831,8 +853,15 @@ public class DisplayListService implements LocaleChangeListener {
     }
 
     private List<IdValuePair> createPatientHealthRegions() {
+        // First try to use dynamic address hierarchy (level 1)
+        String typeName = getAddressHierarchyTypeName(1);
+        if (typeName == null) {
+            // Fall back to legacy "Health Region" type
+            typeName = "Health Region";
+        }
+
         List<IdValuePair> regionList = new ArrayList<>();
-        List<Organization> orgList = organizationService.getOrganizationsByTypeName("id", "Health Region");
+        List<Organization> orgList = organizationService.getOrganizationsByTypeName("id", typeName);
         orgList.sort((e, f) -> {
             return e.getOrganizationName().compareTo(f.getOrganizationName());
         });
@@ -840,6 +869,70 @@ public class DisplayListService implements LocaleChangeListener {
             regionList.add(new IdValuePair(org.getId(), org.getOrganizationName()));
         }
         return regionList;
+    }
+
+    /**
+     * Get the OrganizationType name for a specific address hierarchy level.
+     *
+     * @param level The hierarchy level number (1 = top level)
+     * @return The type name, or null if not found
+     */
+    private String getAddressHierarchyTypeName(int level) {
+        List<OrganizationType> allTypes = organizationTypeService.getAllOrganizationTypes();
+        for (OrganizationType orgType : allTypes) {
+            int typeLevel = AddressHierarchyConfigurationHandler.getHierarchyLevel(orgType);
+            if (typeLevel == level) {
+                return orgType.getName();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get a list of locations at a specific address hierarchy level.
+     *
+     * @param level The hierarchy level number (1 = top level)
+     * @return List of IdValuePairs for locations at that level
+     */
+    public List<IdValuePair> getAddressHierarchyLevel(int level) {
+        String typeName = getAddressHierarchyTypeName(level);
+        if (typeName == null) {
+            // Fall back to legacy types
+            if (level == 1) {
+                typeName = "Health Region";
+            } else if (level == 2) {
+                typeName = "Health District";
+            } else {
+                return Collections.emptyList();
+            }
+        }
+
+        List<IdValuePair> locationList = new ArrayList<>();
+        List<Organization> orgList = organizationService.getOrganizationsByTypeName("organizationName", typeName);
+        for (Organization org : orgList) {
+            locationList.add(new IdValuePair(org.getId(), org.getOrganizationName()));
+        }
+        return locationList;
+    }
+
+    /**
+     * Get children of a specific location in the address hierarchy.
+     *
+     * @param parentId The parent organization ID
+     * @return List of IdValuePairs for child locations
+     */
+    public List<IdValuePair> getAddressHierarchyChildren(String parentId) {
+        if (GenericValidator.isBlankOrNull(parentId)) {
+            return Collections.emptyList();
+        }
+
+        List<IdValuePair> childList = new ArrayList<>();
+        List<Organization> children = organizationService.getOrganizationsByParentId(parentId);
+        children.sort((e, f) -> e.getOrganizationName().compareTo(f.getOrganizationName()));
+        for (Organization org : children) {
+            childList.add(new IdValuePair(org.getId(), org.getOrganizationName()));
+        }
+        return childList;
     }
 
     public List<IdValuePair> addNumberingToDisplayList(List<IdValuePair> displayList) {
