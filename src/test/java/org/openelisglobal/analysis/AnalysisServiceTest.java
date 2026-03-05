@@ -13,6 +13,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analysis.dao.AnalysisDAO;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analysis.valueholder.ResultFile;
@@ -38,6 +39,9 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     AnalysisService aService;
+
+    @Autowired
+    AnalysisDAO analysisDAO;
 
     @Autowired
     SampleService sampleService;
@@ -611,6 +615,167 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     public void getAnalysesAlreadyReportedBySample_shouldReturnList() throws Exception {
         Sample sample = sampleService.get("1");
         List<Analysis> analyses = aService.getAnalysesAlreadyReportedBySample(sample);
+        Assert.assertNotNull(analyses);
+    }
+
+    @Test
+    public void getAllAnalysisByTestsAndStatusAndCompletedDateRange_4param_shouldReturnAnalysis() throws Exception {
+        List<String> testIdList = Arrays.asList("1", "2");
+        List<String> statusIdList = Arrays.asList("1", "2");
+        Date lowDate = Date.valueOf("2023-11-15");
+        Date highDate = Date.valueOf("2023-11-17");
+        List<Analysis> analyses = analysisDAO.getAllAnalysisByTestsAndStatusAndCompletedDateRange(testIdList,
+                statusIdList, lowDate, highDate);
+        Assert.assertNotNull(analyses);
+    }
+
+    @Test
+    public void getPageAnalysisByTestSectionAndStatus_booleanOverload_shouldReturnAnalysis() throws Exception {
+        List<String> statusIdList = Arrays.asList("1");
+        List<Analysis> analyses = aService.getPageAnalysisByTestSectionAndStatus("1", statusIdList, false);
+        Assert.assertNotNull(analyses);
+        Assert.assertEquals(1, analyses.size());
+    }
+
+    @Test
+    public void getPageAnalysisByTestSectionAndStatus_booleanOverload_sorted_shouldReturnAnalysis() throws Exception {
+        List<String> statusIdList = Arrays.asList("1");
+        List<Analysis> analyses = aService.getPageAnalysisByTestSectionAndStatus("1", statusIdList, true);
+        Assert.assertNotNull(analyses);
+        Assert.assertEquals(1, analyses.size());
+    }
+
+    @Test
+    public void getPageAnalysisAtAccessionNumberAndStatus_booleanOverload_shouldReturnAnalysis() throws Exception {
+        List<String> statusIdList = Arrays.asList("1", "2");
+        List<Analysis> analyses = aService.getPageAnalysisAtAccessionNumberAndStatus("12345", statusIdList, false);
+        Assert.assertNotNull(analyses);
+        Assert.assertTrue(analyses.size() >= 1);
+    }
+
+    @Test
+    public void getMaxRevisionAnalysesBySampleIncludeCanceled_shouldReturnAnalyses() throws Exception {
+        SampleItem sampleItem = sampleItemService.get("1");
+        List<Analysis> analyses = aService.getMaxRevisionAnalysesBySampleIncludeCanceled(sampleItem);
+        Assert.assertNotNull(analyses);
+    }
+
+    @Test
+    public void getRevisionHistoryOfAnalysesBySampleAndTest_includeLatest_shouldReturnList() throws Exception {
+        SampleItem sampleItem = sampleItemService.get("1");
+        org.openelisglobal.test.valueholder.Test test = tService.get("1");
+        List<Analysis> analyses = aService.getRevisionHistoryOfAnalysesBySampleAndTest(sampleItem, test, true);
+        Assert.assertNotNull(analyses);
+    }
+
+    @Test
+    public void getRevisionHistoryOfAnalysesBySampleAndTest_excludeLatest_shouldReturnList() throws Exception {
+        SampleItem sampleItem = sampleItemService.get("1");
+        org.openelisglobal.test.valueholder.Test test = tService.get("1");
+        List<Analysis> analyses = aService.getRevisionHistoryOfAnalysesBySampleAndTest(sampleItem, test, false);
+        Assert.assertNotNull(analyses);
+    }
+
+    @Test
+    public void getMaxRevisionAnalysesReadyToBeReported_shouldReturnList() throws Exception {
+        List<Analysis> analyses = aService.getMaxRevisionAnalysesReadyToBeReported();
+        Assert.assertNotNull(analyses);
+    }
+
+    @Test
+    public void getAnalysesReadyToBeReported_shouldReturnList() throws Exception {
+        List<Analysis> analyses = aService.getAnalysesReadyToBeReported();
+        Assert.assertNotNull(analyses);
+    }
+
+    @Test
+    public void getMaxRevisionAnalysesReadyForReportPreviewBySample_shouldReturnList() throws Exception {
+        List<String> accessionNumbers = Arrays.asList("12345");
+        List<Analysis> analyses = aService.getMaxRevisionAnalysesReadyForReportPreviewBySample(accessionNumbers);
+        Assert.assertNotNull(analyses);
+    }
+
+    @Test
+    public void getMaxRevisionPendingAnalysesReadyToBeReportedBySample_shouldReturnList() throws Exception {
+        Sample sample = sampleService.get("1");
+        List<Analysis> analyses = aService.getMaxRevisionPendingAnalysesReadyToBeReportedBySample(sample);
+        Assert.assertNotNull(analyses);
+    }
+
+    @Test
+    public void getMaxRevisionPendingAnalysesReadyForReportPreviewBySample_shouldReturnList() throws Exception {
+        Sample sample = sampleService.get("1");
+        List<Analysis> analyses = aService.getMaxRevisionPendingAnalysesReadyForReportPreviewBySample(sample);
+        Assert.assertNotNull(analyses);
+    }
+
+    @Test
+    public void getPreviousAnalysisForAmendedAnalysis_shouldReturnNull() throws Exception {
+        Analysis analysis = aService.get("1");
+        Analysis previous = aService.getPreviousAnalysisForAmendedAnalysis(analysis);
+        // Revision is "1", so previous (revision "0") doesn't exist
+        Assert.assertNull(previous);
+    }
+
+    @Test
+    public void getAnalysisStartedOnExcludedByStatusId_shouldReturnAnalysis() throws Exception {
+        Date startedDate = Date.valueOf("2023-11-15");
+        Set<String> statusIds = new HashSet<>();
+        statusIds.add("2");
+        List<Analysis> analyses = aService.getAnalysisStartedOnExcludedByStatusId(startedDate, statusIds);
+        Assert.assertNotNull(analyses);
+    }
+
+    @Test
+    public void getAnalysisStartedOnExcludedByStatusId_emptyStatusIds_shouldFallBackToStartedOn() throws Exception {
+        Date startedDate = Date.valueOf("2023-11-15");
+        Set<String> emptyStatusIds = new HashSet<>();
+        List<Analysis> analyses = aService.getAnalysisStartedOnExcludedByStatusId(startedDate, emptyStatusIds);
+        Assert.assertNotNull(analyses);
+    }
+
+    @Test
+    public void getAnalysesCompletedOnByStatusId_byReleasedDate_shouldReturnAnalysis() throws Exception {
+        Date releasedDate = Date.valueOf("2023-11-15");
+        List<Analysis> analyses = aService.getAnalysesCompletedOnByStatusId(releasedDate, "1");
+        Assert.assertNotNull(analyses);
+    }
+
+    @Test
+    public void getAnalysisByTestDescriptionAndCompletedDateRange_shouldReturnAnalysis() throws Exception {
+        List<String> descriptions = Arrays.asList("Blood Test", "Urine Test");
+        Date lowDate = Date.valueOf("2023-11-15");
+        Date highDate = Date.valueOf("2023-11-17");
+        List<Analysis> analyses = aService.getAnalysisByTestDescriptionAndCompletedDateRange(descriptions, lowDate,
+                highDate);
+        Assert.assertNotNull(analyses);
+    }
+
+    @Test
+    public void getAnalysisByTestDescriptionAndCompletedDateRange_emptyDescriptions_shouldReturnEmpty() throws Exception {
+        List<String> descriptions = Arrays.asList();
+        Date lowDate = Date.valueOf("2023-11-15");
+        Date highDate = Date.valueOf("2023-11-17");
+        List<Analysis> analyses = aService.getAnalysisByTestDescriptionAndCompletedDateRange(descriptions, lowDate,
+                highDate);
+        Assert.assertNotNull(analyses);
+        Assert.assertTrue(analyses.isEmpty());
+    }
+
+    @Test
+    public void getCountAnalysisByStatusFromAccession_shouldReturnCount() throws Exception {
+        List<String> analysisStatusList = Arrays.asList("1", "2");
+        List<String> sampleStatusList = Arrays.asList("1", "2");
+        int count = aService.getCountAnalysisByStatusFromAccession(analysisStatusList, sampleStatusList, "12345");
+        Assert.assertTrue(count >= 0);
+    }
+
+    @Test
+    public void getAnalysesResultEnteredOnExcludedByStatusId_shouldReturnAnalysis() throws Exception {
+        Date completedDate = Date.valueOf("2023-11-15");
+        Set<String> statusIds = new HashSet<>();
+        statusIds.add("2");
+        List<Analysis> analyses = aService.getAnalysesResultEnteredOnExcludedByStatusId(completedDate, statusIds);
         Assert.assertNotNull(analyses);
     }
 
