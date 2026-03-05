@@ -7,11 +7,11 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import java.util.Locale;
-import org.openelisglobal.method.valueholder.Method;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.test.service.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
 

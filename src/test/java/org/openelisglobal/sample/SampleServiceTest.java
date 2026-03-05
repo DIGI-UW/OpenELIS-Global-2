@@ -380,7 +380,8 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getSamplesByPriority_shouldReturnList() {
-        List<Sample> results = sampleService.getSamplesByPriority(org.openelisglobal.sample.valueholder.OrderPriority.ROUTINE);
+        List<Sample> results = sampleService
+                .getSamplesByPriority(org.openelisglobal.sample.valueholder.OrderPriority.ROUTINE);
         Assert.assertNotNull(results);
     }
 

@@ -752,7 +752,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getAnalysisByTestDescriptionAndCompletedDateRange_emptyDescriptions_shouldReturnEmpty() throws Exception {
+    public void getAnalysisByTestDescriptionAndCompletedDateRange_emptyDescriptions_shouldReturnEmpty()
+            throws Exception {
         List<String> descriptions = Arrays.asList();
         Date lowDate = Date.valueOf("2023-11-15");
         Date highDate = Date.valueOf("2023-11-17");
