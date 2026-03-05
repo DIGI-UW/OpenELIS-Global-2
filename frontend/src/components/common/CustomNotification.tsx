@@ -14,18 +14,15 @@ export type NotificationKind = keyof typeof NotificationKinds;
 export interface NotificationBody {
   title: string;
   kind:
-    | "error"
-    | "info"
-    | "success"
-    | "warning"
-    | "info-square"
-    | "success-alt"
-    | "warning-alt";
+  | "error"
+  | "info"
+  | "success"
+  | "warning"
   subtitle?: React.ReactNode;
   message?: React.ReactNode;
 }
 
-export const AlertDialog: React.FC = () => {
+export const CustomNotification: React.FC = () => {
   const { notifications, removeNotification } = useContext(
     NotificationContext,
   ) as {
