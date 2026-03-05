@@ -13,11 +13,7 @@ export type NotificationKind = keyof typeof NotificationKinds;
 
 export interface NotificationBody {
   title: string;
-  kind:
-  | "error"
-  | "info"
-  | "success"
-  | "warning"
+  kind: "error" | "info" | "success" | "warning";
   subtitle?: React.ReactNode;
   message?: React.ReactNode;
 }
