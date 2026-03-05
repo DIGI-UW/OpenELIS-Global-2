@@ -102,6 +102,7 @@ import org.openelisglobal.patient.action.IPatientUpdate;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.patient.valueholder.PatientContact;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
@@ -766,6 +767,51 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     @Override
     public org.hl7.fhir.r4.model.Patient transformToFhirPatient(String patientId) {
         return transformToFhirPatient(patientService.get(patientId));
+    }
+
+    @Override
+    public PatientManagementInfo createOePatientManagementInfo(org.hl7.fhir.r4.model.Patient fhirPatient) {
+        PatientManagementInfo patient = new PatientManagementInfo();
+        LogEvent.logTrace(this.getClass().getSimpleName(), "setOePatientIdentifiers", "setOePatientIdentifiers called");
+        for (Identifier identifier : fhirPatient.getIdentifier()) {
+            if (identifier.getSystem().equals(fhirConfig.getOeFhirSystem() + "/pat_nationalId")) {
+                patient.setNationalId(identifier.getValue());
+            } else if (identifier.getSystem().equals(fhirConfig.getOeFhirSystem() + "/pat_subjectNumber")) {
+                patient.setSubjectNumber(identifier.getValue());
+            } else if (identifier.getSystem().equals(fhirConfig.getOeFhirSystem() + "/pat_stNumber")) {
+                patient.setSTnumber(identifier.getValue());
+            } else if (identifier.getSystem().equals(fhirConfig.getOeFhirSystem() + "/pat_guid")) {
+                patient.setGuid(identifier.getValue());
+            }
+        }
+        PatientSearchResults results = transformToOpenElisPatientSearchResults(fhirPatient);
+        patient.setFirstName(results.getFirstName());
+        patient.setLastName(results.getLastName());
+        patient.setGender(results.getGender());
+        patient.setBirthDateForDisplay(results.getBirthdate());
+        patient.setPatientContact(new PatientContact());
+
+        if (fhirPatient.hasAddress()) {
+            Address address = fhirPatient.getAddressFirstRep();
+            if (address != null) {
+                if (address.hasLine()) {
+                    patient.setStreetAddress(
+                            address.getLine().stream().map(StringType::getValue).collect(Collectors.joining(", ")));
+                }
+                if (address.hasCity()) {
+                    patient.setCity(address.getCity());
+                }
+                if (address.hasDistrict()) {
+                    patient.setCommune(address.getDistrict());
+                }
+                if (address.hasState()) {
+                    patient.setAddressDepartment(address.getState());
+                }
+            }
+        }
+
+        return patient;
+
     }
 
     private org.hl7.fhir.r4.model.Patient transformToFhirPatient(Patient patient) {
@@ -1531,7 +1577,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         fhirOrganization
                 .setId(organization.getFhirUuid() == null ? organization.getId() : organization.getFhirUuidAsString());
         fhirOrganization.setName(organization.getOrganizationName());
-        fhirOrganization.setActive(organization.getIsActive() == IActionConstants.YES ? true : false);
+        fhirOrganization.setActive(organization.getIsActive().equals(IActionConstants.YES) ? true : false);
         this.setFhirOrganizationIdentifiers(fhirOrganization, organization);
         this.setFhirAddressInfo(fhirOrganization, organization);
         this.setFhirOrganizationTypes(fhirOrganization, organization);
