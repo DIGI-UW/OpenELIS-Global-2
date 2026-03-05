@@ -8,21 +8,9 @@
     <!--
         Generic Localization System - Phase 4 (FINAL)
 
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !! DANGER: DO NOT RUN THIS MIGRATION UNTIL:                         !!
-        !! 1. Phase 1 migration (001-add-localization-value-table.xml)      !!
-        !!    has been deployed and verified                                !!
-        !! 2. New Java code (Phases 2-3) has been deployed and is running   !!
-        !! 3. You have verified the application works correctly             !!
-        !! 4. You have a database backup                                    !!
-        !!                                                                  !!
-        !! Running this migration prematurely will break the application!   !!
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
         This migration removes the legacy 'english' and 'french' columns from
         the localization table. All translations now live in localization_value.
 
-        See: docs/database/generic-translation-plan.md
     -->
 
     <changeSet author="openelis" id="3.5.0-099-verify-data-migrated" runAlways="false">

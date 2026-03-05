@@ -48,8 +48,7 @@ public class Localization extends BaseObject<String> {
      * Legacy locale values map used by the old Hibernate mapping. This will be
      * populated from the english/french columns during the transition period.
      *
-     * @deprecated Use {@link #values} instead. This field will be removed after
-     *             Phase 4.
+     * @deprecated Use {@link #values} instead.
      */
     @Deprecated
     private Map<Locale, String> localeValues = new HashMap<>();

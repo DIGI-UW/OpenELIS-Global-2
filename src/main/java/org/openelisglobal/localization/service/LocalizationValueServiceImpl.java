@@ -76,13 +76,11 @@ public class LocalizationValueServiceImpl extends BaseObjectServiceImpl<Localiza
     @Override
     @Transactional(readOnly = true)
     public String getLocalizedValue(String localizationId, String locale) {
-        // Try the requested locale first
         Optional<LocalizationValue> value = getByLocalizationIdAndLocale(localizationId, locale);
         if (value.isPresent()) {
             return value.get().getValue();
         }
 
-        // Fall back to the configured fallback locale
         String fallbackLocale = supportedLocaleService.getFallbackLocaleCode();
         if (!fallbackLocale.equals(locale)) {
             value = getByLocalizationIdAndLocale(localizationId, fallbackLocale);
@@ -91,7 +89,6 @@ public class LocalizationValueServiceImpl extends BaseObjectServiceImpl<Localiza
             }
         }
 
-        // Last resort: return any available value
         List<LocalizationValue> allValues = getByLocalizationId(localizationId);
         if (!allValues.isEmpty()) {
             return allValues.get(0).getValue();

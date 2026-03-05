@@ -154,10 +154,7 @@ public class LocalizationServiceImpl extends AuditableBaseObjectServiceImpl<Loca
                 return activeLocales.stream().map(SupportedLocale::toLocale).collect(Collectors.toList());
             }
         } catch (Exception e) {
-            // Fall back to hardcoded values if the new table doesn't exist yet
-            // This allows backwards compatibility during migration
         }
-        // Fallback for backwards compatibility (before migration runs)
         return List.of(Locale.ENGLISH, Locale.FRENCH);
     }
 }

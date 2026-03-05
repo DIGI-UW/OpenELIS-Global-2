@@ -11,11 +11,6 @@
         This migration adds support for unlimited languages by normalizing translations
         into a separate table. The existing 'english' and 'french' columns are preserved
         for backwards compatibility until the Java code is updated.
-
-        SAFE TO RUN: This migration does NOT break existing code. Old code continues
-        to read from the 'english' and 'french' columns.
-
-        See: docs/database/generic-translation-plan.md
     -->
 
     <changeSet author="reagan-meant" id="3.5.0-001-create-supported-locale-seq">
