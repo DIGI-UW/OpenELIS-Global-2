@@ -164,7 +164,7 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
     @Test
     public void createObservation_withDuplicateAnalysis_shouldReturn400() throws Exception {
 
-        String analysisWithResultUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+        String analysisWithResultUuid = "b2c3d4e5-2345-6789-bcde-f01234567890";
 
         MockHttpServletRequest request = buildFhirRequest("POST", "/Observation");
         String createJson = """
