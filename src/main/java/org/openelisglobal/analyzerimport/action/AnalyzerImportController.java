@@ -97,7 +97,11 @@ public class AnalyzerImportController implements IActionConstants {
         if (reader != null) {
             read = reader.readStream(stream);
             if (read) {
-                boolean success = reader.processData(getSysUserId(request));
+                String userId = getSysUserId(request);
+                if (userId == null) {
+                    userId = "1"; // Fallback for unauthenticated pushes (bridge/mock)
+                }
+                boolean success = reader.processData(userId);
                 if (reader.hasResponse()) {
                     response.getWriter().print(reader.getResponse());
                 }
