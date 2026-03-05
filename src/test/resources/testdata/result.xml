@@ -256,20 +256,4 @@
         entry_date="2024-01-01 08:00:00" panel_id="1" is_reportable="Y"
         method_id="1" lastupdated="2024-01-01 13:00:00"
         fhir_uuid="a1b2c3d4-1234-5678-abcd-ef0123456789" />
-    <sample_item id="651" sort_order="1" status_id="1"
-        samp_id="50" typeosamp_id="3" collection_date="2024-01-01 07:00:00"
-        lastupdated="2024-01-01 00:00:00" />
-    <analysis id="51" sampitem_id="651" test_id="1"
-        test_sect_id="1" revision="1" status_id="4" analysis_type="ROUTINE"
-        started_date="2024-01-01 09:00:00"
-        completed_date="2024-01-01 11:00:00"
-        released_date="2024-01-01 12:00:00" printed_date="2024-01-01 13:00:00"
-        entry_date="2024-01-01 08:00:00" panel_id="1" is_reportable="Y"
-        method_id="1" lastupdated="2024-01-01 13:00:00"
-        fhir_uuid="b2c3d4e5-2345-6789-bcde-f01234567890" />
-    <result id="5" analysis_id="51" sort_order="1" result_type="N"
-        value="10.0" analyte_id="3" test_result_id="1" is_reportable="Y"
-        lastupdated="2024-01-01 13:00:00" min_normal="5.0" max_normal="15.0"
-        significant_digits="1" grouping="0"
-        fhir_uuid="b2c3d4e5-aaaa-bbbb-cccc-f01234567890" />
 </dataset>

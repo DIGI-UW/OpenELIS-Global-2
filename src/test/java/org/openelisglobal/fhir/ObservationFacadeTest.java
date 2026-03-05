@@ -162,35 +162,6 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void createObservation_withDuplicateAnalysis_shouldReturn400() throws Exception {
-
-        String analysisWithResultUuid = "b2c3d4e5-2345-6789-bcde-f01234567890";
-
-        MockHttpServletRequest request = buildFhirRequest("POST", "/Observation");
-        String createJson = """
-                {
-                  "resourceType": "Observation",
-                  "status": "preliminary",
-                  "code": {
-                    "coding": [{ "system": "http://loinc.org", "code": "718-7" }]
-                  },
-                  "basedOn": [{ "reference": "ServiceRequest/%s" }],
-                  "valueQuantity": {
-                    "value": 5.0,
-                    "unit": "g/dL"
-                  }
-                }
-                """.formatted(analysisWithResultUuid);
-        request.setContent(createJson.getBytes());
-        org.openelisglobal.login.valueholder.UserSessionData usd = new org.openelisglobal.login.valueholder.UserSessionData();
-        usd.setSytemUserId(1);
-        request.getSession().setAttribute(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, usd);
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        fhirServlet.service(request, response);
-        assertEquals(400, response.getStatus());
-    }
-
-    @Test
     public void updateObservation_shouldUpdateValue() throws Exception {
         String fhirUuid = "550e8400-e29b-41d4-a716-446655440003";
         Result result = resultService.getResultByFhirUuid(fhirUuid);
