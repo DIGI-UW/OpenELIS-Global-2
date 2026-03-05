@@ -9,4 +9,6 @@ public interface OrganizationTypeService extends BaseObjectService<OrganizationT
     List<OrganizationType> getAllOrganizationTypes();
 
     OrganizationType getOrganizationTypeByName(String name);
+
+    List<String> getOrganizationIdsForType(String typeId);
 }

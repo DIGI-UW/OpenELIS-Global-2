@@ -647,6 +647,26 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         return null;
     }
 
+    @Transactional(readOnly = true)
+    public Test getTestByNormalizedDescription(String description) {
+        if (description == null) {
+            return null;
+        }
+
+        String normalizedDescription = normalizeDescription(description);
+
+        try {
+            String hql = "FROM Test t WHERE LOWER(t.normalizedDescription) = :normalizedDescription";
+            Query<Test> query = entityManager.unwrap(Session.class).createQuery(hql, Test.class)
+                    .setParameter("normalizedDescription", normalizedDescription.toLowerCase());
+
+            return query.uniqueResult();
+        } catch (HibernateException e) {
+            handleException(e, "getTestByNormalizedDescription");
+            return null;
+        }
+    }
+
     @Override
     @Transactional(readOnly = true)
     public Test getTestByGUID(String guid) {
@@ -796,5 +816,37 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         }
 
         return null;
+    }
+
+    private String normalizeDescription(String description) {
+        if (description == null) {
+            return "";
+        }
+
+        String normalized;
+        String sampleType = "";
+
+        if (description.contains("(") && description.contains(")")) {
+            int startParen = description.indexOf("(");
+            int endParen = description.indexOf(")");
+
+            sampleType = description.substring(startParen + 1, endParen);
+            sampleType = normalizeText(sampleType);
+            normalized = description.substring(0, startParen);
+        } else {
+            normalized = description;
+        }
+
+        normalized = normalizeText(normalized);
+        return normalized + sampleType;
+    }
+
+    private String normalizeText(String text) {
+        if (text == null) {
+            return "";
+        }
+        // Remove accents and diacritics, then remove non-alphanumeric, then lowercase
+        return java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "").replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
     }
 }

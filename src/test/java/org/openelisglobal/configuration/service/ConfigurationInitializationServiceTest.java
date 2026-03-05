@@ -46,6 +46,9 @@ public class ConfigurationInitializationServiceTest {
     @Mock
     private PathMatchingResourcePatternResolver resolver;
 
+    /** Real resolver used to handle file: patterns against the temp folder. */
+    private final PathMatchingResourcePatternResolver realResolver = new PathMatchingResourcePatternResolver();
+
     @InjectMocks
     private ConfigurationInitializationService service;
 
@@ -56,8 +59,8 @@ public class ConfigurationInitializationServiceTest {
     public void setUp() throws Exception {
         mockHandler = mock(DomainConfigurationHandler.class);
         when(mockHandler.getDomainName()).thenReturn("tests");
-        when(mockHandler.getFileExtension()).thenReturn("csv");
         when(mockHandler.getLoadOrder()).thenReturn(100);
+        when(mockHandler.getFileMatcher()).thenReturn("*.csv");
 
         mockEvent = mock(ContextRefreshedEvent.class);
 
@@ -67,7 +70,16 @@ public class ConfigurationInitializationServiceTest {
         ReflectionTestUtils.setField(service, "initialized", false);
         service.setDomainHandlers(Arrays.asList(mockHandler));
 
-        when(resolver.getResources(anyString())).thenReturn(new Resource[] {});
+        // Delegate file: patterns to the real resolver (for filesystem tests);
+        // return empty for everything else (classpath patterns can be overridden
+        // per-test).
+        when(resolver.getResources(anyString())).thenAnswer(invocation -> {
+            String pattern = invocation.getArgument(0);
+            if (pattern.startsWith("file:")) {
+                return realResolver.getResources(pattern);
+            }
+            return new Resource[] {};
+        });
     }
 
     // -- Skipping / early-exit tests --
@@ -121,13 +133,13 @@ public class ConfigurationInitializationServiceTest {
     public void onApplicationEvent_shouldProcessHandlersInLoadOrder() throws Exception {
         DomainConfigurationHandler laterHandler = mock(DomainConfigurationHandler.class);
         when(laterHandler.getDomainName()).thenReturn("roles");
-        when(laterHandler.getFileExtension()).thenReturn("csv");
         when(laterHandler.getLoadOrder()).thenReturn(300);
+        when(laterHandler.getFileMatcher()).thenReturn("*.csv");
 
         DomainConfigurationHandler earlyHandler = mock(DomainConfigurationHandler.class);
         when(earlyHandler.getDomainName()).thenReturn("sample-types");
-        when(earlyHandler.getFileExtension()).thenReturn("csv");
         when(earlyHandler.getLoadOrder()).thenReturn(50);
+        when(earlyHandler.getFileMatcher()).thenReturn("*.csv");
 
         // Provide resources so processConfiguration gets called
         Resource earlyResource = createMockResource("samples.csv", "sample data");
@@ -316,13 +328,13 @@ public class ConfigurationInitializationServiceTest {
     public void onApplicationEvent_shouldContinueWithNextHandlerWhenOneThrows() throws Exception {
         DomainConfigurationHandler failingHandler = mock(DomainConfigurationHandler.class);
         when(failingHandler.getDomainName()).thenReturn("bad-domain");
-        when(failingHandler.getFileExtension()).thenReturn("csv");
         when(failingHandler.getLoadOrder()).thenReturn(50);
+        when(failingHandler.getFileMatcher()).thenReturn("*.csv");
 
         DomainConfigurationHandler goodHandler = mock(DomainConfigurationHandler.class);
         when(goodHandler.getDomainName()).thenReturn("good-domain");
-        when(goodHandler.getFileExtension()).thenReturn("csv");
         when(goodHandler.getLoadOrder()).thenReturn(100);
+        when(goodHandler.getFileMatcher()).thenReturn("*.csv");
 
         // Make the first handler's resolver call throw
         when(resolver.getResources("classpath*:configuration/bad-domain/*.csv"))
@@ -434,8 +446,8 @@ public class ConfigurationInitializationServiceTest {
         service.onApplicationEvent(mockEvent);
 
         verify(mockHandler).processConfiguration(any(InputStream.class), eq("base.csv"));
-        // Only one resolver call (the base pattern) — no instance pattern checked
-        verify(resolver, times(1)).getResources(anyString());
+        // Two resolver calls (file: then classpath:) — no instance pattern checked
+        verify(resolver, times(2)).getResources(anyString());
     }
 
     @Test
@@ -448,8 +460,8 @@ public class ConfigurationInitializationServiceTest {
         service.onApplicationEvent(mockEvent);
 
         verify(mockHandler).processConfiguration(any(InputStream.class), eq("base.csv"));
-        // Only the base pattern should be resolved (blank instanceId treated as unset)
-        verify(resolver, times(1)).getResources(anyString());
+        // Two resolver calls (file: then classpath:) — no instance pattern checked
+        verify(resolver, times(2)).getResources(anyString());
     }
 
     // -- Instance + checksum interaction --
@@ -468,6 +480,38 @@ public class ConfigurationInitializationServiceTest {
         ReflectionTestUtils.setField(service, "initialized", false);
         service.onApplicationEvent(mockEvent);
         verify(mockHandler, times(1)).processConfiguration(any(InputStream.class), eq("instance.csv"));
+    }
+
+    // -- Claimed-files tracking (shared domain) --
+
+    @Test
+    public void loadDomainConfiguration_shouldLetSpecificHandlerClaimFilesBeforeBroadHandler() throws Exception {
+        // Specific handler: matches only "*-levels.csv" in domain "shared"
+        DomainConfigurationHandler specificHandler = mock(DomainConfigurationHandler.class);
+        when(specificHandler.getDomainName()).thenReturn("shared");
+        when(specificHandler.getLoadOrder()).thenReturn(50);
+        when(specificHandler.getFileMatcher()).thenReturn("*-levels.csv");
+
+        // Broad handler: matches all "*.csv" in domain "shared"
+        DomainConfigurationHandler broadHandler = mock(DomainConfigurationHandler.class);
+        when(broadHandler.getDomainName()).thenReturn("shared");
+        when(broadHandler.getLoadOrder()).thenReturn(100);
+        when(broadHandler.getFileMatcher()).thenReturn("*.csv");
+
+        // Create filesystem files: one matching the specific pattern, one not
+        createTestFile("shared/address-levels.csv", "levels data");
+        createTestFile("shared/values.csv", "values data");
+
+        service.setDomainHandlers(Arrays.asList(specificHandler, broadHandler));
+        service.onApplicationEvent(mockEvent);
+
+        // Specific handler processes only its matching file
+        verify(specificHandler).processConfiguration(any(InputStream.class), eq("address-levels.csv"));
+        verify(specificHandler, never()).processConfiguration(any(InputStream.class), eq("values.csv"));
+
+        // Broad handler processes the unclaimed file, skips the claimed one
+        verify(broadHandler).processConfiguration(any(InputStream.class), eq("values.csv"));
+        verify(broadHandler, never()).processConfiguration(any(InputStream.class), eq("address-levels.csv"));
     }
 
     // -- Helpers --
