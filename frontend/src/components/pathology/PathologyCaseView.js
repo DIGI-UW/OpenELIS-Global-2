@@ -398,18 +398,25 @@ function PathologyCaseView() {
       </div>
 
       <div className= "body-wrapper">
-        <SideNav expanded={true}  isChildOfHeader={false} className="pathology-sidebar">
-          <SideNavItems>
-            <SideNavLink href="#case-info">Case Information</SideNavLink>
-              <SideNavLink href="#grossing">Grossing</SideNavLink>
-              <SideNavLink href="#blocks">Blocks ({(pathologySampleInfo.blocks || []).length})</SideNavLink>
-              <SideNavLink href="#slides">Slides ({(pathologySampleInfo.slides || []).length})</SideNavLink>
-              <SideNavLink href="#review">Staining</SideNavLink>
-              <SideNavLink href="#review">Pathologist Review</SideNavLink>
-              <SideNavLink href="#findings">Findings & Conclusion</SideNavLink>
-              <SideNavLink href="#findings">Report</SideNavLink>
-          </SideNavItems>
-        </SideNav> 
+        <div className="sidebar-wrapper">
+          <div className="pathology-case-progress">
+            <p style={{ marginInlineStart: "1rem" }}>
+              <strong><FormattedMessage id="pathology.label.navigation" defaultMessage="Case Progress" /></strong>
+            </p>
+          </div>
+          <SideNav expanded={true}  isChildOfHeader={false} className="pathology-sidebar">
+            <SideNavItems>
+              <SideNavLink href="#case-info">Case Information</SideNavLink>
+                <SideNavLink href="#grossing">Grossing</SideNavLink>
+                <SideNavLink href="#blocks">Blocks ({(pathologySampleInfo.blocks || []).length})</SideNavLink>
+                <SideNavLink href="#slides">Slides ({(pathologySampleInfo.slides || []).length})</SideNavLink>
+                <SideNavLink href="#review">Staining</SideNavLink>
+                <SideNavLink href="#review">Pathologist Review</SideNavLink>
+                <SideNavLink href="#findings">Findings & Conclusion</SideNavLink>
+                <SideNavLink href="#findings">Report</SideNavLink>
+            </SideNavItems>
+          </SideNav>
+        </div> 
 
         <Content className="scrollable-content">
             {loading && <Loading description="Loading..." />}
@@ -1194,8 +1201,9 @@ function PathologyCaseView() {
       <div className="sticky-footer">
         <Button 
           id="discard_changes" 
-          kind="secondary" 
-          onClick= {handleDiscard}>
+          kind="ghost" 
+          onClick= {handleDiscard}
+          style={{ color: "#161616" }}>
             Discard Changes
         </Button>
         <Button 
@@ -1203,6 +1211,11 @@ function PathologyCaseView() {
           kind="secondary" 
           disabled={isSubmitting} 
           onClick={save}
+          style={{ 
+            backgroundColor: "transparent",
+            color: "#0f62fe", 
+            border: "1px solid #0f62fe"
+          }}
         >
           Save Progress
         </Button>
@@ -1211,6 +1224,11 @@ function PathologyCaseView() {
           kind="secondary" 
           disabled={isSubmitting} 
           onClick={save}
+          style={{ 
+            backgroundColor: "#eb6200", /* Carbon Orange 50 */
+            color: "#ffffff", 
+            border: "1px solid #eb6200" 
+            }}
         >
           Ready for Pathologist
         </Button>
@@ -1218,6 +1236,9 @@ function PathologyCaseView() {
           id="generate_report" 
           kind="primary" 
           disabled={!pathologySampleInfo.release}
+          style={{ 
+            color: "#ffffff", 
+          }}
         >
           Generate Report
         </Button>
