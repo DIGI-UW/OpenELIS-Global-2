@@ -160,12 +160,23 @@
 
 .pathology-sidebar {
   position: relative !important;
-  margin-inline-start: 4rem !important; 
   left: 0 !important;  
-  padding-top: 50px;
+  padding-top: 5px;
   padding-right: 30px;
-  padding-bottom: 50px;
-  padding-left: 50px;
+  padding-bottom: 130px;
+  padding-left: 20px;
+}
+
+.pathology-case-progress {
+  padding: 1rem;
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.sidebar-wrapper {
+  flex-direction: column;
 }
 
 .scrollable-content {
@@ -193,6 +204,7 @@
   align-items: center;
   display: flex;
   background-color: #ffffff;
+  gap: 1rem;
 }
 
 .sticky-footer button:first-child {
@@ -204,6 +216,7 @@
 .scrollable-content .cds--accordion__content:nth-child(3) {
   margin-right: 1.5rem;
 }
+
 
 .scrollable-content .cds--accordion__title {
   font-size: 2.3rem !important;
