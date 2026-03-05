@@ -32,7 +32,7 @@ const NCEBadge = ({ resultId, onClick }) => {
     return null;
   }
 
-  const tagType = SEVERITY_TAG_TYPE[highestSeverity] || "gray";
+  const tagType = SEVERITY_TAG_TYPE[highestSeverity] || "green";
   const tooltipText =
     nceCount === 1
       ? intl.formatMessage({ id: "nce.badge.tooltip.single" })
@@ -65,7 +65,7 @@ const NCEBadge = ({ resultId, onClick }) => {
         onClick={handleClick}
         aria-label={tooltipText}
       >
-        <Tag type={tagType} size="sm" renderIcon={WarningAlt}>
+        <Tag type={tagType} size="md" renderIcon={WarningAlt}>
           {intl.formatMessage({ id: "nce.badge.label" })}
           {nceCount > 1 ? ` (${nceCount})` : ""}
         </Tag>

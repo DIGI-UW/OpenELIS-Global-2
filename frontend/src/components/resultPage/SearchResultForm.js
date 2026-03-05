@@ -1689,7 +1689,11 @@ export function SearchResults(props) {
           </Column>
           <Column
             lg={4}
-            style={{ display: "flex", alignItems: "center", paddingTop: "1rem" }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              paddingTop: "1rem",
+            }}
           >
             <ResultNCEActions
               resultId={data.resultId}
