@@ -280,4 +280,19 @@ public class TestResultServiceTest extends BaseWebContextSensitiveTest {
         assertNull(result);
     }
 
+    @Test
+    public void getAllActiveTestResultsPerTest_shouldReturnActiveResults() {
+        org.openelisglobal.test.valueholder.Test test = testService.get("1");
+        List<TestResult> results = testResultService.getAllActiveTestResultsPerTest(test);
+        assertNotNull(results);
+        assertTrue(results.size() >= 1);
+    }
+
+    @Test
+    public void getActiveTestResultsByTest_shouldReturnActiveResults() {
+        List<TestResult> results = testResultService.getActiveTestResultsByTest("1");
+        assertNotNull(results);
+        assertTrue(results.size() >= 1);
+    }
+
 }

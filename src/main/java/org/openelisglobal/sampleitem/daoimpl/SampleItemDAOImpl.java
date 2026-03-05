@@ -135,7 +135,7 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
     public void getDataBySample(SampleItem sampleItem) throws LIMSRuntimeException {
         // Use an expression to read in the Sample_Item by SAMP_ID
         try {
-            String sql = "from SampleItem si where samp_id = :param";
+            String sql = "from SampleItem si where si.sample.id = :param";
             Query<SampleItem> query = entityManager.unwrap(Session.class).createQuery(sql, SampleItem.class);
 
             query.setParameter("param", sampleItem.getSample().getId());

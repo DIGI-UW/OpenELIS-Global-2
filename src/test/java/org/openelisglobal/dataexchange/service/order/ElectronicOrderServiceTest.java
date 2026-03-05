@@ -13,6 +13,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.services.StatusService;
+import org.openelisglobal.dataexchange.order.dao.ElectronicOrderDAO;
 import org.openelisglobal.dataexchange.order.form.ElectronicOrderViewForm;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,9 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private ElectronicOrderService electronicOrderService;
+
+    @Autowired
+    private ElectronicOrderDAO electronicOrderDAO;
 
     private List<ElectronicOrder> electronicOrders;
     private static int NUMBER_OF_ELECTRONIC_ORDERS = 0;
@@ -366,6 +370,15 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
 //        assertEquals(3, electronicOrders.size());
 //        assertEquals("1", electronicOrders.get(0).getId());
 
+    }
+
+    @Test
+    public void getAllElectronicOrdersMatchingAnyValue_shouldReturnMatchingOrders() {
+        List<String> identifierValues = new ArrayList<>();
+        identifierValues.add("ext123456");
+        List<ElectronicOrder> orders = electronicOrderDAO.getAllElectronicOrdersMatchingAnyValue(identifierValues,
+                "John", ElectronicOrder.SortOrder.STATUS_ID);
+        assertNotNull(orders);
     }
 
     private Date convertDateFromUtilToSqlDate(String dateString) throws ParseException {

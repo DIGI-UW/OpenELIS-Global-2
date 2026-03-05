@@ -602,4 +602,19 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(updatedResult);
         assertEquals("95.0", updatedResult.getValue());
     }
+
+    @Test
+    public void getResultsByAnalysis_viaDAO_shouldReturnResults() {
+        Analysis analysis = analysisService.get("1");
+        List<Result> results = resultService.getResultsByAnalysis(analysis);
+        assertNotNull(results);
+        assertEquals(1, results.size());
+    }
+
+    @Test
+    public void getChildResults_shouldReturnChildResults() {
+        Result parent = resultService.get("3");
+        List<Result> children = resultService.getChildResults(parent.getId());
+        assertNotNull(children);
+    }
 }

@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import java.util.Locale;
+import org.openelisglobal.method.valueholder.Method;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -290,6 +291,58 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
         List<org.openelisglobal.test.valueholder.Test> tests = testService.getPageOfSearchedTests(1, "*Blood*");
         assertNotNull(tests);
         assertTrue(tests.size() >= 1);
+        assertEquals("Blood Test", tests.get(0).getDescription());
+    }
+
+    @Test
+    public void getTestsByTestSection_shouldReturnTestsGivenSectionId() {
+        List<org.openelisglobal.test.valueholder.Test> tests = testService.getTestsByTestSection("1");
+        assertNotNull(tests);
+        assertEquals(1, tests.size());
+        assertEquals("Blood Test", tests.get(0).getDescription());
+    }
+
+    @Test
+    public void getTestsByTestSectionId_shouldReturnTestGivenId() {
+        List<org.openelisglobal.test.valueholder.Test> tests = testService.getTestsByTestSectionId("1");
+        assertNotNull(tests);
+        assertEquals(1, tests.size());
+    }
+
+    @Test
+    public void getTestById_shouldReturnTestGivenIdString() {
+        org.openelisglobal.test.valueholder.Test test = testService.getTestById("1");
+        assertNotNull(test);
+        assertEquals("Blood Test", test.getDescription());
+    }
+
+    @Test
+    public void getAllTestsByDictionaryResult_shouldReturnList() {
+        List<org.openelisglobal.test.valueholder.Test> tests = testService.getAllTestsByDictionaryResult();
+        assertNotNull(tests);
+    }
+
+    @Test
+    public void getMethodsByTestSection_shouldReturnMethodsForSection() {
+        List<Method> methods = testService.getMethodsByTestSection("1");
+        assertNotNull(methods);
+        assertEquals(1, methods.size());
+        assertEquals("therapy", methods.get(0).getMethodName());
+    }
+
+    @Test
+    public void getTestsByMethod_shouldReturnTestsForMethod() {
+        List<org.openelisglobal.test.valueholder.Test> tests = testService.getTestsByMethod("1");
+        assertNotNull(tests);
+        assertEquals(1, tests.size());
+        assertEquals("Blood Test", tests.get(0).getDescription());
+    }
+
+    @Test
+    public void getTestsByTestSectionAndMethod_shouldReturnTests() {
+        List<org.openelisglobal.test.valueholder.Test> tests = testService.getTestsByTestSectionAndMethod("1", "1");
+        assertNotNull(tests);
+        assertEquals(1, tests.size());
         assertEquals("Blood Test", tests.get(0).getDescription());
     }
 

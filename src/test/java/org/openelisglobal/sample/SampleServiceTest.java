@@ -372,6 +372,36 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void getSampleByAccessionNumber_viaDAO_shouldReturnSample() {
+        Sample sample = sampleService.getSampleByAccessionNumber("12345");
+        Assert.assertNotNull(sample);
+        Assert.assertEquals("12345", sample.getAccessionNumber());
+    }
+
+    @Test
+    public void getSamplesByPriority_shouldReturnList() {
+        List<Sample> results = sampleService.getSamplesByPriority(org.openelisglobal.sample.valueholder.OrderPriority.ROUTINE);
+        Assert.assertNotNull(results);
+    }
+
+    @Test
+    public void getSamplesByProjectAndStatusIDAndAccessionRange_listOverload_shouldReturnList() {
+        List<String> projectIds = Arrays.asList("1");
+        List<String> statusIds = Arrays.asList("1", "2");
+        List<Sample> results = sampleService.getSamplesByProjectAndStatusIDAndAccessionRange(projectIds, statusIds,
+                "12345", "52541");
+        Assert.assertNotNull(results);
+    }
+
+    @Test
+    public void getSamplesByProjectAndStatusIDAndAccessionRange_stringOverload_shouldReturnList() {
+        List<String> statusIds = Arrays.asList("1", "2");
+        List<Sample> results = sampleService.getSamplesByProjectAndStatusIDAndAccessionRange("1", statusIds, "12345",
+                "52541");
+        Assert.assertNotNull(results);
+    }
+
+    @Test
     public void sampleContainsTestWithLoinc_shouldCheckLoinc() {
         Sample sample = sampleService.get(DEFAULT_ID);
         List<Analysis> analyses = sampleService.getAnalysis(sample);

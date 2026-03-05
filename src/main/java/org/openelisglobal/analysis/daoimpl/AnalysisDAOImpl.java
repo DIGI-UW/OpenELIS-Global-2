@@ -485,7 +485,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     @Transactional(readOnly = true)
     public List<Analysis> getAllChildAnalysesByResult(Result result) throws LIMSRuntimeException {
         try {
-            String sql = "from Analysis a where a.parentResult.id = :param and a.status NOT IN (:param2)";
+            String sql = "from Analysis a where a.parentResult.id = :param and a.statusId NOT IN (:param2)";
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("param", result.getId());
             List<String> statusesToExclude = new ArrayList<>();
@@ -505,7 +505,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             String sql = "from Analysis a where (a.sampleItem.id, a.test.id, a.revision) IN "
                     + "(select b.sampleItem.id, b.test.id, max(b.revision) from Analysis b "
                     + "group by b.sampleItem.id, b.test.id) " + "and a.sampleItem.id = :param "
-                    + "and a.status NOT IN (:param2) " + "order by a.test.id, a.revision desc";
+                    + "and a.statusId NOT IN (:param2) " + "order by a.test.id, a.revision desc";
 
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("param", sampleItem.getId());
@@ -548,7 +548,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             String sql = "from Analysis a where (a.sampleItem.id, a.test.id, a.revision) NOT IN "
                     + "(select b.sampleItem.id, b.test.id, max(b.revision) from Analysis b "
                     + "group by b.sampleItem.id, b.test.id) " + "and a.sampleItem.id = :param "
-                    + "and a.status NOT IN (:param2) " + "order by a.test.id, a.revision desc";
+                    + "and a.statusId NOT IN (:param2) " + "order by a.test.id, a.revision desc";
 
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("param", sampleItem.getId());
@@ -569,13 +569,13 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
         try {
             String sql = "";
             if (includeLatestRevision) {
-                sql = "from Analysis a " + "where a.sampleItem.id = :param " + "and a.status NOT IN (:param3) "
+                sql = "from Analysis a " + "where a.sampleItem.id = :param " + "and a.statusId NOT IN (:param3) "
                         + "and a.test.id = :param2 " + "order by a.test.id, a.revision desc";
             } else {
                 sql = "from Analysis a where (a.sampleItem.id, a.test.id, a.revision) NOT IN "
                         + "(select b.sampleItem.id, b.test.id, max(b.revision) from Analysis b "
                         + "group by b.sampleItem.id, b.test.id) " + "and a.sampleItem.id = :param "
-                        + "and a.status NOT IN (:param3) " + "and a.test.id = :param2 "
+                        + "and a.statusId NOT IN (:param3) " + "and a.test.id = :param2 "
                         + "order by a.test.id, a.revision desc";
             }
 
@@ -598,7 +598,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
         try {
             String sql = "from Analysis a where (a.sampleItem.id, a.revision) IN "
                     + "(select b.sampleItem.id, max(b.revision) from Analysis b " + "group by b.sampleItem.id) "
-                    + "and a.test.id = :param " + "and a.status NOT IN (:param2) "
+                    + "and a.test.id = :param " + "and a.statusId NOT IN (:param2) "
                     + "order by a.sampleItem.sample.accessionNumber";
 
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
@@ -762,8 +762,8 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
                     + "        anal.id = res.analysis_id and\n" + "        anal.test_id = test.id and\n"
                     + "        anal.sampitem_id = sampitem. id and\n" + "        sampitem.samp_id = samp.id\n"
                     + "        and anal.printed_date is not null";
-            return entityManager.unwrap(Session.class).createNativeQuery(sql).setParameter("sampleId", sample.getId())
-                    .list();
+            return entityManager.unwrap(Session.class).createNativeQuery(sql)
+                    .setParameter("sampleId", Integer.parseInt(sample.getId())).list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in getAnalysesAlreadyReportedBySample()", e);
@@ -858,7 +858,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             // revision is 1 less than the analysis passed in
 
             String sql = "from Analysis a where a.revision = :param and a.sampleItem = :param2 and a.test ="
-                    + " :param3 and a.status NOT IN (:param4)";
+                    + " :param3 and a.statusId NOT IN (:param4)";
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
 
             String revisionString = analysis.getRevision();
@@ -901,7 +901,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             String sql = "from Analysis a where (a.sampleItem.id, a.test.id, a.revision) IN "
                     + "(select b.sampleItem.id, b.test.id, max(b.revision) from Analysis b "
                     + "group by b.sampleItem.id, b.test.id) " + "and a.sampleItem.id = :param "
-                    + "and a.status NOT IN (:param3) " + "and a.test.id = :param2";
+                    + "and a.statusId NOT IN (:param3) " + "and a.test.id = :param2";
 
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("param", analysis.getSampleItem().getId());
@@ -934,7 +934,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             String sql = "from Analysis a where (a.sampleItem.id, a.test.id, a.revision) IN "
                     + "(select b.sampleItem.id, b.test.id, max(b.revision) from Analysis b "
                     + "group by b.sampleItem.id, b.test.id) " + "and a.sampleItem.id = :param "
-                    + "and a.status NOT IN (:param2) " + "and a.parentAnalysis is null "
+                    + "and a.statusId NOT IN (:param2) " + "and a.parentAnalysis is null "
                     + "order by a.test.id, a.revision desc";
 
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
@@ -1672,9 +1672,9 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
                 + " RequesterType rt WHERE rt.requesterType = 'organization' ))";
         try {
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(hql, Analysis.class);
-            query.setParameter("requesterId", referringSiteId);
-            query.setParameter("lowerDate", lowerDate.atStartOfDay());
-            query.setParameter("upperDate", upperDate.atTime(LocalTime.MAX));
+            query.setParameter("requesterId", Long.valueOf(referringSiteId));
+            query.setParameter("lowerDate", java.sql.Date.valueOf(lowerDate));
+            query.setParameter("upperDate", java.sql.Date.valueOf(upperDate));
             return query.list();
         } catch (HibernateException e) {
             handleException(e, "getAnalysisForSiteBetweenResultDates");
@@ -1691,8 +1691,8 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
         try {
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(hql, Analysis.class);
             query.setParameter("requesterId", referringSiteId);
-            query.setParameter("lowerDate", lowerDate.atStartOfDay());
-            query.setParameter("upperDate", upperDate.atTime(LocalTime.MAX));
+            query.setParameter("lowerDate", java.sql.Date.valueOf(lowerDate));
+            query.setParameter("upperDate", java.sql.Date.valueOf(upperDate));
             return query.list();
         } catch (HibernateException e) {
             handleException(e, "getAnalysisForSiteBetweenResultDates");
