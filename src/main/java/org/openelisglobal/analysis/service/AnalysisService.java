@@ -21,6 +21,8 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     Analysis getAnalysisById(String analysisId);
 
+    Analysis getAnalysisByFhirUuid(String fhirUuid);
+
     List<Analysis> getAnalysisByTestDescriptionAndCompletedDateRange(List<String> descriptions, Date sqlDayOne,
             Date sqlDayTwo);
 

@@ -1478,6 +1478,19 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     }
 
     @Override
+    public Analysis getAnalysisByFhirUuid(String fhirUuid) throws LIMSRuntimeException {
+        try {
+            String sql = "FROM Analysis a WHERE a.fhirUuid = :fhirUuid";
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            query.setParameter("fhirUuid", UUID.fromString(fhirUuid));
+            return query.uniqueResult();
+        } catch (RuntimeException e) {
+            handleException(e, "getAnalysisByFhirUuid");
+            return null;
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<Analysis> getAnalysesBySampleIdTestIdAndStatusId(List<Integer> sampleIdList, List<Integer> testIdList,
             List<Integer> statusIdList) throws LIMSRuntimeException {

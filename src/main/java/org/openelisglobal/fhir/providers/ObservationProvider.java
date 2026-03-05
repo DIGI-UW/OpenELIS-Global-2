@@ -1,6 +1,7 @@
 package org.openelisglobal.fhir.providers;
 
 import ca.uhn.fhir.model.api.Include;
+import ca.uhn.fhir.rest.annotation.Create;
 import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
 import ca.uhn.fhir.rest.annotation.IncludeParam;
@@ -23,7 +24,11 @@ import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.UUID;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.DiagnosticReport;
 import org.hl7.fhir.r4.model.Encounter;
@@ -31,12 +36,24 @@ import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Observation.ObservationStatus;
 import org.hl7.fhir.r4.model.Patient;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.ResultSaveService;
+import org.openelisglobal.common.services.StatusService;
+import org.openelisglobal.common.services.registration.ResultUpdateRegister;
+import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.result.action.util.ResultSet;
+import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
+import org.openelisglobal.result.service.LogbookResultsPersistService;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -49,14 +66,10 @@ import org.springframework.stereotype.Component;
  * source of truth. Search forwards to the HAPI FHIR store to support the full
  * FHIR search parameter set.
  *
- * <p>
- * Note: {@code @Create} is not yet supported because creating an Observation
- * requires a full Result chain (Analysis → SampleItem → Sample → Patient).
- * TODO: implement in a follow-up PR via Bundle transaction endpoint.
- *
- * <p>
  * Supported operations:
  * <ul>
+ * <li>CREATE: POST /fhir/Observation (requires basedOn ServiceRequest
+ * reference; rejects Finalized/Canceled analyses and duplicate results)</li>
  * <li>READ: GET /fhir/Observation/{uuid}</li>
  * <li>SEARCH: GET /fhir/Observation?patient={uuid}&amp;...</li>
  * <li>UPDATE: PUT /fhir/Observation/{uuid}</li>
@@ -77,6 +90,17 @@ public class ObservationProvider implements IResourceProvider {
 
     @Autowired
     private FhirUtil util;
+    @Autowired
+    private AnalysisService analysisService;
+
+    @Autowired
+    private SampleHumanService sampleHumanService;
+
+    @Autowired
+    private LogbookResultsPersistService logbookResultsPersistService;
+
+    @Autowired
+    private IStatusService statusService;
 
     @Override
     public Class<Observation> getResourceType() {
@@ -113,6 +137,106 @@ public class ObservationProvider implements IResourceProvider {
         }
     }
 
+    @Create
+    public MethodOutcome create(@ResourceParam Observation fhirObservation, HttpServletRequest request) {
+        String method = "create";
+        LogEvent.logDebug(this.getClass().getSimpleName(), method, "Received FHIR CREATE request for Observation");
+        try {
+            if (fhirObservation == null) {
+                throw new InvalidRequestException("Observation resource cannot be null");
+            }
+
+            if (!fhirObservation.hasBasedOn() || fhirObservation.getBasedOnFirstRep() == null) {
+                throw new InvalidRequestException("Observation must reference a ServiceRequest via basedOn");
+            }
+            String basedOnRef = fhirObservation.getBasedOnFirstRep().getReference();
+            String analysisUuid = basedOnRef.contains("/") ? basedOnRef.substring(basedOnRef.lastIndexOf("/") + 1)
+                    : basedOnRef;
+
+            Analysis analysis = analysisService.getAnalysisByFhirUuid(analysisUuid);
+            if (analysis == null) {
+                throw new ResourceNotFoundException("ServiceRequest not found: " + analysisUuid);
+            }
+
+            String analysisStatusId = analysis.getStatusId();
+            if (statusService.matches(analysisStatusId, StatusService.AnalysisStatus.Finalized)
+                    || statusService.matches(analysisStatusId, StatusService.AnalysisStatus.Canceled)
+                    || statusService.matches(analysisStatusId, StatusService.AnalysisStatus.SampleRejected)) {
+                throw new InvalidRequestException("Cannot submit result: Analysis is already in status "
+                        + statusService.getStatusName(statusService.getAnalysisStatusForID(analysisStatusId)));
+            }
+
+            List<Result> existingResults = resultService.getResultsByAnalysis(analysis);
+            if (existingResults != null && !existingResults.isEmpty()) {
+                throw new InvalidRequestException("A result already exists for this Analysis: " + analysisUuid
+                        + ". Use PUT to update the existing Observation.");
+            }
+
+            if (analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null) {
+                throw new InternalErrorException("Analysis " + analysisUuid + " has no associated sample");
+            }
+            Sample sample = analysis.getSampleItem().getSample();
+            org.openelisglobal.patient.valueholder.Patient patient = sampleHumanService.getPatientForSample(sample);
+
+            ResultSaveBean bean = new ResultSaveBean();
+            bean.setTestId(analysis.getTest().getId());
+            bean.setReportable("Y");
+
+            if (fhirObservation.hasValueQuantity()) {
+                bean.setResultValue(fhirObservation.getValueQuantity().getValue().toPlainString());
+                bean.setResultType("N");
+            } else if (fhirObservation.hasValueStringType()) {
+                bean.setResultValue(fhirObservation.getValueStringType().getValue());
+                bean.setResultType("T");
+            } else {
+                throw new InvalidRequestException("Observation must have either valueQuantity or valueString");
+            }
+
+            String sysUserId = FhirProviderUtils.getSysUserId(request);
+            if (sysUserId == null) {
+                throw new InvalidRequestException("Authentication required to submit a result");
+            }
+
+            ResultSaveService resultSaveService = new ResultSaveService(analysis, sysUserId);
+            List<Result> results = resultSaveService.createResultsFromTestResultItem(bean, new ArrayList<>());
+
+            if (results.isEmpty()) {
+                throw new InternalErrorException("Failed to create Result from Observation");
+            }
+
+            ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(sysUserId);
+            for (Result result : results) {
+                result.setFhirUuid(UUID.randomUUID());
+                actionDataSet.getNewResults()
+                        .add(new ResultSet(result, null, null, patient, sample, new HashMap<>(), false));
+            }
+            logbookResultsPersistService.persistDataSet(actionDataSet, ResultUpdateRegister.getRegisteredUpdaters(),
+                    sysUserId);
+
+            Result savedResult = results.get(0);
+            try {
+                fhirTransformService.transformPersistResult(savedResult);
+            } catch (Exception e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), method,
+                        "FHIR store sync failed (continuing anyway): " + e.getMessage());
+            }
+
+            Observation resultObservation = fhirTransformService.transformResultToObservation(savedResult);
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), method,
+                    "Successfully created Observation for Analysis: " + analysisUuid);
+
+            return FhirProviderUtils.buildCreateOutcome(resultObservation);
+
+        } catch (ResourceNotFoundException | InvalidRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "Unexpected error creating observation: " + e.getMessage());
+            throw new InternalErrorException("Unexpected server error creating Observation", e);
+        }
+    }
+
     @Update
     public MethodOutcome update(@IdParam IdType theId, @ResourceParam Observation fhirObservation,
             HttpServletRequest request) {
@@ -140,8 +264,7 @@ public class ObservationProvider implements IResourceProvider {
 
             Observation resultObservation = fhirTransformService.transformResultToObservation(updatedResult);
             resultObservation.setId(theId);
-            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, resultObservation,
-                    this.getClass().getSimpleName(), method);
+            fhirTransformService.transformPersistResult(updatedResult);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), method,
                     "Successfully updated Observation with ID: " + theId.getIdPart());

@@ -79,6 +79,118 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void createObservation_shouldReturn201() throws Exception {
+        String analysisUuid = "a1b2c3d4-1234-5678-abcd-ef0123456789";
+
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Observation");
+        String createJson = """
+                {
+                  "resourceType": "Observation",
+                  "status": "preliminary",
+                  "code": {
+                    "coding": [{ "system": "http://loinc.org", "code": "718-7" }]
+                  },
+                  "basedOn": [{ "reference": "ServiceRequest/%s" }],
+                  "valueQuantity": {
+                    "value": 12.5,
+                    "unit": "g/dL"
+                  }
+                }
+                """.formatted(analysisUuid);
+        request.setContent(createJson.getBytes());
+        org.openelisglobal.login.valueholder.UserSessionData usd = new org.openelisglobal.login.valueholder.UserSessionData();
+        usd.setSytemUserId(1);
+        request.getSession().setAttribute(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, usd);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        assertEquals(201, response.getStatus());
+        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+        assertEquals("Observation", jsonResponse.get("resourceType").asText());
+        assertNotNull(jsonResponse.get("id"));
+    }
+
+    @Test
+    public void createObservation_withoutBasedOn_shouldReturn400() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Observation");
+        String createJson = """
+                {
+                  "resourceType": "Observation",
+                  "status": "preliminary",
+                  "code": {
+                    "coding": [{ "system": "http://loinc.org", "code": "718-7" }]
+                  },
+                  "valueQuantity": {
+                    "value": 12.5,
+                    "unit": "g/dL"
+                  }
+                }
+                """;
+        request.setContent(createJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+        assertEquals(400, response.getStatus());
+    }
+
+    @Test
+    public void createObservation_withFinalizedAnalysis_shouldReturn400() throws Exception {
+
+        String finalizedAnalysisUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Observation");
+        String createJson = """
+                {
+                  "resourceType": "Observation",
+                  "status": "preliminary",
+                  "code": {
+                    "coding": [{ "system": "http://loinc.org", "code": "718-7" }]
+                  },
+                  "basedOn": [{ "reference": "ServiceRequest/%s" }],
+                  "valueQuantity": {
+                    "value": 12.5,
+                    "unit": "g/dL"
+                  }
+                }
+                """.formatted(finalizedAnalysisUuid);
+        request.setContent(createJson.getBytes());
+        org.openelisglobal.login.valueholder.UserSessionData usd = new org.openelisglobal.login.valueholder.UserSessionData();
+        usd.setSytemUserId(1);
+        request.getSession().setAttribute(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, usd);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+        assertEquals(400, response.getStatus());
+    }
+
+    @Test
+    public void createObservation_withDuplicateAnalysis_shouldReturn400() throws Exception {
+
+        String analysisWithResultUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Observation");
+        String createJson = """
+                {
+                  "resourceType": "Observation",
+                  "status": "preliminary",
+                  "code": {
+                    "coding": [{ "system": "http://loinc.org", "code": "718-7" }]
+                  },
+                  "basedOn": [{ "reference": "ServiceRequest/%s" }],
+                  "valueQuantity": {
+                    "value": 5.0,
+                    "unit": "g/dL"
+                  }
+                }
+                """.formatted(analysisWithResultUuid);
+        request.setContent(createJson.getBytes());
+        org.openelisglobal.login.valueholder.UserSessionData usd = new org.openelisglobal.login.valueholder.UserSessionData();
+        usd.setSytemUserId(1);
+        request.getSession().setAttribute(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, usd);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+        assertEquals(400, response.getStatus());
+    }
+
+    @Test
     public void updateObservation_shouldUpdateValue() throws Exception {
         String fhirUuid = "550e8400-e29b-41d4-a716-446655440003";
         Result result = resultService.getResultByFhirUuid(fhirUuid);

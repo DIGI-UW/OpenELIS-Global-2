@@ -183,6 +183,8 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     Analysis getAnalysisById(String analysisId) throws LIMSRuntimeException;
 
+    Analysis getAnalysisByFhirUuid(String fhirUuid) throws LIMSRuntimeException;
+
     List<Analysis> getAllAnalysisByTestsAndStatus(List<Integer> testIds, List<Integer> analysisStatusList,
             List<Integer> sampleStatusList);
 

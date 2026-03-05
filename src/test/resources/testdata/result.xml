@@ -58,13 +58,21 @@
         active_begin="2013-11-01" active_end="2013-12-01"
         lastupdated="2023-10-01 12:00:00" />
     <status_of_sample id="1"
-        description="Sample Description 1" code="1" status_type="SampleType1"
-        lastupdated="2025-03-18" name="Status 1"
-        display_key="sample_display_key_1" is_active="Y" />
+        description="No tests have been run for this order" code="1"
+        status_type="ORDER" lastupdated="2025-03-18" name="Test Entered"
+        display_key="status.sample.notStarted" is_active="Y" />
+    <status_of_sample id="2"
+        description="Some tests have been run on this order" code="1"
+        status_type="ORDER" lastupdated="2025-03-18" name="Testing Started"
+        display_key="status.sample.started" is_active="Y" />
     <status_of_sample id="3"
-        description="Sample Description 2" code="1" status_type="SampleType2"
-        lastupdated="2025-03-18" name="Status 2"
-        display_key="sample_display_key_2" is_active="Y" />
+        description="All tests have been run on this order" code="1"
+        status_type="ORDER" lastupdated="2025-03-18" name="Testing finished"
+        display_key="status.sample.finished" is_active="Y" />
+    <status_of_sample id="4"
+        description="This test has not yet been done" code="4"
+        status_type="ANALYSIS" lastupdated="2025-03-18" name="Not Tested"
+        display_key="status.test.notStarted" is_active="Y" />
     <status_of_sample id="6" description="Finalized"
         code="6" status_type="ANALYSIS" lastupdated="2025-03-18"
         name="Finalized" display_key="status.analysis.finalized" is_active="Y" />
@@ -224,4 +232,28 @@
     <sample_human id="1" samp_id="1" patient_id="1"
         lastupdated="2023-11-01 12:00:00" />
 
+    <!-- Data for @Create Observation test -->
+    <person id="50" last_name="Amara" first_name="Kofi"
+        lastupdated="2024-01-01 00:00:00" />
+    <patient id="50" person_id="50"
+        lastupdated="2024-01-01 00:00:00"
+        fhir_uuid="c0b1a2d3-e4f5-4678-9abc-def012345678" />
+    <sample id="50" accession_number="OBS50001" status_id="1"
+        received_date="2024-01-01 07:00:00.0"
+        entered_date="2024-01-01 08:00:00.0"
+        collection_date="2024-01-01 07:00:00.0"
+        lastupdated="2024-01-01 00:00:00" />
+    <sample_human id="50" samp_id="50" patient_id="50"
+        lastupdated="2024-01-01 00:00:00" />
+    <sample_item id="650" sort_order="1" status_id="1"
+        samp_id="50" typeosamp_id="3" collection_date="2024-01-01 07:00:00"
+        lastupdated="2024-01-01 00:00:00" />
+    <analysis id="50" sampitem_id="650" test_id="1"
+        test_sect_id="1" revision="1" status_id="4" analysis_type="ROUTINE"
+        started_date="2024-01-01 09:00:00"
+        completed_date="2024-01-01 11:00:00"
+        released_date="2024-01-01 12:00:00" printed_date="2024-01-01 13:00:00"
+        entry_date="2024-01-01 08:00:00" panel_id="1" is_reportable="Y"
+        method_id="1" lastupdated="2024-01-01 13:00:00"
+        fhir_uuid="a1b2c3d4-1234-5678-abcd-ef0123456789" />
 </dataset>

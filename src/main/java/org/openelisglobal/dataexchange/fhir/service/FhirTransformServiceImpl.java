@@ -536,6 +536,21 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
     }
 
+    @Override
+    public void transformPersistResult(Result result) {
+        String method = "transformPersistResult";
+        LogEvent.logTrace(this.getClass().getSimpleName(), method, "transformPersistResult called");
+        CountingTempIdGenerator tempIdGenerator = new CountingTempIdGenerator();
+        FhirOperations fhirOperations = new FhirOperations();
+        org.hl7.fhir.r4.model.Observation observation = transformResultToObservation(result);
+        this.addToOperations(fhirOperations, tempIdGenerator, observation);
+        try {
+            fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+        } catch (FhirLocalPersistingException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method, "Local fhirStore currently unavailable");
+        }
+    }
+
     private void updateReferringTaskWithTaskInfo(Task referringTask, Task task) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "updateReferringTaskWithTaskInfo",
                 "updateReferringTaskWithTaskInfo called");

@@ -453,6 +453,11 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     }
 
     @Override
+    public Analysis getAnalysisByFhirUuid(String fhirUuid) {
+        return getBaseObjectDAO().getAnalysisByFhirUuid(fhirUuid);
+    }
+
+    @Override
     public void updateNoAuditTrail(Analysis analysis) {
         getBaseObjectDAO().update(analysis);
     }
