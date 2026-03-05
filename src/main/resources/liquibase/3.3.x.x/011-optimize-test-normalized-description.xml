@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Enable unaccent extension for accent normalization -->
+    <changeSet id="test-011-enable-unaccent-extension" author="performance-optimization">
+        <comment>
+            Enable PostgreSQL unaccent extension for accent/diacritic normalization.
+            This allows UNACCENT() function to convert accented characters to their base form.
+        </comment>
+        <sql>
+            CREATE EXTENSION IF NOT EXISTS unaccent;
+        </sql>
+    </changeSet>
+
+    <!-- Add normalized description column for optimal test matching performance -->
+    <changeSet id="test-011-add-normalized-description-column" author="performance-optimization">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="test" columnName="normalized_description"/>
+            </not>
+        </preConditions>
+        <comment>
+            Add normalized_description column to improve performance of CSV test matching.
+            Normalization removes parentheses and non-alphanumeric characters for fuzzy matching.
+            Replaces inefficient in-memory normalization with database-level optimization.
+        </comment>
+
+        <!-- Add the computed column -->
+        <addColumn tableName="test">
+            <column name="normalized_description" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- Populate normalized_description column with normalized values -->
+    <changeSet id="test-011-populate-normalized-description" author="performance-optimization">
+        <comment>
+            Populate normalized_description column with normalized values.
+            Normalization logic: remove parentheses content and non-alphanumeric characters.
+        </comment>
+
+        <sql>
+            UPDATE test
+            SET normalized_description = (
+                CASE
+                    WHEN POSITION('(' IN description) > 0 AND POSITION(')' IN description) > POSITION('(' IN description) THEN
+                        -- Has sample type in parentheses
+                        LOWER(REGEXP_REPLACE(
+                            UNACCENT(SUBSTRING(description FROM 1 FOR POSITION('(' IN description) - 1)),
+                            '[^a-zA-Z0-9]', '', 'g'
+                        )) ||
+                        LOWER(REGEXP_REPLACE(
+                            UNACCENT(SUBSTRING(description FROM POSITION('(' IN description) + 1 FOR POSITION(')' IN description) - POSITION('(' IN description) - 1)),
+                            '[^a-zA-Z0-9]', '', 'g'
+                        ))
+                    ELSE
+                        -- No sample type in parentheses
+                        LOWER(REGEXP_REPLACE(UNACCENT(description), '[^a-zA-Z0-9]', '', 'g'))
+                END
+            )
+            WHERE description IS NOT NULL;
+        </sql>
+    </changeSet>
+
+    <!-- Create index on normalized_description for optimal query performance -->
+    <changeSet id="test-011-create-normalized-description-index" author="performance-optimization">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists tableName="test" indexName="idx_test_normalized_description"/>
+            </not>
+        </preConditions>
+        <comment>
+            Create index on normalized_description for O(log n) lookup performance.
+            Replaces O(n) linear scan through all tests in memory.
+        </comment>
+
+        <createIndex indexName="idx_test_normalized_description" tableName="test">
+            <column name="normalized_description"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Add trigger to automatically maintain normalized_description on updates -->
+    <changeSet id="test-011-create-normalized-description-trigger" author="performance-optimization">
+        <comment>
+            Create trigger to automatically update normalized_description when description changes.
+            Ensures data consistency without manual intervention.
+        </comment>
+
+        <sql splitStatements="true" stripComments="false">
+            CREATE OR REPLACE FUNCTION update_test_normalized_description()
+            RETURNS TRIGGER
+            LANGUAGE plpgsql
+            AS '
+            DECLARE
+                base_name TEXT;
+                sample_type TEXT;
+                paren_start INTEGER;
+                paren_end INTEGER;
+            BEGIN
+                IF NEW.description IS NULL THEN
+                    NEW.normalized_description = '''';
+                    RETURN NEW;
+                END IF;
+
+                -- Check for parentheses content (sample type)
+                paren_start = POSITION(''('' IN NEW.description);
+                paren_end = POSITION('')'' IN NEW.description);
+
+                IF paren_start > 0 AND paren_end > paren_start THEN
+                    -- Extract sample type from parentheses
+                    sample_type = SUBSTRING(NEW.description FROM paren_start + 1 FOR paren_end - paren_start - 1);
+                    sample_type = LOWER(REGEXP_REPLACE(UNACCENT(sample_type), ''[^a-zA-Z0-9]'', '''', ''g''));
+
+                    -- Get base name without parentheses
+                    base_name = SUBSTRING(NEW.description FROM 1 FOR paren_start - 1);
+                ELSE
+                    sample_type = '''';
+                    base_name = NEW.description;
+                END IF;
+
+                -- Normalize base name
+                base_name = LOWER(REGEXP_REPLACE(UNACCENT(base_name), ''[^a-zA-Z0-9]'', '''', ''g''));
+
+                -- Combine base name with sample type
+                NEW.normalized_description = base_name || sample_type;
+
+                RETURN NEW;
+            END;
+            ';
+        </sql>
+        <sql>
+            DROP TRIGGER IF EXISTS trigger_update_normalized_description ON test;
+        </sql>
+        <sql>
+            CREATE TRIGGER trigger_update_normalized_description
+                BEFORE INSERT OR UPDATE OF description ON test
+                FOR EACH ROW
+                EXECUTE FUNCTION update_test_normalized_description();
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
