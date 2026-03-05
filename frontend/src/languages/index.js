@@ -5,7 +5,6 @@ import enUS from "./en_US.json";
 import es from "./es.json";
 import fr from "./fr.json";
 import id from "./id.json";
-import idID from "./id_ID.json";
 import mg from "./mg.json";
 import ro from "./ro.json";
 import si from "./si.json";
@@ -23,7 +22,6 @@ export const languages = {
   es: { label: "Español", messages: es },
   fr: { label: "Français", messages: fr },
   id: { label: "Indonesia", messages: id },
-  "id-ID": { label: "Indonesia (ID)", messages: idID },
   mg: { label: "Malagasy", messages: mg },
   ro: { label: "Română", messages: ro },
   si: { label: "සිංහල", messages: si }, // Sinhala
