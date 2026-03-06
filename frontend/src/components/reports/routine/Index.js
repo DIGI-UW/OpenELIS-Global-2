@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
-import { AlertDialog } from "../../common/CustomNotification";
+import { AlertDialog } from "../../common/AlertDialog";
 import { NotificationContext } from "../../layout/Layout";
 import { Heading, Grid, Column, Section, Loading } from "@carbon/react";
 import { injectIntl, FormattedMessage, useIntl } from "react-intl";

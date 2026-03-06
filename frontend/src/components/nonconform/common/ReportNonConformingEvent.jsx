@@ -24,7 +24,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   NotificationKinds,
   AlertDialog,
-} from "../../common/CustomNotification";
+} from "../../common/AlertDialog";
 import { NotificationContext } from "../../layout/Layout";
 import {
   getFromOpenElisServer,

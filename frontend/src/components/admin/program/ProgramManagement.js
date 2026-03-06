@@ -22,7 +22,7 @@ import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
-} from "../../common/CustomNotification";
+} from "../../common/AlertDialog";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import EditAdditionalOrderEntryQuestions from "./EditAdditionalOrderEntryQuestions.js";

@@ -26,7 +26,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   AlertDialog,
   NotificationKinds,
-} from "../../common/CustomNotification";
+} from "../../common/AlertDialog";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import "../../Style.css";

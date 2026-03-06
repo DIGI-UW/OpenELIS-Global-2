@@ -16,7 +16,7 @@ import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import {
   AlertDialog,
   NotificationKinds,
-} from "../../common/CustomNotification";
+} from "../../common/AlertDialog";
 import {
   ConfigurationContext,
   NotificationContext,

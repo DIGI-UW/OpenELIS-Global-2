@@ -12,7 +12,7 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../../Style.css";
-import { AlertDialog } from "../../common/CustomNotification";
+import { AlertDialog } from "../../common/AlertDialog";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import config from "../../../config.json";
 import { encodeDate, getFromOpenElisServer } from "../../utils/Utils";

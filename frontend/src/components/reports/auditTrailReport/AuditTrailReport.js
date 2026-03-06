@@ -19,7 +19,7 @@ import {
 } from "@carbon/react";
 import "../../Style.css";
 
-import { AlertDialog } from "../../common/CustomNotification";
+import { AlertDialog } from "../../common/AlertDialog";
 import CustomLabNumberInput from "../../common/CustomLabNumberInput";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";

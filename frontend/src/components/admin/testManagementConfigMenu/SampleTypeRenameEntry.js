@@ -8,7 +8,7 @@ import { NotificationContext } from "../../layout/Layout.js";
 import {
   AlertDialog,
   NotificationKinds,
-} from "../../common/CustomNotification";
+} from "../../common/AlertDialog";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import RenameModelBox from "./renameModel/RenameModelBox.js";

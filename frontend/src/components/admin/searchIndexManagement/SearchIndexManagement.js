@@ -7,7 +7,7 @@ import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
-} from "../../common/CustomNotification";
+} from "../../common/AlertDialog";
 
 function SearchIndexManagement() {
   const [loading, setLoading] = useState(false);

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { Form, Grid, Column, Section, Button, Loading } from "@carbon/react";
 import CustomLabNumberInput from "../../common/CustomLabNumberInput";
-import { AlertDialog } from "../../common/CustomNotification";
+import { AlertDialog } from "../../common/AlertDialog";
 import config from "../../../config.json";
 
 function ReportByID(props) {

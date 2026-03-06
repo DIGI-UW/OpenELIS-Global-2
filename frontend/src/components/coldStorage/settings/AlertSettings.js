@@ -29,7 +29,7 @@ import { fetchAlertConfig, saveAlertConfig } from "../api";
 import {
   AlertDialog,
   NotificationKinds,
-} from "../../common/CustomNotification";
+} from "../../common/AlertDialog";
 import { NotificationContext } from "../../layout/Layout";
 
 // Map UI alert types to backend NotificationNature enum values

@@ -5,7 +5,7 @@ import {
 } from "../../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../layout/Layout";
-import { AlertDialog } from "../../common/CustomNotification";
+import { AlertDialog } from "../../common/AlertDialog";
 import {
   Grid,
   Heading,

@@ -19,7 +19,7 @@ import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import {
   AlertDialog,
   NotificationKinds,
-} from "../../common/CustomNotification";
+} from "../../common/AlertDialog";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 
 let breadcrumbs = [

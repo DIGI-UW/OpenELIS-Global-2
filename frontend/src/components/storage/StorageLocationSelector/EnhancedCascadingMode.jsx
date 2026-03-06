@@ -21,7 +21,7 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
-import { NotificationKinds } from "../../common/CustomNotification";
+import { NotificationKinds } from "../../common/AlertDialog";
 import "./EnhancedCascadingMode.css";
 
 /**

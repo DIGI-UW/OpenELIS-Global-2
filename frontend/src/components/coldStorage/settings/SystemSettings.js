@@ -18,7 +18,7 @@ import { fetchSystemConfig, saveSystemConfig } from "../api";
 import {
   AlertDialog,
   NotificationKinds,
-} from "../../common/CustomNotification";
+} from "../../common/AlertDialog";
 import { NotificationContext } from "../../layout/Layout";
 
 const SESSION_TIMEOUT_OPTIONS = [

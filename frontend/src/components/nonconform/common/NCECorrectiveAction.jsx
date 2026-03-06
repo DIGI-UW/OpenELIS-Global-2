@@ -32,7 +32,7 @@ import { headers } from "./ViewNonConforming";
 import {
   NotificationKinds,
   AlertDialog,
-} from "../../common/CustomNotification";
+} from "../../common/AlertDialog";
 import { NotificationContext } from "../../layout/Layout";
 
 const initialFormData = {

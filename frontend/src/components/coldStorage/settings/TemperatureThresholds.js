@@ -14,7 +14,7 @@ import { fetchDevices, updateDeviceThresholds } from "../api";
 import {
   AlertDialog,
   NotificationKinds,
-} from "../../common/CustomNotification";
+} from "../../common/AlertDialog";
 import { NotificationContext } from "../../layout/Layout";
 
 function TemperatureThresholds() {

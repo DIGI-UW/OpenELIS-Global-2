@@ -13,7 +13,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import "../../Style.css";
 import { getFromOpenElisServer } from "../../utils/Utils";
-import { AlertDialog } from "../../common/CustomNotification";
+import { AlertDialog } from "../../common/AlertDialog";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import config from "../../../config.json";
 import { encodeDate } from "../../utils/Utils";

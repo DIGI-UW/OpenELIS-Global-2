@@ -35,7 +35,7 @@ import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
-} from "../../common/CustomNotification";
+} from "../../common/AlertDialog";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
 const breadcrumbs = [
