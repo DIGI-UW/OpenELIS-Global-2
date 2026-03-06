@@ -68,6 +68,7 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
+import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -77,6 +78,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.validator.GenericValidator;
+import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
@@ -120,8 +122,11 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
@@ -180,6 +185,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private FhirUtil fhirUtil;
     @Autowired
     private FhirFacilityOrganizationService facilityOrganizationService;
+    @Autowired
+    private TestResultService testResultService;
 
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
@@ -1282,6 +1289,65 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
 
         Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+    }
+
+    @Override
+    public TestResultItem createResultFromObservation(org.hl7.fhir.r4.model.Observation observation) {
+        TestResultItem bean = new TestResultItem();
+
+        String patientUUID = observation.getSubject().getReferenceElement().getIdPart();
+        String analysisUUID = observation.getBasedOnFirstRep().getReferenceElement().getIdPart();
+        String sampleItemUUID = observation.getSpecimen().getReferenceElement().getIdPart();
+        Patient patient = getItemByFhirId(patientUUID, patientService);
+        Analysis analysis = getItemByFhirId(analysisUUID, analysisService);
+        SampleItem sampleItem = getItemByFhirId(sampleItemUUID, sampleItemService);
+        Test test = analysis.getTest();
+        if (observation.hasStatus()) {
+            String status = observation.getStatusElement().getValue().toString();
+            if (statusService.matches(status, AnalysisStatus.Finalized) == true) {
+                bean.setAnalysisStatusId(statusService.getStatusID(AnalysisStatus.Finalized));
+
+            }
+
+        }
+        if (observation.getCode().getCodingFirstRep().getSystem().equals("http://loinc.org")) {
+            for (Coding code : observation.getCode().getCoding()) {
+                bean.setTestName(code.getDisplay());
+            }
+        }
+
+        if (observation.hasValueStringType()) {
+            bean.setResultValue(observation.getValueStringType().getValueAsString());
+            bean.setResultType("T");
+        } else if (observation.hasValueCodeableConcept()) {
+            for (Coding code : observation.getValueCodeableConcept().getCoding()) {
+                if (code.getSystem().equals(fhirConfig.getOeFhirSystem() + "/dictionary_entry")) {
+                    bean.setResultValue(code.getDisplay());
+                    Dictionary dictionary = dictionaryService.getDictionaryByDictEntry(code.getDisplay());
+                    TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(test.getId(),
+                            dictionary.getId());
+                    bean.setResultType(testResult.getTestResultType());
+
+                }
+            }
+        } else if (observation.hasValueQuantity()) {
+            bean.setResultValue(observation.getValueQuantity().getValueElement().getValueAsString());
+            bean.setResultType("N");
+            bean.setUnitsOfMeasure(observation.getValueQuantity().getUnit());
+            bean.setPatientId(patient.getId());
+
+        }
+        bean.setHasQualifiedResult(true);
+        bean.setSampleItemId(sampleItem.getId());
+
+        bean.setAnalysisId(analysis.getId());
+        return bean;
+    }
+
+    private <T extends BaseObject<?>> T getItemByFhirId(String fhirUuid, BaseObjectService<T, ?> service) {
+
+        List<T> matches = service.getAllMatching("fhirUuid", UUID.fromString(fhirUuid));
+        return matches.isEmpty() ? null : matches.get(0);
     }
 
     @Async
