@@ -373,15 +373,15 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
    * This catches issues like invalid sample types or projects that don't exist in the database.
    */
   const validateWithBackend = useCallback(
-    async (samples) => {
-      const response = await postToOpenElisServerJsonResponse(
+    (samples, callback) => {
+      postToOpenElisServerJsonResponse(
         "/rest/biorepository/sample/validate-manifest-import",
         JSON.stringify({
           samples,
           shipmentId,
         }),
+        callback,
       );
-      return response;
     },
     [shipmentId],
   );
@@ -390,7 +390,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
    * Handle Preview & Validate button click.
    * Sends parsed data to backend for validation and shows results.
    */
-  const handlePreviewValidation = useCallback(async () => {
+  const handlePreviewValidation = useCallback(() => {
     // Don't proceed if there are frontend validation errors
     if (validationErrors.length > 0) {
       setError(
@@ -406,9 +406,22 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     setError(null);
     setImportStatus("validating");
 
-    try {
-      const samples = transformToBackendFormat(parsedData);
-      const validationResult = await validateWithBackend(samples);
+    const samples = transformToBackendFormat(parsedData);
+
+    validateWithBackend(samples, (validationResult) => {
+      setLoading(false);
+
+      if (!validationResult) {
+        setError(
+          intl.formatMessage({
+            id: "biorepository.manifest.error.validationFailed",
+            defaultMessage:
+              "Failed to validate samples with server. Please try again.",
+          }),
+        );
+        setImportStatus("parsed");
+        return;
+      }
 
       // Process backend validation results
       const backendErrors = [];
@@ -447,18 +460,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
           ),
         );
       }
-    } catch (err) {
-      setError(
-        intl.formatMessage({
-          id: "biorepository.manifest.error.validationFailed",
-          defaultMessage:
-            "Failed to validate samples with server. Please try again.",
-        }),
-      );
-      setImportStatus("parsed");
-    } finally {
-      setLoading(false);
-    }
+    });
   }, [
     parsedData,
     validationErrors,
@@ -470,7 +472,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
   // Count of valid samples for display and logic
   const validSampleCount = parsedData.filter((row) => row._valid).length;
 
-  const handleImport = useCallback(async () => {
+  const handleImport = useCallback(() => {
     if (!backendValidationDone) {
       setError(
         intl.formatMessage({
@@ -500,42 +502,32 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     setError(null);
     setImportStatus("importing");
 
-    try {
-      // Only send valid samples to backend
-      const samples = transformToBackendFormat(validSamples);
+    // Only send valid samples to backend
+    const samples = transformToBackendFormat(validSamples);
 
-      const response = await postToOpenElisServerJsonResponse(
-        "/rest/biorepository/sample/register-bulk",
-        JSON.stringify({
-          samples,
-          shipmentId,
-        }),
-      );
-
-      if (response.error) {
-        setError(response.error);
-        setImportStatus("preview");
-      } else {
-        setImportStatus("complete");
-        if (onImportComplete) {
-          onImportComplete(response.samples || []);
+    postToOpenElisServerJsonResponse(
+      "/rest/biorepository/sample/register-bulk",
+      JSON.stringify({
+        samples,
+        shipmentId,
+      }),
+      (response) => {
+        setLoading(false);
+        if (response?.error) {
+          setError(response.error);
+          setImportStatus("preview");
+        } else {
+          setImportStatus("complete");
+          if (onImportComplete) {
+            onImportComplete(response?.samples || []);
+          }
+          // Close modal after successful import
+          setTimeout(() => {
+            handleClose();
+          }, 2000);
         }
-        // Close modal after successful import
-        setTimeout(() => {
-          handleClose();
-        }, 2000);
-      }
-    } catch (err) {
-      setError(
-        intl.formatMessage({
-          id: "biorepository.manifest.error.import",
-          defaultMessage: "Failed to import samples. Please try again.",
-        }),
-      );
-      setImportStatus("preview");
-    } finally {
-      setLoading(false);
-    }
+      },
+    );
   }, [
     parsedData,
     backendValidationDone,

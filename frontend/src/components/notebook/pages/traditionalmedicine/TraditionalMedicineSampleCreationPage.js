@@ -81,117 +81,111 @@ function TraditionalMedicineSampleCreationPage({
   );
 
   const bulkApplyMetadata = useCallback(
-    async (sampleIds, data) => {
-      if (!hasRealPageId) return false;
+    (sampleIds, data) => {
+      if (!hasRealPageId) return;
 
-      try {
-        const response = await postToOpenElisServerJsonResponse(
-          `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
-          JSON.stringify({
-            sampleIds: sampleIds.map((id) => parseInt(id, 10)),
-            data: data,
-          }),
-        );
-
-        if (response.success) {
-          notify({
-            kind: NotificationKinds.success,
-            title: intl.formatMessage({
-              id: "notification.bulk.apply.success",
-            }),
-            message: intl.formatMessage(
-              { id: "notification.bulk.apply.samples.count" },
-              { count: response.updatedCount },
-            ),
-          });
-          return true;
-        }
-        return false;
-      } catch (error) {
-        notify({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({ id: "notification.bulk.apply.error" }),
-          message: error.message || "Failed to apply metadata to samples",
-        });
-        return false;
-      }
+      postToOpenElisServerJsonResponse(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+        JSON.stringify({
+          sampleIds: sampleIds.map((id) => parseInt(id, 10)),
+          data: data,
+        }),
+        (response) => {
+          if (response?.success) {
+            notify({
+              kind: NotificationKinds.success,
+              title: intl.formatMessage({
+                id: "notification.bulk.apply.success",
+              }),
+              message: intl.formatMessage(
+                { id: "notification.bulk.apply.samples.count" },
+                { count: response.updatedCount },
+              ),
+            });
+          } else {
+            notify({
+              kind: NotificationKinds.error,
+              title: intl.formatMessage({
+                id: "notification.bulk.apply.error",
+              }),
+              message: "Failed to apply metadata to samples",
+            });
+          }
+        },
+      );
     },
     [hasRealPageId, pageData?.id, notify, intl],
   );
 
   const bulkAdvanceSamples = useCallback(
-    async (sampleIds, targetPageIndex = 2) => {
-      try {
-        const response = await postToOpenElisServerJsonResponse(
-          `/rest/notebook/${entryId}/samples/advance`,
-          JSON.stringify({
-            sampleIds: sampleIds.map((id) => parseInt(id, 10)),
-            fromPageId: pageData.id,
-            toPageIndex: targetPageIndex,
-          }),
-        );
-
-        if (response.success) {
-          notify({
-            kind: NotificationKinds.success,
-            title: intl.formatMessage({ id: "notification.samples.advanced" }),
-            message: intl.formatMessage(
-              { id: "notification.samples.advanced.count" },
-              { count: response.advancedCount, stage: targetPageIndex },
-            ),
-          });
-          return true;
-        }
-        return false;
-      } catch (error) {
-        notify({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({
-            id: "notification.samples.advance.error",
-          }),
-          message: error.message || "Failed to advance samples to next stage",
-        });
-        return false;
-      }
+    (sampleIds, targetPageIndex = 2) => {
+      postToOpenElisServerJsonResponse(
+        `/rest/notebook/${entryId}/samples/advance`,
+        JSON.stringify({
+          sampleIds: sampleIds.map((id) => parseInt(id, 10)),
+          fromPageId: pageData.id,
+          toPageIndex: targetPageIndex,
+        }),
+        (response) => {
+          if (response?.success) {
+            notify({
+              kind: NotificationKinds.success,
+              title: intl.formatMessage({
+                id: "notification.samples.advanced",
+              }),
+              message: intl.formatMessage(
+                { id: "notification.samples.advanced.count" },
+                { count: response.advancedCount, stage: targetPageIndex },
+              ),
+            });
+          } else {
+            notify({
+              kind: NotificationKinds.error,
+              title: intl.formatMessage({
+                id: "notification.samples.advance.error",
+              }),
+              message: "Failed to advance samples to next stage",
+            });
+          }
+        },
+      );
     },
     [entryId, pageData?.id, notify, intl],
   );
 
   const markSamplesCompleted = useCallback(
-    async (sampleIds) => {
-      if (!hasRealPageId) return false;
+    (sampleIds) => {
+      if (!hasRealPageId) return;
 
-      try {
-        const response = await postToOpenElisServerJsonResponse(
-          `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-          JSON.stringify({
-            sampleIds: sampleIds.map((id) => parseInt(id, 10)),
-            status: "COMPLETED",
-          }),
-        );
-
-        if (response.success) {
-          notify({
-            kind: NotificationKinds.success,
-            title: intl.formatMessage({ id: "notification.samples.completed" }),
-            message: intl.formatMessage(
-              { id: "notification.samples.completed.count" },
-              { count: response.updatedCount },
-            ),
-          });
-          return true;
-        }
-        return false;
-      } catch (error) {
-        notify({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({
-            id: "notification.samples.complete.error",
-          }),
-          message: error.message || "Failed to mark samples as completed",
-        });
-        return false;
-      }
+      postToOpenElisServerJsonResponse(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+        JSON.stringify({
+          sampleIds: sampleIds.map((id) => parseInt(id, 10)),
+          status: "COMPLETED",
+        }),
+        (response) => {
+          if (response?.success) {
+            notify({
+              kind: NotificationKinds.success,
+              title: intl.formatMessage({
+                id: "notification.samples.completed",
+              }),
+              message: intl.formatMessage(
+                { id: "notification.samples.completed.count" },
+                { count: response.updatedCount },
+              ),
+            });
+          } else {
+            notify({
+              kind: NotificationKinds.error,
+              title: intl.formatMessage({
+                id: "notification.samples.complete.error",
+              }),
+              message: "Failed to mark samples as completed",
+            });
+          }
+        },
+      );
     },
     [hasRealPageId, pageData?.id, notify, intl],
   );

@@ -8014,7 +8014,7 @@
   "biorepository.manifest.status.valid": "Valid",
   "biorepository.manifest.status.error": "Error",
   "biorepository.manifest.success.title": "Import Complete",
-  "biorepository.manifest.success.message": "{count} samples imported successfully.",
+  "biorepository.manifest.success.message": "{importedCount} samples imported successfully.{skippedMessage}",
   "biorepository.manifest.error.title": "Error",
   "biorepository.manifest.error.emptyFile": "CSV must contain at least a header row and one data row",
   "biorepository.manifest.error.missingHeaders": "Missing required columns: {fields}. Please download the template.",

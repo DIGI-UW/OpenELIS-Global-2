@@ -163,23 +163,24 @@ function DocumentationVerificationModal({
             postToOpenElisServerJsonResponse(
               `/rest/biorepository/verification/create-for-shipment/${shipment.id}`,
               JSON.stringify({}),
-            ).then((response) => {
-              if (response && !response.error) {
-                // Reload to get full verification object
-                getFromOpenElisServer(
-                  `/rest/biorepository/verification/by-shipment/${shipment.id}`,
-                  (newData) => {
-                    setVerification(newData);
-                    setLoading(false);
-                  },
-                );
-              } else {
-                setError(
-                  response?.error || "Failed to create verification record",
-                );
-                setLoading(false);
-              }
-            });
+              (response) => {
+                if (response && !response.error) {
+                  // Reload to get full verification object
+                  getFromOpenElisServer(
+                    `/rest/biorepository/verification/by-shipment/${shipment.id}`,
+                    (newData) => {
+                      setVerification(newData);
+                      setLoading(false);
+                    },
+                  );
+                } else {
+                  setError(
+                    response?.error || "Failed to create verification record",
+                  );
+                  setLoading(false);
+                }
+              },
+            );
             return;
           }
           setLoading(false);
@@ -207,87 +208,54 @@ function DocumentationVerificationModal({
   );
 
   const handleItemChange = useCallback(
-    async (itemId, verified, notApplicable = false, naJustification = "") => {
+    (itemId, verified, notApplicable = false, naJustification = "") => {
       if (!verification?.id) return;
 
       setSaving(true);
       setError(null);
 
-      try {
-        const response = await putToOpenElisServerJsonResponse(
-          `/rest/biorepository/verification/${verification.id}/item`,
-          JSON.stringify({
-            itemName: itemId,
-            verified,
-            notApplicable,
-            naJustification,
-          }),
-        );
-
-        if (response.error) {
-          setError(response.error);
-        } else {
-          // Update local state
-          setVerification((prev) => ({
-            ...prev,
-            [`check${itemId.charAt(0).toUpperCase() + itemId.slice(1)}`]:
-              verified,
-            [`status${itemId.charAt(0).toUpperCase() + itemId.slice(1)}`]:
-              notApplicable ? "N_A" : verified ? "VERIFIED" : "PENDING",
-            overallStatus: response.status,
-            completedCount: response.completedCount,
-          }));
-        }
-      } catch (err) {
-        setError("Failed to update verification item");
-      } finally {
-        setSaving(false);
-      }
+      putToOpenElisServerJsonResponse(
+        `/rest/biorepository/verification/${verification.id}/item`,
+        JSON.stringify({
+          itemName: itemId,
+          verified,
+          notApplicable,
+          naJustification,
+        }),
+        (response) => {
+          setSaving(false);
+          if (response?.error) {
+            setError(response.error);
+          } else {
+            // Update local state
+            setVerification((prev) => ({
+              ...prev,
+              [`check${itemId.charAt(0).toUpperCase() + itemId.slice(1)}`]:
+                verified,
+              [`status${itemId.charAt(0).toUpperCase() + itemId.slice(1)}`]:
+                notApplicable ? "N_A" : verified ? "VERIFIED" : "PENDING",
+              overallStatus: response.status,
+              completedCount: response.completedCount,
+            }));
+          }
+        },
+      );
     },
     [verification?.id],
   );
 
-  const handleComplete = useCallback(async () => {
+  const handleComplete = useCallback(() => {
     if (!verification?.id) return;
 
     setSaving(true);
     setError(null);
 
-    try {
-      const response = await postToOpenElisServerJsonResponse(
-        `/rest/biorepository/verification/${verification.id}/complete`,
-        JSON.stringify({}),
-      );
-
-      if (response.error) {
-        setError(response.error);
-      } else {
-        if (onVerificationComplete) {
-          onVerificationComplete(response);
-        }
-        onClose();
-      }
-    } catch (err) {
-      setError("Failed to complete verification");
-    } finally {
-      setSaving(false);
-    }
-  }, [verification?.id, onVerificationComplete, onClose]);
-
-  const handleQuarantine = useCallback(
-    async (reason) => {
-      if (!verification?.id) return;
-
-      setSaving(true);
-      setError(null);
-
-      try {
-        const response = await postToOpenElisServerJsonResponse(
-          `/rest/biorepository/verification/${verification.id}/quarantine`,
-          JSON.stringify({ reason }),
-        );
-
-        if (response.error) {
+    postToOpenElisServerJsonResponse(
+      `/rest/biorepository/verification/${verification.id}/complete`,
+      JSON.stringify({}),
+      (response) => {
+        setSaving(false);
+        if (response?.error) {
           setError(response.error);
         } else {
           if (onVerificationComplete) {
@@ -295,11 +263,32 @@ function DocumentationVerificationModal({
           }
           onClose();
         }
-      } catch (err) {
-        setError("Failed to quarantine sample");
-      } finally {
-        setSaving(false);
-      }
+      },
+    );
+  }, [verification?.id, onVerificationComplete, onClose]);
+
+  const handleQuarantine = useCallback(
+    (reason) => {
+      if (!verification?.id) return;
+
+      setSaving(true);
+      setError(null);
+
+      postToOpenElisServerJsonResponse(
+        `/rest/biorepository/verification/${verification.id}/quarantine`,
+        JSON.stringify({ reason }),
+        (response) => {
+          setSaving(false);
+          if (response?.error) {
+            setError(response.error);
+          } else {
+            if (onVerificationComplete) {
+              onVerificationComplete(response);
+            }
+            onClose();
+          }
+        },
+      );
     },
     [verification?.id, onVerificationComplete, onClose],
   );

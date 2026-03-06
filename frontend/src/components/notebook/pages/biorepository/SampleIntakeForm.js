@@ -191,22 +191,17 @@ function SampleIntakeForm({
     generateNewBarcode();
   }, []);
 
-  const generateNewBarcode = useCallback(async () => {
+  const generateNewBarcode = useCallback(() => {
     setGeneratingBarcode(true);
-    try {
-      const response = await getFromOpenElisServer(
-        "/rest/biorepository/sample/generate-barcode",
-        (data) => {
-          if (data && data.barcode) {
-            setFormData((prev) => ({ ...prev, barcode: data.barcode }));
-          }
-        },
-      );
-    } catch (err) {
-      console.error("Failed to generate barcode:", err);
-    } finally {
-      setGeneratingBarcode(false);
-    }
+    getFromOpenElisServer(
+      "/rest/biorepository/sample/generate-barcode",
+      (data) => {
+        setGeneratingBarcode(false);
+        if (data && data.barcode) {
+          setFormData((prev) => ({ ...prev, barcode: data.barcode }));
+        }
+      },
+    );
   }, []);
 
   // Get temperature range based on preset
@@ -311,7 +306,7 @@ function SampleIntakeForm({
   );
 
   const handleSubmit = useCallback(
-    async (e) => {
+    (e) => {
       e.preventDefault();
 
       if (!validateForm()) {
@@ -321,77 +316,68 @@ function SampleIntakeForm({
       setLoading(true);
       setError(null);
 
-      try {
-        // Calculate temperature range
-        let tempRange;
-        if (formData.storageTemperature === "CUSTOM") {
-          tempRange = {
-            min: formData.requiredTempMin,
-            max: formData.requiredTempMax,
-          };
-        } else {
-          tempRange = getTemperatureRange(formData.storageTemperature);
-        }
-
-        // Combine receipt date and time
-        const receiptDateTime =
-          formData.receiptDate && formData.receiptTime
-            ? new Date(
-                `${formData.receiptDate}T${formData.receiptTime}:00`,
-              ).toISOString()
-            : new Date().toISOString();
-
-        const sampleData = {
-          barcode: formData.barcode.trim(),
-          externalId: formData.externalId.trim() || formData.barcode.trim(), // Default to barcode if no external ID
-          originLab: formData.originLab.trim(),
-          sampleTypeId: formData.sampleTypeId,
-          receiptDate: receiptDateTime,
-          collectionDate: formData.collectionDate,
-          requiredTempMin: tempRange.min,
-          requiredTempMax: tempRange.max,
-          projectId: formData.projectId,
-          biosafetyLevel: formData.biosafetyLevel,
-          ethicsApprovalRef: formData.ethicsApprovalRef.trim() || null,
-          mtaReference: formData.mtaReference.trim() || null,
-          specialHandling: formData.specialHandling.trim() || null,
-          shipmentId: shipment?.id || null,
+      // Calculate temperature range
+      let tempRange;
+      if (formData.storageTemperature === "CUSTOM") {
+        tempRange = {
+          min: formData.requiredTempMin,
+          max: formData.requiredTempMax,
         };
-
-        const response = await postToOpenElisServerJsonResponse(
-          "/rest/biorepository/sample/register",
-          JSON.stringify(sampleData),
-        );
-
-        if (response.error) {
-          setError(response.error);
-        } else {
-          setSuccess(true);
-          setRegisteredSamples((prev) => [...prev, response]);
-          if (onSamplesRegistered) {
-            onSamplesRegistered([response]);
-          }
-          // Reset form for next entry but keep shipment-related defaults
-          setFormData((prev) => ({
-            ...prev,
-            barcode: "",
-            externalId: "",
-            collectionDate: null,
-            specialHandling: "",
-          }));
-          // Generate new barcode for next sample
-          generateNewBarcode();
-        }
-      } catch (err) {
-        setError(
-          intl.formatMessage({
-            id: "biorepository.sample.error.submit",
-            defaultMessage: "Failed to register sample. Please try again.",
-          }),
-        );
-      } finally {
-        setLoading(false);
+      } else {
+        tempRange = getTemperatureRange(formData.storageTemperature);
       }
+
+      // Combine receipt date and time
+      const receiptDateTime =
+        formData.receiptDate && formData.receiptTime
+          ? new Date(
+              `${formData.receiptDate}T${formData.receiptTime}:00`,
+            ).toISOString()
+          : new Date().toISOString();
+
+      const sampleData = {
+        barcode: formData.barcode.trim(),
+        externalId: formData.externalId.trim() || formData.barcode.trim(), // Default to barcode if no external ID
+        originLab: formData.originLab.trim(),
+        sampleTypeId: formData.sampleTypeId,
+        receiptDate: receiptDateTime,
+        collectionDate: formData.collectionDate,
+        requiredTempMin: tempRange.min,
+        requiredTempMax: tempRange.max,
+        projectId: formData.projectId,
+        biosafetyLevel: formData.biosafetyLevel,
+        ethicsApprovalRef: formData.ethicsApprovalRef.trim() || null,
+        mtaReference: formData.mtaReference.trim() || null,
+        specialHandling: formData.specialHandling.trim() || null,
+        shipmentId: shipment?.id || null,
+      };
+
+      postToOpenElisServerJsonResponse(
+        "/rest/biorepository/sample/register",
+        JSON.stringify(sampleData),
+        (response) => {
+          setLoading(false);
+          if (response?.error) {
+            setError(response.error);
+          } else if (response) {
+            setSuccess(true);
+            setRegisteredSamples((prev) => [...prev, response]);
+            if (onSamplesRegistered) {
+              onSamplesRegistered([response]);
+            }
+            // Reset form for next entry but keep shipment-related defaults
+            setFormData((prev) => ({
+              ...prev,
+              barcode: "",
+              externalId: "",
+              collectionDate: null,
+              specialHandling: "",
+            }));
+            // Generate new barcode for next sample
+            generateNewBarcode();
+          }
+        },
+      );
     },
     [
       formData,

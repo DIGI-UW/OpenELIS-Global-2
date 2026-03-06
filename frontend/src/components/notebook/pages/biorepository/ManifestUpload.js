@@ -152,7 +152,7 @@ function ManifestUpload({ shipmentId, onImportComplete, onCancel }) {
     [intl, parseCSV],
   );
 
-  const handleImport = useCallback(async () => {
+  const handleImport = useCallback(() => {
     if (validationErrors.length > 0) {
       setError(
         intl.formatMessage({
@@ -167,47 +167,37 @@ function ManifestUpload({ shipmentId, onImportComplete, onCancel }) {
     setError(null);
     setImportStatus("importing");
 
-    try {
-      // Transform parsed data to sample objects
-      const samples = parsedData.map((row) => ({
-        externalId: row.externalId,
-        sampleTypeId: row.sampleType || null,
-        projectId: row.projectId || null,
-        collectionDate: row.collectionDate || null,
-        biosafetyLevel: row.biosafetyLevel || "BSL_1",
-        consentId: row.consentId || null,
-        ethicsApprovalRef: row.ethicsApprovalRef || null,
-        mtaReference: row.mtaReference || null,
-      }));
+    // Transform parsed data to sample objects
+    const samples = parsedData.map((row) => ({
+      externalId: row.externalId,
+      sampleTypeId: row.sampleType || null,
+      projectId: row.projectId || null,
+      collectionDate: row.collectionDate || null,
+      biosafetyLevel: row.biosafetyLevel || "BSL_1",
+      consentId: row.consentId || null,
+      ethicsApprovalRef: row.ethicsApprovalRef || null,
+      mtaReference: row.mtaReference || null,
+    }));
 
-      const response = await postToOpenElisServerJsonResponse(
-        "/rest/biorepository/sample/register-bulk",
-        JSON.stringify({
-          samples,
-          shipmentId,
-        }),
-      );
-
-      if (response.error) {
-        setError(response.error);
-        setImportStatus("preview");
-      } else {
-        setImportStatus("complete");
-        if (onImportComplete) {
-          onImportComplete(response.samples || []);
+    postToOpenElisServerJsonResponse(
+      "/rest/biorepository/sample/register-bulk",
+      JSON.stringify({
+        samples,
+        shipmentId,
+      }),
+      (response) => {
+        setLoading(false);
+        if (response?.error) {
+          setError(response.error);
+          setImportStatus("preview");
+        } else {
+          setImportStatus("complete");
+          if (onImportComplete) {
+            onImportComplete(response?.samples || []);
+          }
         }
-      }
-    } catch (err) {
-      setError(
-        intl.formatMessage({
-          id: "biorepository.manifest.error.import",
-          defaultMessage: "Failed to import samples. Please try again.",
-        }),
-      );
-      setImportStatus("preview");
-    } finally {
-      setLoading(false);
-    }
+      },
+    );
   }, [parsedData, validationErrors, shipmentId, onImportComplete, intl]);
 
   const handleClear = useCallback(() => {

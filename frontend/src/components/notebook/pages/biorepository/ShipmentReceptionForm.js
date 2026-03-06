@@ -179,10 +179,15 @@ function ShipmentReceptionForm({
           if (response.error) {
             setError(response.error);
           } else {
-            // Reload shipments and go back to list
+            // Notify parent first — this triggers a tab switch which
+            // unmounts this component, making local state updates unnecessary
+            if (onShipmentCreated) {
+              onShipmentCreated(response);
+              return;
+            }
+            // Only do local cleanup if there's no parent callback
             loadShipments();
             setViewMode("list");
-            // Reset form
             setFormData({
               deliveryReference: "",
               senderName: "",
@@ -192,9 +197,6 @@ function ShipmentReceptionForm({
               transportTemperature: null,
               expectedSampleCount: null,
             });
-            if (onShipmentCreated) {
-              onShipmentCreated(response);
-            }
           }
         },
       );
