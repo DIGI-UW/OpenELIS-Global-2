@@ -1,6 +1,8 @@
 testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags
 # ============================================================================
 # DICTIONARY TYPE (D) - HIV and Hepatitis Tests
+# Note: Test names use base names (e.g., "HIV Rapid Test") and are automatically
+# applied to all sample type variants (e.g., "HIV Rapid Test(Whole Blood)", etc.)
 # ============================================================================
 HIV Rapid Test,D,Positive,Test Results,1,N,Y,N,,
 HIV Rapid Test,D,Negative,Test Results,2,N,Y,Y,,
@@ -189,9 +191,6 @@ Malaria Rapid Test,T,1:80,Titer Results,4,N,Y,N,,
 Malaria Rapid Test,T,1:160,Titer Results,5,N,Y,N,,
 Malaria Rapid Test,T,1:320,Titer Results,6,N,Y,N,,
 Malaria Rapid Test,T,1:640,Titer Results,7,N,Y,N,,
-HIV Rapid Test,T,1:160,Titer Results,5,N,Y,N,,
-HIV Rapid Test,T,1:320,Titer Results,6,N,Y,N,,
-HIV Rapid Test,T,1:640,Titer Results,7,N,Y,N,,
 # ============================================================================
 # MULTISELECT TYPE (M) - Multiple dictionary selections
 # ============================================================================

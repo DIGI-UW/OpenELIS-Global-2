@@ -5,8 +5,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,6 +38,7 @@ import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -72,6 +75,18 @@ public class AnalyzerRestController extends BaseRestController {
     private AnalyzerTypeService analyzerTypeService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * Bridge URL for outbound analyzer communication. When set, all test-connection
+     * and query operations route through the bridge instead of direct TCP. This is
+     * the production architecture — OE never connects directly to analyzers.
+     *
+     * <p>
+     * Set via Spring property {@code analyzer.bridge.url} or env var
+     * {@code ANALYZER_BRIDGE_URL}. Empty/unset = fallback to direct TCP.
+     */
+    @Value("${analyzer.bridge.url:}")
+    private String analyzerBridgeUrl;
 
     /** ASTM LIS2-A2 Enquiry — initiates transmission. */
     private static final byte ENQ = 0x05;
@@ -220,7 +235,9 @@ public class AnalyzerRestController extends BaseRestController {
                 }
             }
 
-            Analyzer createdAnalyzer = analyzerService.get(analyzerId);
+            // Use getWithType() to eagerly fetch AnalyzerType within the service
+            // transaction — prevents LazyInitializationException in analyzerToMap()
+            Analyzer createdAnalyzer = analyzerService.getWithType(analyzerId).orElse(null);
             if (createdAnalyzer == null) {
                 throw new LIMSRuntimeException("Failed to retrieve created analyzer");
             }
@@ -669,8 +686,8 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * Test ASTM analyzer connection over TCP/IP. ASTM requires ENQ/ACK handshake
-     * for connection validation.
+     * Test ASTM analyzer connection. Routes through the bridge when configured
+     * (production architecture), falls back to direct TCP when no bridge is set.
      *
      * @param analyzer Analyzer entity with IP/port
      * @return Map with success status and message
@@ -683,9 +700,112 @@ public class AnalyzerRestController extends BaseRestController {
             return response;
         }
 
-        // Use existing testTcpConnection which implements ASTM ENQ/ACK
+        if (analyzerBridgeUrl != null && !analyzerBridgeUrl.isBlank()) {
+            // Production path: route through bridge
+            Map<String, Object> response = testConnectionViaBridge(analyzer);
+            response.put("connectionType", "ASTM via bridge");
+            return response;
+        }
+
+        // Fallback: direct TCP (deployments without bridge)
+        logger.warn("No analyzer.bridge.url configured — using direct TCP for test-connection. "
+                + "Set ANALYZER_BRIDGE_URL for production deployments.");
         Map<String, Object> response = testTcpConnection(analyzer.getIpAddress(), analyzer.getPort());
-        response.put("connectionType", "ASTM");
+        response.put("connectionType", "ASTM (direct TCP — no bridge)");
+        return response;
+    }
+
+    /**
+     * Test analyzer connection by routing through the ASTM-HTTP bridge.
+     *
+     * <p>
+     * Sends a minimal ASTM header to the bridge's HTTP API with
+     * {@code forwardAddress} and {@code forwardPort} query parameters. The bridge
+     * opens a TCP connection to the analyzer, performs the ASTM ENQ/ACK handshake,
+     * and returns the result.
+     *
+     * @param analyzer Analyzer entity with IP/port
+     * @return Map with success status and message
+     */
+    private Map<String, Object> testConnectionViaBridge(Analyzer analyzer) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        String bridgeEndpoint = analyzerBridgeUrl.replaceAll("/+$", "") + "/?forwardAddress=" + analyzer.getIpAddress()
+                + "&forwardPort=" + analyzer.getPort();
+
+        try {
+            logger.info("Testing connection via bridge: {} -> {}:{}", bridgeEndpoint, analyzer.getIpAddress(),
+                    analyzer.getPort());
+
+            // Empty body = ping; bridge treats contention + empty message as SUCCESS
+            // (per CLSI LIS1-A §8.2.7.1, instrument has priority on contention)
+            String testMessage = "";
+
+            URL url = new URL(bridgeEndpoint);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            // Trust self-signed certs in dev (bridge uses HTTPS)
+            if (conn instanceof javax.net.ssl.HttpsURLConnection) {
+                javax.net.ssl.HttpsURLConnection httpsConn = (javax.net.ssl.HttpsURLConnection) conn;
+                javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
+                sslContext.init(null, new javax.net.ssl.TrustManager[] { new javax.net.ssl.X509TrustManager() {
+                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                        return null;
+                    }
+
+                    public void checkClientTrusted(java.security.cert.X509Certificate[] c, String s) {
+                    }
+
+                    public void checkServerTrusted(java.security.cert.X509Certificate[] c, String s) {
+                    }
+                } }, new java.security.SecureRandom());
+                httpsConn.setSSLSocketFactory(sslContext.getSocketFactory());
+                httpsConn.setHostnameVerifier((hostname, session) -> true);
+            }
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "text/plain; charset=utf-8");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(10000);
+            // Bridge needs up to 35s for ASTM line contention handling:
+            // ~15s establishment + 20s LINE_CONTENTION_REATTEMPT_TIMEOUT
+            conn.setReadTimeout(45000);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(testMessage.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int status = conn.getResponseCode();
+            String body = "";
+            try (InputStream is = (status < 400) ? conn.getInputStream() : conn.getErrorStream()) {
+                if (is != null) {
+                    body = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                }
+            }
+
+            if (status >= 200 && status < 300) {
+                response.put("success", true);
+                response.put("message", "Connection successful via bridge");
+                logger.info("Bridge test-connection succeeded for {}:{}", analyzer.getIpAddress(), analyzer.getPort());
+            } else {
+                response.put("success", false);
+                response.put("message", "Bridge returned HTTP " + status + ": " + body);
+                logger.warn("Bridge test-connection failed for {}:{} — HTTP {}: {}", analyzer.getIpAddress(),
+                        analyzer.getPort(), status, body);
+            }
+        } catch (java.net.ConnectException e) {
+            response.put("success", false);
+            response.put("message", "Cannot reach bridge at " + analyzerBridgeUrl + " — " + e.getMessage());
+            logger.error("Bridge unreachable: {}", analyzerBridgeUrl, e);
+        } catch (SocketTimeoutException e) {
+            response.put("success", false);
+            response.put("message", "Bridge timeout — analyzer may be unreachable at " + analyzer.getIpAddress() + ":"
+                    + analyzer.getPort());
+            logger.warn("Bridge test-connection timeout for {}:{}", analyzer.getIpAddress(), analyzer.getPort(), e);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Bridge connection error: " + e.getMessage());
+            logger.error("Bridge test-connection error for {}:{}", analyzer.getIpAddress(), analyzer.getPort(), e);
+        }
+
+        response.put("bridgeUrl", analyzerBridgeUrl);
         return response;
     }
 
@@ -850,19 +970,23 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/defaults List available default configuration templates
-     * from filesystem.
+     * GET /rest/analyzer/profiles List available analyzer profile templates from
+     * filesystem.
      *
      * <p>
      * Returns minimal metadata for each template: id (e.g., "astm/mindray-ba88a"),
      * protocol ("ASTM" or "HL7"), analyzer_name (from JSON).
+     *
+     * <p>
+     * Built-in profiles are intentionally immutable and exposed via read-only GET
+     * endpoints. There are no write endpoints for /profiles/**.
      */
-    @GetMapping("/defaults")
+    @GetMapping({ "/profiles", "/defaults" })
     public ResponseEntity<?> getDefaults() {
         try {
-            String defaultsDir = System.getenv("ANALYZER_DEFAULTS_DIR");
+            String defaultsDir = System.getenv("ANALYZER_PROFILES_DIR");
             if (defaultsDir == null || defaultsDir.isEmpty()) {
-                defaultsDir = "/data/analyzer-defaults";
+                defaultsDir = "/data/analyzer-profiles";
             }
 
             Path baseDir = Path.of(defaultsDir);
@@ -895,7 +1019,7 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/defaults/{protocol}/{name} Load specific default
+     * GET /rest/analyzer/profiles/{protocol}/{name} Load specific profile
      * configuration template from filesystem.
      *
      * <p>
@@ -908,7 +1032,7 @@ public class AnalyzerRestController extends BaseRestController {
      * base directory</li>
      * </ul>
      */
-    @GetMapping("/defaults/{protocol}/{name}")
+    @GetMapping({ "/profiles/{protocol}/{name}", "/defaults/{protocol}/{name}" })
     @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> getDefaultConfig(@PathVariable String protocol,
             @PathVariable String name) {
@@ -930,6 +1054,11 @@ public class AnalyzerRestController extends BaseRestController {
 
             String jsonContent = Files.readString(templateFile, StandardCharsets.UTF_8);
             Map<String, Object> config = objectMapper.readValue(jsonContent, Map.class);
+            String schemaValidationError = validateProfileMeta(config, protocol + "/" + name);
+            if (schemaValidationError != null) {
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                        .body(AnalyzerControllerHelper.wrapError(schemaValidationError));
+            }
             return ResponseEntity.ok(config);
 
         } catch (IOException e) {
@@ -1004,9 +1133,9 @@ public class AnalyzerRestController extends BaseRestController {
         }
 
         String filename = name.endsWith(".json") ? name : name + ".json";
-        String defaultsDir = System.getenv("ANALYZER_DEFAULTS_DIR");
+        String defaultsDir = System.getenv("ANALYZER_PROFILES_DIR");
         if (defaultsDir == null || defaultsDir.isEmpty()) {
-            defaultsDir = "/data/analyzer-defaults";
+            defaultsDir = "/data/analyzer-profiles";
         }
 
         Path baseDir = Path.of(defaultsDir);
@@ -1064,6 +1193,11 @@ public class AnalyzerRestController extends BaseRestController {
                 try {
                     String jsonContent = Files.readString(file, StandardCharsets.UTF_8);
                     Map<String, Object> config = objectMapper.readValue(jsonContent, Map.class);
+                    String schemaValidationError = validateProfileMeta(config, protocol + "/" + file.getFileName());
+                    if (schemaValidationError != null) {
+                        logger.warn("Skipping profile template due to invalid schema: {}", schemaValidationError);
+                        return;
+                    }
 
                     Map<String, Object> template = new LinkedHashMap<>();
                     String filename = file.getFileName().toString().replace(".json", "");
@@ -1081,5 +1215,25 @@ public class AnalyzerRestController extends BaseRestController {
         } catch (IOException e) {
             logger.warn("Failed to list template files in {}: {}", directory, e.getMessage());
         }
+    }
+
+    private String validateProfileMeta(Map<String, Object> config, String templateId) {
+        if (config == null) {
+            return "Invalid profile template '" + templateId + "': content is empty";
+        }
+        Object profileMetaObj = config.get("profileMeta");
+        if (!(profileMetaObj instanceof Map<?, ?> profileMeta)) {
+            return "Invalid profile template '" + templateId + "': missing required profileMeta object";
+        }
+        if (isBlank(profileMeta.get("id")) || isBlank(profileMeta.get("version"))
+                || isBlank(profileMeta.get("displayName"))) {
+            return "Invalid profile template '" + templateId
+                    + "': profileMeta must include non-empty id, version, and displayName";
+        }
+        return null;
+    }
+
+    private boolean isBlank(Object value) {
+        return value == null || String.valueOf(value).trim().isEmpty();
     }
 }

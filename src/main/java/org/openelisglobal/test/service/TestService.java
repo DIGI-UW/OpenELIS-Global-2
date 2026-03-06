@@ -49,6 +49,8 @@ public interface TestService extends BaseObjectService<Test, String> {
 
     Test getTestByDescription(String description);
 
+    Test getTestByNormalizedDescription(String description);
+
     List<Test> getTestsByLoincCode(String loincCode);
 
     List<Test> getActiveTestsByLoinc(String[] loincCodes);

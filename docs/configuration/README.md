@@ -30,6 +30,16 @@ Configure FHIR Questionnaire resources for data collection forms.
 - **Features:** FHIR-compliant questionnaires, automatic UUID assignment,
   checksum tracking
 
+### [Address Hierarchy Configuration](address-hierarchy-configuration.md)
+
+Configure hierarchical geographic/administrative divisions (e.g., Province →
+District → Sub-District → Village).
+
+- **Location:** `configuration/backend/address-hierarchy/`
+- **Format:** CSV
+- **Features:** Configurable hierarchy levels, parent-child relationships,
+  backward compatible with Health Region/District
+
 ## How Configuration Loading Works
 
 Configuration files are loaded automatically during application startup:
@@ -62,7 +72,12 @@ To add a new configuration domain:
 2. Annotate with `@Component`
 3. Implement `getDomainName()`, `getFileExtension()`, and
    `processConfiguration()`
-4. Add documentation following the pattern in this directory
+4. Optionally override `getFileMatcher()` to return an Ant-style glob pattern
+   (e.g., `*-levels.csv`) if the handler should only match a subset of files.
+   The default is `*.{extension}`. When multiple handlers share a domain,
+   handlers with lower `getLoadOrder()` claim matching files first; later
+   handlers with broader patterns automatically skip already-claimed files.
+5. Add documentation following the pattern in this directory
 
 ## See Also
 

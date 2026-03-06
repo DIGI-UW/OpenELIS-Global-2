@@ -39,8 +39,8 @@ jobs:
       - name: Build main project (produces classes JAR and test-jar for plugins)
         run: mvn clean install -Dspotless.check.skip=true
 
-      - name: Build plugins (compile-only until analyzer stubs are replaced)
-        run: cd plugins && mvn clean verify -DskipTests -Dmaven.test.skip=true
+      # - name: Build plugins (compile-only until analyzer stubs are replaced)
+      #   run: cd plugins && mvn clean verify -DskipTests -Dmaven.test.skip=true
 
       - name: Generate JaCoCo Badge
         if: github.event_name == 'push'

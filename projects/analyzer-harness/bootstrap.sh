@@ -33,13 +33,37 @@ mkdir -p "$HARNESS_VOLUME/menu"
 mkdir -p "$HARNESS_VOLUME/logs/oeLogs"
 mkdir -p "$HARNESS_VOLUME/logs/tomcatLogs"
 mkdir -p "$HARNESS_VOLUME/plugins"
-# Copy analyzer plugin JARs from submodule (idempotent: skips existing)
+# Copy analyzer plugin JARs from submodule (idempotent: skips existing).
+# HARNESS_PLUGINS controls which JARs are copied:
+#   all     (default) - all plugin JARs (backward-compatible)
+#   generic           - only GenericASTM + GenericHL7 (avoids legacy auto-created analyzer rows)
+HARNESS_PLUGINS="${HARNESS_PLUGINS:-all}"
 PLUGIN_SRC="$REPO_ROOT/plugins/plugins"
-if [ -d "$PLUGIN_SRC" ] && ls "$PLUGIN_SRC"/*.jar 1>/dev/null 2>&1; then
-  cp -n "$PLUGIN_SRC"/*.jar "$HARNESS_VOLUME/plugins/" 2>/dev/null || true
-  echo -e "  ${GREEN}✓ Analyzer plugins copied ($(ls "$HARNESS_VOLUME/plugins/"*.jar 2>/dev/null | wc -l) JARs)${NC}"
+if [ -d "$PLUGIN_SRC" ]; then
+  if [ "$HARNESS_PLUGINS" = "generic" ]; then
+    GENERIC_JARS="GenericASTM-1.0.jar GenericHL7-1.0.jar"
+    copied=0
+    for jar in $GENERIC_JARS; do
+      if [ -f "$PLUGIN_SRC/$jar" ]; then
+        cp -n "$PLUGIN_SRC/$jar" "$HARNESS_VOLUME/plugins/" 2>/dev/null || true
+        copied=$((copied + 1))
+      fi
+    done
+    if [ "$copied" -gt 0 ]; then
+      echo -e "  ${GREEN}✓ Generic analyzer plugins only ($copied JARs)${NC}"
+    else
+      echo -e "  ${YELLOW}WARN: No generic plugin JARs found. Run 'cd plugins && mvn package' to build them.${NC}"
+    fi
+  else
+    if ls "$PLUGIN_SRC"/*.jar 1>/dev/null 2>&1; then
+      cp -n "$PLUGIN_SRC"/*.jar "$HARNESS_VOLUME/plugins/" 2>/dev/null || true
+      echo -e "  ${GREEN}✓ All analyzer plugins copied ($(ls "$HARNESS_VOLUME/plugins/"*.jar 2>/dev/null | wc -l) JARs)${NC}"
+    else
+      echo -e "  ${YELLOW}WARN: No plugin JARs found at plugins/plugins/. Run 'cd plugins && mvn package' to build them.${NC}"
+    fi
+  fi
 else
-  echo -e "  ${YELLOW}WARN: No plugin JARs found at plugins/plugins/. Run 'cd plugins && mvn package' to build them.${NC}"
+  echo -e "  ${YELLOW}WARN: Plugin source directory not found at plugins/plugins/.${NC}"
 fi
 mkdir -p "$HARNESS_VOLUME/programs"
 mkdir -p "$HARNESS_VOLUME/configuration"
