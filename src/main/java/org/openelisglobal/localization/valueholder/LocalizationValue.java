@@ -16,6 +16,7 @@
 
 package org.openelisglobal.localization.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
@@ -28,6 +29,7 @@ public class LocalizationValue extends BaseObject<String> {
     private static final long serialVersionUID = 1L;
 
     private String id;
+    @JsonIgnore
     private Localization localization;
     private String locale;
     private String value;
