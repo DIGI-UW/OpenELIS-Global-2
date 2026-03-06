@@ -314,8 +314,7 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
             Test test;
             if (existingTest != null) {
                 test = updateTest(existingTest, values, baseTestName, testSection, loincIndex, isActiveIndex,
-                        isOrderableIndex, sortOrderIndex, unitOfMeasureIndex, localizationColumns,
-                        defaultSortOrder);
+                        isOrderableIndex, sortOrderIndex, unitOfMeasureIndex, localizationColumns, defaultSortOrder);
                 LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
                         "Updated existing test: " + baseTestName);
             } else {
