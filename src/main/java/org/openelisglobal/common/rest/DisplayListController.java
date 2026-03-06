@@ -388,6 +388,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         configs.put("FIRST_NAME_REGEX", FIRST_NAME_REGEX);
         configs.put("LAST_NAME_REGEX", LAST_NAME_REGEX);
+        configs.put(Property.USE_NEW_ADDRESS_HIERARCHY.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.USE_NEW_ADDRESS_HIERARCHY));
         return configs;
     }
 
