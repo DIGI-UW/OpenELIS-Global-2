@@ -26,7 +26,7 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import "../Style.css";
 import { ConfigurationContext } from "../layout/Layout";
 import SlideOver from "../notifications/SlideOver";
-import { languages } from "../../languages";
+import { languages as defaultLanguages } from "../../languages";
 
 import {
   Header,
@@ -57,8 +57,11 @@ function OEHeader({
   defaultMode = "close",
   storageKeyPrefix = "main",
 }) {
-  const { configurationProperties } = useContext(ConfigurationContext);
+  const { configurationProperties, enabledLanguages } =
+    useContext(ConfigurationContext);
   const { userSessionDetails, logout } = useContext(UserSessionDetailsContext);
+  // Use enabled languages from config, fall back to default if not loaded yet
+  const languages = enabledLanguages || defaultLanguages;
   const [headerLogoUrl, setHeaderLogoUrl] = useState(null);
   const [logoVersion, setLogoVersion] = useState(0); // Version counter for cache-busting
 

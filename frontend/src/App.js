@@ -20,7 +20,7 @@ import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import "./App.css";
-import { languages } from "./languages";
+import { languages, languageMessages } from "./languages";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
 import "./index.scss";
@@ -213,11 +213,13 @@ export default function App() {
   };
 
   const changeLanguageReact = (lang) => {
-    if (!languages[lang]) {
+    // Check if we have messages for this language
+    const messages = languageMessages[lang] || languages[lang]?.messages;
+    if (!messages) {
       lang = "en";
     }
     setLocale(lang);
-    setMessages(languages[lang].messages);
+    setMessages(languageMessages[lang] || languages["en"].messages);
     localStorage.setItem("locale", lang);
   };
 
