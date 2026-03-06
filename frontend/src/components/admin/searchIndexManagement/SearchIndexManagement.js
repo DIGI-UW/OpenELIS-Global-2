@@ -4,10 +4,7 @@ import { FormattedMessage, useIntl, injectIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { NotificationContext } from "../../layout/Layout";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/AlertDialog";
+import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
 
 function SearchIndexManagement() {
   const [loading, setLoading] = useState(false);

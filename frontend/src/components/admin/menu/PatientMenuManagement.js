@@ -16,10 +16,7 @@ import {
 } from "../../utils/Utils";
 import { MenuCheckBox } from "./MenuUtil";
 import { NotificationContext } from "../../layout/Layout";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/AlertDialog";
+import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 

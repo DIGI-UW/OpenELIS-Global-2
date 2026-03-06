@@ -23,10 +23,7 @@ import {
 } from "@carbon/react";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/AlertDialog";
+import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import "../../Style.css";

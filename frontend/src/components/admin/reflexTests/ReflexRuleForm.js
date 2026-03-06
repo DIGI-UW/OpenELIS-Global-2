@@ -22,10 +22,7 @@ import AutoComplete from "../../common/AutoComplete.js";
 import RuleBuilderFormValues from "../../formModel/innitialValues/RuleBuilderFormValues";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/AlertDialog";
+import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./ReflexStyles.css";
 

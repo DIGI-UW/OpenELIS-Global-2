@@ -36,10 +36,7 @@ import {
   deleteDevice,
   createRoom,
 } from "../api";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/AlertDialog";
+import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
 import { NotificationContext } from "../../layout/Layout";
 import AddDeviceModal from "../shared/AddDeviceModal";
 

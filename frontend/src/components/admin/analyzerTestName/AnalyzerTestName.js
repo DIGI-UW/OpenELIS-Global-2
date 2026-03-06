@@ -30,10 +30,7 @@ import {
   ConfigurationContext,
   NotificationContext,
 } from "../../layout/Layout.js";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/AlertDialog";
+import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";

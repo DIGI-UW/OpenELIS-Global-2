@@ -29,10 +29,7 @@ import {
 } from "../../utils/Utils";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import { headers } from "./ViewNonConforming";
-import {
-  NotificationKinds,
-  AlertDialog,
-} from "../../common/AlertDialog";
+import { NotificationKinds, AlertDialog } from "../../common/AlertDialog";
 import { NotificationContext } from "../../layout/Layout";
 
 const initialFormData = {

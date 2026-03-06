@@ -21,10 +21,7 @@ import {
   Checkbox,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import {
-  NotificationKinds,
-  AlertDialog,
-} from "../../common/AlertDialog";
+import { NotificationKinds, AlertDialog } from "../../common/AlertDialog";
 import { NotificationContext } from "../../layout/Layout";
 import {
   getFromOpenElisServer,

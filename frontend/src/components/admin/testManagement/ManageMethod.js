@@ -16,10 +16,7 @@ import {
 } from "../../utils/Utils.js";
 import { NotificationContext } from "../../layout/Layout.js";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/AlertDialog";
+import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 
 let breadcrumbs = [

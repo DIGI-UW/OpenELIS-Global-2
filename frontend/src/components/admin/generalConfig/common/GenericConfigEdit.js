@@ -19,10 +19,7 @@ import {
   postToOpenElisServerFormData,
   postToOpenElisServerFullResponse,
 } from "../../../utils/Utils.js";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../../common/CustomNotification";
+import { AlertDialog, NotificationKinds } from "../../../common/AlertDialog";
 import config from "../../../../config.json";
 import { NotificationContext } from "../../../layout/Layout.js";
 

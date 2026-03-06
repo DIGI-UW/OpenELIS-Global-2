@@ -15,10 +15,7 @@ import {
 import { Settings } from "@carbon/icons-react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { fetchSystemConfig, saveSystemConfig } from "../api";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/AlertDialog";
+import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
 import { NotificationContext } from "../../layout/Layout";
 
 const SESSION_TIMEOUT_OPTIONS = [

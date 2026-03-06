@@ -26,10 +26,7 @@ import {
 import { Notification } from "@carbon/icons-react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { fetchAlertConfig, saveAlertConfig } from "../api";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/AlertDialog";
+import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
 import { NotificationContext } from "../../layout/Layout";
 
 // Map UI alert types to backend NotificationNature enum values
