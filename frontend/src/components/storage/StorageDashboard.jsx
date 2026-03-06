@@ -2822,22 +2822,27 @@ const StorageDashboard = () => {
       // Secondary context: Parent Sample accession number
       const sampleAccessionNumber = sampleItem.sampleAccessionNumber || "";
 
+      // Backend returns "status" as a status ID (or "active" as default string when no statusId).
+      // For UI purposes, treat anything other than the default "active" string as "disposed".
+      const statusId = sampleItem.status || "";
+      const isDisposed =
+        statusId &&
+        statusId.toString().toLowerCase() !== "active";
+
       return {
         id: sampleItemId, // Use sampleItemId for row ID
         sampleItemId: displayId, // Display: External ID if available, otherwise ID
         sampleAccessionNumber: sampleAccessionNumber, // Parent Sample accession for context
         type: sampleItem.type || sampleItem.sampleType || "",
-        status:
-          sampleItem.status === "disposed" ||
-          sampleItem.status === "Disposed" ? (
-            <Tag type="red">
-              <FormattedMessage id="storage.status.disposed" />
-            </Tag>
-          ) : (
-            <Tag type="green">
-              <FormattedMessage id="label.active" />
-            </Tag>
-          ),
+        status: isDisposed ? (
+          <Tag type="red">
+            <FormattedMessage id="storage.status.disposed" />
+          </Tag>
+        ) : (
+          <Tag type="green">
+            <FormattedMessage id="label.active" />
+          </Tag>
+        ),
         location: sampleItem.location || sampleItem.hierarchicalPath || "",
         assignedBy: sampleItem.assignedBy || sampleItem.assignedByUserId || "",
         date: sampleItem.date || sampleItem.assignedDate || "",

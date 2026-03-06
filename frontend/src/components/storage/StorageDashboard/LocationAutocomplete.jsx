@@ -13,7 +13,7 @@ import "./LocationAutocomplete.css";
  * - onSearchTermChange: function - Callback when search term changes
  * - allowInactive: boolean - Allow selection of inactive locations (default: false)
  */
-const LocationAutocomplete = ({
+  const LocationAutocomplete = ({
   onLocationSelect,
   searchTerm,
   onSearchTermChange,
@@ -25,14 +25,15 @@ const LocationAutocomplete = ({
 
   // Perform search when searchTerm changes
   const performSearch = useCallback((term) => {
-    if (!term || term.trim().length < 2) {
+    const trimmed = term ? term.trim() : "";
+    if (!trimmed || trimmed.length < 2) {
       setSearchResults([]);
       return;
     }
 
     setIsLoading(true);
     getFromOpenElisServer(
-      `/rest/storage/locations/search?q=${encodeURIComponent(term)}`,
+      `/rest/storage/locations/search?q=${encodeURIComponent(trimmed)}`,
       (results) => {
         // Ensure results is an array - API might return non-array
         const resultsArray = Array.isArray(results) ? results : [];
