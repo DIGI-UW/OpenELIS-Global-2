@@ -41,7 +41,7 @@ import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import PatientHeader from "../common/PatientHeader";
-import QuestionnaireResponse from "../common/QuestionnaireResponse";
+import QuestionnaireResponseRedesign from "../common/QuestionnaireResponseRedesign";
 import "./PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import Header from "../layout/Header";
@@ -423,7 +423,7 @@ function PathologyCaseView() {
             <Accordion align="end ">
               <AccordionItem title="Case Information" id="case-info">
                     <div className="patient-header2">
-                      <QuestionnaireResponse
+                      <QuestionnaireResponseRedesign
                         questionnaireResponse={
                           pathologySampleInfo.programQuestionnaireResponse
                         }
@@ -433,7 +433,7 @@ function PathologyCaseView() {
 
               <AccordionItem title="Grossing" id="grossing">
                     <Grid fullWidth={true} className="gridBoundary">
-                      <Column lg={16} md={8} sm={4}>
+                      <Column lg={16} md={8} sm={4}>``
                         <TextArea
                           labelText={
                             <FormattedMessage id="pathology.label.grossexam" />
