@@ -97,4 +97,4 @@ Urine Appearance,Urinalysis,Urine,5767-9,Y,Y,101,,Urine Appearance,Aspect Urinai
 # ============================================================================
 # PATHOLOGY
 # ============================================================================
-Pathology Report,Pathology,Tissue,,,Y,Y,110,,Pathology Report,Rapport Pathologie
+Pathology Report,Pathology,Tissue,,Y,Y,110,,Pathology Report,Rapport Pathologie

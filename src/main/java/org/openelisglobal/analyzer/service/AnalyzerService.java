@@ -18,9 +18,14 @@ public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
     void persistData(Analyzer analyzer, List<AnalyzerTestMapping> testMappings,
             List<AnalyzerTestMapping> existingMappings);
 
+    void persistTestMappings(String analyzerTypeId, List<AnalyzerTestMapping> testMappings,
+            List<AnalyzerTestMapping> existingMappings);
+
     Optional<Analyzer> getByIpAddress(String ipAddress);
 
     Optional<Analyzer> getByName(String name);
+
+    Optional<Analyzer> findActiveByListenPort(Integer port);
 
     Optional<Analyzer> findByIdentifierPatternMatch(String analyzerIdentifier);
 
