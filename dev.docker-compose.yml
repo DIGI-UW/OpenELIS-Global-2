@@ -52,8 +52,7 @@ services:
             - "8443:8443"
         restart: always
         networks:
-          default:
-              ipv4_address: 172.20.1.121
+            - default
         environment:
             - DEFAULT_PW=adminADMIN! 
             - TZ=Africa/Nairobi
@@ -161,9 +160,6 @@ secrets:
 networks:
   default:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.1.0/24  
         
 volumes:
   db-data:
