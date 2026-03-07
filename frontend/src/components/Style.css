@@ -399,6 +399,22 @@ button {
   background-color: #f4f4f4;
 }
 
+.questionnaireResponseContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding-top: 1rem;
+  width: 100%;
+}
+
+.questionnaireResponseRow {
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+}
+
+
+
 .my-custom-table tbody tr:nth-child(odd) {
   background-color: #f9f9f9;
 }
