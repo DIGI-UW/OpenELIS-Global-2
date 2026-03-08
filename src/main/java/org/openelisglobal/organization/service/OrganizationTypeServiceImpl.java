@@ -2,6 +2,7 @@ package org.openelisglobal.organization.service;
 
 import java.util.List;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.organization.dao.OrganizationOrganizationTypeDAO;
 import org.openelisglobal.organization.dao.OrganizationTypeDAO;
 import org.openelisglobal.organization.valueholder.OrganizationType;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,9 @@ public class OrganizationTypeServiceImpl extends AuditableBaseObjectServiceImpl<
         implements OrganizationTypeService {
     @Autowired
     protected OrganizationTypeDAO baseObjectDAO;
+
+    @Autowired
+    private OrganizationOrganizationTypeDAO organizationOrganizationTypeDAO;
 
     public OrganizationTypeServiceImpl() {
         super(OrganizationType.class);
@@ -33,5 +37,11 @@ public class OrganizationTypeServiceImpl extends AuditableBaseObjectServiceImpl<
     @Transactional(readOnly = true)
     public OrganizationType getOrganizationTypeByName(String name) {
         return getBaseObjectDAO().getOrganizationTypeByName(name);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getOrganizationIdsForType(String typeId) {
+        return organizationOrganizationTypeDAO.getOrganizationIdsForType(typeId);
     }
 }
