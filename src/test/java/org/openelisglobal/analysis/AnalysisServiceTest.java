@@ -28,6 +28,7 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.openelisglobal.analysis.service.AnalysisServiceImpl;
 
 public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
@@ -436,4 +437,34 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
             System.out.println(analsis.getId());
         });
     }
+
+    public void getAnalysisType_shouldReturnAnalysisType() {
+
+        Analysis analysis = aService.get("1");
+
+        String analysisType = aService.getAnalysisType(analysis);
+
+        Assert.assertNotNull(analysisType);
+    }
+
+    @Test
+    public void getStatusId_shouldReturnStatusId() {
+
+        Analysis analysis = aService.get("1");
+
+        String statusId = aService.getStatusId(analysis);
+
+        Assert.assertNotNull(statusId);
+    }
+
+    @Test
+    public void getTriggeredReflex_shouldReturnTriggeredReflexValue() {
+
+        Analysis analysis = aService.get("1");
+
+        Boolean triggeredReflex = aService.getTriggeredReflex(analysis);
+
+        Assert.assertNotNull(triggeredReflex);
+    }
 }
+

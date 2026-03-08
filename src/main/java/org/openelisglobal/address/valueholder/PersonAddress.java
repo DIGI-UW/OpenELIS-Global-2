@@ -16,7 +16,7 @@ package org.openelisglobal.address.valueholder;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.valueholder.BaseObject;
 
-public class PersonAddress extends BaseObject<AddressPK> {
+public class  PersonAddress extends BaseObject<AddressPK> {
 
     private static final long serialVersionUID = 1L;
 
