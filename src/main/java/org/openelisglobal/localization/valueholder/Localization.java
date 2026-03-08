@@ -39,19 +39,10 @@ public class Localization extends BaseObject<String> {
     private String description;
 
     /**
-     * New normalized translation values stored in localization_value table. Key is
-     * locale code (e.g., "en", "fr"), value is the LocalizationValue entity.
+     * Translation values stored in localization_value table. Key is locale code
+     * (e.g., "en", "fr"), value is the LocalizationValue entity.
      */
     private Map<String, LocalizationValue> values = new HashMap<>();
-
-    /**
-     * Legacy locale values map used by the old Hibernate mapping. This will be
-     * populated from the english/french columns during the transition period.
-     *
-     * @deprecated Use {@link #values} instead.
-     */
-    @Deprecated
-    private Map<Locale, String> localeValues = new HashMap<>();
 
     @Override
     public String getId() {
@@ -85,23 +76,14 @@ public class Localization extends BaseObject<String> {
      * Get the French translation.
      *
      * @return the French translation, or empty string if not found
-     * @deprecated Use {@link #getLocalizedValue(Locale)} with Locale.FRENCH
-     *             instead. This method will be removed after Phase 4.
+     * @deprecated Use {@link #getLocalizedValue(Locale)} with Locale.FRENCH instead
      */
     @Deprecated
     public String getFrench() {
-        // First try the new values map
         if (values != null && values.containsKey("fr")) {
             return values.get("fr").getValue();
         }
-        // Fall back to legacy localeValues
-        if (localeValues.get(Locale.FRANCE) != null) {
-            return localeValues.get(Locale.FRANCE);
-        } else if (localeValues.get(Locale.FRENCH) != null) {
-            return localeValues.get(Locale.FRENCH);
-        } else {
-            return "";
-        }
+        return "";
     }
 
     /**
@@ -109,22 +91,11 @@ public class Localization extends BaseObject<String> {
      *
      * @param french the French translation value
      * @deprecated Use {@link #setLocalizedValue(String, String)} with "fr" locale
-     *             instead. This method will be removed after Phase 4.
+     *             instead
      */
     @Deprecated
     public void setFrench(String french) {
-        setLegacyLocalizedValue(Locale.FRENCH, french);
-        // Also update new values map if it exists
-        if (values != null) {
-            LocalizationValue lv = values.get("fr");
-            if (lv != null) {
-                lv.setValue(french);
-            } else {
-                lv = new LocalizationValue("fr", french);
-                lv.setLocalization(this);
-                values.put("fr", lv);
-            }
-        }
+        setLocalizedValue("fr", french);
     }
 
     /**
@@ -132,22 +103,14 @@ public class Localization extends BaseObject<String> {
      *
      * @return the English translation, or empty string if not found
      * @deprecated Use {@link #getLocalizedValue(Locale)} with Locale.ENGLISH
-     *             instead. This method will be removed after Phase 4.
+     *             instead
      */
     @Deprecated
     public String getEnglish() {
-        // First try the new values map
         if (values != null && values.containsKey("en")) {
             return values.get("en").getValue();
         }
-        // Fall back to legacy localeValues
-        if (localeValues.get(Locale.US) != null) {
-            return localeValues.get(Locale.US);
-        } else if (localeValues.get(Locale.ENGLISH) != null) {
-            return localeValues.get(Locale.ENGLISH);
-        } else {
-            return "";
-        }
+        return "";
     }
 
     /**
@@ -155,46 +118,11 @@ public class Localization extends BaseObject<String> {
      *
      * @param english the English translation value
      * @deprecated Use {@link #setLocalizedValue(String, String)} with "en" locale
-     *             instead. This method will be removed after Phase 4.
+     *             instead
      */
     @Deprecated
     public void setEnglish(String english) {
-        setLegacyLocalizedValue(Locale.ENGLISH, english);
-        // Also update new values map if it exists
-        if (values != null) {
-            LocalizationValue lv = values.get("en");
-            if (lv != null) {
-                lv.setValue(english);
-            } else {
-                lv = new LocalizationValue("en", english);
-                lv.setLocalization(this);
-                values.put("en", lv);
-            }
-        }
-    }
-
-    /**
-     * Get the legacy locale values map.
-     *
-     * @return map of Locale to translation value
-     * @deprecated Use {@link #getValues()} instead. This method will be removed
-     *             after Phase 4.
-     */
-    @Deprecated
-    public Map<Locale, String> getLocaleValues() {
-        return localeValues;
-    }
-
-    /**
-     * Set the legacy locale values map.
-     *
-     * @param localeValues map of Locale to translation value
-     * @deprecated Use {@link #setValues(Map)} instead. This method will be removed
-     *             after Phase 4.
-     */
-    @Deprecated
-    public void setLocaleValues(Map<Locale, String> localeValues) {
-        this.localeValues = localeValues;
+        setLocalizedValue("en", english);
     }
 
     public String getDescription() {
@@ -224,35 +152,30 @@ public class Localization extends BaseObject<String> {
     public String getLocalizedValue(Locale locale) {
         String localeCode = locale.getLanguage();
 
-        // First try the new values map (preferred)
-        if (values != null && !values.isEmpty()) {
-            // Try exact locale match
-            LocalizationValue lv = values.get(localeCode);
-            if (lv != null && !GenericValidator.isBlankOrNull(lv.getValue())) {
-                return lv.getValue();
-            }
-            // Fall back to English
-            lv = values.get(FALLBACK_LOCALE);
-            if (lv != null && !GenericValidator.isBlankOrNull(lv.getValue())) {
-                return lv.getValue();
-            }
-            // Last resort: return any available value
-            for (LocalizationValue value : values.values()) {
-                if (!GenericValidator.isBlankOrNull(value.getValue())) {
-                    return value.getValue();
-                }
+        if (values == null || values.isEmpty()) {
+            return "";
+        }
+
+        // Try exact locale match
+        LocalizationValue lv = values.get(localeCode);
+        if (lv != null && !GenericValidator.isBlankOrNull(lv.getValue())) {
+            return lv.getValue();
+        }
+
+        // Fall back to English
+        lv = values.get(FALLBACK_LOCALE);
+        if (lv != null && !GenericValidator.isBlankOrNull(lv.getValue())) {
+            return lv.getValue();
+        }
+
+        // Last resort: return any available value
+        for (LocalizationValue value : values.values()) {
+            if (!GenericValidator.isBlankOrNull(value.getValue())) {
+                return value.getValue();
             }
         }
 
-        // Fall back to legacy localeValues map
-        Locale secondaryLocale = Locale.forLanguageTag(localeCode);
-        if (localeValues.containsKey(locale)) {
-            return localeValues.get(locale);
-        } else if (localeValues.containsKey(secondaryLocale)) {
-            return localeValues.get(secondaryLocale);
-        } else {
-            return "";
-        }
+        return "";
     }
 
     /**
@@ -266,7 +189,7 @@ public class Localization extends BaseObject<String> {
     }
 
     /**
-     * Set the translation for a specific locale (legacy method).
+     * Set the translation for a specific locale.
      *
      * @param locale the locale
      * @param value  the translation value
@@ -274,26 +197,7 @@ public class Localization extends BaseObject<String> {
      */
     @Deprecated
     public void setLocalizedValue(Locale locale, String value) {
-        setLegacyLocalizedValue(locale, value);
-        // Also update new values map
-        String localeCode = locale.getLanguage();
-        if (values != null) {
-            LocalizationValue lv = values.get(localeCode);
-            if (lv != null) {
-                lv.setValue(value);
-            } else {
-                lv = new LocalizationValue(localeCode, value);
-                lv.setLocalization(this);
-                values.put(localeCode, lv);
-            }
-        }
-    }
-
-    /**
-     * Internal method to set legacy locale value without triggering recursion.
-     */
-    private void setLegacyLocalizedValue(Locale locale, String value) {
-        localeValues.put(locale, value);
+        setLocalizedValue(locale.getLanguage(), value);
     }
 
     /**
@@ -303,19 +207,17 @@ public class Localization extends BaseObject<String> {
      * @param value      the translation value
      */
     public void setLocalizedValue(String localeCode, String value) {
-        // Update new values map
-        if (values != null) {
-            LocalizationValue lv = values.get(localeCode);
-            if (lv != null) {
-                lv.setValue(value);
-            } else {
-                lv = new LocalizationValue(localeCode, value);
-                lv.setLocalization(this);
-                values.put(localeCode, lv);
-            }
+        if (values == null) {
+            values = new HashMap<>();
         }
-        // Also update legacy map for backwards compatibility
-        localeValues.put(Locale.forLanguageTag(localeCode), value);
+        LocalizationValue lv = values.get(localeCode);
+        if (lv != null) {
+            lv.setValue(value);
+        } else {
+            lv = new LocalizationValue(localeCode, value);
+            lv.setLocalization(this);
+            values.put(localeCode, lv);
+        }
     }
 
     /**
@@ -339,23 +241,13 @@ public class Localization extends BaseObject<String> {
 
     public List<Locale> getLocalesWithValue() {
         List<Locale> result = new ArrayList<>();
-
-        // Check new values map first
-        if (values != null && !values.isEmpty()) {
+        if (values != null) {
             for (Map.Entry<String, LocalizationValue> entry : values.entrySet()) {
                 if (!GenericValidator.isBlankOrNull(entry.getValue().getValue())) {
                     result.add(Locale.forLanguageTag(entry.getKey()));
                 }
             }
-        } else {
-            // Fall back to legacy localeValues
-            for (Locale locale : getAllActiveLocales()) {
-                if (!GenericValidator.isBlankOrNull(localeValues.get(locale))) {
-                    result.add(locale);
-                }
-            }
         }
-
         return result;
     }
 

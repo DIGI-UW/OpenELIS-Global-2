@@ -157,4 +157,22 @@ public class LocalizationServiceImpl extends AuditableBaseObjectServiceImpl<Loca
         }
         return List.of(Locale.ENGLISH, Locale.FRENCH);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Localization> findMissingTranslationsForLocale(String locale) {
+        return baseObjectDAO.findMissingTranslationsForLocale(locale);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int countTranslatedForLocale(String locale) {
+        return baseObjectDAO.countTranslatedForLocale(locale);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Object[]> getTranslationStatsForAllActiveLocales() {
+        return baseObjectDAO.getTranslationStatsForAllActiveLocales();
+    }
 }

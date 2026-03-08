@@ -74,4 +74,29 @@ public class SupportedLocaleServiceImpl extends BaseObjectServiceImpl<SupportedL
     public Optional<SupportedLocale> getByLocaleCode(String localeCode) {
         return supportedLocaleDAO.getByLocaleCode(localeCode);
     }
+
+    @Override
+    @Transactional
+    public SupportedLocale setFallback(String localeId, String sysUserId) {
+        SupportedLocale newFallback = get(localeId);
+        if (newFallback == null) {
+            throw new IllegalArgumentException("Locale not found: " + localeId);
+        }
+
+        // Clear existing fallback if different
+        Optional<SupportedLocale> currentFallback = getFallback();
+        if (currentFallback.isPresent() && !currentFallback.get().getId().equals(localeId)) {
+            SupportedLocale old = currentFallback.get();
+            old.setFallback(false);
+            old.setSysUserId(sysUserId);
+            update(old);
+        }
+
+        // Set new fallback
+        newFallback.setFallback(true);
+        newFallback.setSysUserId(sysUserId);
+        update(newFallback);
+
+        return newFallback;
+    }
 }

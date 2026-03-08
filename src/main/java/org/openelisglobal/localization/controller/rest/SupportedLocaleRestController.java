@@ -215,29 +215,14 @@ public class SupportedLocaleRestController extends BaseController {
     @PostMapping("/{id}/setFallback")
     public ResponseEntity<?> setFallback(@PathVariable String id) {
         try {
-            SupportedLocale newFallback = supportedLocaleService.get(id);
-            if (newFallback == null) {
-                return ResponseEntity.notFound().build();
-            }
-
-            // Clear existing fallback
-            Optional<SupportedLocale> currentFallback = supportedLocaleService.getFallback();
-            if (currentFallback.isPresent() && !currentFallback.get().getId().equals(id)) {
-                SupportedLocale old = currentFallback.get();
-                old.setFallback(false);
-                old.setSysUserId(getSysUserId(request));
-                supportedLocaleService.update(old);
-            }
-
-            // Set new fallback
-            newFallback.setFallback(true);
-            newFallback.setSysUserId(getSysUserId(request));
-            supportedLocaleService.update(newFallback);
+            SupportedLocale updatedLocale = supportedLocaleService.setFallback(id, getSysUserId(request));
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "setFallback",
-                    "Set fallback locale to: " + newFallback.getLocaleCode());
+                    "Set fallback locale to: " + updatedLocale.getLocaleCode());
 
-            return ResponseEntity.ok(toDTO(newFallback));
+            return ResponseEntity.ok(toDTO(updatedLocale));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

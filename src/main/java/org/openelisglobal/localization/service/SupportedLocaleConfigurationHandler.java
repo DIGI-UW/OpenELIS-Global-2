@@ -22,9 +22,9 @@ import org.springframework.stereotype.Component;
  *
  * Notes: - First line is the header (required) - localeCode and displayName are
  * required fields - isActive defaults to "Y" if not specified - isFallback
- * defaults to "N" if not specified - Only one locale should have isFallback=Y
- * (the last one wins if multiple) - sortOrder determines display order in
- * dropdowns
+ * defaults to "N" if not specified - Only one locale may have isFallback=Y
+ * (multiple fallbacks will cause a configuration error) - sortOrder determines
+ * display order in dropdowns
  */
 @Component
 public class SupportedLocaleConfigurationHandler implements DomainConfigurationHandler {
@@ -65,7 +65,8 @@ public class SupportedLocaleConfigurationHandler implements DomainConfigurationH
         int isFallbackIndex = findColumnIndex(headers, "isFallback");
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
 
-        List<SupportedLocale> processedLocales = new ArrayList<>();
+        // First pass: parse all lines and collect locale data
+        List<LocaleRowData> parsedRows = new ArrayList<>();
         String line;
         int lineNumber = 1;
 
@@ -76,16 +77,54 @@ public class SupportedLocaleConfigurationHandler implements DomainConfigurationH
                 continue;
             }
 
+            String[] values = parseCsvLine(line);
+            String localeCode = getValueOrEmpty(values, localeCodeIndex);
+            String displayName = getValueOrEmpty(values, displayNameIndex);
+
+            if (localeCode.isEmpty()) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "processConfiguration",
+                        "Skipping line " + lineNumber + " with missing localeCode");
+                continue;
+            }
+            if (displayName.isEmpty()) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "processConfiguration",
+                        "Skipping line " + lineNumber + " with missing displayName");
+                continue;
+            }
+
+            String isFallbackStr = getValueOrEmpty(values, isFallbackIndex);
+            boolean isFallback = "Y".equalsIgnoreCase(isFallbackStr) || "true".equalsIgnoreCase(isFallbackStr);
+
+            parsedRows.add(new LocaleRowData(lineNumber, values, localeCode, displayName, isFallback));
+        }
+
+        // Validate: at most one fallback locale
+        List<LocaleRowData> fallbackRows = parsedRows.stream().filter(row -> row.isFallback).toList();
+        if (fallbackRows.size() > 1) {
+            String fallbackLocales = fallbackRows.stream().map(row -> row.localeCode + " (line " + row.lineNumber + ")")
+                    .reduce((a, b) -> a + ", " + b).orElse("");
+            throw new IllegalArgumentException("Locale configuration file " + fileName
+                    + " has multiple fallback locales. Only one locale can be marked as fallback. Found: "
+                    + fallbackLocales);
+        }
+
+        // Second pass: persist locales now that validation passed
+        List<SupportedLocale> processedLocales = new ArrayList<>();
+        boolean needToClearExistingFallback = !fallbackRows.isEmpty();
+
+        if (needToClearExistingFallback) {
+            clearExistingFallback();
+        }
+
+        for (LocaleRowData row : parsedRows) {
             try {
-                String[] values = parseCsvLine(line);
-                SupportedLocale locale = processCsvLine(values, localeCodeIndex, displayNameIndex, isActiveIndex,
-                        isFallbackIndex, sortOrderIndex);
+                SupportedLocale locale = persistLocale(row, isActiveIndex, isFallbackIndex, sortOrderIndex);
                 if (locale != null) {
                     processedLocales.add(locale);
                 }
             } catch (Exception e) {
                 LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
-                        "Error processing line " + lineNumber + " in file " + fileName + ": " + e.getMessage());
+                        "Error processing line " + row.lineNumber + " in file " + fileName + ": " + e.getMessage());
             }
         }
 
@@ -147,40 +186,34 @@ public class SupportedLocaleConfigurationHandler implements DomainConfigurationH
         return -1;
     }
 
-    private SupportedLocale processCsvLine(String[] values, int localeCodeIndex, int displayNameIndex,
-            int isActiveIndex, int isFallbackIndex, int sortOrderIndex) {
+    /**
+     * Internal record to hold parsed row data before validation and persistence.
+     */
+    private record LocaleRowData(int lineNumber, String[] values, String localeCode, String displayName,
+            boolean isFallback) {
+    }
 
-        String localeCode = getValueOrEmpty(values, localeCodeIndex);
-        String displayName = getValueOrEmpty(values, displayNameIndex);
-
-        if (localeCode.isEmpty()) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine", "Skipping row with missing localeCode");
-            return null;
-        }
-
-        if (displayName.isEmpty()) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
-                    "Skipping row with missing displayName");
-            return null;
-        }
+    private SupportedLocale persistLocale(LocaleRowData row, int isActiveIndex, int isFallbackIndex,
+            int sortOrderIndex) {
 
         // Check if locale already exists
-        Optional<SupportedLocale> existingLocale = supportedLocaleService.getByLocaleCode(localeCode);
+        Optional<SupportedLocale> existingLocale = supportedLocaleService.getByLocaleCode(row.localeCode);
         SupportedLocale locale;
 
         if (existingLocale.isPresent()) {
             locale = existingLocale.get();
-            updateLocaleFromCsv(locale, displayName, values, isActiveIndex, isFallbackIndex, sortOrderIndex);
+            updateLocaleFromCsv(locale, row.displayName, row.values, isActiveIndex, isFallbackIndex, sortOrderIndex);
             supportedLocaleService.update(locale);
-            LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
-                    "Updated existing locale: " + localeCode);
+            LogEvent.logDebug(this.getClass().getSimpleName(), "persistLocale",
+                    "Updated existing locale: " + row.localeCode);
         } else {
             locale = new SupportedLocale();
-            locale.setLocaleCode(localeCode);
-            updateLocaleFromCsv(locale, displayName, values, isActiveIndex, isFallbackIndex, sortOrderIndex);
+            locale.setLocaleCode(row.localeCode);
+            updateLocaleFromCsv(locale, row.displayName, row.values, isActiveIndex, isFallbackIndex, sortOrderIndex);
             String id = supportedLocaleService.insert(locale);
             locale.setId(id);
-            LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine", "Created new locale: " + localeCode);
+            LogEvent.logDebug(this.getClass().getSimpleName(), "persistLocale",
+                    "Created new locale: " + row.localeCode);
         }
 
         return locale;
@@ -206,17 +239,11 @@ public class SupportedLocaleConfigurationHandler implements DomainConfigurationH
             locale.setActive(true); // Default to active
         }
 
+        // Fallback is already validated (at most one) and existing fallback cleared
+        // before this method
         String isFallback = getValueOrEmpty(values, isFallbackIndex);
-        if (!isFallback.isEmpty()) {
-            boolean shouldBeFallback = "Y".equalsIgnoreCase(isFallback) || "true".equalsIgnoreCase(isFallback);
-            if (shouldBeFallback) {
-                // Clear any existing fallback first
-                clearExistingFallback();
-            }
-            locale.setFallback(shouldBeFallback);
-        } else {
-            locale.setFallback(false); // Default to not fallback
-        }
+        boolean shouldBeFallback = "Y".equalsIgnoreCase(isFallback) || "true".equalsIgnoreCase(isFallback);
+        locale.setFallback(shouldBeFallback);
 
         String sortOrderStr = getValueOrEmpty(values, sortOrderIndex);
         if (!sortOrderStr.isEmpty()) {

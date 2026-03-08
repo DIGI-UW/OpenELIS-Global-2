@@ -16,22 +16,49 @@
 
 package org.openelisglobal.localization.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.util.Locale;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
  * Represents a supported language/locale in the system. This table drives which
  * languages are available for metadata translations.
  */
+@Entity
+@Table(name = "supported_locale")
+@DynamicUpdate
 public class SupportedLocale extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @Column(name = "id", precision = 10, scale = 0)
+    @GeneratedValue(generator = "supported_locale_seq_gen")
+    @GenericGenerator(name = "supported_locale_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "supported_locale_seq"))
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
+
+    @Column(name = "locale_code", nullable = false)
     private String localeCode;
+
+    @Column(name = "display_name", nullable = false)
     private String displayName;
+
+    @Column(name = "is_active", nullable = false)
     private boolean active;
+
+    @Column(name = "is_fallback", nullable = false)
     private boolean fallback;
+
+    @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 
     public SupportedLocale() {

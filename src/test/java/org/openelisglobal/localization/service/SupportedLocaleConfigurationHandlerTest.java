@@ -1,7 +1,6 @@
 package org.openelisglobal.localization.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -12,17 +11,17 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.localization.valueholder.SupportedLocale;
 
-@ExtendWith(MockitoExtension.class)
-class SupportedLocaleConfigurationHandlerTest {
+@RunWith(MockitoJUnitRunner.class)
+public class SupportedLocaleConfigurationHandlerTest {
 
     @Mock
     private SupportedLocaleService supportedLocaleService;
@@ -30,28 +29,28 @@ class SupportedLocaleConfigurationHandlerTest {
     @InjectMocks
     private SupportedLocaleConfigurationHandler handler;
 
-    @BeforeEach
-    void setUp() {
+    @Before
+    public void setUp() {
         // Reset mocks before each test
     }
 
     @Test
-    void testGetDomainName() {
+    public void testGetDomainName() {
         assertEquals("locales", handler.getDomainName());
     }
 
     @Test
-    void testGetFileExtension() {
+    public void testGetFileExtension() {
         assertEquals("csv", handler.getFileExtension());
     }
 
     @Test
-    void testGetLoadOrder() {
+    public void testGetLoadOrder() {
         assertEquals(50, handler.getLoadOrder());
     }
 
     @Test
-    void testProcessConfiguration_createsNewLocales() throws Exception {
+    public void testProcessConfiguration_createsNewLocales() throws Exception {
         String csv = "localeCode,displayName,isActive,isFallback,sortOrder\n" + "en,English,Y,Y,1\n"
                 + "fr,Français,Y,N,2\n";
 
@@ -83,7 +82,7 @@ class SupportedLocaleConfigurationHandlerTest {
     }
 
     @Test
-    void testProcessConfiguration_updatesExistingLocale() throws Exception {
+    public void testProcessConfiguration_updatesExistingLocale() throws Exception {
         String csv = "localeCode,displayName,isActive,isFallback,sortOrder\n" + "en,English Updated,Y,N,1\n";
 
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8));
@@ -104,7 +103,7 @@ class SupportedLocaleConfigurationHandlerTest {
     }
 
     @Test
-    void testProcessConfiguration_skipsCommentLines() throws Exception {
+    public void testProcessConfiguration_skipsCommentLines() throws Exception {
         String csv = "localeCode,displayName,isActive,isFallback,sortOrder\n" + "# This is a comment\n"
                 + "en,English,Y,Y,1\n" + "# Another comment\n";
 
@@ -120,7 +119,7 @@ class SupportedLocaleConfigurationHandlerTest {
     }
 
     @Test
-    void testProcessConfiguration_skipsEmptyLines() throws Exception {
+    public void testProcessConfiguration_skipsEmptyLines() throws Exception {
         String csv = "localeCode,displayName,isActive,isFallback,sortOrder\n" + "\n" + "en,English,Y,Y,1\n" + "\n";
 
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8));
@@ -134,37 +133,34 @@ class SupportedLocaleConfigurationHandlerTest {
         verify(supportedLocaleService, times(1)).insert(any(SupportedLocale.class));
     }
 
-    @Test
-    void testProcessConfiguration_emptyFile_throwsException() {
+    @Test(expected = IllegalArgumentException.class)
+    public void testProcessConfiguration_emptyFile_throwsException() throws Exception {
         String csv = "";
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8));
 
-        assertThrows(IllegalArgumentException.class,
-                () -> handler.processConfiguration(inputStream, "empty-locales.csv"));
+        handler.processConfiguration(inputStream, "empty-locales.csv");
     }
 
-    @Test
-    void testProcessConfiguration_missingLocaleCodeColumn_throwsException() {
+    @Test(expected = IllegalArgumentException.class)
+    public void testProcessConfiguration_missingLocaleCodeColumn_throwsException() throws Exception {
         String csv = "displayName,isActive,isFallback,sortOrder\n" + "English,Y,Y,1\n";
 
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8));
 
-        assertThrows(IllegalArgumentException.class,
-                () -> handler.processConfiguration(inputStream, "missing-column.csv"));
+        handler.processConfiguration(inputStream, "missing-column.csv");
     }
 
-    @Test
-    void testProcessConfiguration_missingDisplayNameColumn_throwsException() {
+    @Test(expected = IllegalArgumentException.class)
+    public void testProcessConfiguration_missingDisplayNameColumn_throwsException() throws Exception {
         String csv = "localeCode,isActive,isFallback,sortOrder\n" + "en,Y,Y,1\n";
 
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8));
 
-        assertThrows(IllegalArgumentException.class,
-                () -> handler.processConfiguration(inputStream, "missing-column.csv"));
+        handler.processConfiguration(inputStream, "missing-column.csv");
     }
 
     @Test
-    void testProcessConfiguration_clearsExistingFallbackWhenSettingNew() throws Exception {
+    public void testProcessConfiguration_clearsExistingFallbackWhenSettingNew() throws Exception {
         String csv = "localeCode,displayName,isActive,isFallback,sortOrder\n" + "fr,Français,Y,Y,1\n";
 
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8));
@@ -186,7 +182,7 @@ class SupportedLocaleConfigurationHandlerTest {
     }
 
     @Test
-    void testProcessConfiguration_defaultsActiveToTrue() throws Exception {
+    public void testProcessConfiguration_defaultsActiveToTrue() throws Exception {
         String csv = "localeCode,displayName,sortOrder\n" + "en,English,1\n";
 
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8));
@@ -203,7 +199,7 @@ class SupportedLocaleConfigurationHandlerTest {
     }
 
     @Test
-    void testProcessConfiguration_defaultsFallbackToFalse() throws Exception {
+    public void testProcessConfiguration_defaultsFallbackToFalse() throws Exception {
         String csv = "localeCode,displayName,sortOrder\n" + "en,English,1\n";
 
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8));
@@ -217,5 +213,39 @@ class SupportedLocaleConfigurationHandlerTest {
         verify(supportedLocaleService).insert(captor.capture());
 
         assertEquals(false, captor.getValue().isFallback());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testProcessConfiguration_multipleFallbacks_throwsException() throws Exception {
+        String csv = "localeCode,displayName,isActive,isFallback,sortOrder\n" + "en,English,Y,Y,1\n"
+                + "fr,Français,Y,Y,2\n";
+
+        InputStream inputStream = new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8));
+
+        handler.processConfiguration(inputStream, "test-locales.csv");
+    }
+
+    @Test
+    public void testProcessConfiguration_multipleFallbacks_errorMessageIncludesLocales() throws Exception {
+        String csv = "localeCode,displayName,isActive,isFallback,sortOrder\n" + "en,English,Y,Y,1\n"
+                + "fr,Français,Y,Y,2\n" + "es,Español,Y,Y,3\n";
+
+        InputStream inputStream = new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8));
+
+        try {
+            handler.processConfiguration(inputStream, "test-locales.csv");
+        } catch (IllegalArgumentException e) {
+            // Verify error message includes the locale codes and line numbers
+            String message = e.getMessage();
+            assertEquals(true, message.contains("en"));
+            assertEquals(true, message.contains("fr"));
+            assertEquals(true, message.contains("es"));
+            assertEquals(true, message.contains("line 2"));
+            assertEquals(true, message.contains("line 3"));
+            assertEquals(true, message.contains("line 4"));
+            assertEquals(true, message.contains("multiple fallback"));
+            return;
+        }
+        throw new AssertionError("Expected IllegalArgumentException was not thrown");
     }
 }

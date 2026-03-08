@@ -59,4 +59,15 @@ public interface SupportedLocaleService extends BaseObjectService<SupportedLocal
      * @return the SupportedLocale if found
      */
     Optional<SupportedLocale> getByLocaleCode(String localeCode);
+
+    /**
+     * Set a locale as the fallback, atomically clearing any existing fallback. This
+     * operation is transactional to ensure database consistency.
+     *
+     * @param localeId  the ID of the locale to set as fallback
+     * @param sysUserId the user ID performing the operation
+     * @return the updated SupportedLocale
+     * @throws IllegalArgumentException if the locale ID is not found
+     */
+    SupportedLocale setFallback(String localeId, String sysUserId);
 }

@@ -28,7 +28,6 @@ import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.localization.service.SupportedLocaleService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.localization.valueholder.LocalizationValue;
-import org.openelisglobal.localization.valueholder.SupportedLocale;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -102,18 +101,9 @@ public class LocalizationRestController extends BaseController {
      */
     @GetMapping("/missing/{locale}")
     public ResponseEntity<List<LocalizationDTO>> getMissingTranslations(@PathVariable String locale) {
-        List<Localization> allLocalizations = localizationService.getAll();
-        List<LocalizationDTO> missing = new ArrayList<>();
-
-        for (Localization loc : allLocalizations) {
-            Map<String, LocalizationValue> values = loc.getValues();
-            if (values == null || !values.containsKey(locale) || values.get(locale).getValue() == null
-                    || values.get(locale).getValue().isEmpty()) {
-                missing.add(toDTO(loc));
-            }
-        }
-
-        return ResponseEntity.ok(missing);
+        List<Localization> missing = localizationService.findMissingTranslationsForLocale(locale);
+        List<LocalizationDTO> dtos = missing.stream().map(this::toDTO).collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
     }
 
     /**
@@ -123,32 +113,22 @@ public class LocalizationRestController extends BaseController {
      */
     @GetMapping("/stats")
     public ResponseEntity<TranslationStatsDTO> getTranslationStats() {
-        List<SupportedLocale> activeLocales = supportedLocaleService.getAllActive();
-        List<Localization> allLocalizations = localizationService.getAll();
-        int totalEntries = allLocalizations.size();
+        List<Object[]> rows = localizationService.getTranslationStatsForAllActiveLocales();
+        int totalEntries = (int) localizationService.getCount();
 
         TranslationStatsDTO stats = new TranslationStatsDTO();
         stats.setTotalEntries(totalEntries);
 
         Map<String, LocaleStatsDTO> localeStats = new HashMap<>();
-        for (SupportedLocale locale : activeLocales) {
-            String localeCode = locale.getLocaleCode();
-            int translated = 0;
-            int missing = 0;
-
-            for (Localization loc : allLocalizations) {
-                Map<String, LocalizationValue> values = loc.getValues();
-                if (values != null && values.containsKey(localeCode) && values.get(localeCode).getValue() != null
-                        && !values.get(localeCode).getValue().isEmpty()) {
-                    translated++;
-                } else {
-                    missing++;
-                }
-            }
+        for (Object[] row : rows) {
+            String localeCode = (String) row[0];
+            String displayName = (String) row[1];
+            int translated = ((Number) row[2]).intValue();
+            int missing = ((Number) row[3]).intValue();
 
             LocaleStatsDTO localeStat = new LocaleStatsDTO();
             localeStat.setLocaleCode(localeCode);
-            localeStat.setDisplayName(locale.getDisplayName());
+            localeStat.setDisplayName(displayName);
             localeStat.setTranslated(translated);
             localeStat.setMissing(missing);
             localeStat.setPercentage(totalEntries > 0 ? (translated * 100.0 / totalEntries) : 0);
@@ -180,9 +160,7 @@ public class LocalizationRestController extends BaseController {
             for (Map.Entry<String, String> entry : translations.entrySet()) {
                 String locale = entry.getKey();
                 String value = entry.getValue();
-
-                LocalizationValue lv = localizationValueService.setTranslation(id, locale, value);
-                lv.setSysUserId(sysUserId);
+                localizationValueService.setTranslation(id, locale, value, sysUserId);
             }
 
             // Refresh the localization to get updated values
@@ -216,8 +194,7 @@ public class LocalizationRestController extends BaseController {
                 return ResponseEntity.notFound().build();
             }
 
-            LocalizationValue lv = localizationValueService.setTranslation(id, locale, request.getValue());
-            lv.setSysUserId(getSysUserId(this.request));
+            localizationValueService.setTranslation(id, locale, request.getValue(), getSysUserId(this.request));
 
             // Refresh the localization to get updated values
             localization = localizationService.get(id);
@@ -252,9 +229,8 @@ public class LocalizationRestController extends BaseController {
                     Localization localization = localizationService.get(item.getId());
                     if (localization != null) {
                         for (Map.Entry<String, String> entry : item.getTranslations().entrySet()) {
-                            LocalizationValue lv = localizationValueService.setTranslation(item.getId(), entry.getKey(),
-                                    entry.getValue());
-                            lv.setSysUserId(sysUserId);
+                            localizationValueService.setTranslation(item.getId(), entry.getKey(), entry.getValue(),
+                                    sysUserId);
                         }
                         updated++;
                     } else {

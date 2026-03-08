@@ -65,7 +65,8 @@ public interface LocalizationValueService extends BaseObjectService<Localization
      * @param localizationId the ID of the parent Localization
      * @param locale         the locale code
      * @param value          the translation value
+     * @param sysUserId      the user ID performing the operation
      * @return the saved LocalizationValue
      */
-    LocalizationValue setTranslation(String localizationId, String locale, String value);
+    LocalizationValue setTranslation(String localizationId, String locale, String value, String sysUserId);
 }
