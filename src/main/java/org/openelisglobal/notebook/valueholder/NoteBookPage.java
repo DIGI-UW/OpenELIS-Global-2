@@ -196,4 +196,16 @@ public class NoteBookPage extends BaseObject<Integer> {
     public void setPageId(String pageId) {
         this.pageId = pageId;
     }
+
+    @Column(name = "page_type")
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String pageType;
+
+    public String getPageType() {
+        return pageType;
+    }
+
+    public void setPageType(String pageType) {
+        this.pageType = pageType;
+    }
 }

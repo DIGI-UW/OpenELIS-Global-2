@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="drop-page-type-check-constraint" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM pg_constraint WHERE conname = 'chk_page_type'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE clinlims.notebook_page DROP CONSTRAINT IF EXISTS chk_page_type;
+        </sql>
+        <rollback>
+            <!-- Constraint is intentionally not restored on rollback -->
+        </rollback>
+    </changeSet>
+
+    <changeSet id="widen-page-type-column" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="notebook_page" columnName="page_type" schemaName="clinlims"/>
+        </preConditions>
+        <modifyDataType tableName="notebook_page" columnName="page_type"
+                        newDataType="VARCHAR(50)" schemaName="clinlims"/>
+        <rollback>
+            <modifyDataType tableName="notebook_page" columnName="page_type"
+                            newDataType="VARCHAR(30)" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

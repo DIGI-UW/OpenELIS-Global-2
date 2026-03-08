@@ -97,8 +97,6 @@
     <include file="liquibase/3.4.x.x/048-add-trials-page-to-virology-workflow.xml"/>
     <include file="liquibase/3.4.x.x/050-bioequivalence-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/051-separate-bioanalytical-bioequivalence-notebooks.xml"/>
-    <include file="liquibase/3.4.x.x/053-gbd-notebook-template.xml"/>
-
     <!-- TB Laboratory Workflow Feature (053) -->
     <include file="liquibase/3.4.x.x/053-tuberculosis-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/054-tb-sample-registration.xml"/>
@@ -144,5 +142,8 @@
     <include file="liquibase/3.4.x.x/079-increase-storage-code-lengths.xml"/>
     <!-- Pathology Specimen Types: Tissue, Cytology, Body Fluid, Blood, Bone Marrow -->
     <include file="liquibase/3.4.x.x/072-pathology-specimen-types.xml"/>
+
+    <include file="liquibase/3.4.x.x/080-notebook-workflow-type.xml"/>
+    <include file="liquibase/3.4.x.x/081-notebook-page-type-open-constraint.xml"/>
 
 </databaseChangeLog>

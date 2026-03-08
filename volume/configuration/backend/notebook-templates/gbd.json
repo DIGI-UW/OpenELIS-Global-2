@@ -1,0 +1,72 @@
+{
+  "title": "Genomics & Bioinformatics Laboratory",
+  "workflowType": "gbd",
+  "departments": ["Genomics & Bioinformatics Laboratory"],
+  "objective": "Complete genomics and bioinformatics analysis workflow from sample reception to data submission",
+  "protocol": "Standard Genomics & Bioinformatics Laboratory Protocol",
+  "content": "Genomics & Bioinformatics Laboratory notebook template with 9 predefined workflow pages for sample reception, DNA/RNA extraction, quality assessment, PCR amplification, gel electrophoresis, library preparation, bioanalyzer QC, sequencing, and bioinformatics analysis.",
+  "status": "ACTIVE",
+  "tags": ["gbd", "genomics", "bioinformatics"],
+  "pages": [
+    {
+      "order": 1,
+      "title": "Sample Reception & Registration",
+      "instructions": "Register sample receipt: Assign or retain Sample ID, capture organism/tissue type, note sample source and collection date, record requested analysis type, document storage conditions at arrival, receipt date/time, and receiving personnel. Link to research project or study if applicable.",
+      "content": "Sample Reception & Registration - Batch verification and metadata capture of incoming biological samples"
+    },
+    {
+      "order": 2,
+      "title": "DNA/RNA Extraction",
+      "instructions": "Document extraction protocol used. Record extraction date/time and technician ID. Select extraction kit/method from dropdown. Document sample quantity and condition. Record extraction yield (ng/uL) and purity (A260/A280 ratio). Document any deviations or observations. Store extracted material location and conditions.",
+      "content": "DNA/RNA Extraction - Nucleic acid isolation and documentation"
+    },
+    {
+      "order": 3,
+      "title": "Quality & Quantity Assessment",
+      "instructions": "Record QC assessment date/time. Select QC instrument (NanoDrop, Qubit, BioAnalyzer). Document quantity (ng or ug) and purity metrics (A260/A280, A260/A230). Record fragment size if assessed (bp). Document QC status (Pass/Fail) with acceptance criteria. If failed, document reason and recommended action. Capture QC instrument ID and calibration status.",
+      "content": "Quality & Quantity Assessment - QC validation with auto-pass/fail determination"
+    },
+    {
+      "order": 4,
+      "title": "PCR Amplification",
+      "instructions": "Record PCR date/time and technician ID. Select PCR target gene/region and primer set. Select thermal cycler instrument ID. Document PCR master mix composition and volume. Record cycling conditions (annealing temp, cycles, extension time). Document primer final concentrations. Record PCR product yield and estimate. Document any complications or optimization notes. Store PCR product conditions.",
+      "content": "PCR Amplification - Target region amplification and documentation"
+    },
+    {
+      "order": 5,
+      "title": "Gel Electrophoresis",
+      "instructions": "Record gel date/time and technician ID. Select gel type (agarose %, TAE buffer). Document sample loading (uL volume, dye used). Select electrophoresis apparatus ID and run conditions (voltage, duration). Record molecular weight marker used. Upload gel image file. Document band presence/absence and estimated size (bp). Document any anomalies or failed bands. Assess purity and integrity for next step.",
+      "content": "Gel Electrophoresis - PCR product verification and sizing"
+    },
+    {
+      "order": 6,
+      "title": "Library Preparation",
+      "instructions": "Record library prep date/time and technician ID. Select library prep kit/protocol. Document DNA input amount (ng). Record barcodes/adapters used for each sample. Document shearing parameters (if applicable). Select library prep instrument ID. Record final library concentration and volume. Document size distribution (bp). Select target insert size. Document any deviations. Perform QC check if required.",
+      "content": "Library Preparation - Sequencing library construction and QC"
+    },
+    {
+      "order": 7,
+      "title": "Bioanalyzer QC",
+      "instructions": "Record Bioanalyzer run date/time and technician ID. Select Bioanalyzer chip type (DNA, RNA). Load samples in specified microfluidic lanes. Verify ladder run passes. Record library concentration (ng/uL). Document size distribution profile. Record DIN (DNA Integrity Number) if RNA. Document QC status (Pass/Fail) with acceptance criteria. If failed, document reason and next steps. Upload Bioanalyzer file output.",
+      "content": "Bioanalyzer QC - Library quality and fragment size distribution analysis"
+    },
+    {
+      "order": 8,
+      "title": "Sequencing",
+      "instructions": "Record sequencing date/time and technician ID. Select sequencing platform (Illumina, PacBio, Nanopore). Document run parameters (read type, flow cell, reagent kit). Record loading concentration (pM). Select data output location and storage backup. Document run start/completion times. Monitor cluster density and phasing metrics. Record raw data file paths and naming convention. Document any run errors or quality issues. Obtain preliminary quality metrics.",
+      "content": "Sequencing - Raw sequencing data generation and initial QC"
+    },
+    {
+      "order": 9,
+      "title": "Bioinformatics Analysis & Data Submission",
+      "instructions": "Record analysis start date/time and bioinformatician ID. Select analysis pipeline (genome assembly, variant calling, etc.). Document reference genome version and parameters. Record read mapping/alignment statistics. Document variant calls, copy numbers, or other analysis results. Perform secondary analysis review and validation. Select data submission repository (NCBI, ENA, etc.). Record submission accession numbers. Document data archival locations and retention periods. Generate analysis summary report.",
+      "content": "Bioinformatics Analysis & Data Submission - Data processing, analysis, and public repository submission"
+    },
+    {
+      "order": 10,
+      "title": "Storage & Environmental Monitoring",
+      "instructions": "Manage physical sample storage and environmental conditions. Assign samples to hierarchical storage locations (Room > Freezer > Shelf > Rack > Box > Well). Select appropriate storage condition based on sample type (DNA: -20C/-80C, RNA: -80C, PCR products: -20C). Log daily temperature checks (AM/PM) with acceptable ranges. Track sample retrievals with date, staff, recipient signature, and retrieval purpose. Record sample disposals with method, date, and authorization. Monitor storage logbook audit trail for compliance and traceability.",
+      "content": "Storage & Environmental Monitoring - Physical storage management, temperature monitoring, and sample lifecycle tracking"
+    }
+  ]
+}

@@ -173,4 +173,14 @@ public class NoteBookDisplayBean {
         this.allowedRoles = allowedRoles;
     }
 
+    private String workflowType;
+
+    public String getWorkflowType() {
+        return workflowType;
+    }
+
+    public void setWorkflowType(String workflowType) {
+        this.workflowType = workflowType;
+    }
+
 }
