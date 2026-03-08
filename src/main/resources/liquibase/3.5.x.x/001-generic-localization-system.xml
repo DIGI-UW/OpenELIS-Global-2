@@ -65,7 +65,7 @@
             <column name="sort_order" type="integer" defaultValueNumeric="0">
                 <constraints nullable="false"/>
             </column>
-            <column name="lastupdated" type="timestamp with time zone"/>
+            <column name="last_updated" type="timestamp with time zone"/>
         </createTable>
     </changeSet>
 
@@ -91,7 +91,7 @@
             <column name="value" type="text">
                 <constraints nullable="false"/>
             </column>
-            <column name="lastupdated" type="timestamp with time zone"/>
+            <column name="last_updated" type="timestamp with time zone"/>
         </createTable>
         <addUniqueConstraint tableName="localization_value"
                              schemaName="clinlims"
@@ -131,7 +131,7 @@
             <column name="is_active" valueBoolean="true"/>
             <column name="is_fallback" valueBoolean="true"/>
             <column name="sort_order" valueNumeric="1"/>
-            <column name="lastupdated" valueComputed="now()"/>
+            <column name="last_updated" valueComputed="now()"/>
         </insert>
         <insert schemaName="clinlims" tableName="supported_locale">
             <column name="id" valueSequenceNext="supported_locale_seq"/>
@@ -140,7 +140,7 @@
             <column name="is_active" valueBoolean="true"/>
             <column name="is_fallback" valueBoolean="false"/>
             <column name="sort_order" valueNumeric="2"/>
-            <column name="lastupdated" valueComputed="now()"/>
+            <column name="last_updated" valueComputed="now()"/>
         </insert>
     </changeSet>
 
@@ -155,7 +155,7 @@
             </and>
         </preConditions>
         <sql>
-            INSERT INTO clinlims.localization_value (id, localization_id, locale, value, lastupdated)
+            INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
             SELECT nextval('localization_value_seq'), id, 'en', english, COALESCE(lastupdated, now())
             FROM clinlims.localization
             WHERE english IS NOT NULL AND english != '';
@@ -173,7 +173,7 @@
             </and>
         </preConditions>
         <sql>
-            INSERT INTO clinlims.localization_value (id, localization_id, locale, value, lastupdated)
+            INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
             SELECT nextval('localization_value_seq'), id, 'fr', french, COALESCE(lastupdated, now())
             FROM clinlims.localization
             WHERE french IS NOT NULL AND french != '';
@@ -217,7 +217,7 @@
                     VALUES (new_loc_id, 'dictionary name', dict_record.dict_entry, dict_record.dict_entry, now());
 
                     -- Create English translation only (other languages to be added via translation UI)
-                    INSERT INTO clinlims.localization_value (id, localization_id, locale, value, lastupdated)
+                    INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
                     VALUES (nextval('localization_value_seq'), new_loc_id, 'en', dict_record.dict_entry, now());
 
                     -- Update dictionary with localization reference

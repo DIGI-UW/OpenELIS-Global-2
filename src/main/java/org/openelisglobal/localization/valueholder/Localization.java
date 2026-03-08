@@ -16,6 +16,16 @@
 
 package org.openelisglobal.localization.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.MapKey;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -24,24 +34,50 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.context.i18n.LocaleContextHolder;
 
+/**
+ * Localization entity for storing translatable content.
+ *
+ * <p>
+ * This entity supports an unlimited number of languages via the
+ * localization_value table. Each Localization can have multiple
+ * LocalizationValue entries, one per supported language.
+ * </p>
+ */
+@Entity
+@Table(name = "localization")
+@DynamicUpdate
+@AttributeOverride(name = "lastupdated", column = @Column(name = "lastupdated"))
 public class Localization extends BaseObject<String> {
 
     private static final long serialVersionUID = -7778285878061281494L;
 
     private static final String FALLBACK_LOCALE = "en";
 
+    @Id
+    @Column(name = "id", precision = 10, scale = 0)
+    @GeneratedValue(generator = "localization_seq_gen")
+    @GenericGenerator(name = "localization_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "localization_seq"))
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
+
+    @Column(name = "description")
     private String description;
 
     /**
      * Translation values stored in localization_value table. Key is locale code
      * (e.g., "en", "fr"), value is the LocalizationValue entity.
      */
+    @OneToMany(mappedBy = "localization", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @MapKey(name = "locale")
     private Map<String, LocalizationValue> values = new HashMap<>();
 
     @Override

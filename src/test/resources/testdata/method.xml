@@ -9,18 +9,32 @@
     ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
 <dataset>
     <!--localization category entries -->
-    <localization id="1" description=" this is for therapy"
-        english="therapy Method" french="méthode de thérapie"
-        lastUpdated="2023-10-01 12:00:00" />
-    <localization id="2" description=" this is for imagining"
-        english="imagining Method" french="méthode de thérapie"
-        lastUpdated="2023-10-01 12:00:00" />
-    <localization id="3" description=" this is for hologram"
-        english="hologram Method" french="méthode de thérapie"
-        lastUpdated="2023-10-01 12:00:00" />
-    <localization id="4" description=" this is for surgery"
-        english="surgery Method" french="méthode de thérapie"
-        lastUpdated="2023-10-01 12:00:00" />
+    <localization id="1" description=" this is for therapy" />
+    <localization id="2" description=" this is for imagining" />
+    <localization id="3" description=" this is for hologram" />
+    <localization id="4" description=" this is for surgery" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="therapy Method" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="méthode de thérapie" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="imagining Method" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="méthode de thérapie" />
+    <localization_value id="5" localization_id="3"
+        locale="en" value="hologram Method" />
+    <localization_value id="6" localization_id="3"
+        locale="fr" value="méthode de thérapie" />
+    <localization_value id="7" localization_id="4"
+        locale="en" value="surgery Method" />
+    <localization_value id="8" localization_id="4"
+        locale="fr" value="méthode de thérapie" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 
     <!--method category entries -->
     <method id="1" name="therapy" description="using therapy"

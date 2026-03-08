@@ -118,7 +118,11 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
             }
         }
 
-        DisplayListService.getInstance().refreshLists();
+        // Refresh display lists if service is available (may be null in unit tests)
+        DisplayListService displayListService = DisplayListService.getInstance();
+        if (displayListService != null) {
+            displayListService.refreshLists();
+        }
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
                 "Successfully loaded " + processedDictionaries.size() + " dictionaries from " + fileName);
