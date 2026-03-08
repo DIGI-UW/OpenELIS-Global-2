@@ -130,7 +130,7 @@ public class AnalyzerTestNameRestController extends BaseController {
         AnalyzerTestMapping analyzerTestNameMapping;
         if (newMapping) {
             analyzerTestNameMapping = new AnalyzerTestMapping();
-            analyzerTestNameMapping.setAnalyzerId(analyzerId);
+            analyzerTestNameMapping.setAnalyzerTypeId(analyzerId);
             analyzerTestNameMapping.setAnalyzerTestName(analyzerTestName);
             analyzerTestNameMapping.setTestId(testId);
             analyzerTestNameMapping.setSysUserId(getSysUserId(request));
@@ -175,12 +175,12 @@ public class AnalyzerTestNameRestController extends BaseController {
         return forward;
     }
 
-    private AnalyzerTestMapping getAnalyzerAndTestName(String analyzerId, String analyzerTestName, String testId) {
+    private AnalyzerTestMapping getAnalyzerAndTestName(String analyzerTypeId, String analyzerTestName, String testId) {
 
         AnalyzerTestMapping existingMapping = null;
         List<AnalyzerTestMapping> testMappingList = analyzerTestMappingService.getAll();
         for (AnalyzerTestMapping testMapping : testMappingList) {
-            if (analyzerId.equals(testMapping.getAnalyzerId())
+            if (analyzerTypeId.equals(testMapping.getAnalyzerTypeId())
                     && analyzerTestName.equals(testMapping.getAnalyzerTestName())) {
                 existingMapping = testMapping;
                 testMapping.setTestId(testId);
