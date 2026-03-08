@@ -4,8 +4,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
-import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.service.AnalyzerTypeService;
+import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzerimport.form.AnalyzerTestNameForm;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
@@ -47,7 +47,8 @@ public class AnalyzerTestNameRestController extends BaseController {
     @Autowired
     private AnalyzerTestMappingService analyzerTestMappingService;
     @Autowired
-    private AnalyzerService analyzerService;
+    private AnalyzerTypeService analyzerTypeService;
+
     @Autowired
     private TestService testService;
 
@@ -72,7 +73,7 @@ public class AnalyzerTestNameRestController extends BaseController {
         request.setAttribute(PREVIOUS_DISABLED, "true");
         request.setAttribute(NEXT_DISABLED, "true");
 
-        List<Analyzer> analyzerList = getAllAnalyzers();
+        List<AnalyzerType> analyzerList = getAllAnalyzers();
 
         newForm.setAnalyzerList(analyzerList);
 
@@ -95,8 +96,8 @@ public class AnalyzerTestNameRestController extends BaseController {
         return ID.matches("^[0-9]+#[^#/\\<>?]*#[0-9]+");
     }
 
-    private List<Analyzer> getAllAnalyzers() {
-        return analyzerService.getAll();
+    private List<AnalyzerType> getAllAnalyzers() {
+        return analyzerTypeService.getAll();
     }
 
     private List<Test> getAllTests() {
