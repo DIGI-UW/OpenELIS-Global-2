@@ -403,7 +403,7 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
         // Set all translations using the service (including any beyond en/fr)
         for (Map.Entry<String, String> entry : translations.entrySet()) {
-            localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue());
+            localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue(), "1");
         }
 
         // Create reporting name localization (same as test name by default)
@@ -417,7 +417,7 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
         // Set all translations for reporting name
         for (Map.Entry<String, String> entry : translations.entrySet()) {
-            localizationValueService.setTranslation(reportingLocalizationId, entry.getKey(), entry.getValue());
+            localizationValueService.setTranslation(reportingLocalizationId, entry.getKey(), entry.getValue(), "1");
         }
 
         // Create test
@@ -519,7 +519,7 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
         if (localization != null) {
             String localizationId = localization.getId();
             for (Map.Entry<String, String> entry : translations.entrySet()) {
-                localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue());
+                localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue(), "1");
             }
         }
 
@@ -528,7 +528,7 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
         if (reportingLocalization != null) {
             String reportingLocalizationId = reportingLocalization.getId();
             for (Map.Entry<String, String> entry : translations.entrySet()) {
-                localizationValueService.setTranslation(reportingLocalizationId, entry.getKey(), entry.getValue());
+                localizationValueService.setTranslation(reportingLocalizationId, entry.getKey(), entry.getValue(), "1");
             }
         }
     }

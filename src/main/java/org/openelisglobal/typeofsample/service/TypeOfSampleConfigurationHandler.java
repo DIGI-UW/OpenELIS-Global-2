@@ -323,7 +323,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
 
         // Set all translations using the service (including any beyond en/fr)
         for (Map.Entry<String, String> entry : translations.entrySet()) {
-            localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue());
+            localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue(), "1");
         }
 
         // Create sample type
@@ -418,13 +418,13 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
 
             // Set all translations
             for (Map.Entry<String, String> entry : translations.entrySet()) {
-                localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue());
+                localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue(), "1");
             }
         } else {
             // Update existing localization translations
             String localizationId = localization.getId();
             for (Map.Entry<String, String> entry : translations.entrySet()) {
-                localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue());
+                localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue(), "1");
             }
         }
     }
