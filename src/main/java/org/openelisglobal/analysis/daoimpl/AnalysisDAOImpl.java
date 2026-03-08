@@ -20,8 +20,12 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.Vector;
 import java.util.stream.Collectors;
+
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
@@ -980,6 +984,25 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
         }
 
         return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getAnalysesForStatusIds(List<Integer> statusIdList) throws LIMSRuntimeException {
+        List<Analysis> list = new ArrayList<>();
+        if (statusIdList == null || statusIdList.isEmpty()) {
+            return list;
+        }
+        try {
+            String sql = "from Analysis a where a.statusId in (:statusList)";
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            query.setParameterList("statusList", statusIdList);
+            list = query.list();
+            return list;
+        } catch (HibernateException e) {
+            handleException(e, "getAnalysesForStatusIds");
+        }
+        return list;
     }
 
     @Override

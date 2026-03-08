@@ -1,7 +1,5 @@
 package org.openelisglobal.common.rest.provider;
 
-import ca.uhn.fhir.rest.client.api.IGenericClient;
-import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -11,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Coding;
@@ -46,6 +45,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+
+import ca.uhn.fhir.rest.client.api.IGenericClient;
+import jakarta.servlet.http.HttpServletRequest;
 
 @Controller
 @RequestMapping(value = "/rest/")
@@ -313,6 +315,8 @@ public class PatientDashBoardProvider {
             case ORDERS_IN_PROGRESS:
                 statusIdList = new ArrayList<>();
                 statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.NotStarted)));
+                statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.BiologistRejected)));
+                statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.TechnicalRejected)));
                 metrics.setOrdersInProgress(analysisService.getCountOfAnalysesForStatusIds(statusIdList));
                 break;
             case ORDERS_READY_FOR_VALIDATION:
@@ -413,7 +417,11 @@ public class PatientDashBoardProvider {
                 .convertStringDateStringTimeToTimestamp(DateUtil.getCurrentDateAsText(), "23:59:59");
         switch (listType) {
         case ORDERS_IN_PROGRESS:
-            analyses = analysisService.getAnalysesForStatusId(iStatusService.getStatusID(AnalysisStatus.NotStarted));
+            List<Integer> inProgressStatusIds = new ArrayList<>();
+            inProgressStatusIds.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.NotStarted)));
+            inProgressStatusIds.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.BiologistRejected)));
+            inProgressStatusIds.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.TechnicalRejected)));
+            analyses = analysisService.getAnalysesForStatusIds(inProgressStatusIds);
             return convertAnalysesToOrderBean(analyses);
         case ORDERS_READY_FOR_VALIDATION:
             analyses = analysisService

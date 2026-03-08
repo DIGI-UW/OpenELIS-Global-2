@@ -2,12 +2,14 @@ package org.openelisglobal.analysis;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -291,6 +293,22 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         int analyses = aService.getCountOfAnalysesForStatusIds(statusIdList);
         Assert.assertNotNull(analyses);
         Assert.assertEquals(2, analyses);
+    }
+
+    @Test
+    public void getAnalysesForStatusIds_shouldReturnAnalysesWithMultipleStatuses() throws Exception {
+        List<Integer> statusIdList = Arrays.asList(1, 2);
+        List<Analysis> analyses = aService.getAnalysesForStatusIds(statusIdList);
+        Assert.assertNotNull(analyses);
+        Assert.assertEquals(2, analyses.size());
+    }
+
+    @Test
+    public void getAnalysesForStatusIds_shouldReturnEmptyListForEmptyStatusList() throws Exception {
+        List<Integer> statusIdList = new ArrayList<>();
+        List<Analysis> analyses = aService.getAnalysesForStatusIds(statusIdList);
+        Assert.assertNotNull(analyses);
+        Assert.assertEquals(0, analyses.size());
     }
 
     @Test

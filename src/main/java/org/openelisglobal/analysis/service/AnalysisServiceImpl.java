@@ -1,6 +1,5 @@
 package org.openelisglobal.analysis.service;
 
-import jakarta.annotation.PostConstruct;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -8,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.dao.AnalysisDAO;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -40,6 +40,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.annotation.PostConstruct;
 
 @Service
 @DependsOn({ "springContext" })
@@ -358,6 +360,12 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Transactional(readOnly = true)
     public List<Analysis> getAnalysesForStatusId(String status) {
         return baseObjectDAO.getAllMatching("statusId", status);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getAnalysesForStatusIds(List<Integer> statusIdList) {
+        return baseObjectDAO.getAnalysesForStatusIds(statusIdList);
     }
 
     @Override
