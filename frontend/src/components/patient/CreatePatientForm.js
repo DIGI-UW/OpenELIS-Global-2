@@ -793,6 +793,10 @@ function CreatePatientForm(props) {
                   value={values.photo}
                   onChange={(photo) => handlePhotoChange(photo, setFieldValue)}
                   required={false}
+                  allowPatientImageUpload={
+                    configurationProperties.ALLOW_PATIENT_IMAGE_UPLOAD !==
+                    "false"
+                  }
                 />
               </Column>
               <Column lg={8} md={4} sm={4}>

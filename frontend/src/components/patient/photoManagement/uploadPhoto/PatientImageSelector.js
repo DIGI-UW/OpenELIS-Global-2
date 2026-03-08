@@ -9,6 +9,7 @@ const PatientImageSelector = ({
   onChange,
   label = "",
   required = false,
+  allowPatientImageUpload = true,
 }) => {
   const intl = useIntl();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -53,6 +54,7 @@ const PatientImageSelector = ({
         onClose={() => setIsModalOpen(false)}
         onImageSelect={handleImageSelect}
         currentImage={value}
+        allowPatientImageUpload={allowPatientImageUpload}
       />
     </div>
   );

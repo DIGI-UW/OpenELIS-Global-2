@@ -90,6 +90,7 @@ public class SamplePatientEntryForm extends BaseForm {
     private Boolean warning = false;
 
     private boolean useReferral;
+    private boolean allowPatientImageUpload = true;
 
     // for display
     private List<IdValuePair> rejectReasonList;
@@ -280,6 +281,14 @@ public class SamplePatientEntryForm extends BaseForm {
 
     public void setUseReferral(boolean useReferral) {
         this.useReferral = useReferral;
+    }
+
+    public boolean getAllowPatientImageUpload() {
+        return allowPatientImageUpload;
+    }
+
+    public void setAllowPatientImageUpload(boolean allowPatientImageUpload) {
+        this.allowPatientImageUpload = allowPatientImageUpload;
     }
 
     public List<IdValuePair> getRejectReasonList() {

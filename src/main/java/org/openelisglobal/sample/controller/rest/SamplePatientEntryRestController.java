@@ -415,6 +415,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         form.setSampleTypes(userService.getUserSampleTypes(getSysUserId(request), Constants.ROLE_RECEPTION));
         form.setTestSectionList(DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE));
         form.setCurrentDate(DateUtil.getCurrentDateAsText());
+        form.setAllowPatientImageUpload(Boolean.parseBoolean(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ALLOW_PATIENT_IMAGE_UPLOAD)));
         form.setRejectReasonList(DisplayListService.getInstance().getList(ListType.REJECTION_REASONS));
 
         setupReferralOption(form);
