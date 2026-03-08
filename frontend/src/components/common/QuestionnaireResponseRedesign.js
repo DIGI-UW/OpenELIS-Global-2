@@ -12,6 +12,12 @@ const QuestionnaireResponse = ({ questionnaireResponse }) => {
     ["Assigned Pathologist", "Current Status"]
   ];
 
+  const boxedQuestionTexts = {
+    "Provisional Clinical Diagnosis": true,
+    "Previous Surgery / Treatment": true,
+    "Clinical History": true,
+  };
+
   if (!questionnaireResponse || !questionnaireResponse.item) return null;
 
   
@@ -26,6 +32,8 @@ const QuestionnaireResponse = ({ questionnaireResponse }) => {
     const questionText = item?.text || fallbackText;
     const answers = item?.answer || [];
     const answerElements = [];
+    const isProvisionalClinicaldiagnosis = questionText === "Provisional Clinical Diagnosis";
+
 
     if (answers.length > 0) {
       for (let index = 0; index < answers.length; index++) {
@@ -40,13 +48,21 @@ const QuestionnaireResponse = ({ questionnaireResponse }) => {
     }
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-        <span style={{ fontSize: "12px", color: "#525252", fontWeight: 600, marginBottom: "0.25rem" }}>
+      <div className="questionnaireResponseItem">
+        <span className="questionnaireResponseQuestion">
           {questionText}
         </span>
-        <span style={{ fontSize: "14px", color: "#161616" }}>
-          {answers.length > 0 ? answerElements : "-"}
-        </span>
+        {boxedQuestionTexts[questionText] ? (
+          <div className={"questionnaireResponseValueBox " + (isProvisionalClinicaldiagnosis ? "questionnaireResponseValueBox--provisional" : "")}>
+            <span className="questionnaireResponseValue">
+              {answers.length > 0 ? answerElements : "-"}
+            </span>
+          </div>
+        ) : (
+          <span className="questionnaireResponseValue">
+            {answers.length > 0 ? answerElements : "-"}
+          </span>
+        )}
       </div>
     );
   };
