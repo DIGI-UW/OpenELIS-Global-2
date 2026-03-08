@@ -38,13 +38,17 @@ import org.hl7.fhir.r4.model.Patient;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.registration.ResultUpdateRegister;
+import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
+import org.openelisglobal.result.service.LogbookResultsPersistService;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.test.beanItems.TestResultItem;
@@ -87,6 +91,9 @@ public class ObservationProvider implements IResourceProvider {
 
     @Autowired
     private ResultService resultService;
+
+    @Autowired
+    private LogbookResultsPersistService logbookResultsPersistService;
 
     @Autowired
     private FhirUtil util;
@@ -136,35 +143,68 @@ public class ObservationProvider implements IResourceProvider {
             throw new InvalidRequestException("Observation resource cannot be null");
         }
 
-        if (!observation.hasId()) {
-            observation.setId(IdType.newRandomUuid());
-            LogEvent.logInfo(getClass().getSimpleName(), method, "Generated new FHIR ID: " + observation.getId());
-        }
-
         try {
+
+            /*
+             * ----------------------------- Transform Observation → ResultItem
+             * -----------------------------
+             */
 
             TestResultItem item = fhirTransformService.createResultFromObservation(observation);
 
+            if (item == null) {
+                throw new UnprocessableEntityException("Failed to transform Observation into TestResultItem");
+            }
+
+            item.setIsModified(true);
+
+            LogEvent.logInfo(getClass().getSimpleName(), method, "Transformed Observation to TestResultItem");
+
+            /*
+             * ----------------------------- Prepare pipeline dataset
+             * -----------------------------
+             */
+
             List<TestResultItem> items = new ArrayList<>();
             items.add(item);
+
+            List<IResultUpdate> updaters = ResultUpdateRegister.getRegisteredUpdaters();
 
             ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(FhirProviderUtils.getSysUserId(request));
 
             actionDataSet.filterModifiedItems(items);
 
+            if (actionDataSet.getModifiedItems().isEmpty()) {
+
+                LogEvent.logWarn(getClass().getSimpleName(), method, "No modified items after filtering");
+
+                throw new UnprocessableEntityException("No valid results found to process");
+            }
+
+            /*
+             * ----------------------------- Validate items -----------------------------
+             */
+
             Errors errors = actionDataSet.validateModifiedItems();
 
-            if (errors.hasErrors()) {
+            if (errors != null && errors.hasErrors()) {
 
                 OperationOutcome outcome = new OperationOutcome();
 
                 for (ObjectError error : errors.getAllErrors()) {
-                    outcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
-                            .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getDefaultMessage());
-                }
 
+                    LogEvent.logError("FHIR_VALIDATION", "ERROR",
+                            "code=" + error.getCode() + ", message=" + error.getDefaultMessage());
+
+                    outcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
+                            .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getCode());
+                }
                 throw new UnprocessableEntityException(outcome);
             }
+
+            /*
+             * ----------------------------- Configuration -----------------------------
+             */
 
             boolean useTechnicianName = ConfigurationProperties.getInstance()
                     .isPropertyValueEqual(Property.resultTechnicianName, "true");
@@ -177,22 +217,71 @@ public class ObservationProvider implements IResourceProvider {
             String statusRuleSet = ConfigurationProperties.getInstance()
                     .getPropertyValueUpperCase(Property.StatusRules);
 
+            /*
+             * ----------------------------- Create results -----------------------------
+             */
+
             ResultUtil.createResultsFromItems(actionDataSet, supportReferrals, alwaysValidate, useTechnicianName,
                     statusRuleSet, request);
 
+            /*
+             * ----------------------------- Update analysis status
+             * -----------------------------
+             */
+
             ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
+
+            /*
+             * ----------------------------- Persist results -----------------------------
+             */
+
+            logbookResultsPersistService.persistDataSet(actionDataSet, updaters,
+                    FhirProviderUtils.getSysUserId(request));
+
+            /*
+             * ----------------------------- Persist FHIR mappings
+             * -----------------------------
+             */
 
             fhirTransformService.transformPersistResultsEntryFhirObjects(actionDataSet);
 
+            /*
+             * ----------------------------- Debug pipeline results
+             * -----------------------------
+             */
+
+            LogEvent.logInfo(getClass().getSimpleName(), method,
+                    "Results created: " + actionDataSet.getNewResults().size());
+
+            /*
+             * ----------------------------- Build FHIR response
+             * -----------------------------
+             */
+
             MethodOutcome outcome = new MethodOutcome();
             outcome.setCreated(true);
-            outcome.setId(observation.getIdElement());
+            for (ResultSet resultSet : actionDataSet.getNewResults()) {
+                Observation fhirObservation = fhirTransformService.transformResultToObservation(resultSet.result);
+                outcome.setResource(fhirObservation);
+
+            }
 
             return outcome;
 
+        } catch (UnprocessableEntityException e) {
+
+            throw e;
+
         } catch (Exception e) {
+
             LogEvent.logError(e);
-            throw new InternalErrorException("Error creating observation");
+
+            OperationOutcome outcome = new OperationOutcome();
+
+            outcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
+                    .setCode(OperationOutcome.IssueType.EXCEPTION).setDiagnostics(e.getMessage());
+
+            throw new InternalErrorException(outcome.toString());
         }
     }
 

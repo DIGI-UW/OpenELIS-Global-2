@@ -4,6 +4,7 @@ import ca.uhn.fhir.model.api.TemporalPrecisionEnum;
 import ca.uhn.fhir.parser.DataFormatException;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.exceptions.FhirClientConnectionException;
+import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -1293,61 +1294,137 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
     @Override
     public TestResultItem createResultFromObservation(org.hl7.fhir.r4.model.Observation observation) {
+
         TestResultItem bean = new TestResultItem();
 
-        String patientUUID = observation.getSubject().getReferenceElement().getIdPart();
-        String analysisUUID = observation.getBasedOnFirstRep().getReferenceElement().getIdPart();
-        String sampleItemUUID = observation.getSpecimen().getReferenceElement().getIdPart();
-        Patient patient = getItemByFhirId(patientUUID, patientService);
-        Analysis analysis = getItemByFhirId(analysisUUID, analysisService);
-        SampleItem sampleItem = getItemByFhirId(sampleItemUUID, sampleItemService);
-        Test test = analysis.getTest();
+        if (observation.hasPerformer()) {
+            String performerUUID = observation.getPerformerFirstRep().getReferenceElement().getIdPart();
+            Organization provider = getItemByFhirId(performerUUID, organizationService);
+            if (provider != null) {
+                bean.setTechnician(provider.getName());
+            }
+        }
+
+        if (observation.hasSpecimen()) {
+            String sampleItemUUID = observation.getSpecimen().getReferenceElement().getIdPart();
+            SampleItem sampleItem = getItemByFhirId(sampleItemUUID, sampleItemService);
+            if (sampleItem == null) {
+                throw new UnprocessableEntityException("SampleItem not found: " + sampleItemUUID);
+            }
+            Sample sample = sampleItem.getSample();
+            bean.setSampleItemId(sampleItem.getId());
+            bean.setAccessionNumber(sample.getAccessionNumber());
+        }
+
+        if (observation.hasBasedOn()) {
+            String analysisUUID = observation.getBasedOnFirstRep().getReferenceElement().getIdPart();
+            Analysis analysis = getItemByFhirId(analysisUUID, analysisService);
+            if (analysis == null) {
+                throw new UnprocessableEntityException("Analysis not found: " + analysisUUID);
+            }
+            Test test = analysis.getTest();
+            bean.setAnalysisId(analysis.getId());
+            bean.setTestId(test.getId());
+        }
+
+        if (observation.hasSubject()) {
+            String patientUUID = observation.getSubject().getReferenceElement().getIdPart();
+            Patient patient = getItemByFhirId(patientUUID, patientService);
+            if (patient == null) {
+                throw new UnprocessableEntityException("Patient not found: " + patientUUID);
+            }
+            bean.setPatientId(patient.getId());
+        }
+
+        bean.setIsModified(true);
+        bean.setResultId(null);
+        bean.setReportable(true);
+
+        bean.setTestDate(new SimpleDateFormat("MM/dd/yyyy").format(new Date()));
+
+        if (bean.getTechnician() == null) {
+            bean.setTechnician("Lab Technician");
+        }
+
         if (observation.hasStatus()) {
             String status = observation.getStatusElement().getValue().toString();
-            if (statusService.matches(status, AnalysisStatus.Finalized) == true) {
+            if (statusService.matches(status, AnalysisStatus.Finalized)) {
                 bean.setAnalysisStatusId(statusService.getStatusID(AnalysisStatus.Finalized));
-
             }
-
         }
-        if (observation.getCode().getCodingFirstRep().getSystem().equals("http://loinc.org")) {
+        if (observation.hasCode() && observation.getCode().getCodingFirstRep().getSystem().equals("http://loinc.org")) {
             for (Coding code : observation.getCode().getCoding()) {
                 bean.setTestName(code.getDisplay());
             }
         }
 
         if (observation.hasValueStringType()) {
-            bean.setResultValue(observation.getValueStringType().getValueAsString());
+            String value = observation.getValueStringType().getValueAsString();
+            bean.setResultValue(value);
+            bean.setShadowResultValue(value);
             bean.setResultType("T");
-        } else if (observation.hasValueCodeableConcept()) {
+        }
+
+        else if (observation.hasValueCodeableConcept()) {
             for (Coding code : observation.getValueCodeableConcept().getCoding()) {
                 if (code.getSystem().equals(fhirConfig.getOeFhirSystem() + "/dictionary_entry")) {
-                    bean.setResultValue(code.getDisplay());
-                    Dictionary dictionary = dictionaryService.getDictionaryByDictEntry(code.getDisplay());
-                    TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(test.getId(),
-                            dictionary.getId());
-                    bean.setResultType(testResult.getTestResultType());
-
+                    Dictionary dictionary = dictionaryService.getDictionaryByDictEntry(code.getCode());
+                    if (dictionary != null) {
+                        bean.setResultValue(dictionary.getId());
+                        bean.setShadowResultValue(dictionary.getId());
+                        TestResult testResult = testResultService
+                                .getTestResultsByTestAndDictonaryResult(bean.getTestId(), dictionary.getId());
+                        if (testResult != null) {
+                            bean.setResultType(testResult.getTestResultType());
+                        }
+                    } else {
+                        LogEvent.logError(getClass().getSimpleName(), "createResultFromObservation",
+                                "Dictionary entry not found for: " + code.getCode());
+                    }
                 }
             }
-        } else if (observation.hasValueQuantity()) {
-            bean.setResultValue(observation.getValueQuantity().getValueElement().getValueAsString());
+        }
+
+        else if (observation.hasValueQuantity()) {
+            String value = observation.getValueQuantity().getValueElement().getValueAsString();
+            bean.setResultValue(value);
+            bean.setShadowResultValue(value);
             bean.setResultType("N");
             bean.setUnitsOfMeasure(observation.getValueQuantity().getUnit());
-            bean.setPatientId(patient.getId());
-
         }
-        bean.setHasQualifiedResult(true);
-        bean.setSampleItemId(sampleItem.getId());
 
-        bean.setAnalysisId(analysis.getId());
+        if (bean.getResultType() == null) {
+            bean.setResultType("T");
+        }
+
+        bean.setHasQualifiedResult(false);
+        bean.setResult(new Result());
+
+        LogEvent.logInfo("FHIR_OBSERVATION_TRANSFORM", "RESULT_ITEM",
+                "analysisId=" + bean.getAnalysisId() + ", sampleItemId=" + bean.getSampleItemId() + ", testId="
+                        + bean.getTestId() + ", patientId=" + bean.getPatientId() + ", resultValue="
+                        + bean.getResultValue() + ", resultType=" + bean.getResultType());
+
+        if (bean.getAnalysisId() == null || bean.getTestId() == null || bean.getSampleItemId() == null) {
+            throw new UnprocessableEntityException("Missing required fields for result creation");
+        }
+
         return bean;
     }
 
     private <T extends BaseObject<?>> T getItemByFhirId(String fhirUuid, BaseObjectService<T, ?> service) {
 
-        List<T> matches = service.getAllMatching("fhirUuid", UUID.fromString(fhirUuid));
-        return matches.isEmpty() ? null : matches.get(0);
+        if (fhirUuid == null) {
+            return null;
+        }
+
+        try {
+            List<T> matches = service.getAllMatching("fhirUuid", UUID.fromString(fhirUuid));
+            return matches.isEmpty() ? null : matches.get(0);
+        } catch (IllegalArgumentException e) {
+            LogEvent.logError(getClass().getSimpleName(), "getItemByFhirId", "Invalid UUID: " + fhirUuid);
+            return null;
+        }
     }
 
     @Async
