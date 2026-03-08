@@ -145,11 +145,6 @@ public class ObservationProvider implements IResourceProvider {
 
         try {
 
-            /*
-             * ----------------------------- Transform Observation → ResultItem
-             * -----------------------------
-             */
-
             TestResultItem item = fhirTransformService.createResultFromObservation(observation);
 
             if (item == null) {
@@ -159,11 +154,6 @@ public class ObservationProvider implements IResourceProvider {
             item.setIsModified(true);
 
             LogEvent.logInfo(getClass().getSimpleName(), method, "Transformed Observation to TestResultItem");
-
-            /*
-             * ----------------------------- Prepare pipeline dataset
-             * -----------------------------
-             */
 
             List<TestResultItem> items = new ArrayList<>();
             items.add(item);
@@ -180,10 +170,6 @@ public class ObservationProvider implements IResourceProvider {
 
                 throw new UnprocessableEntityException("No valid results found to process");
             }
-
-            /*
-             * ----------------------------- Validate items -----------------------------
-             */
 
             Errors errors = actionDataSet.validateModifiedItems();
 
@@ -202,10 +188,6 @@ public class ObservationProvider implements IResourceProvider {
                 throw new UnprocessableEntityException(outcome);
             }
 
-            /*
-             * ----------------------------- Configuration -----------------------------
-             */
-
             boolean useTechnicianName = ConfigurationProperties.getInstance()
                     .isPropertyValueEqual(Property.resultTechnicianName, "true");
 
@@ -217,46 +199,18 @@ public class ObservationProvider implements IResourceProvider {
             String statusRuleSet = ConfigurationProperties.getInstance()
                     .getPropertyValueUpperCase(Property.StatusRules);
 
-            /*
-             * ----------------------------- Create results -----------------------------
-             */
-
             ResultUtil.createResultsFromItems(actionDataSet, supportReferrals, alwaysValidate, useTechnicianName,
                     statusRuleSet, request);
 
-            /*
-             * ----------------------------- Update analysis status
-             * -----------------------------
-             */
-
             ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
-
-            /*
-             * ----------------------------- Persist results -----------------------------
-             */
 
             logbookResultsPersistService.persistDataSet(actionDataSet, updaters,
                     FhirProviderUtils.getSysUserId(request));
 
-            /*
-             * ----------------------------- Persist FHIR mappings
-             * -----------------------------
-             */
-
             fhirTransformService.transformPersistResultsEntryFhirObjects(actionDataSet);
-
-            /*
-             * ----------------------------- Debug pipeline results
-             * -----------------------------
-             */
 
             LogEvent.logInfo(getClass().getSimpleName(), method,
                     "Results created: " + actionDataSet.getNewResults().size());
-
-            /*
-             * ----------------------------- Build FHIR response
-             * -----------------------------
-             */
 
             MethodOutcome outcome = new MethodOutcome();
             outcome.setCreated(true);
@@ -288,44 +242,119 @@ public class ObservationProvider implements IResourceProvider {
     @Update
     public MethodOutcome update(@IdParam IdType theId, @ResourceParam Observation fhirObservation,
             HttpServletRequest request) {
-        String method = "update";
-        LogEvent.logDebug(this.getClass().getSimpleName(), method,
-                "Received FHIR UPDATE request for Observation ID: " + (theId != null ? theId.getIdPart() : "null"));
+
+        String method = "updateObservation";
+
+        if (fhirObservation == null) {
+            LogEvent.logError(getClass().getSimpleName(), method, "Observation resource is null");
+            throw new InvalidRequestException("Observation resource cannot be null");
+        }
+
         try {
-            FhirProviderUtils.validateIdParam(theId, "Observation", this.getClass().getSimpleName(), method);
 
-            Result existingResult = resultService.getResultByFhirUuid(theId.getIdPart());
+            String resultUUID = theId.getIdPart();
+            Result existingResult = fhirTransformService.getItemByFhirId(resultUUID, resultService);
+
             if (existingResult == null) {
-                throw new ResourceNotFoundException("Observation/" + theId.getIdPart());
+                throw new ResourceNotFoundException("Observation/" + resultUUID);
             }
 
-            if (fhirObservation.hasValueQuantity()) {
-                existingResult.setValue(fhirObservation.getValueQuantity().getValue().toPlainString());
-                existingResult.setResultType("N");
-            } else if (fhirObservation.hasValueStringType()) {
-                existingResult.setValue(fhirObservation.getValueStringType().getValue());
-                existingResult.setResultType("T");
+            TestResultItem item = fhirTransformService.createResultFromObservation(fhirObservation);
+
+            Result transformedResult = item.getResult();
+
+            if (transformedResult == null) {
+                transformedResult = new Result();
+                item.setResult(transformedResult);
             }
 
-            existingResult.setSysUserId(FhirProviderUtils.getSysUserId(request));
-            Result updatedResult = resultService.save(existingResult);
+            transformedResult.setId(existingResult.getId());
+            item.setResultId(existingResult.getId());
+            item.setIsModified(true);
 
-            Observation resultObservation = fhirTransformService.transformResultToObservation(updatedResult);
-            resultObservation.setId(theId);
-            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, resultObservation,
-                    this.getClass().getSimpleName(), method);
+            List<TestResultItem> items = new ArrayList<>();
+            items.add(item);
 
-            LogEvent.logInfo(this.getClass().getSimpleName(), method,
-                    "Successfully updated Observation with ID: " + theId.getIdPart());
+            ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(FhirProviderUtils.getSysUserId(request));
+            actionDataSet.filterModifiedItems(items);
 
-            return FhirProviderUtils.buildUpdateOutcome(resultObservation);
+            if (actionDataSet.getModifiedItems().isEmpty()) {
+                LogEvent.logWarn(getClass().getSimpleName(), method, "No modified items after filtering");
+                throw new UnprocessableEntityException("No valid results found to process");
+            }
 
-        } catch (ResourceNotFoundException | UnprocessableEntityException | InvalidRequestException e) {
+            Errors errors = actionDataSet.validateModifiedItems();
+
+            if (errors != null && errors.hasErrors()) {
+
+                OperationOutcome outcome = new OperationOutcome();
+
+                for (ObjectError error : errors.getAllErrors()) {
+
+                    LogEvent.logError("FHIR_VALIDATION", "ERROR",
+                            "code=" + error.getCode() + ", message=" + error.getDefaultMessage());
+
+                    outcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
+                            .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getCode());
+                }
+
+                throw new UnprocessableEntityException(outcome);
+            }
+
+            boolean useTechnicianName = ConfigurationProperties.getInstance()
+                    .isPropertyValueEqual(Property.resultTechnicianName, "true");
+
+            boolean alwaysValidate = ConfigurationProperties.getInstance()
+                    .isPropertyValueEqual(Property.ALWAYS_VALIDATE_RESULTS, "true");
+
+            boolean supportReferrals = FormFields.getInstance().useField(Field.ResultsReferral);
+
+            String statusRuleSet = ConfigurationProperties.getInstance()
+                    .getPropertyValueUpperCase(Property.StatusRules);
+
+            ResultUtil.createResultsFromItems(actionDataSet, supportReferrals, alwaysValidate, useTechnicianName,
+                    statusRuleSet, request);
+
+            ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
+
+            List<IResultUpdate> updaters = ResultUpdateRegister.getRegisteredUpdaters();
+
+            logbookResultsPersistService.persistDataSet(actionDataSet, updaters,
+                    FhirProviderUtils.getSysUserId(request));
+
+            fhirTransformService.transformPersistResultsEntryFhirObjects(actionDataSet);
+
+            LogEvent.logInfo(getClass().getSimpleName(), method,
+                    "Results updated: " + actionDataSet.getModifiedItems().size());
+
+            MethodOutcome outcome = new MethodOutcome();
+            outcome.setCreated(false);
+
+            for (ResultSet resultSet : actionDataSet.getModifiedResults()) {
+
+                Observation updatedObservation = fhirTransformService.transformResultToObservation(resultSet.result);
+
+                updatedObservation.setId(theId);
+
+                outcome.setResource(updatedObservation);
+            }
+
+            return outcome;
+
+        } catch (UnprocessableEntityException | ResourceNotFoundException | InvalidRequestException e) {
+
             throw e;
+
         } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Unexpected error updating observation: " + e.getMessage());
-            throw new InternalErrorException("Unexpected server error updating Observation");
+
+            LogEvent.logError(e);
+
+            OperationOutcome outcome = new OperationOutcome();
+
+            outcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
+                    .setCode(OperationOutcome.IssueType.EXCEPTION).setDiagnostics(e.getMessage());
+
+            throw new InternalErrorException(outcome.toString());
         }
     }
 
