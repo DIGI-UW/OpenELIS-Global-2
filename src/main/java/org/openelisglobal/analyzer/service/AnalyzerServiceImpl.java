@@ -44,6 +44,9 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Autowired
     private org.openelisglobal.test.service.TestService testService;
 
+    @Autowired
+    private AnalyzerPluginConfigService analyzerPluginConfigService;
+
     AnalyzerServiceImpl() {
         super(Analyzer.class);
     }
@@ -130,6 +133,12 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Transactional(readOnly = true)
     public Optional<Analyzer> getByName(String name) {
         return baseObjectDAO.findByName(name);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findActiveByListenPort(Integer port) {
+        return baseObjectDAO.findActiveByPort(port);
     }
 
     @Override
@@ -275,6 +284,8 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Transactional
     @SuppressWarnings("unchecked")
     public void autoCreateTestMappings(String analyzerId, Map<String, Object> config, String sysUserId) {
+        analyzerPluginConfigService.applyConfigDefaults(analyzerId, config.get("configDefaults"), sysUserId);
+
         Object mappingsObj = config.get("default_test_mappings");
         if (!(mappingsObj instanceof List)) {
             return;
