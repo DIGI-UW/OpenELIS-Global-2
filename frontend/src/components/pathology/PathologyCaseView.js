@@ -421,7 +421,7 @@ function PathologyCaseView() {
         <Content className="scrollable-content">
             {loading && <Loading description="Loading..." />}
             <Accordion align="end ">
-              <AccordionItem title="Case Information" id="case-info">
+              <AccordionItem title="Case Information" id="case-info" className="pathology-case-info-item">
                     <div className="patient-header2">
                       <QuestionnaireResponseRedesign
                         questionnaireResponse={
@@ -431,7 +431,7 @@ function PathologyCaseView() {
                     </div>
               </AccordionItem>
 
-              <AccordionItem title="Grossing" id="grossing">
+              <AccordionItem title="Grossing" id="grossing" className="pathology-accent-item">
                     <Grid fullWidth={true} className="gridBoundary">
                       <Column lg={16} md={8} sm={4}>``
                         <TextArea
@@ -464,7 +464,7 @@ function PathologyCaseView() {
                     </Grid>
               </AccordionItem>
 
-              <AccordionItem title={`Blocks (${(pathologySampleInfo.blocks || []).length})`} id="blocks">
+              <AccordionItem title={`Blocks (${(pathologySampleInfo.blocks || []).length})`} id="blocks" className="pathology-accent-item">
                                   <Grid fullWidth={true} className="gridBoundary">
                   <Column lg={16} md={8} sm={4}>
                     <h5>
@@ -606,7 +606,7 @@ function PathologyCaseView() {
                 </Grid>
               </AccordionItem>
 
-              <AccordionItem title={`Slides (${(pathologySampleInfo.slides || []).length})`} id="slides">
+              <AccordionItem title={`Slides (${(pathologySampleInfo.slides || []).length})`} id="slides" className="pathology-accent-item">
                             <Grid fullWidth={true} className="gridBoundary">
                 <Column lg={16} md={8} sm={4}>
                   <h5>
@@ -797,7 +797,7 @@ function PathologyCaseView() {
               </Grid>
               </AccordionItem>
 
-              <AccordionItem title="Staining" id="staining">
+              <AccordionItem title="Staining" id="staining" className="pathology-accent-item">
               {hasRole(userSessionDetails, "Pathologist") && (
                 <>
                   <Column lg={16} md={8} sm={4}>
