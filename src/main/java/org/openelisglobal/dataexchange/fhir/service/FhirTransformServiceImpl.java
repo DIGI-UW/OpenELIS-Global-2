@@ -1296,6 +1296,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     public TestResultItem createResultFromObservation(org.hl7.fhir.r4.model.Observation observation) {
 
         TestResultItem bean = new TestResultItem();
+        Result result = new Result();
+        bean.setResult(result);
 
         if (observation.hasPerformer()) {
             String performerUUID = observation.getPerformerFirstRep().getReferenceElement().getIdPart();
@@ -1308,9 +1310,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         if (observation.hasSpecimen()) {
             String sampleItemUUID = observation.getSpecimen().getReferenceElement().getIdPart();
             SampleItem sampleItem = getItemByFhirId(sampleItemUUID, sampleItemService);
+
             if (sampleItem == null) {
                 throw new UnprocessableEntityException("SampleItem not found: " + sampleItemUUID);
             }
+
             Sample sample = sampleItem.getSample();
             bean.setSampleItemId(sampleItem.getId());
             bean.setAccessionNumber(sample.getAccessionNumber());
@@ -1319,9 +1323,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         if (observation.hasBasedOn()) {
             String analysisUUID = observation.getBasedOnFirstRep().getReferenceElement().getIdPart();
             Analysis analysis = getItemByFhirId(analysisUUID, analysisService);
+
             if (analysis == null) {
                 throw new UnprocessableEntityException("Analysis not found: " + analysisUUID);
             }
+
             Test test = analysis.getTest();
             bean.setAnalysisId(analysis.getId());
             bean.setTestId(test.getId());
@@ -1330,16 +1336,17 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         if (observation.hasSubject()) {
             String patientUUID = observation.getSubject().getReferenceElement().getIdPart();
             Patient patient = getItemByFhirId(patientUUID, patientService);
+
             if (patient == null) {
                 throw new UnprocessableEntityException("Patient not found: " + patientUUID);
             }
+
             bean.setPatientId(patient.getId());
         }
 
         bean.setIsModified(true);
         bean.setResultId(null);
         bean.setReportable(true);
-
         bean.setTestDate(new SimpleDateFormat("MM/dd/yyyy").format(new Date()));
 
         if (bean.getTechnician() == null) {
@@ -1352,6 +1359,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 bean.setAnalysisStatusId(statusService.getStatusID(AnalysisStatus.Finalized));
             }
         }
+
         if (observation.hasCode() && observation.getCode().getCodingFirstRep().getSystem().equals("http://loinc.org")) {
             for (Coding code : observation.getCode().getCoding()) {
                 bean.setTestName(code.getDisplay());
@@ -1359,25 +1367,58 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
 
         if (observation.hasValueStringType()) {
+
             String value = observation.getValueStringType().getValueAsString();
+
             bean.setResultValue(value);
             bean.setShadowResultValue(value);
             bean.setResultType("T");
         }
 
         else if (observation.hasValueCodeableConcept()) {
+
             for (Coding code : observation.getValueCodeableConcept().getCoding()) {
+
+                LogEvent.logInfo("FHIR_OBSERVATION_TRANSFORM", "DICT_DEBUG", "Observation coding: system="
+                        + code.getSystem() + ", code=" + code.getCode() + ", display=" + code.getDisplay());
+
                 if (code.getSystem().equals(fhirConfig.getOeFhirSystem() + "/dictionary_entry")) {
-                    Dictionary dictionary = dictionaryService.getDictionaryByDictEntry(code.getCode());
-                    if (dictionary != null) {
+
+                    List<Dictionary> dictionaries = dictionaryService.getAllMatching("dictEntry", code.getCode());
+
+                    if (!dictionaries.isEmpty()) {
+
+                        Dictionary dictionary = dictionaries.get(0);
+
                         bean.setResultValue(dictionary.getId());
                         bean.setShadowResultValue(dictionary.getId());
-                        TestResult testResult = testResultService
-                                .getTestResultsByTestAndDictonaryResult(bean.getTestId(), dictionary.getId());
+
+                        List<TestResult> testResults = testResultService.getAllMatching("value", dictionary.getId());
+                        TestResult testResult = testResults.get(0);
                         if (testResult != null) {
+
                             bean.setResultType(testResult.getTestResultType());
+
+                            result.setTestResult(testResult);
+
+                            LogEvent.logInfo("FHIR_OBSERVATION_TRANSFORM", "TEST_RESULT_DEBUG",
+                                    "TestResult found: id=" + testResult.getId() + ", value=" + testResult.getValue()
+                                            + ", testResultType=" + testResult.getTestResultType());
+
+                        } else {
+
+                            LogEvent.logError("FHIR_OBSERVATION_TRANSFORM", "TEST_RESULT_DEBUG",
+                                    "No TestResult found for dictionaryId=" + dictionary.getId() + " and testId="
+                                            + bean.getTestId());
                         }
+
+                        LogEvent.logInfo("FHIR_OBSERVATION_TRANSFORM", "DICT_RESULT",
+                                "Dictionary entry processed: code=" + code.getCode() + ", dictionaryId="
+                                        + dictionary.getId() + ", testId=" + bean.getTestId() + ", patientId="
+                                        + bean.getPatientId());
+
                     } else {
+
                         LogEvent.logError(getClass().getSimpleName(), "createResultFromObservation",
                                 "Dictionary entry not found for: " + code.getCode());
                     }
@@ -1386,7 +1427,9 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
 
         else if (observation.hasValueQuantity()) {
+
             String value = observation.getValueQuantity().getValueElement().getValueAsString();
+
             bean.setResultValue(value);
             bean.setShadowResultValue(value);
             bean.setResultType("N");
@@ -1398,7 +1441,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
 
         bean.setHasQualifiedResult(false);
-        bean.setResult(new Result());
 
         LogEvent.logInfo("FHIR_OBSERVATION_TRANSFORM", "RESULT_ITEM",
                 "analysisId=" + bean.getAnalysisId() + ", sampleItemId=" + bean.getSampleItemId() + ", testId="
@@ -1412,7 +1454,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return bean;
     }
 
-    private <T extends BaseObject<?>> T getItemByFhirId(String fhirUuid, BaseObjectService<T, ?> service) {
+    public <T extends BaseObject<?>> T getItemByFhirId(String fhirUuid, BaseObjectService<T, ?> service) {
 
         if (fhirUuid == null) {
             return null;
