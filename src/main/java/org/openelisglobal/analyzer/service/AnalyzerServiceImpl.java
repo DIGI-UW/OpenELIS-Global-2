@@ -299,6 +299,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         List<Map<String, Object>> mappings = (List<Map<String, Object>>) mappingsObj;
         int created = 0;
         Analyzer analyzer = get(analyzerId);
+        List<AnalyzerTestMapping> dbTestMappings = analyzerMappingService.getAll();
         for (Map<String, Object> mapping : mappings) {
             String analyzerCode = (String) mapping.get("analyzer_code");
             String loinc = (String) mapping.get("loinc");
@@ -330,7 +331,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             atm.setSysUserId(sysUserId);
 
             try {
-                if (newMapping(atm, analyzerMappingService.getAll())) {
+                if (newMapping(atm, dbTestMappings)) {
                     analyzerMappingService.insert(atm);
                     AnalyzerTestNameCache.getInstance().registerPluginAnalyzer(analyzer.getAnalyzerType().getName(),
                             typeId);
