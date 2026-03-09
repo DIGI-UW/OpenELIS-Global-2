@@ -46,6 +46,7 @@ import "./PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import Header from "../layout/Header";
 import PatientHeaderReDesign from "../common/PatiendHeaderReDesign";
+import PathologyGrossing from "../common/PathologyGrossing";
 
 function PathologyCaseView() {
   const intl = useIntl();
@@ -432,36 +433,51 @@ function PathologyCaseView() {
               </AccordionItem>
 
               <AccordionItem title="Grossing" id="grossing" className="pathology-accent-item">
-                    <Grid fullWidth={true} className="gridBoundary">
-                      <Column lg={16} md={8} sm={4}>``
-                        <TextArea
-                          labelText={
-                            <FormattedMessage id="pathology.label.grossexam" />
-                          }
-                          value={pathologySampleInfo.grossExam}
-                          onChange={(e) => {
-                            setPathologySampleInfo({
-                              ...pathologySampleInfo,
-                              grossExam: e.target.value,
-                            });
-                          }}
-                        />
-                      </Column>
-                      <Column lg={16} md={8} sm={4}>
-                        <TextArea
-                          labelText={
-                            <FormattedMessage id="pathology.label.microexam" />
-                          }
-                          value={pathologySampleInfo.microscopyExam}
-                          onChange={(e) => {
-                            setPathologySampleInfo({
-                              ...pathologySampleInfo,
-                              microscopyExam: e.target.value,
-                            });
-                          }}
-                        />
-                      </Column>
-                    </Grid>
+                      <PathologyGrossing 
+                      intl={intl}
+                      grossing={pathologySampleInfo.grossExam}
+                      microscopyExam={pathologySampleInfo.microscopyExam}
+                      statusId={"status"}
+                      statusName={"status"}
+                      statusValue={pathologySampleInfo.status}
+                      ThisStatuses={statuses}
+                      technicianId={"assignedTechnician"}
+                      technicianName={"assignedTechnician"}
+                      technicianValue={pathologySampleInfo.assignedTechnicianId}
+                      assignedPathologist={"assignedPathologist"}
+                      pathologistUsers={pathologistUsers}
+                      pathologistValue={pathologySampleInfo.assignedPathologistId}
+                      onGrossingChange={(value) => {
+                        setPathologySampleInfo({
+                          ...pathologySampleInfo,
+                          grossExam: value,
+                        });
+                      }}
+                      onMicroscopyExamChange={(value) => {
+                        setPathologySampleInfo({
+                          ...pathologySampleInfo,
+                          microscopyExam: value,
+                        });
+                      }}
+                      onStatusChange={(value) => {
+                          setPathologySampleInfo({
+                          ...pathologySampleInfo,
+                          status: value,
+                        });
+                      }}
+                      onTechnicianChange={(value) => {
+                        setPathologySampleInfo({
+                          ...pathologySampleInfo,
+                          assignedTechnicianId: value,
+                        });
+                      }}
+                      onPathologistChange={(value) => {
+                        setPathologySampleInfo({
+                          ...pathologySampleInfo,
+                          assignedPathologistId: value,
+                        });
+                      }}
+                      />
               </AccordionItem>
 
               <AccordionItem title={`Blocks (${(pathologySampleInfo.blocks || []).length})`} id="blocks" className="pathology-accent-item">
@@ -1014,76 +1030,7 @@ function PathologyCaseView() {
 
               <AccordionItem title="Pathologist Review" id="review">
                 <Grid fullWidth={true} className="gridBoundary">
-                  <Column lg={4} md={2} sm={2}>
-                    <Select
-                      id="status"
-                      name="status"
-                      labelText={intl.formatMessage({ id: "label.button.select.status" })}
-                      value={pathologySampleInfo.status}
-                      onChange={(event) => {
-                        setPathologySampleInfo({
-                          ...pathologySampleInfo,
-                          status: event.target.value,
-                        });
-                      }}
-                    >
-                      <SelectItem disabled value="placeholder" text="Status" />
 
-                      {statuses.map((status, index) => {
-                        return (
-                          <SelectItem key={index} text={status.value} value={status.id} />
-                        );
-                      })}
-                    </Select>
-                  </Column>
-              
-                  <Column lg={4} md={2} sm={2}>
-                    <Select
-                      id="assignedTechnician"
-                      name="assignedTechnician"
-                      labelText={intl.formatMessage({
-                        id: "label.button.select.technician",
-                      })}
-                      value={pathologySampleInfo.assignedTechnicianId}
-                      onChange={(event) => {
-                        setPathologySampleInfo({
-                          ...pathologySampleInfo,
-                          assignedTechnicianId: event.target.value,
-                        });
-                      }}
-                    >
-                      <SelectItem />
-                      {technicianUsers.map((user, index) => {
-                        return (
-                          <SelectItem key={index} text={user.value} value={user.id} />
-                        );
-                      })}
-                    </Select>
-                  </Column>
-
-                  <Column lg={4} md={2} sm={2}>
-                    <Select
-                      id="assignedPathologist"
-                      name="assignedPathologist"
-                      labelText={
-                        <FormattedMessage id="label.button.select.pathologist" />
-                      }
-                      value={pathologySampleInfo.assignedPathologistId}
-                      onChange={(e) => {
-                        setPathologySampleInfo({
-                          ...pathologySampleInfo,
-                          assignedPathologistId: e.target.value,
-                        });
-                      }}
-                    >
-                      <SelectItem />
-                      {pathologistUsers.map((user, index) => {
-                        return (
-                          <SelectItem key={index} text={user.value} value={user.id} />
-                        );
-                      })}
-                    </Select>
-                  </Column>
                 </Grid>
               </AccordionItem>
                 
