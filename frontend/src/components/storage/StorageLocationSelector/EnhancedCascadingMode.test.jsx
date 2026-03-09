@@ -462,7 +462,12 @@ describe("EnhancedCascadingMode", () => {
         callback([{ id: "1", name: "Main Laboratory", code: "MAIN" }]);
       } else if (url.includes("/rest/storage/devices?roomId=1")) {
         callback([
-          { id: "10", name: "Freezer Unit 1", code: "FRZ01", parentRoomId: "1" },
+          {
+            id: "10",
+            name: "Freezer Unit 1",
+            code: "FRZ01",
+            parentRoomId: "1",
+          },
         ]);
       } else if (url.includes("/rest/storage/shelves?deviceId=10")) {
         callback([{ id: "20", label: "Shelf-A", parentDeviceId: "10" }]);

@@ -348,8 +348,7 @@ public class StorageSearchServiceImplTest {
     @Test
     public void testSearchSamples_FiltersByBoxLabelInLocationPath() throws Exception {
         List<Map<String, Object>> testSamples = new ArrayList<>(mockSamples);
-        testSamples.get(0).put("location",
-                "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Box Alpha > D4");
+        testSamples.get(0).put("location", "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Box Alpha > D4");
         when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(testSamples);
 
         List<Map<String, Object>> results = searchService.searchSamples("Box Alpha");

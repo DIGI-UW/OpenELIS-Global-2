@@ -243,7 +243,9 @@ const EnhancedCascadingMode = ({
       }
       if (selectedLocation.box && typeof selectedLocation.box === "object") {
         setSelectedBox(selectedLocation.box);
-        setBoxInput(selectedLocation.box.label || selectedLocation.box.name || "");
+        setBoxInput(
+          selectedLocation.box.label || selectedLocation.box.name || "",
+        );
       }
       if (
         selectedLocation.position &&
@@ -507,7 +509,9 @@ const EnhancedCascadingMode = ({
       getFromOpenElisServer(
         `/rest/storage/boxes?rackId=${selectedRack.id}`,
         (response) => {
-          const activeBoxes = (response || []).filter((b) => b.active !== false);
+          const activeBoxes = (response || []).filter(
+            (b) => b.active !== false,
+          );
           setBoxes(activeBoxes);
         },
       );
@@ -1692,7 +1696,12 @@ const EnhancedCascadingMode = ({
 
   // Create box via API
   const createBox = useCallback(async () => {
-    if (!selectedBox || !selectedBox.label || selectedBox.id || !selectedRack?.id)
+    if (
+      !selectedBox ||
+      !selectedBox.label ||
+      selectedBox.id ||
+      !selectedRack?.id
+    )
       return;
 
     const safeCode = (selectedBox.code || selectedBox.label || "")
@@ -2221,7 +2230,8 @@ const EnhancedCascadingMode = ({
             onChange={({ selectedItem }) => {
               if (selectedItem) {
                 selectedBoxRef.current = selectedItem;
-                boxInputRef.current = selectedItem.label || selectedItem.name || "";
+                boxInputRef.current =
+                  selectedItem.label || selectedItem.name || "";
                 setBoxInput(selectedItem.label || selectedItem.name || "");
                 handleBoxChange(
                   selectedItem.label || selectedItem.name || "",

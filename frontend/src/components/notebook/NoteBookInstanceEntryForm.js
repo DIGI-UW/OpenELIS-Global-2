@@ -319,9 +319,7 @@ const NoteBookInstanceEntryForm = () => {
               "";
             const storageLocationType =
               storageLocation?.locationType ||
-              (storageLocation?.box?.id
-                ? "box"
-                : storageLocation?.type || "");
+              (storageLocation?.box?.id ? "box" : storageLocation?.type || "");
             const storagePositionCoordinate =
               storageLocation?.positionCoordinate ||
               storageLocation?.position?.coordinate ||

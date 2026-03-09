@@ -298,7 +298,9 @@ describe("StorageLocationSelector", () => {
     });
 
     const lastCallArg =
-      mockOnLocationChange.mock.calls[mockOnLocationChange.mock.calls.length - 1][0];
+      mockOnLocationChange.mock.calls[
+        mockOnLocationChange.mock.calls.length - 1
+      ][0];
     expect(lastCallArg.locationId).toBe("40");
     expect(lastCallArg.locationType).toBe("box");
     expect(lastCallArg.positionCoordinate).toBe("D1");

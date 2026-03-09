@@ -571,47 +571,46 @@ const LocationManagementModal = ({
     return { boxId: null, rackId: null };
   }, []);
 
-  const buildPositionOptionsFromBox = useCallback(
-    (box) => {
-      if (!box) {
-        return [];
-      }
+  const buildPositionOptionsFromBox = useCallback((box) => {
+    if (!box) {
+      return [];
+    }
 
-      const rows = Number(box.rows) || 0;
-      const columns = Number(box.columns) || 0;
-      if (rows <= 0 || columns <= 0) {
-        return [];
-      }
+    const rows = Number(box.rows) || 0;
+    const columns = Number(box.columns) || 0;
+    if (rows <= 0 || columns <= 0) {
+      return [];
+    }
 
-      const hint = box.positionSchemaHint || "letter-number";
-      const occupiedCoordinates = box.occupiedCoordinates || {};
-      const occupiedSet = new Set(
-        Object.keys(occupiedCoordinates).map((coord) =>
-          String(coord || "").trim().toUpperCase(),
-        ),
-      );
+    const hint = box.positionSchemaHint || "letter-number";
+    const occupiedCoordinates = box.occupiedCoordinates || {};
+    const occupiedSet = new Set(
+      Object.keys(occupiedCoordinates).map((coord) =>
+        String(coord || "")
+          .trim()
+          .toUpperCase(),
+      ),
+    );
 
-      const options = [];
-      for (let rowIdx = 0; rowIdx < rows; rowIdx += 1) {
-        for (let colIdx = 0; colIdx < columns; colIdx += 1) {
-          const coordinate =
-            hint === "letter-number"
-              ? `${String.fromCharCode(65 + rowIdx)}${colIdx + 1}`
-              : `${rowIdx + 1}-${colIdx + 1}`;
+    const options = [];
+    for (let rowIdx = 0; rowIdx < rows; rowIdx += 1) {
+      for (let colIdx = 0; colIdx < columns; colIdx += 1) {
+        const coordinate =
+          hint === "letter-number"
+            ? `${String.fromCharCode(65 + rowIdx)}${colIdx + 1}`
+            : `${rowIdx + 1}-${colIdx + 1}`;
 
-          if (!occupiedSet.has(coordinate.toUpperCase())) {
-            options.push({
-              id: coordinate,
-              label: coordinate,
-            });
-          }
+        if (!occupiedSet.has(coordinate.toUpperCase())) {
+          options.push({
+            id: coordinate,
+            label: coordinate,
+          });
         }
       }
+    }
 
-      return options;
-    },
-    [],
-  );
+    return options;
+  }, []);
 
   useEffect(() => {
     if (!open) {

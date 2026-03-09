@@ -135,10 +135,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             // Frontend dropdown loads all status types and filters by ID
             // Default to "active" if no status ID (backward compatibility)
             map.put("status", sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active");
-            // Derived status flag for UI rendering consistency (status value may be an internal ID).
-            boolean isDisposed = sampleItem.getStatusId() != null
-                    && statusService.matches(sampleItem.getStatusId(),
-                            org.openelisglobal.common.services.StatusService.SampleStatus.Disposed);
+            // Derived status flag for UI rendering consistency (status value may be an
+            // internal ID).
+            boolean isDisposed = sampleItem.getStatusId() != null && statusService.matches(sampleItem.getStatusId(),
+                    org.openelisglobal.common.services.StatusService.SampleStatus.Disposed);
             map.put("isDisposed", isDisposed);
 
             // Check if this sample item has an assignment
@@ -474,8 +474,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 String coord = assignment.getPositionCoordinate();
                 String boxLabel = box.getLabel();
                 String normalizedCoord = coord != null ? coord.trim() : null;
-                if (boxLabel != null && normalizedCoord != null
-                        && normalizedCoord.equalsIgnoreCase(boxLabel.trim())) {
+                if (boxLabel != null && normalizedCoord != null && normalizedCoord.equalsIgnoreCase(boxLabel.trim())) {
                     normalizedCoord = null;
                 }
 
@@ -1183,8 +1182,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     : null;
             String boxLabel = box.getLabel();
             String normalizedCoord = coord != null ? coord.trim() : null;
-            if (boxLabel != null && normalizedCoord != null
-                    && normalizedCoord.equalsIgnoreCase(boxLabel.trim())) {
+            if (boxLabel != null && normalizedCoord != null && normalizedCoord.equalsIgnoreCase(boxLabel.trim())) {
                 normalizedCoord = null;
             }
             StringBuilder builder = new StringBuilder();
