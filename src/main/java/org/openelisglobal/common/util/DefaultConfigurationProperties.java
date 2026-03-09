@@ -635,8 +635,8 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
                             propertyHolder.setLocalizationValue(Locale.forLanguageTag(namePortions[1]),
                                     localization.getLocalizedValue(Locale.forLanguageTag(namePortions[1])));
                         } else {
-                            for (Entry<Locale, String> localizationEntry : localization.getLocaleValues().entrySet()) {
-                                propertyHolder.setLocalizationValue(localizationEntry.getKey(),
+                            for (Entry<String, String> localizationEntry : localization.getValuesAsMap().entrySet()) {
+                                propertyHolder.setLocalizationValue(Locale.forLanguageTag(localizationEntry.getKey()),
                                         localizationEntry.getValue());
                             }
                         }
