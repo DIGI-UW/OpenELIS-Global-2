@@ -1,0 +1,5 @@
+level,typeName,displayKey,sortOrder,defaultValue
+1,Provinsi,address.level.provinsi,1,DKI JAKARTA
+2,Kabupaten/Kota,address.level.kabupaten,2,KOTA JAKARTA SELATAN
+3,Kecamatan,address.level.kecamatan,3,
+4,Kelurahan/Desa,address.level.kelurahan,4,
