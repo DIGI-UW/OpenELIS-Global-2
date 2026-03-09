@@ -11,6 +11,7 @@ import AnalyzersPage from "./pages/AnalyzersPage";
 import FieldMapping from "./components/analyzers/FieldMapping/FieldMapping";
 import ErrorDashboardPage from "./pages/ErrorDashboardPage";
 import CustomFieldTypeManagementPage from "./pages/CustomFieldTypeManagementPage";
+import AnalyzerTypesPage from "./pages/AnalyzerTypesPage";
 import QCDashboardPlaceholder from "./pages/analyzers/QCDashboardPlaceholder";
 import QCAlertsPlaceholder from "./pages/analyzers/QCAlertsPlaceholder";
 import CorrectiveActionsPlaceholder from "./pages/analyzers/CorrectiveActionsPlaceholder";
@@ -548,6 +549,12 @@ export default function App() {
                   path="/analyzers/custom-field-types"
                   exact
                   component={() => <CustomFieldTypeManagementPage />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/types"
+                  exact
+                  component={() => <AnalyzerTypesPage />}
                   role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
