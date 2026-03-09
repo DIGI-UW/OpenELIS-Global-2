@@ -338,6 +338,13 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
                 throw new OptimisticLockException("Panel was modified concurrently");
             }
 
+            // Evict from session to ensure subsequent gets fetch fresh data from DB
+            // (since native query bypasses L1 cache)
+            Panel managed = session.get(Panel.class, panel.getId());
+            if (managed != null) {
+                session.evict(managed);
+            }
+
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in updatePanelFields()", e);

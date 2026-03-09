@@ -42,7 +42,11 @@ public interface PanelService extends BaseObjectService<Panel, String> {
 
     List<PanelForm> listForms(Boolean active, String labUnitId);
 
+    List<PanelForm> listForms(Boolean active, String labUnitId, String search);
+
     List<PanelForm> listForms(Boolean active);
+
+    PanelForm duplicatePanel(String id);
 
     PanelForm getForm(String id, boolean includeTests);
 

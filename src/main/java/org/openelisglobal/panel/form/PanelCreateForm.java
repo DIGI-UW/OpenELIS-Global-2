@@ -1,6 +1,7 @@
 package org.openelisglobal.panel.form;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import java.util.List;
 import org.openelisglobal.common.form.BaseForm;
 
@@ -16,6 +17,7 @@ public class PanelCreateForm extends BaseForm {
 
     private String description;
 
+    @NotEmpty(message = "At least one lab unit is required")
     private List<String> labUnitIds;
 
     private List<String> sampleTypeIds;

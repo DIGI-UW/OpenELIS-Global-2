@@ -1,8 +1,11 @@
 package org.openelisglobal.panel.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,6 +24,8 @@ import org.openelisglobal.panel.form.PanelForm;
 import org.openelisglobal.panel.form.PanelImportRequest;
 import org.openelisglobal.panel.form.PanelTestForm;
 import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.panelimport.service.PanelImportLogService;
+import org.openelisglobal.panelimport.valueholder.PanelImportLog;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.panellabunit.service.PanelLabUnitService;
@@ -56,6 +61,11 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
 
     @Autowired
     private TestDAO testDAO;
+
+    @Autowired
+    private PanelImportLogService panelImportLogService;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     PanelServiceImpl() {
         super(Panel.class);
@@ -235,6 +245,12 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     @Override
     @Transactional(readOnly = true)
     public List<PanelForm> listForms(Boolean active, String labUnitId) {
+        return listForms(active, labUnitId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PanelForm> listForms(Boolean active, String labUnitId, String search) {
         List<Panel> panels;
 
         // If lab unit filter is specified, filter at database level
@@ -257,6 +273,16 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
             }
         }
 
+        // Apply name/code search filter (case-insensitive substring)
+        if (search != null && !search.isBlank()) {
+            String lower = search.toLowerCase();
+            panels = panels.stream().filter(p -> {
+                String name = p.getPanelName() != null ? p.getPanelName().toLowerCase() : "";
+                String code = p.getCode() != null ? p.getCode().toLowerCase() : "";
+                return name.contains(lower) || code.contains(lower);
+            }).collect(Collectors.toList());
+        }
+
         // Batch load all related data to avoid N+1 queries
         Map<String, List<PanelLabUnit>> labUnitsMap = batchLoadPanelLabUnits(panels);
         Map<String, List<TypeOfSamplePanel>> sampleTypesMap = batchLoadTypeOfSamplePanels(panels);
@@ -266,6 +292,139 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
             forms.add(toForm(p, false, labUnitsMap, sampleTypesMap));
         }
         return forms;
+    }
+
+    @Override
+    @Transactional
+    public PanelForm duplicatePanel(String id) {
+        Panel source = getPanelById(id);
+        if (source == null) {
+            return null;
+        }
+
+        // Build a unique name, code, and description for the copy
+        String baseName = source.getPanelName() + " (Copy)";
+        String baseCode = source.getCode() + "_COPY";
+        String baseDesc = (source.getDescription() != null && !source.getDescription().isEmpty())
+                ? source.getDescription() + " (Copy)"
+                : baseName;
+
+        // Resolve name/code/description collisions by appending incrementing suffix
+        String copyName = buildUniqueName(baseName);
+        String copyCode = buildUniqueCode(baseCode);
+        String copyDesc = buildUniqueDescription(baseDesc);
+
+        Panel copy = new Panel();
+        copy.setPanelName(copyName);
+        copy.setCode(copyCode);
+        copy.setDescription(copyDesc);
+        copy.setLoinc(source.getLoinc());
+        // Copies are created inactive so the user can review before activating
+        copy.setIsActive(IActionConstants.NO);
+
+        Localization localization = new Localization();
+        localization.setLocalizedValue(copyName);
+        localizationService.insert(localization);
+        copy.setLocalization(localization);
+
+        getBaseObjectDAO().ensureSequence();
+        String newId = insert(copy);
+        Panel created = newId == null ? null : getPanelById(newId);
+        if (created == null) {
+            return null;
+        }
+
+        // Copy lab units
+        List<PanelLabUnit> sourceLabUnits = panelLabUnitService.getPanelLabUnitsByPanelId(id);
+        if (sourceLabUnits != null) {
+            for (PanelLabUnit src : sourceLabUnits) {
+                PanelLabUnit newPlu = new PanelLabUnit();
+                newPlu.setPanelId(created.getId());
+                newPlu.setLabUnitId(src.getLabUnitId());
+                panelLabUnitService.insert(newPlu);
+            }
+        }
+
+        // Copy sample types
+        List<TypeOfSamplePanel> sourceSampleTypes = typeOfSamplePanelService.getTypeOfSamplePanelsForPanel(id);
+        if (sourceSampleTypes != null) {
+            for (TypeOfSamplePanel src : sourceSampleTypes) {
+                TypeOfSamplePanel newTosp = new TypeOfSamplePanel();
+                newTosp.setPanelId(created.getId());
+                newTosp.setTypeOfSampleId(src.getTypeOfSampleId());
+                typeOfSamplePanelService.insert(newTosp);
+            }
+        }
+
+        // Copy panel tests (items)
+        List<PanelItem> sourcePanelItems = panelItemService.getPanelItemsForPanel(id);
+        if (sourcePanelItems != null) {
+            for (PanelItem src : sourcePanelItems) {
+                PanelItem newItem = new PanelItem();
+                newItem.setPanel(created);
+                newItem.setTest(src.getTest());
+                newItem.setSortOrder(src.getSortOrder());
+                newItem.setPanelLoincCode(src.getPanelLoincCode());
+                panelItemService.insert(newItem);
+            }
+        }
+
+        return toForm(created, true);
+    }
+
+    /** Returns a panel name that does not collide with existing panels. */
+    private String buildUniqueName(String base) {
+        if (getPanelByName(base) == null) {
+            return base;
+        }
+        for (int i = 2; i < 100; i++) {
+            String candidate = base + " " + i;
+            if (getPanelByName(candidate) == null) {
+                return candidate;
+            }
+        }
+        return base + "_" + System.currentTimeMillis();
+    }
+
+    /** Returns a panel code that does not collide with existing panels. */
+    private String buildUniqueCode(String base) {
+        // truncate to keep within DB column limits
+        if (base.length() > 20)
+            base = base.substring(0, 20);
+        Panel probe = new Panel();
+        probe.setCode(base);
+        if (!getBaseObjectDAO().duplicatePanelCodeExists(probe)) {
+            return base;
+        }
+        for (int i = 2; i < 100; i++) {
+            String candidate = (base + i).substring(0, Math.min((base + i).length(), 20));
+            probe.setCode(candidate);
+            if (!getBaseObjectDAO().duplicatePanelCodeExists(probe)) {
+                return candidate;
+            }
+        }
+        return (base + System.currentTimeMillis()).substring(0, 20);
+    }
+
+    /** Returns a panel description that does not collide with existing panels. */
+    private String buildUniqueDescription(String base) {
+        if (base == null)
+            base = "";
+        if (base.length() > 200)
+            base = base.substring(0, 200);
+        Panel probe = new Panel();
+        probe.setDescription(base);
+        if (!getBaseObjectDAO().duplicatePanelDescriptionExists(probe)) {
+            return base;
+        }
+        for (int i = 2; i < 100; i++) {
+            String candidate = base + " " + i;
+            probe.setDescription(candidate);
+            if (!getBaseObjectDAO().duplicatePanelDescriptionExists(probe)) {
+                return candidate;
+            }
+        }
+        return base + " " + System.currentTimeMillis();
     }
 
     @Override
@@ -288,7 +447,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
         p.setPanelName(req.getName());
         p.setCode(req.getCode());
         p.setId(null);
-        p.setDescription(req.getDescription());
+        p.setDescription(req.getDescription() != null ? req.getDescription() : "");
         p.setLoinc(req.getLoincCode());
 
         p.setIsActive(req.isActive() ? IActionConstants.YES : IActionConstants.NO);
@@ -324,7 +483,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
         toUpdate.setId(id);
         toUpdate.setPanelName(req.getName());
         toUpdate.setCode(req.getCode());
-        toUpdate.setDescription(req.getDescription());
+        toUpdate.setDescription(req.getDescription() != null ? req.getDescription() : "");
         toUpdate.setLoinc(req.getLoincCode());
         toUpdate.setIsActive(req.isActive() ? IActionConstants.YES : IActionConstants.NO);
 
@@ -624,6 +783,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     }
 
     @Override
+    @Transactional
     public void addPanelTest(String panelId, String testId, Integer displayOrder, String panelLoincCode) {
         Panel panel = getPanelById(panelId);
         Test test = testDAO.getTestById(testId);
@@ -729,19 +889,297 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     @Override
     @Transactional(readOnly = true)
     public Object exportPanels(PanelExportRequest request) {
-        // TODO: Implement export logic
-        return new java.util.HashMap<String, Object>();
+        List<String> panelIds = request.getPanelIds();
+        boolean includeTests = request.isIncludeTests();
+        String format = request.getFormat() != null ? request.getFormat().toLowerCase() : "json";
+
+        // Resolve panels to export
+        List<Panel> panels;
+        if (panelIds != null && !panelIds.isEmpty()) {
+            panels = panelIds.stream().map(this::getPanelById).filter(p -> p != null).collect(Collectors.toList());
+        } else {
+            panels = getAllPanels();
+        }
+
+        if ("csv".equals(format)) {
+            return buildCsvExport(panels, includeTests);
+        }
+        return buildJsonExport(panels, includeTests);
+    }
+
+    /**
+     * Build a JSON-serialisable export structure: { panels: [ { id, name, code,
+     * loincCode, description, active, labUnitIds, sampleTypeIds, tests: [...] } ] }
+     */
+    private Map<String, Object> buildJsonExport(List<Panel> panels, boolean includeTests) {
+        List<Map<String, Object>> panelList = new ArrayList<>();
+        for (Panel p : panels) {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("id", p.getId());
+            entry.put("name", p.getPanelName());
+            entry.put("code", p.getCode());
+            entry.put("loincCode", p.getLoinc());
+            entry.put("description", p.getDescription());
+            entry.put("active", "Y".equals(p.getIsActive()));
+            entry.put("labUnitIds", getLabUnitIds(p.getId()));
+            entry.put("sampleTypeIds", getSampleTypeIds(p.getId()));
+            if (includeTests) {
+                List<Map<String, Object>> testList = new ArrayList<>();
+                for (PanelTestForm tf : getPanelTests(p.getId())) {
+                    Map<String, Object> t = new LinkedHashMap<>();
+                    t.put("testId", tf.getTestId());
+                    t.put("testName", tf.getTestName());
+                    t.put("testLoincCode", tf.getTestLoincCode());
+                    t.put("panelLoincCode", tf.getPanelLoincCode());
+                    t.put("displayOrder", tf.getDisplayOrder());
+                    testList.add(t);
+                }
+                entry.put("tests", testList);
+            }
+            panelList.add(entry);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("panels", panelList);
+        result.put("exportedAt", new Timestamp(System.currentTimeMillis()).toString());
+        result.put("count", panelList.size());
+        return result;
+    }
+
+    /**
+     * Build a flat CSV string for review purposes. Columns: panelId, panelName,
+     * panelCode, panelLoinc, active, testId, testName, testLoinc, panelTestLoinc,
+     * displayOrder
+     */
+    private String buildCsvExport(List<Panel> panels, boolean includeTests) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("panelId,panelName,panelCode,panelLoinc,active,"
+                + "testId,testName,testLoinc,panelTestLoinc,displayOrder\n");
+        for (Panel p : panels) {
+            String active = "Y".equals(p.getIsActive()) ? "true" : "false";
+            if (includeTests) {
+                List<PanelTestForm> tests = getPanelTests(p.getId());
+                if (tests.isEmpty()) {
+                    sb.append(toCsvRow(p.getId(), p.getPanelName(), p.getCode(), p.getLoinc(), active, "", "", "", "",
+                            ""));
+                } else {
+                    for (PanelTestForm t : tests) {
+                        sb.append(toCsvRow(p.getId(), p.getPanelName(), p.getCode(), p.getLoinc(), active,
+                                t.getTestId(), t.getTestName(), t.getTestLoincCode(), t.getPanelLoincCode(),
+                                t.getDisplayOrder() != null ? t.getDisplayOrder().toString() : ""));
+                    }
+                }
+            } else {
+                sb.append(toCsvRow(p.getId(), p.getPanelName(), p.getCode(), p.getLoinc(), active, "", "", "", "", ""));
+            }
+        }
+        return sb.toString();
+    }
+
+    private String toCsvRow(String... values) {
+        StringBuilder row = new StringBuilder();
+        for (int i = 0; i < values.length; i++) {
+            String v = values[i] != null ? values[i] : "";
+            // RFC 4180: wrap in quotes if the value contains comma, newline, or quote
+            if (v.contains(",") || v.contains("\"") || v.contains("\n")) {
+                v = "\"" + v.replace("\"", "\"\"") + "\"";
+            }
+            if (i > 0)
+                row.append(",");
+            row.append(v);
+        }
+        row.append("\n");
+        return row.toString();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Object validateImport(PanelImportRequest request) {
-        // TODO: Implement validation logic
-        return new java.util.HashMap<String, Object>();
+        List<Map<String, Object>> preview = new ArrayList<>();
+        List<Map<String, Object>> panelDataList = extractPanelList(request.getData());
+        String mode = request.getMode() != null ? request.getMode() : "both";
+
+        for (Map<String, Object> panelData : panelDataList) {
+            String code = getString(panelData, "code");
+            String name = getString(panelData, "name");
+            Panel existing = code != null ? getPanelByCode(code) : null;
+
+            String action;
+            String reason = null;
+            if (existing == null) {
+                action = "create".equals(mode) || "both".equals(mode) ? "create" : "skip";
+                if ("skip".equals(action))
+                    reason = "mode=" + mode + " does not allow create";
+            } else {
+                action = "update".equals(mode) || "both".equals(mode) ? "update" : "skip";
+                if ("skip".equals(action))
+                    reason = "mode=" + mode + " does not allow update";
+            }
+
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("code", code);
+            row.put("name", name);
+            row.put("action", action);
+            if (reason != null)
+                row.put("reason", reason);
+            preview.add(row);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("preview", preview);
+        result.put("counts",
+                Map.of("create", preview.stream().filter(r -> "create".equals(r.get("action"))).count(), "update",
+                        preview.stream().filter(r -> "update".equals(r.get("action"))).count(), "skip",
+                        preview.stream().filter(r -> "skip".equals(r.get("action"))).count()));
+        return result;
     }
 
     @Override
+    @Transactional
     public Object executeImport(PanelImportRequest request) {
-        // TODO: Implement import logic
-        return new java.util.HashMap<String, Object>();
+        List<Map<String, Object>> panelDataList = extractPanelList(request.getData());
+        String mode = request.getMode() != null ? request.getMode() : "both";
+
+        int created = 0, updated = 0, skipped = 0;
+        List<String> warnings = new ArrayList<>();
+
+        for (Map<String, Object> panelData : panelDataList) {
+            String code = getString(panelData, "code");
+            String name = getString(panelData, "name");
+
+            if (code == null || code.isBlank() || name == null || name.isBlank()) {
+                warnings.add("Skipped panel with missing code or name: " + panelData);
+                skipped++;
+                continue;
+            }
+
+            Panel existing = getPanelByCode(code);
+            try {
+                if (existing == null) {
+                    if ("create".equals(mode) || "both".equals(mode)) {
+                        PanelCreateForm req = buildCreateFormFromMap(panelData);
+                        createForm(req);
+                        created++;
+                    } else {
+                        skipped++;
+                    }
+                } else {
+                    if ("update".equals(mode) || "both".equals(mode)) {
+                        PanelCreateForm req = buildCreateFormFromMap(panelData);
+                        updateForm(existing.getId(), req);
+                        // Re-import tests if present
+                        importPanelTests(existing.getId(), panelData);
+                        updated++;
+                    } else {
+                        skipped++;
+                    }
+                }
+            } catch (Exception e) {
+                warnings.add("Error importing panel '" + code + "': " + e.getMessage());
+                skipped++;
+                LogEvent.logError(e);
+            }
+        }
+
+        // Write import log
+        PanelImportLog log = new PanelImportLog();
+        log.setImportDate(new Timestamp(System.currentTimeMillis()));
+        log.setPanelsCreated(created);
+        log.setPanelsUpdated(updated);
+        log.setPanelsSkipped(skipped);
+        log.setWarnings(warnings.isEmpty() ? null : String.join("; ", warnings));
+        try {
+            log.setImportData(objectMapper.writeValueAsString(request.getData()));
+        } catch (Exception e) {
+            log.setImportData("[serialization error]");
+        }
+        panelImportLogService.insert(log);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("panelsCreated", created);
+        result.put("panelsUpdated", updated);
+        result.put("panelsSkipped", skipped);
+        if (!warnings.isEmpty())
+            result.put("warnings", warnings);
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> extractPanelList(Object data) {
+        if (data == null)
+            return new ArrayList<>();
+        try {
+            if (data instanceof List) {
+                return (List<Map<String, Object>>) data;
+            }
+            if (data instanceof Map) {
+                Map<String, Object> map = (Map<String, Object>) data;
+                if (map.containsKey("panels")) {
+                    return (List<Map<String, Object>>) map.get("panels");
+                }
+            }
+        } catch (ClassCastException e) {
+            LogEvent.logError(e);
+        }
+        return new ArrayList<>();
+    }
+
+    private String getString(Map<String, Object> map, String key) {
+        Object val = map.get(key);
+        return val != null ? val.toString().trim() : null;
+    }
+
+    /** Find a panel by its unique short code (reuses DAO). */
+    private Panel getPanelByCode(String code) {
+        // Use existing LOINC lookup fallback: iterate all panels
+        // This is safe for import operations (not in hot path)
+        for (Panel p : getAllPanels()) {
+            if (code.equals(p.getCode()))
+                return p;
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private PanelCreateForm buildCreateFormFromMap(Map<String, Object> data) {
+        PanelCreateForm req = new PanelCreateForm();
+        req.setName(getString(data, "name"));
+        req.setCode(getString(data, "code"));
+        req.setLoincCode(getString(data, "loincCode"));
+        String desc = getString(data, "description");
+        req.setDescription(desc != null ? desc : "");
+        Object activeVal = data.get("active");
+        req.setActive(activeVal == null || Boolean.parseBoolean(activeVal.toString()));
+        if (data.get("labUnitIds") instanceof List) {
+            req.setLabUnitIds((List<String>) data.get("labUnitIds"));
+        }
+        if (data.get("sampleTypeIds") instanceof List) {
+            req.setSampleTypeIds((List<String>) data.get("sampleTypeIds"));
+        }
+        return req;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void importPanelTests(String panelId, Map<String, Object> panelData) {
+        Object testsObj = panelData.get("tests");
+        if (!(testsObj instanceof List))
+            return;
+        List<Map<String, Object>> tests = (List<Map<String, Object>>) testsObj;
+        for (Map<String, Object> t : tests) {
+            String testId = getString(t, "testId");
+            if (testId == null)
+                continue;
+            String loincCode = getString(t, "panelLoincCode");
+            Object orderObj = t.get("displayOrder");
+            Integer order = orderObj != null ? Integer.parseInt(orderObj.toString()) : null;
+            try {
+                // Skip if already in panel; addPanelTest throws on duplicate
+                addPanelTest(panelId, testId, order, loincCode);
+            } catch (LIMSDuplicateRecordException e) {
+                // Test already in panel — update instead
+                updatePanelTest(panelId, testId, order, loincCode);
+            } catch (Exception e) {
+                LogEvent.logError(e);
+            }
+        }
     }
 }

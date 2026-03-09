@@ -1,8 +1,9 @@
 package org.openelisglobal.panel.controller;
 
+import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.panel.form.PanelAddTestRequest;
 import org.openelisglobal.panel.form.PanelCreateForm;
 import org.openelisglobal.panel.form.PanelExportRequest;
 import org.openelisglobal.panel.form.PanelForm;
@@ -12,7 +13,6 @@ import org.openelisglobal.panel.service.PanelService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -26,10 +26,17 @@ public class PanelRestController extends BaseRestController {
         this.panelService = panelService;
     }
 
+    /**
+     * List panels with optional filters.
+     *
+     * @param active    filter by active status (null = all)
+     * @param labUnitId filter by lab unit ID
+     * @param search    search by name or code (case-insensitive substring)
+     */
     @GetMapping
     public ResponseEntity<List<PanelForm>> list(@RequestParam(required = false) Boolean active,
-            @RequestParam(required = false) String labUnitId) {
-        return ResponseEntity.ok(panelService.listForms(active, labUnitId));
+            @RequestParam(required = false) String labUnitId, @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(panelService.listForms(active, labUnitId, search));
     }
 
     @GetMapping("/{id}")
@@ -42,13 +49,13 @@ public class PanelRestController extends BaseRestController {
     }
 
     @PostMapping
-    public ResponseEntity<PanelForm> create(@Validated @RequestBody PanelCreateForm request) {
+    public ResponseEntity<PanelForm> create(@Valid @RequestBody PanelCreateForm request) {
         PanelForm created = panelService.createForm(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<PanelForm> update(@PathVariable String id, @Validated @RequestBody PanelCreateForm request) {
+    public ResponseEntity<PanelForm> update(@PathVariable String id, @Valid @RequestBody PanelCreateForm request) {
         PanelForm updated = panelService.updateForm(id, request);
         if (updated == null)
             return ResponseEntity.notFound().build();
@@ -63,10 +70,25 @@ public class PanelRestController extends BaseRestController {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * Duplicate a panel (copy with all tests, lab units, sample types). The copy is
+     * created as inactive so the user can review before activating.
+     */
+    @PostMapping("/{id}/duplicate")
+    public ResponseEntity<PanelForm> duplicate(@PathVariable String id) {
+        PanelForm copy = panelService.duplicatePanel(id);
+        if (copy == null)
+            return ResponseEntity.notFound().build();
+        return ResponseEntity.status(HttpStatus.CREATED).body(copy);
+    }
+
+    // -------------------------------------------------------------------------
+    // Lab Units
+    // -------------------------------------------------------------------------
+
     @GetMapping("/{id}/lab-units")
     public ResponseEntity<List<String>> getLabUnits(@PathVariable String id) {
-        List<String> labUnitIds = panelService.getLabUnitIds(id);
-        return ResponseEntity.ok(labUnitIds);
+        return ResponseEntity.ok(panelService.getLabUnitIds(id));
     }
 
     @PutMapping("/{id}/lab-units")
@@ -75,10 +97,13 @@ public class PanelRestController extends BaseRestController {
         return ResponseEntity.ok().build();
     }
 
+    // -------------------------------------------------------------------------
+    // Sample Types
+    // -------------------------------------------------------------------------
+
     @GetMapping("/{id}/sample-types")
     public ResponseEntity<List<String>> getSampleTypes(@PathVariable String id) {
-        List<String> sampleTypeIds = panelService.getSampleTypeIds(id);
-        return ResponseEntity.ok(sampleTypeIds);
+        return ResponseEntity.ok(panelService.getSampleTypeIds(id));
     }
 
     @PutMapping("/{id}/sample-types")
@@ -87,20 +112,18 @@ public class PanelRestController extends BaseRestController {
         return ResponseEntity.ok().build();
     }
 
+    // -------------------------------------------------------------------------
+    // Panel Tests
+    // -------------------------------------------------------------------------
+
     @GetMapping("/{id}/tests")
     public ResponseEntity<List<PanelTestForm>> getPanelTests(@PathVariable String id) {
-        List<PanelTestForm> tests = panelService.getPanelTests(id);
-        return ResponseEntity.ok(tests);
+        return ResponseEntity.ok(panelService.getPanelTests(id));
     }
 
     @PostMapping("/{id}/tests")
-    public ResponseEntity<Void> addPanelTest(@PathVariable String id, @RequestBody Map<String, Object> request) {
-        String testId = (String) request.get("testId");
-        Integer displayOrder = request.get("displayOrder") != null
-                ? Integer.parseInt(request.get("displayOrder").toString())
-                : null;
-        String panelLoincCode = (String) request.get("panelLoincCode");
-        panelService.addPanelTest(id, testId, displayOrder, panelLoincCode);
+    public ResponseEntity<Void> addPanelTest(@PathVariable String id, @Valid @RequestBody PanelAddTestRequest request) {
+        panelService.addPanelTest(id, request.getTestId(), request.getDisplayOrder(), request.getPanelLoincCode());
         return ResponseEntity.ok().build();
     }
 
@@ -112,12 +135,8 @@ public class PanelRestController extends BaseRestController {
 
     @PutMapping("/{id}/tests/{testId}")
     public ResponseEntity<Void> updatePanelTest(@PathVariable String id, @PathVariable String testId,
-            @RequestBody Map<String, Object> request) {
-        Integer displayOrder = request.get("displayOrder") != null
-                ? Integer.parseInt(request.get("displayOrder").toString())
-                : null;
-        String panelLoincCode = (String) request.get("panelLoincCode");
-        panelService.updatePanelTest(id, testId, displayOrder, panelLoincCode);
+            @RequestBody PanelTestForm request) {
+        panelService.updatePanelTest(id, testId, request.getDisplayOrder(), request.getPanelLoincCode());
         return ResponseEntity.ok().build();
     }
 
@@ -133,21 +152,22 @@ public class PanelRestController extends BaseRestController {
         return ResponseEntity.ok().build();
     }
 
+    // -------------------------------------------------------------------------
+    // Import / Export
+    // -------------------------------------------------------------------------
+
     @PostMapping("/export")
-    public ResponseEntity<Object> exportPanels(@RequestBody PanelExportRequest request) {
-        Object result = panelService.exportPanels(request);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<Object> exportPanels(@Valid @RequestBody PanelExportRequest request) {
+        return ResponseEntity.ok(panelService.exportPanels(request));
     }
 
     @PostMapping("/import/validate")
-    public ResponseEntity<Object> validateImport(@RequestBody PanelImportRequest request) {
-        Object result = panelService.validateImport(request);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<Object> validateImport(@Valid @RequestBody PanelImportRequest request) {
+        return ResponseEntity.ok(panelService.validateImport(request));
     }
 
     @PostMapping("/import")
-    public ResponseEntity<Object> executeImport(@RequestBody PanelImportRequest request) {
-        Object result = panelService.executeImport(request);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<Object> executeImport(@Valid @RequestBody PanelImportRequest request) {
+        return ResponseEntity.ok(panelService.executeImport(request));
     }
 }

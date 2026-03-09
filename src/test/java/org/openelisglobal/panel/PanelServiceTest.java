@@ -8,12 +8,15 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.panel.form.PanelCreateForm;
+import org.openelisglobal.panel.form.PanelExportRequest;
 import org.openelisglobal.panel.form.PanelForm;
+import org.openelisglobal.panel.form.PanelImportRequest;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -296,5 +299,208 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
         // original on update)
         assertTrue("Panel code should be updated",
                 "UPDATED-FORM-CODE".equals(updated.getCode()) || "ORIGINAL-FORM-CODE".equals(updated.getCode()));
+    }
+
+    @Test
+    public void listForms_withSearchByName_shouldFilterResults() throws Exception {
+        List<PanelForm> results = panelService.listForms(null, null, "Test");
+        assertNotNull("Results should not be null", results);
+        assertFalse("Should find at least one matching panel", results.isEmpty());
+        results.forEach(f -> assertTrue("Each result should contain 'test' in name or code",
+                (f.getName() != null && f.getName().toLowerCase().contains("test"))
+                        || (f.getCode() != null && f.getCode().toLowerCase().contains("test"))));
+    }
+
+    @Test
+    public void listForms_withSearchByCode_shouldFilterResults() throws Exception {
+        PanelCreateForm form = new PanelCreateForm();
+        form.setName("CBC Search Panel");
+        form.setCode("CBC-SRCH-001");
+        form.setLoincCode("5555-1");
+        form.setLabUnitIds(new ArrayList<>());
+        form.setSampleTypeIds(new ArrayList<>());
+        form.setActive(true);
+        panelService.createForm(form);
+
+        List<PanelForm> results = panelService.listForms(null, null, "CBC-SRCH");
+        assertNotNull(results);
+        assertFalse("Should find the panel by code substring", results.isEmpty());
+        assertTrue("Result should contain our panel",
+                results.stream().anyMatch(f -> "CBC-SRCH-001".equals(f.getCode())));
+    }
+
+    @Test
+    public void listForms_withSearchCaseInsensitive_shouldMatch() throws Exception {
+        List<PanelForm> results = panelService.listForms(null, null, "test panel");
+        assertNotNull(results);
+        assertTrue("Case-insensitive search should find 'Test Panel'",
+                results.stream().anyMatch(f -> "Test Panel".equals(f.getName())));
+    }
+
+    @Test
+    public void listForms_withNonMatchingSearch_shouldReturnEmpty() throws Exception {
+        List<PanelForm> results = panelService.listForms(null, null, "ZZZNOMATCH99999");
+        assertNotNull(results);
+        assertTrue("No results should be returned for a non-matching search term", results.isEmpty());
+    }
+
+    @Test
+    public void listForms_withActiveFilter_shouldReturnOnlyActive() throws Exception {
+        List<PanelForm> activeOnly = panelService.listForms(true, null, null);
+        assertNotNull(activeOnly);
+        assertFalse("Active panels list should not be empty", activeOnly.isEmpty());
+        activeOnly.forEach(f -> assertTrue("Each returned panel should be active", f.isActive()));
+    }
+
+    @Test
+    public void duplicatePanel_shouldCreateInactiveCopy() throws Exception {
+        Panel source = panelService.getPanelByName("Test Panel");
+        assertNotNull("Source panel must exist in dataset", source);
+        assertTrue("Source must be active", "Y".equals(source.getIsActive()));
+
+        PanelForm copy = panelService.duplicatePanel(source.getId());
+
+        assertNotNull("Duplicate should be created", copy);
+        assertTrue("Copy name should contain '(Copy)'", copy.getName().contains("(Copy)"));
+        assertFalse("Copy should be inactive by default", copy.isActive());
+    }
+
+    @Test
+    public void duplicatePanel_shouldGenerateUniqueId() throws Exception {
+        Panel source = panelService.getPanelByName("Test Panel");
+        assertNotNull(source);
+
+        PanelForm copy = panelService.duplicatePanel(source.getId());
+
+        assertNotNull(copy);
+        assertFalse("Copy should have a different ID than the source", source.getId().equals(copy.getId()));
+    }
+
+    @Test
+    public void duplicatePanel_forNonExistentPanel_shouldReturnNull() throws Exception {
+        PanelForm copy = panelService.duplicatePanel("99999999");
+        assertNull("Should return null for a non-existent panel ID", copy);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void exportPanels_json_shouldContainPanelsKey() throws Exception {
+        Panel existing = panelService.getPanelByName("Test Panel");
+        assertNotNull(existing);
+
+        PanelExportRequest request = new PanelExportRequest();
+        request.setPanelIds(List.of(existing.getId()));
+        request.setFormat("json");
+        request.setIncludeTests(true);
+
+        Object result = panelService.exportPanels(request);
+        assertNotNull("Export result should not be null", result);
+        assertTrue("Result should be a Map", result instanceof java.util.Map);
+
+        Map<String, Object> map = (Map<String, Object>) result;
+        assertTrue("JSON export should contain 'panels' key", map.containsKey("panels"));
+        assertTrue("JSON export should contain 'count' key", map.containsKey("count"));
+        assertEquals("Exported count should match panel list", 1, ((Number) map.get("count")).intValue());
+    }
+
+    @Test
+    public void exportPanels_csv_shouldReturnStringWithHeader() throws Exception {
+        PanelExportRequest request = new PanelExportRequest();
+        request.setFormat("csv");
+        request.setIncludeTests(false);
+
+        Object result = panelService.exportPanels(request);
+        assertNotNull("CSV export result should not be null", result);
+        assertTrue("CSV export should return a String", result instanceof String);
+        assertTrue("CSV header row should be present", ((String) result).startsWith("panelId,panelName,panelCode"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void validateImport_createMode_showsCreateForNewPanel() throws Exception {
+        PanelImportRequest request = new PanelImportRequest();
+        request.setMode("create");
+        request.setData(List.of(Map.of("code", "IMPORT-NEW-001", "name", "Import New Panel")));
+
+        Object result = panelService.validateImport(request);
+        assertNotNull(result);
+        Map<String, Object> map = (Map<String, Object>) result;
+        assertTrue("Validate result should have 'preview' key", map.containsKey("preview"));
+
+        List<Map<String, Object>> preview = (List<Map<String, Object>>) map.get("preview");
+        assertFalse("Preview should not be empty", preview.isEmpty());
+        assertEquals("Action for a new panel in create mode should be 'create'", "create",
+                preview.get(0).get("action"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void validateImport_updateMode_showsUpdateForExistingPanel() throws Exception {
+
+        PanelCreateForm form = new PanelCreateForm();
+        form.setName("Import Update Subject");
+        form.setCode("IMPORT-UPD-001");
+        form.setLabUnitIds(new ArrayList<>());
+        form.setSampleTypeIds(new ArrayList<>());
+        form.setActive(true);
+        panelService.createForm(form);
+
+        PanelImportRequest request = new PanelImportRequest();
+        request.setMode("update");
+        request.setData(List.of(Map.of("code", "IMPORT-UPD-001", "name", "Import Update Subject Updated")));
+
+        Object result = panelService.validateImport(request);
+        Map<String, Object> map = (Map<String, Object>) result;
+        List<Map<String, Object>> preview = (List<Map<String, Object>>) map.get("preview");
+        assertFalse(preview.isEmpty());
+        assertEquals("Action for an existing panel in update mode should be 'update'", "update",
+                preview.get(0).get("action"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void executeImport_createMode_shouldIncreaseCount() throws Exception {
+        int before = panelService.getAllPanels().size();
+
+        PanelImportRequest request = new PanelImportRequest();
+        request.setMode("create");
+        request.setData(List.of(Map.of("code", "EXEC-CREATE-001", "name", "Exec Create Panel 1"),
+                Map.of("code", "EXEC-CREATE-002", "name", "Exec Create Panel 2")));
+
+        Object result = panelService.executeImport(request);
+        assertNotNull(result);
+        Map<String, Object> map = (Map<String, Object>) result;
+        assertEquals("Two panels should have been created", 2, ((Number) map.get("panelsCreated")).intValue());
+        assertEquals("No panels should have been updated", 0, ((Number) map.get("panelsUpdated")).intValue());
+
+        int after = panelService.getAllPanels().size();
+        assertEquals("Total panel count should increase by 2", before + 2, after);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void executeImport_updateMode_shouldUpdateExistingPanel() throws Exception {
+        PanelCreateForm form = new PanelCreateForm();
+        form.setName("Import Subject");
+        form.setCode("EXEC-UPD-001");
+        form.setDescription("Original description");
+        form.setLabUnitIds(new ArrayList<>());
+        form.setSampleTypeIds(new ArrayList<>());
+        form.setActive(true);
+        PanelForm created = panelService.createForm(form);
+        assertNotNull(created);
+
+        PanelImportRequest request = new PanelImportRequest();
+        request.setMode("update");
+        request.setData(List
+                .of(Map.of("code", "EXEC-UPD-001", "name", "Import Subject", "description", "Updated description")));
+
+        Object result = panelService.executeImport(request);
+        Map<String, Object> map = (Map<String, Object>) result;
+        assertEquals("One panel should have been updated", 1, ((Number) map.get("panelsUpdated")).intValue());
+        assertEquals("No panels should have been created", 0, ((Number) map.get("panelsCreated")).intValue());
+
+        Panel updated = panelService.getPanelById(created.getId());
+        assertEquals("Description should be updated", "Updated description", updated.getDescription());
     }
 }
