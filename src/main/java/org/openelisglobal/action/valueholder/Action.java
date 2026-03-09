@@ -13,20 +13,43 @@
  */
 package org.openelisglobal.action.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
 
+@Entity
+@Table(name = "action")
+@org.hibernate.annotations.DynamicUpdate
+@AttributeOverride(name = "lastupdated", column = @Column(name = "lastupdated"))
 public class Action extends BaseObject<String> {
 
+    @Column(name = "code", length = 10, nullable = false)
     private String code;
 
+    @Id
+    @GeneratedValue(generator = "action_generator")
+    @GenericGenerator(name = "action_generator", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = {
+            @Parameter(name = "sequence_name", value = "action_seq") })
+    @Column(name = "id", precision = 10, scale = 0)
+    @org.hibernate.annotations.Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
 
+    @Column(name = "description", length = 256, nullable = false)
     private String description;
 
+    @Column(name = "type", length = 10, nullable = false)
     private String type;
 
     // (concatenate action code name/desc)
+    @Transient
     private String actionDisplayValue;
 
     public Action() {
