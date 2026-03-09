@@ -145,7 +145,6 @@ describe("LocationAutocomplete", () => {
     expect(getFromOpenElisServer).toHaveBeenCalledWith(
       expect.stringContaining("q=Main"),
       expect.any(Function),
-      expect.any(Function),
     );
   });
 });

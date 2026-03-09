@@ -312,10 +312,20 @@ const NoteBookInstanceEntryForm = () => {
               .join(",");
             // Extract storage location data if present
             const storageLocation = sampleItem.sampleXML?.storageLocation;
-            const storageLocationId = storageLocation?.id || "";
-            const storageLocationType = storageLocation?.type || "";
+            const storageLocationId =
+              storageLocation?.locationId ||
+              storageLocation?.box?.id ||
+              storageLocation?.id ||
+              "";
+            const storageLocationType =
+              storageLocation?.locationType ||
+              (storageLocation?.box?.id
+                ? "box"
+                : storageLocation?.type || "");
             const storagePositionCoordinate =
-              storageLocation?.positionCoordinate || "";
+              storageLocation?.positionCoordinate ||
+              storageLocation?.position?.coordinate ||
+              "";
             sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds=''  storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' />`;
           }
           if (sampleItem.referralItems.length > 0) {

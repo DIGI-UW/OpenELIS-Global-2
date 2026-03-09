@@ -12,6 +12,37 @@ jest.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: jest.fn(),
 }));
 
+jest.mock("../SampleStorage/LocationManagementModal", () => {
+  return function MockLocationManagementModal({ open, onConfirm, onClose }) {
+    if (!open) return null;
+    return (
+      <div data-testid="location-management-modal">
+        <button
+          data-testid="mock-modal-save-box"
+          onClick={() =>
+            onConfirm?.({
+              newLocation: {
+                room: { id: "1", name: "Main Laboratory" },
+                device: { id: "10", name: "Freezer Unit 1" },
+                shelf: { id: "20", label: "Shelf-A" },
+                rack: { id: "30", label: "R1" },
+                box: { id: "40", label: "Box2" },
+                position: { coordinate: "D1" },
+              },
+              positionCoordinate: "D1",
+            })
+          }
+        >
+          Save Mock Location
+        </button>
+        <button data-testid="mock-modal-close" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    );
+  };
+});
+
 const renderWithIntl = (component) => {
   return render(
     <IntlProvider locale="en" messages={messages}>
@@ -241,5 +272,38 @@ describe("StorageLocationSelector", () => {
 
     const pathText = screen.getByTestId("location-path-text");
     expect(pathText.textContent).toContain("Main Laboratory > Freezer Unit 1");
+  });
+
+  test("should normalize modal payload to locationId/locationType/positionCoordinate", async () => {
+    const mockSampleInfo = {
+      sampleId: "S-2025-010",
+      type: "Serum",
+      status: "Active",
+    };
+    const mockOnLocationChange = jest.fn();
+
+    renderWithIntl(
+      <StorageLocationSelector
+        workflow="orders"
+        sampleInfo={mockSampleInfo}
+        onLocationChange={mockOnLocationChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("expand-button"));
+    fireEvent.click(await screen.findByTestId("mock-modal-save-box"));
+
+    await waitFor(() => {
+      expect(mockOnLocationChange).toHaveBeenCalled();
+    });
+
+    const lastCallArg =
+      mockOnLocationChange.mock.calls[mockOnLocationChange.mock.calls.length - 1][0];
+    expect(lastCallArg.locationId).toBe("40");
+    expect(lastCallArg.locationType).toBe("box");
+    expect(lastCallArg.positionCoordinate).toBe("D1");
+
+    const pathText = await screen.findByTestId("location-path-text");
+    expect(pathText.textContent).toContain("Box2 > D1");
   });
 });

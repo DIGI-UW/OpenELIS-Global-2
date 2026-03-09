@@ -210,6 +210,50 @@ const LocationSearchAndCreate = ({
       }
     }
 
+    // Box selection - API provides parentRackId, parentRackLabel, parentShelfId,
+    // parentShelfLabel, parentDeviceId, parentDeviceName, parentRoomId,
+    // parentRoomName
+    if (searchLocation.type === "box") {
+      converted.box = {
+        id: searchLocation.id,
+        label: searchLocation.label || searchLocation.name,
+        code: searchLocation.code,
+      };
+
+      if (searchLocation.parentRackId) {
+        converted.rack = {
+          id: searchLocation.parentRackId,
+          label: searchLocation.parentRackLabel || searchLocation.rackLabel,
+        };
+      }
+
+      if (searchLocation.parentShelfId) {
+        converted.shelf = {
+          id: searchLocation.parentShelfId,
+          label: searchLocation.parentShelfLabel || searchLocation.shelfLabel,
+        };
+      }
+
+      if (searchLocation.parentDeviceId) {
+        converted.device = {
+          id: searchLocation.parentDeviceId,
+          name: searchLocation.parentDeviceName || searchLocation.deviceName,
+        };
+      }
+
+      if (searchLocation.parentRoomId) {
+        converted.room = {
+          id: searchLocation.parentRoomId,
+          name: searchLocation.parentRoomName || searchLocation.roomName,
+        };
+      }
+
+      if (hierarchicalPath) {
+        converted.hierarchical_path = hierarchicalPath;
+        converted.hierarchicalPath = hierarchicalPath;
+      }
+    }
+
     // Position selection - API should provide all parent IDs and names
     if (searchLocation.type === "position") {
       converted.position = {
@@ -271,7 +315,10 @@ const LocationSearchAndCreate = ({
       let locationId = null;
       let locationType = null;
 
-      if (convertedLocation?.rack?.id) {
+      if (convertedLocation?.box?.id) {
+        locationId = convertedLocation.box.id;
+        locationType = "box";
+      } else if (convertedLocation?.rack?.id) {
         locationId = convertedLocation.rack.id;
         locationType = "rack";
       } else if (convertedLocation?.shelf?.id) {
@@ -283,6 +330,7 @@ const LocationSearchAndCreate = ({
       } else if (convertedLocation?.id && convertedLocation?.type) {
         // Direct format from search - type is already the hierarchy level
         if (
+          convertedLocation.type === "box" ||
           convertedLocation.type === "rack" ||
           convertedLocation.type === "shelf" ||
           convertedLocation.type === "device"
@@ -308,7 +356,7 @@ const LocationSearchAndCreate = ({
   };
 
   const handleCreateSelect = (location) => {
-    // EnhancedCascadingMode format: { room, device, shelf, rack, position }
+    // EnhancedCascadingMode format: { room, device, shelf, rack, box, position }
     // This is called by EnhancedCascadingMode when user clicks through hierarchy
 
     // If location is null/undefined, don't update (avoid clearing parent state)
@@ -326,7 +374,10 @@ const LocationSearchAndCreate = ({
     let locationType = null;
 
     // Extract locationId and locationType based on lowest selected hierarchy level
-    if (location.rack && location.rack.id) {
+    if (location.box && location.box.id) {
+      locationId = location.box.id;
+      locationType = "box";
+    } else if (location.rack && location.rack.id) {
       locationId = location.rack.id;
       locationType = "rack";
     } else if (location.shelf && location.shelf.id) {
@@ -351,6 +402,9 @@ const LocationSearchAndCreate = ({
       if (location.position.id) {
         locationToPass.id = location.position.id;
       }
+    } else if (location.box?.id) {
+      locationToPass.type = "box";
+      locationToPass.id = location.box.id;
     } else if (location.rack?.id) {
       locationToPass.type = "rack";
       locationToPass.id = location.rack.id;
@@ -372,12 +426,14 @@ const LocationSearchAndCreate = ({
       const deviceName = location.device?.name || location.device?.code || "";
       const shelfLabel = location.shelf?.label || location.shelf?.name || "";
       const rackLabel = location.rack?.label || location.rack?.name || "";
+      const boxLabel = location.box?.label || location.box?.name || "";
       const positionCoord = location.position?.coordinate || "";
 
       if (roomName) pathParts.push(roomName);
       if (deviceName) pathParts.push(deviceName);
       if (shelfLabel) pathParts.push(shelfLabel);
       if (rackLabel) pathParts.push(rackLabel);
+      if (boxLabel) pathParts.push(boxLabel);
       if (positionCoord) pathParts.push(`Position ${positionCoord}`);
 
       if (pathParts.length > 0) {
@@ -407,12 +463,15 @@ const LocationSearchAndCreate = ({
       internalSelectedLocation?.shelf?.id || internalSelectedLocation?.shelf;
     const rackSelected =
       internalSelectedLocation?.rack?.id || internalSelectedLocation?.rack;
+    const boxSelected =
+      internalSelectedLocation?.box?.id || internalSelectedLocation?.box;
 
     const selectedCount = [
       roomSelected,
       deviceSelected,
       shelfSelected,
       rackSelected,
+      boxSelected,
     ].filter(Boolean).length;
 
     if (selectedCount >= 2 && internalSelectedLocation) {
@@ -435,12 +494,15 @@ const LocationSearchAndCreate = ({
           locationToPass.shelf?.label || locationToPass.shelf?.name || "";
         const rackLabel =
           locationToPass.rack?.label || locationToPass.rack?.name || "";
+        const boxLabel =
+          locationToPass.box?.label || locationToPass.box?.name || "";
         const positionCoord = locationToPass.position?.coordinate || "";
 
         if (roomName) pathParts.push(roomName);
         if (deviceName) pathParts.push(deviceName);
         if (shelfLabel) pathParts.push(shelfLabel);
         if (rackLabel) pathParts.push(rackLabel);
+        if (boxLabel) pathParts.push(boxLabel);
         if (positionCoord) pathParts.push(`Position ${positionCoord}`);
 
         if (pathParts.length > 0) {
@@ -485,8 +547,14 @@ const LocationSearchAndCreate = ({
       internalSelectedLocation.rack.label ||
       internalSelectedLocation.rack.name)
   );
+  const hasBox = !!(
+    internalSelectedLocation?.box &&
+    (internalSelectedLocation.box.id ||
+      internalSelectedLocation.box.label ||
+      internalSelectedLocation.box.name)
+  );
 
-  const selectedCount = [hasRoom, hasDevice, hasShelf, hasRack].filter(
+  const selectedCount = [hasRoom, hasDevice, hasShelf, hasRack, hasBox].filter(
     Boolean,
   ).length;
   const canAddLocation = selectedCount >= 2;

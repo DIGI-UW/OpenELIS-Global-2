@@ -44,10 +44,6 @@ const LocationAutocomplete = ({
         setSearchResults(filteredResults);
         setIsLoading(false);
       },
-      () => {
-        setSearchResults([]);
-        setIsLoading(false);
-      },
     );
   }, []);
 

@@ -70,6 +70,19 @@ public class StorageDashboardServiceImplTest extends BaseWebContextSensitiveTest
     }
 
     @Test
+    public void filterSamples_shouldExcludeDisposedSamples_whenStatusIsActive() throws Exception {
+        List<Map<String, Object>> result = storageDashboardService.filterSamples(null, "active");
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+
+        for (Map<String, Object> sample : result) {
+            String status = (String) sample.get("status");
+            assertNotEquals("Active filter must not include disposed status rows", "24", status);
+        }
+    }
+
+    @Test
     public void filterRooms_shouldReturnActiveAndInactiveRoomsBasedOnStatusFlag() throws Exception {
         List<StorageRoom> activeRooms = storageDashboardService.filterRooms(true);
 
@@ -157,6 +170,9 @@ public class StorageDashboardServiceImplTest extends BaseWebContextSensitiveTest
             assertNotNull(rack.get("parentRoomId"));
             assertTrue(rack.containsKey("parentShelfId"));
             assertTrue(rack.containsKey("parentDeviceId"));
+            assertTrue("Rack response should include derived totalCapacity", rack.containsKey("totalCapacity"));
+            assertTrue("Rack response should include derived capacityType", rack.containsKey("capacityType"));
+            assertTrue("Rack response should include occupiedCount", rack.containsKey("occupiedCount"));
         }
     }
 

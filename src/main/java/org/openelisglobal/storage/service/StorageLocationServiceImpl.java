@@ -1005,6 +1005,24 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             // Set type for consistency with searchLocations
             map.put("type", "rack");
 
+            // Rack capacity is derived from child boxes (sum of rows x columns)
+            try {
+                int totalCapacity = 0;
+                List<StorageBox> boxesInRack = storageBoxDAO.findByParentRackId(rack.getId());
+                if (boxesInRack != null) {
+                    for (StorageBox box : boxesInRack) {
+                        int boxRows = box.getRows() != null ? box.getRows() : 0;
+                        int boxColumns = box.getColumns() != null ? box.getColumns() : 0;
+                        totalCapacity += boxRows * boxColumns;
+                    }
+                }
+                map.put("totalCapacity", totalCapacity);
+                map.put("capacityType", totalCapacity > 0 ? "calculated" : null);
+            } catch (Exception e) {
+                map.put("totalCapacity", 0);
+                map.put("capacityType", null);
+            }
+
             // Add occupied count
             try {
                 if (rack.getId() != null) {
@@ -1122,6 +1140,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         List<Map<String, Object>> devices = storageSearchService.searchDevices(searchTerm);
         List<Map<String, Object>> shelves = storageSearchService.searchShelves(searchTerm);
         List<Map<String, Object>> racks = storageSearchService.searchRacks(searchTerm);
+        List<Map<String, Object>> boxes = storageSearchService.searchBoxes(searchTerm);
 
         // Add hierarchical paths and type information
         for (Map<String, Object> room : rooms) {
@@ -1229,6 +1248,71 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 result.put("parentRoomId", parentRoomId);
             }
             // Parent names should already be in the map, but ensure they're explicitly set
+            if (shelfLabel != null) {
+                result.put("parentShelfLabel", shelfLabel);
+            }
+            if (deviceName != null) {
+                result.put("parentDeviceName", deviceName);
+            }
+            if (roomName != null) {
+                result.put("parentRoomName", roomName);
+            }
+
+            results.add(result);
+        }
+
+        for (Map<String, Object> box : boxes) {
+            Map<String, Object> result = new HashMap<>(box);
+            String roomName = (String) box.get("roomName");
+            String deviceName = (String) box.get("deviceName");
+            String shelfLabel = (String) box.get("shelfLabel");
+            String rackLabel = (String) box.get("rackLabel");
+            String boxLabel = (String) box.get("label");
+
+            StringBuilder pathBuilder = new StringBuilder();
+            if (roomName != null) {
+                pathBuilder.append(roomName).append(" > ");
+            }
+            if (deviceName != null) {
+                pathBuilder.append(deviceName).append(" > ");
+            }
+            if (shelfLabel != null) {
+                pathBuilder.append(shelfLabel).append(" > ");
+            }
+            if (rackLabel != null) {
+                pathBuilder.append(rackLabel).append(" > ");
+            }
+            pathBuilder.append(boxLabel);
+            result.put("hierarchicalPath", pathBuilder.toString());
+
+            // Preserve physical box type in case clients need it
+            if (box.get("type") != null) {
+                result.put("boxType", box.get("type"));
+            }
+
+            // Hierarchy level type for search selection
+            result.put("type", "box");
+
+            // Normalize parent names/ids for frontend converters
+            Object parentRackId = box.get("parentRackId");
+            Object parentShelfId = box.get("parentShelfId");
+            Object parentDeviceId = box.get("parentDeviceId");
+            Object parentRoomId = box.get("parentRoomId");
+            if (parentRackId != null) {
+                result.put("parentRackId", parentRackId);
+            }
+            if (parentShelfId != null) {
+                result.put("parentShelfId", parentShelfId);
+            }
+            if (parentDeviceId != null) {
+                result.put("parentDeviceId", parentDeviceId);
+            }
+            if (parentRoomId != null) {
+                result.put("parentRoomId", parentRoomId);
+            }
+            if (rackLabel != null) {
+                result.put("parentRackLabel", rackLabel);
+            }
             if (shelfLabel != null) {
                 result.put("parentShelfLabel", shelfLabel);
             }

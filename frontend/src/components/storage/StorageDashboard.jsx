@@ -619,7 +619,29 @@ const StorageDashboard = () => {
       let finalPositionCoordinate = positionCoordinate;
 
       // Determine locationId and locationType based on selected hierarchy level
-      if (newLocation.rack && newLocation.rack.id) {
+      if (
+        newLocation?.locationId &&
+        (newLocation?.locationType === "device" ||
+          newLocation?.locationType === "shelf" ||
+          newLocation?.locationType === "rack" ||
+          newLocation?.locationType === "box")
+      ) {
+        locationId = newLocation.locationId;
+        locationType = newLocation.locationType;
+        finalPositionCoordinate =
+          positionCoordinate ||
+          newLocation.position?.coordinate ||
+          newLocation.positionCoordinate ||
+          null;
+      } else if (newLocation?.box && newLocation.box.id) {
+        locationId = newLocation.box.id;
+        locationType = "box";
+        finalPositionCoordinate =
+          positionCoordinate ||
+          newLocation.position?.coordinate ||
+          newLocation.positionCoordinate ||
+          null;
+      } else if (newLocation?.rack && newLocation.rack.id) {
         locationId = newLocation.rack.id;
         locationType = "rack";
         finalPositionCoordinate =
@@ -627,7 +649,7 @@ const StorageDashboard = () => {
           newLocation.position?.coordinate ||
           newLocation.positionCoordinate ||
           null;
-      } else if (newLocation.shelf && newLocation.shelf.id) {
+      } else if (newLocation?.shelf && newLocation.shelf.id) {
         locationId = newLocation.shelf.id;
         locationType = "shelf";
         finalPositionCoordinate =
@@ -635,7 +657,7 @@ const StorageDashboard = () => {
           newLocation.position?.coordinate ||
           newLocation.positionCoordinate ||
           null;
-      } else if (newLocation.device && newLocation.device.id) {
+      } else if (newLocation?.device && newLocation.device.id) {
         locationId = newLocation.device.id;
         locationType = "device";
         finalPositionCoordinate =
@@ -643,8 +665,9 @@ const StorageDashboard = () => {
           newLocation.position?.coordinate ||
           newLocation.positionCoordinate ||
           null;
-      } else if (newLocation.id && newLocation.type) {
+      } else if (newLocation?.id && newLocation?.type) {
         if (
+          newLocation.type === "box" ||
           newLocation.type === "rack" ||
           newLocation.type === "shelf" ||
           newLocation.type === "device"
@@ -2220,8 +2243,7 @@ const StorageDashboard = () => {
   };
 
   // Format racks data for table
-  // Note: Racks always use calculated capacity (rows × columns per FR-017)
-  // Racks do not have a static capacity_limit field - capacity is always calculated
+  // Note: Racks use calculated capacity derived from child boxes/plates
   const formatRacksData = (racksData) => {
     if (!racksData || racksData.length === 0) {
       return [];
@@ -2230,23 +2252,47 @@ const StorageDashboard = () => {
       // Ensure rack has type field for overflow menu
       const rackWithType = { ...rack, type: "rack" };
       const occupied = rack.occupiedCount || 0;
-      // Rack capacity is ALWAYS calculated as rows × columns (per FR-017)
-      const total = (rack.rows || 0) * (rack.columns || 0);
-      const occupancyPct = calculateOccupancy(occupied, total);
+      const capacityType = rack.capacityType; // "calculated" or null
+      const total = rack.totalCapacity || 0;
+
+      // Determine if capacity can be displayed (same approach as devices/shelves)
+      const canDisplayCapacity = capacityType !== null && total > 0;
+      const occupancyPct = canDisplayCapacity
+        ? calculateOccupancy(occupied, total)
+        : 0;
       const occupancyColor = getOccupancyColor(occupancyPct);
 
-      return {
-        id: String(rack.id || ""),
-        label: rack.label || "",
-        room: rack.roomName || "", // Per FR-065a
-        shelf: rack.shelfLabel || rack.parentShelfLabel || "",
-        device: rack.deviceName || "",
-        dimensions:
-          rack.rows && rack.columns ? `${rack.rows} × ${rack.columns}` : "-",
-        occupancy: (
+      let occupancyDisplay;
+      if (!canDisplayCapacity) {
+        occupancyDisplay = (
           <div>
-            <div>
-              {occupied}/{total} ({occupancyPct}%)
+            <Tooltip
+              label={intl.formatMessage({
+                id: "storage.capacity.undetermined.tooltip",
+                defaultMessage:
+                  "Capacity cannot be calculated: some child locations lack defined capacities",
+              })}
+            >
+              <span>N/A</span>
+            </Tooltip>
+          </div>
+        );
+      } else {
+        occupancyDisplay = (
+          <div>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <span>
+                {occupied.toLocaleString()}/{total.toLocaleString()} (
+                {occupancyPct}%)
+              </span>
+              {capacityType === "calculated" && (
+                <Tag type="cyan" size="sm" style={{ marginLeft: "8px" }}>
+                  <FormattedMessage
+                    id="storage.capacity.calculated"
+                    defaultMessage="Calculated"
+                  />
+                </Tag>
+              )}
             </div>
             <ProgressBar
               value={occupancyPct}
@@ -2261,7 +2307,17 @@ const StorageDashboard = () => {
               }
             />
           </div>
-        ),
+        );
+      }
+
+      return {
+        id: String(rack.id || ""),
+        label: rack.label || "",
+        room: rack.roomName || "", // Per FR-065a
+        shelf: rack.shelfLabel || rack.parentShelfLabel || "",
+        device: rack.deviceName || "",
+        dimensions: "-",
+        occupancy: occupancyDisplay,
         status: rack.active ? (
           <Tag type="green">
             <FormattedMessage id="label.active" />
@@ -2821,23 +2877,26 @@ const StorageDashboard = () => {
 
       // Secondary context: Parent Sample accession number
       const sampleAccessionNumber = sampleItem.sampleAccessionNumber || "";
+      const isDisposed =
+        sampleItem.isDisposed === true ||
+        sampleItem.isDisposed === "true" ||
+        sampleItem.status === "disposed" ||
+        sampleItem.status === "Disposed";
 
       return {
         id: sampleItemId, // Use sampleItemId for row ID
         sampleItemId: displayId, // Display: External ID if available, otherwise ID
         sampleAccessionNumber: sampleAccessionNumber, // Parent Sample accession for context
         type: sampleItem.type || sampleItem.sampleType || "",
-        status:
-          sampleItem.status === "disposed" ||
-          sampleItem.status === "Disposed" ? (
-            <Tag type="red">
-              <FormattedMessage id="storage.status.disposed" />
-            </Tag>
-          ) : (
-            <Tag type="green">
-              <FormattedMessage id="label.active" />
-            </Tag>
-          ),
+        status: isDisposed ? (
+          <Tag type="red">
+            <FormattedMessage id="storage.status.disposed" />
+          </Tag>
+        ) : (
+          <Tag type="green">
+            <FormattedMessage id="label.active" />
+          </Tag>
+        ),
         location: sampleItem.location || sampleItem.hierarchicalPath || "",
         assignedBy: sampleItem.assignedBy || sampleItem.assignedByUserId || "",
         date: sampleItem.date || sampleItem.assignedDate || "",
@@ -2850,7 +2909,7 @@ const StorageDashboard = () => {
               sampleItemExternalId: sampleItemExternalId,
               sampleAccessionNumber: sampleAccessionNumber,
               type: sampleItem.type || sampleItem.sampleType || "",
-              status: sampleItem.status || "Active",
+              status: isDisposed ? "Disposed" : "Active",
               location:
                 sampleItem.location || sampleItem.hierarchicalPath || "",
               positionCoordinate: sampleItem.positionCoordinate || "",

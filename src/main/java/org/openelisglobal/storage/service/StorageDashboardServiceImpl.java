@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.storage.valueholder.StorageBox;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
@@ -339,6 +340,32 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
 
             // Set type for consistency
             rackMap.put("type", "rack");
+
+            // Add derived rack capacity from child boxes (rows x columns)
+            try {
+                int totalCapacity = 0;
+                List<StorageBox> boxesInRack = storageLocationService.getBoxesByRack(rack.getId());
+                if (boxesInRack != null) {
+                    for (StorageBox box : boxesInRack) {
+                        int boxRows = box.getRows() != null ? box.getRows() : 0;
+                        int boxColumns = box.getColumns() != null ? box.getColumns() : 0;
+                        totalCapacity += boxRows * boxColumns;
+                    }
+                }
+                rackMap.put("totalCapacity", totalCapacity);
+                rackMap.put("capacityType", totalCapacity > 0 ? "calculated" : null);
+            } catch (Exception e) {
+                rackMap.put("totalCapacity", 0);
+                rackMap.put("capacityType", null);
+            }
+
+            // Add occupied count for rack-level occupancy display
+            try {
+                int occupiedCount = storageLocationService.countOccupied(rack.getId());
+                rackMap.put("occupiedCount", occupiedCount);
+            } catch (Exception e) {
+                rackMap.put("occupiedCount", 0);
+            }
 
             result.add(rackMap);
         }

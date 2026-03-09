@@ -56,4 +56,12 @@ public interface StorageSearchService {
      * @return List of matching racks as Maps with all data resolved (API format)
      */
     List<Map<String, Object>> searchRacks(String query);
+
+    /**
+     * Search boxes by label and code.
+     * 
+     * @param query Search term (case-insensitive partial match)
+     * @return List of matching boxes as Maps with all data resolved (API format)
+     */
+    List<Map<String, Object>> searchBoxes(String query);
 }
