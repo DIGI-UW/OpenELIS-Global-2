@@ -330,15 +330,19 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             atm.setSysUserId(sysUserId);
 
             try {
-                analyzerMappingService.insert(atm);
-                AnalyzerTestNameCache.getInstance().registerPluginAnalyzer(analyzer.getAnalyzerType().getName(),
-                        typeId);
-                created++;
+                if (newMapping(atm, analyzerMappingService.getAll())) {
+                    analyzerMappingService.insert(atm);
+                    AnalyzerTestNameCache.getInstance().registerPluginAnalyzer(analyzer.getAnalyzerType().getName(),
+                            typeId);
+                    created++;
+                }
+
             } catch (Exception e) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
                         "Failed to create test mapping for analyzer_code '" + analyzerCode + "': " + e.getMessage());
             }
         }
+        AnalyzerTestNameCache.getInstance().reloadCache();
 
         if (created > 0) {
             LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
