@@ -242,4 +242,72 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         assertNotNull(response);
         assertTrue(response.getStatus() != 404);
     }
+
+    @Test
+    public void createObservation_shouldCreateNewResult() throws Exception {
+        // 1. Setup UUIDs and Dependencies
+        String patientFhirUuid = "550e8400-e29b-41d4-a716-446655440001";
+        String analysisFhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+        String specimenFhirUuid = "68438220-5cef-44c4-9e6f-9f88e6b93270";
+
+        Analysis analysis = analysisService.getAnalysisById("1");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setEnglish("Hello");
+        localizationOld.setFrench("Bonjour");
+        Localization savedLocalization = localizationSevice.save(localizationOld);
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+        Panel panel = panelService.save(newPanel);
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+        assertNotNull("Analysis reference required for creating result", analysis);
+
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Observation");
+
+        String createJson = """
+                {
+                  "resourceType": "Observation",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org",
+                      "code": "123456",
+                      "display": "Complete Blood Count"
+                    }]
+                  },
+                  "subject": {
+                    "reference": "Patient/%s"
+                  },
+                  "specimen": {
+                    "reference": "Specimen/%s"
+                  },
+                  "basedOn": [{
+                    "reference": "ServiceRequest/%s"
+                  }],
+                  "effectiveDateTime": "2026-03-09T10:00:00+03:00",
+                  "valueQuantity": {
+                    "value": 85.5,
+                    "unit": "g/L"
+                  }
+                }
+                """.formatted(patientFhirUuid, specimenFhirUuid, analysisFhirUuid);
+
+        request.setContent(createJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(201, response.getStatus());
+
+        String location = response.getHeader("Location");
+        assertNotNull("Location header should contain the new Resource URL", location);
+        String newUuid = location.substring(location.lastIndexOf("/") + 1);
+
+        Result createdResult = resultService.getResultByFhirUuid(newUuid);
+        assertNotNull("Result should be persisted in the database", createdResult);
+        assertEquals("85.5", createdResult.getValue());
+    }
 }
