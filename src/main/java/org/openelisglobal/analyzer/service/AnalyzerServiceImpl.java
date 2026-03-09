@@ -14,12 +14,14 @@ import org.openelisglobal.analyzer.dao.AnalyzerDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
+import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +48,9 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     @Autowired
     private AnalyzerPluginConfigService analyzerPluginConfigService;
+
+    @Autowired
+    PluginAnalyzerService pluginAnalyzerService;
 
     AnalyzerServiceImpl() {
         super(Analyzer.class);
@@ -293,7 +298,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
         List<Map<String, Object>> mappings = (List<Map<String, Object>>) mappingsObj;
         int created = 0;
-
+        Analyzer analyzer = get(analyzerId);
         for (Map<String, Object> mapping : mappings) {
             String analyzerCode = (String) mapping.get("analyzer_code");
             String loinc = (String) mapping.get("loinc");
@@ -313,12 +318,12 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
             org.openelisglobal.test.valueholder.Test test = tests.get(0);
 
-            Analyzer analyzer = get(analyzerId);
             String typeId = (analyzer != null && analyzer.getAnalyzerType() != null)
                     ? analyzer.getAnalyzerType().getId()
                     : null;
 
             AnalyzerTestMapping atm = new AnalyzerTestMapping();
+            atm.setAnalyzerId(analyzerId);
             atm.setAnalyzerTypeId(typeId);
             atm.setAnalyzerTestName(analyzerCode);
             atm.setTestId(test.getId());
@@ -326,6 +331,8 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
             try {
                 analyzerMappingService.insert(atm);
+                AnalyzerTestNameCache.getInstance().registerPluginAnalyzer(analyzer.getAnalyzerType().getName(),
+                        typeId);
                 created++;
             } catch (Exception e) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",

@@ -14,7 +14,9 @@ import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.BidirectionalAnalyzer;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.analyzerimport.util.MappedTestName;
 import org.openelisglobal.analyzerresults.action.AnalyzerResultsPaging;
@@ -147,6 +149,8 @@ public class AnalyzerResultsController extends BaseController {
     private NoteService noteService;
     @Autowired
     private PluginAnalyzerService pluginAnalyzerService;
+    @Autowired
+    private AnalyzerService analyzerService;
 
     // used in constructor, so use constructor injection
     private TypeOfSampleService typeOfSampleService;
@@ -194,8 +198,7 @@ public class AnalyzerResultsController extends BaseController {
 
         form.setType(requestAnalyzerType);
 
-        AnalyzerImporterPlugin analyzerPlugin = pluginAnalyzerService.getPluginByAnalyzerId(
-                AnalyzerTestNameCache.getInstance().getAnalyzerIdForName(getAnalyzerNameFromRequest()));
+        AnalyzerImporterPlugin analyzerPlugin = pluginAnalyzerService.getPluginByAnalyzerId(getAnalyzerIdFromRequest());
         if (analyzerPlugin instanceof BidirectionalAnalyzer) {
             BidirectionalAnalyzer bidirectionalAnalyzer = (BidirectionalAnalyzer) analyzerPlugin;
             form.setSupportedLISActions(bidirectionalAnalyzer.getSupportedLISActions());
@@ -238,7 +241,7 @@ public class AnalyzerResultsController extends BaseController {
         List<AnalyzerResults> analyzerResultsList = new ArrayList<>();
         try {
             AnalyzerImporterPlugin analyzerPlugin = pluginAnalyzerService.getPluginByAnalyzerId(
-                    AnalyzerTestNameCache.getInstance().getAnalyzerIdForName(getAnalyzerNameFromRequest()));
+                    AnalyzerTestNameCache.getInstance().getAnalyzerIdForName(getAnalyzerIdFromRequest()));
             if (analyzerPlugin instanceof BidirectionalAnalyzer) {
                 BidirectionalAnalyzer bidirectionalAnalyzer = (BidirectionalAnalyzer) analyzerPlugin;
                 form.setSupportedLISActions(bidirectionalAnalyzer.getSupportedLISActions());
@@ -385,7 +388,7 @@ public class AnalyzerResultsController extends BaseController {
 
             String analyzerTestName = analyzerResult.getTestName();
             MappedTestName mappedTestName = AnalyzerTestNameCache.getInstance()
-                    .getMappedTest(getAnalyzerNameFromRequest(), analyzerTestName);
+                    .getMappedTest(getAnalyzerTypeNameFromRequest(), analyzerTestName);
             if (mappedTestName != null) {
                 analyzerResult.setTestName(mappedTestName.getOpenElisTestName());
                 analyzerResult.setTestId(mappedTestName.getTestId());
@@ -403,8 +406,7 @@ public class AnalyzerResultsController extends BaseController {
     }
 
     private List<AnalyzerResults> getAnalyzerResults() {
-        return analyzerResultsService.getResultsbyAnalyzer(
-                AnalyzerTestNameCache.getInstance().getAnalyzerIdForName(getAnalyzerNameFromRequest()));
+        return analyzerResultsService.getResultsbyAnalyzer(getAnalyzerIdFromRequest());
     }
 
     protected AnalyzerResultItem analyzerResultsToAnalyzerResultItem(AnalyzerResults result) {
@@ -678,7 +680,7 @@ public class AnalyzerResultsController extends BaseController {
             actualMessage = PluginMenuService.getInstance().getMenuLabel(localizationService.getCurrentLocaleLanguage(),
                     messageKey);
         }
-        return actualMessage == null ? getAnalyzerNameFromRequest() : actualMessage;
+        return actualMessage == null ? getActualAnalyzerNameFromRequest() : actualMessage;
     }
 
     protected String getAnalyzerNameFromRequest() {
@@ -688,6 +690,27 @@ public class AnalyzerResultsController extends BaseController {
             analyzer = AnalyzerTestNameCache.getInstance().getDBNameForActionName(requestType);
         }
         return analyzer;
+    }
+
+    protected String getAnalyzerTypeNameFromRequest() {
+        Analyzer analyzer = analyzerService.get(getAnalyzerIdFromRequest());
+        if (analyzer.getAnalyzerType() != null) {
+            return analyzer.getAnalyzerType().getName();
+        }
+        return "";
+    }
+
+    protected String getActualAnalyzerNameFromRequest() {
+        String requestType = request.getParameter("type");
+        return requestType;
+    }
+
+    protected String getAnalyzerIdFromRequest() {
+        String analyzerId = null;
+        String requestType = request.getParameter("type");
+        Analyzer analyzer = analyzerService.getAnalyzerByName(requestType);
+        analyzerId = analyzer != null ? analyzer.getId() : null;
+        return analyzerId;
     }
 
     private boolean getQaEventByTestSection(Analysis analysis) {
@@ -1480,7 +1503,7 @@ public class AnalyzerResultsController extends BaseController {
 
     @Override
     protected String getPageSubtitleKey() {
-        String key = analyzerNameToSubtitleKey.get(getAnalyzerNameFromRequest());
+        String key = analyzerNameToSubtitleKey.get(getActualAnalyzerNameFromRequest());
         if (key == null) {
             key = PluginMenuService.getInstance()
                     .getKeyForAction("/AnalyzerResults?type=" + request.getParameter("type"));
