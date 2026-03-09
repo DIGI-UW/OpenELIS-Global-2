@@ -1268,6 +1268,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             throws FhirLocalPersistingException {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformPersistResultsEntryFhirObjects",
                 "transformPersistResultsEntryFhirObjects called");
+        String method = "transformPersistResultsEntryFhirObjects";
 
         CountingTempIdGenerator tempIdGenerator = new CountingTempIdGenerator();
         FhirOperations fhirOperations = new FhirOperations();
@@ -1288,8 +1289,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 this.addToOperations(fhirOperations, tempIdGenerator, diagnosticReport);
             }
         }
-
-        Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+        try {
+            Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+        } catch (FhirPersistanceException e) {
+            LogEvent.logError(getClass().getSimpleName(), method, "Fhir store currently un avalable");
+        }
     }
 
     @Override
@@ -1321,18 +1325,31 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
 
         if (observation.hasBasedOn()) {
+
             String analysisUUID = observation.getBasedOnFirstRep().getReferenceElement().getIdPart();
-            Analysis analysis = getItemByFhirId(analysisUUID, analysisService);
+
+            Analysis analysis = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUUID)).get(0);
 
             if (analysis == null) {
                 throw new UnprocessableEntityException("Analysis not found: " + analysisUUID);
             }
 
+            java.util.Date utilDate = observation.hasEffectiveDateTimeType()
+                    ? observation.getEffectiveDateTimeType().getValue()
+                    : new java.util.Date();
+
+            java.sql.Date effectiveDate = new java.sql.Date(utilDate.getTime());
             Test test = analysis.getTest();
+
             bean.setAnalysisId(analysis.getId());
             bean.setTestId(test.getId());
-        }
 
+            if (analysis.getStartedDate() == null) {
+                analysis.setStartedDate(effectiveDate);
+            } else {
+                analysis.setReleasedDate(effectiveDate);
+            }
+        }
         if (observation.hasSubject()) {
             String patientUUID = observation.getSubject().getReferenceElement().getIdPart();
             Patient patient = getItemByFhirId(patientUUID, patientService);
@@ -1347,7 +1364,13 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         bean.setIsModified(true);
         bean.setResultId(null);
         bean.setReportable(true);
-        bean.setTestDate(new SimpleDateFormat("MM/dd/yyyy").format(new Date()));
+        String locale = ConfigurationProperties.getInstance()
+                .getPropertyValue(ConfigurationProperties.Property.DEFAULT_DATE_LOCALE);
+
+        String pattern = "en-US".equals(locale) ? "MM/dd/yyyy" : "dd/MM/yyyy";
+
+        String formattedDate = new SimpleDateFormat(pattern).format(new Date());
+        bean.setTestDate(formattedDate);
 
         if (bean.getTechnician() == null) {
             bean.setTechnician("Lab Technician");
@@ -1434,6 +1457,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             bean.setShadowResultValue(value);
             bean.setResultType("N");
             bean.setUnitsOfMeasure(observation.getValueQuantity().getUnit());
+
         }
 
         if (bean.getResultType() == null) {

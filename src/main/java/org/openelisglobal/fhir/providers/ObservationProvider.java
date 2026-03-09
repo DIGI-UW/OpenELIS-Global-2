@@ -245,6 +245,14 @@ public class ObservationProvider implements IResourceProvider {
 
         String method = "updateObservation";
 
+        LogEvent.logInfo(getClass().getSimpleName(), method,
+                "Received update request for Observation id=" + (theId != null ? theId.getIdPart() : "NULL"));
+
+        if (theId == null) {
+            LogEvent.logError(getClass().getSimpleName(), method, "Observation ID is null");
+            throw new InvalidRequestException("Observation ID cannot be null");
+        }
+
         if (fhirObservation == null) {
             LogEvent.logError(getClass().getSimpleName(), method, "Observation resource is null");
             throw new InvalidRequestException("Observation resource cannot be null");
@@ -253,17 +261,32 @@ public class ObservationProvider implements IResourceProvider {
         try {
 
             String resultUUID = theId.getIdPart();
+
+            LogEvent.logInfo(getClass().getSimpleName(), method,
+                    "Looking up existing Result using FHIR UUID=" + resultUUID);
+
             Result existingResult = fhirTransformService.getItemByFhirId(resultUUID, resultService);
 
             if (existingResult == null) {
+                LogEvent.logError(getClass().getSimpleName(), method, "No Result found for UUID=" + resultUUID);
                 throw new ResourceNotFoundException("Observation/" + resultUUID);
             }
 
+            LogEvent.logInfo(getClass().getSimpleName(), method,
+                    "Existing Result found with ID=" + existingResult.getId());
+
             TestResultItem item = fhirTransformService.createResultFromObservation(fhirObservation);
+
+            if (item == null) {
+                LogEvent.logError(getClass().getSimpleName(), method, "createResultFromObservation returned NULL");
+                throw new InternalErrorException("Failed to transform Observation to TestResultItem");
+            }
 
             Result transformedResult = item.getResult();
 
             if (transformedResult == null) {
+                LogEvent.logWarn(getClass().getSimpleName(), method,
+                        "Transformed Result was null, creating new Result instance");
                 transformedResult = new Result();
                 item.setResult(transformedResult);
             }
@@ -272,11 +295,23 @@ public class ObservationProvider implements IResourceProvider {
             item.setResultId(existingResult.getId());
             item.setIsModified(true);
 
+            LogEvent.logInfo(getClass().getSimpleName(), method,
+                    "Prepared TestResultItem for Result ID=" + existingResult.getId());
+
             List<TestResultItem> items = new ArrayList<>();
             items.add(item);
 
-            ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(FhirProviderUtils.getSysUserId(request));
+            String sysUserId = FhirProviderUtils.getSysUserId(request);
+
+            LogEvent.logInfo(getClass().getSimpleName(), method,
+                    "Creating ResultsUpdateDataSet with systemUserId=" + sysUserId);
+
+            ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(sysUserId);
+
             actionDataSet.filterModifiedItems(items);
+
+            LogEvent.logInfo(getClass().getSimpleName(), method,
+                    "Filtered modified items count=" + actionDataSet.getModifiedItems().size());
 
             if (actionDataSet.getModifiedItems().isEmpty()) {
                 LogEvent.logWarn(getClass().getSimpleName(), method, "No modified items after filtering");
@@ -287,6 +322,9 @@ public class ObservationProvider implements IResourceProvider {
 
             if (errors != null && errors.hasErrors()) {
 
+                LogEvent.logError(getClass().getSimpleName(), method,
+                        "Validation errors detected: count=" + errors.getErrorCount());
+
                 OperationOutcome outcome = new OperationOutcome();
 
                 for (ObjectError error : errors.getAllErrors()) {
@@ -295,7 +333,7 @@ public class ObservationProvider implements IResourceProvider {
                             "code=" + error.getCode() + ", message=" + error.getDefaultMessage());
 
                     outcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
-                            .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getCode());
+                            .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getDefaultMessage());
                 }
 
                 throw new UnprocessableEntityException(outcome);
@@ -312,25 +350,39 @@ public class ObservationProvider implements IResourceProvider {
             String statusRuleSet = ConfigurationProperties.getInstance()
                     .getPropertyValueUpperCase(Property.StatusRules);
 
+            LogEvent.logInfo(getClass().getSimpleName(), method, "Running ResultUtil.createResultsFromItems");
+
             ResultUtil.createResultsFromItems(actionDataSet, supportReferrals, alwaysValidate, useTechnicianName,
                     statusRuleSet, request);
+
+            LogEvent.logInfo(getClass().getSimpleName(), method, "Running ResultUtil.createAnalysisOnlyUpdates");
 
             ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
 
             List<IResultUpdate> updaters = ResultUpdateRegister.getRegisteredUpdaters();
 
-            logbookResultsPersistService.persistDataSet(actionDataSet, updaters,
-                    FhirProviderUtils.getSysUserId(request));
+            LogEvent.logInfo(getClass().getSimpleName(), method,
+                    "Persisting dataset with updaters count=" + updaters.size());
+
+            logbookResultsPersistService.persistDataSet(actionDataSet, updaters, sysUserId);
+
+            LogEvent.logInfo(getClass().getSimpleName(), method, "Transforming persisted results to FHIR resources");
 
             fhirTransformService.transformPersistResultsEntryFhirObjects(actionDataSet);
 
             LogEvent.logInfo(getClass().getSimpleName(), method,
-                    "Results updated: " + actionDataSet.getModifiedItems().size());
+                    "Results updated successfully: count=" + actionDataSet.getModifiedItems().size());
 
             MethodOutcome outcome = new MethodOutcome();
             outcome.setCreated(false);
 
             for (ResultSet resultSet : actionDataSet.getModifiedResults()) {
+
+                if (resultSet == null || resultSet.result == null) {
+                    LogEvent.logWarn(getClass().getSimpleName(), method,
+                            "Null ResultSet encountered during response building");
+                    continue;
+                }
 
                 Observation updatedObservation = fhirTransformService.transformResultToObservation(resultSet.result);
 
@@ -343,11 +395,14 @@ public class ObservationProvider implements IResourceProvider {
 
         } catch (UnprocessableEntityException | ResourceNotFoundException | InvalidRequestException e) {
 
+            LogEvent.logError(getClass().getSimpleName(), method, "Handled exception: " + e.getMessage());
+
             throw e;
 
         } catch (Exception e) {
 
-            LogEvent.logError(e);
+            e.printStackTrace();
+            LogEvent.logError(getClass().getSimpleName(), method, "Unexpected error during Observation update");
 
             OperationOutcome outcome = new OperationOutcome();
 
@@ -355,6 +410,7 @@ public class ObservationProvider implements IResourceProvider {
                     .setCode(OperationOutcome.IssueType.EXCEPTION).setDiagnostics(e.getMessage());
 
             throw new InternalErrorException(outcome.toString());
+
         }
     }
 
@@ -421,7 +477,25 @@ public class ObservationProvider implements IResourceProvider {
             HttpServletRequest request) {
         String method = "search";
         try {
-            return util.forwardSearchToFhirStore(request);
+            // forward request to FHIR store
+            Bundle resultBundle = util.forwardSearchToFhirStore(request);
+
+            // Ensure bundle is never null
+            if (resultBundle == null) {
+                resultBundle = new Bundle();
+            }
+
+            // Ensure bundle has a type (SEARCHSET is required)
+            if (resultBundle.getType() == null) {
+                resultBundle.setType(Bundle.BundleType.SEARCHSET);
+            }
+
+            // Ensure entries list is non-null
+            if (resultBundle.getEntry() == null) {
+                resultBundle.setEntry(new ArrayList<>());
+            }
+
+            return resultBundle;
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Error searching Observations: " + e.getMessage());

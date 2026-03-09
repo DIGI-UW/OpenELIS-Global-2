@@ -159,4 +159,12 @@ public class CustomDateValidator extends DateValidator {
     public boolean validate24HourTime(String time) {
         return time.matches("([01]?[0-9]|2[0-3]):[0-5][0-9]");
     }
+
+    public String formatDate(Date date, String pattern) {
+        if (date == null || pattern == null) {
+            return "";
+        }
+        SimpleDateFormat formatter = new SimpleDateFormat(pattern);
+        return formatter.format(date);
+    }
 }
