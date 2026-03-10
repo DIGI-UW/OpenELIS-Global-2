@@ -1,14 +1,22 @@
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
 const PROJECT_ROOT = path.resolve(__dirname, "../../..");
 const SQL_FILE = path.join(__dirname, "file-import-setup.sql");
 
-const DB_CONTAINER =
-  process.env.DATABASE_CONTAINER ||
-  process.env.FILE_IMPORT_DB_CONTAINER ||
-  "openelisglobal-database";
+const CONTAINER_NAME_PATTERN = /^[a-zA-Z0-9_.-]+$/;
+
+function getDbContainer(): string {
+  const name =
+    process.env.DATABASE_CONTAINER ||
+    process.env.FILE_IMPORT_DB_CONTAINER ||
+    "openelisglobal-database";
+  if (!CONTAINER_NAME_PATTERN.test(name)) {
+    throw new Error(`Invalid container name: ${name}`);
+  }
+  return name;
+}
 
 /**
  * Loads file import E2E fixtures into the database via docker exec.
@@ -19,12 +27,15 @@ export function loadFileImportFixtures(): void {
   if (!fs.existsSync(SQL_FILE)) {
     throw new Error(`File import SQL fixture not found: ${SQL_FILE}`);
   }
-  execSync(
-    `docker exec -i ${DB_CONTAINER} psql -U clinlims -d clinlims < "${SQL_FILE}"`,
+  const container = getDbContainer();
+  const sql = fs.readFileSync(SQL_FILE, "utf8");
+  execFileSync(
+    "docker",
+    ["exec", "-i", container, "psql", "-U", "clinlims", "-d", "clinlims"],
     {
-      stdio: "inherit",
+      input: sql,
       cwd: PROJECT_ROOT,
-      shell: "/bin/bash",
+      stdio: ["pipe", "inherit", "inherit"],
     },
   );
 }
@@ -35,13 +46,22 @@ export function loadFileImportFixtures(): void {
 export function checkFileImportFixturesExist(): boolean {
   const checkSql = `SELECT COUNT(*) FROM clinlims.analyzer WHERE name LIKE 'E2E-FILE-%';`;
   try {
-    const result = execSync(
-      `docker exec -i ${DB_CONTAINER} psql -U clinlims -d clinlims -t -c "${checkSql}"`,
-      {
-        cwd: PROJECT_ROOT,
-        shell: "/bin/bash",
-        encoding: "utf8",
-      },
+    const result = execFileSync(
+      "docker",
+      [
+        "exec",
+        "-i",
+        getDbContainer(),
+        "psql",
+        "-U",
+        "clinlims",
+        "-d",
+        "clinlims",
+        "-t",
+        "-c",
+        checkSql,
+      ],
+      { cwd: PROJECT_ROOT, encoding: "utf8" },
     );
     const count = parseInt(result.trim(), 10);
     return count > 0;
@@ -60,12 +80,23 @@ export function cleanFileImportTestData(): void {
     DELETE FROM clinlims.analyzer WHERE name LIKE 'E2E-FILE-%';
     DELETE FROM clinlims.analyzer_type WHERE name LIKE 'E2E-FILE-%';
   `;
-  execSync(
-    `docker exec -i ${DB_CONTAINER} psql -U clinlims -d clinlims -c "${sql}"`,
+  execFileSync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      getDbContainer(),
+      "psql",
+      "-U",
+      "clinlims",
+      "-d",
+      "clinlims",
+      "-c",
+      sql,
+    ],
     {
-      stdio: "inherit",
       cwd: PROJECT_ROOT,
-      shell: "/bin/bash",
+      stdio: "inherit",
     },
   );
 }

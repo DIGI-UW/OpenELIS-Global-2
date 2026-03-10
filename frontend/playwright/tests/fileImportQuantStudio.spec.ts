@@ -5,7 +5,9 @@ const QUANTSTUDIO_ANALYZER = "E2E-FILE-QuantStudio-Analyzer";
 
 test.describe("File import QuantStudio (GenericFile + EXCEL)", () => {
   test.beforeAll(() => {
-    loadFileImportFixtures();
+    if (process.env.CI !== "true") {
+      loadFileImportFixtures();
+    }
   });
 
   test("QuantStudio analyzer exists with EXCEL config", async ({ page }) => {

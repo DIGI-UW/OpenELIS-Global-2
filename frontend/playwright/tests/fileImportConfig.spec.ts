@@ -4,7 +4,9 @@ import fixtureData from "../fixtures/FileImport.json";
 
 test.describe("File import configuration persistence", () => {
   test.beforeAll(() => {
-    loadFileImportFixtures();
+    if (process.env.CI !== "true") {
+      loadFileImportFixtures();
+    }
   });
 
   test("updates and persists fileFormat", async ({ page }) => {
