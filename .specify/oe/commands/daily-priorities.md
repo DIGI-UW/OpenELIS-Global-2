@@ -107,22 +107,20 @@ Deduplicate by issue key across all queries.
 
 ### Step 3: Build the Report
 
-The report has **two major sections**: a short recommendation up front, then
-the full data so the user can evaluate it. Structure it exactly like this:
+The report has **two major sections**: a short recommendation up front, then the
+full data so the user can evaluate it. Structure it exactly like this:
 
 ```markdown
 ## Daily Priorities — [Date]
 
 ### Suggested Focus (top 3)
 
-1. **KEY** — Summary
-   _[Why: deadline in N days / only High priority / active momentum / unblocks N other tickets / production issue]_
+1. **KEY** — Summary _[Why: deadline in N days / only High priority / active
+   momentum / unblocks N other tickets / production issue]_
 
-2. **KEY** — Summary
-   _[Why: ...]_
+2. **KEY** — Summary _[Why: ...]_
 
-3. **KEY** — Summary
-   _[Why: ...]_
+3. **KEY** — Summary _[Why: ...]_
 
 > `/start-ticket KEY` to begin | `/start-ticket KEY --speckit` for spec-driven
 
@@ -133,62 +131,66 @@ the full data so the user can evaluate it. Structure it exactly like this:
 **[M] In Progress | [M] To Do / Selected | [M] Backlog | [M] Overdue**
 
 #### In Progress
+
 _Finish these before starting new work. Context switching is expensive._
 
 | Key | Summary | Priority | Due | Labels | Updated |
-|-----|---------|----------|-----|--------|---------|
-| ... | ... | ... | ... | ... | ... |
+| --- | ------- | -------- | --- | ------ | ------- |
+| ... | ...     | ...      | ... | ...    | ...     |
 
 #### Overdue
+
 _Past due date — address or reschedule._
 
 | Key | Summary | Due | Days Late | Priority |
-|-----|---------|-----|-----------|----------|
-| ... | ... | ... | ... | ... |
+| --- | ------- | --- | --------- | -------- |
+| ... | ...     | ... | ...       | ...      |
 
 _(If none: "None — you're current on deadlines.")_
 
 #### To Do + Selected for Development
+
 _Ready to start. Sorted by priority then recency._
 
 | Key | Summary | Priority | Type | Labels | Updated |
-|-----|---------|----------|------|--------|---------|
-| ... | ... | ... | ... | ... | ... |
+| --- | ------- | -------- | ---- | ------ | ------- |
+| ... | ...     | ...      | ...  | ...    | ...     |
 
 #### Backlog (To be assigned status / Low priority)
+
 _Parked. Don't start these unless the above sections are empty._
 
 | Key | Summary | Type | Labels | Updated |
-|-----|---------|------|--------|---------|
-| ... | ... | ... | ... | ... |
+| --- | ------- | ---- | ------ | ------- |
+| ... | ...     | ...  | ...    | ...     |
 
 ---
 
 ### Unassigned Pool ([N] tickets without an owner)
 
-_These are open tickets across OGC, MG, OEDIGI, HAITI with no assignee.
-Items here may need your attention or could be claimed for the sprint._
+_These are open tickets across OGC, MG, OEDIGI, HAITI with no assignee. Items
+here may need your attention or could be claimed for the sprint._
 
 #### Needs Attention (recently created, high priority, or production issues)
 
 | Key | Summary | Priority | Status | Project | Updated |
-|-----|---------|----------|--------|---------|---------|
-| ... | ... | ... | ... | ... | ... |
+| --- | ------- | -------- | ------ | ------- | ------- |
+| ... | ...     | ...      | ...    | ...     | ...     |
 
 _(Flag: crash reports, "Down" in title, Highest/High priority, created today)_
 
 #### Unassigned In Progress (orphaned — someone started but no owner)
 
 | Key | Summary | Status | Project | Labels | Updated |
-|-----|---------|--------|---------|--------|---------|
-| ... | ... | ... | ... | ... | ... |
+| --- | ------- | ------ | ------- | ------ | ------- |
+| ... | ...     | ...    | ...     | ...    | ...     |
 
 _(If none: skip this section)_
 
 #### Unassigned Backlog (informational)
 
-**[N] more unassigned tickets** in backlog across OGC ([n]), MG ([n]),
-HAITI ([n]), OEDIGI ([n]).
+**[N] more unassigned tickets** in backlog across OGC ([n]), MG ([n]), HAITI
+([n]), OEDIGI ([n]).
 
 [Top 5-10 by recency, then "and N more..."]
 
@@ -224,8 +226,8 @@ After the report, offer these actions:
 - **Surface anomalies.** Orphaned In Progress tickets, stale items, test junk,
   broken due dates — these are the things a human would miss scanning Jira
   boards.
-- **Country labels = urgency.** Madagascar, Indonesia, PNG labels indicate
-  real deployments. Always factor these into suggestions.
+- **Country labels = urgency.** Madagascar, Indonesia, PNG labels indicate real
+  deployments. Always factor these into suggestions.
 - **Counts everywhere.** Header counts let the user gut-check scope instantly:
   "23 assigned, 50 unassigned, 0 overdue" tells a story before reading any
   table.
