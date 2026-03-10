@@ -250,4 +250,11 @@
     <reference_tables id="3" name="SAMPLE_QAEVENT"
         keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
 
+    <observation_history_type id="5"
+        type_name="program" description="Program type" />
+
+    <observation_history id="1" patient_id="1"
+        sample_id="1" observation_history_type_id="5" value_type="L"
+        value="Histopathology" />
+
 </dataset>
