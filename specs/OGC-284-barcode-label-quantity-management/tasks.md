@@ -179,20 +179,20 @@ review threads can be closed with evidence.
       `feat/284-barcode-label-quantity-management-m4-integration-ci-review` from
       the current stacked M3 head and add worktree at
       `/workspace-worktrees/ogc-284-m4-integration-ci-review`
-- [ ] T034 [P] Run combined backend verification suites for M1-M3 changes and
+- [x] T034 [P] Run combined backend verification suites for M1-M3 changes and
       record outputs in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T035 [P] Run frontend unit tests and impacted Cypress spec(s)
+- [x] T035 [P] Run frontend unit tests and impacted Cypress spec(s)
       individually, then record console/screenshot review notes in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T036 Verify stacked M4 ancestry includes M2/M3, then rebase/merge only new
+- [x] T036 Verify stacked M4 ancestry includes M2/M3, then rebase/merge only new
       divergence and resolve integration conflicts in touched barcode/generic
       sample files
-- [ ] T037 Address open review feedback with explicit file/line references in
+- [x] T037 Address open review feedback with explicit file/line references in
       milestone PR discussion
 - [ ] T038 Re-run failed PR workflow(s) and record run IDs + final status in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T039 Resolve remaining review threads after verification evidence is
+- [x] T039 Resolve remaining review threads after verification evidence is
       posted
 - [ ] T040 Create milestone PR for M4 with consolidated verification summary
 

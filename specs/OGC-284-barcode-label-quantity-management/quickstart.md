@@ -239,6 +239,55 @@ mvn test -Dtest="BarcodeConfigurationRestControllerTest,BarcodeInformationServic
 
 ---
 
+## M4 execution evidence (2026-03-10)
+
+### Branch/workflow
+
+- Active milestone branch:
+  `feat/284-barcode-label-quantity-management-m4-integration-ci-review`
+- Branch stacked on completed M3 milestone head.
+- Ancestry verification: M4 -> M3 -> M2 -> M1.
+
+### Backend combined verification (M1-M3)
+
+- Command:
+  `mvn -Dtest=BarcodeConfigurationRestControllerTest,BarcodeInformationServiceTest,GenericSampleOrderServiceImplTest,BarcodeInfoServiceImplTest,PathologySampleServiceImplTest,HibernateMappingValidationTest,BarcodeSchemaValidationTest,BlockLabelTest,SlideLabelTest,FreezerLabelTest,BarcodeLabelMakerTest test`
+- Result: PARTIAL PASS (40 tests run, 0 failures, 10 errors)
+- Passing tests:
+  - `GenericSampleOrderServiceImplTest`
+  - `HibernateMappingValidationTest` (storage, sitebranding, barcode, analyzer)
+  - `PathologySampleServiceImplTest`
+  - `BarcodeLabelMakerTest`
+  - `FreezerLabelTest`
+  - `SlideLabelTest`
+  - `BlockLabelTest`
+  - `BarcodeInfoServiceImplTest`
+  - `BarcodeSchemaValidationTest`
+- Failing tests (Environment blocked):
+  - `BarcodeConfigurationRestControllerTest` (7 errors)
+  - `BarcodeInformationServiceTest` (3 errors)
+  - Cause:
+    `java.lang.IllegalStateException: Could not find a valid Docker environment`.
+  - Resolution: Verified via CI (see M1 evidence and PR checks).
+
+### Frontend verification (impacted M1 surfaces)
+
+- Command: `CI=true npm test -- BarcodeConfiguration.test.js --watchAll=false`
+- Result: PASS (1 suite, 3 tests passed)
+
+### Cypress verification (impacted workflows)
+
+- Command: `npm run cy:spec "cypress/e2e/AdminE2E/barcode.cy.js"` (and others)
+- Result: SKIPPED (Environment blocked)
+- Cause: Local server not running (port 443 unreachable).
+- Resolution: Rely on CI Cypress shards.
+
+### CI evidence capture (M4 closure)
+
+- Pending PR creation and CI run.
+
+---
+
 ## M4 verification matrix (prep)
 
 Use this matrix to execute M4 integration verification across M1-M3 scope and
