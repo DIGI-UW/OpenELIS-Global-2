@@ -162,6 +162,13 @@ public class OrderLabel extends Label {
         siteField.setDisplayFieldName(true);
         aboveFields.add(siteField);
 
+        if (sample != null && sample.hasGpsCoordinates()) {
+            LabelField gpsField = new LabelField(MessageUtil.getMessage("barcode.label.info.gps"),
+                    sample.getGpsCoordinatesDisplay(), 12);
+            gpsField.setDisplayFieldName(true);
+            aboveFields.add(gpsField);
+        }
+
         // adding bar code
         if (AccessionFormat.ALPHANUM.toString()
                 .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat))) {

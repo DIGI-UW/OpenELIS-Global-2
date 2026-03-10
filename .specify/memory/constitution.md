@@ -1,6 +1,53 @@
 # OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - E2E Testing: Pre-Push Validation + Playwright Support (V.5)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.8.1 → 1.9.0
+Change Type: MINOR - Add Playwright support + clarify pre-push validation workflow
+Date: 2026-01-27
+
+Modified Sections:
+  - Principle V > Section V.5: E2E Testing Best Practices
+    * CHANGED: Title from "Cypress E2E Testing Best Practices" to "E2E Testing Best Practices"
+    * ADDED: Playwright as recommended framework for new tests
+    * ADDED: Framework selection guidance referencing Testing Roadmap
+    * CLARIFIED: "Run tests individually during development" does NOT mean
+      "skip full suite validation before pushing"
+    * NEW: Three-phase workflow: Development → Pre-Push → CI
+    * NEW: Pre-push full suite validation is MANDATORY (not optional)
+    * NEW: Scripts and npm commands for fail-fast execution
+    * NEW: Explicit anti-patterns section
+    * NEW: Env-controlled fail-fast (E2E_FAIL_FAST env var)
+    * REMOVED: Arbitrary time limits ("<30 seconds per test", "<5 minutes for full suite")
+    * REPLACED: With experience-focused criteria ("complete without user-perceived delay", "reasonable time for CI/CD")
+    * UPDATED: Command examples to include both Playwright and Cypress
+
+Rationale for Changes:
+  1. Testing Roadmap already recommends Playwright for new tests but Constitution
+     V.5 mandated Cypress exclusively, creating a compliance conflict. Feature
+     009-carbon-sidenav implemented Playwright tests successfully.
+
+  2. V.5 wording "run tests individually during development, full suite only for
+     CI/CD" was misinterpreted as "only run individual tests, let CI catch
+     everything else." This caused CI failures that could have been caught locally.
+
+  This amendment enables:
+  - Modern async/await test patterns (Playwright)
+  - Better debugging tools (trace viewer, auto-waiting)
+  - Parallel test execution (Playwright native support)
+  - Preservation of existing Cypress investment
+  - Clear three-phase workflow (Development → Pre-Push → CI)
+  - Faster feedback through fail-fast execution
+
+Templates Requiring Updates:
+  ⚠️ .specify/templates/spec-template.md - Update E2E test requirements to reference framework choice
+  ⚠️ .specify/templates/plan-template.md - Update Constitution Check to reflect Playwright allowance
+
+Follow-up TODOs:
+  - Update spec templates to allow Playwright or Cypress choice
+  - Ensure new features document framework selection rationale
+
 SYNC IMPACT REPORT - Cohesion & Branch Naming Clarifications
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.8.0 → 1.8.1
@@ -553,8 +600,18 @@ direct database access from controllers, NO business logic in DAOs.
    - Include `fhir_uuid UUID` for FHIR-mapped entities
    - **MANDATORY**: Use JPA/Hibernate annotations on entity classes (`@Entity`,
      `@Table`, `@Id`, `@Column`, `@ManyToOne`, etc.)
-   - **PROHIBITED**: NO XML mapping files (`.hbm.xml`) - legacy XML mappings
-     exempt until refactored
+   - **PROHIBITED**: NO XML mapping files (`.hbm.xml`) for new domain models.
+
+     **Legacy extension exception (global)**: Legacy XML-mapped entities may be
+     extended or integrated with when required for backward compatibility. This
+     exception is intended to support incremental modernization in a large,
+     mission-critical codebase.
+
+     - New entities SHOULD be annotation-based.
+     - If a change requires introducing or extending XML mappings, the PR MUST
+       document why, list the impacted entities, and include an explicit
+       migration plan to annotation-based mappings.
+
    - Validation annotations on fields (`@NotNull`, `@Size`, etc.)
    - ID generation via `@GenericGenerator` with sequence name
    - `@PrePersist` hook for fhir_uuid generation
@@ -720,34 +777,82 @@ test would have caught both immediately.
 **Exception**: Projects without ORM frameworks (pure JDBC, NoSQL, etc.) may skip
 this requirement.
 
-#### Section V.5: Cypress E2E Testing Best Practices (ADDED 2025-11-05, ENHANCED 2025-11-07)
+#### Section V.5: E2E Testing Best Practices (ADDED 2025-11-05, ENHANCED 2025-11-07, AMENDED 2026-01-27)
 
-**MANDATE**: Cypress E2E tests MUST follow efficiency and maintainability
-principles to ensure fast execution, clear debugging, and accurate user story
-coverage without becoming slow or cumbersome.
+**MANDATE**: E2E tests MUST follow efficiency and maintainability principles to
+ensure fast execution, clear debugging, and accurate user story coverage without
+becoming slow or cumbersome.
 
 **Purpose**: E2E tests validate complete user workflows end-to-end, but they
 must remain fast, debuggable, and focused on user stories/use cases rather than
 implementation details.
 
+**Framework Selection**:
+
+- **Playwright** (RECOMMENDED for new tests): Modern async/await patterns,
+  auto-waiting, better debugging, parallel execution
+- **Cypress** (EXISTING tests): Existing test suite continues to use Cypress;
+  migration is optional
+- **Selection Guidance**: Consult Testing Roadmap
+  (`.specify/guides/testing-roadmap.md`) Section "When to Use Playwright vs
+  Cypress" for framework selection criteria
+
 **Test Execution Workflow**:
 
-- **Individual Execution**: E2E tests MUST be executed individually in small,
-  manageable chunks during development. Full test suite runs are for CI/CD only.
-  - Run individual test files during development
-  - Maximum 5-10 test cases per execution during development
-  - Full suite runs only in CI/CD pipeline or pre-merge validation
-  - **Rationale**: Running tests individually provides faster feedback, easier
-    debugging, and prevents cascading failures from masking root causes.
+1. **During Development (Fast Iteration):**
+
+   - Run tests individually or in small chunks (5-10 tests)
+   - Playwright: `npx playwright test {spec}.spec.ts`
+   - Cypress: `npm run cy:spec "cypress/e2e/{feature}.cy.js"`
+   - Purpose: Fast feedback loop while coding
+   - **Rationale**: Running tests individually provides faster feedback, easier
+     debugging, and prevents cascading failures from masking root causes.
+
+2. **Before Pushing (Pre-Push Validation) - MANDATORY:**
+
+   - MUST validate full suite locally with fail-fast enabled
+   - Cypress: `npm run cy:failfast`
+   - Playwright: `npx playwright test`
+   - Purpose: Catch integration issues BEFORE pushing to CI
+   - **Rationale**: CI is expensive (60+ minutes per failure). Validating
+     locally before pushing saves time, money, and catches issues faster.
+
+3. **In CI/CD (Final Validation):**
+   - Full suite runs automatically via GitHub Actions
+   - Fail-fast enabled (`E2E_FAIL_FAST=true`) stops on first failure
+   - Purpose: Final gate before merge, not first discovery of issues
+
+**CRITICAL - What This Workflow Does NOT Mean:**
+
+- ❌ "Only run individual tests, let CI catch everything else"
+- ❌ "Skip full suite validation before pushing"
+- ❌ "CI is the only place to run full tests"
+
+**What This Workflow DOES Mean:**
+
+- ✅ Fast iteration during active development (individual tests)
+- ✅ Full validation before pushing (fail-fast full suite)
+- ✅ CI as final confirmation, not first discovery of issues
+
+**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
+This wastes 60+ minutes of CI time and delays feedback when issues are found.
 
 **Command Examples**:
 
 ```bash
-# Development (CORRECT - run individual test)
-npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
+# 1. Development (fast iteration)
+# Playwright (recommended for new tests)
+npx playwright test sidenav.spec.ts    # Individual file
 
-# CI/CD only (NOT during development)
-npm run cy:run
+# Cypress (existing tests)
+npm run cy:spec "cypress/e2e/storageAssignment.cy.js"  # Individual file
+
+# 2. Pre-push validation (MANDATORY before pushing)
+npm run cy:failfast                     # Cypress full suite with fail-fast
+npx playwright test                     # Playwright full suite
+
+# 3. Test specific feature area
+npm run cy:failfast:spec "cypress/e2e/AdminE2E/*.cy.js"
 ```
 
 **Configuration Requirements**:
@@ -761,8 +866,7 @@ npm run cy:run
   - Review screenshots after test failures (see Post-Run Review Requirements)
 - **Browser Console Logging**: MUST be enabled for all test executions and
   reviewed after each run
-  - Browser console logging enabled by default (Cypress captures automatically)
-  - Review browser console logs in Cypress UI after each test run
+  - Review browser console logs after each test run
   - Check for JavaScript errors, API failures, and unexpected warnings
   - **Rationale**: Console logs reveal underlying issues (network failures,
     JavaScript errors) that may not be visible in test output alone.
@@ -770,20 +874,21 @@ npm run cy:run
 **Test Organization Requirements**:
 
 - **User Story Focus**: E2E tests MUST map directly to user stories/use cases
-  - One test file per user story (e.g., `storageAssignment.cy.js` for P1)
+  - One test file per user story (e.g., `storageAssignment.cy.js` or
+    `storage.spec.ts`)
   - Test cases validate acceptance criteria, not implementation details
   - Avoid testing what unit tests already cover (e.g., form validation logic)
-- **Test File Structure**: MUST follow naming convention
-  - File: `{feature}.cy.js` (e.g., `storageMovement.cy.js`)
-  - Test cases: `it('should {user action} {expected outcome}', ...)`
-  - Group related tests: `describe('User Story P1: Basic Assignment', ...)`
+- **Test File Structure**: MUST follow framework naming convention
+  - Playwright: `{feature}.spec.ts`
+  - Cypress: `{feature}.cy.js`
+  - Test cases: `test('should {user action} {expected outcome}')` or
+    `it('should {user action} {expected outcome}')`
+  - Group related tests: `test.describe()` or `describe()`
 - **Avoid Test Bloat**: MUST prevent tests from becoming slow/cumbersome
-  - Maximum 20-30 test cases per feature (if more, split into multiple files)
   - Focus on critical paths, not edge cases (edge cases belong in unit tests)
   - Avoid redundant tests (if assignment works via dropdown, don't need separate
     tests for every dropdown interaction)
-  - Use parameterized tests for similar scenarios (e.g.,
-    `[freezer, refrigerator].forEach(...)`)
+  - Use parameterized tests for similar scenarios
 
 **Post-Run Review Requirements**:
 
@@ -791,43 +896,42 @@ npm run cy:run
   developers MUST review console logs and screenshots before marking tests as
   passing or filing bug reports.
 - **Review Checklist**:
-  1. **Console Logs**: Review browser console in Cypress UI for errors, failed
-     API requests, warnings
+  1. **Console Logs**: Review browser console for errors, failed API requests,
+     warnings
   2. **Screenshots**: Review failure screenshots for UI state at failure point
-  3. **Test Output**: Review Cypress command log for execution order and
-     timeouts
+  3. **Test Output**: Review test execution log for failures and timeouts
 - **Documentation**: Document findings in test file comments or PR description
   if issues are discovered.
 
 **Debugging and Maintenance**:
 
-- **Test Isolation**: Use `testIsolation: false` only when necessary (shared
-  state across tests)
-  - Prefer isolated tests that can run independently
-  - If shared state needed, document rationale in test file header
-- **Performance Monitoring**: Track test execution time
-  - Target: Individual test <30 seconds, full suite <5 minutes
-  - If tests exceed targets, refactor to reduce setup/teardown overhead
+- **Test Isolation**: Prefer isolated tests that can run independently
+  - Use setup projects (Playwright) or cy.session() (Cypress) for shared
+    authentication state
+  - If shared state needed beyond authentication, document rationale in test
+    file header
+- **Performance Monitoring**: Track test execution time and optimize as needed
+  - Individual tests should complete without user-perceived delay
+  - Full suite should complete in reasonable time for CI/CD context
+  - If tests become slow, refactor to reduce setup/teardown overhead
 
-**Rationale**: During implementation of feature 001-sample-storage, Cypress E2E
-tests grew to 65+ test cases with video recording enabled, causing slow
-execution (>15 minutes) and disk space issues. By disabling video recording,
-using screenshots for debugging, and optimizing test structure, execution time
-reduced to <5 minutes. Console logging and screenshot review provide sufficient
-debugging information without performance overhead.
+**Rationale**: E2E tests provide critical validation of user workflows but must
+remain maintainable. The Testing Roadmap recommends Playwright for new tests due
+to better developer experience and performance. Existing Cypress tests continue
+to provide value and migration is optional.
 
-**Anti-Patterns to Avoid** (validated against Cypress official documentation):
+**Anti-Patterns to Avoid**:
 
 - ❌ **Video recording enabled by default** - Slows execution, consumes disk
   space
-- ❌ **Arbitrary time delays** - Use Cypress's built-in waiting mechanisms
+- ❌ **Arbitrary time delays** - Use framework's auto-waiting/retry mechanisms
   instead of fixed timeouts
 - ❌ **Missing element readiness checks** - Wait for elements to be
   visible/ready before interaction
 - ❌ **Testing implementation details** - E2E tests should validate user
   workflows, not internal component logic
-- ❌ **Not leveraging Cypress retry-ability** - Use assertions that
-  automatically retry instead of immediate checks
+- ❌ **Not leveraging auto-retry** - Use assertions that automatically retry
+  instead of immediate checks
 - ❌ **Setting up intercepts after actions** - Intercepts must be set up before
   actions that trigger them
 - ❌ **Redundant test cases** - Don't test the same workflow multiple times with
@@ -835,31 +939,31 @@ debugging information without performance overhead.
 - ❌ **Per-test setup/teardown** - Use shared setup hooks for efficiency
 - ❌ **No console log review** - Always review browser console logs after test
   execution
-- ❌ **Not using data-testid selectors** - Use data-testid as primary selector
-  strategy (most stable, survives CSS changes and refactoring)
-- ❌ **Ineffective DOM queries** - Use scoped queries, viewport management,
-  table filtering (see Testing Roadmap for patterns)
+- ❌ **Not using semantic selectors** - Use data-testid or ARIA roles as primary
+  selector strategy (most stable, survives CSS changes and refactoring)
+- ❌ **Ineffective DOM queries** - Use scoped queries, viewport management, wait
+  for elements
 - ❌ **Recreating test data via UI** - Use API-based setup for test data (10x
   faster than UI interactions)
-- ❌ **Starting new sessions unnecessarily** - Use cy.session() with
-  cacheAcrossSpecs to preserve login state (10-20x faster)
+- ❌ **Starting new sessions unnecessarily** - Use setup projects or session
+  caching to preserve login state
 
 **Reference to Testing Roadmap**:
 
-All Cypress testing practices MUST adhere to the standards and procedures
-outlined in the authoritative **OpenELIS Testing Roadmap**
+All E2E testing practices MUST adhere to the standards and procedures outlined
+in the authoritative **OpenELIS Testing Roadmap**
 (`.specify/guides/testing-roadmap.md`).
 
 The Testing Roadmap provides comprehensive technical guidance on:
 
+- Framework selection criteria (Playwright vs Cypress)
 - Selector strategy (data-testid priority, ARIA roles, semantic selectors)
-- Session management (cy.session() patterns with OpenELIS adaptation)
+- Session management patterns (setup projects, cy.session())
 - Test data management (API-first approach, fixture patterns)
-- DOM query effectiveness (scoped queries, viewport, table filtering)
+- DOM query effectiveness (scoped queries, viewport, auto-waiting)
 - Test simplification (happy path focus, user workflow validation)
 - Carbon component patterns (ComboBox, DataTable, Modal, OverflowMenu)
-- cy.intercept() patterns (official Cypress pattern with aliases)
-- Debugging techniques (Chrome DevTools integration)
+- Debugging techniques (browser DevTools integration, trace viewer)
 - Migration strategy (how to migrate existing tests)
 
 **Note**: Technical implementation details (code examples, configuration syntax)
@@ -1026,11 +1130,6 @@ additional slashes) for sub-scoping like milestones.
   Confluence project
 - **GitHub Issues**: `{###}` (e.g., `009`, `123`) - for GitHub-only tracking
 - **Other Trackers**: `{PREFIX}-{###}` - flexible for external integrations
-
-**Note on Branch Naming**: Branch names use **lowercase** versions of Jira
-ticket IDs (e.g., `ogc-49` instead of `OGC-49`) for Git compatibility and
-readability. The Jira format itself remains uppercase (`OGC-{###}`), but branch
-names convert to lowercase.
 
 **SpecKit tooling note**:
 
@@ -1383,10 +1482,11 @@ sync.
 
 ---
 
-**Version**: 1.8.1 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-12-12
+**Version**: 1.9.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-01-27
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team
+  Amendment v1.9.0: Playwright E2E testing support (2026-01-27)
   Amendment v1.8.1: Cohesion & branch naming clarifications (2025-12-12)
   Amendment v1.8.0: Spec-Driven Iteration (Principle IX) - Milestone-based PR workflow (2025-12-04)
   Amendment v1.7.0: Enhanced Cypress E2E testing workflow and review requirements (2025-11-07)

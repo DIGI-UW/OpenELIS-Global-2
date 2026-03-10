@@ -1,0 +1,42 @@
+# ASTM LIS2-A2 Sample: Immunology Screening Panel
+# Purpose: Test qualitative result mapping (User Story 1, FR-005)
+# Reference: specs/004-astm-analyzer-mapping/spec.md FR-005
+#
+# This sample includes qualitative results that need many-to-one mapping:
+# - HIV: Various positive/negative formats
+# - HBsAg: Hepatitis B surface antigen screening
+# - HCV: Hepatitis C antibody screening
+# - Syphilis RPR: Rapid Plasma Reagin test
+#
+# Qualitative values used: REACTIVE, NON-REACTIVE, POS, NEG, NEGATIVE
+
+H|\^&|||Abbott^Architect^i2000|||||||LIS2-A2|20250115100000
+P|1||PAT-2025-003|Williams^Robert^J||M|19900512|ASIAN|789 Pine Rd^^Riverside^ST^11223
+O|1|SAMPLE-2025-0003^LAB|SCREEN^Infectious Disease Screening||20250115095500||||||||||||||||||||
+R|1|^^^HIV^HIV 1/2 Antibody|NON-REACTIVE||Negative|N||F|20250115100100
+R|2|^^^HBSAG^Hepatitis B Surface Antigen|NON-REACTIVE||Negative|N||F|20250115100100
+R|3|^^^HCV^Hepatitis C Antibody|NON-REACTIVE||Negative|N||F|20250115100100
+R|4|^^^SYPHILIS^Syphilis RPR|NON-REACTIVE||Negative|N||F|20250115100100
+R|5|^^^CD4^CD4+ T-Cell Count|850|cells/μL|500-1500|N||F|20250115100100
+R|6|^^^CD8^CD8+ T-Cell Count|450|cells/μL|150-1000|N||F|20250115100100
+R|7|^^^CD4CD8^CD4/CD8 Ratio|1.89||>1.0|N||F|20250115100100
+L|1|N
+
+# Second patient with positive results for mapping validation
+H|\^&|||Abbott^Architect^i2000|||||||LIS2-A2|20250115103000
+P|1||PAT-2025-004|Garcia^Elena^M||F|19880225|HISPANIC|321 Elm St^^Lakeside^ST^44556
+O|1|SAMPLE-2025-0004^LAB|SCREEN^Infectious Disease Screening||20250115102500||||||||||||||||||||
+R|1|^^^HIV^HIV 1/2 Antibody|REACTIVE||Positive|P||F|20250115103100
+R|2|^^^HBSAG^Hepatitis B Surface Antigen|REACTIVE||Positive|P||F|20250115103100
+R|3|^^^HCV^Hepatitis C Antibody|NON-REACTIVE||Negative|N||F|20250115103100
+R|4|^^^SYPHILIS^Syphilis RPR|WEAKLY REACTIVE||Weak Positive|P||F|20250115103100
+R|5|^^^CD4^CD4+ T-Cell Count|320|cells/μL|500-1500|L||F|20250115103100
+L|1|N
+
+
+
+
+
+
+
+
