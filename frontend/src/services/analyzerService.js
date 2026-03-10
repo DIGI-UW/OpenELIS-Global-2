@@ -704,7 +704,7 @@ export const getAnalyzerTypes = (filters, callback) => {
  * @param {Function} callback - Callback function (data) => void
  */
 export const getDefaultConfigs = (callback) => {
-  const endpoint = "/rest/analyzer/defaults";
+  const endpoint = "/rest/analyzer/profiles";
   getFromOpenElisServer(endpoint, callback);
 };
 
@@ -719,6 +719,134 @@ export const getDefaultConfigs = (callback) => {
  * @param {Function} callback - Callback function (data) => void
  */
 export const getDefaultConfig = (protocol, name, callback) => {
-  const endpoint = `/rest/analyzer/defaults/${protocol}/${name}`;
+  const endpoint = `/rest/analyzer/profiles/${protocol}/${name}`;
   getFromOpenElisServer(endpoint, callback);
+};
+
+/**
+ * Get plugin-config JSON payload for an analyzer.
+ * @param {String} analyzerId
+ * @param {Function} callback - Callback function (data) => void
+ */
+export const getPluginConfig = (analyzerId, callback) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/plugin-config`;
+  getFromOpenElisServer(endpoint, callback);
+};
+
+/**
+ * Update plugin-config JSON payload for an analyzer.
+ * @param {String} analyzerId
+ * @param {Object} pluginConfig
+ * @param {Function} callback - Callback function (response, extraParams) => void
+ * @param {*} extraParams
+ */
+export const updatePluginConfig = (
+  analyzerId,
+  pluginConfig,
+  callback,
+  extraParams,
+) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/plugin-config`;
+  const payload = JSON.stringify(pluginConfig);
+  fetch(config.serverBaseUrl + endpoint, {
+    credentials: "include",
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+    },
+    body: payload,
+  })
+    .then(async (response) => {
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        callback(
+          {
+            ...json,
+            status: response.status,
+            statusCode: response.status,
+            statusText: response.statusText,
+            error:
+              json.error || `HTTP ${response.status}: ${response.statusText}`,
+          },
+          extraParams,
+        );
+        return;
+      }
+      callback(json, extraParams);
+    })
+    .catch((error) => {
+      callback(
+        {
+          error: error.message || "Network error",
+          status: 0,
+        },
+        extraParams,
+      );
+    });
+};
+
+/**
+ * Get pending unmapped codes for an analyzer.
+ * @param {String} analyzerId
+ * @param {Function} callback - Callback function (data) => void
+ */
+export const getPendingCodes = (analyzerId, callback) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/pending-codes`;
+  getFromOpenElisServer(endpoint, callback);
+};
+
+/**
+ * Update pending-code status for an analyzer.
+ * @param {String} analyzerId
+ * @param {String} pendingCodeId
+ * @param {String} status - PENDING, MAPPED, IGNORED
+ * @param {Function} callback - Callback function (response, extraParams) => void
+ * @param {*} extraParams
+ */
+export const updatePendingCodeStatus = (
+  analyzerId,
+  pendingCodeId,
+  status,
+  callback,
+  extraParams,
+) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/pending-codes/${pendingCodeId}/status`;
+  const payload = JSON.stringify({ status });
+  fetch(config.serverBaseUrl + endpoint, {
+    credentials: "include",
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+    },
+    body: payload,
+  })
+    .then(async (response) => {
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        callback(
+          {
+            ...json,
+            status: response.status,
+            statusCode: response.status,
+            statusText: response.statusText,
+            error:
+              json.error || `HTTP ${response.status}: ${response.statusText}`,
+          },
+          extraParams,
+        );
+        return;
+      }
+      callback(json, extraParams);
+    })
+    .catch((error) => {
+      callback(
+        {
+          error: error.message || "Network error",
+          status: 0,
+        },
+        extraParams,
+      );
+    });
 };

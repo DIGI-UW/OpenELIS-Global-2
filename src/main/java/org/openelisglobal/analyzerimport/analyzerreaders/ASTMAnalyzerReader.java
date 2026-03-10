@@ -213,9 +213,12 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                     .getBean(MappingApplicationService.class);
             if (mappingApplicationService != null
                     && mappingApplicationService.hasActiveMappings(analyzer.get().getId())) {
+                // MappingAwareAnalyzerLineInserter constructor injects context ID
                 return new MappingAwareAnalyzerLineInserter(originalInserter, analyzer.get());
             }
 
+            // No mappings but analyzer identified — inject context ID for result stamping
+            originalInserter.setContextAnalyzerId(analyzer.get().getId());
             return originalInserter;
 
         } catch (Exception e) {
@@ -278,11 +281,16 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                 }
             }
 
-            // Strategy 3: Plugin fallback not available
-            // Note: AnalyzerImporterPlugin interface doesn't provide getAnalyzerName()
-            // method
-            // Identification relies on Strategies 1 (ASTM header) and 2 (IP address)
-            // If both fail, analyzer cannot be identified from message alone
+            // Strategy 3: Identifier pattern match (GenericASTM/GenericHL7)
+            String identifier = parseIdentifierFromAstmHeader();
+            if (identifier != null && !identifier.trim().isEmpty()) {
+                Optional<Analyzer> analyzerOpt = analyzerService.findByIdentifierPatternMatch(identifier.trim());
+                if (analyzerOpt.isPresent()) {
+                    LogEvent.logDebug(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
+                            "Identified analyzer from identifier pattern: " + identifier);
+                    return analyzerOpt;
+                }
+            }
 
             return Optional.empty();
 
