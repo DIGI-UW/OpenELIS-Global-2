@@ -51,7 +51,13 @@ jobs:
           df -h
 
       - name: Build OpenELIS artifacts for plugin compilation
-        run: mvn clean install -DskipTests -Dmaven.test.skip=true -Dspotless.check.skip=true
+        run: |
+          cd dataexport/dataexport-core
+          mvn clean install -DskipTests -Dmaven.test.skip=true
+          cd ..
+          mvn clean install -DskipTests -Dmaven.test.skip=true
+          cd ..
+          mvn clean install -DskipTests -Dmaven.test.skip=true -Dspotless.check.skip=true
 
       - name: Build plugins
         run: mvn clean install -DskipTests -Dmaven.test.skip=true
