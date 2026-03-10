@@ -9,6 +9,16 @@
 // ***********************************************
 
 /**
+ * Returns basic auth object for cy.visit/cy.request when using HTTP basic auth.
+ * Credentials from Cypress.env('USERNAME') / Cypress.env('PASSWORD').
+ * Usage: cy.visit('/path', { auth: Cypress.getBasicAuth() })
+ */
+Cypress.getBasicAuth = () => ({
+  username: Cypress.env("USERNAME"),
+  password: Cypress.env("PASSWORD"),
+});
+
+/**
  * Login command with session caching for faster tests
  * Uses cy.session() to cache login state across tests
  * Usage: cy.login("admin", "password")
@@ -77,26 +87,18 @@ Cypress.Commands.add("enterText", (selector, value) => {
 
 /**
  * Wait for backend API to be ready before running tests
- * Checks both login endpoint and optionally a specific REST endpoint
+ * Uses cy.task with retry loop for CI reliability - cy.request() fails immediately
+ * on connection errors (ECONNREFUSED) when backend is still starting.
+ * Retries with 2s backoff, max 15 attempts (~30s total).
+ * Per Constitution V.5: Avoid intercept timing issues by using direct requests
  */
 Cypress.Commands.add("waitForBackend", (restEndpoint = null) => {
-  // Wait for login endpoint
-  cy.intercept("/api/OpenELIS-Global/LoginPage").as("backendReady");
-  cy.visit("/");
-  cy.wait("@backendReady", { timeout: 30000 });
+  const checkEndpoint = restEndpoint || "/api/OpenELIS-Global/rest/menu";
 
-  // If a REST endpoint is specified, wait for it too
-  if (restEndpoint) {
-    cy.intercept("GET", restEndpoint).as("restApiReady");
-    cy.request({
-      method: "GET",
-      url: restEndpoint,
-      failOnStatusCode: false, // Don't fail if endpoint returns error, just check it responds
-    }).then((response) => {
-      // API is responding (even if 404/500, it means backend is up)
-      expect(response.status).to.be.a("number");
-    });
-  }
+  cy.task("waitForBackendReady", { path: checkEndpoint }).then((ready) => {
+    expect(ready).to.be.true;
+    cy.log(`Backend ready: ${checkEndpoint} responded`);
+  });
 });
 
 /**

@@ -1,0 +1,137 @@
+# =============================================================================
+# OpenELIS Global 2 - Nginx Configuration Template
+# =============================================================================
+# This template is processed by envsubst at container startup.
+# Variables: ${LETSENCRYPT_DOMAIN}
+#
+# DO NOT edit nginx.conf directly - edit this template instead.
+# =============================================================================
+
+worker_processes 1;
+
+events { worker_connections 1024; }
+
+http {
+    # HTTP server - handles ACME challenges and redirects to HTTPS
+    server {
+        listen 80;
+        server_name ${LETSENCRYPT_DOMAIN};
+
+        # Let's Encrypt ACME challenge endpoint
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+
+        # Redirect all other HTTP traffic to HTTPS
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+
+    # Catch-all HTTP redirect for any other domains
+    server {
+        listen 80 default_server;
+        server_name _;
+        return 301 https://$host$request_uri;
+    }
+
+    # ==========================================================================
+    # HTTPS server for configured domain
+    # Uses Let's Encrypt certs if available, falls back to self-signed
+    # ==========================================================================
+    server {
+        listen 443 ssl;
+        server_name ${LETSENCRYPT_DOMAIN};
+
+        # SSL certificates (self-signed for dev, Let's Encrypt for production)
+        ssl_certificate /etc/nginx/certs/apache-selfsigned.crt;
+        ssl_certificate_key /etc/nginx/keys/apache-selfsigned.key;
+
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers off;
+
+        # Proxy headers
+        proxy_set_header X-Forwarded-For $proxy_protocol_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host $host;
+        absolute_redirect off;
+
+        # Frontend (React app)
+        location / {
+            proxy_pass https://frontend.openelis.org:3000;
+            proxy_redirect off;
+        }
+
+        # Backend API
+        location /api/ {
+            proxy_pass https://oe.openelis.org:8443/api/;
+            proxy_redirect off;
+            proxy_ssl_verify off;
+            proxy_ssl_server_name on;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Host $server_name;
+        }
+
+        # REST API
+        location /rest/ {
+            proxy_pass https://oe.openelis.org:8443/rest/;
+            proxy_redirect off;
+            proxy_ssl_verify off;
+            proxy_ssl_server_name on;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Host $server_name;
+        }
+    }
+
+    # ==========================================================================
+    # Default HTTPS server (catch-all for other domains)
+    # Uses self-signed certificates
+    # ==========================================================================
+    server {
+        listen [::]:443 ssl;
+        listen 443 ssl default_server;
+        server_name _;
+
+        ssl_certificate /etc/nginx/certs/apache-selfsigned.crt;
+        ssl_certificate_key /etc/nginx/keys/apache-selfsigned.key;
+
+        proxy_set_header X-Forwarded-For $proxy_protocol_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host $host;
+        absolute_redirect off;
+
+        # Frontend
+        location / {
+            proxy_pass https://frontend.openelis.org:3000;
+            proxy_redirect off;
+        }
+
+        # Backend API
+        location /api/ {
+            proxy_pass https://oe.openelis.org:8443/api/;
+            proxy_redirect off;
+            proxy_ssl_verify off;
+            proxy_ssl_server_name on;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Host $server_name;
+        }
+
+        # REST API
+        location /rest/ {
+            proxy_pass https://oe.openelis.org:8443/rest/;
+            proxy_redirect off;
+            proxy_ssl_verify off;
+            proxy_ssl_server_name on;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Host $server_name;
+        }
+    }
+}

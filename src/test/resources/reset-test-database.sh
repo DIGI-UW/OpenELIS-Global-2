@@ -32,10 +32,12 @@ fi
 
 # Determine execution method: Docker or direct psql
 USE_DOCKER=false
+DB_CONTAINER=""
 if command -v docker &> /dev/null; then
-    if docker ps | grep -q openelisglobal-database; then
+    DB_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E '^openelisglobal-database$|analyzer-harness.*-db-' | head -1)
+    if [ -n "$DB_CONTAINER" ]; then
         USE_DOCKER=true
-        echo "Using Docker container: openelisglobal-database"
+        echo "Using Docker container: $DB_CONTAINER"
     fi
 fi
 
@@ -122,7 +124,7 @@ SELECT setval('result_seq', CAST((SELECT COALESCE(MAX(id), 30000) + 1 FROM resul
 
 if [ "$USE_DOCKER" = true ]; then
     echo "Resetting test data via Docker..."
-    echo "$RESET_SQL" | docker exec -i openelisglobal-database psql -U clinlims -d clinlims
+    echo "$RESET_SQL" | docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims
 
     if [ $? -eq 0 ]; then
         echo ""

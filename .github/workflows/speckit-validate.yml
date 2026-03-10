@@ -1,7 +1,7 @@
 name: SpecKit Validation
 on:
   pull_request:
-    branches: [develop]
+    # Run on PRs to any branch when SpecKit files change
     paths:
       - '.specify/**'
       - '.cursor/**'

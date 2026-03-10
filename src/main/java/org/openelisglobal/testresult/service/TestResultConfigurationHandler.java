@@ -95,9 +95,11 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         int significantDigitsIndex = findColumnIndex(headers, "significantDigits");
         int flagsIndex = findColumnIndex(headers, "flags");
 
-        List<TestResult> processedResults = new ArrayList<>();
         String line;
         int lineNumber = 1;
+        int skippedRows = 0;
+        int dataRows = 0;
+        int totalResultsCreated = 0;
 
         while ((line = reader.readLine()) != null) {
             lineNumber++;
@@ -106,15 +108,19 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 continue;
             }
 
+            dataRows++;
             try {
                 String[] values = parseCsvLine(line);
-                TestResult testResult = processCsvLine(values, testNameIndex, resultTypeIndex, resultValueIndex,
+                int resultsCreated = processCsvLine(values, testNameIndex, resultTypeIndex, resultValueIndex,
                         dictionaryCategoryIndex, sortOrderIndex, isQuantifiableIndex, isActiveIndex, isNormalIndex,
                         significantDigitsIndex, flagsIndex, lineNumber, fileName);
-                if (testResult != null) {
-                    processedResults.add(testResult);
+                if (resultsCreated > 0) {
+                    totalResultsCreated += resultsCreated;
+                } else {
+                    skippedRows++;
                 }
             } catch (Exception e) {
+                skippedRows++;
                 LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
                         "Error processing line " + lineNumber + " in file " + fileName + ": " + e.getMessage());
             }
@@ -123,8 +129,17 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         // Refresh display lists
         DisplayListService.getInstance().refreshLists();
 
-        LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
-                "Successfully loaded " + processedResults.size() + " test results from " + fileName);
+        // Log summary with clear indication if rows were skipped
+        if (skippedRows > 0) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "processConfiguration",
+                    "Loaded " + totalResultsCreated + " test results from " + fileName + ", but " + skippedRows + " of "
+                            + dataRows + " data rows were SKIPPED. "
+                            + "Check ERROR logs above for details on missing dictionary entries or tests.");
+        } else {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
+                    "Successfully loaded " + totalResultsCreated + " test results from " + fileName + " (" + dataRows
+                            + " data rows processed, 0 skipped)");
+        }
     }
 
     private String[] parseCsvLine(String line) {
@@ -181,7 +196,14 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         return -1;
     }
 
-    private TestResult processCsvLine(String[] values, int testNameIndex, int resultTypeIndex, int resultValueIndex,
+    /**
+     * Process a CSV line and create/update test results. If the test name matches
+     * multiple tests (e.g., "Glucose" matches "Glucose(Serum)", "Glucose(Plasma)"),
+     * the result configuration is applied to all matching tests.
+     *
+     * @return the number of test results created/updated (0 if skipped)
+     */
+    private int processCsvLine(String[] values, int testNameIndex, int resultTypeIndex, int resultValueIndex,
             int dictionaryCategoryIndex, int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex,
             int isNormalIndex, int significantDigitsIndex, int flagsIndex, int lineNumber, String fileName) {
 
@@ -191,13 +213,13 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         if (testName.isEmpty()) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
                     "Skipping row " + lineNumber + " in " + fileName + " with missing testName");
-            return null;
+            return 0;
         }
 
         if (resultType.isEmpty()) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
                     "Skipping row " + lineNumber + " in " + fileName + " with missing resultType");
-            return null;
+            return 0;
         }
 
         // Validate result type
@@ -205,15 +227,16 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         if (!isValidResultType(resultType)) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine", "Invalid resultType '" + resultType
                     + "' in line " + lineNumber + " of " + fileName + ". Valid types: D, N, A, R, T, M, C. Skipping.");
-            return null;
+            return 0;
         }
 
-        // Find test by name
-        Test test = findTestByName(testName);
-        if (test == null) {
+        // Find all tests matching the name (handles augmented names like
+        // "Glucose(Serum)")
+        List<Test> tests = findTestsByName(testName);
+        if (tests.isEmpty()) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
                     "Test '" + testName + "' not found in line " + lineNumber + " of " + fileName + ". Skipping.");
-            return null;
+            return 0;
         }
 
         String resultValue = getValueOrEmpty(values, resultValueIndex);
@@ -223,10 +246,11 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         // entry
         if ("D".equals(resultType) || "M".equals(resultType) || "C".equals(resultType)) {
             if (resultValue.isEmpty()) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
-                        "Dictionary result type requires resultValue in line " + lineNumber + " of " + fileName
-                                + ". Skipping.");
-                return null;
+                LogEvent.logError(this.getClass().getSimpleName(), "processCsvLine",
+                        "CONFIGURATION ERROR: Dictionary result type '" + resultType + "' requires resultValue "
+                                + "for test '" + testName + "' in line " + lineNumber + " of " + fileName
+                                + ". Skipping row.");
+                return 0;
             }
 
             // Find dictionary entry, optionally by category
@@ -235,40 +259,60 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 // Look up by entry name and category
                 dictionary = dictionaryService.getDictionaryEntrysByNameAndCategoryDescription(resultValue,
                         dictionaryCategory);
+                if (dictionary == null) {
+                    LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
+                            "Dictionary entry '" + resultValue + "' not found in category '" + dictionaryCategory
+                                    + "'. Trying fallback lookup by entry name only.");
+                }
             }
             if (dictionary == null) {
                 // Fall back to lookup by entry name only
                 dictionary = dictionaryService.getDictionaryByDictEntry(resultValue);
             }
             if (dictionary == null) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
-                        "Dictionary entry '" + resultValue + "'"
+                LogEvent.logError(this.getClass().getSimpleName(), "processCsvLine",
+                        "CONFIGURATION ERROR: Dictionary entry '" + resultValue + "'"
                                 + (dictionaryCategory.isEmpty() ? "" : " in category '" + dictionaryCategory + "'")
-                                + " not found in line " + lineNumber + " of " + fileName + ". Skipping.");
-                return null;
+                                + " not found for test '" + testName + "' (result type: " + resultType + ") "
+                                + "in line " + lineNumber + " of " + fileName + ". "
+                                + "Ensure the dictionary entry exists in the 'dictionaries' domain configuration "
+                                + "(loaded at order 300) before test-results (loaded at order 310). Skipping row.");
+                return 0;
             }
 
             // For dictionary types, store the dictionary ID as the value
             resultValue = dictionary.getId();
         }
 
-        // Check if test result already exists
-        TestResult existingResult = findExistingTestResult(test.getId(), resultType, resultValue);
+        // Apply the result configuration to all matching tests
+        int resultsCreated = 0;
+        for (Test test : tests) {
+            // Check if test result already exists
+            TestResult existingResult = findExistingTestResult(test.getId(), resultType, resultValue);
 
-        TestResult testResult;
-        if (existingResult != null) {
-            testResult = updateTestResult(existingResult, values, sortOrderIndex, isQuantifiableIndex, isActiveIndex,
-                    isNormalIndex, significantDigitsIndex, flagsIndex);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
-                    "Updated existing test result for test: " + testName);
-        } else {
-            testResult = createTestResult(test, resultType, resultValue, values, sortOrderIndex, isQuantifiableIndex,
-                    isActiveIndex, isNormalIndex, significantDigitsIndex, flagsIndex);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
-                    "Created new test result for test: " + testName);
+            if (existingResult != null) {
+                updateTestResult(existingResult, values, sortOrderIndex, isQuantifiableIndex, isActiveIndex,
+                        isNormalIndex, significantDigitsIndex, flagsIndex);
+                LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
+                        "Updated existing test result for test: " + test.getDescription());
+            } else {
+                createTestResult(test, resultType, resultValue, values, sortOrderIndex, isQuantifiableIndex,
+                        isActiveIndex, isNormalIndex, significantDigitsIndex, flagsIndex);
+                LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
+                        "Created new test result for test: " + test.getDescription());
+            }
+            resultsCreated++;
         }
 
-        return testResult;
+        if (tests.size() > 1) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
+                    "Applied result config for '" + testName + "' to " + tests.size() + " tests");
+        } else {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
+                    "Created/updated test result for test: " + testName);
+        }
+
+        return resultsCreated;
     }
 
     private String getValueOrEmpty(String[] values, int index) {
@@ -284,22 +328,52 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 || "T".equals(resultType) || "M".equals(resultType) || "C".equals(resultType);
     }
 
-    private Test findTestByName(String testName) {
-        // Try to find test by localized name first
+    /**
+     * Find all tests matching the given name. This handles both exact matches and
+     * augmented test names (e.g., "Glucose" matches "Glucose(Serum)",
+     * "Glucose(Plasma)", etc.).
+     *
+     * @param testName the base test name from the CSV
+     * @return list of matching tests (may be empty)
+     */
+    private List<Test> findTestsByName(String testName) {
+        List<Test> matchingTests = new ArrayList<>();
+
+        // First try exact match by localized name
         Test test = testService.getTestByLocalizedName(testName);
         if (test != null) {
-            return test;
+            matchingTests.add(test);
+            return matchingTests;
         }
 
-        // Try by description
+        // Try exact match by description
         test = testService.getTestByDescription(testName);
         if (test != null) {
-            return test;
+            matchingTests.add(test);
+            return matchingTests;
         }
 
-        // Try by name
+        // Try exact match by name
         test = testService.getTestByName(testName);
-        return test;
+        if (test != null) {
+            matchingTests.add(test);
+            return matchingTests;
+        }
+
+        // No exact match found - search for augmented test names like
+        // "TestName(SampleType)"
+        // This handles tests created with sample type suffixes
+        List<Test> allTests = testService.getAllActiveTests(false);
+        String searchPrefix = testName + "(";
+
+        for (Test t : allTests) {
+            String description = t.getDescription();
+            if (description != null && description.startsWith(searchPrefix)) {
+                matchingTests.add(t);
+            }
+        }
+
+        return matchingTests;
     }
 
     private TestResult findExistingTestResult(String testId, String resultType, String resultValue) {

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Serial Port Configuration Test Data -->
+    <!-- Task Reference: T025, M2; T137, M6 -->
+
+    <!-- Mindray BA-88A Biochemistry Analyzer (M6) -->
+    <!-- RS232: 9600 baud, 8 data bits, 1 stop bit, no parity, no flow control -->
+    <serial_port_configuration
+        id="TEST-CONFIG-BA88A" analyzer_id="100" port_name="/dev/ttyUSB0"
+        baud_rate="9600" data_bits="8" stop_bits="ONE" parity="NONE"
+        flow_control="NONE" active="true"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440100" sys_user_id="1"
+        last_updated="2026-02-02 10:00:00" />
+
+    <serial_port_configuration
+        id="TEST-CONFIG-001" analyzer_id="1" port_name="/dev/ttyUSB0"
+        baud_rate="9600" data_bits="8" stop_bits="ONE" parity="NONE"
+        flow_control="NONE" active="true"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440000" sys_user_id="1"
+        last_updated="2026-01-23 10:00:00" />
+
+    <serial_port_configuration
+        id="TEST-CONFIG-002" analyzer_id="2" port_name="/dev/ttyUSB1"
+        baud_rate="19200" data_bits="7" stop_bits="TWO" parity="EVEN"
+        flow_control="RTS_CTS" active="true"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440001" sys_user_id="1"
+        last_updated="2026-01-23 10:00:00" />
+
+    <serial_port_configuration
+        id="TEST-CONFIG-003" analyzer_id="3" port_name="COM3"
+        baud_rate="115200" data_bits="8" stop_bits="ONE" parity="ODD"
+        flow_control="XON_XOFF" active="false"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440002" sys_user_id="1"
+        last_updated="2026-01-23 10:00:00" />
+</dataset>
