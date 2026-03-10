@@ -20,6 +20,11 @@ public class SlideLabel extends Label {
 
     public SlideLabel(Patient patient, Sample sample, PathologySample pathologySample, PathologySlide slide,
             String labNo) {
+        this(patient, sample, pathologySample, slide, labNo, null, null, null);
+    }
+
+    public SlideLabel(Patient patient, Sample sample, PathologySample pathologySample, PathologySlide slide,
+            String labNo, String stainType, String blockId, String caseNumber) {
         // set dimensions (safe parsing for admin-configured DB values)
         width = BarcodeConfigUtil.parseFloatSafe(
                 ConfigurationProperties.getInstance().getPropertyValue(Property.SLIDE_LABEL_BARCODE_WIDTH), 2.0f);
@@ -47,17 +52,18 @@ public class SlideLabel extends Label {
             aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.slideNumber"),
                     String.valueOf(slide.getSlideNumber()), 4));
 
-        // if (useStaintype) {
+        if (useStaintype)
+            aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.stainType"),
+                    StringUtils.defaultString(stainType), 4));
 
-        // }
+        if (useBlockId)
+            aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.blockId"),
+                    StringUtils.defaultString(blockId), 4));
 
-        // if (useBlockId) {
+        if (useCaseNumber)
+            aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.caseNumber"),
+                    StringUtils.defaultString(caseNumber), 4));
 
-        // }
-
-        // if (useCaseNumber) {
-
-        // }
         // adding bar code
         setCode(labNo);
     }

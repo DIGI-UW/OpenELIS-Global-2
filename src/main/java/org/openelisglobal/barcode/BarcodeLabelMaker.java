@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import javax.imageio.ImageIO;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.barcode.labeltype.BlankLabel;
 import org.openelisglobal.barcode.labeltype.BlockLabel;
 import org.openelisglobal.barcode.labeltype.FreezerLabel;
@@ -257,12 +258,13 @@ public class BarcodeLabelMaker {
             // add 2 order label per default
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             OrderLabel orderLabel = new OrderLabel(sampleService.getPatient(sample), sample, labNo);
-            orderLabel.setNumLabels(BarcodeConfigUtil.parseIntSafe(
-                    ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_ORDER_LABEL_PRINTED), 1));
+            int orderQuantity = BarcodeConfigUtil.parseIntSafe(
+                    ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_ORDER_LABEL_PRINTED), 1);
+            orderLabel.setNumLabels(orderQuantity);
             orderLabel.linkBarcodeLabelInfo();
             // get sysUserId from login module
             orderLabel.setSysUserId(sysUserId);
-            if (orderLabel.checkIfPrintable() || "true".equals(override)) {
+            if (shouldQueueLabel(orderLabel, orderQuantity, override)) {
                 labels.add(orderLabel);
             }
 
@@ -272,13 +274,14 @@ public class BarcodeLabelMaker {
             for (SampleItem sampleItem : sampleItemList) {
                 SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
                         labNo);
-                specLabel.setNumLabels(BarcodeConfigUtil.parseIntSafe(
+                int specimenQuantity = BarcodeConfigUtil.parseIntSafe(
                         ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_SPECIMEN_LABEL_PRINTED),
-                        1));
+                        1);
+                specLabel.setNumLabels(specimenQuantity);
                 specLabel.linkBarcodeLabelInfo();
                 // get sysUserId from login module
                 specLabel.setSysUserId(sysUserId);
-                if (specLabel.checkIfPrintable() || "true".equals(override)) {
+                if (shouldQueueLabel(specLabel, specimenQuantity, override)) {
                     labels.add(specLabel);
                 }
             }
@@ -286,11 +289,12 @@ public class BarcodeLabelMaker {
         } else if ("order".equals(type)) {
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             OrderLabel orderLabel = new OrderLabel(sampleService.getPatient(sample), sample, labNo);
-            orderLabel.setNumLabels(BarcodeConfigUtil.parseIntSafe(quantity, 1));
+            int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
+            orderLabel.setNumLabels(requestedQuantity);
             orderLabel.linkBarcodeLabelInfo();
             // get sysUserId from login module
             orderLabel.setSysUserId(sysUserId);
-            if (orderLabel.checkIfPrintable() || "true".equals(override)) {
+            if (shouldQueueLabel(orderLabel, requestedQuantity, override)) {
                 labels.add(orderLabel);
             }
 
@@ -306,11 +310,12 @@ public class BarcodeLabelMaker {
                 if (sampleItem.getSortOrder().equals(specimenNumber)) {
                     SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
                             labNo);
-                    specLabel.setNumLabels(BarcodeConfigUtil.parseIntSafe(quantity, 1));
+                    int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
+                    specLabel.setNumLabels(requestedQuantity);
                     specLabel.linkBarcodeLabelInfo();
                     // get sysUserId from login module
                     specLabel.setSysUserId(sysUserId);
-                    if (specLabel.checkIfPrintable() || "true".equals(override)) {
+                    if (shouldQueueLabel(specLabel, requestedQuantity, override)) {
                         labels.add(specLabel);
                     }
                 }
@@ -323,11 +328,12 @@ public class BarcodeLabelMaker {
             for (SampleItem sampleItem : sampleItemList) {
                 SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
                         labNo);
-                specLabel.setNumLabels(BarcodeConfigUtil.parseIntSafe(quantity, 1));
+                int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
+                specLabel.setNumLabels(requestedQuantity);
                 specLabel.linkBarcodeLabelInfo();
                 // get sysUserId from login module
                 specLabel.setSysUserId(sysUserId);
-                if (specLabel.checkIfPrintable() || "true".equals(override)) {
+                if (shouldQueueLabel(specLabel, requestedQuantity, override)) {
                     labels.add(specLabel);
                 }
             }
@@ -335,15 +341,18 @@ public class BarcodeLabelMaker {
         } else if ("blockOrder".equals(type)) {
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             List<PathologySample> pathologySamples = pathologySampleService.getAllMatching("sample.id", sample.getId());
+            List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
+            String specimenType = resolveSpecimenTypeContext(sampleItems);
             for (PathologySample pathologySample : pathologySamples) {
                 for (PathologyBlock block : pathologySample.getBlocks()) {
                     BlockLabel label = new BlockLabel(sampleService.getPatient(sample), sample, pathologySample, block,
-                            labNo);
-                    label.setNumLabels(BarcodeConfigUtil.parseIntSafe(quantity, 1));
+                            labNo, specimenType);
+                    int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
+                    label.setNumLabels(requestedQuantity);
                     label.linkBarcodeLabelInfo();
                     // get sysUserId from login module
                     label.setSysUserId(sysUserId);
-                    if (label.checkIfPrintable() || "true".equals(override)) {
+                    if (shouldQueueLabel(label, requestedQuantity, override)) {
                         labels.add(label);
                     }
                 }
@@ -353,14 +362,17 @@ public class BarcodeLabelMaker {
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             List<PathologySample> pathologySamples = pathologySampleService.getAllMatching("sample.id", sample.getId());
             for (PathologySample pathologySample : pathologySamples) {
+                String blockId = resolveBlockIdContext(pathologySample);
+                String caseNumber = pathologySample.getId() != null ? String.valueOf(pathologySample.getId()) : "";
                 for (PathologySlide slide : pathologySample.getSlides()) {
                     SlideLabel label = new SlideLabel(sampleService.getPatient(sample), sample, pathologySample, slide,
-                            labNo);
-                    label.setNumLabels(BarcodeConfigUtil.parseIntSafe(quantity, 1));
+                            labNo, "", blockId, caseNumber);
+                    int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
+                    label.setNumLabels(requestedQuantity);
                     label.linkBarcodeLabelInfo();
                     // get sysUserId from login module
                     label.setSysUserId(sysUserId);
-                    if (label.checkIfPrintable() || "true".equals(override)) {
+                    if (shouldQueueLabel(label, requestedQuantity, override)) {
                         labels.add(label);
                     }
                 }
@@ -373,11 +385,13 @@ public class BarcodeLabelMaker {
                     getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
                 String itemCode = labNo + "." + sampleItem.getSortOrder();
-                FreezerLabel label = new FreezerLabel(itemCode);
-                label.setNumLabels(BarcodeConfigUtil.parseIntSafe(quantity, 1));
+                FreezerLabel label = new FreezerLabel(itemCode, resolvePatientIdentifier(sampleService.getPatient(sample)),
+                        "", resolveSpecimenTypeForItem(sampleItem), "", "");
+                int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
+                label.setNumLabels(requestedQuantity);
                 label.linkBarcodeLabelInfo();
                 label.setSysUserId(sysUserId);
-                if (label.checkIfPrintable() || "true".equals(override)) {
+                if (shouldQueueLabel(label, requestedQuantity, override)) {
                     labels.add(label);
                 }
             }
@@ -387,11 +401,56 @@ public class BarcodeLabelMaker {
             blankLabel.linkBarcodeLabelInfo();
             // get sysUserId from login module
             blankLabel.setSysUserId(sysUserId);
-            if (blankLabel.checkIfPrintable() || "true".equals(override)) {
+            if (shouldQueueLabel(blankLabel, blankLabel.getNumLabels(), override)) {
                 labels.add(blankLabel);
             }
         }
 
+    }
+
+    private boolean shouldQueueLabel(Label label, int requestedQuantity, String override) {
+        boolean overrideEnabled = "true".equalsIgnoreCase(override);
+        if (!overrideEnabled && requestedQuantity > label.getMaxNumLabels()) {
+            LogEvent.logError("BarcodeLabelMaker", "generateLabels",
+                    "Requested quantity exceeds configured max for label code " + label.getCode());
+            return false;
+        }
+        return label.checkIfPrintable() || overrideEnabled;
+    }
+
+    private String resolveSpecimenTypeContext(List<SampleItem> sampleItems) {
+        if (sampleItems == null) {
+            return "";
+        }
+        for (SampleItem item : sampleItems) {
+            String specimenType = resolveSpecimenTypeForItem(item);
+            if (StringUtils.isNotBlank(specimenType)) {
+                return specimenType;
+            }
+        }
+        return "";
+    }
+
+    private String resolveSpecimenTypeForItem(SampleItem sampleItem) {
+        if (sampleItem == null || sampleItem.getTypeOfSample() == null) {
+            return "";
+        }
+        return StringUtils.defaultString(sampleItem.getTypeOfSample().getLocalizedName());
+    }
+
+    private String resolveBlockIdContext(PathologySample pathologySample) {
+        if (pathologySample == null || pathologySample.getBlocks() == null || pathologySample.getBlocks().isEmpty()
+                || pathologySample.getBlocks().get(0) == null || pathologySample.getBlocks().get(0).getId() == null) {
+            return "";
+        }
+        return String.valueOf(pathologySample.getBlocks().get(0).getId());
+    }
+
+    private String resolvePatientIdentifier(Patient patient) {
+        if (patient == null || patient.getId() == null) {
+            return "";
+        }
+        return patient.getId();
     }
 
     /**

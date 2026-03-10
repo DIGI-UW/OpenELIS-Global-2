@@ -194,3 +194,43 @@ mvn test -Dtest="BarcodeConfigurationRestControllerTest,BarcodeInformationServic
   - ORM mapping validation for barcode entities
   - Liquibase/schema changeset verification for `base.xml`,
     `028-barcode-info-tables.xml`, and `barcode_expansion.xml`
+
+---
+
+## M3 execution evidence (2026-03-10)
+
+### Branch/workflow
+
+- Active milestone branch:
+  `feat/284-barcode-label-quantity-management-m3-label-resilience`
+- Branch stacked on completed M2 milestone head to preserve verified persistence
+  hardening context.
+
+### Label resilience and max-limit evidence
+
+- Block label resilience:
+  - Removed unscoped FHIR runtime lookup from `BlockLabel`.
+  - Added constructor-level specimen type context input and case number
+    rendering when configured.
+  - `BarcodeLabelMaker` resolves specimen type context once and passes it into
+    block label construction.
+- Slide/freezer optional field behavior:
+  - `SlideLabel` now renders configured optional fields (stain type, block ID,
+    case number) using explicit context values.
+  - `FreezerLabel` now renders configured optional fields (patient ID, storage
+    location, specimen type, collection date, expiry date) from constructor
+    context.
+- FR-013 enforcement:
+  - `BarcodeLabelMaker` blocks over-max quantity requests unless
+    explicit `override=true` is supplied.
+
+### Test execution evidence
+
+- Command:
+  `mvn -Dtest=BlockLabelTest,SlideLabelTest,FreezerLabelTest,BarcodeLabelMakerTest test`
+- Result: PASS (7 tests, 0 failures, 0 errors)
+- Coverage highlights:
+  - Block label specimen/case field behavior without runtime FHIR lookup
+  - Slide optional-field on/off rendering behavior
+  - Freezer optional-field rendering and toggle compliance
+  - Max-limit blocking and explicit override behavior in `BarcodeLabelMaker`

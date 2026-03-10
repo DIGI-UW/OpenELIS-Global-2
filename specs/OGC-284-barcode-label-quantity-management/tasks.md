@@ -132,32 +132,32 @@ inputs persist FR-010 specimen/block/slide/freezer quantities when supplied.
 **Independent Test**: Slide/freezer/block labels honor toggles and remain
 stable; requests above max labels are blocked unless override is enabled.
 
-- [ ] T021 Create milestone branch
+- [x] T021 Create milestone branch
       `feat/284-barcode-label-quantity-management-m3-label-resilience` from
       `develop` and add worktree at
       `/workspace-worktrees/ogc-284-m3-label-resilience`
-- [ ] T022 [P] [US3] Add block label behavior tests in
+- [x] T022 [P] [US3] Add block label behavior tests in
       `src/test/java/org/openelisglobal/barcode/labeltype/BlockLabelTest.java`
-- [ ] T023 [P] [US3] Add slide label optional-field tests in
+- [x] T023 [P] [US3] Add slide label optional-field tests in
       `src/test/java/org/openelisglobal/barcode/labeltype/SlideLabelTest.java`
-- [ ] T024 [P] [US3] Add freezer label optional-field tests in
+- [x] T024 [P] [US3] Add freezer label optional-field tests in
       `src/test/java/org/openelisglobal/barcode/labeltype/FreezerLabelTest.java`
-- [ ] T025 [P] [US3] Add max-limit and explicit `override=true` behavior tests
+- [x] T025 [P] [US3] Add max-limit and explicit `override=true` behavior tests
       in `src/test/java/org/openelisglobal/barcode/BarcodeLabelMakerTest.java`
-- [ ] T026 [US3] Refactor block label specimen-type behavior to remove unscoped
+- [x] T026 [US3] Refactor block label specimen-type behavior to remove unscoped
       runtime lookup in
       `src/main/java/org/openelisglobal/barcode/labeltype/BlockLabel.java`
-- [ ] T027 [US3] Resolve and pass block specimen context at label construction
+- [x] T027 [US3] Resolve and pass block specimen context at label construction
       time in `src/main/java/org/openelisglobal/barcode/BarcodeLabelMaker.java`
-- [ ] T028 [US3] Implement slide optional-field rendering for configured toggles
+- [x] T028 [US3] Implement slide optional-field rendering for configured toggles
       in `src/main/java/org/openelisglobal/barcode/labeltype/SlideLabel.java`
-- [ ] T029 [US3] Implement freezer optional-field rendering for configured
+- [x] T029 [US3] Implement freezer optional-field rendering for configured
       toggles in
       `src/main/java/org/openelisglobal/barcode/labeltype/FreezerLabel.java`
-- [ ] T030 [US3] Enforce FR-013 max-label request behavior (block over-max
+- [x] T030 [US3] Enforce FR-013 max-label request behavior (block over-max
       unless explicit `override=true` is enabled) in
       `src/main/java/org/openelisglobal/barcode/BarcodeLabelMaker.java`
-- [ ] T031 [US3] Run milestone tests and record verification evidence in
+- [x] T031 [US3] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
 - [ ] T032 Create milestone PR for M3 with verification details
 
