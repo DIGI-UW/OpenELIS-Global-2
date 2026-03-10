@@ -8,6 +8,11 @@ import { AnalyzerListPage } from "../fixtures/analyzer-list";
  * open mappings -> open test mapping modal -> preview sample ASTM payload.
  */
 test.describe("Analyzer Simulator", () => {
+  test.skip(
+    process.env.CI === "true" && process.env.ANALYZER_HARNESS !== "true",
+    "Requires analyzer harness with fixture data (not available in CI)",
+  );
+
   test("GeneXpert preview-mapping shows v1.2 simulator payload", async ({
     page,
   }) => {

@@ -42,6 +42,30 @@ export default defineConfig({
     // Main UI tests (excludes analyzer-specific specs)
     {
       name: "chromium",
+      testIgnore: [
+        /.*analyzer-test-connection\.spec\.ts/,
+        /.*analyzer-plugin-config\.spec\.ts/,
+        /.*analyzer-simulator\.spec\.ts/,
+        /.*analyzer-hl7-simulate\.spec\.ts/,
+        /.*fileImportConfig\.spec\.ts/,
+        /.*fileImportQuantStudio\.spec\.ts/,
+      ],
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+    {
+      name: "analyzer",
+      testMatch: [
+        /.*analyzer-test-connection\.spec\.ts/,
+        /.*analyzer-plugin-config\.spec\.ts/,
+        /.*analyzer-simulator\.spec\.ts/,
+        /.*analyzer-hl7-simulate\.spec\.ts/,
+        /.*fileImportConfig\.spec\.ts/,
+        /.*fileImportQuantStudio\.spec\.ts/,
+      ],
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
