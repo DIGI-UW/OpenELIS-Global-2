@@ -1,0 +1,15 @@
+localeCode,displayName,isActive,isFallback,sortOrder
+# ============================================================================
+# SUPPORTED LOCALES CONFIGURATION
+# ============================================================================
+# This file defines the supported languages/locales for the application.
+# - localeCode: BCP 47 language tag (e.g., en, fr, es, en-US, fr-CA)
+# - displayName: Human-readable name shown in UI dropdowns
+# - isActive: Y/N - whether this locale is available for selection
+# - isFallback: Y/N - the default locale used when translation is missing (only one should be Y)
+# - sortOrder: Display order in dropdowns (lower numbers appear first)
+# ============================================================================
+en,English,Y,Y,1
+fr,Français,Y,N,2
+es,Español,Y,N,3
+id,Indonesia,Y,N,4

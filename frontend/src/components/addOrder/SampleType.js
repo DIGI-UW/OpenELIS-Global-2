@@ -506,7 +506,10 @@ const SampleType = (props) => {
           }}
           required
         >
-          <SelectItem text="Select sample type" value="" />
+          <SelectItem
+            text={intl.formatMessage({ id: "sample.select.type" })}
+            value=""
+          />
           {sampleTypes?.map((sampleType, i) => (
             <SelectItem text={sampleType.value} value={sampleType.id} key={i} />
           ))}
