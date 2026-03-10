@@ -194,7 +194,7 @@ review threads can be closed with evidence.
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
 - [x] T039 Resolve remaining review threads after verification evidence is
       posted
-- [ ] T040 Create milestone PR for M4 with consolidated verification summary
+- [x] T040 Create milestone PR for M4 with consolidated verification summary
 
 ---
 
