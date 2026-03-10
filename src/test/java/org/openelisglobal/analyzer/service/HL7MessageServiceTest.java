@@ -58,6 +58,20 @@ public class HL7MessageServiceTest {
         assertTrue("Results count", result.getResults().size() >= 3);
     }
 
+    @Test
+    public void parseOruR01_bs200V231_extractsPatientAndResults() throws IOException {
+        String raw = loadFixture("testdata/hl7/mindray/bs200-chemistry-result.hl7");
+        HL7MessageService.OruR01ParseResult result = service.parseOruR01(raw);
+
+        assertNotNull(result);
+        assertTrue("Patient ID", result.getPatientId().contains("PAT003"));
+        assertEquals("PLACER201", result.getPlacerOrderNumber());
+        assertEquals("FILLER201", result.getFillerOrderNumber());
+        assertTrue("Service ID non-empty", result.getServiceId() != null && !result.getServiceId().isEmpty());
+        assertTrue("Results count", result.getResults().size() >= 3);
+        assertTrue("CREA", result.getResults().stream().anyMatch(r -> "CREA".equals(r.getTestCode())));
+    }
+
     @Test(expected = HL7MessageService.HL7ParseException.class)
     public void parseOruR01_empty_throws() {
         service.parseOruR01("");
