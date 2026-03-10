@@ -676,6 +676,18 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
         persistIdentityType(patientInfo.getHealthRegion(), "HEALTH REGION", patientInfo, patient, sysUserId);
         persistIdentityType(patientInfo.getOtherNationality(), "OTHER NATIONALITY", patientInfo, patient, sysUserId);
         persistIdentityType(patientInfo.getGuid(), "GUID", patientInfo, patient, sysUserId);
+
+        // Persist dynamic address hierarchy values (addressHierarchy_0,
+        // addressHierarchy_1, etc.)
+        if (patientInfo.getAddressHierarchy() != null && !patientInfo.getAddressHierarchy().isEmpty()) {
+            for (Map.Entry<String, String> entry : patientInfo.getAddressHierarchy().entrySet()) {
+                if (entry.getKey() != null && entry.getValue() != null && !entry.getValue().isEmpty()) {
+                    // Convert key like "addressHierarchy_0" to identity type "ADDRESS_HIERARCHY_0"
+                    String identityType = entry.getKey().toUpperCase().replace("ADDRESSHIERARCHY", "ADDRESS_HIERARCHY");
+                    persistIdentityType(entry.getValue(), identityType, patientInfo, patient, sysUserId);
+                }
+            }
+        }
     }
 
     private void persistExtraPatientAddressInfo(PatientManagementInfo patientInfo, Patient patient, String sysUserId) {
@@ -741,6 +753,9 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
     @Override
     public void insertNewPatientAddressInfo(String partId, String value, String type, Patient patient,
             String sysUserId) {
+        if (GenericValidator.isBlankOrNull(value) || GenericValidator.isBlankOrNull(partId)) {
+            return;
+        }
         PersonAddress address;
         address = new PersonAddress();
         address.setPersonId(patient.getPerson().getId());
@@ -753,6 +768,9 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
 
     public void persistIdentityType(String paramValue, String type, PatientManagementInfo patientInfo, Patient patient,
             String sysUserId) throws LIMSRuntimeException {
+        if (patientInfo.getPatientIdentities().isEmpty()) {
+            return;
+        }
 
         Boolean newIdentityNeeded = true;
         String typeID = PatientIdentityTypeMap.getInstance().getIDForType(type);

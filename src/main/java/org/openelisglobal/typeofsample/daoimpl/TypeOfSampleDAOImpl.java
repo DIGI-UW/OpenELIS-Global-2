@@ -414,15 +414,15 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
 
     @Override
     public TypeOfSample getTypeOfSampleByLocalizedName(String typeOfSampleName, Locale locale) {
-        String sql;
-        if (Locale.ENGLISH.equals(locale)) {
-            sql = "from TypeOfSample t where t.localization.english = :testName";
-        } else {
-            sql = "from TypeOfSample t where t.localization.french = :testName";
-        }
+        String localeCode = locale.getLanguage();
+        String sql = "SELECT DISTINCT tos.* FROM clinlims.type_of_sample tos"
+                + " JOIN clinlims.localization l ON tos.name_localization_id = l.id"
+                + " JOIN clinlims.localization_value lv ON l.id = lv.localization_id"
+                + " WHERE lv.value = :sampleName AND lv.locale = :localeCode";
         try {
-            Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
-            query.setParameter("testName", typeOfSampleName);
+            Query<TypeOfSample> query = entityManager.unwrap(Session.class).createNativeQuery(sql, TypeOfSample.class);
+            query.setParameter("sampleName", typeOfSampleName);
+            query.setParameter("localeCode", localeCode);
 
             List<TypeOfSample> list = query.list();
             TypeOfSample t = null;
@@ -436,7 +436,7 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
         } catch (RuntimeException e) {
             // bugzilla 2154
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in Test getTestByName()", e);
+            throw new LIMSRuntimeException("Error in TypeOfSample getTypeOfSampleByLocalizedName()", e);
         }
     }
 }

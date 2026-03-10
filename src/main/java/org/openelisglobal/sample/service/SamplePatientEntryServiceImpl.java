@@ -12,6 +12,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
@@ -202,6 +203,38 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
     private void persistSampleData(SamplePatientUpdateData updateData) {
         String analysisRevision = ConfigurationProperties.getInstance().getPropertyValue("analysis.default.revision");
+
+        if (updateData.getSampleItemsTests() != null && !updateData.getSampleItemsTests().isEmpty()) {
+            SampleTestCollection firstSampleTest = updateData.getSampleItemsTests().getFirst();
+            if (firstSampleTest.gpsLatitude != null && !firstSampleTest.gpsLatitude.trim().isEmpty()) {
+                try {
+                    updateData.getSample().setGpsLatitude(Double.valueOf(firstSampleTest.gpsLatitude));
+                } catch (NumberFormatException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "persistSampleData",
+                            "Invalid GPS latitude value: " + firstSampleTest.gpsLatitude);
+                }
+            }
+            if (firstSampleTest.gpsLongitude != null && !firstSampleTest.gpsLongitude.trim().isEmpty()) {
+                try {
+                    updateData.getSample().setGpsLongitude(Double.valueOf(firstSampleTest.gpsLongitude));
+                } catch (NumberFormatException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "persistSampleData",
+                            "Invalid GPS longitude value: " + firstSampleTest.gpsLongitude);
+                }
+            }
+            if (firstSampleTest.gpsAccuracy != null && !firstSampleTest.gpsAccuracy.trim().isEmpty()) {
+                try {
+                    updateData.getSample().setGpsAccuracyMeters(Integer.valueOf(firstSampleTest.gpsAccuracy));
+                } catch (NumberFormatException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "persistSampleData",
+                            "Invalid GPS accuracy value: " + firstSampleTest.gpsAccuracy);
+                }
+            }
+            if (firstSampleTest.gpsCaptureMethod != null && !firstSampleTest.gpsCaptureMethod.trim().isEmpty()) {
+                updateData.getSample().setGpsCaptureMethod(firstSampleTest.gpsCaptureMethod);
+                updateData.getSample().setGpsCaptureTimestamp(new java.sql.Timestamp(System.currentTimeMillis()));
+            }
+        }
 
         updateData.getSample().setFhirUuid(UUID.randomUUID());
         sampleService.insertDataWithAccessionNumber(updateData.getSample());

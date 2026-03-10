@@ -13,7 +13,7 @@
 
 /* Dashboard indicator panels - better styling */
 .storage-dashboard .cds--tile {
-  min-height: 140px;
+  height: 140px;
   border-left: 4px solid var(--cds-link-primary);
   background: var(--cds-layer-01);
   transition: all 0.2s ease;

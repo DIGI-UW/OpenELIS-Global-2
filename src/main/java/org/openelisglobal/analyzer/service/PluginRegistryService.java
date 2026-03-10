@@ -124,7 +124,8 @@ public class PluginRegistryService {
             }
         }
 
-        // Link legacy analyzers (created by connect()) to their AnalyzerType
+        // Link any Analyzer rows missing analyzer_type_id to their AnalyzerType
+        // (e.g., dashboard-created analyzers or pre-migration data)
         linkLegacyAnalyzersToTypes();
 
         int total = analyzerTypeService.getAll().size();
