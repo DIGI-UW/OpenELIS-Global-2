@@ -141,6 +141,10 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
         Map<String, Object> result = new HashMap<>();
 
         GenericSampleOrderForm.DefaultFields defaultFields = form.getDefaultFields();
+        if (defaultFields == null) {
+            defaultFields = new GenericSampleOrderForm.DefaultFields();
+            form.setDefaultFields(defaultFields);
+        }
 
         // Create and save Sample
         Sample sample = createSample(defaultFields, sysUserId);
@@ -248,8 +252,8 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
                 "Additional fields saved successfully");
 
         // Save barcode label counts for order/specimen (OGC-284)
-        int numOrderLabels = defaultFields.getNumOrderLabels() != null ? defaultFields.getNumOrderLabels() : 1;
-        int numSpecimenLabels = defaultFields.getNumSpecimenLabels() != null ? defaultFields.getNumSpecimenLabels() : 1;
+        int numOrderLabels = resolveLabelQuantity(defaultFields.getNumOrderLabels());
+        int numSpecimenLabels = resolveLabelQuantity(defaultFields.getNumSpecimenLabels());
         barcodeInfoService.saveBarcodeInfoForSampleAndSampleItems(sample, numOrderLabels, numSpecimenLabels);
 
         // Save notebook sample and questionnaire response if notebook is selected
@@ -405,6 +409,10 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
         }
 
         // Note: "collector" is stored in SampleItem
+    }
+
+    private int resolveLabelQuantity(Integer quantity) {
+        return quantity != null && quantity > 0 ? quantity : 1;
     }
 
     private void saveProgramSample(Sample sample, GenericSampleOrderForm form, String sysUserId)

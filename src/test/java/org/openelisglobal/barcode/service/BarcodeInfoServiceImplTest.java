@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -145,5 +146,16 @@ public class BarcodeInfoServiceImplTest {
 
         // Assert: second item inserted
         verify(sampleItemBarcodeInfoService).insert(any(SampleItemBarcodeInfo.class));
+    }
+
+    @Test
+    public void saveBarcodeInfoForSampleAndSampleItemsPathology_handlesNoSampleItems() {
+        when(sampleItemService.getSampleItemsBySampleId(sample.getId())).thenReturn(Collections.emptyList());
+
+        barcodeInfoService.saveBarcodeInfoForSampleAndSampleItemsPathology(sample, 2, 3, 4, 5, 6);
+
+        verify(sampleBarcodeInfoService).insert(any(SampleBarcodeInfo.class));
+        verify(sampleItemBarcodeInfoService, never()).insert(any(SampleItemBarcodeInfo.class));
+        verify(sampleItemBarcodeInfoService, never()).update(any(SampleItemBarcodeInfo.class));
     }
 }

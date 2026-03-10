@@ -1,6 +1,7 @@
 package org.openelisglobal.genericsample.form;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.Min;
 import java.util.HashMap;
 import java.util.Map;
 import org.hl7.fhir.r4.model.Questionnaire;
@@ -29,8 +30,10 @@ public class GenericSampleOrderForm extends BaseForm {
         private String collectionDate;
         private String collectionTime;
         /** Number of order labels to print (OGC-284). */
+        @Min(1)
         private Integer numOrderLabels;
         /** Number of specimen labels to print per sample item (OGC-284). */
+        @Min(1)
         private Integer numSpecimenLabels;
 
         // Getters and setters

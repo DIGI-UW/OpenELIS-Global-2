@@ -157,3 +157,40 @@ git submodule update --init --recursive
 cd dataexport && mvn clean install -DskipTests -Dmaven.test.skip=true && cd ..
 mvn test -Dtest="BarcodeConfigurationRestControllerTest,BarcodeInformationServiceTest"
 ```
+
+---
+
+## M2 execution evidence (2026-03-10)
+
+### Branch/workflow
+
+- Active milestone branch:
+  `feat/284-barcode-label-quantity-management-m2-persistence-upsert`
+- Branch created from current OGC-284 feature head to preserve remediated
+  artifacts.
+
+### FR-010 and persistence hardening evidence
+
+- Pathology supplied-only wiring added:
+  - `PathologySampleForm` includes optional pathology label count inputs.
+  - `PathologySampleServiceImpl` calls
+    `saveBarcodeInfoForSampleAndSampleItemsPathology(...)` only when all
+    pathology counts are supplied.
+- Generic sample order persistence hardening added:
+  - null-safe default fields fallback in `GenericSampleOrderServiceImpl`
+  - quantity fallback helper enforces default `1` for null/non-positive values
+  - `@Min(1)` validation annotations on generic sample label count form fields
+
+### Test execution evidence
+
+- Command:
+  `mvn -Dtest=GenericSampleOrderServiceImplTest,BarcodeInfoServiceImplTest,PathologySampleServiceImplTest,HibernateMappingValidationTest,BarcodeSchemaValidationTest test`
+- Result: PASS (21 tests, 0 failures, 0 errors)
+- Coverage highlights:
+  - Generic sample order default/explicit/null-safe persistence tests
+  - Pathology FR-010 supplied-only workflow wiring tests
+  - Barcode helper upsert/dedup pathology coverage (including no-sample-item
+    behavior)
+  - ORM mapping validation for barcode entities
+  - Liquibase/schema changeset verification for `base.xml`,
+    `028-barcode-info-tables.xml`, and `barcode_expansion.xml`

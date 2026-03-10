@@ -90,13 +90,13 @@ inputs persist FR-010 specimen/block/slide/freezer quantities when supplied.
       `feat/284-barcode-label-quantity-management-m2-persistence-upsert` from
       `develop` and add worktree at
       `/workspace-worktrees/ogc-284-m2-persistence-upsert`
-- [ ] T014 [P] [US2] Extend default-value and upsert/dedup tests, including
+- [x] T014 [P] [US2] Extend default-value and upsert/dedup tests, including
       explicit FR-010 pathology helper coverage, in
       `src/test/java/org/openelisglobal/barcode/service/BarcodeInfoServiceImplTest.java`
-- [ ] T015 [P] [US2] Create service-level generic sample order persistence tests
+- [x] T015 [P] [US2] Create service-level generic sample order persistence tests
       in
       `src/test/java/org/openelisglobal/genericsample/service/GenericSampleOrderServiceImplTest.java`
-- [ ] T016 [US2] Ensure default quantity application and null-safe handling in
+- [x] T016 [US2] Ensure default quantity application and null-safe handling in
       `src/main/java/org/openelisglobal/genericsample/service/GenericSampleOrderServiceImpl.java`
 - [x] T017 [US2] Verify and harden sample and sample-item upsert behavior,
       including explicit FR-010 pathology workflow/service wiring (supplied-only
@@ -105,15 +105,15 @@ inputs persist FR-010 specimen/block/slide/freezer quantities when supplied.
       `src/main/java/org/openelisglobal/program/service/PathologySampleServiceImpl.java`,
       and
       `src/main/java/org/openelisglobal/program/controller/pathology/PathologySampleForm.java`
-- [ ] T018 [US2] Align form contract for label quantity fields (optional + valid
+- [x] T018 [US2] Align form contract for label quantity fields (optional + valid
       values) in
       `src/main/java/org/openelisglobal/genericsample/form/GenericSampleOrderForm.java`
-- [ ] T019 [US2] Run milestone tests and record verification evidence in
+- [x] T019 [US2] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T041 [US2] Add ORM validation test for `SampleBarcodeInfo` and
+- [x] T041 [US2] Add ORM validation test for `SampleBarcodeInfo` and
       `SampleItemBarcodeInfo` mappings in
       `src/test/java/org/openelisglobal/barcode/HibernateMappingValidationTest.java`
-- [ ] T042 [US2] Add Liquibase/schema verification test for existing OGC-284
+- [x] T042 [US2] Add Liquibase/schema verification test for existing OGC-284
       changesets (`base.xml`, `028-barcode-info-tables.xml`,
       `barcode_expansion.xml`) in
       `src/test/java/org/openelisglobal/barcode/BarcodeSchemaValidationTest.java`
