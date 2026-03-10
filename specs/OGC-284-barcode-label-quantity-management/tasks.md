@@ -159,7 +159,7 @@ stable; requests above max labels are blocked unless override is enabled.
       `src/main/java/org/openelisglobal/barcode/BarcodeLabelMaker.java`
 - [x] T031 [US3] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T032 Create milestone PR for M3 with verification details
+- [x] T032 Create milestone PR for M3 with verification details
 
 ---
 
