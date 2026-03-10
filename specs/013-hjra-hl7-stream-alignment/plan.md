@@ -157,7 +157,8 @@ specs/013-hjra-hl7-stream-alignment/
 │   ├── hl7-readiness-gates.md
 │   └── paired-pr-handoff.md
 ├── checklists/
-│   ├── requirements.md
+│   └── requirements.md
+├── launch-checklists/
 │   ├── gate1-ogc325-evidence.md
 │   └── pre-m1-readiness.md
 └── milestone-outlines/

@@ -37,11 +37,11 @@ when:
 ## Handoff Process
 
 1. **Before starting**: Both teams confirm `develop` and submodules are synced;
-   required versions documented in `checklists/pre-m1-readiness.md`
+   required versions documented in `launch-checklists/pre-m1-readiness.md`
 2. **During work**: Keep PRs linked (e.g. cross-reference in PR descriptions);
    avoid declaring one side "done" in isolation
 3. **Readiness gate**: Gate 1 passes only when both PRs are reviewable together
-   and evidence is collected per `checklists/gate1-ogc325-evidence.md`
+   and evidence is collected per `launch-checklists/gate1-ogc325-evidence.md`
 4. **After acceptance**: M2 (`feat/013-ogc-327-bc5380-hl7`) can open; no paired
    PR model required for M2/M3 (single-repo work)
 
