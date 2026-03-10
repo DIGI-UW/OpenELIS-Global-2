@@ -30,7 +30,10 @@ public class HibernateMappingValidationTest {
         config.setProperty("hibernate.hbm2ddl.auto", "none");
 
         SessionFactory sf = config.buildSessionFactory();
-        assertNotNull("Barcode Hibernate mappings should load successfully", sf);
-        sf.close();
+        try {
+            assertNotNull("Barcode Hibernate mappings should load successfully", sf);
+        } finally {
+            sf.close();
+        }
     }
 }

@@ -217,6 +217,10 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
                 || form.getNumSlideLabels() == null || form.getNumFreezerLabels() == null) {
             return;
         }
+        if (form.getNumOrderLabels() < 1 || form.getNumSpecimenLabels() < 1 || form.getNumBlockLabels() < 1
+                || form.getNumSlideLabels() < 1 || form.getNumFreezerLabels() < 1) {
+            return;
+        }
 
         barcodeInfoService.saveBarcodeInfoForSampleAndSampleItemsPathology(pathologySample.getSample(),
                 form.getNumOrderLabels(), form.getNumSpecimenLabels(), form.getNumBlockLabels(),

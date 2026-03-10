@@ -108,7 +108,6 @@ public class BarcodeConfigServiceImpl implements BarcodeConfigService {
     /**
      * Persist a bar code configuration value in the database under site_information
      *
-     * @param errors    For error tracking on inserts
      * @param name      The name in the database
      * @param value     The new value to save
      * @param valueType The type of the value to save

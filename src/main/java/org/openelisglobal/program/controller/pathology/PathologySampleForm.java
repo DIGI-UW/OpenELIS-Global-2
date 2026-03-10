@@ -1,5 +1,6 @@
 package org.openelisglobal.program.controller.pathology;
 
+import jakarta.validation.constraints.Min;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -47,14 +48,19 @@ public class PathologySampleForm {
 
     private List<PathologyReportForm> reports;
 
+    @Min(1)
     private Integer numOrderLabels;
 
+    @Min(1)
     private Integer numSpecimenLabels;
 
+    @Min(1)
     private Integer numBlockLabels;
 
+    @Min(1)
     private Integer numSlideLabels;
 
+    @Min(1)
     private Integer numFreezerLabels;
 
     public PathologyStatus getStatus() {

@@ -45,10 +45,12 @@ public class SampleBarcodeInfo extends BaseObject<Integer> {
         super();
     }
 
+    @Override
     public Integer getId() {
         return id;
     }
 
+    @Override
     public void setId(Integer id) {
         this.id = id;
     }

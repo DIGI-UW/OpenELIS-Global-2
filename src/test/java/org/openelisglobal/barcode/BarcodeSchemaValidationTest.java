@@ -2,6 +2,7 @@ package org.openelisglobal.barcode;
 
 import static org.junit.Assert.assertTrue;
 
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -46,6 +47,8 @@ public class BarcodeSchemaValidationTest {
 
     private String readClassPathFile(String path) throws Exception {
         ClassPathResource resource = new ClassPathResource(path);
-        return StreamUtils.copyToString(resource.getInputStream(), java.nio.charset.StandardCharsets.UTF_8);
+        try (InputStream inputStream = resource.getInputStream()) {
+            return StreamUtils.copyToString(inputStream, java.nio.charset.StandardCharsets.UTF_8);
+        }
     }
 }

@@ -512,7 +512,7 @@ public class BarcodeLabelMaker {
             document.open();
             for (Label label : labels) {
                 for (int i = 0; i < label.getNumLabels(); ++i) {
-                    if (label.checkIfPrintable() || "true".equals(override)) {
+                    if (label.checkIfPrintable() || "true".equalsIgnoreCase(override)) {
                         // a ratio is used with set width so that font size
                         // does not need to be adjusted
                         float ratio = label.getHeight() / label.getWidth();
