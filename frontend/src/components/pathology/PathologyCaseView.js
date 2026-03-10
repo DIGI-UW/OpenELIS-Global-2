@@ -444,6 +444,8 @@ function PathologyCaseView() {
                       technicianId={"assignedTechnician"}
                       technicianName={"assignedTechnician"}
                       technicianValue={pathologySampleInfo.assignedTechnicianId}
+                      specimenReceivedDate={pathologySampleInfo.specimenReceivedDate || ""}
+                      specimenCondition={pathologySampleInfo.specimenCondition || ""}
                       assignedPathologist={"assignedPathologist"}
                       pathologistUsers={pathologistUsers}
                       pathologistValue={pathologySampleInfo.assignedPathologistId}
@@ -469,6 +471,18 @@ function PathologyCaseView() {
                         setPathologySampleInfo({
                           ...pathologySampleInfo,
                           assignedTechnicianId: value,
+                        });
+                      }}
+                      onSpecimenReceivedDateChange={(value) => {
+                        setPathologySampleInfo({
+                          ...pathologySampleInfo,
+                          specimenReceivedDate: value,
+                        });
+                      }}
+                      onSpecimenConditionChange={(value) => {
+                        setPathologySampleInfo({
+                          ...pathologySampleInfo,
+                          specimenCondition: value,
                         });
                       }}
                       onPathologistChange={(value) => {
@@ -935,65 +949,65 @@ function PathologyCaseView() {
                         ))}
                     </Grid>
 
-                            <Column lg={16} md={8} sm={4}>
-                <Grid fullWidth={true} className="gridBoundary">
-                  <Column lg={4} md={4} sm={2}>
-                    <Checkbox
-                      labelText={intl.formatMessage({ id: "pathology.label.refer" })}
-                      id="referToImmunoHistoChemistry"
-                      onChange={() => {
-                        setPathologySampleInfo({
-                          ...pathologySampleInfo,
-                          referToImmunoHistoChemistry:
-                            !pathologySampleInfo.referToImmunoHistoChemistry,
-                        });
-                      }}
-                    />
-                  </Column>
-                  {pathologySampleInfo.referToImmunoHistoChemistry && (
-                    <>
-                      <Column lg={4} md={4} sm={2}>
-                        <FilterableMultiSelect
-                          id="ihctests"
-                          titleText={
-                            <FormattedMessage id="label.button.select.test" />
-                          }
-                          items={immunoHistoChemistryTests}
-                          itemToString={(item) => (item ? item.value : "")}
-                          onChange={(changes) => {
-                            setPathologySampleInfo({
-                              ...pathologySampleInfo,
-                              immunoHistoChemistryTestIds: changes.selectedItems,
-                            });
-                          }}
-                          selectionFeedback="top-after-reopen"
-                        />
-                      </Column>
-                      <Column lg={8} md={4} sm={2}>
-                        {pathologySampleInfo.immunoHistoChemistryTestIds &&
-                          pathologySampleInfo.immunoHistoChemistryTestIds.map(
-                            (test, index) => (
-                              <Tag
-                                key={index}
-                                filter
-                                onClose={() => {
-                                  var info = { ...pathologySampleInfo };
-                                  info["immunoHistoChemistryTestIds"].splice(
-                                    index,
-                                    1,
-                                  );
-                                  setPathologySampleInfo(info);
+                    <Column lg={16} md={8} sm={4}>
+                      <Grid fullWidth={true} className="gridBoundary">
+                        <Column lg={4} md={4} sm={2}>
+                          <Checkbox
+                            labelText={intl.formatMessage({ id: "pathology.label.refer" })}
+                            id="referToImmunoHistoChemistry"
+                            onChange={() => {
+                              setPathologySampleInfo({
+                                ...pathologySampleInfo,
+                                referToImmunoHistoChemistry:
+                                  !pathologySampleInfo.referToImmunoHistoChemistry,
+                              });
+                            }}
+                          />
+                        </Column>
+                        {pathologySampleInfo.referToImmunoHistoChemistry && (
+                          <>
+                            <Column lg={4} md={4} sm={2}>
+                              <FilterableMultiSelect
+                                id="ihctests"
+                                titleText={
+                                  <FormattedMessage id="label.button.select.test" />
+                                }
+                                items={immunoHistoChemistryTests}
+                                itemToString={(item) => (item ? item.value : "")}
+                                onChange={(changes) => {
+                                  setPathologySampleInfo({
+                                    ...pathologySampleInfo,
+                                    immunoHistoChemistryTestIds: changes.selectedItems,
+                                  });
                                 }}
-                              >
-                                {test.value}
-                              </Tag>
-                            ),
-                          )}
-                      </Column>
-                    </>
-                  )}
-                </Grid>
-              </Column>
+                                selectionFeedback="top-after-reopen"
+                              />
+                            </Column>
+                            <Column lg={8} md={4} sm={2}>
+                              {pathologySampleInfo.immunoHistoChemistryTestIds &&
+                                pathologySampleInfo.immunoHistoChemistryTestIds.map(
+                                  (test, index) => (
+                                    <Tag
+                                      key={index}
+                                      filter
+                                      onClose={() => {
+                                        var info = { ...pathologySampleInfo };
+                                        info["immunoHistoChemistryTestIds"].splice(
+                                          index,
+                                          1,
+                                        );
+                                        setPathologySampleInfo(info);
+                                      }}
+                                    >
+                                      {test.value}
+                                    </Tag>
+                                  ),
+                                )}
+                            </Column>
+                          </>
+                        )}
+                      </Grid>
+                    </Column>
                   </Column>
                   {/* <Column lg={16} md={8} sm={4}>
                     <Grid fullWidth={true} className="gridBoundary">
@@ -1030,7 +1044,29 @@ function PathologyCaseView() {
 
               <AccordionItem title="Pathologist Review" id="review">
                 <Grid fullWidth={true} className="gridBoundary">
-
+                  {/* <Column lg={4} md={2} sm={2}>
+                    <Select
+                      id="assignedPathologist"
+                      name="assignedPathologist"
+                      labelText={
+                        <FormattedMessage id="label.button.select.pathologist" />
+                      }
+                      value={pathologySampleInfo.assignedPathologistId}
+                      onChange={(e) => {
+                        setPathologySampleInfo({
+                          ...pathologySampleInfo,
+                          assignedPathologistId: e.target.value,
+                        });
+                      }}
+                    >
+                      <SelectItem />
+                      {pathologistUsers.map((user, index) => {
+                        return (
+                          <SelectItem key={index} text={user.value} value={user.id} />
+                        );
+                      })}
+                    </Select>
+                  </Column> */}
                 </Grid>
               </AccordionItem>
                 
