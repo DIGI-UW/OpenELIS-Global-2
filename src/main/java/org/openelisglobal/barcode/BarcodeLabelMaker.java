@@ -450,7 +450,13 @@ public class BarcodeLabelMaker {
         if (patient == null || patient.getId() == null) {
             return "";
         }
-        return patient.getId();
+        PatientService patientService = SpringContext.getBean(PatientService.class);
+        String patientIdentifier = patientService.getSubjectNumber(patient);
+        if (StringUtils.isNotBlank(patientIdentifier)) {
+            return patientIdentifier;
+        }
+        patientIdentifier = patientService.getNationalId(patient);
+        return StringUtils.defaultString(patientIdentifier);
     }
 
     /**

@@ -1,11 +1,13 @@
 package org.openelisglobal.barcode;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -17,6 +19,8 @@ import org.openelisglobal.barcode.service.BarcodeLabelInfoService;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DefaultConfigurationProperties;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.service.PathologySampleService;
@@ -53,6 +57,9 @@ public class BarcodeLabelMakerTest {
     @Mock
     private BarcodeLabelInfoService barcodeLabelInfoService;
 
+    @Mock
+    private PatientService patientService;
+
     @Before
     public void setUp() {
         ReflectionTestUtils.setField(SpringContext.class, "factory", beanFactory);
@@ -62,6 +69,7 @@ public class BarcodeLabelMakerTest {
         when(beanFactory.getBean(SampleItemService.class)).thenReturn(sampleItemService);
         when(beanFactory.getBean(PathologySampleService.class)).thenReturn(pathologySampleService);
         when(beanFactory.getBean(BarcodeLabelInfoService.class)).thenReturn(barcodeLabelInfoService);
+        when(beanFactory.getBean(PatientService.class)).thenReturn(patientService);
         when(barcodeLabelInfoService.getDataByCode(anyString())).thenReturn(null);
 
         when(configurationProperties.getPropertyValue(any(Property.class))).thenAnswer(invocation -> {
@@ -79,6 +87,18 @@ public class BarcodeLabelMakerTest {
             case BLOCK_LABEL_FIELD_BLOCK_ID:
                 return "true";
             case MAX_BLOCK_LABEL_PRINTED:
+                return "10";
+            case FREEZER_LABEL_BARCODE_WIDTH:
+            case FREEZER_LABEL_BARCODE_HEIGHT:
+                return "2";
+            case FREEZER_LABEL_FIELD_PATIENT_ID:
+                return "true";
+            case FREEZER_LABEL_FIELD_STORAGE_LOCATION:
+            case FREEZER_LABEL_FIELD_SPECIMEN_TYPE:
+            case FREEZER_LABEL_FIELD_COLLECTION_DATE:
+            case FREEZER_LABEL_FIELD_EXPIRY_DATE:
+                return "false";
+            case MAX_FREEZER_LABEL_PRINTED:
                 return "10";
             default:
                 return "";
@@ -107,7 +127,10 @@ public class BarcodeLabelMakerTest {
         sample.setId("S-1");
         sample.setAccessionNumber("ACC-1");
         when(sampleService.getSampleByAccessionNumber("ACC-1")).thenReturn(sample);
-        when(sampleService.getPatient(sample)).thenReturn(null);
+        Patient patient = new Patient();
+        patient.setId("P-123");
+        when(sampleService.getPatient(sample)).thenReturn(patient);
+        when(patientService.getSubjectNumber(patient)).thenReturn("SUB-42");
 
         PathologyBlock block = new PathologyBlock();
         block.setId(10);
@@ -120,7 +143,10 @@ public class BarcodeLabelMakerTest {
                 .thenReturn(java.util.Collections.singletonList(pathologySample));
 
         SampleItem sampleItem = new SampleItem();
+        sampleItem.setSortOrder("1");
         when(sampleItemService.getSampleItemsBySampleId("S-1")).thenReturn(java.util.Collections.singletonList(sampleItem));
+        when(sampleItemService.getSampleItemsBySampleIdAndStatus(anyString(), any()))
+                .thenReturn(java.util.Collections.singletonList(sampleItem));
     }
 
     @After
@@ -146,8 +172,43 @@ public class BarcodeLabelMakerTest {
         assertEquals(1, getQueuedLabels(labelMaker).size());
     }
 
+    @Test
+    public void generateLabels_freezerOrder_usesSubjectNumberForPatientId() {
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
+
+        labelMaker.generateLabels("ACC-1", "freezerOrder", "1", "false");
+
+        Label label = getQueuedLabels(labelMaker).get(0);
+        List<LabelField> fields = collectFields(label.getAboveFields());
+        assertTrue(fields.stream().anyMatch(field -> "SUB-42".equals(field.getValue())));
+    }
+
+    @Test
+    public void generateLabels_freezerOrder_fallsBackToNationalIdWhenSubjectNumberMissing() {
+        Sample sample = sampleService.getSampleByAccessionNumber("ACC-1");
+        Patient patient = sampleService.getPatient(sample);
+        when(patientService.getSubjectNumber(patient)).thenReturn("");
+        when(patientService.getNationalId(patient)).thenReturn("NAT-77");
+
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
+
+        labelMaker.generateLabels("ACC-1", "freezerOrder", "1", "false");
+
+        Label label = getQueuedLabels(labelMaker).get(0);
+        List<LabelField> fields = collectFields(label.getAboveFields());
+        assertTrue(fields.stream().anyMatch(field -> "NAT-77".equals(field.getValue())));
+    }
+
     @SuppressWarnings("unchecked")
     private ArrayList<Label> getQueuedLabels(BarcodeLabelMaker labelMaker) {
         return (ArrayList<Label>) ReflectionTestUtils.getField(labelMaker, "labels");
+    }
+
+    private List<LabelField> collectFields(Iterable<LabelField> fields) {
+        List<LabelField> collectedFields = new ArrayList<>();
+        for (LabelField field : fields) {
+            collectedFields.add(field);
+        }
+        return collectedFields;
     }
 }
