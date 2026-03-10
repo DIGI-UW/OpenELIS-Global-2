@@ -37,8 +37,13 @@ public class BlockLabelTest {
     @Mock
     private MessageSource messageSource;
 
+    private AutowireCapableBeanFactory previousFactory;
+    private Object previousMessageUtilInstance;
+
     @Before
     public void setUp() {
+        previousFactory = (AutowireCapableBeanFactory) ReflectionTestUtils.getField(SpringContext.class, "factory");
+        previousMessageUtilInstance = ReflectionTestUtils.getField(MessageUtil.class, "instance");
         ReflectionTestUtils.setField(SpringContext.class, "factory", beanFactory);
         when(beanFactory.getBean(DefaultConfigurationProperties.class)).thenReturn(configurationProperties);
         when(configurationProperties.getPropertyValue(any(Property.class))).thenAnswer(invocation -> {
@@ -65,7 +70,8 @@ public class BlockLabelTest {
 
     @After
     public void tearDown() {
-        ReflectionTestUtils.setField(SpringContext.class, "factory", null);
+        ReflectionTestUtils.setField(SpringContext.class, "factory", previousFactory);
+        ReflectionTestUtils.setField(MessageUtil.class, "instance", previousMessageUtilInstance);
     }
 
     @Test
