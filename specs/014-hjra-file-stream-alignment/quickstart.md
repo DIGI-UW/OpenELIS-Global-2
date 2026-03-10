@@ -69,6 +69,11 @@ npm run format
 npm test -- --watchAll=false --testPathPattern="FileImport"
 cd ..
 
+# E2E (Playwright) — requires analyzer harness + DATABASE_CONTAINER
+# /restart-analyzer-harness --full-reset --build  # then:
+# TEST_USER=admin TEST_PASS=adminADMIN! DATABASE_CONTAINER=analyzer-harness-db-1 \
+#   npm run pw:test -- playwright/tests/fileImportConfig.spec.ts playwright/tests/fileImportQuantStudio.spec.ts
+
 # Hot reload
 docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
 ```
@@ -112,7 +117,9 @@ cd ../../..
 ```
 
 Place QS5/QS7 .xls files in `src/test/resources/testdata/quantstudio/` before
-running integration tests.
+running integration tests. Playwright E2E uses
+`frontend/playwright/fixtures/quantstudio-qs7.xls` and `file-import-setup.sql`
+(loads E2E-FILE-CSV-Analyzer and E2E-FILE-QuantStudio-Analyzer).
 
 ## M4: Wondfo CSV Profile (OGC-344)
 
@@ -155,6 +162,16 @@ integration tests.
 | `projects/analyzer-profiles/file/wondfo-csv.json`               | Profile (M4) | Wondfo 40-column CSV mapping                               |
 | `frontend/src/components/analyzers/constants.js`                | App          | Protocol defaults (FILE→ASTM removed)                      |
 | `frontend/src/components/analyzers/FileImportConfiguration/`    | App          | Admin config panel                                         |
+
+## Final Verification (M1A+M1B+M3)
+
+- [ ] Backend: `mvn test -pl . -Dtest="*FileImport*,*ExcelAnalyzer*"`
+- [ ] Frontend Jest:
+      `npm test -- --watchAll=false --testPathPattern="FileImport"`
+- [ ] Playwright E2E:
+      `TEST_USER=admin TEST_PASS=adminADMIN! DATABASE_CONTAINER=analyzer-harness-db-1 npm run pw:test -- playwright/tests/fileImportConfig.spec.ts playwright/tests/fileImportQuantStudio.spec.ts`
+- [ ] i18n: `fileImport.format.*` and `file.import.configuration.fileFormat*`
+      present in `en.json` and `fr.json`
 
 ## Common Gotchas
 
