@@ -297,13 +297,14 @@ public class MenuUtil {
     }
 
     /**
-     * Recursively extracts element IDs from the JSON config structure.
-     * Supports wildcard: if "childMenus": ["*"], the parent's elementId is added
-     * to wildcardParentIds so all its actual children are included/excluded.
+     * Recursively extracts element IDs from the JSON config structure. Supports
+     * wildcard: if "childMenus": ["*"], the parent's elementId is added to
+     * wildcardParentIds so all its actual children are included/excluded.
      *
-     * @param nodes              The JSON array of menu items
-     * @param elementIds         The set to populate with element IDs
-     * @param wildcardParentIds  The set to populate with element IDs that have wildcard children
+     * @param nodes             The JSON array of menu items
+     * @param elementIds        The set to populate with element IDs
+     * @param wildcardParentIds The set to populate with element IDs that have
+     *                          wildcard children
      */
     private static void extractElementIds(JsonNode nodes, Set<String> elementIds, Set<String> wildcardParentIds) {
         if (nodes == null || !nodes.isArray()) {
@@ -331,7 +332,8 @@ public class MenuUtil {
     }
 
     /**
-     * Checks if a childMenus JSON array is a wildcard (contains just the string "*").
+     * Checks if a childMenus JSON array is a wildcard (contains just the string
+     * "*").
      */
     private static boolean isWildcard(JsonNode childMenusArray) {
         if (childMenusArray.size() == 1 && childMenusArray.get(0).isTextual()) {
@@ -341,12 +343,13 @@ public class MenuUtil {
     }
 
     /**
-     * Filters menu tree to include only specified menu items and their children.
-     * If a parent's elementId is in wildcardParentIds, all its children are included.
+     * Filters menu tree to include only specified menu items and their children. If
+     * a parent's elementId is in wildcardParentIds, all its children are included.
      *
-     * @param menuTree           The original menu tree
-     * @param includes           The set of element IDs to include
-     * @param wildcardParentIds  The set of element IDs whose children are all included
+     * @param menuTree          The original menu tree
+     * @param includes          The set of element IDs to include
+     * @param wildcardParentIds The set of element IDs whose children are all
+     *                          included
      * @return The filtered menu tree containing only included items
      */
     private static List<MenuItem> filterByIncludes(List<MenuItem> menuTree, Set<String> includes,
@@ -387,12 +390,13 @@ public class MenuUtil {
     }
 
     /**
-     * Filters menu tree to exclude specified menu items and their children.
-     * If a parent's elementId is in wildcardParentIds, all its children are excluded.
+     * Filters menu tree to exclude specified menu items and their children. If a
+     * parent's elementId is in wildcardParentIds, all its children are excluded.
      *
-     * @param menuTree           The original menu tree
-     * @param excludes           The set of element IDs to exclude
-     * @param wildcardParentIds  The set of element IDs whose children are all excluded
+     * @param menuTree          The original menu tree
+     * @param excludes          The set of element IDs to exclude
+     * @param wildcardParentIds The set of element IDs whose children are all
+     *                          excluded
      * @return The filtered menu tree with excluded items removed
      */
     private static List<MenuItem> filterByExcludes(List<MenuItem> menuTree, Set<String> excludes,
