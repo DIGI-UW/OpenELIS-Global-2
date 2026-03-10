@@ -284,7 +284,8 @@ mvn test -Dtest="BarcodeConfigurationRestControllerTest,BarcodeInformationServic
 
 ### CI evidence capture (M4 closure)
 
-- Pending PR creation and CI run.
+- PR `#3042` created.
+- Pending CI run.
 
 ---
 
