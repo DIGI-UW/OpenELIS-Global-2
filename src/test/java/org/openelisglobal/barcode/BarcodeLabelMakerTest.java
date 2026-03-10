@@ -21,9 +21,9 @@ import org.openelisglobal.common.util.DefaultConfigurationProperties;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
-import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -144,7 +144,8 @@ public class BarcodeLabelMakerTest {
 
         SampleItem sampleItem = new SampleItem();
         sampleItem.setSortOrder("1");
-        when(sampleItemService.getSampleItemsBySampleId("S-1")).thenReturn(java.util.Collections.singletonList(sampleItem));
+        when(sampleItemService.getSampleItemsBySampleId("S-1"))
+                .thenReturn(java.util.Collections.singletonList(sampleItem));
         when(sampleItemService.getSampleItemsBySampleIdAndStatus(anyString(), any()))
                 .thenReturn(java.util.Collections.singletonList(sampleItem));
     }

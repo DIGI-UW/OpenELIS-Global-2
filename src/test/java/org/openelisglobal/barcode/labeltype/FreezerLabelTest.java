@@ -39,7 +39,8 @@ public class FreezerLabelTest {
     public void setUp() {
         ReflectionTestUtils.setField(SpringContext.class, "factory", beanFactory);
         when(beanFactory.getBean(DefaultConfigurationProperties.class)).thenReturn(configurationProperties);
-        when(messageSource.getMessage(anyString(), any(), anyString(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messageSource.getMessage(anyString(), any(), anyString(), any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         MessageUtil.setMessageSource(messageSource);
     }
 

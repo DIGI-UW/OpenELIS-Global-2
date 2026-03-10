@@ -175,9 +175,9 @@ stable; requests above max labels are blocked unless override is enabled.
 **Independent Test**: Combined milestone changes pass targeted QA checks and all
 review threads can be closed with evidence.
 
-- [ ] T033 Create milestone branch
+- [x] T033 Create milestone branch
       `feat/284-barcode-label-quantity-management-m4-integration-ci-review` from
-      `develop` and add worktree at
+      the current stacked M3 head and add worktree at
       `/workspace-worktrees/ogc-284-m4-integration-ci-review`
 - [ ] T034 [P] Run combined backend verification suites for M1-M3 changes and
       record outputs in
@@ -185,8 +185,9 @@ review threads can be closed with evidence.
 - [ ] T035 [P] Run frontend unit tests and impacted Cypress spec(s)
       individually, then record console/screenshot review notes in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T036 Merge M2 and M3 into M4 and resolve integration conflicts in touched
-      barcode/generic sample files
+- [ ] T036 Verify stacked M4 ancestry includes M2/M3, then rebase/merge only new
+      divergence and resolve integration conflicts in touched barcode/generic
+      sample files
 - [ ] T037 Address open review feedback with explicit file/line references in
       milestone PR discussion
 - [ ] T038 Re-run failed PR workflow(s) and record run IDs + final status in

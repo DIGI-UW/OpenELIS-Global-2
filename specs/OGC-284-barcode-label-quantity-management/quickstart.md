@@ -14,14 +14,14 @@ delivered on branch).
 ## 1) Prepare environment
 
 ```bash
-# Sync develop first
+# Sync develop first (for M1 foundation branch)
 git fetch origin develop
 
 # Create milestone branches per Constitution Principle IX (if not already present)
 git checkout -b feat/284-barcode-label-quantity-management-m1-config-i18n-hardening origin/develop
 git checkout -b feat/284-barcode-label-quantity-management-m2-persistence-upsert origin/develop
-git checkout -b feat/284-barcode-label-quantity-management-m3-label-resilience origin/develop
-git checkout -b feat/284-barcode-label-quantity-management-m4-integration-ci-review origin/develop
+git checkout -b feat/284-barcode-label-quantity-management-m3-label-resilience feat/284-barcode-label-quantity-management-m2-persistence-upsert
+git checkout -b feat/284-barcode-label-quantity-management-m4-integration-ci-review feat/284-barcode-label-quantity-management-m3-label-resilience
 
 # Recommended: one worktree per milestone branch (paths are examples)
 git worktree add "/workspace-worktrees/ogc-284-m1-config-i18n" "feat/284-barcode-label-quantity-management-m1-config-i18n-hardening"
@@ -30,7 +30,9 @@ git worktree add "/workspace-worktrees/ogc-284-m3-label-resilience" "feat/284-ba
 git worktree add "/workspace-worktrees/ogc-284-m4-integration-ci-review" "feat/284-barcode-label-quantity-management-m4-integration-ci-review"
 ```
 
-Use local worktree paths that match your environment.
+Use local worktree paths that match your environment. If milestone branches are
+already stacked and published, reuse the existing branches instead of recreating
+from `origin/develop`.
 
 ---
 
@@ -221,8 +223,8 @@ mvn test -Dtest="BarcodeConfigurationRestControllerTest,BarcodeInformationServic
     location, specimen type, collection date, expiry date) from constructor
     context.
 - FR-013 enforcement:
-  - `BarcodeLabelMaker` blocks over-max quantity requests unless
-    explicit `override=true` is supplied.
+  - `BarcodeLabelMaker` blocks over-max quantity requests unless explicit
+    `override=true` is supplied.
 
 ### Test execution evidence
 
@@ -234,3 +236,89 @@ mvn test -Dtest="BarcodeConfigurationRestControllerTest,BarcodeInformationServic
   - Slide optional-field on/off rendering behavior
   - Freezer optional-field rendering and toggle compliance
   - Max-limit blocking and explicit override behavior in `BarcodeLabelMaker`
+
+---
+
+## M4 verification matrix (prep)
+
+Use this matrix to execute M4 integration verification across M1-M3 scope and
+capture evidence in one place.
+
+### Backend combined verification (M1-M3)
+
+Run:
+
+```bash
+mvn -Dtest=BarcodeConfigurationRestControllerTest,BarcodeInformationServiceTest,GenericSampleOrderServiceImplTest,BarcodeInfoServiceImplTest,PathologySampleServiceImplTest,HibernateMappingValidationTest,BarcodeSchemaValidationTest,BlockLabelTest,SlideLabelTest,FreezerLabelTest,BarcodeLabelMakerTest test
+```
+
+Record:
+
+- command and timestamp
+- overall result (tests run, failures, errors)
+- failing class names (if any)
+- follow-up rerun command IDs/status
+
+### Frontend verification (impacted M1 surfaces)
+
+Run:
+
+```bash
+cd frontend
+CI=true npm test -- BarcodeConfiguration.test.js --watchAll=false
+cd ..
+```
+
+Record:
+
+- command and timestamp
+- suite/test counts
+- any warning/error output requiring follow-up
+
+### Cypress verification (impacted workflows)
+
+Run individually during M4 work:
+
+```bash
+cd frontend
+npm run cy:spec "cypress/e2e/AdminE2E/barcode.cy.js"
+npm run cy:spec "cypress/e2e/storageAssignment.cy.js"
+npm run cy:spec "cypress/e2e/storageBoxCRUD.cy.js"
+cd ..
+```
+
+If a listed spec is unavailable in your branch, run the closest affected admin
+barcode/storage spec and note the substitution in evidence.
+
+Record:
+
+- command and timestamp per spec
+- pass/fail per spec
+- console review notes
+- screenshot paths for failures
+
+### CI evidence capture (M4 closure)
+
+For each rerun tied to M4 closure, record:
+
+- GitHub run ID
+- workflow/job name
+- final status
+- link to run
+
+Minimum CI closure target:
+
+- backend `checkFormat-build-unitTest-and-run` green
+- frontend `static-checks` green
+- frontend `build-prod-frontend-image` green
+- impacted Cypress shards/specs green or waived with rationale
+
+### M4 gate decision log
+
+- PR `#3039` run `22923992486` (frontend workflow): all required jobs green,
+  including Cypress shards.
+- PR `#3039` run `22923992487` (backend workflow): failed on
+  `checkFormat-build-unitTest-and-run` due Spotless markdown formatting.
+- Decision: proceed with M4 preparation work on the stacked M4 branch, then push
+  the formatting/artifact-alignment remediation and use the next backend CI run
+  as the implementation gate before executing full M4 verification.
