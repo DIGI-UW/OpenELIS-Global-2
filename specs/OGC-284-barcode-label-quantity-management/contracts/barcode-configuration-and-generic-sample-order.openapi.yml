@@ -6,6 +6,10 @@ info:
     Contract documentation for existing endpoints impacted by OGC-284
     remediation. No new endpoints are introduced; this contract clarifies payload
     and response expectations used by barcode quantity management.
+    Scope is intentionally limited to Barcode Configuration and Generic Sample
+    Order endpoints. Print-operation over-max handling (`FR-013`) and explicit
+    `override=true` behavior are implemented in the print flow and are documented
+    outside this endpoint contract.
 
 paths:
   /rest/BarcodeConfiguration:
@@ -56,6 +60,10 @@ components:
   schemas:
     BarcodeConfigurationForm:
       type: object
+      description: >
+        Administrative labels-domain configuration. For malformed/missing persisted
+        numeric values, runtime fallback behavior uses canonical quantity defaults:
+        default-label fallback = 1, max-label fallback = 10.
       properties:
         formName:
           type: string
@@ -209,6 +217,11 @@ components:
 
     GenericSampleDefaultFields:
       type: object
+      description: >
+        Generic sample order default fields for this endpoint. If omitted,
+        `numOrderLabels` and `numSpecimenLabels` default to 1. Pathology-specific
+        quantity persistence (FR-010) is handled by backend pathology flows and
+        is not represented as separate quantity fields in this request schema.
       properties:
         labNo:
           type: string
@@ -230,10 +243,12 @@ components:
           type: integer
           description: Optional; defaults to 1 when omitted
           minimum: 1
+          default: 1
         numSpecimenLabels:
           type: integer
           description: Optional; defaults to 1 when omitted
           minimum: 1
+          default: 1
 
     GenericSampleOrderResponse:
       type: object

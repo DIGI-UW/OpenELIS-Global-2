@@ -13,6 +13,8 @@ milestone (Principle V).
 
 - **[P]**: Parallelizable task (separate files, no unresolved dependency)
 - **[Story]**: Story traceability label (`[US1]`, `[US2]`, `[US3]`)
+- Suggested worktree paths are examples; use local paths appropriate to your
+  environment.
 
 ---
 
@@ -71,7 +73,7 @@ fallback safely; localized labels render correctly.
 
 ---
 
-## Milestone [P] M2: Persistence + upsert reliability
+## Milestone [P] M2: Persistence verification + upsert reliability
 
 **Branch Suffix**: `m2-persistence-upsert`  
 **Suggested Branch**:
@@ -79,8 +81,9 @@ fallback safely; localized labels render correctly.
 **Suggested Worktree**: `/workspace-worktrees/ogc-284-m2-persistence-upsert`  
 **Stories**: US2  
 **Depends On**: M1  
-**Independent Test**: Generic sample order stores default/explicit quantities
-and updates existing barcode metadata without duplication.
+**Independent Test**: Generic sample order stores default/explicit quantities,
+updates existing barcode metadata without duplication, and persists sample-item
+metadata whenever sample items are created.
 
 - [ ] T013 Create milestone branch
       `feat/284-barcode-label-quantity-management-m2-persistence-upsert` from
@@ -93,13 +96,20 @@ and updates existing barcode metadata without duplication.
       `src/test/java/org/openelisglobal/genericsample/service/GenericSampleOrderServiceImplTest.java`
 - [ ] T016 [US2] Ensure default quantity application and null-safe handling in
       `src/main/java/org/openelisglobal/genericsample/service/GenericSampleOrderServiceImpl.java`
-- [ ] T017 [US2] Harden sample and sample-item upsert behavior in
+- [ ] T017 [US2] Verify and harden sample and sample-item upsert behavior in
       `src/main/java/org/openelisglobal/barcode/service/BarcodeInfoServiceImpl.java`
 - [ ] T018 [US2] Align form contract for label quantity fields (optional + valid
       values) in
       `src/main/java/org/openelisglobal/genericsample/form/GenericSampleOrderForm.java`
 - [ ] T019 [US2] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
+- [ ] T041 [US2] Add ORM validation test for `SampleBarcodeInfo` and
+      `SampleItemBarcodeInfo` mappings in
+      `src/test/java/org/openelisglobal/barcode/HibernateMappingValidationTest.java`
+- [ ] T042 [US2] Add Liquibase/schema verification test for existing OGC-284
+      changesets (`base.xml`, `028-barcode-info-tables.xml`,
+      `barcode_expansion.xml`) in
+      `src/test/java/org/openelisglobal/barcode/BarcodeSchemaValidationTest.java`
 - [ ] T020 Create milestone PR for M2 with verification details
 
 ---
@@ -125,8 +135,8 @@ stable; requests above max labels are blocked unless override is enabled.
       `src/test/java/org/openelisglobal/barcode/labeltype/SlideLabelTest.java`
 - [ ] T024 [P] [US3] Add freezer label optional-field tests in
       `src/test/java/org/openelisglobal/barcode/labeltype/FreezerLabelTest.java`
-- [ ] T025 [P] [US3] Add max-limit and override-path tests in
-      `src/test/java/org/openelisglobal/barcode/BarcodeLabelMakerTest.java`
+- [ ] T025 [P] [US3] Add max-limit and explicit `override=true` behavior tests
+      in `src/test/java/org/openelisglobal/barcode/BarcodeLabelMakerTest.java`
 - [ ] T026 [US3] Refactor block label specimen-type behavior to remove unscoped
       runtime lookup in
       `src/main/java/org/openelisglobal/barcode/labeltype/BlockLabel.java`
@@ -138,7 +148,7 @@ stable; requests above max labels are blocked unless override is enabled.
       toggles in
       `src/main/java/org/openelisglobal/barcode/labeltype/FreezerLabel.java`
 - [ ] T030 [US3] Enforce FR-013 max-label request behavior (block over-max
-      unless override enabled) in
+      unless explicit `override=true` is enabled) in
       `src/main/java/org/openelisglobal/barcode/BarcodeLabelMaker.java`
 - [ ] T031 [US3] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`

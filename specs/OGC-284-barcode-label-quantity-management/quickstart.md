@@ -3,10 +3,11 @@
 ## Goal
 
 Execute the remediation plan for OGC-284 based on current implementation
-assessment and open PR feedback.
+assessment, artifact alignment needs, and open PR feedback.
 
 This quickstart is for developers closing remaining review and merge-readiness
-gaps on top of existing OGC-284 work.
+gaps on top of existing OGC-284 work (schema and baseline persistence already
+delivered on branch).
 
 ---
 
@@ -16,18 +17,20 @@ gaps on top of existing OGC-284 work.
 # Sync develop first
 git fetch origin develop
 
-# Create milestone branches per Constitution Principle IX
+# Create milestone branches per Constitution Principle IX (if not already present)
 git checkout -b feat/284-barcode-label-quantity-management-m1-config-i18n-hardening origin/develop
 git checkout -b feat/284-barcode-label-quantity-management-m2-persistence-upsert origin/develop
 git checkout -b feat/284-barcode-label-quantity-management-m3-label-resilience origin/develop
 git checkout -b feat/284-barcode-label-quantity-management-m4-integration-ci-review origin/develop
 
-# Recommended: one worktree per milestone branch
+# Recommended: one worktree per milestone branch (paths are examples)
 git worktree add "/workspace-worktrees/ogc-284-m1-config-i18n" "feat/284-barcode-label-quantity-management-m1-config-i18n-hardening"
 git worktree add "/workspace-worktrees/ogc-284-m2-persistence-upsert" "feat/284-barcode-label-quantity-management-m2-persistence-upsert"
 git worktree add "/workspace-worktrees/ogc-284-m3-label-resilience" "feat/284-barcode-label-quantity-management-m3-label-resilience"
 git worktree add "/workspace-worktrees/ogc-284-m4-integration-ci-review" "feat/284-barcode-label-quantity-management-m4-integration-ci-review"
 ```
+
+Use local worktree paths that match your environment.
 
 ---
 
@@ -59,6 +62,8 @@ git worktree add "/workspace-worktrees/ogc-284-m4-integration-ci-review" "feat/2
 1. Extend/adjust unit tests for pathology and label-rendering logic.
 2. Run existing barcode config/persistence tests.
 3. Re-run frontend QA tests impacted by changed label/config behavior.
+4. Add ORM mapping validation for barcode entities and schema verification for
+   existing OGC-284 Liquibase changesets.
 
 ---
 
@@ -69,6 +74,8 @@ git worktree add "/workspace-worktrees/ogc-284-m4-integration-ci-review" "feat/2
 - [ ] Backend message bundles include all new keys
 - [ ] Barcode configuration GET/POST behavior remains stable
 - [ ] Generic sample order label count persistence remains stable
+- [ ] ORM validation test passes for barcode entities
+- [ ] Liquibase/schema verification passes for OGC-284 changesets
 - [ ] PR review threads can be closed with direct evidence
 
 ---

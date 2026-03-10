@@ -143,20 +143,25 @@ The remediation scope includes:
 
 ## Open Questions Resolved
 
-- **Do we need new external APIs?** No new endpoints; existing endpoints are
-  sufficient, but contracts are documented with updated payload expectations.
-- **Do we need new schema migration?** Not for planned remediation; existing
-  OGC-284 schema additions remain valid.
-- **Is effort >3 days requiring multiple milestones?** Expected effort is within
-  a single remediation milestone.
+- **Do we need new external APIs?** No new endpoint implementation is required
+  for this remediation pass. Existing endpoint contracts still need scope and
+  behavior clarity updates.
+- **Do we need new schema migration?** No; existing OGC-284 schema additions
+  remain valid. Work focuses on Liquibase/schema verification coverage.
+- **Is effort >3 days requiring multiple milestones?** Yes for the current
+  artifact+hardening scope; use milestone-based execution (M1-M4) for reviewable
+  delivery and CI isolation.
 
 ---
 
 ## Research Outcome
 
-All assessment-driven technical unknowns are resolved. Design can proceed with:
+Assessment findings indicate baseline OGC-284 implementation is already present,
+and remaining work is remediation and alignment:
 
-1. service-layer pathology context assembly,
-2. label field behavior alignment with configuration,
-3. backend i18n completion,
-4. CI/review closure workflow.
+1. artifact truthfulness across spec/plan/tasks/contract/supporting docs,
+2. constitution-required verification coverage (ORM + Liquibase/schema checks),
+3. explicit fallback/default and override behavior documentation,
+4. targeted behavior hardening where implementation and strict FR targets
+   diverge,
+5. CI/review closure workflow.

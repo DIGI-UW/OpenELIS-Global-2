@@ -1,8 +1,8 @@
 # Feature Specification: Barcode Label Quantity Management
 
-**Feature Branch**: `OGC-284-barcode-label-quantity-management`  
+**Feature Branch**: `feat/ogc-284-expand-barcode`  
 **Created**: 2026-02-14  
-**Status**: Draft  
+**Status**: In Progress (remediation + artifact alignment)  
 **Input**: User description: "This is a PR for
 https://uwdigi.atlassian.net/browse/OGC-284. We need to generate specs properly
 for this feature, using the issue number as the feature id."  
@@ -44,8 +44,8 @@ are returned.
    user updates maximum label counts and saves, **Then** the system persists the
    values and returns them unchanged on the next load.
 3. **Given** a configuration value is missing or malformed in persisted config,
-   **When** the page is loaded, **Then** the page still loads and safe fallback
-   values are applied.
+   **When** the page is loaded, **Then** the page still loads and canonical
+   fallback values are applied (default label count `1`, max label count `10`).
 
 ---
 
@@ -69,7 +69,7 @@ sample-item-level barcode quantity records are created or updated.
    quantity for the sample and the specimen quantity for each sample item.
 2. **Given** a generic sample order request omits one or both label quantities,
    **When** the order is saved, **Then** the system stores default quantity
-   values.
+   values of `1` for order and specimen labels.
 3. **Given** barcode quantity metadata already exists for a sample or sample
    item, **When** a new save occurs for that same record, **Then** the existing
    metadata is updated rather than duplicated.
@@ -97,8 +97,9 @@ occur.
    label generation workflow runs, **Then** safe defaults are applied and
    processing continues.
 3. **Given** maximum label quantity has been reached for a label category,
-   **When** additional labels are requested, **Then** the user is prevented from
-   exceeding the configured limit unless an explicit override path is used.
+   **When** additional labels are requested, **Then** the request is blocked
+   unless an explicit print-operation override flag (`override=true`) is
+   provided.
 
 ---
 
@@ -124,7 +125,8 @@ occur.
 - **FR-003**: System MUST persist barcode configuration updates and return the
   persisted values via the barcode configuration retrieval endpoint.
 - **FR-004**: System MUST tolerate missing or malformed numeric configuration
-  values by applying safe fallback defaults rather than failing requests.
+  values by applying canonical fallback defaults rather than failing requests
+  (default quantity fallback `1`, max quantity fallback `10`).
 - **FR-005**: Generic sample order payloads MUST support order/specimen label
   quantity fields.
 - **FR-006**: If generic sample order label quantity fields are not provided,
@@ -136,16 +138,16 @@ occur.
 - **FR-009**: For existing barcode metadata records tied to the same sample or
   sample item, the system MUST update existing records instead of creating
   duplicates.
-- **FR-010**: Pathology-specific barcode metadata persistence MUST support
+- **FR-010**: Backend pathology barcode metadata persistence MUST support
   storing specimen, block, slide, and freezer quantities per sample item when
-  provided by workflow.
+  those values are supplied by pathology workflow/service inputs.
 - **FR-011**: Label generation workflows MUST continue to function when optional
   barcode fields are disabled or unset.
 - **FR-012**: User-facing labels and descriptions for newly exposed barcode
   quantity settings MUST be localized.
 - **FR-013**: When a requested label quantity exceeds the configured maximum for
   a label type, the system MUST prevent printing and return a validation error
-  unless an explicit override flag is enabled for that print operation.
+  unless explicit `override=true` is enabled for that print operation.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -184,7 +186,8 @@ occur.
 - **SC-001**: 100% of successful admin saves for barcode quantity configuration
   return the same saved values on subsequent retrieval.
 - **SC-002**: 100% of generic sample orders created through this workflow
-  persist sample-level and sample-item-level barcode quantity metadata.
+  persist sample-level barcode quantity metadata, and persist sample-item-level
+  metadata whenever sample items are created.
 - **SC-003**: Label generation flows complete without unhandled numeric parsing
   errors when persisted configuration values are missing or malformed.
 - **SC-004**: 100% of newly introduced barcode quantity labels in the UI are
@@ -192,7 +195,8 @@ occur.
 - **SC-005**: New automated tests covering barcode quantity persistence and
   configuration behavior pass in CI for this feature scope.
 - **SC-006**: 100% of requests exceeding configured maximum label quantities are
-  blocked when override is disabled, and accepted when override is enabled.
+  blocked when `override` is disabled/absent, and accepted only when
+  `override=true` is enabled.
 
 ## Assumptions & Constraints
 
@@ -200,12 +204,15 @@ occur.
   quantity metadata, not a redesign of barcode printing UX.
 - Existing barcode printing endpoints and route patterns remain the integration
   path for this feature.
-- Existing print workflow override controls (if enabled) are the authorized
-  mechanism for exceeding configured max-label limits.
+- Existing print workflow override controls remain the authorized mechanism for
+  exceeding configured max-label limits; this feature hardens behavior to use
+  explicit `override=true` semantics for over-max requests.
 - Sample and sample item barcode quantity records are operational metadata and
   are not external-facing FHIR entities in this scope.
 - Any schema changes required by this feature are implemented via Liquibase and
   are backward compatible with existing barcode configuration data.
+- Existing OGC-284 schema additions for barcode info tables are already present
+  on the active branch and are validated/hardened as part of this remediation.
 - This feature remains compatible with existing multilingual deployments and
   does not introduce hardcoded locale-specific behavior.
 
