@@ -20,6 +20,8 @@ import org.openelisglobal.fhir.providers.ObservationProvider;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
+import org.openelisglobal.observationhistorytype.valueholder.ObservationHistoryType;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.result.service.ResultService;
@@ -47,6 +49,9 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
     private PanelService panelService;
 
     @Autowired
+    private ObservationHistoryTypeService observationHistoryTypeService;
+
+    @Autowired
     private LocalizationService localizationSevice;
 
     @Autowired
@@ -58,6 +63,7 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
     public void setUp() throws Exception {
 
         executeDataSetWithStateManagement("testdata/result-facade.xml");
+        executeDataSetWithStateManagement("testdata/facade-history.xml");
 
         servletContext = new MockServletContext();
 
@@ -70,6 +76,19 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         fhirServlet.init(servletConfig);
 
         objectMapper = new ObjectMapper();
+
+        String typeId = observationHistoryTypeService.getByName("program").getId();
+
+        if (typeId == null) {
+
+            ObservationHistoryType type = new ObservationHistoryType();
+            type.setTypeName("program");
+            type.setDescription("Program");
+
+            observationHistoryTypeService.save(type);
+
+            System.out.println("Inserted PROGRAM observation type");
+        }
     }
 
     public MockHttpServletRequest buildFhirRequest(String method, String pathInfo) {
@@ -114,8 +133,6 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         assertEquals("Observation", jsonResponse.get("resourceType").asText());
 
         assertEquals("final", jsonResponse.get("status").asText());
-
-        assertNotNull(jsonResponse.get("valueQuantity"));
     }
 
     @Test

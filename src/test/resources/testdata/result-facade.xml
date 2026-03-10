@@ -150,10 +150,10 @@
         scriptlet_id="1" sort_order="1" is_quantifiable="true"
         is_active="true" is_normal="true" />
     <test_result id="2" test_id="2" result_group="2"
-        flags="FLAG2" tst_rslt_type="T" value="Positive"
-        significant_digits="0" quant_limit="15.1" cont_level="High"
-        lastupdated="2025-04-01 12:30:00" scriptlet_id="2" sort_order="2"
-        is_quantifiable="true" is_active="true" is_normal="false" />
+        flags="FLAG2" tst_rslt_type="N" value="14.5" significant_digits="0"
+        quant_limit="15.1" cont_level="High" lastupdated="2025-04-01 12:30:00"
+        scriptlet_id="2" sort_order="2" is_quantifiable="true"
+        is_active="true" is_normal="true" />
 
     <analyte id="3" analyte_id="3" name="Cholesterol"
         external_id="EXT125" lastupdated="2025-03-05 09:45:00"
@@ -242,5 +242,12 @@
 
     <sample_human id="2" samp_id="2" patient_id="2"
         lastupdated="2023-11-01 12:00:00" />
+
+    <reference_tables id="1" name="SAMPLE"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
+    <reference_tables id="2" name="ANALYSIS"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
+    <reference_tables id="3" name="SAMPLE_QAEVENT"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
 
 </dataset>

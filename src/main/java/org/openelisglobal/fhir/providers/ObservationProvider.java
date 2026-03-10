@@ -227,6 +227,7 @@ public class ObservationProvider implements IResourceProvider {
             throw e;
 
         } catch (Exception e) {
+            e.printStackTrace();
 
             LogEvent.logError(e);
 
