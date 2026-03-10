@@ -40,8 +40,8 @@ git status --porcelain             # Uncommitted changes
 gh pr view --json number,title,baseRefName,url,isDraft  # PR info
 ```
 
-- Extract **Jira key** from branch name (pattern: `<type>/<KEY>-<slug>`) or
-  from the `$ARGUMENTS`
+- Extract **Jira key** from branch name (pattern: `<type>/<KEY>-<slug>`) or from
+  the `$ARGUMENTS`
 - If uncommitted changes exist, **warn and ask**: commit first or continue?
 - If no PR exists, warn but continue (user may want to create one after)
 
@@ -103,8 +103,8 @@ If tests fail → stop and report.
 
 **Skip if `--quick`.**
 
-Run the `/audit-branch` command logic (Tier 1+2 by default, Tier 3 if
-`--deep` was passed).
+Run the `/audit-branch` command logic (Tier 1+2 by default, Tier 3 if `--deep`
+was passed).
 
 This checks for:
 
@@ -113,11 +113,11 @@ This checks for:
 - Constitution violations (layered architecture, Carbon DS, i18n)
 - Scope creep, over-engineering, unused imports
 
-**If CRITICAL or HIGH findings exist:** Stop and present findings. The user
-must address them before proceeding.
+**If CRITICAL or HIGH findings exist:** Stop and present findings. The user must
+address them before proceeding.
 
-**If only MEDIUM/LOW/INFO findings:** Present findings as advisory but
-continue. Ask: "Address these now, or proceed to PR?"
+**If only MEDIUM/LOW/INFO findings:** Present findings as advisory but continue.
+Ask: "Address these now, or proceed to PR?"
 
 ### Step 5: PR Readiness
 
