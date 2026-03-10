@@ -185,9 +185,8 @@ review threads can be closed with evidence.
 - [x] T035 [P] Run frontend unit tests and impacted Cypress spec(s)
       individually, then record console/screenshot review notes in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [x] T036 Verify stacked M4 ancestry includes M2/M3, then rebase/merge only new
-      divergence and resolve integration conflicts in touched barcode/generic
-      sample files
+- [x] T036 Verify M4 branch is correctly stacked on M3 (containing M2), then
+      rebase on latest develop if needed to resolve any upstream conflicts
 - [x] T037 Address open review feedback with explicit file/line references in
       milestone PR discussion
 - [ ] T038 Re-run failed PR workflow(s) and record run IDs + final status in
