@@ -1,9 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
     <localization id="1" description="Test Description 1"
-        english="TB" french="TB" />
+        english="TB" french="TB" lastupdated="2025-03-08 12:00:00" />
     <localization id="2" description="Test Description 2"
-        english="Urinalysis" french="Urinalysis" />
+        english="Urinalysis" french="Urinalysis"
+        lastupdated="2025-03-08 12:00:00" />
 
     <system_user id="1" external_id="EXT003" login_name="admin"
         last_name="Doe" first_name="John" initials="JD" is_active="Y"

@@ -8,18 +8,16 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Timestamp;
 import java.util.Arrays;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.fhir.providers.ObservationProvider;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
-import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.result.service.ResultService;
@@ -29,9 +27,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletConfig;
 import org.springframework.mock.web.MockServletContext;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-@RunWith(SpringJUnit4ClassRunner.class)
 public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
 
     private RestfulServer fhirServlet;
@@ -71,27 +67,6 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
 
         objectMapper = new ObjectMapper();
 
-    }
-
-    public MockHttpServletRequest buildFhirRequest(String method, String pathInfo) {
-
-        MockHttpServletRequest request = new MockHttpServletRequest();
-
-        request.setMethod(method);
-        request.setContextPath("");
-        request.setServletPath("/fhir");
-        request.setPathInfo(pathInfo);
-        request.setRequestURI("/fhir" + pathInfo);
-
-        request.setContentType("application/fhir+json");
-        request.addHeader("Accept", "application/fhir+json");
-
-        UserSessionData sessionData = new UserSessionData();
-        sessionData.setSytemUserId(1);
-
-        request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, sessionData);
-
-        return request;
     }
 
     @Test
@@ -150,6 +125,7 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         Localization localizationOld = new Localization();
         localizationOld.setEnglish("TB");
         localizationOld.setFrench("TB");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
         Localization savedLocalization = localizationSevice.save(localizationOld);
         Panel newPanel = new Panel();
         newPanel.setPanelName("New Panel Name");
@@ -254,11 +230,13 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         Localization localizationOld = new Localization();
         localizationOld.setEnglish("TB");
         localizationOld.setFrench("TB");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
         Localization savedLocalization = localizationSevice.save(localizationOld);
         Panel newPanel = new Panel();
         newPanel.setPanelName("New Panel Name");
         newPanel.setDescription("A test panel from dataset.");
         newPanel.setLocalization(savedLocalization);
+
         Panel panel = panelService.save(newPanel);
         analysis.setPanel(panel);
         analysisService.save(analysis);
