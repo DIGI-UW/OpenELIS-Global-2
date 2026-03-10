@@ -1,0 +1,9 @@
+{
+  "analyzerName": "E2E-FILE-CSV-Analyzer",
+  "formatCsv": "CSV",
+  "formatTsv": "TSV",
+  "formatExcel": "EXCEL",
+  "importDirectory": "/data/analyzer-imports/e2e-csv/incoming",
+  "archiveDirectory": "/data/analyzer-imports/e2e-csv/processed",
+  "errorDirectory": "/data/analyzer-imports/e2e-csv/errors"
+}

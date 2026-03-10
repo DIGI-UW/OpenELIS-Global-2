@@ -20,7 +20,7 @@ import org.springframework.web.context.WebApplicationContext;
  *
  * <p>
  * Tests the filesystem-backed default configuration loading feature for
- * GenericASTM and GenericHL7 plugins.
+ * GenericASTM, GenericHL7, and GenericFile plugins.
  *
  * <p>
  */
@@ -51,13 +51,14 @@ public class AnalyzerDefaultsRestControllerTest extends BaseWebContextSensitiveT
         mockMvc.perform(get("/rest/analyzer/defaults").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk()).andExpect(jsonPath("$").isArray()).andExpect(jsonPath("$[0]").exists());
 
-        // Additional validation: check at least one ASTM and one HL7 template exists
+        // Additional validation: check at least one ASTM, HL7, and FILE template exists
         MvcResult result = mockMvc.perform(get("/rest/analyzer/defaults").contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
 
         String responseBody = result.getResponse().getContentAsString();
         assertTrue("Response should contain ASTM templates", responseBody.contains("\"protocol\":\"ASTM\""));
         assertTrue("Response should contain HL7 templates", responseBody.contains("\"protocol\":\"HL7\""));
+        assertTrue("Response should contain FILE templates", responseBody.contains("\"protocol\":\"FILE\""));
     }
 
     /**
@@ -77,6 +78,14 @@ public class AnalyzerDefaultsRestControllerTest extends BaseWebContextSensitiveT
                 .andExpect(jsonPath("$.protocol.name").value("HL7"))
                 .andExpect(jsonPath("$.identifier_pattern").value("MINDRAY.*BC.?2000"))
                 .andExpect(jsonPath("$.default_test_mappings").isArray());
+    }
+
+    @Test
+    public void testGetDefaultConfig_ValidFileTemplate_ReturnsJson() throws Exception {
+        mockMvc.perform(get("/rest/analyzer/defaults/file/quantstudio").contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.profileMeta.id").value("quantstudio"))
+                .andExpect(jsonPath("$.protocol.name").value("FILE"))
+                .andExpect(jsonPath("$.configDefaults.fileFormat").value("EXCEL"));
     }
 
     /**
@@ -102,7 +111,7 @@ public class AnalyzerDefaultsRestControllerTest extends BaseWebContextSensitiveT
     }
 
     /**
-     * Test invalid protocol: only 'astm' and 'hl7' allowed.
+     * Test invalid protocol: only 'astm', 'hl7', and 'file' allowed.
      */
     @Test
     public void testGetDefaultConfig_InvalidProtocol_Returns400() throws Exception {
@@ -139,7 +148,7 @@ public class AnalyzerDefaultsRestControllerTest extends BaseWebContextSensitiveT
      *
      * <p>
      * Validates expected directory structure: - analyzer-profiles/astm/*.json -
-     * analyzer-profiles/hl7/*.json
+     * analyzer-profiles/hl7/*.json analyzer-profiles/file/*.json
      */
     @Test
     public void testGetDefaults_RespectsDirectoryStructure_AstmAndHl7Separated() throws Exception {
@@ -154,5 +163,8 @@ public class AnalyzerDefaultsRestControllerTest extends BaseWebContextSensitiveT
 
         // Assert: HL7 templates should have 'hl7/' prefix
         assertTrue("HL7 templates should be under hl7/ directory", responseBody.contains("\"id\":\"hl7/"));
+
+        // Assert: FILE templates should have 'file/' prefix
+        assertTrue("FILE templates should be under file/ directory", responseBody.contains("\"id\":\"file/"));
     }
 }

@@ -1,0 +1,302 @@
+# File Import API Additions
+# Supplements the existing FileImportRestController endpoints
+# These are the NEW endpoints added by OGC-329 and OGC-324
+
+openapi: 3.0.3
+info:
+  title: OpenELIS File Import API
+  version: 0.1.0
+  description: REST endpoints for file-based analyzer import (OGC-329 + OGC-324)
+
+paths:
+  /rest/file-import/configurations:
+    get:
+      summary: List all file import configurations
+      operationId: getAllConfigurations
+      tags: [File Import Config]
+      responses:
+        '200':
+          description: List of configurations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FileImportConfiguration'
+
+    post:
+      summary: Create a new file import configuration
+      operationId: createConfiguration
+      tags: [File Import Config]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileImportConfigurationInput'
+      responses:
+        '201':
+          description: Configuration created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileImportConfiguration'
+
+  /rest/file-import/configurations/{id}:
+    get:
+      summary: Get configuration by ID
+      operationId: getConfiguration
+      tags: [File Import Config]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Configuration details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileImportConfiguration'
+
+    put:
+      summary: Update an existing configuration
+      operationId: updateConfiguration
+      tags: [File Import Config]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileImportConfigurationInput'
+      responses:
+        '200':
+          description: Configuration updated
+
+  # OGC-324 Upload endpoints
+  /rest/analyzers/{analyzerId}/upload/preview:
+    post:
+      summary: Upload file and get parsed preview
+      operationId: uploadPreview
+      tags: [File Upload]
+      parameters:
+        - name: analyzerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Parsed preview with validation results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzerRunPreview'
+        '400':
+          description: File format mismatch or parse error
+        '404':
+          description: Analyzer not found or no file import config
+
+  /rest/analyzers/{analyzerId}/upload/submit:
+    post:
+      summary: Submit parsed results to import queue
+      operationId: uploadSubmit
+      tags: [File Upload]
+      parameters:
+        - name: analyzerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitRequest'
+      responses:
+        '200':
+          description: Results queued for review
+        '400':
+          description: No valid results to submit
+
+  # OGC-329 Watcher control
+  /rest/analyzers/{analyzerId}/scan:
+    post:
+      summary: Trigger manual directory scan
+      operationId: triggerScan
+      tags: [File Watcher]
+      parameters:
+        - name: analyzerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Scan triggered
+        '404':
+          description: Analyzer not found or no file import config
+
+  /rest/analyzers/{analyzerId}/test-config:
+    post:
+      summary: Test file import configuration
+      operationId: testConfiguration
+      tags: [File Import Config]
+      parameters:
+        - name: analyzerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Test results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestConfigResult'
+
+components:
+  schemas:
+    FileImportConfiguration:
+      type: object
+      properties:
+        id:
+          type: string
+        analyzerId:
+          type: integer
+        fileFormat:
+          type: string
+          enum: [CSV, TSV, EXCEL]
+        importDirectory:
+          type: string
+        filePattern:
+          type: string
+        archiveDirectory:
+          type: string
+        errorDirectory:
+          type: string
+        columnMappings:
+          type: object
+          additionalProperties:
+            type: string
+        delimiter:
+          type: string
+        hasHeader:
+          type: boolean
+        active:
+          type: boolean
+
+    FileImportConfigurationInput:
+      type: object
+      required: [analyzerId, fileFormat, importDirectory]
+      properties:
+        analyzerId:
+          type: integer
+        fileFormat:
+          type: string
+          enum: [CSV, TSV, EXCEL]
+        importDirectory:
+          type: string
+        filePattern:
+          type: string
+        archiveDirectory:
+          type: string
+        errorDirectory:
+          type: string
+        columnMappings:
+          type: object
+          additionalProperties:
+            type: string
+        delimiter:
+          type: string
+        hasHeader:
+          type: boolean
+        active:
+          type: boolean
+
+    AnalyzerRunPreview:
+      type: object
+      properties:
+        totalRecords:
+          type: integer
+        validRecords:
+          type: integer
+        warningRecords:
+          type: integer
+        errorRecords:
+          type: integer
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/PreviewRecord'
+        customPreviewData:
+          type: object
+
+    PreviewRecord:
+      type: object
+      properties:
+        rowNumber:
+          type: integer
+        sampleId:
+          type: string
+        testCode:
+          type: string
+        result:
+          type: string
+        status:
+          type: string
+          enum: [VALID, WARNING, ERROR]
+        validationMessages:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+              message:
+                type: string
+
+    SubmitRequest:
+      type: object
+      properties:
+        previewSessionId:
+          type: string
+        excludedRows:
+          type: array
+          items:
+            type: integer
+
+    TestConfigResult:
+      type: object
+      properties:
+        checks:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              passed:
+                type: boolean
+              message:
+                type: string

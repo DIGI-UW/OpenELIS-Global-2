@@ -25,6 +25,9 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.FileImportConfigurationDAO;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
+import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerReader;
+import org.openelisglobal.analyzerimport.analyzerreaders.ExcelAnalyzerReader;
+import org.openelisglobal.analyzerimport.analyzerreaders.FileAnalyzerReader;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -129,6 +132,24 @@ public class FileImportServiceTest {
     }
 
     @Test
+    public void testGetReaderForFormat_WithCsvFormat_ReturnsFileAnalyzerReader() {
+        testConfig.setFileFormat("CSV");
+
+        AnalyzerReader reader = fileImportService.getReaderForFormat(testConfig);
+
+        assertTrue("CSV format should use FileAnalyzerReader", reader instanceof FileAnalyzerReader);
+    }
+
+    @Test
+    public void testGetReaderForFormat_WithExcelFormat_ReturnsExcelAnalyzerReader() {
+        testConfig.setFileFormat("EXCEL");
+
+        AnalyzerReader reader = fileImportService.getReaderForFormat(testConfig);
+
+        assertTrue("EXCEL format should use ExcelAnalyzerReader", reader instanceof ExcelAnalyzerReader);
+    }
+
+    @Test
     public void testArchiveFile_WithValidPath_Succeeds() throws IOException {
         Path archiveDir = Paths.get(testConfig.getArchiveDirectory());
         Files.createDirectories(archiveDir);
@@ -220,6 +241,20 @@ public class FileImportServiceTest {
         boolean result = fileImportService.moveToErrorDirectory(testFile, testConfig, "Test error");
 
         assertFalse("Should return false when error directory not configured", result);
+    }
+
+    @Test
+    public void testArchiveAndErrorMove_WithExcelFormat_StillUseConfiguredDirectories() throws IOException {
+        testConfig.setFileFormat("EXCEL");
+        Path archiveCandidate = tempDir.resolve("excel-result.xlsx");
+        Files.createFile(archiveCandidate);
+        boolean archived = fileImportService.archiveFile(archiveCandidate, testConfig);
+        assertTrue("Archive should work regardless of fileFormat", archived);
+
+        Path errorCandidate = tempDir.resolve("excel-error.xlsx");
+        Files.createFile(errorCandidate);
+        boolean movedToError = fileImportService.moveToErrorDirectory(errorCandidate, testConfig, "parse failure");
+        assertTrue("Error move should work regardless of fileFormat", movedToError);
     }
 
     @Test

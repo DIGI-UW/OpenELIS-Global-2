@@ -1014,6 +1014,12 @@ public class AnalyzerRestController extends BaseRestController {
                 scanTemplates(hl7Dir, "hl7", templates);
             }
 
+            // Scan FILE directory
+            Path fileDir = baseDir.resolve("file");
+            if (Files.exists(fileDir) && Files.isDirectory(fileDir)) {
+                scanTemplates(fileDir, "file", templates);
+            }
+
             return ResponseEntity.ok(templates);
         } catch (Exception e) {
             logger.error("Error listing default configs", e);
@@ -1045,9 +1051,10 @@ public class AnalyzerRestController extends BaseRestController {
             Path templateFile = resolveConfigFilePath(protocol, name);
             if (templateFile == null) {
                 // Determine specific error for HTTP response
-                if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                            .body(AnalyzerControllerHelper.wrapError("Invalid protocol: must be 'astm' or 'hl7'"));
+                if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")
+                        && !protocol.equalsIgnoreCase("file")) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                            AnalyzerControllerHelper.wrapError("Invalid protocol: must be 'astm', 'hl7', or 'file'"));
                 }
                 if (!name.matches("^[a-zA-Z0-9\\-_.]+$")) {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(AnalyzerControllerHelper
@@ -1130,7 +1137,8 @@ public class AnalyzerRestController extends BaseRestController {
      *         file not found
      */
     private Path resolveConfigFilePath(String protocol, String name) {
-        if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")) {
+        if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")
+                && !protocol.equalsIgnoreCase("file")) {
             return null;
         }
         if (!name.matches("^[a-zA-Z0-9\\-_.]+$")) {
