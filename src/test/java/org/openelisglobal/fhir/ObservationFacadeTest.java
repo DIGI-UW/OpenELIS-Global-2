@@ -20,7 +20,6 @@ import org.openelisglobal.fhir.providers.ObservationProvider;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.login.valueholder.UserSessionData;
-import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.result.service.ResultService;
@@ -46,9 +45,6 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private PanelService panelService;
-
-    @Autowired
-    private ObservationHistoryTypeService observationHistoryTypeService;
 
     @Autowired
     private LocalizationService localizationSevice;
@@ -152,8 +148,8 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         Analysis analysis = analysisService.getAnalysisById("1");
 
         Localization localizationOld = new Localization();
-        localizationOld.setEnglish("Hello");
-        localizationOld.setFrench("Bonjour");
+        localizationOld.setEnglish("TB");
+        localizationOld.setFrench("TB");
         Localization savedLocalization = localizationSevice.save(localizationOld);
         Panel newPanel = new Panel();
         newPanel.setPanelName("New Panel Name");
@@ -256,8 +252,8 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         Analysis analysis = analysisService.getAnalysisById("1");
 
         Localization localizationOld = new Localization();
-        localizationOld.setEnglish("Hello");
-        localizationOld.setFrench("Bonjour");
+        localizationOld.setEnglish("TB");
+        localizationOld.setFrench("TB");
         Localization savedLocalization = localizationSevice.save(localizationOld);
         Panel newPanel = new Panel();
         newPanel.setPanelName("New Panel Name");
