@@ -82,22 +82,29 @@ fallback safely; localized labels render correctly.
 **Stories**: US2  
 **Depends On**: M1  
 **Independent Test**: Generic sample order stores default/explicit quantities,
-updates existing barcode metadata without duplication, and persists sample-item
-metadata whenever sample items are created.
+updates existing barcode metadata without duplication, persists sample-item
+metadata whenever sample items are created, and pathology workflow/service
+inputs persist FR-010 specimen/block/slide/freezer quantities when supplied.
 
-- [ ] T013 Create milestone branch
+- [x] T013 Create milestone branch
       `feat/284-barcode-label-quantity-management-m2-persistence-upsert` from
       `develop` and add worktree at
       `/workspace-worktrees/ogc-284-m2-persistence-upsert`
-- [ ] T014 [P] [US2] Extend default-value and upsert/dedup tests in
+- [ ] T014 [P] [US2] Extend default-value and upsert/dedup tests, including
+      explicit FR-010 pathology helper coverage, in
       `src/test/java/org/openelisglobal/barcode/service/BarcodeInfoServiceImplTest.java`
 - [ ] T015 [P] [US2] Create service-level generic sample order persistence tests
       in
       `src/test/java/org/openelisglobal/genericsample/service/GenericSampleOrderServiceImplTest.java`
 - [ ] T016 [US2] Ensure default quantity application and null-safe handling in
       `src/main/java/org/openelisglobal/genericsample/service/GenericSampleOrderServiceImpl.java`
-- [ ] T017 [US2] Verify and harden sample and sample-item upsert behavior in
-      `src/main/java/org/openelisglobal/barcode/service/BarcodeInfoServiceImpl.java`
+- [x] T017 [US2] Verify and harden sample and sample-item upsert behavior,
+      including explicit FR-010 pathology workflow/service wiring (supplied-only
+      semantics), in
+      `src/main/java/org/openelisglobal/barcode/service/BarcodeInfoServiceImpl.java`,
+      `src/main/java/org/openelisglobal/program/service/PathologySampleServiceImpl.java`,
+      and
+      `src/main/java/org/openelisglobal/program/controller/pathology/PathologySampleForm.java`
 - [ ] T018 [US2] Align form contract for label quantity fields (optional + valid
       values) in
       `src/main/java/org/openelisglobal/genericsample/form/GenericSampleOrderForm.java`

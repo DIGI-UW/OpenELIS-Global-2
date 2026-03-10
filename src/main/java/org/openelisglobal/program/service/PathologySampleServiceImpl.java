@@ -11,6 +11,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.barcode.service.BarcodeInfoService;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
@@ -90,6 +91,9 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     @Autowired
     private TestSectionService testSectionService;
+
+    @Autowired
+    private BarcodeInfoService barcodeInfoService;
 
     PathologySampleServiceImpl() {
         super(PathologySample.class);
@@ -201,10 +205,22 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         }
         try {
             update(pathologySample);
+            persistPathologyBarcodeCountsIfSupplied(pathologySample, form);
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw e;
         }
+    }
+
+    private void persistPathologyBarcodeCountsIfSupplied(PathologySample pathologySample, PathologySampleForm form) {
+        if (form.getNumOrderLabels() == null || form.getNumSpecimenLabels() == null || form.getNumBlockLabels() == null
+                || form.getNumSlideLabels() == null || form.getNumFreezerLabels() == null) {
+            return;
+        }
+
+        barcodeInfoService.saveBarcodeInfoForSampleAndSampleItemsPathology(pathologySample.getSample(),
+                form.getNumOrderLabels(), form.getNumSpecimenLabels(), form.getNumBlockLabels(),
+                form.getNumSlideLabels(), form.getNumFreezerLabels());
     }
 
     private void validatePathologySample(PathologySample pathologySample, PathologySampleForm form) {

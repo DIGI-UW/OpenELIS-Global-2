@@ -47,6 +47,16 @@ public class PathologySampleForm {
 
     private List<PathologyReportForm> reports;
 
+    private Integer numOrderLabels;
+
+    private Integer numSpecimenLabels;
+
+    private Integer numBlockLabels;
+
+    private Integer numSlideLabels;
+
+    private Integer numFreezerLabels;
+
     public PathologyStatus getStatus() {
         return status;
     }
@@ -181,6 +191,46 @@ public class PathologySampleForm {
 
     public void setReports(List<PathologyReportForm> reports) {
         this.reports = reports;
+    }
+
+    public Integer getNumOrderLabels() {
+        return numOrderLabels;
+    }
+
+    public void setNumOrderLabels(Integer numOrderLabels) {
+        this.numOrderLabels = numOrderLabels;
+    }
+
+    public Integer getNumSpecimenLabels() {
+        return numSpecimenLabels;
+    }
+
+    public void setNumSpecimenLabels(Integer numSpecimenLabels) {
+        this.numSpecimenLabels = numSpecimenLabels;
+    }
+
+    public Integer getNumBlockLabels() {
+        return numBlockLabels;
+    }
+
+    public void setNumBlockLabels(Integer numBlockLabels) {
+        this.numBlockLabels = numBlockLabels;
+    }
+
+    public Integer getNumSlideLabels() {
+        return numSlideLabels;
+    }
+
+    public void setNumSlideLabels(Integer numSlideLabels) {
+        this.numSlideLabels = numSlideLabels;
+    }
+
+    public Integer getNumFreezerLabels() {
+        return numFreezerLabels;
+    }
+
+    public void setNumFreezerLabels(Integer numFreezerLabels) {
+        this.numFreezerLabels = numFreezerLabels;
     }
 
     public List<String> getImmunoHistoChemistryTestIds() {
