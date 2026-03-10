@@ -22,7 +22,8 @@ Existing entity at
   `archiveDirectory`, `errorDirectory`, `columnMappingsJson` (JSONB),
   `delimiter`, `hasHeader`, `active`, `fhirUuid`
 
-**Liquibase changeset:** `014-file-format-config.xml` — adds `file_format`
+**Liquibase changeset:**
+`3.4.14.x/001-add-file-format-to-file-import-config.xml` — adds `file_format`
 column with default `'CSV'`, NOT NULL after backfill.
 
 ### AnalyzerFileUpload (NEW — from OGC-324)

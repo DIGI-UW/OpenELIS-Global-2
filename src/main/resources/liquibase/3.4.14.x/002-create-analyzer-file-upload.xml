@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- 014-hjra-file-stream-alignment: analyzer_file_upload audit table (OGC-324) -->
+  <changeSet id="014-002-create-analyzer-file-upload" author="openelis">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="analyzer_file_upload"/>
+      </not>
+    </preConditions>
+
+    <comment>Create analyzer_file_upload table for file upload/import audit trail</comment>
+    <createTable tableName="analyzer_file_upload">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="analyzer_id" type="INT">
+        <constraints nullable="false"
+            foreignKeyName="fk_analyzer_file_upload_analyzer"
+            references="analyzer(id)"
+            deleteCascade="false"/>
+      </column>
+      <column name="filename" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="file_hash_sha256" type="VARCHAR(64)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="file_size" type="BIGINT"/>
+      <column name="status" type="VARCHAR(20)" defaultValue="PENDING">
+        <constraints nullable="false"/>
+      </column>
+      <column name="result_count" type="INTEGER"/>
+      <column name="error_message" type="TEXT"/>
+      <column name="uploaded_by" type="NUMERIC(10,0)">
+        <constraints nullable="false"
+            foreignKeyName="fk_analyzer_file_upload_user"
+            references="system_user(id)"/>
+      </column>
+      <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+        <constraints nullable="false"/>
+      </column>
+      <column name="completed_at" type="TIMESTAMP"/>
+    </createTable>
+
+    <createIndex indexName="idx_analyzer_file_upload_analyzer_id" tableName="analyzer_file_upload">
+      <column name="analyzer_id"/>
+    </createIndex>
+    <createIndex indexName="idx_analyzer_file_upload_created_at" tableName="analyzer_file_upload">
+      <column name="created_at"/>
+    </createIndex>
+
+    <rollback>
+      <dropTable tableName="analyzer_file_upload"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

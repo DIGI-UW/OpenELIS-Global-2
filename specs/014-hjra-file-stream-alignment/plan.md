@@ -68,7 +68,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
       frontend.
   - E2E via Cypress with data-testid selectors, cy.session() for login.
 - [x] **Schema Management**: All DB changes via Liquibase in
-      `src/main/resources/liquibase/3.3.x.x/`.
+      `src/main/resources/liquibase/3.4.14.x/` (isolated 014 version).
 - [x] **Internationalization**: All UI strings via React Intl. en + fr minimum.
 - [x] **Security & Compliance**: File path validation (no traversal), SHA-256
       audit hashing, RBAC for upload permissions.
@@ -172,7 +172,7 @@ src/main/java/org/openelisglobal/
     └── AnalyzerImporterPlugin.java         # NO CHANGE: interface stays as-is
 
 # Liquibase
-src/main/resources/liquibase/3.3.x.x/
+src/main/resources/liquibase/3.4.14.x/
 ├── 014-file-format-config.xml              # NEW (M1A): add file_format column
 ├── 024-analyzer-file-upload.xml            # NEW (M2): audit table
 └── 024-analyzer-run.xml                    # NEW (M2): import batch table

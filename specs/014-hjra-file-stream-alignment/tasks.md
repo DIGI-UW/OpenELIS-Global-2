@@ -33,7 +33,7 @@ unit tests + config CRUD integration test.
 ### Schema
 
 - [x] T002 [M1A] Create Liquibase changeset
-      `src/main/resources/liquibase/3.4.x.x/013-add-file-format-to-file-import-config.xml`
+      `src/main/resources/liquibase/3.4.14.x/001-add-file-format-to-file-import-config.xml`
       — add `file_format VARCHAR(20) NOT NULL DEFAULT 'CSV'` to
       `file_import_configuration` table
 
@@ -191,10 +191,11 @@ upload-preview-submit flow.
 ### Schema
 
 - [ ] T023 [P] [M2] Create Liquibase changeset for `analyzer_file_upload` table
-      in `src/main/resources/liquibase/3.3.x.x/024-analyzer-file-upload.xml`
+      in
+      `src/main/resources/liquibase/3.4.14.x/002-create-analyzer-file-upload.xml`
 - [ ] T024 [P] [M2] Create Liquibase changeset for `analyzer_run` table with
       `custom_preview_data JSONB` in
-      `src/main/resources/liquibase/3.3.x.x/024-analyzer-run.xml`
+      `src/main/resources/liquibase/3.4.14.x/003-create-analyzer-run.xml`
 
 ### Tests (write first, must fail)
 
