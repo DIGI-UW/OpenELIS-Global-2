@@ -35,6 +35,7 @@ import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.PluginAnalyzerService;
+import org.openelisglobal.common.services.PluginMenuService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,6 +74,9 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private AnalyzerTypeService analyzerTypeService;
+
+    @Autowired
+    private PluginMenuService pluginService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -223,6 +227,7 @@ public class AnalyzerRestController extends BaseRestController {
 
             analyzer.setSysUserId(getSysUserId(request));
             String analyzerId = analyzerService.insert(analyzer);
+            pluginService.registerAnalyzerMenuAndPermission(analyzer.getName());
 
             // Auto-create test mappings from default config if provided
             if (form.getDefaultConfigId() != null && !form.getDefaultConfigId().isEmpty()) {
@@ -1236,4 +1241,5 @@ public class AnalyzerRestController extends BaseRestController {
     private boolean isBlank(Object value) {
         return value == null || String.valueOf(value).trim().isEmpty();
     }
+
 }
