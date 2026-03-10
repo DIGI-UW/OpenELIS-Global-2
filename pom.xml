@@ -16,7 +16,7 @@
         <minor.version>2</minor.version>
         <state.version>1</state.version>
         <!-- 0 = alpha, 1 = beta, 2 = rc, 3 = deployable -->
-        <fix.version>2</fix.version>
+        <fix.version>3</fix.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
         <castor.version>1.4.1</castor.version>
@@ -951,7 +951,7 @@
                 <configuration>
                     <skipTests>${skipTests}</skipTests>
                     <environmentVariables>
-                        <ANALYZER_DEFAULTS_DIR>${project.basedir}/projects/analyzer-defaults</ANALYZER_DEFAULTS_DIR>
+                        <ANALYZER_PROFILES_DIR>${project.basedir}/projects/analyzer-profiles</ANALYZER_PROFILES_DIR>
                     </environmentVariables>
                 </configuration>
             </plugin>
