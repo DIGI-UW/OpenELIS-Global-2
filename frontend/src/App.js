@@ -11,6 +11,7 @@ import AnalyzersPage from "./pages/AnalyzersPage";
 import FieldMapping from "./components/analyzers/FieldMapping/FieldMapping";
 import ErrorDashboardPage from "./pages/ErrorDashboardPage";
 import CustomFieldTypeManagementPage from "./pages/CustomFieldTypeManagementPage";
+import AnalyzerTypesPage from "./pages/AnalyzerTypesPage";
 import QCDashboardPlaceholder from "./pages/analyzers/QCDashboardPlaceholder";
 import QCAlertsPlaceholder from "./pages/analyzers/QCAlertsPlaceholder";
 import CorrectiveActionsPlaceholder from "./pages/analyzers/CorrectiveActionsPlaceholder";
@@ -20,7 +21,7 @@ import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import "./App.css";
-import { languages } from "./languages";
+import { languages, languageMessages } from "./languages";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
 import "./index.scss";
@@ -212,11 +213,13 @@ export default function App() {
   };
 
   const changeLanguageReact = (lang) => {
-    if (!languages[lang]) {
+    // Check if we have messages for this language
+    const messages = languageMessages[lang] || languages[lang]?.messages;
+    if (!messages) {
       lang = "en";
     }
     setLocale(lang);
-    setMessages(languages[lang].messages);
+    setMessages(languageMessages[lang] || languages["en"].messages);
     localStorage.setItem("locale", lang);
   };
 
@@ -547,6 +550,12 @@ export default function App() {
                   path="/analyzers/custom-field-types"
                   exact
                   component={() => <CustomFieldTypeManagementPage />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/types"
+                  exact
+                  component={() => <AnalyzerTypesPage />}
                   role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
