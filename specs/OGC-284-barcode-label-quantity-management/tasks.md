@@ -117,7 +117,7 @@ inputs persist FR-010 specimen/block/slide/freezer quantities when supplied.
       changesets (`base.xml`, `028-barcode-info-tables.xml`,
       `barcode_expansion.xml`) in
       `src/test/java/org/openelisglobal/barcode/BarcodeSchemaValidationTest.java`
-- [ ] T020 Create milestone PR for M2 with verification details
+- [x] T020 Create milestone PR for M2 with verification details
 
 ---
 
