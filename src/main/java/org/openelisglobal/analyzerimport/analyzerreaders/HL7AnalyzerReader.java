@@ -111,23 +111,6 @@ public class HL7AnalyzerReader extends AnalyzerReader {
         return pluginService.getAnalyzerPlugins();
     }
 
-    /** HL7 MSH segment field 3 (sending application). Same as GenericHL7. */
-    private String parseMsh3(List<String> lines) {
-        if (lines == null) {
-            return null;
-        }
-        for (String line : lines) {
-            if (line != null && line.startsWith("MSH|")) {
-                String[] fields = line.split("\\|");
-                if (fields.length > 2 && !StringUtils.isBlank(fields[2])) {
-                    return fields[2].trim();
-                }
-                break;
-            }
-        }
-        return null;
-    }
-
     @Override
     public String getError() {
         return error;

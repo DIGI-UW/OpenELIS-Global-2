@@ -38,8 +38,9 @@ public class AnalyzerImportControllerHL7Test extends BaseWebContextSensitiveTest
     public void postHl7_validOruR01_reachesEndpointAndParses() throws Exception {
         String hl7 = loadFixture("testdata/hl7/mindray/bc5380-cbc-result.hl7");
 
-        // Valid HL7 parses successfully. 200 = full ingestion; 500 = plugin not matched
-        // (fixture linkage).
+        // Valid HL7 parses successfully. 200 = full ingestion (plugin matched); 500 =
+        // no plugin
+        // matched. Gate 1: path reaches endpoint, parse does not return 400.
         var result = mockMvc.perform(
                 post("/analyzer/hl7").contentType(MediaType.TEXT_PLAIN).content(hl7.getBytes(StandardCharsets.UTF_8)))
                 .andReturn();
