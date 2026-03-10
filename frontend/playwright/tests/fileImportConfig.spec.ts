@@ -1,15 +1,10 @@
 import { test, expect } from "@playwright/test";
-import {
-  loadFileImportFixtures,
-  checkFileImportFixturesExist,
-} from "../fixtures/file-import-setup";
+import { loadFileImportFixtures } from "../fixtures/file-import-setup";
 import fixtureData from "../fixtures/FileImport.json";
 
 test.describe("File import configuration persistence", () => {
   test.beforeAll(() => {
-    if (!checkFileImportFixturesExist()) {
-      loadFileImportFixtures();
-    }
+    loadFileImportFixtures();
   });
 
   test("updates and persists fileFormat", async ({ page }) => {
