@@ -66,6 +66,32 @@ not satisfy the mock-based E2E requirement.
 If one of these proofs is missing, do not open `feat/013-ogc-327-bc5380-hl7`
 yet.
 
+### Harness setup for HL7 + MLLP (Gate 1)
+
+The analyzer harness (`projects/analyzer-harness`) includes the bridge with MLLP
+enabled for HL7 E2E proof:
+
+1. **Start the harness** (includes bridge with MLLP on port 2575):
+
+   ```bash
+   cd projects/analyzer-harness
+   docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml up -d
+   ```
+
+2. **Bridge configuration**: MLLP listener on port 2575; forwards to
+   `https://oe:8443/api/OpenELIS-Global/analyzer` (router appends `/hl7` for
+   HL7).
+
+3. **Load analyzer fixtures** (BC-5380, GenericHL7 plugin) from repo root:
+
+   ```bash
+   ./src/test/resources/load-analyzer-test-data.sh --dataset-011
+   ```
+
+4. **Send HL7 via MLLP** to `localhost:2575` (e.g. with
+   `bc5380-cbc-result.hl7`). The mock must load a profile and mock a specific
+   analyzer type (BC-5380) per Gate 1 requirement.
+
 ## 5. Open BC-5380 as the first proving branch
 
 After `OGC-325` readiness is accepted:

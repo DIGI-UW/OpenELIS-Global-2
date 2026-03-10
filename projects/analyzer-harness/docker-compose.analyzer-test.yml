@@ -45,7 +45,7 @@ services:
       start_period: 10s
 
   # ASTM-HTTP Bridge — always running, handles all analyzers.
-  # Inbound: listens on 12001, any analyzer connects, forwards to OE via HTTP.
+  # Inbound: ASTM 12001, MLLP 2575 (HL7); forwards to OE via HTTP.
   # Outbound: OE sends ?forwardAddress={ip}&forwardPort={port} from DB,
   #   bridge opens TCP to that analyzer.
   openelis-analyzer-bridge:
@@ -56,15 +56,19 @@ services:
     ports:
       - "8442:8443" # HTTPS API port
       - "12000:12001" # ASTM listen port (inbound from analyzers)
+      - "2575:2575" # MLLP HL7 listener (OGC-325)
     volumes:
       - ../../volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - LOGGING_LEVEL_ORG_ITECH=INFO
-      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe:8443/api/OpenELIS-Global/analyzer/astm
+      # Base URI; router appends /astm, /hl7, /csv per message protocol
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe:8443/api/OpenELIS-Global/analyzer
       - ORG_ITECH_AHB_LISTEN_ASTM_SERVER_PORT=12001
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_HOST_NAME=astm-simulator
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_PORT=9600
+      - ORG_ITECH_AHB_MLLP_ENABLED=true
+      - ORG_ITECH_AHB_MLLP_PORT=2575
     networks:
       - analyzer-net
     restart: unless-stopped

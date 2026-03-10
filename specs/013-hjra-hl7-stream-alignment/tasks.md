@@ -53,7 +53,7 @@ artifacts and no CRITICAL/HIGH analysis findings remain.
 ### Prep Artifacts
 
 - [x] T006 [M0] Create evidence-collection checklist for Gate 1 (OGC-325) in
-      `specs/013-hjra-hl7-stream-alignment/checklists/gate1-ogc325-evidence.md`
+      `specs/013-hjra-hl7-stream-alignment/launch-checklists/gate1-ogc325-evidence.md`
       with items: MLLP listener accepts traffic, ACK demonstrated, routing to
       `/analyzer/hl7`, representative ingestion path, paired PR readiness,
       mock-with-profile E2E proof
@@ -84,11 +84,11 @@ versions are documented; reviewers have accepted coordination artifacts.
 - [ ] T009 [Pre-M1] Verify `develop` and submodules
       (`tools/openelis-analyzer-bridge`, `plugins`) are synced; document
       required versions or pins in
-      `specs/013-hjra-hl7-stream-alignment/checklists/pre-m1-readiness.md`
+      `specs/013-hjra-hl7-stream-alignment/launch-checklists/pre-m1-readiness.md`
 - [ ] T010 [Pre-M1] Document bridge and main-repository team agreement on paired
       PR model and evidence expectations in
-      `specs/013-hjra-hl7-stream-alignment/checklists/pre-m1-readiness.md` per
-      `contracts/hl7-readiness-gates.md` Gate 1
+      `specs/013-hjra-hl7-stream-alignment/launch-checklists/pre-m1-readiness.md`
+      per `contracts/hl7-readiness-gates.md` Gate 1
 
 **Checkpoint (when complete)**: Pre-M1 readiness satisfied; M1 branch can be
 created when teams align.

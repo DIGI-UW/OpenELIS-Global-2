@@ -3,7 +3,7 @@
 **Branch**: `feat/013-ogc-325-hl7-listener-foundation`  
 **Reference**: [hl7-branch-contract.md](../contracts/hl7-branch-contract.md),
 [hl7-readiness-gates.md](../contracts/hl7-readiness-gates.md),
-[gate1-ogc325-evidence.md](../checklists/gate1-ogc325-evidence.md)
+[gate1-ogc325-evidence.md](../launch-checklists/gate1-ogc325-evidence.md)
 
 ## Purpose
 
@@ -15,7 +15,7 @@ coordination branch only documents the expected scope.
 
 - Coordination artifacts accepted (spec PR merged or in review)
 - `develop` and submodules synced; versions documented in
-  `checklists/pre-m1-readiness.md`
+  `launch-checklists/pre-m1-readiness.md`
 - Bridge and main-repository teams agreed on paired PR model per
   `contracts/paired-pr-handoff.md`
 
@@ -44,7 +44,7 @@ coordination branch only documents the expected scope.
 - Use analyzer mock (e.g. `tools/analyzer-mock-server` or harness) configured
   with loaded HL7 profile and specific analyzer type
 - Run full path: mock → transport → `/analyzer/hl7` → ingestion
-- Evidence must satisfy `checklists/gate1-ogc325-evidence.md`
+- Evidence must satisfy `launch-checklists/gate1-ogc325-evidence.md`
 
 ### Paired PR
 
