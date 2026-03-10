@@ -4,15 +4,16 @@ import { loadFileImportFixtures } from "../fixtures/file-import-setup";
 const QUANTSTUDIO_ANALYZER = "E2E-FILE-QuantStudio-Analyzer";
 
 test.describe("File import QuantStudio (GenericFile + EXCEL)", () => {
+  test.skip(
+    process.env.CI === "true" && process.env.ANALYZER_HARNESS !== "true",
+    "Requires docker + database + file-import fixtures not available in default CI",
+  );
+
   test.beforeAll(() => {
     loadFileImportFixtures();
   });
 
   test("QuantStudio analyzer exists with EXCEL config", async ({ page }) => {
-    test.skip(
-      process.env.CI === "true" && process.env.ANALYZER_HARNESS !== "true",
-      "Requires docker + database + file-import fixtures not available in default CI",
-    );
     const baseUrl = process.env.BASE_URL || "https://localhost";
     const apiBase = `${baseUrl}/api/OpenELIS-Global/rest/analyzer`;
 

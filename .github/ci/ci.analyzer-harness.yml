@@ -53,7 +53,7 @@ services:
 
   oe.openelis.org:
     environment:
-      - ANALYZER_BRIDGE_URL=http://openelis-analyzer-bridge:8443
+      - ANALYZER_BRIDGE_URL=https://openelis-analyzer-bridge:8443
     networks:
       - default
       - analyzer-net

@@ -3,15 +3,16 @@ import { loadFileImportFixtures } from "../fixtures/file-import-setup";
 import fixtureData from "../fixtures/FileImport.json";
 
 test.describe("File import configuration persistence", () => {
+  test.skip(
+    process.env.CI === "true" && process.env.ANALYZER_HARNESS !== "true",
+    "Requires docker + database + file-import fixtures not available in default CI",
+  );
+
   test.beforeAll(() => {
     loadFileImportFixtures();
   });
 
   test("updates and persists fileFormat", async ({ page }) => {
-    test.skip(
-      process.env.CI === "true" && process.env.ANALYZER_HARNESS !== "true",
-      "Requires docker + database + file-import fixtures not available in default CI",
-    );
     const baseUrl = process.env.BASE_URL || "https://localhost";
     const apiBase = `${baseUrl}/api/OpenELIS-Global/rest/analyzer`;
 

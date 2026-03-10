@@ -162,6 +162,10 @@ SET
     last_updated = NOW();
 
 -- Minimal analyzer test map for simulator and connectivity checks.
+DELETE FROM analyzer_test_map
+WHERE analyzer_type_id = (SELECT id FROM analyzer_type WHERE name = 'Generic ASTM')
+  AND analyzer_test_name IN ('MTB-RIF', 'RIF', 'HIV-VL', 'COVID19');
+
 INSERT INTO analyzer_test_map (
     analyzer_type_id,
     analyzer_id,
@@ -214,7 +218,7 @@ VALUES (
     'MOLECULAR',
     'E2E file import analyzer',
     true,
-    'ASTM_LIS2_A2',
+    NULL,
     'ACTIVE',
     (SELECT id FROM analyzer_type WHERE name = 'E2E-FILE-GenericFile'),
     NOW()
@@ -224,7 +228,7 @@ VALUES (
     'MOLECULAR',
     'E2E QuantStudio file import analyzer',
     true,
-    'ASTM_LIS2_A2',
+    NULL,
     'ACTIVE',
     (SELECT id FROM analyzer_type WHERE name = 'E2E-FILE-GenericFile'),
     NOW()
