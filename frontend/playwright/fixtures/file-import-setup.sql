@@ -50,7 +50,7 @@ INSERT INTO analyzer (
   'MOLECULAR',
   'E2E file import analyzer',
   true,
-  'ASTM_LIS2_A2',
+  NULL,
   'ACTIVE',
   (SELECT id FROM analyzer_type WHERE name = 'E2E-FILE-GenericFile'),
   NOW()
@@ -123,7 +123,7 @@ INSERT INTO analyzer (
   'MOLECULAR',
   'E2E QuantStudio file import analyzer',
   true,
-  'ASTM_LIS2_A2',
+  NULL,
   'ACTIVE',
   (SELECT id FROM analyzer_type WHERE name = 'E2E-FILE-GenericFile'),
   NOW()

@@ -97,20 +97,22 @@ public class FileImportWatchService {
             Pattern pattern = convertGlobToRegex(filePattern);
 
             // Scan directory for matching files
-            Files.list(importDir).filter(Files::isRegularFile).filter(path -> {
-                String fileName = path.getFileName().toString();
-                return pattern.matcher(fileName).matches() && matchesFileFormat(fileName, config.getFileFormat());
-            }).forEach(filePath -> {
-                try {
-                    processFile(filePath, config);
-                } catch (Exception e) {
-                    LogEvent.logError(this.getClass().getSimpleName(), "scanDirectory",
-                            "Error processing file " + filePath + ": " + e.getMessage());
-                    // Move to error directory on exception
-                    fileImportService.moveToErrorDirectory(filePath, config,
-                            "Exception during processing: " + e.getMessage());
-                }
-            });
+            try (var fileStream = Files.list(importDir)) {
+                fileStream.filter(Files::isRegularFile).filter(path -> {
+                    String fileName = path.getFileName().toString();
+                    return pattern.matcher(fileName).matches() && matchesFileFormat(fileName, config.getFileFormat());
+                }).forEach(filePath -> {
+                    try {
+                        processFile(filePath, config);
+                    } catch (Exception e) {
+                        LogEvent.logError(this.getClass().getSimpleName(), "scanDirectory",
+                                "Error processing file " + filePath + ": " + e.getMessage());
+                        // Move to error directory on exception
+                        fileImportService.moveToErrorDirectory(filePath, config,
+                                "Exception during processing: " + e.getMessage());
+                    }
+                });
+            }
         } catch (IOException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "scanDirectory",
                     "Error scanning directory " + config.getImportDirectory() + ": " + e.getMessage());

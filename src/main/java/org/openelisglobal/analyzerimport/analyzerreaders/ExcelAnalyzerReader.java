@@ -86,7 +86,6 @@ public class ExcelAnalyzerReader extends AnalyzerReader {
                         String value = formatter.formatCellValue(row.getCell(cellIndex));
                         if (value != null && !value.isBlank()) {
                             parsedRecord.put(mapping.getValue(), value);
-                            parsedRecord.put(mapping.getKey(), value);
                         }
                     }
                     appendRecord(parsedRecord);
