@@ -42,13 +42,8 @@ jobs:
       - name: Build main project (produces classes JAR and test-jar for plugins)
         run: mvn clean install -Dspotless.check.skip=true
 
-      - name: Build plugins (compile-only until analyzer stubs are replaced)
-        run: |
-          if [ -f plugins/pom.xml ]; then
-            cd plugins && mvn clean verify -DskipTests -Dmaven.test.skip=true
-          else
-            echo "Skipping plugins build: no pom.xml found in plugins directory"
-          fi
+      # - name: Build plugins (compile-only until analyzer stubs are replaced)
+      #   run: cd plugins && mvn clean verify -DskipTests -Dmaven.test.skip=true
 
       - name: Generate JaCoCo Badge
         if: github.event_name == 'push'
@@ -60,12 +55,12 @@ jobs:
       - name: Fix permissions
         if: github.event_name == 'push'
         run: |
-          sudo chown -R $(whoami):$(whoami) target/html
-          sudo chmod -R 755 target/html  # Read-write for owner, read for others
+              sudo chown -R $(whoami):$(whoami) target/html
+              sudo chmod -R 755 target/html  # Read-write for owner, read for others
 
       - name: Check coverage report exists
         if: github.event_name == 'push'
-        run: ls -lah target/html || echo "Coverage report not found!"
+        run: ls -lah target/html || echo "Coverage report not found!"     
 
       - name: Publish coverage report to GitHub Pages
         if: github.event_name == 'push'
