@@ -161,36 +161,23 @@ const PathologyGrossing = ({
                         value={condition.id}
                       />
                     ))}
-                </Select>
+                </Select>[]
             </Column>
 
             <Column lg={16} md={8} sm={4}>
-                      <div style={{ marginBottom: "0.5rem" }}>
-    <Button size="sm" kind="ghost" onClick={() => applyFormat("bold")}>
-      Bold
-    </Button>
-    <Button size="sm" kind="ghost" onClick={() => applyFormat("italic")}>
-      Italic
-    </Button>
-    <Button size="sm" kind="ghost" onClick={() => applyFormat("underline")}>
-      Underline
-    </Button>
-  </div>
+                <div
+                    ref={editorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={(e) => onGrossingChange(e.currentTarget.innerHTML)}
+                    style={{
+                    minHeight: "220px",
+                    border: "1px solid #8d8d8d",
+                    padding: "1rem",
+                    background: "white",
+                    }}
+                />
             </Column>
-
-
-  <div
-    ref={editorRef}
-    contentEditable
-    suppressContentEditableWarning
-    onInput={(e) => onGrossingChange(e.currentTarget.innerHTML)}
-    style={{
-      minHeight: "220px",
-      border: "1px solid #8d8d8d",
-      padding: "1rem",
-      background: "white",
-    }}
-  />
         </Grid>
     );
 };
