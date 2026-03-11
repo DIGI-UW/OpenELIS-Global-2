@@ -9,8 +9,8 @@ import { AnalyzerListPage } from "../fixtures/analyzer-list";
  */
 test.describe("Analyzer Simulator", () => {
   test.skip(
-    process.env.CI === "true",
-    "Requires analyzer harness with fixture data (not available in CI)",
+    process.env.CI === "true" && process.env.ANALYZER_HARNESS !== "true",
+    "Requires analyzer harness stack (ANALYZER_HARNESS=true)",
   );
 
   test("GeneXpert preview-mapping shows v1.2 simulator payload", async ({

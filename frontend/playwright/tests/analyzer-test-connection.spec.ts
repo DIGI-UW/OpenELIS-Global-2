@@ -18,8 +18,8 @@ const GENEXPERT_HOST = process.env.GENEXPERT_HOST;
 const GENEXPERT_PORT = process.env.GENEXPERT_PORT || "1200";
 test.describe("Analyzer Test Connection", () => {
   test.skip(
-    process.env.CI === "true",
-    "Requires analyzer harness with fixture data (not available in CI)",
+    process.env.CI === "true" && process.env.ANALYZER_HARNESS !== "true",
+    "Requires analyzer harness stack (ANALYZER_HARNESS=true)",
   );
 
   test("GeneXpert test-connection succeeds via ASTM mock", async ({ page }) => {

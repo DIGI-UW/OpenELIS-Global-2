@@ -39,7 +39,7 @@ export default defineConfig({
       name: "setup",
       testMatch: /.*\.setup\.ts/,
     },
-    // Main tests - depend on auth
+    // Main tests - depend on auth (excludes harness-only specs)
     {
       name: "chromium",
       use: {
@@ -47,6 +47,29 @@ export default defineConfig({
         storageState: "playwright/.auth/user.json",
       },
       dependencies: ["setup"],
+      testIgnore: [
+        "**/analyzer-test-connection*",
+        "**/analyzer-plugin-config*",
+        "**/analyzer-simulator*",
+        "**/analyzer-hl7-simulate*",
+        "**/file-import*",
+      ],
+    },
+    // Analyzer harness tests - run via analyzer-e2e.yml with ANALYZER_HARNESS=true
+    {
+      name: "analyzer",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+      testMatch: [
+        "**/analyzer-test-connection*",
+        "**/analyzer-plugin-config*",
+        "**/analyzer-simulator*",
+        "**/analyzer-hl7-simulate*",
+        "**/file-import*",
+      ],
     },
   ],
 });

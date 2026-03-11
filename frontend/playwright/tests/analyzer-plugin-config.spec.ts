@@ -4,8 +4,8 @@ import { AnalyzerFormPage } from "../fixtures/analyzer-form";
 
 test.describe("Analyzer Plugin Config", () => {
   test.skip(
-    process.env.CI === "true",
-    "Requires analyzer harness fixtures/plugins not available in default CI",
+    process.env.CI === "true" && process.env.ANALYZER_HARNESS !== "true",
+    "Requires analyzer harness stack (ANALYZER_HARNESS=true)",
   );
 
   test("profile selection prefills implemented analyzer fields", async ({
