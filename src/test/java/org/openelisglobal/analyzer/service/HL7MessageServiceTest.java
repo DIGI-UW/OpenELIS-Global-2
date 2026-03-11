@@ -83,6 +83,18 @@ public class HL7MessageServiceTest {
     }
 
     @Test
+    public void parseOruR01_msh9WithThirdComponent_acceptsAndExtracts() throws IOException {
+        String raw = loadFixture("testdata/hl7/mindray/bs200-chemistry-result.hl7");
+        String withThird = raw.replace("ORU^R01|", "ORU^R01^ORU_R01|");
+        HL7MessageService.OruR01ParseResult result = service.parseOruR01(withThird);
+
+        assertNotNull(result);
+        assertTrue("Patient ID", result.getPatientId().contains("PAT003"));
+        assertEquals("PLACER201", result.getPlacerOrderNumber());
+        assertTrue("Results count", result.getResults().size() >= 3);
+    }
+
+    @Test
     public void extractMshInfo_mindray_returnsSendingAppAndFacility() throws IOException {
         String raw = loadFixture("testdata/hl7/mindray-cbc-result.hl7");
         HL7MessageService.MshInfo msh = service.extractMshInfo(raw);

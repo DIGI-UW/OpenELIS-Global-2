@@ -59,7 +59,9 @@ public class HL7MessageServiceImpl implements HL7MessageService {
             String normalized = normalizeSegmentTerminators(rawMessage);
             Message msg = parser.parse(normalized);
             if (!isOruR01(normalized)) {
-                throw new HL7ParseException("Message is not ORU^R01: " + msg.getClass().getSimpleName());
+                String msh9 = getMsh9(normalized);
+                throw new HL7ParseException(
+                        "Message is not ORU^R01 (MSH-9: " + (msh9.isEmpty() ? "missing" : msh9) + ")");
             }
             return extractOruResult(normalized);
         } catch (HL7Exception e) {
@@ -174,16 +176,33 @@ public class HL7MessageServiceImpl implements HL7MessageService {
         return new java.text.SimpleDateFormat("yyyyMMddHHmmss.SSS").format(new java.util.Date(ms));
     }
 
-    private boolean isOruR01(String normalizedMessage) {
+    private String getMsh9(String normalizedMessage) {
         for (String line : toSegmentLines(normalizedMessage)) {
             if (line.startsWith("MSH" + FIELD_SEP)) {
                 String[] fields = line.split("\\|", -1);
                 if (fields.length > 8) {
-                    return "ORU^R01".equals(StringUtils.defaultString(fields[8]).trim());
+                    return StringUtils.defaultString(fields[8]).trim();
                 }
+                return "";
             }
         }
-        return false;
+        return "";
+    }
+
+    /**
+     * Accepts MSH-9 ORU^R01 or ORU^R01 with optional third component (e.g.
+     * ORU^R01^ORU_R01).
+     */
+    private boolean isOruR01(String normalizedMessage) {
+        String msh9 = getMsh9(normalizedMessage);
+        if (msh9.isEmpty()) {
+            return false;
+        }
+        if ("ORU^R01".equals(msh9)) {
+            return true;
+        }
+        String[] comp = msh9.split("\\^", -1);
+        return comp.length >= 2 && "ORU".equals(comp[0].trim()) && "R01".equals(comp[1].trim());
     }
 
     private OruR01ParseResult extractOruResult(String normalizedMessage) {
