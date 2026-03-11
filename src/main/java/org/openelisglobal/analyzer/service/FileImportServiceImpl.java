@@ -1,5 +1,9 @@
 package org.openelisglobal.analyzer.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -7,13 +11,28 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import org.openelisglobal.analyzer.dao.AnalyzerFileUploadDAO;
+import org.openelisglobal.analyzer.dao.AnalyzerRunDAO;
 import org.openelisglobal.analyzer.dao.FileImportConfigurationDAO;
+import org.openelisglobal.analyzer.form.AnalyzerRunPreviewForm;
+import org.openelisglobal.analyzer.form.PreviewRecordForm;
+import org.openelisglobal.analyzer.form.SubmitRequestForm;
+import org.openelisglobal.analyzer.valueholder.AnalyzerFileUpload;
+import org.openelisglobal.analyzer.valueholder.AnalyzerRun;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
+import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerLineInserter;
 import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerReader;
 import org.openelisglobal.analyzerimport.analyzerreaders.ExcelAnalyzerReader;
 import org.openelisglobal.analyzerimport.analyzerreaders.FileAnalyzerReader;
@@ -21,6 +40,9 @@ import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.services.PluginAnalyzerService;
+import org.openelisglobal.plugin.AnalyzerImporterPlugin;
+import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -39,6 +61,22 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
 
     @Autowired
     private AnalyzerResultsDAO analyzerResultsDAO;
+
+    @Autowired
+    private AnalyzerFileUploadDAO analyzerFileUploadDAO;
+
+    @Autowired
+    private AnalyzerRunDAO analyzerRunDAO;
+
+    /** Optional: set in tests to avoid SpringContext. */
+    private PluginAnalyzerService pluginAnalyzerService;
+
+    @Autowired(required = false)
+    public void setPluginAnalyzerService(PluginAnalyzerService pluginAnalyzerService) {
+        this.pluginAnalyzerService = pluginAnalyzerService;
+    }
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public FileImportServiceImpl() {
         super(FileImportConfiguration.class);
@@ -111,6 +149,8 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             return new FileAnalyzerReader(configuration);
         case "EXCEL":
             return new ExcelAnalyzerReader(configuration);
+        case "XML":
+            return new org.openelisglobal.analyzerimport.analyzerreaders.XmlAnalyzerReader(configuration);
         default:
             LogEvent.logWarn(this.getClass().getSimpleName(), "getReaderForFormat",
                     "Unknown file format '" + fileFormat + "', defaulting to CSV reader");
@@ -270,5 +310,262 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
                     + analyzerId + ", sample: " + sampleId + ", test: " + testCode + ": " + e.getMessage());
             return false; // On error, don't block processing
         }
+    }
+
+    @Override
+    public AnalyzerRunPreviewForm parseAndPreview(Integer analyzerId, InputStream fileStream, String filename,
+            String systemUserId) {
+        AnalyzerRunPreviewForm form = new AnalyzerRunPreviewForm();
+        form.setTotalRecords(0);
+        form.setValidRecords(0);
+        form.setWarningRecords(0);
+        form.setErrorRecords(0);
+        form.setRecords(Collections.emptyList());
+        form.setDuplicateWarning(false);
+
+        Optional<FileImportConfiguration> configOpt = getByAnalyzerId(analyzerId);
+        if (configOpt.isEmpty()) {
+            return form;
+        }
+        FileImportConfiguration config = configOpt.get();
+
+        byte[] bytes;
+        try {
+            bytes = fileStream.readAllBytes();
+        } catch (IOException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "parseAndPreview",
+                    "Failed to read stream: " + e.getMessage());
+            return form;
+        }
+
+        String fileHashSha256 = sha256Hex(bytes);
+        int uploadedByInt = parseUserId(systemUserId);
+        boolean duplicateFile = analyzerFileUploadDAO.findByAnalyzerIdAndFileHash(analyzerId, fileHashSha256)
+                .isPresent();
+
+        AnalyzerFileUpload upload = new AnalyzerFileUpload();
+        upload.setAnalyzerId(analyzerId);
+        upload.setFilename(filename != null ? filename : "upload");
+        upload.setFileHashSha256(fileHashSha256);
+        upload.setFileSize((long) bytes.length);
+        upload.setStatus("PENDING");
+        upload.setUploadedBy(uploadedByInt);
+        upload.setCreatedAt(new Timestamp(System.currentTimeMillis()));
+        analyzerFileUploadDAO.insert(upload);
+
+        if (duplicateFile) {
+            form.setDuplicateWarning(true);
+        }
+
+        AnalyzerReader reader = getReaderForFormat(config);
+        if (!reader.readStream(new ByteArrayInputStream(bytes))) {
+            upload.setStatus("ERROR");
+            upload.setErrorMessage(reader.getError());
+            analyzerFileUploadDAO.update(upload);
+            return form;
+        }
+
+        List<Map<String, String>> parsed = reader.getParsedRecords();
+        Map<String, String> columnMappings = config.getColumnMappings() != null ? config.getColumnMappings()
+                : Collections.emptyMap();
+        List<PreviewRecordForm> records = new ArrayList<>();
+        int valid = 0, warning = 0, error = 0;
+        for (int i = 0; i < parsed.size(); i++) {
+            PreviewRecordForm rec = toPreviewRecord(i + 1, parsed.get(i), columnMappings, analyzerId);
+            records.add(rec);
+            switch (rec.getStatus()) {
+            case "VALID":
+                valid++;
+                break;
+            case "WARNING":
+                warning++;
+                break;
+            default:
+                error++;
+                break;
+            }
+        }
+
+        form.setTotalRecords(parsed.size());
+        form.setValidRecords(valid);
+        form.setWarningRecords(warning);
+        form.setErrorRecords(error);
+        form.setRecords(records);
+        form.setUploadId(upload.getId());
+
+        List<String> lines = reader.getLines();
+        try {
+            String linesJson = objectMapper.writeValueAsString(lines);
+            AnalyzerRun run = new AnalyzerRun();
+            run.setAnalyzerFileUploadId(upload.getId());
+            run.setPluginId(config.getAnalyzerId() != null ? config.getAnalyzerId().toString() : null);
+            run.setCustomPreviewData(linesJson);
+            run.setCreatedAt(new Timestamp(System.currentTimeMillis()));
+            analyzerRunDAO.insert(run);
+        } catch (JsonProcessingException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "parseAndPreview",
+                    "Could not store preview lines: " + e.getMessage());
+        }
+
+        return form;
+    }
+
+    @Override
+    public void submitResults(Integer analyzerId, SubmitRequestForm request, String systemUserId) {
+        if (request == null || request.getPreviewSessionId() == null) {
+            return;
+        }
+        Long uploadId = request.getPreviewSessionId();
+        Optional<AnalyzerFileUpload> uploadOpt = analyzerFileUploadDAO.get(uploadId);
+        if (uploadOpt.isEmpty() || !uploadOpt.get().getAnalyzerId().equals(analyzerId)) {
+            return;
+        }
+        AnalyzerFileUpload upload = uploadOpt.get();
+        upload.setStatus("PROCESSING");
+        analyzerFileUploadDAO.update(upload);
+
+        Optional<AnalyzerRun> runOpt = analyzerRunDAO.findByAnalyzerFileUploadId(uploadId);
+        if (runOpt.isEmpty() || runOpt.get().getCustomPreviewData() == null) {
+            upload.setStatus("ERROR");
+            upload.setErrorMessage("No preview data for submit");
+            analyzerFileUploadDAO.update(upload);
+            return;
+        }
+
+        List<String> lines;
+        try {
+            lines = objectMapper.readValue(runOpt.get().getCustomPreviewData(), new TypeReference<List<String>>() {
+            });
+        } catch (JsonProcessingException e) {
+            upload.setStatus("ERROR");
+            upload.setErrorMessage("Invalid preview data: " + e.getMessage());
+            analyzerFileUploadDAO.update(upload);
+            return;
+        }
+
+        Set<Integer> excluded = new HashSet<>(
+                request.getExcludedRows() != null ? request.getExcludedRows() : Collections.emptyList());
+        List<String> filtered = new ArrayList<>();
+        for (int i = 0; i < lines.size(); i++) {
+            if (!excluded.contains(i)) {
+                filtered.add(lines.get(i));
+            }
+        }
+
+        PluginAnalyzerService pluginService = pluginAnalyzerService != null ? pluginAnalyzerService
+                : SpringContext.getBean(PluginAnalyzerService.class);
+        AnalyzerImporterPlugin plugin = pluginService != null
+                ? pluginService.getPluginByAnalyzerId(String.valueOf(analyzerId))
+                : null;
+        if (plugin == null) {
+            upload.setStatus("ERROR");
+            upload.setErrorMessage("No plugin for analyzer " + analyzerId);
+            analyzerFileUploadDAO.update(upload);
+            return;
+        }
+        AnalyzerLineInserter inserter = plugin.getAnalyzerLineInserter();
+        if (inserter == null) {
+            upload.setStatus("ERROR");
+            upload.setErrorMessage("Plugin has no line inserter");
+            analyzerFileUploadDAO.update(upload);
+            return;
+        }
+        inserter.setContextAnalyzerId(String.valueOf(analyzerId));
+        boolean success = inserter.insert(filtered, systemUserId);
+        if (!success) {
+            upload.setStatus("ERROR");
+            upload.setErrorMessage(inserter.getError());
+            analyzerFileUploadDAO.update(upload);
+            return;
+        }
+
+        upload.setStatus("COMPLETED");
+        upload.setResultCount(filtered.size());
+        upload.setCompletedAt(new Timestamp(System.currentTimeMillis()));
+        analyzerFileUploadDAO.update(upload);
+    }
+
+    private static String sha256Hex(byte[] bytes) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(bytes);
+            StringBuilder sb = new StringBuilder(64);
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b & 0xff));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 not available", e);
+        }
+    }
+
+    private static int parseUserId(String systemUserId) {
+        if (systemUserId == null || systemUserId.isBlank()) {
+            return 1;
+        }
+        try {
+            return Integer.parseInt(systemUserId.trim());
+        } catch (NumberFormatException e) {
+            return 1;
+        }
+    }
+
+    private PreviewRecordForm toPreviewRecord(int rowNumber, Map<String, String> record,
+            Map<String, String> columnMappings, Integer analyzerId) {
+        String sampleId = extractField(record, columnMappings, "sampleId", "Sample_ID", "sample_id");
+        String testCode = extractField(record, columnMappings, "testCode", "Test_Code", "test_code");
+        String result = extractField(record, columnMappings, "result", "Result", "result");
+        String testDate = extractField(record, columnMappings, "testDate", "Date", "date");
+        String testTime = extractField(record, columnMappings, "testTime", "Time", "time");
+
+        PreviewRecordForm rec = new PreviewRecordForm();
+        rec.setRowNumber(rowNumber);
+        rec.setSampleId(sampleId);
+        rec.setTestCode(testCode);
+        rec.setResult(result);
+        rec.setValidationMessages(new ArrayList<>());
+
+        if (sampleId == null || sampleId.isBlank() || testCode == null || testCode.isBlank()) {
+            rec.setStatus("ERROR");
+            if (sampleId == null || sampleId.isBlank()) {
+                rec.getValidationMessages().add(msg("MISSING_SAMPLE_ID", "Sample ID is required"));
+            }
+            if (testCode == null || testCode.isBlank()) {
+                rec.getValidationMessages().add(msg("MISSING_TEST_CODE", "Test code is required"));
+            }
+            return rec;
+        }
+        if (isDuplicate(analyzerId, sampleId, testCode, testDate, testTime)) {
+            rec.setStatus("WARNING");
+            rec.getValidationMessages().add(msg("DUPLICATE_RESULT", "Duplicate result already exists"));
+            return rec;
+        }
+        rec.setStatus("VALID");
+        return rec;
+    }
+
+    private static String extractField(Map<String, String> record, Map<String, String> columnMappings,
+            String internalName, String... possibleNames) {
+        if (record.containsKey(internalName)) {
+            return record.get(internalName);
+        }
+        for (String name : possibleNames) {
+            if (record.containsKey(name)) {
+                return record.get(name);
+            }
+            for (String key : record.keySet()) {
+                if (key != null && key.equalsIgnoreCase(name)) {
+                    return record.get(key);
+                }
+            }
+        }
+        return null;
+    }
+
+    private static PreviewRecordForm.ValidationMessageForm msg(String code, String message) {
+        PreviewRecordForm.ValidationMessageForm m = new PreviewRecordForm.ValidationMessageForm();
+        m.setCode(code);
+        m.setMessage(message);
+        return m;
     }
 }

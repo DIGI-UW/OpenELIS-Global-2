@@ -245,9 +245,9 @@ parse → preview → submit → results appear in Analyzer Results.
    sample IDs, CT values, and VL results.
 2. **Given** a parsed preview with one ACCESSION*NOT_FOUND warning, **When**
    tech edits the lab number inline (editable cell in the preview table),
-   **Then** the warning resolves and the row becomes valid. *(Note: inline
-   editing is scoped to M2 if feasible; may be deferred to a follow-up if Carbon
-   DataTable editable cells add excessive complexity.)\_
+   **Then** the warning resolves and the row becomes valid. *(Deferred post-M2:
+   inline edit of lab number; M2 delivers preview and submit only; editing may
+   be added in a follow-up.)\*
 3. **Given** a preview with all valid rows, **When** tech clicks Submit,
    **Then** results are queued and the tech is redirected to Analyzer Results
    for QC-first review.

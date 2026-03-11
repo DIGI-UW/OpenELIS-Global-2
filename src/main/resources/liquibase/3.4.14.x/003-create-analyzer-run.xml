@@ -28,6 +28,9 @@
       <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()">
         <constraints nullable="false"/>
       </column>
+      <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+        <constraints nullable="false"/>
+      </column>
     </createTable>
 
     <createIndex indexName="idx_analyzer_run_upload_id" tableName="analyzer_run">

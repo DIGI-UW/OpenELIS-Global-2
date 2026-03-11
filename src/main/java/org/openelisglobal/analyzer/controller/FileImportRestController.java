@@ -200,9 +200,7 @@ public class FileImportRestController extends BaseRestController {
             existing.setFilePattern(configuration.getFilePattern());
             existing.setArchiveDirectory(configuration.getArchiveDirectory());
             existing.setErrorDirectory(configuration.getErrorDirectory());
-            if (configuration.getFileFormat() != null && !configuration.getFileFormat().trim().isEmpty()) {
-                existing.setFileFormat(configuration.getFileFormat());
-            }
+            existing.setFileFormat(configuration.getFileFormat());
             existing.setColumnMappings(configuration.getColumnMappings());
             existing.setDelimiter(configuration.getDelimiter());
             existing.setHasHeader(configuration.getHasHeader());
