@@ -1289,6 +1289,7 @@
   "label.barcode.orderlabel": " Número de etiquetas de orden por juego",
   "label.barcode.specimenlabel": " Número de etiquetas de muestra por juego",
   "label.barcode.totallabel": " Total de etiquetas para imprimir",
+  "label.button.action": "Acción",
   "label.button.add": "Agregar",
   "label.button.add.question": "Agregar nueva pregunta",
   "label.button.cancel": "Cancelar",

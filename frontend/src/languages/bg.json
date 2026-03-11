@@ -1289,6 +1289,7 @@
   "label.barcode.orderlabel": "Брой етикети за поръчка на комплект",
   "label.barcode.specimenlabel": "Брой етикети за проба на комплект",
   "label.barcode.totallabel": "Общо етикети за печат",
+  "label.button.action": "Действие",
   "label.button.add": "Добави",
   "label.button.add.question": "Добави нов въпрос",
   "label.button.cancel": "Отказ",

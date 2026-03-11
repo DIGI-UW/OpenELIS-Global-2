@@ -1289,6 +1289,7 @@
   "label.barcode.orderlabel": "Jumlah Label yang dipesan per set",
   "label.barcode.specimenlabel": "Jumlah label spesimen per set",
   "label.barcode.totallabel": "Jumlah label untuk dicetak",
+  "label.button.action": "Tindakan",
   "label.button.add": "Tambah",
   "label.button.add.question": "Tambah pertanyaan baru",
   "label.button.cancel": "Batal",

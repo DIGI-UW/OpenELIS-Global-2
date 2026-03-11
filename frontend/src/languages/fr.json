@@ -1289,6 +1289,7 @@
   "label.barcode.orderlabel": "Nombre d'étiquettes d'ordonnance par ensemble",
   "label.barcode.specimenlabel": "Nombre d'étiquettes d'échantillon par ensemble",
   "label.barcode.totallabel": "Nombre total d'étiquettes à imprimer",
+  "label.button.action": "Action",
   "label.button.add": "Ajouter",
   "label.button.add.question": "Ajouter une nouvelle question",
   "label.button.cancel": "Annuler",

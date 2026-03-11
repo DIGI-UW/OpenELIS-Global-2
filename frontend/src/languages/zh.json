@@ -1289,6 +1289,7 @@
   "label.barcode.orderlabel": "每组订单标签数量",
   "label.barcode.specimenlabel": "每组标本标签数量",
   "label.barcode.totallabel": "要打印的总标签数",
+  "label.button.action": "操作",
   "label.button.add": "添加",
   "label.button.add.question": "添加新问题",
   "label.button.cancel": "取消",
