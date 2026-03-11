@@ -95,6 +95,8 @@ public class AnalyzerImportController implements IActionConstants {
         reader = (ASTMAnalyzerReader) AnalyzerReaderFactory.getReaderFor("astm");
 
         if (reader != null) {
+            // Pass bridge source-identification headers to reader for deterministic lookup
+            setBridgeHeaders(reader, request);
             read = reader.readStream(stream);
             if (read) {
                 String userId = getSysUserId(request);
@@ -140,6 +142,8 @@ public class AnalyzerImportController implements IActionConstants {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "HL7 reader not available");
             return;
         }
+        // Pass bridge source-identification headers to reader for deterministic lookup
+        setBridgeHeaders(reader, request);
         boolean read = reader.readStream(request.getInputStream());
         if (!read) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST,
@@ -179,6 +183,40 @@ public class AnalyzerImportController implements IActionConstants {
             analyzer = AnalyzerTestNameCache.getInstance().getDBNameForActionName(analyzerType);
         }
         return analyzer;
+    }
+
+    /**
+     * Extract bridge source-identification headers and pass to reader. The analyzer
+     * bridge sends X-Source-Id (IP) and X-Source-Port headers that enable
+     * deterministic analyzer lookup without regex pattern matching.
+     */
+    private void setBridgeHeaders(AnalyzerReader reader, HttpServletRequest request) {
+        String sourceIp = request.getHeader("X-Source-Id");
+        String sourcePort = request.getHeader("X-Source-Port");
+
+        if (reader instanceof ASTMAnalyzerReader astmReader) {
+            if (sourceIp != null && !sourceIp.trim().isEmpty()) {
+                astmReader.setClientIpAddress(sourceIp.trim());
+            }
+            if (sourcePort != null && !sourcePort.trim().isEmpty()) {
+                try {
+                    astmReader.setClientPort(Integer.parseInt(sourcePort.trim()));
+                } catch (NumberFormatException e) {
+                    // ignore invalid port header
+                }
+            }
+        } else if (reader instanceof HL7AnalyzerReader hl7Reader) {
+            if (sourceIp != null && !sourceIp.trim().isEmpty()) {
+                hl7Reader.setClientIpAddress(sourceIp.trim());
+            }
+            if (sourcePort != null && !sourcePort.trim().isEmpty()) {
+                try {
+                    hl7Reader.setClientPort(Integer.parseInt(sourcePort.trim()));
+                } catch (NumberFormatException e) {
+                    // ignore invalid port header
+                }
+            }
+        }
     }
 
     private String getSysUserId(HttpServletRequest request) {

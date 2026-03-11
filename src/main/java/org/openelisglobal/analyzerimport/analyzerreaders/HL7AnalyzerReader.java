@@ -38,6 +38,8 @@ public class HL7AnalyzerReader extends AnalyzerReader {
 
     private List<String> lines;
     private String error;
+    private String clientIpAddress;
+    private Integer clientPort;
 
     @Override
     public boolean readStream(InputStream stream) {
@@ -109,6 +111,21 @@ public class HL7AnalyzerReader extends AnalyzerReader {
      */
     private List<AnalyzerImporterPlugin> choosePluginOrder(PluginAnalyzerService pluginService) {
         return pluginService.getAnalyzerPlugins();
+    }
+
+    /**
+     * Set client IP address from bridge X-Source-Id header for analyzer
+     * identification
+     */
+    public void setClientIpAddress(String ip) {
+        this.clientIpAddress = ip;
+    }
+
+    /**
+     * Set client port from bridge X-Source-Port header for analyzer identification
+     */
+    public void setClientPort(Integer port) {
+        this.clientPort = port;
     }
 
     /** HL7 MSH segment field 3 (sending application). Same as GenericHL7. */
