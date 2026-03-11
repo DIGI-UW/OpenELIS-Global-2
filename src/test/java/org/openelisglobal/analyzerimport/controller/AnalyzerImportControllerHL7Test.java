@@ -1,6 +1,6 @@
 package org.openelisglobal.analyzerimport.controller;
 
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -38,13 +38,14 @@ public class AnalyzerImportControllerHL7Test extends BaseWebContextSensitiveTest
     public void postHl7_validOruR01_reachesEndpointAndParses() throws Exception {
         String hl7 = loadFixture("testdata/hl7/mindray/bc5380-cbc-result.hl7");
 
-        // Valid HL7 parses successfully. 200 = full ingestion; 500 = plugin not matched
-        // (fixture linkage).
+        // M1 only requires the request to reach the HL7 endpoint and parse as HL7.
+        // In this test environment that means either 200 (ingestion succeeded) or
+        // 500 (route reached parser but downstream plugin/linkage is incomplete).
         var result = mockMvc.perform(
                 post("/analyzer/hl7").contentType(MediaType.TEXT_PLAIN).content(hl7.getBytes(StandardCharsets.UTF_8)))
                 .andReturn();
         int code = result.getResponse().getStatus();
-        assertNotEquals("Valid HL7 should not return 400 (parse failed)", 400, code);
+        assertTrue("Valid HL7 should return 200 or 500, but was " + code, code == 200 || code == 500);
     }
 
     @Test
