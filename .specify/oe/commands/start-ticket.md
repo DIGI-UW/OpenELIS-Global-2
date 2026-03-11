@@ -1,8 +1,8 @@
 # Start Ticket
 
 Set up a development environment for a Jira ticket: fetch details, create
-branch, optionally create a draft PR and transition Jira status. Integrates
-with SpecKit for spec-driven development.
+branch, optionally create a draft PR and transition Jira status. Integrates with
+SpecKit for spec-driven development.
 
 ## User Input
 
@@ -31,8 +31,7 @@ First argument is the Jira issue key. Additional flags:
 ### Step 1: Fetch Jira Ticket
 
 Use `mcp__claude_ai_Atlassian__getJiraIssue` with cloud ID above. Fields:
-`["summary", "description", "status", "priority", "issuetype", "labels",
-"sprint", "parent", "issuelinks"]`
+`["summary", "description", "status", "priority", "issuetype", "labels", "sprint", "parent", "issuelinks"]`
 
 Display a brief summary:
 
@@ -46,13 +45,13 @@ Labels: Madagascar | Parent: OGC-49
 
 **Branch name pattern:** `<type>/<KEY>-<slug>`
 
-| Jira Type     | Prefix |
-| ------------- | ------ |
-| Bug           | fix    |
-| Story         | feat   |
-| Task          | chore  |
-| Epic          | epic   |
-| Sub-task      | feat   |
+| Jira Type | Prefix |
+| --------- | ------ |
+| Bug       | fix    |
+| Story     | feat   |
+| Task      | chore  |
+| Epic      | epic   |
+| Sub-task  | feat   |
 
 Slugify: lowercase, hyphens, truncate to ~50 chars at word boundary.
 
@@ -83,9 +82,9 @@ Push and create a draft PR:
 git push -u origin "$BRANCH_NAME"
 ```
 
-**PR title:** `<type>(<project>): <short summary> (<KEY>)`
-**PR body:** Generated from Jira description — summary bullets, link to Jira
-ticket, acceptance criteria if available.
+**PR title:** `<type>(<project>): <short summary> (<KEY>)` **PR body:**
+Generated from Jira description — summary bullets, link to Jira ticket,
+acceptance criteria if available.
 
 ```bash
 gh pr create --draft --title "$TITLE" --body "$BODY" --base "$BASE_BRANCH"
@@ -129,8 +128,8 @@ Started: OGC-337 — Implement Generic ASTM Plugin v1.1/1.2
 
 ## Lifecycle & Jira Sync
 
-This command is the **entry point** of the development cycle. It syncs Jira
-to "In Progress." Other commands handle later transitions:
+This command is the **entry point** of the development cycle. It syncs Jira to
+"In Progress." Other commands handle later transitions:
 
 ```
 /daily-priorities             ← Pick what to work on

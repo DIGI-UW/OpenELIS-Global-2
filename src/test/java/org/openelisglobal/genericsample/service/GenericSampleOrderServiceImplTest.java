@@ -64,9 +64,13 @@ public class GenericSampleOrderServiceImplTest {
     private MessageSource messageSource;
 
     private GenericSampleOrderServiceImpl service;
+    private AutowireCapableBeanFactory previousFactory;
+    private Object previousMessageUtilInstance;
 
     @Before
     public void setUp() {
+        previousFactory = (AutowireCapableBeanFactory) ReflectionTestUtils.getField(SpringContext.class, "factory");
+        previousMessageUtilInstance = ReflectionTestUtils.getField(MessageUtil.class, "instance");
         service = new GenericSampleOrderServiceImpl();
         ReflectionTestUtils.setField(service, "sampleService", sampleService);
         ReflectionTestUtils.setField(service, "sampleItemService", sampleItemService);
@@ -109,7 +113,8 @@ public class GenericSampleOrderServiceImplTest {
 
     @After
     public void tearDown() {
-        ReflectionTestUtils.setField(SpringContext.class, "factory", null);
+        ReflectionTestUtils.setField(SpringContext.class, "factory", previousFactory);
+        ReflectionTestUtils.setField(MessageUtil.class, "instance", previousMessageUtilInstance);
     }
 
     @Test
