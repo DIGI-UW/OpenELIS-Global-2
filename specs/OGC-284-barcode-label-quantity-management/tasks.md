@@ -69,7 +69,8 @@ fallback safely; localized labels render correctly.
       `frontend/src/components/admin/barcodeConfiguration/BarcodeConfiguration.js`
 - [x] T011 [US1] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T012 Create milestone PR for M1 with test evidence and scope summary
+- [x] T012 Create milestone PR for M1 with test evidence and scope summary (M1
+      scope folded into M2/M3/M4; no separate PR needed)
 
 ---
 
@@ -189,7 +190,7 @@ review threads can be closed with evidence.
       rebase on latest develop if needed to resolve any upstream conflicts
 - [x] T037 Address open review feedback with explicit file/line references in
       milestone PR discussion
-- [ ] T038 Re-run failed PR workflow(s) and record run IDs + final status in
+- [x] T038 Re-run failed PR workflow(s) and record run IDs + final status in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
 - [x] T039 Resolve remaining review threads after verification evidence is
       posted

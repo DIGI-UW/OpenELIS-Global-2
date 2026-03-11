@@ -287,6 +287,15 @@ mvn test -Dtest="BarcodeConfigurationRestControllerTest,BarcodeInformationServic
 - PR `#3042` created.
 - Pending CI run.
 
+### T038 Playwright remediation (2026-03-10)
+
+- Auth setup rewritten: semantic selectors (`getByLabel`, `getByRole`), auto-retry
+  assertions, no manual polling loops.
+- Barcode configuration spec: real E2E against live app (no route mocks).
+- Barcode printing spec: real E2E smoke test against live app.
+- Local validation: `npm run pw:test -- --grep "Barcode|barcode"` — 3 passed.
+- CI run ID: (record after push triggers workflow re-run)
+
 ---
 
 ## M4 verification matrix (prep)
