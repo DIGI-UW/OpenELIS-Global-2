@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.service;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.analyzer.form.AnalyzerRunPreviewForm;
 import org.openelisglobal.analyzer.form.SubmitRequestForm;
@@ -102,4 +103,14 @@ public interface FileImportService extends BaseObjectService<FileImportConfigura
      * @param systemUserId user for audit
      */
     void submitResults(Integer analyzerId, SubmitRequestForm request, String systemUserId);
+
+    /**
+     * Auto-create a FileImportConfiguration from a loaded profile's config data.
+     * Called during analyzer creation when the profile protocol is FILE.
+     *
+     * @param analyzerId   the newly created analyzer's ID (as String)
+     * @param configData   the full profile JSON parsed as a Map
+     * @param analyzerName the analyzer name (used for default directory paths)
+     */
+    void autoCreateFromProfile(String analyzerId, Map<String, Object> configData, String analyzerName);
 }

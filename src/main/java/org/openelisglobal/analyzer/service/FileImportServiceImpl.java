@@ -18,6 +18,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -560,6 +561,119 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             }
         }
         return null;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void autoCreateFromProfile(String analyzerId, Map<String, Object> configData, String analyzerName) {
+        if (analyzerId == null || configData == null) {
+            return;
+        }
+
+        Integer analyzerIdInt;
+        try {
+            analyzerIdInt = Integer.parseInt(analyzerId);
+        } catch (NumberFormatException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "autoCreateFromProfile",
+                    "Invalid analyzer ID: " + analyzerId);
+            return;
+        }
+
+        // Don't create if one already exists
+        if (fileImportConfigurationDAO.findByAnalyzerId(analyzerIdInt).isPresent()) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateFromProfile",
+                    "FileImportConfiguration already exists for analyzer " + analyzerId);
+            return;
+        }
+
+        // Extract file format from configDefaults or protocol
+        String fileFormat = "CSV";
+        Object configDefaults = configData.get("configDefaults");
+        if (configDefaults instanceof Map) {
+            Object fmt = ((Map<String, Object>) configDefaults).get("fileFormat");
+            if (fmt instanceof String) {
+                fileFormat = ((String) fmt).trim().toUpperCase();
+            }
+        }
+        Object protocol = configData.get("protocol");
+        if (protocol instanceof Map) {
+            Object fmt = ((Map<String, Object>) protocol).get("format");
+            if (fmt instanceof String && fileFormat.equals("CSV")) {
+                fileFormat = ((String) fmt).trim().toUpperCase();
+            }
+        }
+
+        // Extract hasHeader from configDefaults
+        boolean hasHeader = true;
+        if (configDefaults instanceof Map) {
+            Object hh = ((Map<String, Object>) configDefaults).get("hasHeader");
+            if (hh instanceof Boolean) {
+                hasHeader = (Boolean) hh;
+            }
+        }
+
+        // Extract column mappings
+        Map<String, String> columnMappings = new HashMap<>();
+        Object colMapping = configData.get("column_mapping");
+        if (colMapping instanceof Map) {
+            ((Map<?, ?>) colMapping).forEach((k, v) -> {
+                if (k instanceof String && v instanceof String) {
+                    columnMappings.put((String) k, (String) v);
+                }
+            });
+        }
+
+        // Derive file pattern from supported_extensions or fileFormat
+        String filePattern = deriveFilePattern(configData, fileFormat);
+
+        // Build default directory paths using sanitized analyzer name
+        String safeName = analyzerName != null ? analyzerName.replaceAll("[^a-zA-Z0-9_-]", "-").toLowerCase()
+                : "analyzer-" + analyzerId;
+        String importDir = baseImportDir + "/" + safeName + "/incoming";
+        String archiveDir = baseImportDir + "/" + safeName + "/archive";
+        String errorDir = baseImportDir + "/" + safeName + "/error";
+
+        FileImportConfiguration config = new FileImportConfiguration();
+        config.setAnalyzerId(analyzerIdInt);
+        config.setFileFormat(fileFormat);
+        config.setFilePattern(filePattern);
+        config.setHasHeader(hasHeader);
+        config.setColumnMappings(columnMappings);
+        config.setImportDirectory(importDir);
+        config.setArchiveDirectory(archiveDir);
+        config.setErrorDirectory(errorDir);
+        config.setDelimiter(fileFormat.equals("TSV") ? "\t" : ",");
+        config.setActive(true);
+
+        fileImportConfigurationDAO.insert(config);
+
+        LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateFromProfile",
+                "Auto-created FileImportConfiguration for analyzer " + analyzerId + " (format=" + fileFormat
+                        + ", importDir=" + importDir + ")");
+    }
+
+    @SuppressWarnings("unchecked")
+    private String deriveFilePattern(Map<String, Object> configData, String fileFormat) {
+        Object extensions = configData.get("supported_extensions");
+        if (extensions instanceof List && !((List<?>) extensions).isEmpty()) {
+            List<String> exts = (List<String>) extensions;
+            if (exts.size() == 1) {
+                return "*" + exts.get(0);
+            }
+            // Multiple extensions: use first one as primary pattern
+            return "*" + exts.get(0);
+        }
+        // Fall back based on format
+        switch (fileFormat) {
+        case "EXCEL":
+            return "*.xls";
+        case "TSV":
+            return "*.tsv";
+        case "XML":
+            return "*.xml";
+        default:
+            return "*.csv";
+        }
     }
 
     private static PreviewRecordForm.ValidationMessageForm msg(String code, String message) {
