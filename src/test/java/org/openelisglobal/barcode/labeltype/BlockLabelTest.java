@@ -64,7 +64,8 @@ public class BlockLabelTest {
                 return "";
             }
         });
-        when(messageSource.getMessage(anyString(), any(), anyString(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messageSource.getMessage(anyString(), any(), anyString(), any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         MessageUtil.setMessageSource(messageSource);
     }
 

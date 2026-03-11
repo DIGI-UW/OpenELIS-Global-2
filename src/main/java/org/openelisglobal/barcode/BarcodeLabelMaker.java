@@ -385,8 +385,9 @@ public class BarcodeLabelMaker {
                     getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
                 String itemCode = labNo + "." + sampleItem.getSortOrder();
-                FreezerLabel label = new FreezerLabel(itemCode, resolvePatientIdentifier(sampleService.getPatient(sample)),
-                        "", resolveSpecimenTypeForItem(sampleItem), "", "");
+                FreezerLabel label = new FreezerLabel(itemCode,
+                        resolvePatientIdentifier(sampleService.getPatient(sample)), "",
+                        resolveSpecimenTypeForItem(sampleItem), "", "");
                 int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
                 label.setNumLabels(requestedQuantity);
                 label.linkBarcodeLabelInfo();

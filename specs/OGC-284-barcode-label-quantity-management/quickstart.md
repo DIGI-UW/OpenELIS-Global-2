@@ -221,8 +221,8 @@ mvn test -Dtest="BarcodeConfigurationRestControllerTest,BarcodeInformationServic
     location, specimen type, collection date, expiry date) from constructor
     context.
 - FR-013 enforcement:
-  - `BarcodeLabelMaker` blocks over-max quantity requests unless
-    explicit `override=true` is supplied.
+  - `BarcodeLabelMaker` blocks over-max quantity requests unless explicit
+    `override=true` is supplied.
 
 ### Test execution evidence
 
