@@ -57,7 +57,8 @@ jobs:
           cd ..
           mvn clean install -DskipTests -Dmaven.test.skip=true
           cd ..
-          mvn clean install -DskipTests -Dmaven.test.skip=true -Dspotless.check.skip=true
+          # -Dfix.version=2 aligns root artifact (3.2.1.2) with plugins submodule dependency
+          mvn clean install -DskipTests -Dmaven.test.skip=true -Dspotless.check.skip=true -Dfix.version=2
 
       - name: Build plugins
         run: mvn clean install -DskipTests -Dmaven.test.skip=true
