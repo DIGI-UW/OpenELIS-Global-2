@@ -33,7 +33,7 @@ import {
   postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
-import CustomDatePicker from "../../common/CustomDatePicker.js";
+import CustomDatePicker from "../../common/CustomDatePicker";
 import AutoComplete from "../../common/AutoComplete.js";
 
 const breadcrumbs = [
