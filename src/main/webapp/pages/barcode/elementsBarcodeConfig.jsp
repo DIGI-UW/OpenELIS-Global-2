@@ -72,7 +72,7 @@
 		<table style="margin:auto;border-spacing:15px 2px;">
 			<tr>
 				<td>
-					<form:checkbox path="collectionDateCheck"
+					<form:checkbox path="specimenCollectionDateCheck"
 						value="true"
 						onchange="enableSave();"/>
 					<spring:message code="barcode.label.info.collectionDateTime"/>
@@ -80,7 +80,7 @@
 			</tr>
 			<tr>
 				<td>
-					<form:checkbox path="collectedByCheck"
+					<form:checkbox path="specimenCollectedByCheck"
 						value="true"
 						onchange="enableSave();"/>
 					<spring:message code="barcode.label.info.collectedBy"/>
@@ -88,7 +88,7 @@
 			</tr>
 			<tr>
 				<td>
-					<form:checkbox path="testsCheck"
+					<form:checkbox path="specimenTestsCheck"
 						value="true"
 						onchange="enableSave();"/>
 					<spring:message code="barcode.label.info.tests"/>
@@ -96,7 +96,7 @@
 			</tr>
 			<tr>
 				<td>
-					<form:checkbox path="patientSexCheck"
+					<form:checkbox path="specimenPatientSexCheck"
 						value="true"
 						onchange="enableSave();"/>
 					<spring:message code="barcode.label.info.patientSexFull"/>
