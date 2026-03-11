@@ -135,6 +135,9 @@ public class FileImportRestController extends BaseRestController {
                 error.put("error", "Import directory is required");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
+            if (configuration.getFileFormat() == null || configuration.getFileFormat().trim().isEmpty()) {
+                configuration.setFileFormat("CSV");
+            }
 
             // Validate directory paths are within base import directory
             if (!isPathWithinBase(configuration.getImportDirectory())
@@ -197,6 +200,9 @@ public class FileImportRestController extends BaseRestController {
             existing.setFilePattern(configuration.getFilePattern());
             existing.setArchiveDirectory(configuration.getArchiveDirectory());
             existing.setErrorDirectory(configuration.getErrorDirectory());
+            if (configuration.getFileFormat() != null && !configuration.getFileFormat().trim().isEmpty()) {
+                existing.setFileFormat(configuration.getFileFormat());
+            }
             existing.setColumnMappings(configuration.getColumnMappings());
             existing.setDelimiter(configuration.getDelimiter());
             existing.setHasHeader(configuration.getHasHeader());

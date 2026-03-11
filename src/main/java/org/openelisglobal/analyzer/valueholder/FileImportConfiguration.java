@@ -43,6 +43,9 @@ public class FileImportConfiguration extends BaseObject<String> {
     @Column(name = "file_pattern", length = 100, nullable = false)
     private String filePattern = "*.csv"; // Glob pattern
 
+    @Column(name = "file_format", length = 20, nullable = false)
+    private String fileFormat = "CSV";
+
     @Column(name = "archive_directory", length = 255)
     private String archiveDirectory; // Move processed files here
 
@@ -76,6 +79,9 @@ public class FileImportConfiguration extends BaseObject<String> {
         }
         if (fhirUuid == null) {
             fhirUuid = UUID.randomUUID();
+        }
+        if (fileFormat == null || fileFormat.isBlank()) {
+            fileFormat = "CSV";
         }
         // Serialize column mappings to JSON before persisting
         if (columnMappings != null && !columnMappings.isEmpty()) {
@@ -127,6 +133,14 @@ public class FileImportConfiguration extends BaseObject<String> {
 
     public String getArchiveDirectory() {
         return archiveDirectory;
+    }
+
+    public String getFileFormat() {
+        return fileFormat;
+    }
+
+    public void setFileFormat(String fileFormat) {
+        this.fileFormat = fileFormat;
     }
 
     public void setArchiveDirectory(String archiveDirectory) {

@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
+import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerReader;
 import org.openelisglobal.common.service.BaseObjectService;
 
 /**
@@ -25,6 +26,14 @@ public interface FileImportService extends BaseObjectService<FileImportConfigura
      * @return List of active configurations
      */
     List<FileImportConfiguration> getAllActive();
+
+    /**
+     * Resolve the line reader to use for a file format.
+     *
+     * @param configuration file import configuration
+     * @return reader implementation for the configured format
+     */
+    AnalyzerReader getReaderForFormat(FileImportConfiguration configuration);
 
     /**
      * Process a file for import based on configuration

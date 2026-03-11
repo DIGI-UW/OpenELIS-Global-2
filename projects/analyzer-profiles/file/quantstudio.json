@@ -1,0 +1,41 @@
+{
+  "profileMeta": {
+    "id": "quantstudio",
+    "version": "1.0.0",
+    "displayName": "QuantStudio QS5/QS7",
+    "manufacturer": "Thermo Fisher"
+  },
+  "protocol": {
+    "name": "FILE",
+    "format": "EXCEL"
+  },
+  "supported_extensions": [
+    ".xls",
+    ".xlsx"
+  ],
+  "column_mapping": {
+    "Sample Name": "sampleId",
+    "Assay": "testCode",
+    "CT": "result",
+    "Units": "units",
+    "Run Date": "testDate",
+    "Run Time": "testTime"
+  },
+  "line_field_order": [
+    "sampleId",
+    "testCode",
+    "result",
+    "units",
+    "testDate",
+    "testTime"
+  ],
+  "default_test_mappings": {
+    "VL": "HIV-1 VL (LOINC 20447-9)",
+    "CT": "Cycle Threshold"
+  },
+  "configDefaults": {
+    "fileFormat": "EXCEL",
+    "hasHeader": true,
+    "sheetIndex": 0
+  }
+}
