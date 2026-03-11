@@ -2,11 +2,11 @@
 <!-- Madagascar Analyzer Test Data (DBUnit Flat XML Dataset) Feature: specs/011-madagascar-analyzer-integration
     Usage: executeDataSetWithStateManagement("testdata/madagascar-analyzer-test-data.xml")
     Contents: - 5 Active Analyzers (IDs 2006-2008, 2012-2013) using ONLY GenericASTM
-    / GenericHL7 plugins - 4 Test Mappings for GeneXpert ASTM (analyzer_test_map)
-    ID Range: 2006-2013 (reserved for Feature 011, avoids conflict with Feature
-    004 IDs 1000-1004) Schema: 2-table model (analyzer_type + analyzer) after
-    PR #2802 merge. Config columns (ip_address, port, protocol_version, status)
-    live on the analyzer row. NOTE: analyzer_type_id is set post-load by analyzer-type-linking.sql
+    / GenericHL7 plugins (analyzer rows only, no test mappings) ID Range: 2006-2013
+    (reserved for Feature 011, avoids conflict with Feature 004 IDs 1000-1004)
+    Schema: 2-table model (analyzer_type + analyzer) after PR #2802 merge. Config
+    columns (ip_address, port, protocol_version, status) live on the analyzer
+    row. NOTE: analyzer_type_id is set post-load by analyzer-type-linking.sql
     (or LINK_ANALYZER_TYPES_SQL), which matches by plugin_class_name on analyzer_type
     (auto-created at startup by PluginRegistryService). Reference: specs/011-madagascar-analyzer-integration/plans/genexpert-astm-e2e-readiness.md -->
 <dataset>
@@ -50,33 +50,4 @@
         ip_address="172.20.1.110" port="9600" protocol_version="ASTM_LIS2_A2"
         status="ACTIVE" last_updated="2026-02-02 00:00:00" />
 
-    <!-- ================================================================= -->
-    <!-- TEST MAPPINGS for GeneXpert ASTM (ID 2013) -->
-    <!-- analyzer_test_name = what GenericASTM extracts from R.3 comp 4 -->
-    <!-- test_id = FK to clinlims.test (using foundational test IDs) -->
-    <!-- ================================================================= -->
-
-    <!-- Analyzer Type data (required for analyzer_test_map PK) -->
-    <analyzer_type id="2901" name="GenericASTM Type"
-        plugin_class_name="oe.plugin.analyzer.GenericASTM" />
-
-    <!-- MTB-RIF → Glucose (test_id=3, placeholder for E2E routing) -->
-    <analyzer_test_map analyzer_type_id="2901"
-        analyzer_id="2013" analyzer_test_name="MTB-RIF" test_id="3"
-        last_updated="2026-02-02 00:00:00" />
-
-    <!-- RIF → Amylase (test_id=5, placeholder for E2E routing) -->
-    <analyzer_test_map analyzer_type_id="2901"
-        analyzer_id="2013" analyzer_test_name="RIF" test_id="5"
-        last_updated="2026-02-02 00:00:00" />
-
-    <!-- HIV-VL → CD4 absolute count (test_id=192, placeholder for E2E routing) -->
-    <analyzer_test_map analyzer_type_id="2901"
-        analyzer_id="2013" analyzer_test_name="HIV-VL" test_id="192"
-        last_updated="2026-02-02 00:00:00" />
-
-    <!-- COVID19 → Glucose (test_id=3, placeholder for E2E routing) -->
-    <analyzer_test_map analyzer_type_id="2901"
-        analyzer_id="2013" analyzer_test_name="COVID19" test_id="3"
-        last_updated="2026-02-02 00:00:00" />
 </dataset>
