@@ -47,6 +47,7 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import Header from "../layout/Header";
 import PatientHeaderReDesign from "../common/PatiendHeaderReDesign";
 import PathologyGrossing from "../common/PathologyGrossing";
+import PathologyBlocks from "../common/pathologyBlocks";
 
 function PathologyCaseView() {
   const intl = useIntl();
@@ -495,145 +496,69 @@ function PathologyCaseView() {
               </AccordionItem>
 
               <AccordionItem title={`Blocks (${(pathologySampleInfo.blocks || []).length})`} id="blocks" className="pathology-accent-item">
-                                  <Grid fullWidth={true} className="gridBoundary">
-                  <Column lg={16} md={8} sm={4}>
-                    <h5>
-                      <FormattedMessage id="pathology.label.blocks" />
-                    </h5>
-                    <div> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</div>
-                  </Column>
-                  {pathologySampleInfo.blocks &&
-                    pathologySampleInfo.blocks.map((block, index) => {
-                      return (
-                        <>
-                          <Column lg={2} md={8} sm={4}>
-                            <IconButton
-                              label={intl.formatMessage({
-                                id: "label.button.remove.block",
-                              })}
-                              onClick={() => {
-                                var info = { ...pathologySampleInfo };
-                                info["blocks"].splice(index, 1);
-                                setPathologySampleInfo(info);
-                              }}
-                              kind="tertiary"
-                              size="sm"
-                            >
-                              <Subtract size={18} />{" "}
-                              <FormattedMessage id="pathology.label.block" />
-                            </IconButton>
-                          </Column>
-                          <Column lg={3} md={2} sm={1} key={index}>
-                            <TextInput
-                              id="blockNumber"
-                              labelText={intl.formatMessage({
-                                id: "pathology.label.block.number",
-                              })}
-                              hideLabel={true}
-                              placeholder={intl.formatMessage({
-                                id: "pathology.label.block.number",
-                              })}
-                              value={block.blockNumber}
-                              type="number"
-                              onChange={(e) => {
-                                var newBlocks = [...pathologySampleInfo.blocks];
-                                newBlocks[index].blockNumber = e.target.value;
-                                setPathologySampleInfo({
-                                  ...pathologySampleInfo,
-                                  blocks: newBlocks,
-                                });
-                              }}
-                            />
-                          </Column>
-                          <Column lg={3} md={2} sm={1}>
-                            <TextInput
-                              id="location"
-                              labelText={intl.formatMessage({
-                                id: "pathology.label.location",
-                              })}
-                              hideLabel={true}
-                              placeholder={intl.formatMessage({
-                                id: "pathology.label.location",
-                              })}
-                              value={block.location}
-                              onChange={(e) => {
-                                var newBlocks = [...pathologySampleInfo.blocks];
-                                newBlocks[index].location = e.target.value;
-                                setPathologySampleInfo({
-                                  ...pathologySampleInfo,
-                                  blocks: newBlocks,
-                                });
-                              }}
-                            />
-                          </Column>
-                          <Column lg={3} md={2} sm={2}>
-                            <Button
-                              onClick={(e) => {
-                                window.open(
-                                  config.serverBaseUrl +
-                                    "/LabelMakerServlet?labelType=block&code=" +
-                                    block.blockNumber,
-                                  "_blank",
-                                );
-                              }}
-                            >
-                              {" "}
-                              <FormattedMessage id="pathology.label.printlabel" />
-                            </Button>
-                          </Column>
-                          <Column lg={5} md={2} sm={0} />
-                          <Column lg={16} md={8} sm={4}>
-                            <div> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</div>
-                          </Column>
-                        </>
-                      );
-                    })}
-                  <Column lg={2} md={8} sm={4}>
-                    <TextInput
-                      id="blocksToAdd"
-                      labelText={intl.formatMessage({
-                        id: "pathology.label.block.add.number",
-                      })}
-                      hideLabel={true}
-                      placeholder={intl.formatMessage({
-                        id: "pathology.label.block.add.number",
-                      })}
-                      value={blocksToAdd}
-                      type="number"
-                      onChange={(e) => {
-                        setBlocksToAdd(e.target.value);
+                      <PathologyBlocks
+                      ThisPathologySampleInfo={pathologySampleInfo}
+                      ThisIntl={intl}
+                      ThisBlocksToAdd={blocksToAdd}
+                      OnRemoveBlock={(index) => {
+                        const info = { ...pathologySampleInfo };
+                        info.blocks.splice(index, 1);
+                        setPathologySampleInfo(info);
                       }}
-                    />
-                  </Column>
-                  <Column lg={14} md={8} sm={4}>
-                    <Button
-                      onClick={() => {
-                        const maxBlockNumber = pathologySampleInfo.blocks.reduce(
-                          (max, block) => {
-                            const blockNumber = block.blockNumber || 0;
-                            return Math.ceil(Math.max(max, blockNumber));
-                          },
-                          0,
-                        );
-
-                        var allBlocks = pathologySampleInfo.blocks || [];
-                        Array.from({ length: blocksToAdd }, (_, index) => {
-                          allBlocks.push({
-                            id: "",
-                            blockNumber: maxBlockNumber + 1 + index,
+                      OnBlockNumberChange={
+                        (value, index) => {
+                          var newBlocks = [...pathologySampleInfo.blocks];
+                          newBlocks[index].blockNumber = value.target.value;
+                          setPathologySampleInfo({
+                              ...ThisPathologySampleInfo,
+                              blocks: newBlocks,
                           });
-                        });
+                        }
+                      }
+                      OnBlockLocationChange={
+                        (value, index) => {
+                        var newBlocks = [...pathologySampleInfo.blocks];
+                        newBlocks[index].location = value.target.value;
+                        setPathologySampleInfo({
+                            ...ThisPathologySampleInfo,
+                            blocks: newBlocks,
+                            })
+                        }
+                      }
+                      onPrintBlockNumber={(block) => {
+                        window.open(
+                            config.serverBaseUrl +
+                            "/LabelMakerServlet?labelType=block&code=" +
+                            block.blockNumber,
+                            "_blank",
+                        );
+                      }}
+                      OnSetBlocksToAdd={(value) => {
+                        setBlocksToAdd(value.target.value);
+                      }}
+                      OnAddBlocks={(SampleInfo, blocksToAdd) => {
+                        const maxBlockNumber = SampleInfo.blocks.reduce(
+                              (max, block) => {
+                              const blockNumber = block.blockNumber || 0;
+                              return Math.ceil(Math.max(max, blockNumber));
+                              },
+                              0,
+                          );
+
+                        var allBlocks = SampleInfo.blocks || [];
+                        Array.from({ length: blocksToAdd }, (_, index) => {
+                              allBlocks.push({
+                              id: "",
+                              blockNumber: maxBlockNumber + 1 + index,
+                              });
+                          });
 
                         setPathologySampleInfo({
-                          ...pathologySampleInfo,
-                          blocks: allBlocks,
-                        });
+                              ...SampleInfo,
+                              blocks: allBlocks,
+                          });
                       }}
-                    >
-                      <FormattedMessage id="pathology.label.addblock" />
-                    </Button>
-                  </Column>
-                </Grid>
+                      />
               </AccordionItem>
 
               <AccordionItem title={`Slides (${(pathologySampleInfo.slides || []).length})`} id="slides" className="pathology-accent-item">
