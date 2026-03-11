@@ -1,11 +1,12 @@
 package org.openelisglobal.localization.service;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.localization.dao.LocalizationDAO;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.localization.valueholder.SupportedLocale;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -19,7 +20,8 @@ public class LocalizationServiceImpl extends AuditableBaseObjectServiceImpl<Loca
 
     public enum LocalizationType {
         TEST_NAME("test name"), REPORTING_TEST_NAME("test report name"), BANNER_LABEL("Site information banner test"),
-        TEST_UNIT_NAME("test unit name"), PANEL_NAME("panel name"), BILL_REF_LABEL("Billing reference_label");
+        TEST_UNIT_NAME("test unit name"), PANEL_NAME("panel name"), BILL_REF_LABEL("Billing reference_label"),
+        DICTIONARY_NAME("dictionary name"), SAMPLE_TYPE_NAME("sample type name");
 
         String dbLabel;
 
@@ -41,6 +43,9 @@ public class LocalizationServiceImpl extends AuditableBaseObjectServiceImpl<Loca
 
     @Autowired
     private LocalizationDAO baseObjectDAO;
+
+    @Autowired
+    private SupportedLocaleService supportedLocaleService;
 
     LocalizationServiceImpl() {
         super(Localization.class);
@@ -143,6 +148,31 @@ public class LocalizationServiceImpl extends AuditableBaseObjectServiceImpl<Loca
 
     @Override
     public List<Locale> getAllActiveLocales() {
-        return Arrays.asList(Locale.ENGLISH, Locale.FRENCH);
+        try {
+            List<SupportedLocale> activeLocales = supportedLocaleService.getAllActive();
+            if (!activeLocales.isEmpty()) {
+                return activeLocales.stream().map(SupportedLocale::toLocale).collect(Collectors.toList());
+            }
+        } catch (Exception e) {
+        }
+        return List.of(Locale.ENGLISH, Locale.FRENCH);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Localization> findMissingTranslationsForLocale(String locale) {
+        return baseObjectDAO.findMissingTranslationsForLocale(locale);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int countTranslatedForLocale(String locale) {
+        return baseObjectDAO.countTranslatedForLocale(locale);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Object[]> getTranslationStatsForAllActiveLocales() {
+        return baseObjectDAO.getTranslationStatsForAllActiveLocales();
     }
 }
