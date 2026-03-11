@@ -28,7 +28,6 @@ const CustomLabNumberInput: React.FC<CustomLabNumberInputProps> = ({
 
   useEffect(() => {
     setDisplayValue();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   const setDisplayValue = () => {
