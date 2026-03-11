@@ -88,4 +88,15 @@ public interface OrganizationDAO extends BaseDAO<Organization, String> {
     List<Organization> getActiveOrganizations() throws LIMSRuntimeException;
 
     Organization getOrganizationByFhirId(String uuid);
+
+    Organization getOrganizationByCode(String code);
+
+    /**
+     * Search organizations by name with eager loading of organization types and
+     * parent organizations. This is optimized for address hierarchy search.
+     *
+     * @param filter Search filter for organization name
+     * @return List of organizations with types eagerly loaded
+     */
+    List<Organization> searchOrganizationsWithTypes(String filter) throws LIMSRuntimeException;
 }

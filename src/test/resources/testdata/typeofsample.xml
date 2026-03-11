@@ -10,16 +10,37 @@
 
 <dataset>
     <!-- localization entries -->
-    <localization id="1" description="whole blood"
-        english="Blood" french="sang" />
-    <localization id="2" description="Urine" english="Urine"
-        french="Urine" />
-    <localization id="3" description="plasma" english="plasma"
-        french="plasma" />
-    <localization id="4" description="Fluids" english="Fluids"
-        french="Fluides" />
-    <localization id="5" description="Skin Tissue"
-        english="Skin Tissue" french="Tissu cutané" />
+    <localization id="1" description="whole blood" />
+    <localization id="2" description="Urine" />
+    <localization id="3" description="plasma" />
+    <localization id="4" description="Fluids" />
+    <localization id="5" description="Skin Tissue" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Blood" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="sang" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Urine" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Urine" />
+    <localization_value id="5" localization_id="3"
+        locale="en" value="plasma" />
+    <localization_value id="6" localization_id="3"
+        locale="fr" value="plasma" />
+    <localization_value id="7" localization_id="4"
+        locale="en" value="Fluids" />
+    <localization_value id="8" localization_id="4"
+        locale="fr" value="Fluides" />
+    <localization_value id="9" localization_id="5"
+        locale="en" value="Skin Tissue" />
+    <localization_value id="10" localization_id="5"
+        locale="fr" value="Tissu cutané" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 
     <!-- method category entries -->
     <method id="1" name="therapy" description="using therapy"

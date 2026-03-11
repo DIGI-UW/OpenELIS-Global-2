@@ -16,15 +16,38 @@
 
 package org.openelisglobal.localization.dao;
 
+import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.localization.valueholder.Localization;
 
 /** */
 public interface LocalizationDAO extends BaseDAO<Localization, String> {
-    // public Localization getLocalizationById(String id) throws
-    // LIMSRuntimeException;
 
-    // public void updateData(Localization localization) throws
-    // LIMSRuntimeException;
+    /**
+     * Find localizations that are missing a translation for the specified locale. A
+     * translation is considered "missing" if no LocalizationValue exists for that
+     * locale, or if the value is null or empty.
+     *
+     * @param locale the locale code to check (e.g., "fr", "es", "fr-CI")
+     * @return list of Localization entities missing translations for the locale
+     */
+    List<Localization> findMissingTranslationsForLocale(String locale);
+
+    /**
+     * Count localizations that have a non-empty translation for the specified
+     * locale.
+     *
+     * @param locale the locale code to check
+     * @return count of localizations with translations for the locale
+     */
+    int countTranslatedForLocale(String locale);
+
+    /**
+     * Get translation statistics for all active locales in a single query. Returns
+     * rows with: localeCode, displayName, translatedCount, missingCount
+     *
+     * @return list of Object arrays [localeCode, displayName, translated, missing]
+     */
+    List<Object[]> getTranslationStatsForAllActiveLocales();
 
 }
