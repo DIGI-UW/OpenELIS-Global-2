@@ -323,7 +323,10 @@ VALUES (
     }'::jsonb,
     '1',
     NOW()
-);
+)
+ON CONFLICT (analyzer_id) DO UPDATE SET
+    config = EXCLUDED.config,
+    last_updated = NOW();
 
 -- Verification summary.
 SELECT
