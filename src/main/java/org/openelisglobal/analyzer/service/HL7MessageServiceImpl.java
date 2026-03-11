@@ -268,11 +268,12 @@ public class HL7MessageServiceImpl implements HL7MessageService {
         return StringUtils.defaultString(value).split("\\^", -1);
     }
 
+    /**
+     * OBR-4 = Universal Service Identifier; OBR-5 = Priority (do not use for
+     * service ID).
+     */
     private static String extractServiceIdentifier(String[] fields) {
         String serviceId = valueAt(fields, 4);
-        if (StringUtils.isBlank(serviceId)) {
-            serviceId = valueAt(fields, 5);
-        }
         String[] components = splitComponents(serviceId);
         for (String component : components) {
             if (StringUtils.isNotBlank(component)) {
