@@ -19,10 +19,10 @@ import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public class BarcodeInformationServiceTest extends BaseWebContextSensitiveTest {
+public class BarcodeConfigServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
-    private BarcodeConfigService barcodeInformationService;
+    private BarcodeConfigService barcodeConfigService;
     @Autowired
     private SiteInformationService siteInformationService;
 
@@ -56,7 +56,7 @@ public class BarcodeInformationServiceTest extends BaseWebContextSensitiveTest {
                 .getSiteInformationByName("numMaxSpecimenLabels");
         assertNull(spacemenSiteInformation);
 
-        barcodeInformationService.updateBarcodeInfoFromForm(barcodeConfigurationForm, "8602");
+        barcodeConfigService.updateBarcodeInfoFromForm(barcodeConfigurationForm, "8602");
 
         List<SiteInformation> updatedSiteInformationList = siteInformationService.getAll();
         assertNotNull(updatedSiteInformationList);

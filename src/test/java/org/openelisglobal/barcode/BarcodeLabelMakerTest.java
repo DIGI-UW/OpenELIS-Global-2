@@ -180,6 +180,15 @@ public class BarcodeLabelMakerTest {
     }
 
     @Test
+    public void generateLabels_allowsOverMaxWhenOverrideIsUppercaseTrue() {
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
+
+        labelMaker.generateLabels("ACC-1", "blockOrder", "11", "TRUE");
+
+        assertEquals(1, getQueuedLabels(labelMaker).size());
+    }
+
+    @Test
     public void generateLabels_freezerOrder_usesSubjectNumberForPatientId() {
         BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
 

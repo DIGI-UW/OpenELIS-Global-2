@@ -63,6 +63,12 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
             return;
         }
 
+        // Backward compatibility for existing pathology callers that still use
+        // /LabelMakerServlet?labelType=block|slide&code=<value>
+        if (printLegacyPathologyLabelTypeRequest(request, response)) {
+            return;
+        }
+
         if ("true".equalsIgnoreCase(request.getParameter("prePrinting"))) {
             // writes to response
             try {
@@ -79,6 +85,66 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
             // writes to response
             printExistingOrder(request, response);
         }
+    }
+
+    private boolean printLegacyPathologyLabelTypeRequest(HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
+        String labelType = request.getParameter("labelType");
+        String code = request.getParameter("code");
+        if (StringUtils.isBlank(labelType) || StringUtils.isBlank(code)) {
+            return false;
+        }
+        String mappedType = mapLegacyLabelType(labelType);
+        if (mappedType == null) {
+            return false;
+        }
+
+        String override = request.getParameter("override");
+        if (StringUtils.isEmpty(override)) {
+            override = "false";
+        }
+        String quantity = request.getParameter("quantity");
+        if (StringUtils.isEmpty(quantity)) {
+            quantity = "1";
+        }
+
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
+        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+        labelMaker.setOverride(override);
+        labelMaker.setSysUserId(String.valueOf(usd.getSystemUserId()));
+        labelMaker.generateLabels(code, mappedType, quantity, override);
+        ByteArrayOutputStream labelAsOutputStream = labelMaker.createLabelsAsStreamWithMaximumPrints();
+
+        if (labelAsOutputStream.size() == 0) {
+            response.setContentType("text/html; charset=utf-8");
+            response.getWriter()
+                    .println("<script type=\"text/javascript\">" + "function override() {\n"
+                            + "    var url = new URL(window.location.href);\n"
+                            + "    url.searchParams.set('override', 'true');\n"
+                            + "    window.location.href = url.toString();\n" + "}" + "</script>");
+            response.getWriter().println(MessageUtil.getMessage("barcode.message.maxreached"));
+            response.getWriter().println("</br>");
+            response.getWriter()
+                    .println("<input type='button' id='overrideButton' value='Override' onclick='override();'>");
+        } else {
+            response.setContentType("application/pdf");
+            response.addHeader("Content-Disposition", "inline; filename=" + "sample.pdf");
+            response.setContentLength(labelAsOutputStream.size());
+            labelAsOutputStream.writeTo(response.getOutputStream());
+            response.getOutputStream().flush();
+            response.getOutputStream().close();
+        }
+        return true;
+    }
+
+    private String mapLegacyLabelType(String labelType) {
+        if ("block".equalsIgnoreCase(labelType)) {
+            return "blockOrder";
+        }
+        if ("slide".equalsIgnoreCase(labelType)) {
+            return "slideOrder";
+        }
+        return null;
     }
 
     /**

@@ -143,25 +143,25 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
     }
 
     @Test
-    public void saveBarcodeConfiguration_ShouldNormalizeNegativeAndOversizedValues() throws Exception {
+    public void saveBarcodeConfiguration_ShouldRejectNegativeLabelCounts() throws Exception {
         BarcodeConfigurationForm form = new BarcodeConfigurationForm();
         form.setNumMaxOrderLabels(-1);
-        form.setNumMaxSpecimenLabels(5001);
-        form.setNumDefaultOrderLabels(0);
         form.setPrePrintDontUseAltAccession(true);
 
         mockMvc.perform(post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON)
-                .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isFound())
-                .andExpect(redirectedUrl("/rest/BarcodeConfiguration"));
+                .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isOk())
+                .andExpect(model().attributeHasFieldErrors("barcodeConfigurationForm", "numMaxOrderLabels"));
+    }
 
-        BarcodeConfigurationForm saved = new ObjectMapper().readValue(
-                mockMvc.perform(get("/rest/BarcodeConfiguration")).andReturn().getResponse().getContentAsString(),
-                BarcodeConfigurationForm.class);
+    @Test
+    public void saveBarcodeConfiguration_ShouldRejectOversizedLabelCounts() throws Exception {
+        BarcodeConfigurationForm form = new BarcodeConfigurationForm();
+        form.setNumMaxSpecimenLabels(5001);
+        form.setPrePrintDontUseAltAccession(true);
 
-        assertEquals("Invalid max order should normalize to default max order", 10, saved.getNumMaxOrderLabels());
-        assertEquals("Oversized max specimen should normalize to default max value", 10,
-                saved.getNumMaxSpecimenLabels());
-        assertEquals("Zero default order should normalize to default quantity", 1, saved.getNumDefaultOrderLabels());
+        mockMvc.perform(post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isOk())
+                .andExpect(model().attributeHasFieldErrors("barcodeConfigurationForm", "numMaxSpecimenLabels"));
     }
 
     @Test

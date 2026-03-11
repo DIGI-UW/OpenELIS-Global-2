@@ -4,8 +4,14 @@ const AUTH_FILE = "playwright/.auth/user.json";
 
 setup("authenticate", async ({ page }, testInfo) => {
   testInfo.setTimeout(120_000);
-  const username = process.env.TEST_USER || "admin";
-  const password = process.env.TEST_PASS || "adminADMIN!";
+  const username = process.env.TEST_USER;
+  const password = process.env.TEST_PASS;
+
+  if (!username || !password) {
+    throw new Error(
+      "Playwright auth setup requires TEST_USER and TEST_PASS environment variables to be set.",
+    );
+  }
 
   await page.goto("login", { waitUntil: "domcontentloaded" });
 

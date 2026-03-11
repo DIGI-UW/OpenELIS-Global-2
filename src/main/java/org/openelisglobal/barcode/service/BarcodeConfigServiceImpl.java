@@ -20,89 +20,117 @@ public class BarcodeConfigServiceImpl implements BarcodeConfigService {
     @Override
     @Transactional
     public void updateBarcodeInfoFromForm(BarcodeConfigurationForm form, String sysUserId) {
-        updateSiteInfo("heightOrderLabels", Float.toString(form.getHeightOrderLabels()), "text", sysUserId);
-        updateSiteInfo("widthOrderLabels", Float.toString(form.getWidthOrderLabels()), "text", sysUserId);
-        updateSiteInfo("heightSpecimenLabels", Float.toString(form.getHeightSpecimenLabels()), "text", sysUserId);
-        updateSiteInfo("widthSpecimenLabels", Float.toString(form.getWidthSpecimenLabels()), "text", sysUserId);
+        SiteInformationDomain labelsDomain = siteInformationDomainService.getByName("labels");
+        updateSiteInfo("heightOrderLabels", Float.toString(form.getHeightOrderLabels()), "text", sysUserId,
+                labelsDomain);
+        updateSiteInfo("widthOrderLabels", Float.toString(form.getWidthOrderLabels()), "text", sysUserId, labelsDomain);
+        updateSiteInfo("heightSpecimenLabels", Float.toString(form.getHeightSpecimenLabels()), "text", sysUserId,
+                labelsDomain);
+        updateSiteInfo("widthSpecimenLabels", Float.toString(form.getWidthSpecimenLabels()), "text", sysUserId,
+                labelsDomain);
         // updateSiteInfo("heightAliquotLabels",
         // Float.toString(form.getHeightAliquotLabels()), "text", sysUserId);
         // updateSiteInfo("widthAliquotLabels",
         // Float.toString(form.getWidthAliquotLabels()), "text", sysUserId);
-        updateSiteInfo("heightBlockLabels", Float.toString(form.getHeightBlockLabels()), "text", sysUserId);
-        updateSiteInfo("widthBlockLabels", Float.toString(form.getWidthBlockLabels()), "text", sysUserId);
-        updateSiteInfo("heightSlideLabels", Float.toString(form.getHeightSlideLabels()), "text", sysUserId);
-        updateSiteInfo("widthSlideLabels", Float.toString(form.getWidthSlideLabels()), "text", sysUserId);
-        updateSiteInfo("heightFreezerLabels", Float.toString(form.getHeightFreezerLabels()), "text", sysUserId);
-        updateSiteInfo("widthFreezerLabels", Float.toString(form.getWidthFreezerLabels()), "text", sysUserId);
+        updateSiteInfo("heightBlockLabels", Float.toString(form.getHeightBlockLabels()), "text", sysUserId,
+                labelsDomain);
+        updateSiteInfo("widthBlockLabels", Float.toString(form.getWidthBlockLabels()), "text", sysUserId, labelsDomain);
+        updateSiteInfo("heightSlideLabels", Float.toString(form.getHeightSlideLabels()), "text", sysUserId,
+                labelsDomain);
+        updateSiteInfo("widthSlideLabels", Float.toString(form.getWidthSlideLabels()), "text", sysUserId, labelsDomain);
+        updateSiteInfo("heightFreezerLabels", Float.toString(form.getHeightFreezerLabels()), "text", sysUserId,
+                labelsDomain);
+        updateSiteInfo("widthFreezerLabels", Float.toString(form.getWidthFreezerLabels()), "text", sysUserId,
+                labelsDomain);
 
-        updateSiteInfo("numMaxOrderLabels", Integer.toString(form.getNumMaxOrderLabels()), "text", sysUserId);
-        updateSiteInfo("numMaxSpecimenLabels", Integer.toString(form.getNumMaxSpecimenLabels()), "text", sysUserId);
+        updateSiteInfo("numMaxOrderLabels", Integer.toString(form.getNumMaxOrderLabels()), "text", sysUserId,
+                labelsDomain);
+        updateSiteInfo("numMaxSpecimenLabels", Integer.toString(form.getNumMaxSpecimenLabels()), "text", sysUserId,
+                labelsDomain);
         // updateSiteInfo("numMaxAliquotLabels",
         // Integer.toString(form.getNumMaxAliquotLabels()), "text", sysUserId);
-        updateSiteInfo("numMaxSlideLabels", Integer.toString(form.getNumMaxSlideLabels()), "text", sysUserId);
-        updateSiteInfo("numMaxBlockLabels", Integer.toString(form.getNumMaxBlockLabels()), "text", sysUserId);
-        updateSiteInfo("numMaxFreezerLabels", Integer.toString(form.getNumMaxFreezerLabels()), "text", sysUserId);
+        updateSiteInfo("numMaxSlideLabels", Integer.toString(form.getNumMaxSlideLabels()), "text", sysUserId,
+                labelsDomain);
+        updateSiteInfo("numMaxBlockLabels", Integer.toString(form.getNumMaxBlockLabels()), "text", sysUserId,
+                labelsDomain);
+        updateSiteInfo("numMaxFreezerLabels", Integer.toString(form.getNumMaxFreezerLabels()), "text", sysUserId,
+                labelsDomain);
 
-        updateSiteInfo("numDefaultOrderLabels", Integer.toString(form.getNumDefaultOrderLabels()), "text", sysUserId);
+        updateSiteInfo("numDefaultOrderLabels", Integer.toString(form.getNumDefaultOrderLabels()), "text", sysUserId,
+                labelsDomain);
         updateSiteInfo("numDefaultSpecimenLabels", Integer.toString(form.getNumDefaultSpecimenLabels()), "text",
-                sysUserId);
+                sysUserId, labelsDomain);
         // updateSiteInfo("numDefaultAliquotLabels",
         // Integer.toString(form.getNumDefaultAliquotLabels()), "text",
         // sysUserId);
-        updateSiteInfo("numDefaultSlideLabels", Integer.toString(form.getNumDefaultSlideLabels()), "text", sysUserId);
-        updateSiteInfo("numDefaultBlockLabels", Integer.toString(form.getNumDefaultBlockLabels()), "text", sysUserId);
+        updateSiteInfo("numDefaultSlideLabels", Integer.toString(form.getNumDefaultSlideLabels()), "text", sysUserId,
+                labelsDomain);
+        updateSiteInfo("numDefaultBlockLabels", Integer.toString(form.getNumDefaultBlockLabels()), "text", sysUserId,
+                labelsDomain);
         updateSiteInfo("numDefaultFreezerLabels", Integer.toString(form.getNumDefaultFreezerLabels()), "text",
-                sysUserId);
+                sysUserId, labelsDomain);
 
-        updateSiteInfo("orderLabelPatientDob", Boolean.toString(form.getOrderPatientDobCheck()), "boolean", sysUserId);
+        updateSiteInfo("orderLabelPatientDob", Boolean.toString(form.getOrderPatientDobCheck()), "boolean", sysUserId,
+                labelsDomain);
 
-        updateSiteInfo("orderLabelPatientId", Boolean.toString(form.getOrderPatientIdCheck()), "boolean", sysUserId);
-        updateSiteInfo("orderLabelPatientName", Boolean.toString(form.getOrderPatientNameCheck()), "boolean",
-                sysUserId);
-        updateSiteInfo("orderLabelSiteId", Boolean.toString(form.getOrderSiteIdCheck()), "boolean", sysUserId);
+        updateSiteInfo("orderLabelPatientId", Boolean.toString(form.getOrderPatientIdCheck()), "boolean", sysUserId,
+                labelsDomain);
+        updateSiteInfo("orderLabelPatientName", Boolean.toString(form.getOrderPatientNameCheck()), "boolean", sysUserId,
+                labelsDomain);
+        updateSiteInfo("orderLabelSiteId", Boolean.toString(form.getOrderSiteIdCheck()), "boolean", sysUserId,
+                labelsDomain);
 
         updateSiteInfo("specimenLabelPatientDob", Boolean.toString(form.getSpecimenPatientDobCheck()), "boolean",
-                sysUserId);
+                sysUserId, labelsDomain);
         updateSiteInfo("specimenLabelPatientId", Boolean.toString(form.getSpecimenPatientIdCheck()), "boolean",
-                sysUserId);
+                sysUserId, labelsDomain);
         updateSiteInfo("specimenLabelPatientName", Boolean.toString(form.getSpecimenPatientNameCheck()), "boolean",
-                sysUserId);
+                sysUserId, labelsDomain);
         updateSiteInfo("specimenLabelCollectionDate", Boolean.toString(form.getSpecimenCollectionDateCheck()),
-                "boolean", sysUserId);
+                "boolean", sysUserId, labelsDomain);
         updateSiteInfo("specimenLabelCollectedBy", Boolean.toString(form.getSpecimenCollectedByCheck()), "boolean",
-                sysUserId);
-        updateSiteInfo("specimenLabelTests", Boolean.toString(form.getSpecimenTestsCheck()), "boolean", sysUserId);
+                sysUserId, labelsDomain);
+        updateSiteInfo("specimenLabelTests", Boolean.toString(form.getSpecimenTestsCheck()), "boolean", sysUserId,
+                labelsDomain);
         updateSiteInfo("specimenLabelPatientSex", Boolean.toString(form.getSpecimenPatientSexCheck()), "boolean",
-                sysUserId);
+                sysUserId, labelsDomain);
 
-        updateSiteInfo("slideLabelPatientId", Boolean.toString(form.getSlidePatientIdCheck()), "boolean", sysUserId);
-        updateSiteInfo("slideLabelSlideId", Boolean.toString(form.getSlideSlideIdCheck()), "boolean", sysUserId);
-        updateSiteInfo("slideLabelStainType", Boolean.toString(form.getSlideStainTypeCheck()), "boolean", sysUserId);
-        updateSiteInfo("slideLabelBlockId", Boolean.toString(form.getSlideBlockIdCheck()), "boolean", sysUserId);
-        updateSiteInfo("slideLabelCaseNumber", Boolean.toString(form.getSlideCaseNumberCheck()), "boolean", sysUserId);
+        updateSiteInfo("slideLabelPatientId", Boolean.toString(form.getSlidePatientIdCheck()), "boolean", sysUserId,
+                labelsDomain);
+        updateSiteInfo("slideLabelSlideId", Boolean.toString(form.getSlideSlideIdCheck()), "boolean", sysUserId,
+                labelsDomain);
+        updateSiteInfo("slideLabelStainType", Boolean.toString(form.getSlideStainTypeCheck()), "boolean", sysUserId,
+                labelsDomain);
+        updateSiteInfo("slideLabelBlockId", Boolean.toString(form.getSlideBlockIdCheck()), "boolean", sysUserId,
+                labelsDomain);
+        updateSiteInfo("slideLabelCaseNumber", Boolean.toString(form.getSlideCaseNumberCheck()), "boolean", sysUserId,
+                labelsDomain);
 
-        updateSiteInfo("blockLabelPatientId", Boolean.toString(form.getBlockPatientIdCheck()), "boolean", sysUserId);
-        updateSiteInfo("blockLabelBlockId", Boolean.toString(form.getBlockBlockIdCheck()), "boolean", sysUserId);
+        updateSiteInfo("blockLabelPatientId", Boolean.toString(form.getBlockPatientIdCheck()), "boolean", sysUserId,
+                labelsDomain);
+        updateSiteInfo("blockLabelBlockId", Boolean.toString(form.getBlockBlockIdCheck()), "boolean", sysUserId,
+                labelsDomain);
         updateSiteInfo("blockLabelSpecimenType", Boolean.toString(form.getBlockSpecimenTypeCheck()), "boolean",
-                sysUserId);
-        updateSiteInfo("blockLabelCaseNumber", Boolean.toString(form.getBlockCaseNumberCheck()), "boolean", sysUserId);
+                sysUserId, labelsDomain);
+        updateSiteInfo("blockLabelCaseNumber", Boolean.toString(form.getBlockCaseNumberCheck()), "boolean", sysUserId,
+                labelsDomain);
 
-        updateSiteInfo("freezerLabelPatientId", Boolean.toString(form.getFreezerPatientIdCheck()), "boolean",
-                sysUserId);
+        updateSiteInfo("freezerLabelPatientId", Boolean.toString(form.getFreezerPatientIdCheck()), "boolean", sysUserId,
+                labelsDomain);
         updateSiteInfo("freezerLabelStorageLocation", Boolean.toString(form.getFreezerStorageLocationCheck()),
-                "boolean", sysUserId);
+                "boolean", sysUserId, labelsDomain);
         updateSiteInfo("freezerLabelSpecimenType", Boolean.toString(form.getFreezerSpecimenTypeCheck()), "boolean",
-                sysUserId);
+                sysUserId, labelsDomain);
         updateSiteInfo("freezerLabelCollectionDate", Boolean.toString(form.getFreezerCollectionDateCheck()), "boolean",
-                sysUserId);
+                sysUserId, labelsDomain);
         updateSiteInfo("freezerLabelExpiryDate", Boolean.toString(form.getFreezerExpiryDateCheck()), "boolean",
-                sysUserId);
+                sysUserId, labelsDomain);
 
         updateSiteInfo("prePrintUseAltAccession", Boolean.toString(!form.getPrePrintDontUseAltAccession()), "boolean",
-                sysUserId);
+                sysUserId, labelsDomain);
         String altAccessionPrefix = form.getPrePrintAltAccessionPrefix() == null ? ""
                 : form.getPrePrintAltAccessionPrefix().trim();
-        updateSiteInfo("prePrintAltAccessionPrefix", altAccessionPrefix, "text", sysUserId);
+        updateSiteInfo("prePrintAltAccessionPrefix", altAccessionPrefix, "text", sysUserId, labelsDomain);
     }
 
     /**
@@ -112,12 +140,12 @@ public class BarcodeConfigServiceImpl implements BarcodeConfigService {
      * @param value     The new value to save
      * @param valueType The type of the value to save
      */
-    private void updateSiteInfo(String name, String value, String valueType, String sysUserId) {
+    private void updateSiteInfo(String name, String value, String valueType, String sysUserId,
+            SiteInformationDomain siteInformationDomain) {
         if ("boolean".equals(valueType)) {
             value = "true".equalsIgnoreCase(value) ? "true" : "false";
         }
         SiteInformation siteInformation = siteInformationService.getSiteInformationByName(name);
-        SiteInformationDomain siteInformationDomain = siteInformationDomainService.getByName("labels");
         if (siteInformation == null) {
             siteInformation = new SiteInformation();
             siteInformation.setName(name);
