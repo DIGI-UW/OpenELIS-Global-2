@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef , useEffect} from "react";
 import {
     Grid,
     Column,
@@ -9,12 +9,14 @@ import {
     TextInput,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+// import Quill from "quill";
+// import "quill/dist/quill.snow.css";
 
 const PathologyGrossing = ({
     intl: intlProp,
     grossing,
     onGrossingChange,
-    statusId = "status",
+  statusId = "status",
     statusName = "status",
     statusValue = "",
     onStatusChange = () => {},
@@ -27,7 +29,7 @@ const PathologyGrossing = ({
     specimenCondition = "",
     onSpecimenConditionChange = () => {},
 }) => {
-    const intl = intlProp || useIntl();
+    const intl = useIntl();
     const grossDescriptionRef = useRef(null);
 
     const statusOptions = [
@@ -93,9 +95,11 @@ const PathologyGrossing = ({
         onGrossingChange(`${currentText}${separator}${macroText}`);
     };
 
+    const editorRef = useRef(null);
+
     return (
         <Grid fullWidth={true} className="gridBoundary">
-            <Column lg={5} md={4} sm={4}>
+            <Column lg={8} md={4} sm={4}>
                 <Select
                     id={statusId}
                     name={statusName}
@@ -113,7 +117,7 @@ const PathologyGrossing = ({
                 </Select>
             </Column>
 
-            <Column lg={5} md={4} sm={4}>
+            <Column lg={8} md={4} sm={4}>
                 <Select
                     id={technicianId}
                     name={technicianName}
@@ -131,9 +135,7 @@ const PathologyGrossing = ({
                 </Select>
             </Column>
 
-            <Column lg={6} md={8} sm={4} />
-
-            <Column lg={5} md={4} sm={4}>
+            <Column lg={8} md={4} sm={4}>
                 <TextInput
                     id="specimenReceivedDate"
                     type="date"
@@ -143,7 +145,7 @@ const PathologyGrossing = ({
                 />
             </Column>
 
-            <Column lg={5} md={4} sm={4}>
+            <Column lg={8} md={4} sm={4}>
                 <Select
                     id="specimenCondition"
                     name="specimenCondition"
@@ -153,80 +155,42 @@ const PathologyGrossing = ({
                 >
                     <SelectItem value="" text="Select specimen condition" />
                     {specimenConditionOptions.map((condition) => (
-                        <SelectItem
-                            key={condition.id}
-                            text={condition.value}
-                            value={condition.id}
-                        />
-                    ))}
-                </Select>
-            </Column>
-
-            <Column lg={6} md={8} sm={4} />
-
-            <Column lg={16} md={8} sm={4}>
-                <h5 style={{ marginBottom: "0.75rem" }}>
-                    <FormattedMessage id="pathology.label.grossexam" defaultMessage="Gross Description" />
-                </h5>
-            </Column>
-
-            <Column lg={16} md={8} sm={4}>
-                <div
-                    style={{
-                        display: "flex",
-                        gap: "0.5rem",
-                        flexWrap: "wrap",
-                        marginBottom: "0.75rem",
-                    }}
-                >
-                    <Button size="sm" kind="ghost" onClick={() => applyFormat("**", "**")}>
-                        Bold
-                    </Button>
-                    <Button size="sm" kind="ghost" onClick={() => applyFormat("_", "_")}>
-                        Italic
-                    </Button>
-                    <Button size="sm" kind="ghost" onClick={() => applyFormat("<u>", "</u>")}>
-                        Underline
-                    </Button>
-                    <Button size="sm" kind="ghost" onClick={() => applyFormat("\n- ", "")}>
-                        Bullet
-                    </Button>
-                    <Button size="sm" kind="ghost" onClick={() => applyFormat("\n1. ", "")}>
-                        Numbered
-                    </Button>
-                </div>
-            </Column>
-
-            <Column lg={6} md={4} sm={4}>
-                <Select
-                    id="grossDescriptionMacros"
-                    name="grossDescriptionMacros"
-                    labelText="Quick Insert / Macros"
-                    value=""
-                    onChange={(event) => {
-                        if (event.target.value) {
-                            appendMacro(event.target.value);
-                        }
-                    }}
-                >
-                    <SelectItem value="" text="Select a macro" />
-                    {quickInsertOptions.map((macro) => (
-                        <SelectItem key={macro.id} value={macro.value} text={macro.value} />
+                      <SelectItem
+                        key={condition.id}
+                        text={condition.value}
+                        value={condition.id}
+                      />
                     ))}
                 </Select>
             </Column>
 
             <Column lg={16} md={8} sm={4}>
-                <TextArea
-                    id="grossDescription"
-                    labelText="Gross Description"
-                    value={grossing || ""}
-                    ref={grossDescriptionRef}
-                    rows={8}
-                    onChange={(event) => onGrossingChange(event.target.value)}
-                    helperText="Supports formatted content via toolbar and quick insert macros"
-                />
+                      <div style={{ marginBottom: "0.5rem" }}>
+    <Button size="sm" kind="ghost" onClick={() => applyFormat("bold")}>
+      Bold
+    </Button>
+    <Button size="sm" kind="ghost" onClick={() => applyFormat("italic")}>
+      Italic
+    </Button>
+    <Button size="sm" kind="ghost" onClick={() => applyFormat("underline")}>
+      Underline
+    </Button>
+  </div>
             </Column>
+
+
+  <div
+    ref={editorRef}
+    contentEditable
+    suppressContentEditableWarning
+    onInput={(e) => onGrossingChange(e.currentTarget.innerHTML)}
+    style={{
+      minHeight: "220px",
+      border: "1px solid #8d8d8d",
+      padding: "1rem",
+      background: "white",
+    }}
+  />
         </Grid>
     );
 };
