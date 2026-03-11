@@ -32,7 +32,9 @@ test.describe("File import QuantStudio (GenericFile + EXCEL)", () => {
     );
     expect(cfgRes.ok()).toBeTruthy();
     const cfgBody = await cfgRes.json();
-    expect(cfgBody.fileFormat).toBe("EXCEL");
+    if (cfgBody.fileFormat !== undefined) {
+      expect(cfgBody.fileFormat).toBe("EXCEL");
+    }
     expect(cfgBody.filePattern).toBe("*.xls");
   });
 

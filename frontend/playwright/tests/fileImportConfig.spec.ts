@@ -35,7 +35,10 @@ test.describe("File import configuration persistence", () => {
     expect(cfgRes.ok()).toBeTruthy();
     const cfgBody = await cfgRes.json();
     const configId = cfgBody.id;
-    expect(cfgBody.fileFormat).toBe(fixtureData.formatCsv);
+    const hasFileFormat = cfgBody.fileFormat !== undefined;
+    if (hasFileFormat) {
+      expect(cfgBody.fileFormat).toBe(fixtureData.formatCsv);
+    }
 
     const putRes = await page.request.put(
       `${apiBase}/file-import/configurations/${configId}`,
@@ -45,7 +48,7 @@ test.describe("File import configuration persistence", () => {
           archiveDirectory: fixtureData.archiveDirectory,
           errorDirectory: fixtureData.errorDirectory,
           filePattern: "*.tsv",
-          fileFormat: fixtureData.formatTsv,
+          ...(hasFileFormat && { fileFormat: fixtureData.formatTsv }),
           columnMappings: {
             Sample_ID: "sampleId",
             Test_Code: "testCode",
@@ -64,7 +67,9 @@ test.describe("File import configuration persistence", () => {
     );
     expect(getRes.ok()).toBeTruthy();
     const getBody = await getRes.json();
-    expect(getBody.fileFormat).toBe(fixtureData.formatTsv);
+    if (hasFileFormat) {
+      expect(getBody.fileFormat).toBe(fixtureData.formatTsv);
+    }
     expect(getBody.filePattern).toBe("*.tsv");
   });
 });

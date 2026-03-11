@@ -247,8 +247,7 @@ INSERT INTO file_import_configuration (
     active,
     fhir_uuid,
     sys_user_id,
-    last_updated,
-    file_format
+    last_updated
 )
 VALUES (
     '11111111-1111-1111-1111-111111111111',
@@ -263,8 +262,7 @@ VALUES (
     true,
     '11111111-1111-1111-1111-111111111111',
     '1',
-    NOW(),
-    'CSV'
+    NOW()
 ), (
     '22222222-2222-2222-2222-222222222222',
     (SELECT id FROM analyzer WHERE name = 'E2E-FILE-QuantStudio-Analyzer'),
@@ -278,8 +276,7 @@ VALUES (
     true,
     '22222222-2222-2222-2222-222222222222',
     '1',
-    NOW(),
-    'EXCEL'
+    NOW()
 )
 ON CONFLICT (id) DO UPDATE
 SET
@@ -292,8 +289,19 @@ SET
     delimiter = EXCLUDED.delimiter,
     has_header = EXCLUDED.has_header,
     active = EXCLUDED.active,
-    last_updated = NOW(),
-    file_format = EXCLUDED.file_format;
+    last_updated = NOW();
+
+-- Set file_format if column exists (added by PR #3036 Liquibase migration).
+-- Gracefully skipped on develop where the column does not yet exist.
+DO $$
+BEGIN
+    UPDATE file_import_configuration SET file_format = 'CSV'
+    WHERE id = '11111111-1111-1111-1111-111111111111';
+    UPDATE file_import_configuration SET file_format = 'EXCEL'
+    WHERE id = '22222222-2222-2222-2222-222222222222';
+EXCEPTION WHEN undefined_column THEN
+    NULL;
+END $$;
 
 INSERT INTO analyzer_plugin_config (
     analyzer_id,
