@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- 014-hjra-file-stream-alignment: analyzer_run table for preview/batch data (OGC-324) -->
+  <changeSet id="014-003-create-analyzer-run" author="openelis">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="analyzer_run"/>
+      </not>
+    </preConditions>
+
+    <comment>Create analyzer_run table for import batch and custom preview data</comment>
+    <createTable tableName="analyzer_run">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="analyzer_file_upload_id" type="BIGINT">
+        <constraints nullable="false"
+            foreignKeyName="fk_analyzer_run_upload"
+            references="analyzer_file_upload(id)"
+            deleteCascade="true"/>
+      </column>
+      <column name="plugin_id" type="VARCHAR(100)"/>
+      <column name="custom_preview_data" type="JSONB"/>
+      <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+
+    <createIndex indexName="idx_analyzer_run_upload_id" tableName="analyzer_run">
+      <column name="analyzer_file_upload_id"/>
+    </createIndex>
+
+    <rollback>
+      <dropTable tableName="analyzer_run"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

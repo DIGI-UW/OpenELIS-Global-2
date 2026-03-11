@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.analyzer.dao.FileImportConfigurationDAO;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
+import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerReader;
+import org.openelisglobal.analyzerimport.analyzerreaders.ExcelAnalyzerReader;
 import org.openelisglobal.analyzerimport.analyzerreaders.FileAnalyzerReader;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
@@ -62,7 +64,7 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
     @Override
     public boolean processFile(Path filePath, FileImportConfiguration configuration, String systemUserId) {
         try (InputStream fileStream = Files.newInputStream(filePath)) {
-            FileAnalyzerReader reader = new FileAnalyzerReader(configuration);
+            AnalyzerReader reader = getReaderForFormat(configuration);
 
             boolean readSuccess = reader.readStream(fileStream);
             if (!readSuccess) {
@@ -91,6 +93,28 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             LogEvent.logError(this.getClass().getSimpleName(), "processFile",
                     "Unexpected error processing file " + filePath + ": " + e.getMessage());
             return false;
+        }
+    }
+
+    @Override
+    public AnalyzerReader getReaderForFormat(FileImportConfiguration configuration) {
+        if (configuration == null) {
+            return new FileAnalyzerReader();
+        }
+
+        String fileFormat = configuration.getFileFormat() == null ? "CSV"
+                : configuration.getFileFormat().trim().toUpperCase();
+
+        switch (fileFormat) {
+        case "CSV":
+        case "TSV":
+            return new FileAnalyzerReader(configuration);
+        case "EXCEL":
+            return new ExcelAnalyzerReader(configuration);
+        default:
+            LogEvent.logWarn(this.getClass().getSimpleName(), "getReaderForFormat",
+                    "Unknown file format '" + fileFormat + "', defaulting to CSV reader");
+            return new FileAnalyzerReader(configuration);
         }
     }
 
