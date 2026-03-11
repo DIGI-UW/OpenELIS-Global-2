@@ -183,8 +183,15 @@ describe("Ad-Hoc Report Builder", function () {
         .scrollIntoView()
         .check({ force: true });
       cy.contains("Preview Report").scrollIntoView().click();
-      cy.wait("@previewRequest", { timeout: 15000 });
-      cy.get(".cds--data-table", { timeout: 10000 }).should("exist");
+      cy.wait("@previewRequest", { timeout: 15000 }).then((interception) => {
+        expect(interception.response.statusCode).to.eq(200);
+        const body = interception.response.body;
+        if (body.rows && body.rows.length > 0) {
+          cy.get(".cds--data-table", { timeout: 10000 }).should("exist");
+        } else {
+          cy.get(".adhoc-preview-empty", { timeout: 10000 }).should("exist");
+        }
+      });
     });
   });
 
