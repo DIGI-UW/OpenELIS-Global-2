@@ -98,10 +98,10 @@ without changing the completed baseline behavior.
 - [x] T006 [P] [US2] Create backend orchestration tests for labels-section and
       post-save print state in
       `src/test/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintServiceTest.java`
-- [ ] T007 [P] [US2] Create frontend shared-model tests for labels row model and
+- [x] T007 [P] [US2] Create frontend shared-model tests for labels row model and
       running total (stub/unit tests; component may be minimal) in
       `frontend/src/components/barcodeWorkflow/LabelsSection.test.jsx`
-- [ ] T008 [P] [US2] Create workflow applicability verification notes and
+- [x] T008 [P] [US2] Create workflow applicability verification notes and
       **workflow inventory table** in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`.
       Acceptance: quickstart contains a named "Workflow inventory" section
@@ -116,12 +116,12 @@ without changing the completed baseline behavior.
       `src/main/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintService.java`
       and
       `src/main/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintServiceImpl.java`
-- [ ] T011 [US2] Expand shared response/orchestration contract usage in
+- [x] T011 [US2] Expand shared response/orchestration contract usage in
       `src/main/java/org/openelisglobal/genericsample/service/GenericSampleOrderServiceImpl.java`,
       `src/main/java/org/openelisglobal/program/service/PathologySampleServiceImpl.java`,
       and
       `src/main/java/org/openelisglobal/common/servlet/barcode/LabelMakerServlet.java`
-- [ ] T012 [US2] Align planning evidence and workflow inventory in
+- [x] T012 [US2] Align planning evidence and workflow inventory in
       `specs/OGC-284-barcode-label-quantity-management/contracts/barcode-configuration-and-generic-sample-order.openapi.yml`,
       `specs/OGC-284-barcode-label-quantity-management/data-model.md`, and
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`, including
@@ -129,7 +129,7 @@ without changing the completed baseline behavior.
       and `/api/barcode/print/{orderId}/{labelType}/{sampleId}`. Acceptance:
       OpenAPI and quickstart document the print-PDF paths; data-model reflects
       labels-section and post-save dialog structures.
-- [ ] T013 [US2] Run milestone tests and record verification evidence in
+- [x] T013 [US2] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
 - [ ] T014 Create milestone PR for M5 with shared workflow foundation summary
 
@@ -261,8 +261,9 @@ suite passes.
 - [ ] T039 [P] [US3] Create Playwright end-to-end coverage for the full OGC-284
       workflow in `frontend/playwright/tests/ogc-284-labels-ui.spec.ts` and
       `frontend/playwright/tests/ogc-284-post-save-printing.spec.ts`
-- [ ] T040 [US2] Roll out shared labels-section integration to generic/notebook/batch
-      entry points per **workflow inventory** in quickstart (T008): e.g.
+- [ ] T040 [US2] Roll out shared labels-section integration to
+      generic/notebook/batch entry points per **workflow inventory** in
+      quickstart (T008): e.g.
       `frontend/src/components/genericSample/GenericSampleOrder.js`,
       `frontend/src/components/notebook/NotebookSampleOrder.js`, and
       `frontend/src/components/batchOrderEntry/SampleBatchEntry.js`

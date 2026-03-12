@@ -163,6 +163,9 @@ clarified spec.
 - Dialog appears only after a successful save with accession number assigned.
 - Clicking Print for a label type opens a dimension-matched PDF in a new tab.
 - Done exits without printing and preserves reprint capability from Order View.
+- Print URLs follow one of these endpoint patterns:
+  - `GET /api/barcode/print/{orderId}/{labelType}`
+  - `GET /api/barcode/print/{orderId}/{labelType}/{sampleId}`
 
 ---
 
@@ -190,13 +193,17 @@ Expected attributes:
 **Purpose**: Defines which sample-creation workflows must implement the OGC-284
 labels UI and post-save print flow.
 
-Candidate workflow families identified in the repo:
+Confirmed workflow inventory (authoritative list):
 
-- legacy order entry / add-order flow
-- generic sample order
-- notebook sample order
-- batch order entry
-- pathology-related case/sample workflows
+| Workflow / entry point                                          | Labels UI milestone | Post-save print milestone |
+| --------------------------------------------------------------- | ------------------- | ------------------------- |
+| Add Order (`/SamplePatientEntry`)                               | M6                  | M7                        |
+| Generic Sample Order (`/rest/GenericSampleOrder`)               | M8                  | M8                        |
+| Notebook Sample Order (`NotebookSampleOrder`)                   | M8                  | M8                        |
+| Batch Order Entry (`SampleBatchEntry`)                          | M8                  | M8                        |
+| Pathology Case View (`PathologyCaseView`)                       | M8                  | M8                        |
+| Immunohistochemistry Case View (`ImmunohistochemistryCaseView`) | M8                  | M8                        |
+| Cytology Case View (`CytologyCaseView`)                         | M8                  | M8                        |
 
 **Business Rules**:
 

@@ -7,7 +7,6 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 import java.util.Collections;
 import org.junit.Test;
-import org.openelisglobal.barcode.form.LabelRowForm;
 import org.openelisglobal.barcode.form.LabelsSectionForm;
 import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
 

@@ -101,14 +101,27 @@ from `origin/develop`.
 
 ### Workflow inventory (M5 T008)
 
-Authoritative list of sample-creation workflows that support barcode printing and
-must implement the OGC-284 labels UI and post-save print flow. M8 rollout tasks
-(T037, T038, T040, T041) use this list as scope.
+Authoritative list of sample-creation workflows that support barcode printing
+and must implement the OGC-284 labels UI and post-save print flow. M8 rollout
+tasks (T037, T038, T040, T041) use this list as scope.
 
-| Workflow / entry point | Labels UI | Post-save print | Notes |
-| ---------------------- | --------- | ---------------- | ----- |
-| Add Order (`/SamplePatientEntry`) | M6 | M7 | Primary; implement first. |
-| (T008: complete remaining rows from codebase inventory) | | | |
+| Workflow / entry point                                          | Labels UI | Post-save print | Notes                                                        |
+| --------------------------------------------------------------- | --------- | --------------- | ------------------------------------------------------------ |
+| Add Order (`/SamplePatientEntry`)                               | M6        | M7              | Primary; implement first.                                    |
+| Generic Sample Order (`/rest/GenericSampleOrder`)               | M8        | M8              | Uses shared labels section/orchestration after primary flow. |
+| Notebook Sample Order (`NotebookSampleOrder`)                   | M8        | M8              | Uses the same labels row semantics and print behavior.       |
+| Batch Order Entry (`SampleBatchEntry`)                          | M8        | M8              | Reuse shared model; no workflow-specific divergence.         |
+| Pathology Case View (`PathologyCaseView`)                       | M8        | M8              | Pathology family rollout via shared orchestration.           |
+| Immunohistochemistry Case View (`ImmunohistochemistryCaseView`) | M8        | M8              | Pathology family rollout via shared orchestration.           |
+| Cytology Case View (`CytologyCaseView`)                         | M8        | M8              | Pathology family rollout via shared orchestration.           |
+
+### Print PDF endpoints (T012)
+
+Documented print-PDF endpoint patterns used by post-save print and later
+reprint:
+
+- `GET /api/barcode/print/{orderId}/{labelType}`
+- `GET /api/barcode/print/{orderId}/{labelType}/{sampleId}`
 
 ---
 
@@ -435,16 +448,62 @@ Minimum CI closure target:
 
 ### Branch
 
-- `feat/284-barcode-label-quantity-management-m5-shared-workflow-foundation` (from M4 branch).
+- `feat/284-barcode-label-quantity-management-m5-shared-workflow-foundation`
+  (from M4 branch).
 
 ### M5 deferred gaps completed (T005a, T005b, T005c)
 
-- **FR-004a**: Default ≤ max cross-field validation in `BarcodeConfigurationRestController`; new test in `BarcodeConfigurationRestControllerValidationTest`; message keys in `message_en.properties` / `message_fr.properties` and frontend `en.json` / `fr.json`.
-- **FR-002b**: Positive-dimension validation in controller `validateDimensionFields`; frontend `validationSchema` (Yup) enabled in `BarcodeConfiguration.js` for dimension fields; message keys added.
-- **FR-012a**: Liquibase changesets `barcode-info-003-printed-order-count` and `barcode-info-004-printed-item-counts`; `SampleBarcodeInfo.printedOrderCount`, `SampleItemBarcodeInfo.printedSpecimenCount`/`printedBlockCount`/`printedSlideCount`/`printedFreezerCount`; `BarcodeInfoService.recordPrintedCounts(labNo, labels)` and call from `LabelMakerServlet` after successful PDF; `SpecimenLabel.getSampleItem()` for print recording; unit test `recordPrintedCounts_emptyList_doesNothing`.
+- **FR-004a**: Default ≤ max cross-field validation in
+  `BarcodeConfigurationRestController`; new test in
+  `BarcodeConfigurationRestControllerValidationTest`; message keys in
+  `message_en.properties` / `message_fr.properties` and frontend `en.json` /
+  `fr.json`.
+- **FR-002b**: Positive-dimension validation in controller
+  `validateDimensionFields`; frontend `validationSchema` (Yup) enabled in
+  `BarcodeConfiguration.js` for dimension fields; message keys added.
+- **FR-012a**: Liquibase changesets `barcode-info-003-printed-order-count` and
+  `barcode-info-004-printed-item-counts`; `SampleBarcodeInfo.printedOrderCount`,
+  `SampleItemBarcodeInfo.printedSpecimenCount`/`printedBlockCount`/`printedSlideCount`/`printedFreezerCount`;
+  `BarcodeInfoService.recordPrintedCounts(labNo, labels)` and call from
+  `LabelMakerServlet` after successful PDF; `SpecimenLabel.getSampleItem()` for
+  print recording; unit test `recordPrintedCounts_emptyList_doesNothing`.
 
 ### Test execution
 
-- `BarcodeConfigurationRestControllerValidationTest`: 4 tests (incl. default-lte-max, positive-dimension).
+- `BarcodeConfigurationRestControllerValidationTest`: 4 tests (incl.
+  default-lte-max, positive-dimension).
 - `BarcodeInfoServiceImplTest`: 5 tests (incl. recordPrintedCounts empty list).
 - `HibernateMappingValidationTest`, `BarcodeSchemaValidationTest`: pass.
+
+### Shared workflow foundation completion (T006, T007, T009, T010, T011, T012)
+
+- **T006/T009/T010**: Added shared workflow model + service baseline:
+  - `LabelRowForm`, `LabelsSectionForm`, `PostSavePrintDialogForm`
+  - `BarcodeWorkflowPrintService` and `BarcodeWorkflowPrintServiceImpl`
+  - `BarcodeWorkflowPrintServiceTest` (labels section and post-save dialog model
+    behavior)
+- **T007**: Added frontend shared row-model tests and minimal component
+  scaffold:
+  - `frontend/src/components/barcodeWorkflow/LabelsSection.test.jsx`
+  - `frontend/src/components/barcodeWorkflow/LabelsSection.jsx`
+- **T011**: Wired `GenericSampleOrderServiceImpl` to:
+  - build `labelsSection` via `BarcodeWorkflowPrintService`
+  - build `postSavePrintDialog` via `BarcodeWorkflowPrintService`
+  - include both objects in the save response map
+  - Added unit test
+    `saveGenericSampleOrderInternal_includesWorkflowPrintModelsInResponse` in
+    `GenericSampleOrderServiceImplTest`.
+- **T012**: Aligned planning evidence artifacts:
+  - workflow inventory finalized in quickstart/data-model
+  - OpenAPI includes print endpoint patterns
+    `/api/barcode/print/{orderId}/{labelType}` and
+    `/api/barcode/print/{orderId}/{labelType}/{sampleId}`.
+
+### M5 focused verification run (T013)
+
+- Backend command:
+  `mvn -Dtest=BarcodeWorkflowPrintServiceTest,GenericSampleOrderServiceImplTest,BarcodeConfigurationRestControllerValidationTest,BarcodeInfoServiceImplTest,HibernateMappingValidationTest,BarcodeSchemaValidationTest test`
+  - Result: PASS (28 tests, 0 failures, 0 errors)
+- Frontend command:
+  `CI=true npm test -- --watch=false --runTestsByPath src/components/barcodeWorkflow/LabelsSection.test.jsx src/components/admin/barcodeConfiguration/BarcodeConfiguration.test.js`
+  - Result: PASS (2 suites, 6 tests, 0 failures)

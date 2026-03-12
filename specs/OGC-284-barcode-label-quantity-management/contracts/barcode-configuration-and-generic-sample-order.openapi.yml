@@ -56,6 +56,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/GenericSampleOrderResponse"
 
+  /api/barcode/print/{orderId}/{labelType}:
+    get:
+      summary: Generate PDF for a saved order and label type
+      operationId: printBarcodeByOrderAndType
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: labelType
+          required: true
+          schema:
+            type: string
+            enum: [order, specimen, block, slide, freezer]
+      responses:
+        "200":
+          description: PDF bytes for requested label type
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /api/barcode/print/{orderId}/{labelType}/{sampleId}:
+    get:
+      summary: Generate PDF for a saved order, label type, and sample context
+      operationId: printBarcodeByOrderTypeAndSample
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: labelType
+          required: true
+          schema:
+            type: string
+            enum: [order, specimen, block, slide, freezer]
+        - in: path
+          name: sampleId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: PDF bytes for requested sample-specific label
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
 components:
   schemas:
     BarcodeConfigurationForm:
@@ -353,6 +408,12 @@ components:
         quantity:
           type: integer
           minimum: 0
+        dimensionsMm:
+          type: string
+          description: Human-readable configured dimensions, e.g. "25 x 50"
+        printUrl:
+          type: string
+          description: Runtime URL for selected label type PDF generation
         selected:
           type: boolean
         printerSelection:
@@ -361,4 +422,6 @@ components:
       required:
         - labelType
         - quantity
+        - dimensionsMm
+        - printUrl
         - selected

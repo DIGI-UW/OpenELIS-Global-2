@@ -1,8 +1,10 @@
 package org.openelisglobal.genericsample.service;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -16,7 +18,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.barcode.form.LabelsSectionForm;
+import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
 import org.openelisglobal.barcode.service.BarcodeInfoService;
+import org.openelisglobal.barcode.service.BarcodeWorkflowPrintService;
 import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
@@ -49,6 +54,9 @@ public class GenericSampleOrderServiceImplTest {
     private BarcodeInfoService barcodeInfoService;
 
     @Mock
+    private BarcodeWorkflowPrintService barcodeWorkflowPrintService;
+
+    @Mock
     private IStatusService statusService;
 
     @Mock
@@ -74,6 +82,7 @@ public class GenericSampleOrderServiceImplTest {
         ReflectionTestUtils.setField(service, "sampleItemService", sampleItemService);
         ReflectionTestUtils.setField(service, "sampleDAO", sampleDAO);
         ReflectionTestUtils.setField(service, "barcodeInfoService", barcodeInfoService);
+        ReflectionTestUtils.setField(service, "barcodeWorkflowPrintService", barcodeWorkflowPrintService);
         ReflectionTestUtils.setField(service, "accessionNumberGenerator", accessionNumberGenerator);
         previousFactory = (AutowireCapableBeanFactory) ReflectionTestUtils.getField(SpringContext.class, "factory");
         previousMessageUtilInstance = ReflectionTestUtils.getField(MessageUtil.class, "instance");
@@ -163,6 +172,32 @@ public class GenericSampleOrderServiceImplTest {
         assertTrue("Save should report success when default fields are missing", (Boolean) result.get("success"));
         assertNotNull("Generated accession number should be returned", result.get("accessionNumber"));
         verify(barcodeInfoService).saveBarcodeInfoForSampleAndSampleItems(saved, 1, 1);
+    }
+
+    @Test
+    public void saveGenericSampleOrderInternal_includesWorkflowPrintModelsInResponse() throws Exception {
+        GenericSampleOrderForm form = buildForm("M5-DIALOG-001", 2, 3);
+
+        Sample saved = new Sample();
+        saved.setId("sample-1");
+        saved.setAccessionNumber("M5-DIALOG-001");
+        when(sampleService.get("sample-1")).thenReturn(saved);
+
+        LabelsSectionForm labelsSection = new LabelsSectionForm();
+        PostSavePrintDialogForm postSavePrintDialog = new PostSavePrintDialogForm();
+        postSavePrintDialog.setAccessionNumber("M5-DIALOG-001");
+        when(barcodeWorkflowPrintService.buildLabelsSection(eq(2), anyList())).thenReturn(labelsSection);
+        when(barcodeWorkflowPrintService.buildPostSavePrintDialog("M5-DIALOG-001", labelsSection))
+                .thenReturn(postSavePrintDialog);
+
+        Map<String, Object> result = service.saveGenericSampleOrderInternal(form, "1001");
+
+        assertTrue("Save should report success", (Boolean) result.get("success"));
+        assertSame("labelsSection should come from workflow print service", labelsSection, result.get("labelsSection"));
+        assertSame("postSavePrintDialog should come from workflow print service", postSavePrintDialog,
+                result.get("postSavePrintDialog"));
+        verify(barcodeWorkflowPrintService).buildLabelsSection(eq(2), anyList());
+        verify(barcodeWorkflowPrintService).buildPostSavePrintDialog("M5-DIALOG-001", labelsSection);
     }
 
     private GenericSampleOrderForm buildForm(String labNo, Integer numOrderLabels, Integer numSpecimenLabels) {
