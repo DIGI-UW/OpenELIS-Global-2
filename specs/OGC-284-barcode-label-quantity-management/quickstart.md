@@ -507,3 +507,51 @@ Minimum CI closure target:
 - Frontend command:
   `CI=true npm test -- --watch=false --runTestsByPath src/components/barcodeWorkflow/LabelsSection.test.jsx src/components/admin/barcodeConfiguration/BarcodeConfiguration.test.js`
   - Result: PASS (2 suites, 6 tests, 0 failures)
+
+---
+
+## M7 execution evidence (2026-03-11)
+
+### Branch
+
+- `feat/284-barcode-label-quantity-management-m7-post-save-print-dialog` (from
+  M5 branch).
+
+### M7 implementation coverage (T024, T025, T025a, T026, T028, T029, T031, T032, T033)
+
+- **T025/T025a/T028**: Added `PostSavePrintDialog` and tests for render,
+  Print/Done callbacks, and FR-011b behavior when accession is absent.
+  - `frontend/src/components/barcodeWorkflow/PostSavePrintDialog.jsx`
+  - `frontend/src/components/barcodeWorkflow/PostSavePrintDialog.test.jsx`
+- **T029**: Integrated post-save dialog into Add Order success path.
+  - `frontend/src/components/addOrder/Index.js`
+  - `frontend/src/components/addOrder/OrderSuccessMessage.js`
+- **T026/T031**: Extended `BarcodeWorkflowPrintService` output for print-job
+  dispatch:
+  - Added `PrintableLabelOptionForm` with `labelType`, `quantity`,
+    `dimensionsMm`, `printUrl`.
+  - `PostSavePrintDialogForm.printableLabelTypes` now carries structured
+    options.
+  - Added pathology dispatch URL mapping coverage (block/slide/freezer URL
+    behavior).
+  - Updated `LabelMakerServlet` validation to accept pathology print types for
+    dispatch compatibility.
+- **T032**: Added Order View reprint dialog integration in
+  `frontend/src/components/printBarcode/ExistingOrder.js` using
+  `PostSavePrintDialog`.
+- **T033**: Added i18n strings in `frontend/src/languages/en.json` and
+  `frontend/src/languages/fr.json`:
+  - `barcode.print.dialog.title`
+  - `barcode.print.button`
+  - `barcode.print.done`
+  - `barcode.print.skip`
+  - `barcode.print.reprint.dialog`
+
+### Test execution (T034)
+
+- Backend command:
+  `mvn -Dtest=BarcodeWorkflowPrintServiceTest,GenericSampleOrderServiceImplTest,BarcodeConfigurationRestControllerValidationTest,BarcodeInfoServiceImplTest,HibernateMappingValidationTest,BarcodeSchemaValidationTest test`
+  - Result: PASS (29 tests, 0 failures, 0 errors)
+- Frontend command:
+  `CI=true npm test -- --watch=false --runTestsByPath src/components/barcodeWorkflow/PostSavePrintDialog.test.jsx src/components/barcodeWorkflow/LabelsSection.test.jsx`
+  - Result: PASS (2 suites, 6 tests, 0 failures)

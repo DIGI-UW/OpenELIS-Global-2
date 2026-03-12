@@ -7,7 +7,10 @@ import "./add-order.scss";
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../utils/Utils";
 import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -50,6 +53,7 @@ const Index = () => {
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveResponse, setSaveResponse] = useState(null);
   const [phoneValidation, setPhoneValidation] = useState({
     primaryPhone: { body: "", status: true },
     contactPhone: { body: "", status: true },
@@ -548,9 +552,11 @@ const Index = () => {
     });
   };
 
-  const handlePost = (status) => {
+  const handlePost = (response) => {
     setIsSubmitting(false);
-    if (status === 200) {
+    const responseStatus = response?.statusCode ?? response?.status ?? 200;
+    if (response && !response.error && responseStatus < 400) {
+      setSaveResponse(response);
       showAlertMessage(
         <FormattedMessage id="save.order.success.msg" />,
         NotificationKinds.success,
@@ -603,7 +609,7 @@ const Index = () => {
     orderFormValues.sampleOrderItems.paymentOptions = [];
     orderFormValues.sampleOrderItems.testLocationCodeList = [];
     console.log(JSON.stringify(orderFormValues));
-    postToOpenElisServer(
+    postToOpenElisServerJsonResponse(
       "/rest/SamplePatientEntry",
       JSON.stringify(orderFormValues),
       handlePost,
@@ -816,6 +822,7 @@ const Index = () => {
                 setOrderFormValues={setOrderFormValues}
                 setSamples={setSamples}
                 setPage={setPage}
+                saveResponse={saveResponse}
               />
             )}
             <div className="navigationButtonsLayout">

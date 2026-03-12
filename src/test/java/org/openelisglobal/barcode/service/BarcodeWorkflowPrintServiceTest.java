@@ -6,7 +6,10 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.Test;
+import org.openelisglobal.barcode.form.LabelRowForm;
 import org.openelisglobal.barcode.form.LabelsSectionForm;
 import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
 
@@ -32,8 +35,13 @@ public class BarcodeWorkflowPrintServiceTest {
         PostSavePrintDialogForm dialog = service.buildPostSavePrintDialog("ACC-1", section);
 
         assertEquals("ACC-1", dialog.getAccessionNumber());
-        assertTrue(dialog.getPrintableLabelTypes().contains("order"));
-        assertTrue(dialog.getPrintableLabelTypes().contains("specimen"));
+        assertEquals("order", dialog.getPrintableLabelTypes().get(0).getLabelType());
+        assertEquals(2, dialog.getPrintableLabelTypes().get(0).getQuantity());
+        assertEquals("/LabelMakerServlet?labNo=ACC-1&type=order", dialog.getPrintableLabelTypes().get(0).getPrintUrl());
+        assertEquals("specimen", dialog.getPrintableLabelTypes().get(1).getLabelType());
+        assertEquals(1, dialog.getPrintableLabelTypes().get(1).getQuantity());
+        assertEquals("/LabelMakerServlet?labNo=ACC-1&type=specimen",
+                dialog.getPrintableLabelTypes().get(1).getPrintUrl());
         assertEquals(2, dialog.getPrintableLabelTypes().size());
         assertTrue(dialog.isAllowSkipPrintLater());
         assertEquals("ACC-1", dialog.getReprintContextToken());
@@ -45,5 +53,23 @@ public class BarcodeWorkflowPrintServiceTest {
 
         assertEquals(1, section.getRunningTotal());
         assertEquals(Collections.emptyList(), section.getSampleRows());
+    }
+
+    @Test
+    public void buildPostSavePrintDialog_mapsPathologyTypesToServletDispatchParams() {
+        LabelsSectionForm section = new LabelsSectionForm();
+        LabelRowForm orderRow = new LabelRowForm();
+        orderRow.setQuantities(java.util.Map.of("block", 1, "slide", 2, "freezer", 1));
+        section.setOrderRow(orderRow);
+        section.setSampleRows(Collections.emptyList());
+
+        PostSavePrintDialogForm dialog = service.buildPostSavePrintDialog("ACC-2", section);
+
+        Map<String, String> printUrlsByType = dialog.getPrintableLabelTypes().stream()
+                .collect(Collectors.toMap(option -> option.getLabelType(), option -> option.getPrintUrl()));
+
+        assertEquals("/LabelMakerServlet?labNo=ACC-2&type=blockOrder", printUrlsByType.get("block"));
+        assertEquals("/LabelMakerServlet?labNo=ACC-2&type=slideOrder", printUrlsByType.get("slide"));
+        assertEquals("/LabelMakerServlet?labNo=ACC-2&type=freezer", printUrlsByType.get("freezer"));
     }
 }

@@ -1,13 +1,13 @@
 package org.openelisglobal.barcode.service;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.openelisglobal.barcode.form.LabelRowForm;
 import org.openelisglobal.barcode.form.LabelsSectionForm;
 import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
+import org.openelisglobal.barcode.form.PrintableLabelOptionForm;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -55,7 +55,7 @@ public class BarcodeWorkflowPrintServiceImpl implements BarcodeWorkflowPrintServ
         dialog.setReprintContextToken(accessionNumber);
         dialog.setAllowSkipPrintLater(true);
 
-        Set<String> printableTypes = new LinkedHashSet<>();
+        Map<String, Integer> printableTypes = new LinkedHashMap<>();
         if (labelsSection != null) {
             addPositiveTypes(printableTypes, labelsSection.getOrderRow());
             if (labelsSection.getSampleRows() != null) {
@@ -64,7 +64,16 @@ public class BarcodeWorkflowPrintServiceImpl implements BarcodeWorkflowPrintServ
                 }
             }
         }
-        dialog.setPrintableLabelTypes(new ArrayList<>(printableTypes));
+        List<PrintableLabelOptionForm> printableOptions = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : printableTypes.entrySet()) {
+            PrintableLabelOptionForm option = new PrintableLabelOptionForm();
+            option.setLabelType(entry.getKey());
+            option.setQuantity(entry.getValue());
+            option.setDimensionsMm("");
+            option.setPrintUrl(buildPrintUrl(accessionNumber, entry.getKey()));
+            printableOptions.add(option);
+        }
+        dialog.setPrintableLabelTypes(printableOptions);
         return dialog;
     }
 
@@ -72,14 +81,25 @@ public class BarcodeWorkflowPrintServiceImpl implements BarcodeWorkflowPrintServ
         return quantity == null || quantity < 0 ? 0 : quantity;
     }
 
-    private void addPositiveTypes(Set<String> printableTypes, LabelRowForm row) {
+    private void addPositiveTypes(Map<String, Integer> printableTypes, LabelRowForm row) {
         if (row == null || row.getQuantities() == null) {
             return;
         }
         for (Map.Entry<String, Integer> entry : row.getQuantities().entrySet()) {
-            if (normalizeQuantity(entry.getValue()) > 0) {
-                printableTypes.add(entry.getKey());
+            int normalizedQuantity = normalizeQuantity(entry.getValue());
+            if (normalizedQuantity > 0) {
+                printableTypes.put(entry.getKey(), printableTypes.getOrDefault(entry.getKey(), 0) + normalizedQuantity);
             }
         }
+    }
+
+    private String buildPrintUrl(String accessionNumber, String labelType) {
+        String typeForUrl = labelType;
+        if ("block".equals(labelType)) {
+            typeForUrl = "blockOrder";
+        } else if ("slide".equals(labelType)) {
+            typeForUrl = "slideOrder";
+        }
+        return String.format("/LabelMakerServlet?labNo=%s&type=%s", accessionNumber, typeForUrl);
     }
 }

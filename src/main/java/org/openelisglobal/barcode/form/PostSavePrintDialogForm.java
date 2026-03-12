@@ -6,7 +6,7 @@ import java.util.List;
 public class PostSavePrintDialogForm {
 
     private String accessionNumber;
-    private List<String> printableLabelTypes = new ArrayList<>();
+    private List<PrintableLabelOptionForm> printableLabelTypes = new ArrayList<>();
     private boolean allowSkipPrintLater = true;
     private String reprintContextToken;
 
@@ -18,11 +18,11 @@ public class PostSavePrintDialogForm {
         this.accessionNumber = accessionNumber;
     }
 
-    public List<String> getPrintableLabelTypes() {
+    public List<PrintableLabelOptionForm> getPrintableLabelTypes() {
         return printableLabelTypes;
     }
 
-    public void setPrintableLabelTypes(List<String> printableLabelTypes) {
+    public void setPrintableLabelTypes(List<PrintableLabelOptionForm> printableLabelTypes) {
         this.printableLabelTypes = printableLabelTypes;
     }
 

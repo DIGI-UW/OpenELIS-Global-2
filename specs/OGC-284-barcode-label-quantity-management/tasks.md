@@ -189,25 +189,25 @@ Order workflow (`/SamplePatientEntry`) shows a post-save print dialog with
 per-label-type PDF Print buttons that open dimension-matched PDFs in new browser
 tabs, and a Done button.
 
-- [ ] T024 Create milestone branch
+- [x] T024 Create milestone branch
       `feat/284-barcode-label-quantity-management-m7-post-save-print-dialog`
       from
       `feat/284-barcode-label-quantity-management-m5-shared-workflow-foundation`
       and add worktree at `/workspace-worktrees/ogc-284-m7-print-dialog`
-- [ ] T025 [P] [US3] Create frontend dialog tests in
+- [x] T025 [P] [US3] Create frontend dialog tests in
       `frontend/src/components/barcodeWorkflow/PostSavePrintDialog.test.jsx`
-- [ ] T025a [P] [US3] Add FR-011b negative test: verify label print is not
+- [x] T025a [P] [US3] Add FR-011b negative test: verify label print is not
       offered until order is saved and accession assigned (e.g. in
       PostSavePrintDialog.test.jsx or Add Order integration test).
-- [ ] T026 [P] [US3] Extend
+- [x] T026 [P] [US3] Extend
       `src/test/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintServiceTest.java`
       with print-job dispatch and per-label-type PDF generation tests (add to
       existing test class created in T006).
 - [ ] T027 [P] [US3] Create reprint tests for Order View page in
       `frontend/src/components/printBarcode/ExistingOrder.test.jsx`
-- [ ] T028 [US3] Implement shared post-save print dialog component in
+- [x] T028 [US3] Implement shared post-save print dialog component in
       `frontend/src/components/barcodeWorkflow/PostSavePrintDialog.jsx`
-- [ ] T029 [US3] Integrate post-save dialog into the Add Order
+- [x] T029 [US3] Integrate post-save dialog into the Add Order
       (`/SamplePatientEntry`) success path in
       `frontend/src/components/addOrder/OrderSuccessMessage.js` and
       `frontend/src/components/addOrder/SampleType.js`
@@ -215,17 +215,17 @@ tabs, and a Done button.
       (`GET /api/barcode/print/{orderId}/{labelType}`) and Print button wiring
       in `frontend/src/components/barcodeWorkflow/PostSavePrintDialog.jsx` and
       `src/main/java/org/openelisglobal/common/servlet/barcode/LabelMakerServlet.java`
-- [ ] T031 [US3] Implement separate print-job dispatch and deferred-print
+- [x] T031 [US3] Implement separate print-job dispatch and deferred-print
       orchestration in
       `src/main/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintServiceImpl.java`
       and
       `src/main/java/org/openelisglobal/common/servlet/barcode/LabelMakerServlet.java`
-- [ ] T032 [US3] Wire Order View reprint support into
+- [x] T032 [US3] Wire Order View reprint support into
       `frontend/src/components/printBarcode/ExistingOrder.js` and
       `frontend/src/components/printBarcode/PrePrint.js`
-- [ ] T033 [US3] Externalize any new post-save dialog and print-later strings in
+- [x] T033 [US3] Externalize any new post-save dialog and print-later strings in
       `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
-- [ ] T034 [US3] Run milestone tests and record verification evidence in
+- [x] T034 [US3] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
 - [ ] T035 Create milestone PR for M7 with post-save print flow evidence
 
