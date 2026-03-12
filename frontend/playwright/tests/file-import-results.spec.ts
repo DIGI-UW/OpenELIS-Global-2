@@ -42,12 +42,6 @@ test.describe("QuantStudio 7 File Import → Results", () => {
   test.setTimeout(180_000); // 3 min — accounts for 60s poll interval
 
   test("drop Excel file, verify results appear in OE", async ({ page }) => {
-    // Skip if analyzer harness import directory doesn't exist (e.g. in CI)
-    test.skip(
-      !fs.existsSync(HOST_IMPORT_DIR),
-      "Requires analyzer harness bind-mount (HOST_IMPORT_DIR not found)",
-    );
-
     // Capture errors for debugging
     const consoleErrors: string[] = [];
     page.on("console", (msg) => {
@@ -56,6 +50,7 @@ test.describe("QuantStudio 7 File Import → Results", () => {
 
     // ── Step 1: Verify fixture file exists ──────────────────────────
     expect(fs.existsSync(FIXTURE_FILE)).toBeTruthy();
+    expect(fs.existsSync(HOST_IMPORT_DIR)).toBeTruthy();
 
     // ── Step 2: Navigate to analyzer list to show starting state ────
     await page.goto("analyzers", { waitUntil: "domcontentloaded" });

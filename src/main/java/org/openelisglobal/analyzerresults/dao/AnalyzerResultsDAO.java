@@ -36,6 +36,8 @@ public interface AnalyzerResultsDAO extends BaseDAO<AnalyzerResults, String> {
 
     public List<AnalyzerResults> getDuplicateResultByAccessionAndTest(AnalyzerResults result);
 
+    public List<AnalyzerResults> getResultsByAnalyzerId(String analyzerId);
+
     // public void deleteAll(List<AnalyzerResults> deletableAnalyzerResults) throws
     // LIMSRuntimeException;
 }
