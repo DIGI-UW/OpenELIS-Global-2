@@ -240,7 +240,8 @@ public class AnalyzerRestController extends BaseRestController {
 
                     // For FILE protocol profiles, auto-create FileImportConfiguration
                     if (isFileProtocol(configData)) {
-                        fileImportService.autoCreateFromProfile(analyzerId, configData, form.getName());
+                        fileImportService.autoCreateFromProfile(analyzerId, configData, form.getName(),
+                                getSysUserId(request));
                     }
                 } else {
                     logger.warn("Could not load default config '{}' for test mapping auto-creation",

@@ -575,7 +575,8 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
 
     @Override
     @SuppressWarnings("unchecked")
-    public void autoCreateFromProfile(String analyzerId, Map<String, Object> configData, String analyzerName) {
+    public void autoCreateFromProfile(String analyzerId, Map<String, Object> configData, String analyzerName,
+            String sysUserId) {
         if (analyzerId == null || configData == null) {
             return;
         }
@@ -654,6 +655,7 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
         config.setErrorDirectory(errorDir);
         config.setDelimiter(fileFormat.equals("TSV") ? "\t" : ",");
         config.setActive(true);
+        config.setSysUserId(sysUserId);
 
         fileImportConfigurationDAO.insert(config);
 
