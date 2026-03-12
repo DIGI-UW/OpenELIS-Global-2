@@ -48,7 +48,7 @@ public final class PlateGridNormalizer {
         }
         String delim = headerLine.contains("\t") ? "\t" : ",";
         String[] headerCells = headerLine.split(delim, -1);
-        if (headerCells.length < 12) {
+        if (headerCells.length < 13) {
             return false;
         }
         for (int r = 1; r <= 8; r++) {
@@ -83,7 +83,8 @@ public final class PlateGridNormalizer {
         }
 
         String headerLine = lines.get(gridStart);
-        String delim = headerLine.contains("\t") ? "\t" : ",";
+        String delim = (delimiter != null && !delimiter.isEmpty()) ? delimiter
+                : (headerLine.contains("\t") ? "\t" : ",");
 
         result.add("WellPosition\tSampleID\tOD_450");
 

@@ -399,6 +399,7 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             String linesJson = objectMapper.writeValueAsString(lines);
             AnalyzerRun run = new AnalyzerRun();
             run.setAnalyzerFileUploadId(upload.getId());
+            // Note: pluginId stores the analyzer ID (used for plugin lookup by analyzer)
             run.setPluginId(config.getAnalyzerId() != null ? config.getAnalyzerId().toString() : null);
             run.setCustomPreviewData(linesJson);
             run.setCreatedAt(new Timestamp(System.currentTimeMillis()));
@@ -414,12 +415,15 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
     @Override
     public void submitResults(Integer analyzerId, SubmitRequestForm request, String systemUserId) {
         if (request == null || request.getPreviewSessionId() == null) {
-            return;
+            throw new IllegalArgumentException("previewSessionId is required");
         }
         Long uploadId = request.getPreviewSessionId();
         Optional<AnalyzerFileUpload> uploadOpt = analyzerFileUploadDAO.get(uploadId);
-        if (uploadOpt.isEmpty() || !uploadOpt.get().getAnalyzerId().equals(analyzerId)) {
-            return;
+        if (uploadOpt.isEmpty()) {
+            throw new IllegalArgumentException("Upload not found: " + uploadId);
+        }
+        if (!uploadOpt.get().getAnalyzerId().equals(analyzerId)) {
+            throw new IllegalStateException("Upload does not belong to analyzer " + analyzerId);
         }
         AnalyzerFileUpload upload = uploadOpt.get();
         upload.setStatus("PROCESSING");
@@ -447,7 +451,12 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
         Set<Integer> excluded = new HashSet<>(
                 request.getExcludedRows() != null ? request.getExcludedRows() : Collections.emptyList());
         List<String> filtered = new ArrayList<>();
-        for (int i = 0; i < lines.size(); i++) {
+        // Always preserve header (index 0); exclusions use 1-based row numbers
+        // matching the rowNumber assigned during preview (see toPreviewRecord)
+        if (!lines.isEmpty()) {
+            filtered.add(lines.get(0));
+        }
+        for (int i = 1; i < lines.size(); i++) {
             if (!excluded.contains(i)) {
                 filtered.add(lines.get(i));
             }
@@ -481,7 +490,8 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
         }
 
         upload.setStatus("COMPLETED");
-        upload.setResultCount(filtered.size());
+        // Count data rows only (exclude header row)
+        upload.setResultCount(Math.max(0, filtered.size() - 1));
         upload.setCompletedAt(new Timestamp(System.currentTimeMillis()));
         analyzerFileUploadDAO.update(upload);
     }

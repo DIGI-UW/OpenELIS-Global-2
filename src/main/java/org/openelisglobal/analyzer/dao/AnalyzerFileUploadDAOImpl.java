@@ -35,10 +35,10 @@ public class AnalyzerFileUploadDAOImpl extends BaseDAOImpl<AnalyzerFileUpload, L
             return Optional.ofNullable(result);
         } catch (org.hibernate.NonUniqueResultException e) {
             throw new LIMSRuntimeException("Multiple AnalyzerFileUpload for analyzer " + analyzerId + " and hash", e);
-        } catch (Exception e) {
-            LogEvent.logDebug(this.getClass().getSimpleName(), "findByAnalyzerIdAndFileHash",
-                    "No upload found: " + e.getMessage());
+        } catch (jakarta.persistence.NoResultException e) {
             return Optional.empty();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error querying AnalyzerFileUpload: " + e.getMessage(), e);
         }
     }
 

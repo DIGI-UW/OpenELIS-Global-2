@@ -80,6 +80,14 @@ public class AnalyzerUploadRestController extends BaseRestController {
             body.put("message", MessageUtil.getMessageOrDefault("file.import.rest.message.queued", null,
                     "Results queued for import"));
             return ResponseEntity.ok(body);
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (IllegalStateException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
         } catch (Exception e) {
             logger.error("Upload submit failed for analyzer " + analyzerId, e);
             Map<String, Object> error = new HashMap<>();
