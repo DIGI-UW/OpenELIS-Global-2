@@ -118,6 +118,11 @@ export class AnalyzerFormPage {
   /** Assert a success notification appeared */
   async expectSuccessNotification() {
     await expect(this.notification).toBeVisible({ timeout: 10000 });
+    const cls = await this.notification.getAttribute("class");
+    if (cls && /error/i.test(cls)) {
+      const text = await this.notification.textContent();
+      throw new Error(`Expected success notification but got error: ${text}`);
+    }
     await expect(this.notification).toHaveAttribute("class", /success|info/i);
   }
 

@@ -328,6 +328,12 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
       ...formData,
       port: formData.port ? parseInt(formData.port, 10) : null,
       defaultConfigId: selectedDefault?.id || null,
+      // Clear network/protocol fields for FILE protocol — not applicable
+      ...(isFileProtocol && {
+        ipAddress: null,
+        port: null,
+        protocolVersion: null,
+      }),
     };
 
     const callback = (response, extraParams) => {

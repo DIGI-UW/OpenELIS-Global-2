@@ -102,8 +102,19 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
     await form.fillName(analyzerName);
     await page.waitForTimeout(500);
 
-    // Step 8: Save
+    // Step 8: Save — intercept API response for diagnostics
+    const saveResponsePromise = page.waitForResponse(
+      (resp) =>
+        resp.url().includes("/rest/analyzer/analyzers") &&
+        resp.request().method() === "POST",
+      { timeout: 15_000 },
+    );
     await form.save();
+    const saveResponse = await saveResponsePromise;
+    if (!saveResponse.ok()) {
+      const body = await saveResponse.text().catch(() => "no body");
+      console.error(`Save API returned ${saveResponse.status()}: ${body}`);
+    }
     await form.expectSuccessNotification();
     await page.waitForTimeout(1_500); // Show success notification
 

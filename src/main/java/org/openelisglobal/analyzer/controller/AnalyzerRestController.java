@@ -203,8 +203,10 @@ public class AnalyzerRestController extends BaseRestController {
             analyzer.setIpAddress(
                     form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty() ? form.getIpAddress() : null);
             analyzer.setPort(form.getPort());
-            ProtocolVersion pv = ProtocolVersion.fromValue(form.getProtocolVersion());
-            analyzer.setProtocolVersion(pv != null ? pv : ProtocolVersion.ASTM_LIS2_A2);
+            if (form.getProtocolVersion() != null && !form.getProtocolVersion().trim().isEmpty()) {
+                ProtocolVersion pv = ProtocolVersion.fromValue(form.getProtocolVersion());
+                analyzer.setProtocolVersion(pv != null ? pv : ProtocolVersion.ASTM_LIS2_A2);
+            }
             analyzer.setTestUnitIds(form.getTestUnitIds() != null ? form.getTestUnitIds() : new ArrayList<>());
             if (form.getIdentifierPattern() != null) {
                 analyzer.setIdentifierPattern(form.getIdentifierPattern());
