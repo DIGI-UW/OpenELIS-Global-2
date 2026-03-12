@@ -198,7 +198,11 @@ VALUES (
     '3',
     NOW()
 )
-ON CONFLICT (analyzer_type_id, analyzer_test_name) DO NOTHING;
+ON CONFLICT (analyzer_type_id, analyzer_test_name) DO UPDATE
+SET
+    analyzer_id = EXCLUDED.analyzer_id,
+    test_id = EXCLUDED.test_id,
+    last_updated = NOW();
 
 -- Seed FILE analyzers.
 INSERT INTO analyzer (
