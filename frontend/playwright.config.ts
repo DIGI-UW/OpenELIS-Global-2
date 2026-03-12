@@ -30,7 +30,7 @@ export default defineConfig({
     // Evidence collection
     trace: "on-first-retry",
     screenshot: "only-on-failure",
-    video: "off",
+    video: process.env.PLAYWRIGHT_VIDEO === "on" ? "on" : "off",
   },
 
   projects: [

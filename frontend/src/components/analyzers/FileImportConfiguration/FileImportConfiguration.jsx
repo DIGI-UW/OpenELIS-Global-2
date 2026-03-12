@@ -21,9 +21,13 @@ import {
 import { getAnalyzers } from "../../../services/analyzerService";
 import "./FileImportConfiguration.css";
 
-const FileImportConfiguration = ({ configuration, open, onClose }) => {
+const FileImportConfiguration = ({
+  configuration,
+  open,
+  onClose,
+  preselectedAnalyzerId,
+}) => {
   const intl = useIntl();
-  const isEditMode = !!configuration;
 
   const [formData, setFormData] = useState({
     analyzerId: null,
@@ -42,8 +46,13 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
   const [availableAnalyzers, setAvailableAnalyzers] = useState([]);
+  const [autoLoadedConfig, setAutoLoadedConfig] = useState(null);
 
-  // Load analyzers for dropdown
+  // Use explicit configuration prop, or auto-loaded config from preselectedAnalyzerId
+  const effectiveConfiguration = configuration || autoLoadedConfig;
+  const isEditMode = !!effectiveConfiguration;
+
+  // Load analyzers for dropdown, and auto-load existing config if preselectedAnalyzerId
   useEffect(() => {
     if (open) {
       getAnalyzers({}, (data) => {
@@ -51,33 +60,47 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
           data && Array.isArray(data.analyzers) ? data.analyzers : [];
         setAvailableAnalyzers(list);
       });
+
+      // If we have a preselected analyzer and no explicit configuration,
+      // try to load the existing file import config for this analyzer
+      if (preselectedAnalyzerId && !configuration) {
+        getConfigurationByAnalyzerId(preselectedAnalyzerId, (data) => {
+          if (data && data.id && !data.error) {
+            setAutoLoadedConfig(data);
+          }
+        });
+      }
+    } else {
+      setAutoLoadedConfig(null);
     }
-  }, [open]);
+  }, [open, preselectedAnalyzerId, configuration]);
 
   // Initialize form data when configuration changes
   useEffect(() => {
-    if (configuration) {
+    if (effectiveConfiguration) {
       setFormData({
-        analyzerId: configuration.analyzerId,
-        fileFormat: configuration.fileFormat || "CSV",
-        importDirectory: configuration.importDirectory || "",
-        filePattern: configuration.filePattern || "*.csv",
-        archiveDirectory: configuration.archiveDirectory || "",
-        errorDirectory: configuration.errorDirectory || "",
-        columnMappings: configuration.columnMappings
-          ? JSON.stringify(configuration.columnMappings, null, 2)
+        analyzerId: effectiveConfiguration.analyzerId,
+        fileFormat: effectiveConfiguration.fileFormat || "CSV",
+        importDirectory: effectiveConfiguration.importDirectory || "",
+        filePattern: effectiveConfiguration.filePattern || "*.csv",
+        archiveDirectory: effectiveConfiguration.archiveDirectory || "",
+        errorDirectory: effectiveConfiguration.errorDirectory || "",
+        columnMappings: effectiveConfiguration.columnMappings
+          ? JSON.stringify(effectiveConfiguration.columnMappings, null, 2)
           : "{}",
-        delimiter: configuration.delimiter || ",",
+        delimiter: effectiveConfiguration.delimiter || ",",
         hasHeader:
-          configuration.hasHeader !== undefined
-            ? configuration.hasHeader
+          effectiveConfiguration.hasHeader !== undefined
+            ? effectiveConfiguration.hasHeader
             : true,
         active:
-          configuration.active !== undefined ? configuration.active : true,
+          effectiveConfiguration.active !== undefined
+            ? effectiveConfiguration.active
+            : true,
       });
     } else {
       setFormData({
-        analyzerId: null,
+        analyzerId: preselectedAnalyzerId || null,
         fileFormat: "CSV",
         importDirectory: "",
         filePattern: "*.csv",
@@ -91,7 +114,7 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
     }
     setErrors({});
     setNotification(null);
-  }, [configuration, open]);
+  }, [effectiveConfiguration, open, preselectedAnalyzerId]);
 
   // Handle field changes
   const handleFieldChange = (field, value) => {
@@ -209,7 +232,7 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
     };
 
     if (isEditMode) {
-      updateConfiguration(configuration.id, submitData, callback);
+      updateConfiguration(effectiveConfiguration.id, submitData, callback);
     } else {
       createConfiguration(submitData, callback);
     }
@@ -433,7 +456,9 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
                   id: "file.import.configuration.hasHeader",
                 })}
                 checked={formData.hasHeader}
-                onChange={(checked) => handleFieldChange("hasHeader", checked)}
+                onChange={(_, { checked }) =>
+                  handleFieldChange("hasHeader", checked)
+                }
               />
             </>
           )}
@@ -445,7 +470,7 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
               id: "file.import.configuration.active",
             })}
             checked={formData.active}
-            onChange={(checked) => handleFieldChange("active", checked)}
+            onChange={(_, { checked }) => handleFieldChange("active", checked)}
           />
         </FormGroup>
       </ModalBody>
