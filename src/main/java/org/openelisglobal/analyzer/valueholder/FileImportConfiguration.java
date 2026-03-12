@@ -1,5 +1,8 @@
 package org.openelisglobal.analyzer.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,6 +46,9 @@ public class FileImportConfiguration extends BaseObject<String> {
     @Column(name = "file_pattern", length = 100, nullable = false)
     private String filePattern = "*.csv"; // Glob pattern
 
+    @Column(name = "file_format", length = 20, nullable = false)
+    private String fileFormat = "CSV";
+
     @Column(name = "archive_directory", length = 255)
     private String archiveDirectory; // Move processed files here
 
@@ -76,6 +82,9 @@ public class FileImportConfiguration extends BaseObject<String> {
         }
         if (fhirUuid == null) {
             fhirUuid = UUID.randomUUID();
+        }
+        if (fileFormat == null || fileFormat.isBlank()) {
+            fileFormat = "CSV";
         }
         // Serialize column mappings to JSON before persisting
         if (columnMappings != null && !columnMappings.isEmpty()) {
@@ -129,6 +138,14 @@ public class FileImportConfiguration extends BaseObject<String> {
         return archiveDirectory;
     }
 
+    public String getFileFormat() {
+        return fileFormat;
+    }
+
+    public void setFileFormat(String fileFormat) {
+        this.fileFormat = fileFormat;
+    }
+
     public void setArchiveDirectory(String archiveDirectory) {
         this.archiveDirectory = archiveDirectory;
     }
@@ -141,6 +158,7 @@ public class FileImportConfiguration extends BaseObject<String> {
         this.errorDirectory = errorDirectory;
     }
 
+    @JsonGetter("columnMappings")
     public Map<String, String> getColumnMappings() {
         // Deserialize from JSON if needed
         if (columnMappings.isEmpty() && columnMappingsJson != null && !columnMappingsJson.isEmpty()) {
@@ -156,6 +174,7 @@ public class FileImportConfiguration extends BaseObject<String> {
         return columnMappings;
     }
 
+    @JsonSetter("columnMappings")
     public void setColumnMappings(Map<String, String> columnMappings) {
         this.columnMappings = columnMappings != null ? columnMappings : new HashMap<>();
         // Serialize to JSON immediately
@@ -168,10 +187,12 @@ public class FileImportConfiguration extends BaseObject<String> {
         }
     }
 
+    @JsonIgnore
     public String getColumnMappingsJson() {
         return columnMappingsJson;
     }
 
+    @JsonIgnore
     public void setColumnMappingsJson(String columnMappingsJson) {
         this.columnMappingsJson = columnMappingsJson;
         // Clear transient map to force re-deserialization

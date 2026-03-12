@@ -3,11 +3,6 @@ import { AnalyzerListPage } from "../fixtures/analyzer-list";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
 
 test.describe("Analyzer Plugin Config", () => {
-  test.skip(
-    process.env.CI === "true",
-    "Requires analyzer harness fixtures/plugins not available in default CI",
-  );
-
   test("profile selection prefills implemented analyzer fields", async ({
     page,
   }) => {
