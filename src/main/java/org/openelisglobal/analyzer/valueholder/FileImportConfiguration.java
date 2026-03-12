@@ -1,5 +1,7 @@
 package org.openelisglobal.analyzer.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,9 +54,11 @@ public class FileImportConfiguration extends BaseObject<String> {
     @Column(name = "error_directory", length = 255)
     private String errorDirectory; // Move failed files here
 
+    @JsonIgnore
     @Column(name = "column_mappings", columnDefinition = "TEXT")
     private String columnMappingsJson; // JSON string: {"Sample_ID": "sampleId", "Result": "result"}
 
+    @JsonProperty
     @Transient
     private Map<String, String> columnMappings = new HashMap<>(); // Transient for easier access
 
