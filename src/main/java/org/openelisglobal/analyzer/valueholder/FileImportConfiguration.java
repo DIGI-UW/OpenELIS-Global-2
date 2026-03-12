@@ -73,6 +73,10 @@ public class FileImportConfiguration extends BaseObject<String> {
     @Column(name = "fhir_uuid", nullable = false, unique = true)
     private UUID fhirUuid;
 
+    // Override BaseObject's @Transient sysUserId to map to actual database column
+    @Column(name = "sys_user_id", length = 255, nullable = false)
+    private String sysUserId;
+
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @PrePersist
@@ -229,5 +233,15 @@ public class FileImportConfiguration extends BaseObject<String> {
 
     public void setFhirUuid(UUID fhirUuid) {
         this.fhirUuid = fhirUuid;
+    }
+
+    @Override
+    public String getSysUserId() {
+        return sysUserId;
+    }
+
+    @Override
+    public void setSysUserId(String sysUserId) {
+        this.sysUserId = sysUserId;
     }
 }

@@ -52,6 +52,7 @@
   "analysis.details": "Détails de l'analyse",
   "analyzer.action.add": "Ajouter un Automate",
   "analyzer.action.copyMappings": "Copy Mappings",
+  "analyzer.action.configureFileImport": "Configurer l'importation de fichiers",
   "analyzer.action.delete": "Supprimer",
   "analyzer.action.edit": "Modifier",
   "analyzer.action.fieldMappings": "Field Mappings",

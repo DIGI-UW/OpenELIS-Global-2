@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -10,14 +11,20 @@ import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.analyzer.service.FileImportService;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.login.service.LoginUserService;
+import org.openelisglobal.login.valueholder.LoginUser;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -35,6 +42,9 @@ public class FileImportRestController extends BaseRestController {
 
     @Autowired
     private FileImportService fileImportService;
+
+    @Autowired
+    private LoginUserService loginUserService;
 
     /**
      * Validates that a directory path is within the configured base import
@@ -57,6 +67,59 @@ public class FileImportRestController extends BaseRestController {
         } catch (InvalidPathException e) {
             return false;
         }
+    }
+
+    /**
+     * Gets the system user ID from the request session, with a fallback to Spring
+     * Security's Authentication principal. Logs diagnostic info when the session
+     * attribute is missing.
+     */
+    private String getSysUserIdWithFallback(HttpServletRequest request) {
+        // Try the standard session-based approach first
+        String sysUserId = getSysUserId(request);
+        if (sysUserId != null) {
+            return sysUserId;
+        }
+
+        // Log diagnostic info about why the session attribute is missing
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            logger.warn("FileImport: No HTTP session exists for request to {}", request.getRequestURI());
+        } else {
+            Object attr = session.getAttribute(IActionConstants.USER_SESSION_DATA);
+            UserSessionData usd = null;
+            if (attr instanceof UserSessionData) {
+                usd = (UserSessionData) attr;
+            } else if (attr != null) {
+                logger.warn("FileImport: USER_SESSION_DATA attribute is of unexpected type: {}",
+                        attr.getClass().getName());
+            }
+            logger.debug("FileImport: HTTP session exists but USER_SESSION_DATA is {}",
+                    usd == null ? "null" : "present");
+        }
+
+        // Fallback: resolve from Spring Security Authentication
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated()) {
+            String username = auth.getName();
+            logger.info("FileImport: Falling back to Spring Security principal '{}' to resolve sysUserId", username);
+            try {
+                Optional<LoginUser> loginUser = loginUserService.getMatch("loginName", username);
+                if (loginUser.isPresent()) {
+                    String resolvedId = String.valueOf(loginUser.get().getSystemUserId());
+                    logger.info("FileImport: Resolved sysUserId={} from principal '{}'", resolvedId, username);
+                    return resolvedId;
+                }
+            } catch (Exception e) {
+                logger.error("FileImport: Failed to resolve sysUserId from principal '{}'", username, e);
+            }
+        } else {
+            logger.error("FileImport: No authenticated principal available. Authentication: {}", auth);
+        }
+
+        logger.error("FileImport: Could not resolve sysUserId by any method for request to {}",
+                request.getRequestURI());
+        return null;
     }
 
     /**
@@ -158,7 +221,13 @@ public class FileImportRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
 
-            configuration.setSysUserId(getSysUserId(request));
+            String sysUserId = getSysUserIdWithFallback(request);
+            if (sysUserId == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Unable to determine authenticated user");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+            configuration.setSysUserId(sysUserId);
             String id = fileImportService.insert(configuration);
 
             Map<String, Object> response = new HashMap<>();
@@ -205,7 +274,13 @@ public class FileImportRestController extends BaseRestController {
             existing.setDelimiter(configuration.getDelimiter());
             existing.setHasHeader(configuration.getHasHeader());
             existing.setActive(configuration.getActive());
-            existing.setSysUserId(getSysUserId(request));
+            String sysUserId = getSysUserIdWithFallback(request);
+            if (sysUserId == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Unable to determine authenticated user");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+            existing.setSysUserId(sysUserId);
 
             fileImportService.update(existing);
 
@@ -233,7 +308,13 @@ public class FileImportRestController extends BaseRestController {
                 return ResponseEntity.notFound().build();
             }
 
-            fileImportService.delete(id, getSysUserId(request));
+            String sysUserId = getSysUserIdWithFallback(request);
+            if (sysUserId == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Unable to determine authenticated user");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+            fileImportService.delete(id, sysUserId);
 
             Map<String, Object> response = new HashMap<>();
             response.put("message", "File import configuration deleted successfully");

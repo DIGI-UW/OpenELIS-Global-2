@@ -288,11 +288,14 @@ public class ExcelAnalyzerReader extends AnalyzerReader {
     private void setInserter() {
         PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
         if (configuration != null && configuration.getAnalyzerId() != null) {
-            AnalyzerImporterPlugin configuredPlugin = pluginService
-                    .getPluginByAnalyzerId(configuration.getAnalyzerId().toString());
+            String analyzerId = configuration.getAnalyzerId().toString();
+            AnalyzerImporterPlugin configuredPlugin = pluginService.getPluginByAnalyzerId(analyzerId);
+            if (configuredPlugin == null) {
+                configuredPlugin = findPluginByConfiguredAnalyzerType();
+            }
             if (configuredPlugin != null) {
                 inserter = configuredPlugin.getAnalyzerLineInserter();
-                inserter.setContextAnalyzerId(String.valueOf(configuration.getAnalyzerId()));
+                inserter.setContextAnalyzerId(analyzerId);
                 return;
             }
         }
@@ -306,8 +309,49 @@ public class ExcelAnalyzerReader extends AnalyzerReader {
                     return;
                 }
             } catch (RuntimeException e) {
-                LogEvent.logError(e);
+                LogEvent.logError(this.getClass().getSimpleName(), "setInserter",
+                        plugin.getClass().getName() + ".isTargetAnalyzer() threw: " + e.getMessage());
             }
         }
+    }
+
+    private AnalyzerImporterPlugin findPluginByConfiguredAnalyzerType() {
+        try {
+            org.openelisglobal.analyzer.service.AnalyzerService analyzerService = SpringContext
+                    .getBean(org.openelisglobal.analyzer.service.AnalyzerService.class);
+            if (analyzerService == null || configuration == null || configuration.getAnalyzerId() == null) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "findPluginByConfiguredAnalyzerType",
+                        "Null guard: analyzerService=" + (analyzerService != null) + ", config="
+                                + (configuration != null));
+                return null;
+            }
+
+            org.openelisglobal.analyzer.valueholder.Analyzer analyzer = analyzerService
+                    .getWithType(String.valueOf(configuration.getAnalyzerId())).orElse(null);
+            if (analyzer == null) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "findPluginByConfiguredAnalyzerType",
+                        "Analyzer not found for id: " + configuration.getAnalyzerId());
+                return null;
+            }
+            if (analyzer.getAnalyzerType() == null || analyzer.getAnalyzerType().getPluginClassName() == null) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "findPluginByConfiguredAnalyzerType", "Analyzer "
+                        + analyzer.getId() + " has no type or pluginClassName. type=" + analyzer.getAnalyzerType());
+                return null;
+            }
+
+            String pluginClassName = analyzer.getAnalyzerType().getPluginClassName();
+            PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
+            for (AnalyzerImporterPlugin plugin : pluginService.getAnalyzerPlugins()) {
+                if (plugin.getClass().getName().equals(pluginClassName)) {
+                    return plugin;
+                }
+            }
+            LogEvent.logWarn(this.getClass().getSimpleName(), "findPluginByConfiguredAnalyzerType",
+                    "No registered plugin matches class: " + pluginClassName);
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "findPluginByConfiguredAnalyzerType",
+                    "Unable to resolve plugin by analyzer type: " + e.getMessage());
+        }
+        return null;
     }
 }

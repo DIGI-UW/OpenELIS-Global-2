@@ -104,7 +104,7 @@ services:
       - ../../frontend/public:/app/public
 
   proxy:
-    image: nginx:1.15-alpine
+    image: nginx:1.27-alpine
     ports:
       - "80:80"
       - "443:443"
