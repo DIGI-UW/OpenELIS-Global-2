@@ -64,7 +64,7 @@ jobs:
             < src/test/resources/fixtures/file-import-e2e.sql
 
       - name: Run Playwright tests
-        run: npm run pw:test -- --project=setup --project=chromium --project=file-import
+        run: npm run pw:test -- --project=core-app
         working-directory: frontend
         env:
           CI: true

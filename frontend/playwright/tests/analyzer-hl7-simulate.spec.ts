@@ -4,11 +4,6 @@ import { AnalyzerListPage } from "../fixtures/analyzer-list";
 const HL7_ANALYZER_NAME = "Mindray BC-5380";
 
 test.describe("Analyzer HL7 Simulator", () => {
-  test.skip(
-    process.env.CI === "true" && process.env.ANALYZER_HARNESS !== "true",
-    "Requires analyzer harness with HL7 simulator support",
-  );
-
   test("simulates HL7 message and previews mapping for Mindray BC-5380", async ({
     page,
   }) => {
