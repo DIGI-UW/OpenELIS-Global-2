@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -35,12 +36,20 @@ public class ASTMAnalyzerReaderIdentificationTest extends BaseWebContextSensitiv
         super.setUp();
         reader = new ASTMAnalyzerReader();
 
-        // Create and save an analyzer with IP+port (no type required)
+        // Create and save an analyzer with IP+port (no type required).
+        // Use 192.0.2.x (RFC 5737 TEST-NET) to avoid fixture collisions in CI.
         testAnalyzer = new Analyzer();
         testAnalyzer.setName("Test ASTM Analyzer");
-        testAnalyzer.setIpAddress("10.99.99.42");
+        testAnalyzer.setIpAddress("192.0.2.42");
         testAnalyzer.setPort(9000);
         testAnalyzer = analyzerService.save(testAnalyzer);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        if (testAnalyzer != null && testAnalyzer.getId() != null) {
+            analyzerService.delete(testAnalyzer);
+        }
     }
 
     /**
@@ -49,7 +58,7 @@ public class ASTMAnalyzerReaderIdentificationTest extends BaseWebContextSensitiv
      */
     @Test
     public void ipPortLookup_withMatchingAnalyzer_returnsAnalyzer() {
-        Optional<Analyzer> found = analyzerService.getByIpAddressAndPort("10.99.99.42", 9000);
+        Optional<Analyzer> found = analyzerService.getByIpAddressAndPort("192.0.2.42", 9000);
         assertTrue("Analyzer should be findable by IP+port", found.isPresent());
         assertEquals(testAnalyzer.getId(), found.get().getId());
     }
@@ -59,7 +68,7 @@ public class ASTMAnalyzerReaderIdentificationTest extends BaseWebContextSensitiv
      */
     @Test
     public void ipLookup_withMatchingAnalyzer_returnsAnalyzer() {
-        Optional<Analyzer> found = analyzerService.getByIpAddress("10.99.99.42");
+        Optional<Analyzer> found = analyzerService.getByIpAddress("192.0.2.42");
         assertTrue("Analyzer should be findable by IP", found.isPresent());
         assertEquals(testAnalyzer.getId(), found.get().getId());
     }
