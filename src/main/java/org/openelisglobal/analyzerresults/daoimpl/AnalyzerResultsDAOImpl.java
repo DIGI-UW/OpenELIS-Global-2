@@ -63,27 +63,6 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<AnalyzerResults> getResultsByAnalyzerId(String analyzerId) {
-        try {
-            Session session = entityManager.unwrap(Session.class);
-            String hql = "from AnalyzerResults a where a.analyzerId = :analyzerId order by a.id asc";
-            Query<AnalyzerResults> query = session.createQuery(hql, AnalyzerResults.class);
-            query.setParameter("analyzerId", Integer.parseInt(analyzerId));
-            List<AnalyzerResults> results = query.list();
-            // Detach entities to prevent auto-flush issues caused by
-            // LIMSStringNumberUserType on analyzerId (numeric = bytea error)
-            for (AnalyzerResults result : results) {
-                session.evict(result);
-            }
-            return results;
-        } catch (RuntimeException e) {
-            LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in getResultsByAnalyzerId()", e);
-        }
-    }
-
-    @Override
     public AnalyzerResults readAnalyzerResults(String idString) throws LIMSRuntimeException {
         AnalyzerResults data = null;
         try {
