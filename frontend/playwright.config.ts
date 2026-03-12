@@ -49,6 +49,7 @@ export default defineConfig({
         /.*analyzer-hl7-simulate\.spec\.ts/,
         /.*fileImportConfig\.spec\.ts/,
         /.*fileImportQuantStudio\.spec\.ts/,
+        /.*file-import\.spec\.ts/,
       ],
       use: {
         ...devices["Desktop Chrome"],
