@@ -296,14 +296,14 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
       });
     }
 
-    if (formData.ipAddress) {
+    if (!isFileProtocol && formData.ipAddress) {
       const ipError = validateIPAddress(formData.ipAddress);
       if (ipError) {
         newErrors.ipAddress = ipError;
       }
     }
 
-    if (formData.port) {
+    if (!isFileProtocol && formData.port) {
       const portNum = parseInt(formData.port, 10);
       if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
         newErrors.port = intl.formatMessage({
@@ -457,6 +457,8 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
               }
               onChange={({ selectedItem }) => {
                 handleFieldChange("pluginTypeId", selectedItem?.id || "");
+                // Reset profile selection when plugin type changes
+                setSelectedDefault(null);
                 // Auto-set protocol version based on plugin type
                 if (selectedItem?.protocol) {
                   handleFieldChange(

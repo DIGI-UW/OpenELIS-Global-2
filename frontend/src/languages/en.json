@@ -266,6 +266,8 @@
   "analyzer.form.editTitle": "Edit Analyzer",
   "analyzer.form.error.save": "Failed to save analyzer",
   "analyzer.form.error.unknown": "An unknown error occurred",
+  "analyzer.form.fileProtocol.description": "This analyzer imports results from files. File import settings will be configured after saving.",
+  "analyzer.form.fileProtocol.title": "File Import Protocol",
   "analyzer.form.ipAddress": "IP Address",
   "analyzer.form.ipAddress.placeholder": "192.168.1.10",
   "analyzer.form.lastModified": "Last Modified Date/Time",

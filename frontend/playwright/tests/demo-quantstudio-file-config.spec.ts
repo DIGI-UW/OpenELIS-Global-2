@@ -20,8 +20,11 @@ import { AnalyzerFormPage } from "../fixtures/analyzer-form";
  * Run with: PLAYWRIGHT_VIDEO=on TEST_USER=admin TEST_PASS="adminADMIN!" \
  *           npx playwright test demo-quantstudio --project=analyzer-harness
  */
-// Video recording — set at top level (Playwright requires test.use outside describe)
-test.use({ video: "on" });
+// Video recording — only enable when explicitly requested via env var.
+// Playwright requires test.use outside describe.
+if (process.env.PLAYWRIGHT_VIDEO === "on") {
+  test.use({ video: "on" });
+}
 
 test.describe("Demo: QuantStudio 7 Generic File Config", () => {
   test.describe.configure({ mode: "serial" });
@@ -44,6 +47,7 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
 
   test("create QuantStudio 7 analyzer via Generic File plugin + profile", async ({
     page,
+    baseURL,
   }) => {
     const list = new AnalyzerListPage(page);
     const form = new AnalyzerFormPage(page);
@@ -126,7 +130,8 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
 
     // Step 10: Verify file-import configuration was created
     if (createdAnalyzerId) {
-      const api = `${page.url().split("/analyzers")[0]}/api/OpenELIS-Global/rest/analyzer`;
+      const base = baseURL || process.env.BASE_URL || "https://localhost";
+      const api = `${base}/api/OpenELIS-Global/rest/analyzer`;
       const cfgRes = await page.request.get(
         `${api}/file-import/configurations/analyzer/${createdAnalyzerId}`,
       );
