@@ -10,23 +10,23 @@
     <!-- ======================================================== -->
     <!-- VIROLOGYLAB LABORATORY NOTEBOOK TEMPLATE -->
     <!-- Creates a predefined notebook template with 10 workflow pages -->
-    <!-- hard-coded for the VirologyLab Laboratory workflow -->
+    <!-- hard-coded for the Virology Laboratory workflow -->
     <!-- ======================================================== -->
 
     <changeSet id="create-virologylab-notebook-template" author="openelis-virologylab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
             </sqlCheck>
         </preConditions>
-        <comment>Create VirologyLab Laboratory notebook template</comment>
+        <comment>Create Virology Laboratory notebook template</comment>
 
         <insert tableName="notebook" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_seq"/>
-            <column name="title" value="VirologyLab Laboratory"/>
+            <column name="title" value="Virology Laboratory"/>
             <column name="objective" value="Complete virology research workflow from sample reception to data submission"/>
-            <column name="protocol" value="Standard VirologyLab Laboratory Protocol"/>
-            <column name="content" value="VirologyLab Laboratory notebook template with 9 predefined workflow pages for sample reception, DNA/RNA extraction, quality assessment, PCR amplification, gel electrophoresis, library preparation, bioanalyzer QC, sequencing, and bioinformatics analysis."/>
+            <column name="protocol" value="Standard Virology Laboratory Protocol"/>
+            <column name="content" value="Virology Laboratory notebook template with 9 predefined workflow pages for sample reception, DNA/RNA extraction, quality assessment, PCR amplification, gel electrophoresis, library preparation, bioanalyzer QC, sequencing, and bioinformatics analysis."/>
             <column name="status" value="ACTIVE"/>
             <column name="is_template" valueBoolean="true"/>
             <column name="last_updated" valueComputed="${now}"/>
@@ -35,7 +35,7 @@
 
         <rollback>
             <delete tableName="notebook" schemaName="clinlims">
-                <where>title = 'VirologyLab Laboratory' AND is_template = true</where>
+                <where>title = 'Virology Laboratory' AND is_template = true</where>
             </delete>
         </rollback>
     </changeSet>
@@ -46,15 +46,15 @@
     <changeSet id="create-virologylab-page-1-sample-reception" author="openelis-virologylab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
             </sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
                 JOIN clinlims.notebook n ON np.notebook_id = n.id
-                WHERE n.title = 'VirologyLab Laboratory' AND n.is_template = true AND np.page_order = 1
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 1
             </sqlCheck>
         </preConditions>
-        <comment>Create Sample Reception &amp; Registration page for VirologyLab Laboratory notebook</comment>
+        <comment>Create Sample Reception &amp; Registration page for Virology Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
@@ -64,13 +64,13 @@
             <column name="page_order" value="1"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BATCH_VERIFICATION"/>
-            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true)"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
 
         <rollback>
             <delete tableName="notebook_page" schemaName="clinlims">
-                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true) AND page_order = 1</where>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 1</where>
             </delete>
         </rollback>
     </changeSet>
@@ -81,15 +81,15 @@
     <changeSet id="create-virologylab-page-2-dna-rna-extraction" author="openelis-virologylab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
             </sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
                 JOIN clinlims.notebook n ON np.notebook_id = n.id
-                WHERE n.title = 'VirologyLab Laboratory' AND n.is_template = true AND np.page_order = 2
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 2
             </sqlCheck>
         </preConditions>
-        <comment>Create DNA/RNA Extraction page for VirologyLab Laboratory notebook</comment>
+        <comment>Create DNA/RNA Extraction page for Virology Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
@@ -99,13 +99,13 @@
             <column name="page_order" value="2"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
-            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true)"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
 
         <rollback>
             <delete tableName="notebook_page" schemaName="clinlims">
-                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true) AND page_order = 2</where>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 2</where>
             </delete>
         </rollback>
     </changeSet>
@@ -116,15 +116,15 @@
     <changeSet id="create-virologylab-page-3-quality-quantity-assessment" author="openelis-virologylab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
             </sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
                 JOIN clinlims.notebook n ON np.notebook_id = n.id
-                WHERE n.title = 'VirologyLab Laboratory' AND n.is_template = true AND np.page_order = 3
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 3
             </sqlCheck>
         </preConditions>
-        <comment>Create Quality &amp; Quantity Assessment page for VirologyLab Laboratory notebook</comment>
+        <comment>Create Quality &amp; Quantity Assessment page for Virology Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
@@ -134,13 +134,13 @@
             <column name="page_order" value="3"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
-            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true)"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
 
         <rollback>
             <delete tableName="notebook_page" schemaName="clinlims">
-                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true) AND page_order = 3</where>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 3</where>
             </delete>
         </rollback>
     </changeSet>
@@ -151,15 +151,15 @@
     <changeSet id="create-virologylab-page-4-pcr-amplification" author="openelis-virologylab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
             </sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
                 JOIN clinlims.notebook n ON np.notebook_id = n.id
-                WHERE n.title = 'VirologyLab Laboratory' AND n.is_template = true AND np.page_order = 4
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 4
             </sqlCheck>
         </preConditions>
-        <comment>Create PCR Amplification page for VirologyLab Laboratory notebook</comment>
+        <comment>Create PCR Amplification page for Virology Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
@@ -169,13 +169,13 @@
             <column name="page_order" value="4"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
-            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true)"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
 
         <rollback>
             <delete tableName="notebook_page" schemaName="clinlims">
-                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true) AND page_order = 4</where>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 4</where>
             </delete>
         </rollback>
     </changeSet>
@@ -186,15 +186,15 @@
     <changeSet id="create-virologylab-page-5-gel-electrophoresis" author="openelis-virologylab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
             </sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
                 JOIN clinlims.notebook n ON np.notebook_id = n.id
-                WHERE n.title = 'VirologyLab Laboratory' AND n.is_template = true AND np.page_order = 5
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 5
             </sqlCheck>
         </preConditions>
-        <comment>Create Gel Electrophoresis page for VirologyLab Laboratory notebook</comment>
+        <comment>Create Gel Electrophoresis page for Virology Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
@@ -204,13 +204,13 @@
             <column name="page_order" value="5"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
-            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true)"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
 
         <rollback>
             <delete tableName="notebook_page" schemaName="clinlims">
-                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true) AND page_order = 5</where>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 5</where>
             </delete>
         </rollback>
     </changeSet>
@@ -221,15 +221,15 @@
     <changeSet id="create-virologylab-page-6-library-preparation" author="openelis-virologylab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
             </sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
                 JOIN clinlims.notebook n ON np.notebook_id = n.id
-                WHERE n.title = 'VirologyLab Laboratory' AND n.is_template = true AND np.page_order = 6
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 6
             </sqlCheck>
         </preConditions>
-        <comment>Create Library Preparation page for VirologyLab Laboratory notebook</comment>
+        <comment>Create Library Preparation page for Virology Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
@@ -239,13 +239,13 @@
             <column name="page_order" value="6"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
-            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true)"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
 
         <rollback>
             <delete tableName="notebook_page" schemaName="clinlims">
-                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true) AND page_order = 6</where>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 6</where>
             </delete>
         </rollback>
     </changeSet>
@@ -256,15 +256,15 @@
     <changeSet id="create-virologylab-page-7-bioanalyzer-qc" author="openelis-virologylab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
             </sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
                 JOIN clinlims.notebook n ON np.notebook_id = n.id
-                WHERE n.title = 'VirologyLab Laboratory' AND n.is_template = true AND np.page_order = 7
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 7
             </sqlCheck>
         </preConditions>
-        <comment>Create Bioanalyzer QC page for VirologyLab Laboratory notebook</comment>
+        <comment>Create Bioanalyzer QC page for Virology Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
@@ -274,13 +274,13 @@
             <column name="page_order" value="7"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
-            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true)"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
 
         <rollback>
             <delete tableName="notebook_page" schemaName="clinlims">
-                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true) AND page_order = 7</where>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 7</where>
             </delete>
         </rollback>
     </changeSet>
@@ -291,15 +291,15 @@
     <changeSet id="create-virologylab-page-8-sequencing" author="openelis-virologylab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
             </sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
                 JOIN clinlims.notebook n ON np.notebook_id = n.id
-                WHERE n.title = 'VirologyLab Laboratory' AND n.is_template = true AND np.page_order = 8
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 8
             </sqlCheck>
         </preConditions>
-        <comment>Create Sequencing page for VirologyLab Laboratory notebook</comment>
+        <comment>Create Sequencing page for Virology Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
@@ -309,13 +309,13 @@
             <column name="page_order" value="8"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
-            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true)"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
 
         <rollback>
             <delete tableName="notebook_page" schemaName="clinlims">
-                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true) AND page_order = 8</where>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 8</where>
             </delete>
         </rollback>
     </changeSet>
@@ -326,15 +326,15 @@
     <changeSet id="create-virologylab-page-9-bioinformatics-analysis" author="openelis-virologylab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
             </sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
                 JOIN clinlims.notebook n ON np.notebook_id = n.id
-                WHERE n.title = 'VirologyLab Laboratory' AND n.is_template = true AND np.page_order = 9
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 9
             </sqlCheck>
         </preConditions>
-        <comment>Create Bioinformatics Analysis &amp; Data Submission page for VirologyLab Laboratory notebook</comment>
+        <comment>Create Bioinformatics Analysis &amp; Data Submission page for Virology Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
@@ -344,13 +344,13 @@
             <column name="page_order" value="9"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="AGGREGATION"/>
-            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true)"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
 
         <rollback>
             <delete tableName="notebook_page" schemaName="clinlims">
-                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true) AND page_order = 9</where>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 9</where>
             </delete>
         </rollback>
     </changeSet>
@@ -361,15 +361,15 @@
     <changeSet id="create-virologylab-page-10-storage-environmental-monitoring" author="openelis-virologylab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true
             </sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.notebook_page np
                 JOIN clinlims.notebook n ON np.notebook_id = n.id
-                WHERE n.title = 'VirologyLab Laboratory' AND n.is_template = true AND np.page_order = 10
+                WHERE n.title = 'Virology Laboratory' AND n.is_template = true AND np.page_order = 10
             </sqlCheck>
         </preConditions>
-        <comment>Create Storage &amp; Environmental Monitoring page for VirologyLab Laboratory notebook</comment>
+        <comment>Create Storage &amp; Environmental Monitoring page for Virology Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
@@ -379,13 +379,13 @@
             <column name="page_order" value="10"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
-            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true)"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
 
         <rollback>
             <delete tableName="notebook_page" schemaName="clinlims">
-                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'VirologyLab Laboratory' AND is_template = true) AND page_order = 10</where>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology Laboratory' AND is_template = true) AND page_order = 10</where>
             </delete>
         </rollback>
     </changeSet>
