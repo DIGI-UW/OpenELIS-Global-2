@@ -51,17 +51,21 @@ test.describe("Analyzer Test Connection", () => {
 
     // Test connection can be briefly flaky right after harness restarts.
     // Retry a few times, but fail with explicit UI error details if it never succeeds.
+    // Click test and wait for result. The bridge ASTM round-trip takes ~2s,
+    // so we use expect().toBeVisible() which auto-retries (unlike isVisible()
+    // which returns immediately and ignores the timeout option).
     let connected = false;
     let lastError = "";
     for (let attempt = 1; attempt <= 3; attempt++) {
       await testButton.click();
-      if (
-        (await successTag.first().isVisible({ timeout: 15_000 })) ||
-        (await successText.first().isVisible({ timeout: 1_000 }))
-      ) {
+      try {
+        await expect(successTag.first()).toBeVisible({ timeout: 20_000 });
         connected = true;
         break;
+      } catch {
+        // Success tag didn't appear — check logs for details
       }
+
       if (await logsButton.isVisible()) {
         await logsButton.click();
         const logs = page.locator(
@@ -69,10 +73,6 @@ test.describe("Analyzer Test Connection", () => {
         );
         if (await logs.first().isVisible()) {
           const logText = ((await logs.first().textContent()) || "").trim();
-          if (/Connection successful via bridge/i.test(logText)) {
-            connected = true;
-            break;
-          }
           if (logText.length > 0) {
             lastError = `${lastError}\n${logText}`.trim();
           }
@@ -82,11 +82,14 @@ test.describe("Analyzer Test Connection", () => {
         lastError =
           (await errorTag.textContent())?.trim() || "Connection failed";
       }
-      if (attempt < 3 && (await retryButton.isVisible())) {
-        await retryButton.click();
-      }
+      // Wait for "Test Again" button before retrying
       if (attempt < 3) {
-        await page.waitForTimeout(1_000);
+        try {
+          await expect(retryButton).toBeVisible({ timeout: 5_000 });
+          await retryButton.click();
+        } catch {
+          await page.waitForTimeout(2_000);
+        }
       }
     }
 
