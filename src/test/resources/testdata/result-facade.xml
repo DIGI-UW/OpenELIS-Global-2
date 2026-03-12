@@ -1,9 +1,9 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
-    <localization id="1" description="Test Description 1"
-        english="TB" french="TB" lastupdated="2025-03-08 12:00:00" />
-    <localization id="2" description="Test Description 2"
-        english="Urinalysis" french="Urinalysis"
+    <localization id="1" description="Panel Name"
+        lastupdated="2025-03-08 12:00:00" />
+
+    <localization id="2" description="Test Name"
         lastupdated="2025-03-08 12:00:00" />
 
     <system_user id="1" external_id="EXT003" login_name="admin"
@@ -167,11 +167,9 @@
     <sampletype_test id="1" test_id="1" sample_type_id="3" />
 
     <panel id="1" name="Test Panel"
-        description="This is a test panel." name_localization_id="1"
-        loinc="12345" />
-    <panel id="2" name="Duplicate Panel"
-        description="Duplicate description" name_localization_id="1"
-        loinc="67890" />
+        description="This is a test panel." name_localization_id="1" />
+    <panel id="2" name="DCPIP Panel" description="Vitamins test"
+        name_localization_id="2" />
 
     <panel_item id="1" panel_id="1" sort_order="1"
         test_local_abbrev="TLA1" method_name="therapy"

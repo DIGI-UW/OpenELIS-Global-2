@@ -123,8 +123,7 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         Analysis analysis = analysisService.getAnalysisById("1");
 
         Localization localizationOld = new Localization();
-        localizationOld.setEnglish("TB");
-        localizationOld.setFrench("TB");
+        localizationOld.setDescription("Test Panel");
         localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
         Localization savedLocalization = localizationSevice.save(localizationOld);
         Panel newPanel = new Panel();
@@ -220,7 +219,6 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void createObservation_shouldCreateNewResult() throws Exception {
-        // 1. Setup UUIDs and Dependencies
         String patientFhirUuid = "550e8400-e29b-41d4-a716-446655440001";
         String analysisFhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
         String specimenFhirUuid = "68438220-5cef-44c4-9e6f-9f88e6b93270";
@@ -228,8 +226,7 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         Analysis analysis = analysisService.getAnalysisById("1");
 
         Localization localizationOld = new Localization();
-        localizationOld.setEnglish("TB");
-        localizationOld.setFrench("TB");
+        localizationOld.setDescription("Test Panel");
         localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
         Localization savedLocalization = localizationSevice.save(localizationOld);
         Panel newPanel = new Panel();
