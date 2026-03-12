@@ -44,6 +44,9 @@
         <constraints nullable="false"/>
       </column>
       <column name="completed_at" type="TIMESTAMP"/>
+      <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+        <constraints nullable="false"/>
+      </column>
     </createTable>
 
     <createIndex indexName="idx_analyzer_file_upload_analyzer_id" tableName="analyzer_file_upload">

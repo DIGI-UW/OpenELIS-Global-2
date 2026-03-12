@@ -1,5 +1,8 @@
 package org.openelisglobal.analyzer.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -155,6 +158,7 @@ public class FileImportConfiguration extends BaseObject<String> {
         this.errorDirectory = errorDirectory;
     }
 
+    @JsonGetter("columnMappings")
     public Map<String, String> getColumnMappings() {
         // Deserialize from JSON if needed
         if (columnMappings.isEmpty() && columnMappingsJson != null && !columnMappingsJson.isEmpty()) {
@@ -170,6 +174,7 @@ public class FileImportConfiguration extends BaseObject<String> {
         return columnMappings;
     }
 
+    @JsonSetter("columnMappings")
     public void setColumnMappings(Map<String, String> columnMappings) {
         this.columnMappings = columnMappings != null ? columnMappings : new HashMap<>();
         // Serialize to JSON immediately
@@ -182,10 +187,12 @@ public class FileImportConfiguration extends BaseObject<String> {
         }
     }
 
+    @JsonIgnore
     public String getColumnMappingsJson() {
         return columnMappingsJson;
     }
 
+    @JsonIgnore
     public void setColumnMappingsJson(String columnMappingsJson) {
         this.columnMappingsJson = columnMappingsJson;
         // Clear transient map to force re-deserialization

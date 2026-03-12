@@ -39,7 +39,7 @@ export default defineConfig({
       name: "setup",
       testMatch: /.*\.setup\.ts/,
     },
-    // Main tests - depend on auth
+    // Main UI tests (excludes analyzer-specific specs)
     {
       name: "chromium",
       use: {
@@ -47,6 +47,38 @@ export default defineConfig({
         storageState: "playwright/.auth/user.json",
       },
       dependencies: ["setup"],
+      testIgnore: [
+        "**/file-import*",
+        "**/analyzer-test-connection*",
+        "**/analyzer-plugin-config*",
+        "**/analyzer-simulator*",
+        "**/analyzer-hl7-simulate*",
+      ],
+    },
+    // FILE analyzer tests — pure REST API, runs in default CI with DB fixtures
+    {
+      name: "file-import",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+      testMatch: ["**/file-import*"],
+    },
+    // Analyzer harness tests — needs bridge + simulator, runs via analyzer-e2e.yml
+    {
+      name: "analyzer-harness",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+      testMatch: [
+        "**/analyzer-test-connection*",
+        "**/analyzer-plugin-config*",
+        "**/analyzer-simulator*",
+        "**/analyzer-hl7-simulate*",
+      ],
     },
   ],
 });

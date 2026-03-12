@@ -1,10 +1,12 @@
 package org.openelisglobal.analyzerimport.analyzerreaders;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -60,16 +62,35 @@ public class FileAnalyzerReader extends AnalyzerReader {
         }
 
         try {
-            CSVFormat csvFormat = CSVFormat.DEFAULT
-                    .withDelimiter(configuration.getDelimiter() != null && !configuration.getDelimiter().isEmpty()
-                            ? configuration.getDelimiter().charAt(0)
-                            : ',');
+            byte[] bytes = stream.readAllBytes();
+            List<String> rawLines = Arrays.asList(new String(bytes, StandardCharsets.UTF_8).split("\\r?\\n"));
+
+            InputStream parseStream;
+            char delimiterChar = configuration.getDelimiter() != null && !configuration.getDelimiter().isEmpty()
+                    ? configuration.getDelimiter().charAt(0)
+                    : ',';
+
+            if (PlateGridNormalizer.isPlateGridFormat(rawLines)) {
+                List<String> normalized = PlateGridNormalizer.normalizeToWellPerRow(rawLines,
+                        String.valueOf(delimiterChar));
+                if (normalized.isEmpty()) {
+                    error = "Plate grid format detected but normalization failed";
+                    return false;
+                }
+                String normalizedContent = String.join("\n", normalized);
+                parseStream = new ByteArrayInputStream(normalizedContent.getBytes(StandardCharsets.UTF_8));
+                delimiterChar = '\t';
+            } else {
+                parseStream = new ByteArrayInputStream(bytes);
+            }
+
+            CSVFormat csvFormat = CSVFormat.DEFAULT.withDelimiter(delimiterChar);
 
             if (configuration.getHasHeader() != null && configuration.getHasHeader()) {
                 csvFormat = csvFormat.withFirstRecordAsHeader();
             }
 
-            try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
+            try (InputStreamReader reader = new InputStreamReader(parseStream, StandardCharsets.UTF_8);
                     CSVParser parser = csvFormat.parse(reader)) {
 
                 Map<String, String> columnMappings = configuration.getColumnMappings();
@@ -319,6 +340,16 @@ public class FileAnalyzerReader extends AnalyzerReader {
     @Override
     public String getError() {
         return error;
+    }
+
+    @Override
+    public List<Map<String, String>> getParsedRecords() {
+        return parsedRecords == null ? List.of() : new ArrayList<>(parsedRecords);
+    }
+
+    @Override
+    public List<String> getLines() {
+        return lines == null ? List.of() : new ArrayList<>(lines);
     }
 
     public void setConfiguration(FileImportConfiguration configuration) {

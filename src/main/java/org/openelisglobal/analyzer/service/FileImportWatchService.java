@@ -176,6 +176,8 @@ public class FileImportWatchService {
             return normalizedName.endsWith(".tsv") || normalizedName.endsWith(".txt");
         case "EXCEL":
             return normalizedName.endsWith(".xls") || normalizedName.endsWith(".xlsx");
+        case "XML":
+            return normalizedName.endsWith(".xml");
         default:
             return true;
         }

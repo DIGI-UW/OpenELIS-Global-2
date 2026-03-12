@@ -39,7 +39,8 @@ Key architectural decisions resolved:
 6.x, Apache Commons CSV, Apache POI (Excel), Carbon Design System v1.15  
 **Storage**: PostgreSQL 14+ via Liquibase-managed schema  
 **Testing**: JUnit 4 + Mockito (backend unit), BaseWebContextSensitiveTest
-(integration), Jest + RTL (frontend), Cypress (E2E)  
+(integration), Jest + RTL (frontend), Playwright (E2E, new tests); Cypress
+(existing)  
 **Target Platform**: Docker (Tomcat 10 WAR), Ubuntu 20.04+ host  
 **Project Type**: Web application (Java backend + React frontend)  
 **Performance Goals**: File parse + preview in <30s, watcher import within one
@@ -66,7 +67,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
   - Services eagerly fetch all data needed for response within transaction.
 - [x] **Test Coverage**: Unit + integration + E2E planned. >80% backend, >70%
       frontend.
-  - E2E via Cypress with data-testid selectors, cy.session() for login.
+  - E2E via Playwright (new) or Cypress; data-testid selectors.
 - [x] **Schema Management**: All DB changes via Liquibase in
       `src/main/resources/liquibase/3.4.14.x/` (isolated 014 version).
 - [x] **Internationalization**: All UI strings via React Intl. en + fr minimum.
@@ -86,7 +87,7 @@ issues (OGC-329, OGC-324), sub-milestones may be needed.
 | ID     | Branch Suffix                                 | Scope                                                                                                                                                             | User Stories                  | Verification                                                                                       | Depends On |
 | ------ | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------- | ---------- |
 | M1A    | `feat/014-ogc-329-file-config-backend-mvp`    | Backend-only MVP: `fileFormat` schema/entity, service dispatch, watcher filtering, config REST contract updates                                                   | US1 (runtime config contract) | ORM + service/watcher unit tests + config CRUD integration test                                    | -          |
-| M1B    | `feat/014-ogc-329-file-config-admin-complete` | Admin completion: config panel file format UX, constants decoupling, i18n, E2E config flow                                                                        | US1 (admin config UX)         | Jest + Cypress admin panel flow                                                                    | M1A        |
+| M1B    | `feat/014-ogc-329-file-config-admin-complete` | Admin completion: config panel file format UX, constants decoupling, i18n, E2E config flow                                                                        | US1 (admin config UX)         | Jest + Playwright admin panel flow                                                                 | M1A        |
 | [P] M2 | `feat/014-ogc-324-upload-review-ui`           | Upload screen, preview slot system, default table preview, validation summary, submit-to-queue                                                                    | US2 (upload flow)             | Unit tests for preview parsing, E2E for upload-preview-submit flow                                 | M1B        |
 | [P] M3 | `feat/014-ogc-348-quantstudio-import`         | **GenericFile plugin core** (plugins submodule), app-side `ExcelAnalyzerReader`, QuantStudio profile JSON, `PluginRegistryService` FILE support, full integration | US2 (QuantStudio profile)     | GenericFile plugin unit tests, ExcelAnalyzerReader unit tests, integration with real QS5/QS7 files | M1A        |
 | M4     | `feat/014-ogc-344-wondfo-csv-import`          | Wondfo CSV profile JSON, comparison operator handling in GenericFile, watcher-triggered import validation                                                         | US3 (Wondfo profile)          | Wondfo profile unit tests, watcher integration test with real history.csv                          | M3         |
@@ -161,7 +162,8 @@ src/main/java/org/openelisglobal/
 │   │   ├── FileImportServiceImpl.java      # MODIFY: format-dispatching reader selection, GenericFile plugin handoff
 │   │   └── FileImportWatchService.java     # MODIFY: respect fileFormat in watcher
 │   └── controller/
-│       └── FileImportRestController.java   # MODIFY: new upload/preview endpoints
+│       ├── FileImportRestController.java   # MODIFY: config CRUD only (no upload endpoints)
+│       └── AnalyzerUploadRestController.java  # NEW (M2): POST .../upload/preview and .../submit (contract path /rest/analyzers)
 ├── analyzerimport/analyzerreaders/
 │   ├── FileAnalyzerReader.java             # NO CHANGE: existing CSV/TSV reader
 │   ├── ExcelAnalyzerReader.java            # NEW (M3): .xls/.xlsx via Apache POI → List<Map<String,String>>
@@ -173,9 +175,9 @@ src/main/java/org/openelisglobal/
 
 # Liquibase
 src/main/resources/liquibase/3.4.14.x/
-├── 014-file-format-config.xml              # NEW (M1A): add file_format column
-├── 024-analyzer-file-upload.xml            # NEW (M2): audit table
-└── 024-analyzer-run.xml                    # NEW (M2): import batch table
+├── 001-add-file-format-to-file-import-config.xml  # NEW (M1A): add file_format column
+├── 002-create-analyzer-file-upload.xml            # NEW (M2): audit table
+└── 003-create-analyzer-run.xml                   # NEW (M2): import batch table
 
 # Frontend
 frontend/src/
@@ -193,16 +195,16 @@ frontend/src/
 src/test/java/org/openelisglobal/analyzer/
 ├── service/FileImportServiceTest.java      # Unit: format dispatch, parseAndPreview, submitResults
 ├── service/FileImportServiceIntegrationTest.java  # Integration: full parse→preview→submit flow
-└── controller/FileImportRestControllerTest.java   # Integration: REST endpoints
+└── controller/FileImportRestControllerTest.java   # Integration: REST endpoints; upload preview/submit covered by T029 (AnalyzerUploadRestController)
 src/test/java/org/openelisglobal/analyzerimport/analyzerreaders/
 └── ExcelAnalyzerReaderTest.java            # Unit: .xls/.xlsx parsing (M3)
 frontend/src/components/analyzers/__tests__/
 └── FileImportConfiguration.test.jsx        # Jest: fileFormat dropdown
-frontend/cypress/e2e/
-├── fileImportConfig.cy.js                  # E2E: admin config panel
-├── fileImportUpload.cy.js                  # E2E: upload flow
-├── fileImportQuantStudio.cy.js             # E2E: QuantStudio upload with GenericFile analyzer
-└── fileImportWondfo.cy.js                  # E2E: Wondfo upload with GenericFile analyzer
+frontend/playwright/tests/
+├── fileImportConfig.spec.ts                # E2E: admin config panel
+├── fileImportUpload.spec.ts                # E2E: upload flow
+├── fileImportQuantStudio.spec.ts           # E2E: QuantStudio upload with GenericFile analyzer
+└── fileImportWondfo.spec.ts                # E2E: Wondfo upload with GenericFile analyzer
 
 # ─────────────────────────────────────────
 # OWNERSHIP 2: Plugin — plugins submodule
@@ -297,22 +299,28 @@ logic in the WAR (`src/main/java/.../analyzer/parsers/` does NOT exist).
 
 - [x] **E2E Tests**: Admin creates file-import analyzer → tech uploads file →
       preview renders → submit succeeds.
-  - Cypress with `data-testid` selectors, `cy.session()` for login.
+  - Playwright (new) or Cypress; data-testid selectors.
   - API-based test data setup, not UI interactions.
 
 ### Test Data Management
 
 - **Backend**: Real instrument export files as test fixtures in
   `src/test/resources/testdata/`. Builders for entity construction.
-- **Frontend E2E**: API-based setup via `cy.request()`. Fixture loader for
-  baseline data.
+- **Frontend E2E**: API-based setup. Fixture loader for baseline data.
+
+### Success Criteria Verification (SC-001, SC-002)
+
+SC-001 (preview within 30s) and SC-002 (watcher within one polling cycle) are
+validated via E2E and watcher tests (e.g. fileImportUpload.spec.ts, watcher
+integration test) and/or manual verification; no separate performance task is
+required unless the team decides otherwise.
 
 ### Checkpoint Validations
 
 - [x] **After M1A (Backend MVP)**: ORM validation + service/watcher unit tests +
       config CRUD integration test must pass
-- [x] **After M1B (Admin completion)**: File config Jest + admin-panel Cypress
-      flow must pass
+- [x] **After M1B (Admin completion)**: File config Jest + admin-panel
+      Playwright flow must pass
 - [x] **After M2 (Upload UI)**: Frontend Jest tests + upload E2E with
       GenericFile fixture analyzer must pass
 - [x] **After M3 (GenericFile + QuantStudio profile)**: GenericFile plugin unit
