@@ -4,7 +4,7 @@ import * as path from "path";
 
 const SQL_FILE = path.resolve(
   __dirname,
-  "../../../src/test/resources/analyzer-harness-e2e.sql",
+  "../../../src/test/resources/fixtures/file-import-e2e.sql",
 );
 
 const DB_CONTAINER =
