@@ -1,6 +1,6 @@
 # File Import API Additions
-# Supplements the existing FileImportRestController endpoints
-# These are the NEW endpoints added by OGC-329 and OGC-324
+# Supplements file-import config and analyzer upload endpoints (OGC-329, OGC-324).
+# Config CRUD: FileImportRestController; upload preview/submit: AnalyzerUploadRestController.
 
 openapi: 3.0.3
 info:

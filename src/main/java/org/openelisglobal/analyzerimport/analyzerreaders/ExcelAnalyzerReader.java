@@ -54,7 +54,7 @@ public class ExcelAnalyzerReader extends AnalyzerReader {
         }
 
         try (Workbook workbook = WorkbookFactory.create(stream)) {
-            Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
+            Sheet sheet = resolveSheet(workbook);
             if (sheet == null) {
                 error = "Empty workbook or missing sheet";
                 return false;
@@ -64,14 +64,21 @@ public class ExcelAnalyzerReader extends AnalyzerReader {
             Map<String, String> columnMappings = configuration.getColumnMappings();
 
             if (configuration.getHasHeader() != null && configuration.getHasHeader()) {
-                Row headerRow = sheet.getRow(sheet.getFirstRowNum());
+                int headerRowIndex = findHeaderRow(sheet, formatter);
+                if (headerRowIndex < 0) {
+                    error = "Excel header row is missing (expected row with 'Well' or column headers)";
+                    return false;
+                }
+
+                Row headerRow = sheet.getRow(headerRowIndex);
                 if (headerRow == null) {
                     error = "Excel header row is missing";
                     return false;
                 }
 
                 Map<String, Integer> headerIndex = buildHeaderIndex(headerRow, formatter);
-                for (int rowIndex = sheet.getFirstRowNum() + 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                prependHeaderLine(headerRow, formatter, headerIndex);
+                for (int rowIndex = headerRowIndex + 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
                     Row row = sheet.getRow(rowIndex);
                     if (row == null) {
                         continue;
@@ -86,6 +93,7 @@ public class ExcelAnalyzerReader extends AnalyzerReader {
                         String value = formatter.formatCellValue(row.getCell(cellIndex));
                         if (value != null && !value.isBlank()) {
                             parsedRecord.put(mapping.getValue(), value);
+                            parsedRecord.put(mapping.getKey(), value);
                         }
                     }
                     appendRecord(parsedRecord);
@@ -151,6 +159,84 @@ public class ExcelAnalyzerReader extends AnalyzerReader {
     @Override
     public String getError() {
         return error;
+    }
+
+    @Override
+    public List<Map<String, String>> getParsedRecords() {
+        return parsedRecords == null ? List.of() : new ArrayList<>(parsedRecords);
+    }
+
+    @Override
+    public List<String> getLines() {
+        return new ArrayList<>(lines);
+    }
+
+    private Sheet resolveSheet(Workbook workbook) {
+        if (workbook.getNumberOfSheets() == 0) {
+            return null;
+        }
+        Sheet byName = workbook.getSheet("Results");
+        if (byName != null) {
+            return byName;
+        }
+        return workbook.getSheetAt(0);
+    }
+
+    /**
+     * Find header row. For QuantStudio-style files with metadata block, scans
+     * downward for row where first cell equals "Well". Otherwise uses first row.
+     */
+    private int findHeaderRow(Sheet sheet, DataFormatter formatter) {
+        int firstRow = sheet.getFirstRowNum();
+        Row first = sheet.getRow(firstRow);
+        if (first == null) {
+            return -1;
+        }
+        String firstCell = formatter.formatCellValue(first.getCell(0));
+        if (firstCell != null && firstCell.trim().equals("Well")) {
+            return firstRow;
+        }
+        if (firstCell != null && (firstCell.contains("Block Type") || firstCell.contains("Experiment Name"))) {
+            for (int r = firstRow + 1; r <= Math.min(firstRow + 60, sheet.getLastRowNum()); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) {
+                    continue;
+                }
+                String cell0 = formatter.formatCellValue(row.getCell(0));
+                if (cell0 != null && cell0.trim().equals("Well")) {
+                    return r;
+                }
+            }
+        }
+        return firstRow;
+    }
+
+    /**
+     * Prepend header line so the inserter can parse data rows by column name. Uses
+     * Excel column names from headerRow, limited to columns in columnMappings.
+     */
+    private void prependHeaderLine(Row headerRow, DataFormatter formatter, Map<String, Integer> headerIndex) {
+        Map<String, String> columnMappings = configuration.getColumnMappings();
+        if (columnMappings == null || columnMappings.isEmpty()) {
+            return;
+        }
+        List<String> headerNames = new ArrayList<>();
+        for (String internalField : PREFERRED_FIELD_ORDER) {
+            for (Map.Entry<String, String> e : columnMappings.entrySet()) {
+                if (e.getValue().equals(internalField) && headerIndex.containsKey(e.getKey())) {
+                    headerNames.add(e.getKey());
+                    break;
+                }
+            }
+        }
+        for (Map.Entry<String, String> e : columnMappings.entrySet()) {
+            if (!headerNames.contains(e.getKey()) && headerIndex.containsKey(e.getKey())) {
+                headerNames.add(e.getKey());
+            }
+        }
+        if (!headerNames.isEmpty()) {
+            lines.add(0, String.join("\t", headerNames));
+        }
     }
 
     private Map<String, Integer> buildHeaderIndex(Row headerRow, DataFormatter formatter) {

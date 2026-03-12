@@ -1,8 +1,12 @@
 package org.openelisglobal.analyzer.service;
 
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import org.openelisglobal.analyzer.form.AnalyzerRunPreviewForm;
+import org.openelisglobal.analyzer.form.SubmitRequestForm;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
 import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerReader;
 import org.openelisglobal.common.service.BaseObjectService;
@@ -75,4 +79,38 @@ public interface FileImportService extends BaseObjectService<FileImportConfigura
      * @return true if duplicate exists, false otherwise
      */
     boolean isDuplicate(Integer analyzerId, String sampleId, String testCode, String testDate, String testTime);
+
+    /**
+     * Parse uploaded file and return preview with validation (OGC-324). Creates an
+     * AnalyzerFileUpload audit record and checks for duplicate file (SHA-256).
+     *
+     * @param analyzerId   analyzer ID (must have file import config)
+     * @param fileStream   file content
+     * @param filename     original filename
+     * @param systemUserId user for audit
+     * @return preview with record counts and rows; uploadId for submit;
+     *         duplicateWarning if hash matched
+     */
+    AnalyzerRunPreviewForm parseAndPreview(Integer analyzerId, InputStream fileStream, String filename,
+            String systemUserId);
+
+    /**
+     * Submit validated results from a preview session (OGC-324). Updates
+     * AnalyzerFileUpload status to PROCESSING then COMPLETED.
+     *
+     * @param analyzerId   analyzer ID
+     * @param request      previewSessionId (uploadId) and optional excludedRows
+     * @param systemUserId user for audit
+     */
+    void submitResults(Integer analyzerId, SubmitRequestForm request, String systemUserId);
+
+    /**
+     * Auto-create a FileImportConfiguration from a loaded profile's config data.
+     * Called during analyzer creation when the profile protocol is FILE.
+     *
+     * @param analyzerId   the newly created analyzer's ID (as String)
+     * @param configData   the full profile JSON parsed as a Map
+     * @param analyzerName the analyzer name (used for default directory paths)
+     */
+    void autoCreateFromProfile(String analyzerId, Map<String, Object> configData, String analyzerName);
 }

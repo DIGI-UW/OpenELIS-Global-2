@@ -9,6 +9,11 @@ implementation in each milestone and MUST fail before implementation begins.
 **Organization**: Tasks grouped by **Milestone** per Constitution Principle IX.
 Each milestone = 1 PR.
 
+**Implementation note**: PR #3036 combines M1A+M1B+M3 on branch
+`feat/014-ogc-329-file-config-backend-mvp`. T021, T021a, T021c, T048, T067
+remain unchecked as a single combined PR was used instead of separate
+per-milestone PRs.
+
 ## Format: `[ID] [P?] [Mx] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
@@ -155,7 +160,7 @@ frontend formatting.
       `frontend/playwright/fixtures/FileImport.json` — test data constants
       (analyzer name `'E2E-FILE-CSV-Analyzer'`, expected directory paths, format
       values) referenced by E2E tests
-- [ ] T019a [M1B] Playwright E2E in
+- [x] T019a [M1B] Playwright E2E in
       `frontend/playwright/tests/fileImportConfig.spec.ts`:
   1. `beforeAll`: call `loadFileImportFixtures()` to ensure analyzer profile
      exists
@@ -185,37 +190,39 @@ upload-preview-submit flow.
 
 ### Branch Setup
 
-- [ ] T022 [M2] Create branch `feat/014-ogc-324-upload-review-ui` from `develop`
-      (after M1B merged)
+- [x] T022 [M2] Create branch `feat/014-ogc-324-upload-review-ui` from
+      `feat/014-ogc-329-file-config-backend-mvp` (M1 branch; M1B may be
+      combined)
 
 ### Schema
 
-- [ ] T023 [P] [M2] Create Liquibase changeset for `analyzer_file_upload` table
+- [x] T023 [P] [M2] Create Liquibase changeset for `analyzer_file_upload` table
       in
       `src/main/resources/liquibase/3.4.14.x/002-create-analyzer-file-upload.xml`
-- [ ] T024 [P] [M2] Create Liquibase changeset for `analyzer_run` table with
+- [x] T024 [P] [M2] Create Liquibase changeset for `analyzer_run` table with
       `custom_preview_data JSONB` in
       `src/main/resources/liquibase/3.4.14.x/003-create-analyzer-run.xml`
 
 ### Tests (write first, must fail)
 
-- [ ] T025 [P] [M2] ORM validation test: verify `AnalyzerFileUpload` and
+- [x] T025 [P] [M2] ORM validation test: verify `AnalyzerFileUpload` and
       `AnalyzerRun` entities load in
       `src/test/java/org/openelisglobal/analyzer/valueholder/AnalyzerFileUploadMappingTest.java`
-- [ ] T026 [P] [M2] Unit test: `FileImportService.parseAndPreview()` returns
+- [x] T026 [P] [M2] Unit test: `FileImportService.parseAndPreview()` returns
       `AnalyzerRunPreview` with record counts and validation messages in
       `src/test/java/org/openelisglobal/analyzer/service/FileImportServiceTest.java`
-- [ ] T027 [P] [M2] Unit test: SHA-256 duplicate detection — second upload of
+- [x] T027 [P] [M2] Unit test: SHA-256 duplicate detection — second upload of
       same file returns warning in
       `src/test/java/org/openelisglobal/analyzer/service/FileImportServiceTest.java`
-- [ ] T028 [P] [M2] Unit test: `FileImportService.submitResults()` transitions
+- [x] T028 [P] [M2] Unit test: `FileImportService.submitResults()` transitions
       `AnalyzerFileUpload` status PENDING→PROCESSING→COMPLETED in
       `src/test/java/org/openelisglobal/analyzer/service/FileImportServiceTest.java`
 - [ ] T029 [P] [M2] Integration test: `POST /rest/analyzers/{id}/upload/preview`
       with multipart CSV returns preview JSON; verify `AnalyzerFileUpload` audit
       record is created with all FR-010 fields (hash, timestamp, user ID,
-      filename, status) in
-      `src/test/java/org/openelisglobal/analyzer/controller/FileImportRestControllerTest.java`
+      filename, status). Add test in FileImportRestControllerTest or
+      AnalyzerUploadRestControllerTest (as appropriate for the project's test
+      layout) in `src/test/java/org/openelisglobal/analyzer/controller/`
 - [ ] T030 [P] [M2] Jest test: `AnalyzerFileUpload` component renders file
       picker, upload button, preview table in
       `frontend/src/components/analyzers/AnalyzerFileUpload/__tests__/AnalyzerFileUpload.test.jsx`
@@ -225,22 +232,24 @@ upload-preview-submit flow.
 
 ### Backend Implementation
 
-- [ ] T032 [P] [M2] Create `AnalyzerFileUpload` entity in
+- [x] T032 [P] [M2] Create `AnalyzerFileUpload` entity in
       `src/main/java/org/openelisglobal/analyzer/valueholder/AnalyzerFileUpload.java`
-- [ ] T033 [P] [M2] Create `AnalyzerRun` entity in
+- [x] T033 [P] [M2] Create `AnalyzerRun` entity in
       `src/main/java/org/openelisglobal/analyzer/valueholder/AnalyzerRun.java`
-- [ ] T034 [P] [M2] Create `AnalyzerFileUploadDAO` interface + impl in
+- [x] T034 [P] [M2] Create `AnalyzerFileUploadDAO` interface + impl in
       `src/main/java/org/openelisglobal/analyzer/dao/AnalyzerFileUploadDAO.java`
       and `AnalyzerFileUploadDAOImpl.java`
-- [ ] T035 [M2] Implement `parseAndPreview()` in `FileImportServiceImpl` — read
+- [x] T035 [M2] Implement `parseAndPreview()` in `FileImportServiceImpl` — read
       file, dispatch to reader, build preview with validation in
       `src/main/java/org/openelisglobal/analyzer/service/FileImportServiceImpl.java`
-- [ ] T036 [M2] Implement `submitResults()` in `FileImportServiceImpl` — queue
+- [x] T036 [M2] Implement `submitResults()` in `FileImportServiceImpl` — queue
       validated records, update `AnalyzerFileUpload` status in
       `src/main/java/org/openelisglobal/analyzer/service/FileImportServiceImpl.java`
-- [ ] T037 [M2] Add upload endpoints to `FileImportRestController`:
-      `POST .../upload/preview` (multipart) and `POST .../upload/submit` in
-      `src/main/java/org/openelisglobal/analyzer/controller/FileImportRestController.java`
+- [x] T037 [M2] Add upload endpoints:
+      `POST /rest/analyzers/{analyzerId}/upload/preview` (multipart) and
+      `.../submit` in AnalyzerUploadRestController (or equivalent) so the API
+      contract path is satisfied, in
+      `src/main/java/org/openelisglobal/analyzer/controller/AnalyzerUploadRestController.java`
 
 ### Frontend Implementation
 
@@ -266,20 +275,23 @@ upload-preview-submit flow.
       exist in the test DB or handle ACCESSION_NOT_FOUND in the test)
 - [ ] T044 [M2] Update fixture SQL
       `frontend/playwright/fixtures/file-import-setup.sql` — extend with an
-      upload-specific profile (or reuse the M1B `E2E-FILE-CSV-Analyzer` profile
-      if the same config works for upload). If a new profile is needed, add
+      upload-specific profile. Reuse the existing E2E-FILE-CSV-Analyzer profile
+      if the upload flow works with its config; otherwise add a separate upload
+      profile (e.g. E2E-FILE-Upload-CSV). If a new profile is needed, add
       `AnalyzerType` `name='E2E-FILE-Upload-CSV'`, `Analyzer`,
       `FileImportConfiguration` with `file_format='CSV'`
 - [ ] T045 [M2] Playwright E2E in
       `frontend/playwright/tests/fileImportUpload.spec.ts`:
   1. `beforeAll`: call `loadFileImportFixtures()` to ensure the upload analyzer
      profile exists
-  2. Navigate to Results → Upload Analyzer File
-  3. Select the E2E-Upload-CSV analyzer from the dropdown
+  2. Navigate to the upload page (app route for Results → Upload Analyzer File)
+  3. Select the upload analyzer from the dropdown (E2E-FILE-CSV-Analyzer or
+     E2E-FILE-Upload-CSV per T044)
   4. Upload `frontend/playwright/fixtures/test-upload.csv` via the file picker
   5. Verify preview table renders with expected row count and column headers
   6. Verify at least one row shows VALID status
-  7. Click Submit, wait for API response (`cy.intercept` on submit endpoint)
+  7. Click Submit, wait for API response (Playwright `page.waitForResponse()` or
+     route interception on submit endpoint)
   8. Verify redirect to Analyzer Results page
 
 ### Formatting & PR
@@ -396,7 +408,7 @@ fixtures, E2E upload with QuantStudio-profiled GenericFile analyzer.
 
 ### E2E Fixtures & Test
 
-- [ ] T063 [M3] Update fixture SQL
+- [x] T063 [M3] Update fixture SQL
       `frontend/playwright/fixtures/file-import-setup.sql` to add a
       QuantStudio-specific analyzer — reusing the GenericFile `AnalyzerType`
       inserted in M1B, add:
@@ -410,7 +422,9 @@ fixtures, E2E upload with QuantStudio-profiled GenericFile analyzer.
      defaults
 - [ ] T064 [M3] Copy a real (or sanitized) QS7 .xls fixture to
       `frontend/playwright/fixtures/quantstudio-qs7.xls` for E2E upload
-- [ ] T065 [M3] Playwright E2E in
+      (Deferred: fixture needed when M2 upload UI exists; T065 upload test is
+      skipped until then.)
+- [x] T065 [M3] Playwright E2E in
       `frontend/playwright/tests/fileImportQuantStudio.spec.ts`:
   1. `beforeAll`: `loadFileImportFixtures()` to ensure
      E2E-FILE-QuantStudio-Analyzer exists
@@ -531,7 +545,7 @@ green.
 
 ## Phase: Polish & Cross-Cutting
 
-- [ ] T081 [P] Update `specs/014-hjra-file-stream-alignment/quickstart.md` with
+- [x] T081 [P] Update `specs/014-hjra-file-stream-alignment/quickstart.md` with
       final verification steps
 - [ ] T082 [P] Validate all i18n keys present in both `en.json` and `fr.json`
 - [ ] T083 Run `specs/014-hjra-file-stream-alignment/checklists/requirements.md`

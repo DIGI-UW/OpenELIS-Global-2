@@ -229,11 +229,17 @@ public class AnalyzerRestController extends BaseRestController {
             String analyzerId = analyzerService.insert(analyzer);
             pluginService.registerAnalyzerMenuAndPermission(analyzer.getName());
 
-            // Auto-create test mappings from default config if provided
+            // Auto-create test mappings and file import config from default profile if
+            // provided
             if (form.getDefaultConfigId() != null && !form.getDefaultConfigId().isEmpty()) {
                 Map<String, Object> configData = loadDefaultConfigFile(form.getDefaultConfigId());
                 if (configData != null) {
                     analyzerService.autoCreateTestMappings(analyzerId, configData, getSysUserId(request));
+
+                    // For FILE protocol profiles, auto-create FileImportConfiguration
+                    if (isFileProtocol(configData)) {
+                        fileImportService.autoCreateFromProfile(analyzerId, configData, form.getName());
+                    }
                 } else {
                     logger.warn("Could not load default config '{}' for test mapping auto-creation",
                             form.getDefaultConfigId());
@@ -1191,6 +1197,16 @@ public class AnalyzerRestController extends BaseRestController {
             logger.error("Error reading default config file: {}", configId, e);
             return null;
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean isFileProtocol(Map<String, Object> configData) {
+        Object protocol = configData.get("protocol");
+        if (protocol instanceof Map) {
+            Object name = ((Map<String, Object>) protocol).get("name");
+            return "FILE".equalsIgnoreCase(name instanceof String ? (String) name : null);
+        }
+        return false;
     }
 
     /**
