@@ -1,25 +1,20 @@
 import { test, expect } from "@playwright/test";
-import { loadFileImportFixtures } from "../fixtures/file-import-setup";
 import fixtureData from "../fixtures/FileImport.json";
 
 /**
- * Unified FILE protocol E2E tests.
+ * FILE protocol E2E tests.
  *
  * These tests verify that every supported FILE analyzer has:
  *   1. An analyzer row in the database
  *   2. A FileImportConfiguration with correct format, pattern, and directory
  *   3. Config persistence (update + re-read)
  *
- * Run conditions:
- *   - Local dev: always (loads fixtures via docker exec)
- *   - Default CI (playwright-e2e.yml): skipped (no harness stack)
- *   - Analyzer harness CI (analyzer-e2e.yml): runs (ANALYZER_HARNESS=true)
+ * Fixtures are loaded by the CI workflow (docker exec psql < file-import-e2e.sql)
+ * before tests run. No skip guards needed — the Playwright project split
+ * ensures these only run when the "file-import" project is selected.
  */
 
-const CI = process.env.CI === "true";
-const HARNESS = process.env.ANALYZER_HARNESS === "true";
-
-/** All FILE analyzers seeded by file-import-setup.sql / analyzer-harness-e2e.sql */
+/** All FILE analyzers seeded by file-import-e2e.sql */
 const FILE_ANALYZERS = [
   { name: "E2E-FILE-CSV-Analyzer", fileFormat: "CSV", filePattern: "*.csv" },
   {
@@ -42,15 +37,6 @@ function apiBase(baseURL: string | undefined): string {
   return `${base}/api/OpenELIS-Global/rest/analyzer`;
 }
 
-// ─── Fixture loading ─────────────────────────────────────────────────
-// In CI harness: workflow loads analyzer-harness-e2e.sql before tests run.
-// Locally: load via docker exec in beforeAll.
-test.beforeAll(() => {
-  if (!CI) {
-    loadFileImportFixtures();
-  }
-});
-
 // ─── 1. Analyzer + FileImportConfiguration existence (data-driven) ───
 test.describe("FILE analyzer configurations", () => {
   for (const analyzer of FILE_ANALYZERS) {
@@ -58,11 +44,6 @@ test.describe("FILE analyzer configurations", () => {
       page,
       baseURL,
     }) => {
-      test.skip(
-        CI && !HARNESS,
-        "Requires analyzer harness stack (ANALYZER_HARNESS=true)",
-      );
-
       const api = apiBase(baseURL);
 
       // Find analyzer by name
@@ -97,11 +78,6 @@ test.describe("FILE config persistence", () => {
     page,
     baseURL,
   }) => {
-    test.skip(
-      CI && !HARNESS,
-      "Requires analyzer harness stack (ANALYZER_HARNESS=true)",
-    );
-
     const api = apiBase(baseURL);
 
     // Find the CSV test analyzer
@@ -161,11 +137,6 @@ test.describe("QuantStudio EXCEL config", () => {
     page,
     baseURL,
   }) => {
-    test.skip(
-      CI && !HARNESS,
-      "Requires analyzer harness stack (ANALYZER_HARNESS=true)",
-    );
-
     const api = apiBase(baseURL);
 
     const listRes = await page.request.get(`${api}/analyzers`);
