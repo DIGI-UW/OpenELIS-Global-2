@@ -9,6 +9,7 @@ jobs:
   analyzer-e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    environment: e2e
 
     steps:
       - name: Checkout code
@@ -94,7 +95,7 @@ jobs:
           ANALYZER_HARNESS: "true"
           BASE_URL: https://localhost
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
-          TEST_PASS: ${{ secrets.TEST_PASS || 'adminADMIN!' }}
+          TEST_PASS: ${{ secrets.TEST_PASS }}
 
       - name: Upload Playwright HTML report
         if: failure()
