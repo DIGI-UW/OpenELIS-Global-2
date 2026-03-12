@@ -22,8 +22,8 @@ import {
   Loading,
 } from "@carbon/react";
 import { Renew, CheckmarkFilled, Chemistry } from "@carbon/react/icons";
-import useVirologyLabPermissions from "../../../../hooks/useVirologyLabPermissions";
-import { usePermissions } from "../../../../hooks/usePermissions";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -31,7 +31,6 @@ import {
   getFromOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -65,22 +64,6 @@ export const VirologyLabLibraryPreparationPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { getPagePermissionLevel, canSaveData, canAccessLibraryPreparation } =
-    useVirologyLabPermissions();
-  const { hasAnyRole } = usePermissions();
-
-  const allowedRoles = [
-    "VirologyLab Lab Technician",
-    "VirologyLab Manager",
-    "VirologyLab Principal Investigator",
-  ];
-
-  const canAccessPage =
-    canAccessLibraryPreparation() || hasAnyRole(allowedRoles);
-
-  const pagePermissionLevel = getPagePermissionLevel("Library Preparation");
-  const canPrepareLibraries = canSaveData(pagePermissionLevel);
-
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
@@ -579,16 +562,6 @@ export const VirologyLabLibraryPreparationPage = ({
     [samples],
   );
 
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Library Preparation"
-        reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   const renderStatus = (sample) => {
     const status = sample.status || "PENDING";
 
@@ -719,42 +692,39 @@ export const VirologyLabLibraryPreparationPage = ({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Chemistry}
-          onClick={openModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canPrepareLibraries
-          }
-        >
-          <FormattedMessage
-            id="notebook.virologylab.recordLibrary"
-            defaultMessage="Record Library ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.UPDATE_SAMPLES}>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Chemistry}
+            onClick={openModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.virologylab.recordLibrary"
+              defaultMessage="Record Library ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            eligibleForCompletionCount === 0 ||
-            isCompleting ||
-            !hasRealPageId ||
-            !canPrepareLibraries
-          }
-        >
-          <FormattedMessage
-            id="notebook.virologylab.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: eligibleForCompletionCount }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={
+              eligibleForCompletionCount === 0 || isCompleting || !hasRealPageId
+            }
+          >
+            <FormattedMessage
+              id="notebook.virologylab.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: eligibleForCompletionCount }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -798,7 +768,7 @@ export const VirologyLabLibraryPreparationPage = ({
               samples={readyForLibrarySamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={canPrepareLibraries}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

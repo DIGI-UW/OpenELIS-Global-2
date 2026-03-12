@@ -23,8 +23,8 @@ import {
   Checkbox,
 } from "@carbon/react";
 import { Renew, CheckmarkFilled, Chemistry } from "@carbon/react/icons";
-import useVirologyLabPermissions from "../../../../hooks/useVirologyLabPermissions";
-import { usePermissions } from "../../../../hooks/usePermissions";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -32,7 +32,6 @@ import {
   getFromOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -67,24 +66,6 @@ export const VirologyLabBioanalyzerQCPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { getPagePermissionLevel, canSaveData, canAccessBioanalyzerQC } =
-    useVirologyLabPermissions();
-  const { hasAnyRole } = usePermissions();
-
-  // Bioanalyzer QC allowed roles - per GBD permission mapping
-  const allowedRoles = [
-    "VirologyLab Lab Technician",
-    "VirologyLab Manager",
-    "VirologyLab Principal Investigator",
-  ];
-
-  // Layer 1: Page access check - use both GBD-specific and role-based checking
-  const canAccessPage = canAccessBioanalyzerQC() || hasAnyRole(allowedRoles);
-
-  // Layer 2: Action permission check - what can user do on this page
-  const pagePermissionLevel = getPagePermissionLevel("Bioanalyzer QC");
-  const canPerformBioanalyzerQC = canSaveData(pagePermissionLevel);
-
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
@@ -566,16 +547,6 @@ export const VirologyLabBioanalyzerQCPage = ({
     [samples],
   );
 
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Bioanalyzer QC"
-        reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   const renderStatus = (sample) => {
     const status = sample.status || "PENDING";
 
@@ -706,42 +677,39 @@ export const VirologyLabBioanalyzerQCPage = ({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Chemistry}
-          onClick={openModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canPerformBioanalyzerQC
-          }
-        >
-          <FormattedMessage
-            id="notebook.virologylab.recordBioanalyzer"
-            defaultMessage="Record Bioanalyzer ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.UPDATE_SAMPLES}>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Chemistry}
+            onClick={openModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.virologylab.recordBioanalyzer"
+              defaultMessage="Record Bioanalyzer ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            eligibleForCompletionCount === 0 ||
-            isCompleting ||
-            !hasRealPageId ||
-            !canPerformBioanalyzerQC
-          }
-        >
-          <FormattedMessage
-            id="notebook.virologylab.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: eligibleForCompletionCount }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={
+              eligibleForCompletionCount === 0 || isCompleting || !hasRealPageId
+            }
+          >
+            <FormattedMessage
+              id="notebook.virologylab.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: eligibleForCompletionCount }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -785,7 +753,7 @@ export const VirologyLabBioanalyzerQCPage = ({
               samples={readyForBioanalyzerSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={canPerformBioanalyzerQC}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

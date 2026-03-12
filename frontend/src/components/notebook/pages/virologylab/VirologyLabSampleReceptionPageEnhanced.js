@@ -16,8 +16,8 @@ import {
   CheckmarkFilled,
   Pending,
 } from "@carbon/icons-react";
-import useVirologyLabPermissions from "../../../../hooks/useVirologyLabPermissions";
-import { usePermissions } from "../../../../hooks/usePermissions";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -25,7 +25,6 @@ import {
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
 import VirologyLabManifestImportModal from "../../workflow/VirologyLabManifestImportModal";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
 import SampleGrid from "../../workflow/SampleGrid";
 
 /**
@@ -58,21 +57,6 @@ export const VirologyLabSampleReceptionPageEnhanced = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { getPagePermissionLevel, canSaveData, canAccessSampleReception } =
-    useVirologyLabPermissions();
-
-  const allowedRoles = [
-    "VirologyLab Lab Technician",
-    "VirologyLab Bioinformatician",
-    "VirologyLab Manager",
-    "VirologyLab Principal Investigator",
-  ];
-
-  const canAccessPage = canAccessSampleReception();
-  const pagePermissionLevel = getPagePermissionLevel(
-    "Sample Reception & Registration",
-  );
-  const canCreateSamples = canSaveData(pagePermissionLevel);
 
   const componentMounted = useRef(false);
   const [isManifestModalOpen, setIsManifestModalOpen] = useState(false);
@@ -272,18 +256,6 @@ export const VirologyLabSampleReceptionPageEnhanced = ({
     onSampleStatusChange,
   ]);
 
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="Sample Reception & Registration"
-        reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
-  const isReadOnly = !canCreateSamples;
-
   return (
     <div className="virologylab-sample-reception-page">
       {/* Page Section Header */}
@@ -330,31 +302,46 @@ export const VirologyLabSampleReceptionPageEnhanced = ({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={Upload}
-          onClick={() => setIsManifestModalOpen(true)}
-          disabled={isReadOnly}
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.virologylab.reception.insufficientPermissions.import",
+            defaultMessage: "Insufficient permissions to import samples",
+          })}
         >
-          <FormattedMessage
-            id="notebook.virologylab.reception.importManifest"
-            defaultMessage="Import Manifest"
-          />
-        </Button>
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={Checkmark}
-          onClick={handleMarkComplete}
-          disabled={isReadOnly || selectedSampleIds.length === 0}
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Upload}
+            onClick={() => setIsManifestModalOpen(true)}
+          >
+            <FormattedMessage
+              id="notebook.virologylab.reception.importManifest"
+              defaultMessage="Import Manifest"
+            />
+          </Button>
+        </PermissionGate>
+        <PermissionGate
+          roles={Permissions.UPDATE_SAMPLES}
+          disabledTooltip={intl.formatMessage({
+            id: "notebook.virologylab.reception.insufficientPermissions.complete",
+            defaultMessage: "Insufficient permissions to mark samples complete",
+          })}
         >
-          <FormattedMessage
-            id="notebook.virologylab.reception.markComplete"
-            defaultMessage="Mark as Complete ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Checkmark}
+            onClick={handleMarkComplete}
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.virologylab.reception.markComplete"
+              defaultMessage="Mark as Complete ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
         <Button
           kind="ghost"
           size="sm"

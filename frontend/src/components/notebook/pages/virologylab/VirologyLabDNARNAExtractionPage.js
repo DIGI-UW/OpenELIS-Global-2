@@ -21,8 +21,8 @@ import {
   Loading,
 } from "@carbon/react";
 import { Chemistry, Renew, CheckmarkFilled } from "@carbon/react/icons";
-import useVirologyLabPermissions from "../../../../hooks/useVirologyLabPermissions";
-import { usePermissions } from "../../../../hooks/usePermissions";
+import { Permissions } from "../../../../constants/roles";
+import PermissionGate from "../../../security/PermissionGate";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -30,7 +30,6 @@ import {
   getFromOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
-import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -63,21 +62,6 @@ export const VirologyLabDNARNAExtractionPage = ({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { getPagePermissionLevel, canSaveData, canAccessDNARNAExtraction } =
-    useVirologyLabPermissions();
-  const { hasAnyRole } = usePermissions();
-
-  const allowedRoles = [
-    "VirologyLab Lab Technician",
-    "VirologyLab Manager",
-    "VirologyLab Principal Investigator",
-  ];
-
-  const canAccessPage = canAccessDNARNAExtraction() || hasAnyRole(allowedRoles);
-
-  const pagePermissionLevel = getPagePermissionLevel("DNA/RNA Extraction");
-  const canPerformExtraction = canSaveData(pagePermissionLevel);
-
   const componentMounted = useRef(false);
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
@@ -428,16 +412,6 @@ export const VirologyLabDNARNAExtractionPage = ({
     [samples, selectedSampleIds],
   );
 
-  if (!canAccessPage) {
-    return (
-      <AccessDeniedMessage
-        page="DNA/RNA Extraction"
-        reason="This page requires specific GBD laboratory roles to access."
-        requiredRoles={allowedRoles}
-      />
-    );
-  }
-
   const renderStatus = (sample) => {
     const status = sample.status || "PENDING";
 
@@ -519,42 +493,39 @@ export const VirologyLabDNARNAExtractionPage = ({
       </Grid>
 
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Chemistry}
-          onClick={openModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            !canPerformExtraction
-          }
-        >
-          <FormattedMessage
-            id="notebook.virologylab.recordExtraction"
-            defaultMessage="Record Extraction ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.UPDATE_SAMPLES}>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Chemistry}
+            onClick={openModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.virologylab.recordExtraction"
+              defaultMessage="Record Extraction ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={handleMarkComplete}
-          disabled={
-            eligibleForCompletionCount === 0 ||
-            isCompleting ||
-            !hasRealPageId ||
-            !canPerformExtraction
-          }
-        >
-          <FormattedMessage
-            id="notebook.virologylab.markComplete"
-            defaultMessage="Mark Complete ({count})"
-            values={{ count: eligibleForCompletionCount }}
-          />
-        </Button>
+        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={
+              eligibleForCompletionCount === 0 || isCompleting || !hasRealPageId
+            }
+          >
+            <FormattedMessage
+              id="notebook.virologylab.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: eligibleForCompletionCount }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -598,7 +569,7 @@ export const VirologyLabDNARNAExtractionPage = ({
               samples={readyForExtractionSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
-              showSelection={canPerformExtraction}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
