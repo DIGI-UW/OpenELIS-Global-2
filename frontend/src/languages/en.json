@@ -53,6 +53,7 @@
   "analysis.details": "Analysis Details",
   "analyzer.action.add": "Add Analyzer",
   "analyzer.action.copyMappings": "Copy Mappings",
+  "analyzer.action.configureFileImport": "Configure File Import",
   "analyzer.action.delete": "Delete",
   "analyzer.action.edit": "Edit",
   "analyzer.action.fieldMappings": "Field Mappings",

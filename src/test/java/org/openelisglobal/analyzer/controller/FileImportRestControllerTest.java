@@ -18,13 +18,18 @@ import org.mockito.MockitoAnnotations;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.service.FileImportService;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.util.ReflectionTestUtils;
 
 public class FileImportRestControllerTest extends BaseWebContextSensitiveTest {
 
     @Mock
     private FileImportService fileImportService;
+
+    private MockHttpSession mockSession;
 
     @Before
     public void setUp() throws Exception {
@@ -33,6 +38,12 @@ public class FileImportRestControllerTest extends BaseWebContextSensitiveTest {
         FileImportRestController controller = webApplicationContext.getBean(FileImportRestController.class);
         ReflectionTestUtils.setField(controller, "fileImportService", fileImportService);
         ReflectionTestUtils.setField(controller, "baseImportDir", "/tmp/openelis-file-import");
+
+        // Set up authenticated session (required by getSysUserIdWithFallback)
+        UserSessionData userSessionData = new UserSessionData();
+        userSessionData.setSytemUserId(1);
+        mockSession = new MockHttpSession();
+        mockSession.setAttribute(IActionConstants.USER_SESSION_DATA, userSessionData);
     }
 
     @Test
@@ -40,7 +51,8 @@ public class FileImportRestControllerTest extends BaseWebContextSensitiveTest {
         when(fileImportService.getByAnalyzerId(77)).thenReturn(Optional.empty());
         when(fileImportService.insert(any(FileImportConfiguration.class))).thenReturn("cfg-77");
 
-        mockMvc.perform(post("/rest/analyzer/file-import/configurations").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/rest/analyzer/file-import/configurations").session(mockSession)
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{"
                         + "\"analyzerId\":77,"
                         + "\"importDirectory\":\"/tmp/openelis-file-import/incoming\","
@@ -73,7 +85,8 @@ public class FileImportRestControllerTest extends BaseWebContextSensitiveTest {
 
         when(fileImportService.get("cfg-78")).thenReturn(existing);
 
-        mockMvc.perform(put("/rest/analyzer/file-import/configurations/cfg-78").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(put("/rest/analyzer/file-import/configurations/cfg-78").session(mockSession)
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{" + "\"importDirectory\":\"/tmp/openelis-file-import/incoming\","
                         + "\"archiveDirectory\":\"/tmp/openelis-file-import/archive\","
                         + "\"errorDirectory\":\"/tmp/openelis-file-import/error\"," + "\"filePattern\":\"*.xlsx\","
