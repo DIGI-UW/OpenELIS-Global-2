@@ -645,6 +645,8 @@
   "barcode.notification.save": "BarCode Configurations has been saved.",
   "barcode.partialMatch": "Partial match - some components valid",
   "barcode.validation.altPrefix": "Input should be alphanumeric and have a maximum length of 4 characters.",
+  "error.barcode.dimension.positive": "Label dimension must be a positive number",
+  "error.barcode.labelcount.default.lte.max": "Default label count must not exceed maximum for this label type",
   "barcode.print.individual.button": "Print Label",
   "barcode.print.preprint": "Pre-Print Barcodes",
   "barcode.print.preprint.button": "Pre-Print Labels",

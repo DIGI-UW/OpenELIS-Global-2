@@ -53,6 +53,18 @@ public class SampleItemBarcodeInfo extends BaseObject<Integer> {
     @Column(name = "print_freezer_num")
     private Integer printFreezerNum;
 
+    @Column(name = "printed_specimen_count")
+    private Integer printedSpecimenCount;
+
+    @Column(name = "printed_block_count")
+    private Integer printedBlockCount;
+
+    @Column(name = "printed_slide_count")
+    private Integer printedSlideCount;
+
+    @Column(name = "printed_freezer_count")
+    private Integer printedFreezerCount;
+
     public SampleItemBarcodeInfo() {
         super();
     }
@@ -105,5 +117,37 @@ public class SampleItemBarcodeInfo extends BaseObject<Integer> {
 
     public void setPrintFreezerNum(Integer printFreezerNum) {
         this.printFreezerNum = printFreezerNum;
+    }
+
+    public Integer getPrintedSpecimenCount() {
+        return printedSpecimenCount;
+    }
+
+    public void setPrintedSpecimenCount(Integer printedSpecimenCount) {
+        this.printedSpecimenCount = printedSpecimenCount;
+    }
+
+    public Integer getPrintedBlockCount() {
+        return printedBlockCount;
+    }
+
+    public void setPrintedBlockCount(Integer printedBlockCount) {
+        this.printedBlockCount = printedBlockCount;
+    }
+
+    public Integer getPrintedSlideCount() {
+        return printedSlideCount;
+    }
+
+    public void setPrintedSlideCount(Integer printedSlideCount) {
+        this.printedSlideCount = printedSlideCount;
+    }
+
+    public Integer getPrintedFreezerCount() {
+        return printedFreezerCount;
+    }
+
+    public void setPrintedFreezerCount(Integer printedFreezerCount) {
+        this.printedFreezerCount = printedFreezerCount;
     }
 }

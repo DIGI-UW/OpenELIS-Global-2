@@ -67,4 +67,47 @@
             <dropSequence sequenceName="sample_item_barcode_info_seq" schemaName="clinlims"/>
         </rollback>
     </changeSet>
+
+    <!-- OGC-284 FR-012a: cumulative printed counts for max-limit enforcement across sessions -->
+    <changeSet id="barcode-info-003-printed-order-count" author="ogc-284">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="sample_barcode_info" columnName="printed_order_count" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add printed_order_count to sample_barcode_info for cumulative order labels printed</comment>
+        <addColumn schemaName="clinlims" tableName="sample_barcode_info">
+            <column name="printed_order_count" type="INTEGER" defaultValueNumeric="0"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="sample_barcode_info" columnName="printed_order_count"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="barcode-info-004-printed-item-counts" author="ogc-284">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="sample_item_barcode_info" columnName="printed_specimen_count" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add printed_specimen_count, printed_block_count, printed_slide_count, printed_freezer_count to sample_item_barcode_info</comment>
+        <addColumn schemaName="clinlims" tableName="sample_item_barcode_info">
+            <column name="printed_specimen_count" type="INTEGER" defaultValueNumeric="0"/>
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="sample_item_barcode_info">
+            <column name="printed_block_count" type="INTEGER" defaultValueNumeric="0"/>
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="sample_item_barcode_info">
+            <column name="printed_slide_count" type="INTEGER" defaultValueNumeric="0"/>
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="sample_item_barcode_info">
+            <column name="printed_freezer_count" type="INTEGER" defaultValueNumeric="0"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="sample_item_barcode_info" columnName="printed_specimen_count"/>
+            <dropColumn schemaName="clinlims" tableName="sample_item_barcode_info" columnName="printed_block_count"/>
+            <dropColumn schemaName="clinlims" tableName="sample_item_barcode_info" columnName="printed_slide_count"/>
+            <dropColumn schemaName="clinlims" tableName="sample_item_barcode_info" columnName="printed_freezer_count"/>
+        </rollback>
+    </changeSet>
 </databaseChangeLog>

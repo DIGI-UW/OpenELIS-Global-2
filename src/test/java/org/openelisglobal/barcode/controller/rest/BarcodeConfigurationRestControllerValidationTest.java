@@ -49,4 +49,32 @@ public class BarcodeConfigurationRestControllerValidationTest {
         assertTrue("Expected field error for oversized max specimen labels",
                 result.hasFieldErrors("numMaxSpecimenLabels"));
     }
+
+    /** FR-004a: default must not exceed max for each label type */
+    @Test
+    public void barcodeConfigurationSave_rejectsDefaultGreaterThanMax() {
+        BarcodeConfigurationForm form = new BarcodeConfigurationForm();
+        form.setNumMaxOrderLabels(5);
+        form.setNumDefaultOrderLabels(10);
+
+        BindingResult result = new BeanPropertyBindingResult(form, "barcodeConfigurationForm");
+        ReflectionTestUtils.invokeMethod(controller, "validateLabelCountRanges", form, result);
+
+        assertTrue("Expected field error when default order labels > max",
+                result.hasFieldErrors("numDefaultOrderLabels"));
+    }
+
+    /** FR-002b: dimension values must be positive */
+    @Test
+    public void barcodeConfigurationSave_rejectsNonPositiveDimensions() {
+        BarcodeConfigurationForm form = new BarcodeConfigurationForm();
+        form.setHeightOrderLabels(0);
+        form.setWidthOrderLabels(-0.5f);
+
+        BindingResult result = new BeanPropertyBindingResult(form, "barcodeConfigurationForm");
+        ReflectionTestUtils.invokeMethod(controller, "validateDimensionFields", form, result);
+
+        assertTrue("Expected field error for non-positive height", result.hasFieldErrors("heightOrderLabels"));
+        assertTrue("Expected field error for non-positive width", result.hasFieldErrors("widthOrderLabels"));
+    }
 }

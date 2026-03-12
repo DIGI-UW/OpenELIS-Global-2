@@ -13,6 +13,7 @@ import org.openelisglobal.barcode.BarcodeLabelMaker;
 import org.openelisglobal.barcode.labeltype.Label;
 import org.openelisglobal.barcode.labeltype.OrderLabel;
 import org.openelisglobal.barcode.labeltype.SpecimenLabel;
+import org.openelisglobal.barcode.service.BarcodeInfoService;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.log.LogEvent;
@@ -329,6 +330,13 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
                     .println("<input type='button' id='overrideButton' value='Override' onclick='override();'>");
             // else return the pdf
         } else {
+            try {
+                BarcodeInfoService barcodeInfoService = SpringContext.getBean(BarcodeInfoService.class);
+                barcodeInfoService.recordPrintedCounts(labNo, labelMaker.getLabels());
+            } catch (Exception e) {
+                LogEvent.logError("LabelMakerServlet", "printExistingOrder",
+                        "Failed to record printed counts: " + e.getMessage());
+            }
             response.setContentType("application/pdf");
             response.addHeader("Content-Disposition", "inline; filename=" + "sample.pdf");
             response.setContentLength(labelAsOutputStream.size());

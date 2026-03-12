@@ -1,8 +1,11 @@
 package org.openelisglobal.barcode.service;
 
 import java.util.List;
+import org.openelisglobal.barcode.labeltype.OrderLabel;
+import org.openelisglobal.barcode.labeltype.SpecimenLabel;
 import org.openelisglobal.barcode.valueholder.SampleBarcodeInfo;
 import org.openelisglobal.barcode.valueholder.SampleItemBarcodeInfo;
+import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -22,6 +25,9 @@ public class BarcodeInfoServiceImpl implements BarcodeInfoService {
 
     @Autowired
     private SampleItemService sampleItemService;
+
+    @Autowired
+    private SampleService sampleService;
 
     @Override
     public void saveBarcodeInfoForSampleAndSampleItems(Sample sample, int numOrderLabels, int numSpecimenLabels) {
@@ -94,6 +100,63 @@ public class BarcodeInfoServiceImpl implements BarcodeInfoService {
                 sampleItemBarcodeInfoService.insert(itemInfo);
             }
         }
+    }
+
+    @Override
+    public void recordPrintedCounts(String labNo, List<org.openelisglobal.barcode.labeltype.Label> labels) {
+        if (labels == null || labels.isEmpty()) {
+            return;
+        }
+        Sample sample = sampleService.getSampleByAccessionNumber(labNo);
+        if (sample == null) {
+            return;
+        }
+        for (org.openelisglobal.barcode.labeltype.Label label : labels) {
+            int count = label.getNumLabels();
+            if (count <= 0) {
+                continue;
+            }
+            if (label instanceof OrderLabel) {
+                incrementPrintedOrderCount(sample, count);
+            } else if (label instanceof SpecimenLabel) {
+                SampleItem item = ((SpecimenLabel) label).getSampleItem();
+                if (item != null) {
+                    incrementPrintedSpecimenCount(item, count);
+                }
+            }
+        }
+    }
+
+    private void incrementPrintedOrderCount(Sample sample, int count) {
+        List<SampleBarcodeInfo> existing = sampleBarcodeInfoService.getAllMatching("sample", sample);
+        SampleBarcodeInfo info;
+        if (!existing.isEmpty()) {
+            info = existing.get(0);
+        } else {
+            info = new SampleBarcodeInfo();
+            info.setSample(sample);
+            info.setPrintedOrderCount(0);
+            sampleBarcodeInfoService.insert(info);
+        }
+        int current = info.getPrintedOrderCount() != null ? info.getPrintedOrderCount() : 0;
+        info.setPrintedOrderCount(current + count);
+        sampleBarcodeInfoService.update(info);
+    }
+
+    private void incrementPrintedSpecimenCount(SampleItem sampleItem, int count) {
+        List<SampleItemBarcodeInfo> existing = sampleItemBarcodeInfoService.getAllMatching("sampleItem", sampleItem);
+        SampleItemBarcodeInfo info;
+        if (!existing.isEmpty()) {
+            info = existing.get(0);
+        } else {
+            info = new SampleItemBarcodeInfo();
+            info.setSampleItem(sampleItem);
+            info.setPrintedSpecimenCount(0);
+            sampleItemBarcodeInfoService.insert(info);
+        }
+        int current = info.getPrintedSpecimenCount() != null ? info.getPrintedSpecimenCount() : 0;
+        info.setPrintedSpecimenCount(current + count);
+        sampleItemBarcodeInfoService.update(info);
     }
 
 }

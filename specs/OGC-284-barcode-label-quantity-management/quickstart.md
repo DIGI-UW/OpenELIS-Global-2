@@ -2,8 +2,8 @@
 
 ## Goal
 
-Use the already-completed OGC-284 remediation baseline as the starting point
-for full Jira/design delivery.
+Use the already-completed OGC-284 remediation baseline as the starting point for
+full Jira/design delivery.
 
 This quickstart now distinguishes between:
 
@@ -417,3 +417,23 @@ Minimum CI closure target:
 - Decision: proceed with M4 preparation work on the stacked M4 branch, then push
   the formatting/artifact-alignment remediation and use the next backend CI run
   as the implementation gate before executing full M4 verification.
+
+---
+
+## M5 execution evidence (2026-03-11)
+
+### Branch
+
+- `feat/284-barcode-label-quantity-management-m5-shared-workflow-foundation` (from M4 branch).
+
+### M5 deferred gaps completed (T005a, T005b, T005c)
+
+- **FR-004a**: Default ≤ max cross-field validation in `BarcodeConfigurationRestController`; new test in `BarcodeConfigurationRestControllerValidationTest`; message keys in `message_en.properties` / `message_fr.properties` and frontend `en.json` / `fr.json`.
+- **FR-002b**: Positive-dimension validation in controller `validateDimensionFields`; frontend `validationSchema` (Yup) enabled in `BarcodeConfiguration.js` for dimension fields; message keys added.
+- **FR-012a**: Liquibase changesets `barcode-info-003-printed-order-count` and `barcode-info-004-printed-item-counts`; `SampleBarcodeInfo.printedOrderCount`, `SampleItemBarcodeInfo.printedSpecimenCount`/`printedBlockCount`/`printedSlideCount`/`printedFreezerCount`; `BarcodeInfoService.recordPrintedCounts(labNo, labels)` and call from `LabelMakerServlet` after successful PDF; `SpecimenLabel.getSampleItem()` for print recording; unit test `recordPrintedCounts_emptyList_doesNothing`.
+
+### Test execution
+
+- `BarcodeConfigurationRestControllerValidationTest`: 4 tests (incl. default-lte-max, positive-dimension).
+- `BarcodeInfoServiceImplTest`: 5 tests (incl. recordPrintedCounts empty list).
+- `HibernateMappingValidationTest`, `BarcodeSchemaValidationTest`: pass.

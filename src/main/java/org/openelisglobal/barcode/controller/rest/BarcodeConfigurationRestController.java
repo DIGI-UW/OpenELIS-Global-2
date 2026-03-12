@@ -35,6 +35,8 @@ public class BarcodeConfigurationRestController extends BaseController {
     private static final int MAX_LABEL_FALLBACK = 10;
     private static final int DEFAULT_LABEL_FALLBACK = 1;
     private static final String LABEL_COUNT_RANGE_ERROR = "error.barcode.labelcount.range";
+    private static final String LABEL_DEFAULT_LTE_MAX_ERROR = "error.barcode.labelcount.default.lte.max";
+    private static final String DIMENSION_POSITIVE_ERROR = "error.barcode.dimension.positive";
 
     private static final String[] ALLOWED_FIELDS = new String[] { //
             "heightOrderLabels", "heightSpecimenLabels", "heightBlockLabels", "heightSlideLabels",
@@ -267,6 +269,7 @@ public class BarcodeConfigurationRestController extends BaseController {
             @RequestBody @Valid BarcodeConfigurationForm form, BindingResult result,
             RedirectAttributes redirectAttributes) {
         validateLabelCountRanges(form, result);
+        validateDimensionFields(form, result);
         normalizeQuantityFields(form);
         if (!form.getPrePrintDontUseAltAccession()
                 && GenericValidator.isBlankOrNull(form.getPrePrintAltAccessionPrefix())) {
@@ -340,6 +343,51 @@ public class BarcodeConfigurationRestController extends BaseController {
         validateLabelCountRange("numDefaultSlideLabels", form.getNumDefaultSlideLabels(), result);
         validateLabelCountRange("numDefaultBlockLabels", form.getNumDefaultBlockLabels(), result);
         validateLabelCountRange("numDefaultFreezerLabels", form.getNumDefaultFreezerLabels(), result);
+
+        validateDefaultLteMax(form, result);
+    }
+
+    /** FR-004a: each label type default must not exceed its max */
+    private void validateDefaultLteMax(BarcodeConfigurationForm form, BindingResult result) {
+        validateDefaultLteMaxPair("numDefaultOrderLabels", form.getNumDefaultOrderLabels(), "numMaxOrderLabels",
+                form.getNumMaxOrderLabels(), result);
+        validateDefaultLteMaxPair("numDefaultSpecimenLabels", form.getNumDefaultSpecimenLabels(),
+                "numMaxSpecimenLabels", form.getNumMaxSpecimenLabels(), result);
+        validateDefaultLteMaxPair("numDefaultAliquotLabels", form.getNumDefaultAliquotLabels(), "numMaxAliquotLabels",
+                form.getNumMaxAliquotLabels(), result);
+        validateDefaultLteMaxPair("numDefaultSlideLabels", form.getNumDefaultSlideLabels(), "numMaxSlideLabels",
+                form.getNumMaxSlideLabels(), result);
+        validateDefaultLteMaxPair("numDefaultBlockLabels", form.getNumDefaultBlockLabels(), "numMaxBlockLabels",
+                form.getNumMaxBlockLabels(), result);
+        validateDefaultLteMaxPair("numDefaultFreezerLabels", form.getNumDefaultFreezerLabels(), "numMaxFreezerLabels",
+                form.getNumMaxFreezerLabels(), result);
+    }
+
+    private void validateDefaultLteMaxPair(String defaultField, int defaultVal, String maxField, int maxVal,
+            BindingResult result) {
+        if (defaultVal > maxVal) {
+            result.rejectValue(defaultField, LABEL_DEFAULT_LTE_MAX_ERROR);
+        }
+    }
+
+    /** FR-002b: dimension values must be positive numbers */
+    void validateDimensionFields(BarcodeConfigurationForm form, BindingResult result) {
+        validateDimensionPositive("heightOrderLabels", form.getHeightOrderLabels(), result);
+        validateDimensionPositive("widthOrderLabels", form.getWidthOrderLabels(), result);
+        validateDimensionPositive("heightSpecimenLabels", form.getHeightSpecimenLabels(), result);
+        validateDimensionPositive("widthSpecimenLabels", form.getWidthSpecimenLabels(), result);
+        validateDimensionPositive("heightBlockLabels", form.getHeightBlockLabels(), result);
+        validateDimensionPositive("widthBlockLabels", form.getWidthBlockLabels(), result);
+        validateDimensionPositive("heightSlideLabels", form.getHeightSlideLabels(), result);
+        validateDimensionPositive("widthSlideLabels", form.getWidthSlideLabels(), result);
+        validateDimensionPositive("heightFreezerLabels", form.getHeightFreezerLabels(), result);
+        validateDimensionPositive("widthFreezerLabels", form.getWidthFreezerLabels(), result);
+    }
+
+    private void validateDimensionPositive(String field, float value, BindingResult result) {
+        if (value <= 0 || !Float.isFinite(value)) {
+            result.rejectValue(field, DIMENSION_POSITIVE_ERROR);
+        }
     }
 
     private void validateLabelCountRange(String field, int value, BindingResult result) {

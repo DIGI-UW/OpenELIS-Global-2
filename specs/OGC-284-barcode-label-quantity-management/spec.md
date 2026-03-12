@@ -30,11 +30,22 @@ explicitly marked out of scope below.
 
 ### Session 2026-03-11
 
-- Q: Which workflows must include the OGC-284 labels UI and post-save printing flow? → A: All relevant sample-creation workflows that support barcode printing.
-- Q: What post-save printing behavior is required after the accession number is assigned? → A: Show a post-save dialog with per-label-type Print buttons that open PDFs in new browser tabs, plus a Done button that closes without printing and returns to Order View.
-- Q: What must the sample-creation labels UI include before save? → A: One order row, one row per sample, editable applicable label counts, and a running total.
-- Q: Should the spec require full parity with the original Jira/design intent or allow deferred follow-up scope? → A: Require full parity with Jira/design in this spec.
-- Q: What is the primary workflow for initial implementation and validation? → A: The primary workflow is Add Order (`/SamplePatientEntry`), with rollout to all other relevant workflows after shared-foundation completion.
+- Q: Which workflows must include the OGC-284 labels UI and post-save printing
+  flow? → A: All relevant sample-creation workflows that support barcode
+  printing.
+- Q: What post-save printing behavior is required after the accession number is
+  assigned? → A: Show a post-save dialog with per-label-type Print buttons that
+  open PDFs in new browser tabs, plus a Done button that closes without printing
+  and returns to Order View.
+- Q: What must the sample-creation labels UI include before save? → A: One order
+  row, one row per sample, editable applicable label counts, and a running
+  total.
+- Q: Should the spec require full parity with the original Jira/design intent or
+  allow deferred follow-up scope? → A: Require full parity with Jira/design in
+  this spec.
+- Q: What is the primary workflow for initial implementation and validation? →
+  A: The primary workflow is Add Order (`/SamplePatientEntry`), with rollout to
+  all other relevant workflows after shared-foundation completion.
 
 ## User Scenarios & Testing
 
@@ -97,8 +108,8 @@ confirming the saved order drives the next printing step.
    is saved, **Then** the system stores the order quantity for the sample and
    the applicable per-sample-item label quantities for the created records.
 3. **Given** a sample save request omits one or more label quantities, **When**
-   the order is saved, **Then** the system stores default quantity values of
-   `1` or configured defaults, as appropriate for that label type.
+   the order is saved, **Then** the system stores default quantity values of `1`
+   or configured defaults, as appropriate for that label type.
 4. **Given** barcode quantity metadata already exists for a sample or sample
    item, **When** a new save occurs for that same record, **Then** the existing
    metadata is updated rather than duplicated.
@@ -116,8 +127,8 @@ delay clinical workflows.
 
 **Independent Test**: Can be fully tested by saving a sample, confirming the
 post-save dialog offers applicable label types with Print buttons and a Done
-button, then attempting label generation with normal and malformed
-configuration states and confirming no unhandled failures occur.
+button, then attempting label generation with normal and malformed configuration
+states and confirming no unhandled failures occur.
 
 **Acceptance Scenarios**:
 
@@ -127,8 +138,8 @@ configuration states and confirming no unhandled failures occur.
    for printing.
 2. **Given** the post-save print dialog lists applicable label types with
    per-row Print buttons, **When** the user clicks Print for a label type,
-   **Then** a PDF for that label type opens in a new browser tab and is sized
-   to the configured dimensions.
+   **Then** a PDF for that label type opens in a new browser tab and is sized to
+   the configured dimensions.
 3. **Given** the user does not want to print immediately, **When** the user
    clicks Done, **Then** the sample is saved without printing, the dialog
    closes, and the user can reprint later from the Order View page.
@@ -154,8 +165,8 @@ configuration states and confirming no unhandled failures occur.
   scale to one row per sample while preserving the order row and running total.
 - A saved sample has only a subset of label types available, so the post-save
   print dialog must present only applicable label types.
-- The user clicks Done on the post-save print dialog, so no print job is
-  started at save time.
+- The user clicks Done on the post-save print dialog, so no print job is started
+  at save time.
 - Label request attempts to exceed configured maximum values.
 - Label request exceeds max values while override is disabled.
 - Label request exceeds max values while override is explicitly enabled.
@@ -187,8 +198,8 @@ configuration states and confirming no unhandled failures occur.
   quantity fields.
 - **FR-005a**: All relevant sample-creation workflows that support barcode
   printing MUST expose a labels step or section before save so users can review
-  and edit applicable label quantities; on Add Order, the labels section MUST
-  be positioned between the ORDER and RESULT REPORTING sections.
+  and edit applicable label quantities; on Add Order, the labels section MUST be
+  positioned between the ORDER and RESULT REPORTING sections.
 - **FR-005b**: The labels step or section MUST show one order row, one row per
   sample, editable applicable label quantity fields, and a running total of all
   labels selected for printing.
@@ -212,20 +223,20 @@ configuration states and confirming no unhandled failures occur.
   applicable label types available for printing.
 - **FR-011a**: Each applicable label type in the post-save print dialog MUST
   provide a Print button that opens a PDF in a new browser tab.
-- **FR-011b**: The system MUST NOT offer label printing until the order is
-  saved and an accession number is assigned.
+- **FR-011b**: The system MUST NOT offer label printing until the order is saved
+  and an accession number is assigned.
 - **FR-012**: PDFs generated from post-save print actions MUST be sized to the
   configured dimensions for the selected label type.
-- **FR-012a**: The system MUST track cumulative labels printed per order and
-  per sample item, by label type, so max-limit enforcement applies across
-  multiple printing sessions.
+- **FR-012a**: The system MUST track cumulative labels printed per order and per
+  sample item, by label type, so max-limit enforcement applies across multiple
+  printing sessions.
 - **FR-013**: The post-save print dialog MUST provide a Done button that closes
   without printing, returns the user to the Order View page, and preserves
   reprint capability from the Order View page.
 - **FR-013a**: Existing Preprinted Bar Code Accession Number settings behavior
   MUST remain supported and unchanged by OGC-284 label quantity enhancements.
-- **FR-014**: Label generation workflows MUST continue to function when
-  optional barcode fields are disabled or unset.
+- **FR-014**: Label generation workflows MUST continue to function when optional
+  barcode fields are disabled or unset.
 - **FR-015**: User-facing labels and descriptions for newly exposed barcode
   quantity settings MUST be localized.
 - **FR-016**: When a requested label quantity exceeds the configured maximum for
@@ -275,8 +286,8 @@ configuration states and confirming no unhandled failures occur.
   return the same saved values on subsequent retrieval.
 - **SC-001a**: 100% of successful admin saves for label element toggles and
   dimensions return the same values on subsequent retrieval.
-- **SC-002**: 100% of generic sample orders created through this workflow
-  and other supported sample-creation workflows persist sample-level barcode
+- **SC-002**: 100% of generic sample orders created through this workflow and
+  other supported sample-creation workflows persist sample-level barcode
   quantity metadata, and persist applicable sample-item-level metadata whenever
   sample items are created.
 - **SC-003**: Label generation flows complete without unhandled numeric parsing
@@ -299,10 +310,9 @@ configuration states and confirming no unhandled failures occur.
   all supported barcode-printing sample-creation flows.
 - This specification requires full parity with OGC-284 Jira acceptance criteria
   and does not treat major workflow/UI elements as optional follow-up scope.
-- The Jira OGC-284 FRS attachment
-  (`OpenELIS_Barcode_Labels_v1_FRS.md`) and companion mockup
-  (`OpenELIS_BarcodeConfig_Mockup.jsx`) are the governing design artifacts for
-  this feature.
+- The Jira OGC-284 FRS attachment (`OpenELIS_Barcode_Labels_v1_FRS.md`) and
+  companion mockup (`OpenELIS_BarcodeConfig_Mockup.jsx`) are the governing
+  design artifacts for this feature.
 - Existing barcode printing endpoints and route patterns remain the integration
   path for this feature.
 - Post-save printing behavior is in scope, including per-label-type Print

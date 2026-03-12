@@ -195,6 +195,10 @@ public class BarcodeLabelMaker {
                 .fromString(ConfigurationProperties.getInstance().getPropertyValue(Property.BAR_CODE_TYPE));
     }
 
+    public ArrayList<Label> getLabels() {
+        return labels;
+    }
+
     public void generatePrePrintLabels(Integer numSetsOfLabels, Integer numOrderLabelsPerSet,
             Integer numSpecimenLabelsPerSet, String facilityName, List<Test> tests, String startingAt)
             throws LIMSInvalidConfigurationException {

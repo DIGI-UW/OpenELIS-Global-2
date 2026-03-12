@@ -1,7 +1,8 @@
 # Implementation Plan: Barcode Label Quantity Management (OGC-284)
 
-**Branch**: `feat/284-barcode-label-quantity-management-m4-integration-ci-review` | **Date**: 2026-03-11 | **Spec**:
-[spec.md](./spec.md)  
+**Branch**:
+`feat/284-barcode-label-quantity-management-m4-integration-ci-review` |
+**Date**: 2026-03-11 | **Spec**: [spec.md](./spec.md)  
 **Input**: Feature specification from
 `/specs/OGC-284-barcode-label-quantity-management/spec.md`  
 **Issue**: [OGC-284](https://uwdigi.atlassian.net/browse/OGC-284)
@@ -12,10 +13,9 @@ This plan updates OGC-284 after clarification that the feature must deliver
 **full parity with Jira acceptance criteria**, not only the remediation work
 already completed on the current branch.
 
-The Jira OGC-284 FRS attachment
-(`OpenELIS_Barcode_Labels_v1_FRS.md`) and companion mockup
-(`OpenELIS_BarcodeConfig_Mockup.jsx`) are treated as the governing design
-artifacts for implementation and validation.
+The Jira OGC-284 FRS attachment (`OpenELIS_Barcode_Labels_v1_FRS.md`) and
+companion mockup (`OpenELIS_BarcodeConfig_Mockup.jsx`) are treated as the
+governing design artifacts for implementation and validation.
 
 ### Completed baseline (already done on branch)
 
@@ -30,6 +30,7 @@ foundation:
 
 This completed baseline includes parity with the barcode configuration design
 surface for:
+
 - default/max count controls for order/specimen/block/slide/freezer,
 - optional label-element toggles with Lab Number mandatory,
 - dimension configuration for all label types,
@@ -135,21 +136,21 @@ completed and remaining work._
 
 ### Completed Baseline Milestones
 
-| ID | Status | Branch Suffix | Scope | Verification |
-| --- | --- | --- | --- | --- |
-| M1 | Done (partial) | `m1-config-i18n-hardening` | Admin config safety, fallback/range handling, localization completeness, label-element toggle behavior, and dimensions/preprinted section parity. **Not yet implemented**: FR-004a default-lte-max cross-field validation, FR-002b positive-dimension validation (deferred to M5) | Barcode config backend/frontend tests + evidence in `quickstart.md` |
-| M2 | Done | `m2-persistence-upsert` | Generic/pathology persistence hardening, ORM/schema verification | Backend service + ORM/schema tests |
-| M3 | Done | `m3-label-resilience` | Optional-field rendering and max-limit enforcement | Label-type + label-maker tests |
-| M4 | Done | `m4-integration-ci-review` | Integration verification, CI stabilization, review closure | CI evidence + Playwright remediation |
+| ID  | Status         | Branch Suffix              | Scope                                                                                                                                                                                                                                                                             | Verification                                                        |
+| --- | -------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| M1  | Done (partial) | `m1-config-i18n-hardening` | Admin config safety, fallback/range handling, localization completeness, label-element toggle behavior, and dimensions/preprinted section parity. **Not yet implemented**: FR-004a default-lte-max cross-field validation, FR-002b positive-dimension validation (deferred to M5) | Barcode config backend/frontend tests + evidence in `quickstart.md` |
+| M2  | Done           | `m2-persistence-upsert`    | Generic/pathology persistence hardening, ORM/schema verification                                                                                                                                                                                                                  | Backend service + ORM/schema tests                                  |
+| M3  | Done           | `m3-label-resilience`      | Optional-field rendering and max-limit enforcement                                                                                                                                                                                                                                | Label-type + label-maker tests                                      |
+| M4  | Done           | `m4-integration-ci-review` | Integration verification, CI stabilization, review closure                                                                                                                                                                                                                        | CI evidence + Playwright remediation                                |
 
 ### Remaining Delivery Milestones
 
-| ID | Branch Suffix | Suggested Branch | Suggested Worktree | Scope | User Stories | Verification | Depends On |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| M5 | `m5-shared-workflow-foundation` | `feat/284-barcode-label-quantity-management-m5-shared-workflow-foundation` | `/workspace-worktrees/ogc-284-m5-foundation` | Inventory all barcode-printing sample-creation workflows; define shared labels-section row model, post-save print dialog state, save-response/reprint contracts, backend orchestration foundation; **also includes deferred M1 validation gaps**: FR-004a default-lte-max cross-field validation, FR-002b positive-dimension validation, and FR-012a cumulative printed-count tracking (schema + service) | US2, US3 | Updated contracts/data model; backend integration tests for shared orchestration; validation gap tests pass | M4 |
-| [P] M6 | `m6-pre-save-labels-ui` | `feat/284-barcode-label-quantity-management-m6-pre-save-labels-ui` | `/workspace-worktrees/ogc-284-m6-labels-ui` | Implement the pre-save labels section in the Add Order workflow (`/SamplePatientEntry`) and shared UI model: one order row, one row per sample, editable applicable counts, running total | US2 | Frontend unit tests + backend integration for quantity submission + targeted E2E | M5 |
-| [P] M7 | `m7-post-save-print-dialog` | `feat/284-barcode-label-quantity-management-m7-post-save-print-dialog` | `/workspace-worktrees/ogc-284-m7-print-dialog` | Implement post-save print dialog in the Add Order workflow (`/SamplePatientEntry`) after accession assignment, including per-label-type PDF Print buttons, dimension-matched PDF generation, and a Done button; wire reprint entry from the Order View page | US3 | Backend print orchestration tests + targeted E2E save-to-print flow | M5 |
-| M8 | `m8-workflow-rollout-validation` | `feat/284-barcode-label-quantity-management-m8-workflow-rollout-validation` | `/workspace-worktrees/ogc-284-m8-rollout` | Roll out shared labels/printing behavior across all remaining in-scope barcode-printing sample-creation workflows identified by M5 inventory; complete regression coverage and CI stabilization | US2, US3 | Cross-workflow E2E matrix, CI green, final review evidence | M6, M7 |
+| ID     | Branch Suffix                    | Suggested Branch                                                            | Suggested Worktree                             | Scope                                                                                                                                                                                                                                                                                                                                                                                                     | User Stories | Verification                                                                                                | Depends On |
+| ------ | -------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------- | ---------- |
+| M5     | `m5-shared-workflow-foundation`  | `feat/284-barcode-label-quantity-management-m5-shared-workflow-foundation`  | `/workspace-worktrees/ogc-284-m5-foundation`   | Inventory all barcode-printing sample-creation workflows; define shared labels-section row model, post-save print dialog state, save-response/reprint contracts, backend orchestration foundation; **also includes deferred M1 validation gaps**: FR-004a default-lte-max cross-field validation, FR-002b positive-dimension validation, and FR-012a cumulative printed-count tracking (schema + service) | US2, US3     | Updated contracts/data model; backend integration tests for shared orchestration; validation gap tests pass | M4         |
+| [P] M6 | `m6-pre-save-labels-ui`          | `feat/284-barcode-label-quantity-management-m6-pre-save-labels-ui`          | `/workspace-worktrees/ogc-284-m6-labels-ui`    | Implement the pre-save labels section in the Add Order workflow (`/SamplePatientEntry`) and shared UI model: one order row, one row per sample, editable applicable counts, running total                                                                                                                                                                                                                 | US2          | Frontend unit tests + backend integration for quantity submission + targeted E2E                            | M5         |
+| [P] M7 | `m7-post-save-print-dialog`      | `feat/284-barcode-label-quantity-management-m7-post-save-print-dialog`      | `/workspace-worktrees/ogc-284-m7-print-dialog` | Implement post-save print dialog in the Add Order workflow (`/SamplePatientEntry`) after accession assignment, including per-label-type PDF Print buttons, dimension-matched PDF generation, and a Done button; wire reprint entry from the Order View page                                                                                                                                               | US3          | Backend print orchestration tests + targeted E2E save-to-print flow                                         | M5         |
+| M8     | `m8-workflow-rollout-validation` | `feat/284-barcode-label-quantity-management-m8-workflow-rollout-validation` | `/workspace-worktrees/ogc-284-m8-rollout`      | Roll out shared labels/printing behavior across all remaining in-scope barcode-printing sample-creation workflows identified by M5 inventory; complete regression coverage and CI stabilization                                                                                                                                                                                                           | US2, US3     | Cross-workflow E2E matrix, CI green, final review evidence                                                  | M6, M7     |
 
 ### Milestone Dependency Graph
 
@@ -253,18 +254,18 @@ frontend/src/components/**/__tests__ or *.test.*
 
 ### Checkpoint Gates
 
-- **After M5**: shared orchestration contracts reviewed; backend foundation tests
-  pass
+- **After M5**: shared orchestration contracts reviewed; backend foundation
+  tests pass
 - **After M6**: primary workflow labels UI tests pass; persisted counts verified
 - **After M7**: post-save print dialog and print-later tests pass
 - **After M8**: cross-workflow E2E matrix green; CI green; final evidence posted
 
 ## Risks & Mitigations
 
-| Risk | Mitigation |
-| --- | --- |
-| Completed remediation baseline is accidentally reworked or regressed | Treat M1-M4 as frozen baseline; add regression tests before workflow UX changes |
-| Scope balloons across too many workflow variants at once | Use M5 inventory + shared model first, then rollout in M6-M8 |
-| Legacy and React workflow surfaces diverge in behavior | Define a shared labels-section and post-save dialog contract in M5 |
-| Print-later semantics vary by workflow | Centralize reprint/re-entry rules in shared orchestration and contract docs |
-| Reviewers cannot tell what is done vs remaining | Keep completed baseline milestones separate from remaining milestones in all artifacts |
+| Risk                                                                 | Mitigation                                                                             |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Completed remediation baseline is accidentally reworked or regressed | Treat M1-M4 as frozen baseline; add regression tests before workflow UX changes        |
+| Scope balloons across too many workflow variants at once             | Use M5 inventory + shared model first, then rollout in M6-M8                           |
+| Legacy and React workflow surfaces diverge in behavior               | Define a shared labels-section and post-save dialog contract in M5                     |
+| Print-later semantics vary by workflow                               | Centralize reprint/re-entry rules in shared orchestration and contract docs            |
+| Reviewers cannot tell what is done vs remaining                      | Keep completed baseline milestones separate from remaining milestones in all artifacts |

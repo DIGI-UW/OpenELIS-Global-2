@@ -3,6 +3,7 @@ package org.openelisglobal.barcode.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.barcode.valueholder.SampleBarcodeInfo;
 import org.openelisglobal.barcode.valueholder.SampleItemBarcodeInfo;
+import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -35,6 +37,9 @@ public class BarcodeInfoServiceImplTest {
 
     @Mock
     private SampleItemService sampleItemService;
+
+    @Mock
+    private SampleService sampleService;
 
     @InjectMocks
     private BarcodeInfoServiceImpl barcodeInfoService;
@@ -158,4 +163,14 @@ public class BarcodeInfoServiceImplTest {
         verify(sampleItemBarcodeInfoService, never()).insert(any(SampleItemBarcodeInfo.class));
         verify(sampleItemBarcodeInfoService, never()).update(any(SampleItemBarcodeInfo.class));
     }
+
+    @Test
+    public void recordPrintedCounts_emptyList_doesNothing() {
+        barcodeInfoService.recordPrintedCounts("2025-00001", Collections.emptyList());
+
+        verify(sampleService, never()).getSampleByAccessionNumber(anyString());
+        verify(sampleBarcodeInfoService, never()).insert(any(SampleBarcodeInfo.class));
+        verify(sampleBarcodeInfoService, never()).update(any(SampleBarcodeInfo.class));
+    }
+
 }

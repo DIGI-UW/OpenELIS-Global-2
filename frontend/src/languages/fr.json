@@ -616,6 +616,8 @@
   "barcode.notification.save": "Les configurations de code-barres ont été enregistrées.",
   "barcode.partialMatch": "Correspondance partielle - certains composants sont valides",
   "barcode.validation.altPrefix": "La saisie doit être alphanumérique et comporter au maximum 4 caractères.",
+  "error.barcode.dimension.positive": "La dimension de l'étiquette doit être un nombre positif",
+  "error.barcode.labelcount.default.lte.max": "Le nombre par défaut ne doit pas dépasser le maximum pour ce type d'étiquette",
   "barcode.print.individual.button": "Bouton d'impression individuelle",
   "barcode.print.preprint": "Impression anticipée du code-barres",
   "barcode.print.preprint.button": "Bouton de pré-impression",

@@ -53,8 +53,8 @@ remediation work from the remaining full-scope OGC-284 milestones.
       enforcement) in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md` and
       `specs/OGC-284-barcode-label-quantity-management/plan.md`
-- [x] T004 Record completed M4 baseline (integration/CI/review stabilization)
-      in `specs/OGC-284-barcode-label-quantity-management/quickstart.md` and
+- [x] T004 Record completed M4 baseline (integration/CI/review stabilization) in
+      `specs/OGC-284-barcode-label-quantity-management/quickstart.md` and
       `specs/OGC-284-barcode-label-quantity-management/plan.md`
 
 ---
@@ -71,23 +71,23 @@ remediation work from the remaining full-scope OGC-284 milestones.
 workflow applicability is documented, and backend orchestration tests pass
 without changing the completed baseline behavior.
 
-- [ ] T005 Create milestone branch
+- [x] T005 Create milestone branch
       `feat/284-barcode-label-quantity-management-m5-shared-workflow-foundation`
       from `feat/284-barcode-label-quantity-management-m4-integration-ci-review`
       and add worktree at `/workspace-worktrees/ogc-284-m5-foundation`
-- [ ] T005a [P] [US1] Implement FR-004a default-lte-max cross-field validation
+- [x] T005a [P] [US1] Implement FR-004a default-lte-max cross-field validation
       in
       `src/main/java/org/openelisglobal/barcode/controller/rest/BarcodeConfigurationRestController.java`
       (compare each default against its corresponding max and reject with
       validation error if default > max) and add test in
       `src/test/java/org/openelisglobal/barcode/controller/rest/BarcodeConfigurationRestControllerValidationTest.java`
-- [ ] T005b [P] [US1] Implement FR-002b positive-dimension validation in
+- [x] T005b [P] [US1] Implement FR-002b positive-dimension validation in
       `src/main/java/org/openelisglobal/barcode/controller/rest/BarcodeConfigurationRestController.java`
       (reject dimension values that are not positive numbers) and enable
       frontend `validationSchema` in
       `frontend/src/components/admin/barcodeConfiguration/BarcodeConfiguration.js`
-- [ ] T005c [P] [US3] Implement FR-012a cumulative printed-count tracking:
-      add `printed_order_count` column to `sample_barcode_info` and
+- [x] T005c [P] [US3] Implement FR-012a cumulative printed-count tracking: add
+      `printed_order_count` column to `sample_barcode_info` and
       `printed_specimen_count`, `printed_block_count`, `printed_slide_count`,
       `printed_freezer_count` columns to `sample_item_barcode_info` via
       Liquibase changeset; add corresponding fields to
@@ -121,9 +121,8 @@ without changing the completed baseline behavior.
       `specs/OGC-284-barcode-label-quantity-management/contracts/barcode-configuration-and-generic-sample-order.openapi.yml`,
       `specs/OGC-284-barcode-label-quantity-management/data-model.md`, and
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`, including
-      print-PDF endpoint patterns for
-      `/api/barcode/print/{orderId}/{labelType}` and
-      `/api/barcode/print/{orderId}/{labelType}/{sampleId}`
+      print-PDF endpoint patterns for `/api/barcode/print/{orderId}/{labelType}`
+      and `/api/barcode/print/{orderId}/{labelType}/{sampleId}`
 - [ ] T013 [US2] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
 - [ ] T014 Create milestone PR for M5 with shared workflow foundation summary
@@ -138,9 +137,9 @@ without changing the completed baseline behavior.
 **Suggested Worktree**: `/workspace-worktrees/ogc-284-m6-labels-ui`  
 **Stories**: US2  
 **Depends On**: M5  
-**Independent Test**: The Add Order workflow (`/SamplePatientEntry`) renders
-one order row, one row per sample, editable applicable label counts, and a
-running total, then submits the selected values for persistence.
+**Independent Test**: The Add Order workflow (`/SamplePatientEntry`) renders one
+order row, one row per sample, editable applicable label counts, and a running
+total, then submits the selected values for persistence.
 
 - [ ] T015 Create milestone branch
       `feat/284-barcode-label-quantity-management-m6-pre-save-labels-ui` from
@@ -149,8 +148,7 @@ running total, then submits the selected values for persistence.
 - [ ] T016 [P] [US2] Create frontend tests for the pre-save labels section in
       `frontend/src/components/barcodeWorkflow/LabelsSection.test.jsx`
 - [ ] T017 [P] [US2] Create integration tests for Add Order
-      (`/SamplePatientEntry`) label
-      quantity submission in
+      (`/SamplePatientEntry`) label quantity submission in
       `src/test/java/org/openelisglobal/sample/controller/SamplePatientEntryLabelsIntegrationTest.java`
 - [ ] T018 [US2] Implement shared labels section component in
       `frontend/src/components/barcodeWorkflow/LabelsSection.jsx`
@@ -180,12 +178,13 @@ running total, then submits the selected values for persistence.
 **Depends On**: M5  
 **Independent Test**: After a successful save and accession assignment, the Add
 Order workflow (`/SamplePatientEntry`) shows a post-save print dialog with
-per-label-type PDF Print buttons that open dimension-matched PDFs in new
-browser tabs, and a Done button.
+per-label-type PDF Print buttons that open dimension-matched PDFs in new browser
+tabs, and a Done button.
 
 - [ ] T024 Create milestone branch
       `feat/284-barcode-label-quantity-management-m7-post-save-print-dialog`
-      from `feat/284-barcode-label-quantity-management-m5-shared-workflow-foundation`
+      from
+      `feat/284-barcode-label-quantity-management-m5-shared-workflow-foundation`
       and add worktree at `/workspace-worktrees/ogc-284-m7-print-dialog`
 - [ ] T025 [P] [US3] Create frontend dialog tests in
       `frontend/src/components/barcodeWorkflow/PostSavePrintDialog.test.jsx`
@@ -239,27 +238,23 @@ suite passes.
       after merging/rebasing M7 and add worktree at
       `/workspace-worktrees/ogc-284-m8-rollout`
 - [ ] T037 [P] [US2] Create workflow rollout tests for notebook and batch order
-      entry (initial candidate workflows; finalize exact list from M5
-      inventory) in
-      `frontend/src/components/notebook/NotebookSampleOrder.test.jsx` and
+      entry (initial candidate workflows; finalize exact list from M5 inventory)
+      in `frontend/src/components/notebook/NotebookSampleOrder.test.jsx` and
       `frontend/src/components/batchOrderEntry/SampleBatchEntry.test.jsx`
 - [ ] T038 [P] [US2] Create workflow rollout tests for pathology-related flows
       (initial candidate workflows; finalize exact list from M5 inventory) in
       `frontend/src/components/pathology/PathologyCaseView.test.jsx`,
       `frontend/src/components/immunohistochemistry/ImmunohistochemistryCaseView.test.jsx`,
-      and
-      `frontend/src/components/cytology/CytologyCaseView.test.jsx`
+      and `frontend/src/components/cytology/CytologyCaseView.test.jsx`
 - [ ] T039 [P] [US3] Create Playwright end-to-end coverage for the full OGC-284
-      workflow in
-      `frontend/playwright/tests/ogc-284-labels-ui.spec.ts` and
+      workflow in `frontend/playwright/tests/ogc-284-labels-ui.spec.ts` and
       `frontend/playwright/tests/ogc-284-post-save-printing.spec.ts`
 - [ ] T040 [US2] Roll out shared labels-section integration to
       `frontend/src/components/genericSample/GenericSampleOrder.js`,
       `frontend/src/components/notebook/NotebookSampleOrder.js`, and
       `frontend/src/components/batchOrderEntry/SampleBatchEntry.js`
 - [ ] T041 [US2] Roll out shared labels-section integration to pathology-related
-      flows in
-      `frontend/src/components/pathology/PathologyCaseView.js`,
+      flows in `frontend/src/components/pathology/PathologyCaseView.js`,
       `frontend/src/components/immunohistochemistry/ImmunohistochemistryCaseView.js`,
       and `frontend/src/components/cytology/CytologyCaseView.js`
 - [ ] T042 [US3] Align save/reprint backend orchestration for all rolled-out
@@ -332,7 +327,7 @@ Task: "Create Playwright end-to-end coverage for the full OGC-284 workflow in fr
 2. Complete M5 shared foundation
 3. Complete M6 and M7 for the primary Jira/design workflow
 4. **STOP and VALIDATE**: confirm one workflow now satisfies the full labels UI
-   + post-save print flow
+   - post-save print flow
 
 ### Incremental Delivery
 
@@ -344,7 +339,6 @@ Task: "Create Playwright end-to-end coverage for the full OGC-284 workflow in fr
 
 ### Full Delivery
 
-- M5-M7 achieve full Jira/design behavior in Add Order
-  (`/SamplePatientEntry`)
+- M5-M7 achieve full Jira/design behavior in Add Order (`/SamplePatientEntry`)
 - M8 completes parity across all relevant barcode-printing sample-creation
   workflows and final CI validation

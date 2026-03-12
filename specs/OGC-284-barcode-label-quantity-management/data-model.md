@@ -18,13 +18,13 @@ This model captures:
 
 **Purpose**: Stores sample-level order label quantity metadata.
 
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| id | Integer | Yes | PK (sequence) |
-| sample_id | FK -> Sample.id | Yes | Unique per sample |
-| print_order_num | Integer | No | Requested order-label quantity |
-| printed_order_count | Integer | No | Cumulative printed order labels |
-| last_updated | Timestamp | No | Audit timestamp |
+| Field               | Type            | Required | Notes                           |
+| ------------------- | --------------- | -------- | ------------------------------- |
+| id                  | Integer         | Yes      | PK (sequence)                   |
+| sample_id           | FK -> Sample.id | Yes      | Unique per sample               |
+| print_order_num     | Integer         | No       | Requested order-label quantity  |
+| printed_order_count | Integer         | No       | Cumulative printed order labels |
+| last_updated        | Timestamp       | No       | Audit timestamp                 |
 
 **Business Rules**:
 
@@ -39,19 +39,19 @@ This model captures:
 
 **Purpose**: Stores sample-item-level label quantity metadata.
 
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| id | Integer | Yes | PK (sequence) |
-| sample_item_id | FK -> SampleItem.id | Yes | Unique per sample item |
-| print_specimen_num | Integer | No | Requested specimen-label quantity |
-| print_block_num | Integer | No | Block-label quantity |
-| print_slide_num | Integer | No | Slide-label quantity |
-| print_freezer_num | Integer | No | Freezer-label quantity |
-| printed_specimen_count | Integer | No | Cumulative printed specimen labels |
-| printed_block_count | Integer | No | Cumulative printed block labels |
-| printed_slide_count | Integer | No | Cumulative printed slide labels |
-| printed_freezer_count | Integer | No | Cumulative printed freezer labels |
-| last_updated | Timestamp | No | Audit timestamp |
+| Field                  | Type                | Required | Notes                              |
+| ---------------------- | ------------------- | -------- | ---------------------------------- |
+| id                     | Integer             | Yes      | PK (sequence)                      |
+| sample_item_id         | FK -> SampleItem.id | Yes      | Unique per sample item             |
+| print_specimen_num     | Integer             | No       | Requested specimen-label quantity  |
+| print_block_num        | Integer             | No       | Block-label quantity               |
+| print_slide_num        | Integer             | No       | Slide-label quantity               |
+| print_freezer_num      | Integer             | No       | Freezer-label quantity             |
+| printed_specimen_count | Integer             | No       | Cumulative printed specimen labels |
+| printed_block_count    | Integer             | No       | Cumulative printed block labels    |
+| printed_slide_count    | Integer             | No       | Cumulative printed slide labels    |
+| printed_freezer_count  | Integer             | No       | Cumulative printed freezer labels  |
+| last_updated           | Timestamp           | No       | Audit timestamp                    |
 
 **Business Rules**:
 
@@ -95,13 +95,13 @@ Representative key groups:
 
 Representative fields:
 
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| numOrderLabels | Integer | No | Defaults to configured/default fallback |
-| numSpecimenLabels | Integer | No | Per-sample-item or per-sample as applicable |
-| numBlockLabels | Integer | No | Only when workflow supports block labels |
-| numSlideLabels | Integer | No | Only when workflow supports slide labels |
-| numFreezerLabels | Integer | No | Only when workflow supports freezer labels |
+| Field             | Type    | Required | Notes                                       |
+| ----------------- | ------- | -------- | ------------------------------------------- |
+| numOrderLabels    | Integer | No       | Defaults to configured/default fallback     |
+| numSpecimenLabels | Integer | No       | Per-sample-item or per-sample as applicable |
+| numBlockLabels    | Integer | No       | Only when workflow supports block labels    |
+| numSlideLabels    | Integer | No       | Only when workflow supports slide labels    |
+| numFreezerLabels  | Integer | No       | Only when workflow supports freezer labels  |
 
 **Business Rules**:
 
@@ -116,15 +116,15 @@ Representative fields:
 **Purpose**: Canonical pre-save labels presentation model required by the
 clarified spec.
 
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| rowType | Enum(`order`,`sample`) | Yes | One order row, one row per sample |
-| rowId | String | Yes | Stable UI key |
-| sampleRef | Sample/Temp ID | No | Present for sample rows |
-| applicableLabelTypes | Array<LabelType> | Yes | Only label types valid for that row |
-| quantities | Map<LabelType,Integer> | Yes | Editable label counts |
-| sourceDefaults | Map<LabelType,Integer> | Yes | Pre-populated from barcode config |
-| rowTotal | Integer | Yes | Sum for this row |
+| Field                | Type                   | Required | Notes                               |
+| -------------------- | ---------------------- | -------- | ----------------------------------- |
+| rowType              | Enum(`order`,`sample`) | Yes      | One order row, one row per sample   |
+| rowId                | String                 | Yes      | Stable UI key                       |
+| sampleRef            | Sample/Temp ID         | No       | Present for sample rows             |
+| applicableLabelTypes | Array<LabelType>       | Yes      | Only label types valid for that row |
+| quantities           | Map<LabelType,Integer> | Yes      | Editable label counts               |
+| sourceDefaults       | Map<LabelType,Integer> | Yes      | Pre-populated from barcode config   |
+| rowTotal             | Integer                | Yes      | Sum for this row                    |
 
 **Derived Structure**:
 
@@ -142,21 +142,21 @@ clarified spec.
 
 **Purpose**: Runtime state shown after save once accession number is assigned.
 
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| accessionNumber | String | Yes | Assigned on successful save |
-| printableLabelTypes | Array<PrintableLabelOption> | Yes | Only applicable label types |
-| allowDoneWithoutPrinting | Boolean | Yes | Done button is available |
-| reprintContextToken | String/Object | No | Context needed for later print entry |
+| Field                    | Type                        | Required | Notes                                |
+| ------------------------ | --------------------------- | -------- | ------------------------------------ |
+| accessionNumber          | String                      | Yes      | Assigned on successful save          |
+| printableLabelTypes      | Array<PrintableLabelOption> | Yes      | Only applicable label types          |
+| allowDoneWithoutPrinting | Boolean                     | Yes      | Done button is available             |
+| reprintContextToken      | String/Object               | No       | Context needed for later print entry |
 
 ### PrintableLabelOption
 
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| labelType | Enum | Yes | Order/specimen/block/slide/freezer |
-| quantity | Integer | Yes | Saved quantity for that type |
-| dimensionsMm | String | Yes | Configured `H x W mm` for display |
-| printUrl | String | Yes | PDF generation endpoint for this label type |
+| Field        | Type    | Required | Notes                                       |
+| ------------ | ------- | -------- | ------------------------------------------- |
+| labelType    | Enum    | Yes      | Order/specimen/block/slide/freezer          |
+| quantity     | Integer | Yes      | Saved quantity for that type                |
+| dimensionsMm | String  | Yes      | Configured `H x W mm` for display           |
+| printUrl     | String  | Yes      | PDF generation endpoint for this label type |
 
 **Business Rules**:
 

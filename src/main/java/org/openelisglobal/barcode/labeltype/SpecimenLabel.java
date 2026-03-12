@@ -34,6 +34,8 @@ public class SpecimenLabel extends Label {
 
     private AnalysisService analysisService = SpringContext.getBean(AnalysisService.class);
 
+    private SampleItem sampleItem;
+
     public SpecimenLabel(String labNumber, String facilityName, List<Test> testsForSample) {
         // set dimensions (safe parsing for admin-configured DB values)
         width = BarcodeConfigUtil.parseFloatSafe(
@@ -135,6 +137,7 @@ public class SpecimenLabel extends Label {
      * @param labNo      Number to start code with
      */
     public SpecimenLabel(Patient patient, Sample sample, SampleItem sampleItem, String labNo) {
+        this.sampleItem = sampleItem;
         // set dimensions (safe parsing for admin-configured DB values)
         width = BarcodeConfigUtil.parseFloatSafe(
                 ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_LABEL_BARCODE_WIDTH), 2.0f);
@@ -246,6 +249,7 @@ public class SpecimenLabel extends Label {
      * @param from       Source/origin of the sample
      */
     public SpecimenLabel(SampleItem sampleItem, String labNo, String sampleType, String quantity, String from) {
+        this.sampleItem = sampleItem;
         // set dimensions (safe parsing for admin-configured DB values)
         width = BarcodeConfigUtil.parseFloatSafe(
                 ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_LABEL_BARCODE_WIDTH), 2.0f);
@@ -366,6 +370,10 @@ public class SpecimenLabel extends Label {
                     StringUtils.substring(patientId, 0, 25), 12);
         }
         return new LabelField(MessageUtil.getMessage("barcode.label.info.patientId"), "", 12);
+    }
+
+    public SampleItem getSampleItem() {
+        return sampleItem;
     }
 
     /*

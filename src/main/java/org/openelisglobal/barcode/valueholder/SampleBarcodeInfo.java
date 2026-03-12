@@ -41,6 +41,10 @@ public class SampleBarcodeInfo extends BaseObject<Integer> {
     @Column(name = "print_order_num")
     private Integer printOrderNum;
 
+    /** Cumulative count of order labels printed (FR-012a). */
+    @Column(name = "printed_order_count")
+    private Integer printedOrderCount;
+
     public SampleBarcodeInfo() {
         super();
     }
@@ -69,6 +73,14 @@ public class SampleBarcodeInfo extends BaseObject<Integer> {
 
     public void setPrintOrderNum(Integer printOrderNum) {
         this.printOrderNum = printOrderNum;
+    }
+
+    public Integer getPrintedOrderCount() {
+        return printedOrderCount;
+    }
+
+    public void setPrintedOrderCount(Integer printedOrderCount) {
+        this.printedOrderCount = printedOrderCount;
     }
 
 }

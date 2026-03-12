@@ -24,7 +24,27 @@ import {
 } from "../../common/CustomNotification.js";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import { Field, Formik } from "formik";
+import * as Yup from "yup";
 import BarcodeConfigurationFormValues from "../../formModel/innitialValues/BarcodeConfigurationFormValues.js";
+
+const positiveNumber = (msgId) =>
+  Yup.number()
+    .transform((v) => (isNaN(v) ? undefined : v))
+    .positive(msgId)
+    .nullable();
+
+const barcodeConfigurationValidationSchema = Yup.object({
+  heightOrderLabels: positiveNumber("error.barcode.dimension.positive"),
+  widthOrderLabels: positiveNumber("error.barcode.dimension.positive"),
+  heightSpecimenLabels: positiveNumber("error.barcode.dimension.positive"),
+  widthSpecimenLabels: positiveNumber("error.barcode.dimension.positive"),
+  heightBlockLabels: positiveNumber("error.barcode.dimension.positive"),
+  widthBlockLabels: positiveNumber("error.barcode.dimension.positive"),
+  heightSlideLabels: positiveNumber("error.barcode.dimension.positive"),
+  widthSlideLabels: positiveNumber("error.barcode.dimension.positive"),
+  heightFreezerLabels: positiveNumber("error.barcode.dimension.positive"),
+  widthFreezerLabels: positiveNumber("error.barcode.dimension.positive"),
+});
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -280,11 +300,9 @@ function BarcodeConfiguration() {
               <Formik
                 initialValues={barcodeFromValues}
                 enableReinitialize={true}
-                // // validationSchema={}
-                // validateOnChange={false}
-                // validateOnBlur={true}
-                // onSubmit
-                // onChange
+                validationSchema={barcodeConfigurationValidationSchema}
+                validateOnChange={false}
+                validateOnBlur={true}
               >
                 {({
                   values,
