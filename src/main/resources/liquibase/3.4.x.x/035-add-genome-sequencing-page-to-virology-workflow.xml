@@ -38,7 +38,7 @@
         'Viral genome analysis - record FASTA files and GenBank accession data',
         now()
       FROM clinlims.notebook n
-      WHERE (n.title LIKE '%Virology%' OR n.title LIKE '%Vaccine%')
+      WHERE n.title = 'Virology and Vaccine Unit'
         AND n.is_template = false
         AND NOT EXISTS (
           SELECT 1 FROM clinlims.notebook_page np

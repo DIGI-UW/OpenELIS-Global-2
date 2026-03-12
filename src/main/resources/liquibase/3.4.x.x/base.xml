@@ -134,6 +134,9 @@
     <!-- TB Media Preparation: Add notebook_entry_id for entry-scoped filtering -->
     <include file="liquibase/3.4.x.x/071-tb-media-preparation-notebook-entry.xml"/>
 
+    <!-- Virology Laboratory Notebook Template -->
+    <include file="liquibase/3.4.x.x/076-virologylab-notebook-template.xml"/>
+
     <!-- Increase test_section.name column length to accommodate research lab names -->
     <include file="liquibase/3.4.x.x/071-5-increase-test-section-name-length.xml"/>
 

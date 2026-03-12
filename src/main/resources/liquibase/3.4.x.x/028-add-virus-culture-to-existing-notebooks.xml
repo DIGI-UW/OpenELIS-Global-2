@@ -50,7 +50,7 @@
                 n.id,
                 ${now}
             FROM clinlims.notebook n
-            WHERE n.title LIKE '%Virology%'
+            WHERE n.title = 'Virology and Vaccine Unit'
             AND n.is_template = false
             AND NOT EXISTS (
                 SELECT 1
@@ -68,7 +68,7 @@
                 AND title = 'Virus Culture'
                 AND notebook_id IN (
                     SELECT id FROM clinlims.notebook
-                    WHERE title LIKE '%Virology%'
+                    WHERE title = 'Virology and Vaccine Unit'
                     AND is_template = false
                 );
             </sql>
