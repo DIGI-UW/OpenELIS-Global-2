@@ -58,7 +58,6 @@ public class FileImportConfiguration extends BaseObject<String> {
     @Column(name = "column_mappings", columnDefinition = "TEXT")
     private String columnMappingsJson; // JSON string: {"Sample_ID": "sampleId", "Result": "result"}
 
-    @JsonProperty
     @Transient
     private Map<String, String> columnMappings = new HashMap<>(); // Transient for easier access
 
@@ -159,6 +158,7 @@ public class FileImportConfiguration extends BaseObject<String> {
         this.errorDirectory = errorDirectory;
     }
 
+    @JsonProperty("columnMappings")
     public Map<String, String> getColumnMappings() {
         // Deserialize from JSON if needed
         if (columnMappings.isEmpty() && columnMappingsJson != null && !columnMappingsJson.isEmpty()) {
