@@ -5,7 +5,6 @@ import jakarta.servlet.http.HttpSession;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,9 +86,16 @@ public class FileImportRestController extends BaseRestController {
         if (session == null) {
             logger.warn("FileImport: No HTTP session exists for request to {}", request.getRequestURI());
         } else {
-            UserSessionData usd = (UserSessionData) session.getAttribute(IActionConstants.USER_SESSION_DATA);
-            logger.warn("FileImport: Session {} exists but USER_SESSION_DATA is {}. Session attributes: {}",
-                    session.getId(), usd == null ? "null" : "present", Collections.list(session.getAttributeNames()));
+            Object attr = session.getAttribute(IActionConstants.USER_SESSION_DATA);
+            UserSessionData usd = null;
+            if (attr instanceof UserSessionData) {
+                usd = (UserSessionData) attr;
+            } else if (attr != null) {
+                logger.warn("FileImport: USER_SESSION_DATA attribute is of unexpected type: {}",
+                        attr.getClass().getName());
+            }
+            logger.debug("FileImport: HTTP session exists but USER_SESSION_DATA is {}",
+                    usd == null ? "null" : "present");
         }
 
         // Fallback: resolve from Spring Security Authentication

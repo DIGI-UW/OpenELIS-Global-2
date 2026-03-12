@@ -133,11 +133,14 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
 
     // ── Step 5: Find the new analyzer in the list ────────────────
     const searchInput = page.locator('[data-testid="analyzer-search-input"]');
-    await searchInput.fill("QuantStudio 7 Pro");
+    await searchInput.fill(createdAnalyzerName);
     await page.waitForTimeout(1_500);
 
     const qsRow = page.locator("tbody tr", {
-      hasText: /QuantStudio 7 Pro/i,
+      hasText: new RegExp(
+        createdAnalyzerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "i",
+      ),
     });
     await expect(qsRow.first()).toBeVisible({ timeout: 10_000 });
     await page.waitForTimeout(1_000);

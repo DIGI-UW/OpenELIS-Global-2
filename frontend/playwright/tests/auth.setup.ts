@@ -25,8 +25,8 @@ setup("authenticate", async ({ page, request }, testInfo) => {
   if (!username || !password) {
     throw new Error(
       "TEST_USER and TEST_PASS environment variables must be set.\n" +
-        '  export TEST_USER=admin TEST_PASS="adminADMIN!"\n' +
-        "  Note: use double quotes — zsh single quotes escape ! with backslash",
+        "  export TEST_USER=admin TEST_PASS='adminADMIN!'\n" +
+        "  Note: use single quotes to prevent zsh history expansion of !",
     );
   }
 
