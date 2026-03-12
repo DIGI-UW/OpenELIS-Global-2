@@ -128,6 +128,20 @@ test.describe("FILE config persistence", () => {
     const updated = await verifyRes.json();
     expect(updated.fileFormat).toBe(fixtureData.formatTsv);
     expect(updated.filePattern).toBe("*.tsv");
+
+    // Revert to original so other tests see the fixture's initial state
+    const revertRes = await page.request.put(
+      `${api}/file-import/configurations/${cfg.id}`,
+      {
+        data: {
+          ...cfg,
+          fileFormat: fixtureData.formatCsv,
+          filePattern: "*.csv",
+          delimiter: ",",
+        },
+      },
+    );
+    expect(revertRes.ok()).toBeTruthy();
   });
 });
 
