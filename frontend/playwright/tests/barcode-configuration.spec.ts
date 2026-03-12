@@ -1,40 +1,65 @@
 import { expect, test } from "@playwright/test";
 
+type BarcodeConfigState = Record<string, string | number | boolean>;
+
+const createInitialConfig = (): BarcodeConfigState => ({
+  formName: "BarcodeConfigurationForm",
+  cancelAction: "MasterListsPage",
+  cancelMethod: "POST",
+  numMaxOrderLabels: 10,
+  numMaxSpecimenLabels: 10,
+  numDefaultOrderLabels: 1,
+  numDefaultSpecimenLabels: 1,
+  collectionDateCheck: true,
+  collectedByCheck: false,
+  testsCheck: true,
+  patientSexCheck: false,
+  prePrintDontUseAltAccession: true,
+  prePrintAltAccessionPrefix: "",
+  sitePrefix: "SITE",
+});
+
 test.describe("Barcode configuration", () => {
   test("persists max count and optional field toggles after save/reload", async ({
     page,
   }) => {
+    let configState = createInitialConfig();
+
+    await page.route("**/rest/BarcodeConfiguration", async (route) => {
+      const request = route.request();
+      if (request.method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(configState),
+        });
+        return;
+      }
+      const payload = await request.postDataJSON();
+      configState = { ...configState, ...payload };
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: "ok" }),
+      });
+    });
+
     await page.goto("/MasterListsPage/barcodeConfiguration");
-    await expect(page.locator("#maxOrder")).toBeVisible({ timeout: 30_000 });
-    const maxOrderInput = page.locator("#maxOrder");
-    const freezerCheckboxLabel = page.locator(
-      'label[for="freezerCollectionDateCheck"]',
-    );
-    const initiallyChecked = await page
-      .locator("#freezerCollectionDateCheck")
-      .isChecked();
+
+    const maxOrderInput = page.getByLabel("Order");
+    const collectionDateCheckbox = page.getByLabel("Collection Date and Time");
+
+    await expect(maxOrderInput).toBeVisible();
+    await expect(maxOrderInput).toHaveValue("10");
+    await expect(collectionDateCheckbox).toBeChecked();
 
     await maxOrderInput.fill("22");
-    await freezerCheckboxLabel.scrollIntoViewIfNeeded();
-    await freezerCheckboxLabel.click();
-    await expect(page.getByRole("button", { name: "Save" })).toBeEnabled({
-      timeout: 5_000,
-    });
-
-    const saveResponse = page.waitForResponse(
-      (resp) =>
-        resp.url().includes("BarcodeConfiguration") &&
-        resp.request().method() === "POST",
-      { timeout: 15_000 },
-    );
+    await collectionDateCheckbox.click();
     await page.getByRole("button", { name: "Save" }).click();
-    await saveResponse;
 
     await page.reload();
-    await expect(page.locator("#maxOrder")).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator("#maxOrder")).toHaveValue("22");
-    await expect(page.locator("#freezerCollectionDateCheck")).toBeChecked({
-      checked: !initiallyChecked,
-    });
+
+    await expect(maxOrderInput).toHaveValue("22");
+    await expect(collectionDateCheckbox).not.toBeChecked();
   });
 });

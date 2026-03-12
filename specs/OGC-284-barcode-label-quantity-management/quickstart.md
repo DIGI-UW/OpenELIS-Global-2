@@ -1,17 +1,37 @@
-# Quickstart: OGC-284 Assessment-Driven Remediation
+# Quickstart: OGC-284 Full-Scope Delivery
 
 ## Goal
 
-Execute the remediation plan for OGC-284 based on current implementation
-assessment, artifact alignment needs, and open PR feedback.
+Use the already-completed OGC-284 remediation baseline as the starting point
+for full Jira/design delivery.
 
-This quickstart is for developers closing remaining review and merge-readiness
-gaps on top of existing OGC-284 work (schema and baseline persistence already
-delivered on branch).
+This quickstart now distinguishes between:
+
+- **Completed baseline** already present on the current OGC-284 branches
+- **Remaining implementation** needed to satisfy the clarified full-scope spec
+
+This document is intended to help developers finish the missing workflow UX
+without losing the verified remediation work that already exists.
 
 ---
 
-## 1) Prepare environment
+## 1) Completed baseline already on branch
+
+The following work is already present and should be treated as enabling
+foundation, not as the remaining feature scope:
+
+- Barcode configuration quantity/i18n hardening
+- Sample/sample-item barcode persistence and upsert behavior
+- Pathology quantity persistence wiring
+- Label resilience and max-limit enforcement
+- CI/review closure evidence for remediation PR work
+
+Use the execution evidence sections later in this file as proof of what has
+already been implemented and validated.
+
+---
+
+## 2) Prepare environment
 
 ```bash
 # Sync develop first (for M1 foundation branch)
@@ -36,53 +56,69 @@ from `origin/develop`.
 
 ---
 
-## 2) Implement remediation in this order
+## 3) Remaining implementation in milestone order
 
-## Step A: BlockLabel data lookup hardening
+## Step A: Shared workflow foundation
 
-1. Remove unscoped per-label FHIR search from `BlockLabel`.
-2. Build pathology label context in service layer.
-3. Pass resolved specimen-type (and related context) into label constructors.
-4. Preserve safe fallbacks if enrichment values are unavailable.
+1. Inventory all sample-creation workflows that support barcode printing.
+2. Define the shared labels-section row model:
+   - one order row,
+   - one row per sample,
+   - editable applicable label counts,
+   - running total.
+3. Define the shared post-save print dialog model:
+   - accession-number-based launch,
+   - per-label-type selection,
+   - separate print jobs,
+   - `Skip - Print Later`.
+4. Expand contracts and service orchestration so save flows return enough data
+   to drive post-save printing and later reprint entry.
 
-## Step B: Configuration/rendering behavior alignment
+## Step B: Primary workflow UX completion
 
-1. Ensure slide config toggles map to actual rendered fields.
-2. Ensure freezer config toggles map to actual rendered fields.
-3. If any toggle remains unsupported, remove/hide it consistently in UI and
-   backend mapping.
+1. Implement the pre-save labels section on the primary order-entry workflow
+   called out by Jira/design.
+2. Pre-populate counts from barcode configuration defaults.
+3. Validate applicable label types and maximum counts in the workflow UI and
+   backend.
+4. Ensure saved quantities persist to the existing barcode metadata model.
 
-## Step C: Backend i18n key completion
+## Step C: Post-save printing completion
 
-1. Add missing `barcode.label.info.*` keys in:
-   - `src/main/resources/languages/message_en.properties`
-   - `src/main/resources/languages/message_fr.properties`
-2. Verify all keys referenced by label classes exist.
+1. Present a post-save print dialog after accession number assignment.
+2. Allow per-label-type selection.
+3. Send each selected label type as a separate print job.
+4. Implement `Skip - Print Later`.
+5. Provide print-later/reprint entry from the appropriate order/sample view.
 
-## Step D: Test hardening and regression checks
+## Step D: Rollout to all relevant workflows
 
-1. Extend/adjust unit tests for pathology and label-rendering logic.
-2. Run existing barcode config/persistence tests.
-3. Re-run frontend QA tests impacted by changed label/config behavior.
-4. Add ORM mapping validation for barcode entities and schema verification for
-   existing OGC-284 Liquibase changesets.
+1. Apply the shared labels-section and post-save print behavior to all other
+   barcode-printing sample-creation workflows identified in Step A.
+2. Reuse shared orchestration and avoid per-workflow divergence.
+3. Confirm consistent behavior across generic sample, notebook, batch, and
+   pathology-related flows as applicable.
 
 ---
 
-## 3) Verification checklist
+## 4) Verification checklist
 
-- [ ] No per-label unscoped FHIR query in label classes
-- [ ] Slide/freezer toggles accurately change output behavior
-- [ ] Backend message bundles include all new keys
+- [ ] Completed baseline behavior remains intact
+- [ ] All in-scope workflows expose the required labels UI
+- [ ] Labels UI shows one order row, one row per sample, and running total
+- [ ] Post-save dialog appears after accession assignment
+- [ ] Each selected label type prints as a separate print job
+- [ ] `Skip - Print Later` works and preserves reprint entry
 - [ ] Barcode configuration GET/POST behavior remains stable
 - [ ] Generic sample order label count persistence remains stable
+- [ ] Other supported workflows persist applicable label counts correctly
 - [ ] ORM validation test passes for barcode entities
 - [ ] Liquibase/schema verification passes for OGC-284 changesets
-- [ ] PR review threads can be closed with direct evidence
+- [ ] E2E coverage demonstrates full Jira/design workflow, not only remediation
 
 ---
 
-## 4) Recommended test commands
+## 5) Recommended test commands
 
 ```bash
 # Backend targeted tests
@@ -93,7 +129,7 @@ cd frontend
 npm test -- --watch=false
 cd ..
 
-# If using Cypress during remediation, run individual file(s) only
+# E2E workflow validation (run focused specs during development)
 cd frontend
 npm run cy:run -- --spec "cypress/e2e/<impacted-file>.cy.js"
 cd ..
@@ -104,7 +140,7 @@ cd ..
 
 ---
 
-## 5) CI and review closure workflow
+## 6) CI and review closure workflow
 
 1. Push remediation commits.
 2. Re-run failed PR checks (especially frontend QA workflow).
@@ -114,7 +150,7 @@ cd ..
 
 ---
 
-## 6) Finalization
+## 7) Finalization
 
 Before final review request:
 

@@ -1,15 +1,15 @@
 openapi: 3.0.3
 info:
-  title: OGC-284 Barcode Configuration and Generic Sample Order Contract
+  title: OGC-284 Barcode Configuration and Workflow Printing Contract
   version: 1.0.0
   description: >
-    Contract documentation for existing endpoints impacted by OGC-284
-    remediation. No new endpoints are introduced; this contract clarifies payload
-    and response expectations used by barcode quantity management.
-    Scope is intentionally limited to Barcode Configuration and Generic Sample
-    Order endpoints. Print-operation over-max handling (`FR-013`) and explicit
-    `override=true` behavior are implemented in the print flow and are documented
-    outside this endpoint contract.
+    Contract documentation for endpoints and runtime payloads impacted by
+    OGC-284. The current codebase already contains barcode configuration,
+    sample-save, and print entrypoints; this contract expands the documented
+    request/response model so the remaining Jira/design scope can be implemented
+    consistently across sample-creation workflows. Workflow-specific save
+    endpoints may vary, but they must converge on the same labels-section and
+    post-save printing semantics described in these schemas.
 
 paths:
   /rest/BarcodeConfiguration:
@@ -219,9 +219,9 @@ components:
       type: object
       description: >
         Generic sample order default fields for this endpoint. If omitted,
-        `numOrderLabels` and `numSpecimenLabels` default to 1. Pathology-specific
-        quantity persistence (FR-010) is handled by backend pathology flows and
-        is not represented as separate quantity fields in this request schema.
+        `numOrderLabels` and `numSpecimenLabels` default to 1. Other workflows
+        may expose additional label quantity fields using the same runtime
+        semantics documented by `LabelsSectionModel`.
       properties:
         labNo:
           type: string
@@ -265,3 +265,100 @@ components:
           type: string
         accessionNumber:
           type: string
+        labelsSection:
+          $ref: "#/components/schemas/LabelsSectionModel"
+        postSavePrintDialog:
+          $ref: "#/components/schemas/PostSavePrintDialogModel"
+
+    LabelsSectionModel:
+      type: object
+      description: >
+        Canonical pre-save labels-step/section shape used by all supported
+        barcode-printing sample-creation workflows.
+      properties:
+        orderRow:
+          $ref: "#/components/schemas/LabelRow"
+        sampleRows:
+          type: array
+          items:
+            $ref: "#/components/schemas/LabelRow"
+        runningTotal:
+          type: integer
+          minimum: 0
+      required:
+        - orderRow
+        - sampleRows
+        - runningTotal
+
+    LabelRow:
+      type: object
+      properties:
+        rowType:
+          type: string
+          enum: [order, sample]
+        rowId:
+          type: string
+        sampleRef:
+          type: string
+          nullable: true
+        applicableLabelTypes:
+          type: array
+          items:
+            type: string
+            enum: [order, specimen, block, slide, freezer]
+        quantities:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        rowTotal:
+          type: integer
+          minimum: 0
+      required:
+        - rowType
+        - rowId
+        - applicableLabelTypes
+        - quantities
+        - rowTotal
+
+    PostSavePrintDialogModel:
+      type: object
+      description: >
+        Canonical post-save print dialog state shown after accession number
+        assignment.
+      properties:
+        accessionNumber:
+          type: string
+        printableLabelTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PrintableLabelOption"
+        allowSkipPrintLater:
+          type: boolean
+          default: true
+        reprintContextToken:
+          type: string
+          nullable: true
+      required:
+        - accessionNumber
+        - printableLabelTypes
+        - allowSkipPrintLater
+
+    PrintableLabelOption:
+      type: object
+      properties:
+        labelType:
+          type: string
+          enum: [order, specimen, block, slide, freezer]
+        quantity:
+          type: integer
+          minimum: 0
+        selected:
+          type: boolean
+        printerSelection:
+          type: string
+          nullable: true
+      required:
+        - labelType
+        - quantity
+        - selected
