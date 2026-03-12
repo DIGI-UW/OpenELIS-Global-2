@@ -99,6 +99,17 @@ from `origin/develop`.
 3. Confirm consistent behavior across generic sample, notebook, batch, and
    pathology-related flows as applicable.
 
+### Workflow inventory (M5 T008)
+
+Authoritative list of sample-creation workflows that support barcode printing and
+must implement the OGC-284 labels UI and post-save print flow. M8 rollout tasks
+(T037, T038, T040, T041) use this list as scope.
+
+| Workflow / entry point | Labels UI | Post-save print | Notes |
+| ---------------------- | --------- | ---------------- | ----- |
+| Add Order (`/SamplePatientEntry`) | M6 | M7 | Primary; implement first. |
+| (T008: complete remaining rows from codebase inventory) | | | |
+
 ---
 
 ## 4) Verification checklist

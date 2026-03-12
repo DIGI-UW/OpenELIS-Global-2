@@ -1,7 +1,6 @@
 # Implementation Plan: Barcode Label Quantity Management (OGC-284)
 
-**Branch**:
-`feat/284-barcode-label-quantity-management-m4-integration-ci-review` |
+**Branch** (current milestone): `feat/284-barcode-label-quantity-management-m5-shared-workflow-foundation`  
 **Date**: 2026-03-11 | **Spec**: [spec.md](./spec.md)  
 **Input**: Feature specification from
 `/specs/OGC-284-barcode-label-quantity-management/spec.md`  

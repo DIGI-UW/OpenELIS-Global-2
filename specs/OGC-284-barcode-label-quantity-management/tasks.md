@@ -95,19 +95,23 @@ without changing the completed baseline behavior.
       and
       `src/main/java/org/openelisglobal/barcode/valueholder/SampleItemBarcodeInfo.java`;
       update `BarcodeInfoServiceImpl` to increment counts on print
-- [ ] T006 [P] [US2] Create backend orchestration tests for labels-section and
+- [x] T006 [P] [US2] Create backend orchestration tests for labels-section and
       post-save print state in
       `src/test/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintServiceTest.java`
-- [ ] T007 [P] [US2] Create frontend shared-model tests for labels rows and
-      running total in
+- [ ] T007 [P] [US2] Create frontend shared-model tests for labels row model and
+      running total (stub/unit tests; component may be minimal) in
       `frontend/src/components/barcodeWorkflow/LabelsSection.test.jsx`
-- [ ] T008 [P] [US2] Create workflow applicability verification notes in
-      `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
-- [ ] T009 [US2] Create shared workflow DTOs/forms in
+- [ ] T008 [P] [US2] Create workflow applicability verification notes and
+      **workflow inventory table** in
+      `specs/OGC-284-barcode-label-quantity-management/quickstart.md`.
+      Acceptance: quickstart contains a named "Workflow inventory" section
+      listing all barcode-printing sample-creation workflows; M8 tasks use this
+      list as the authoritative scope.
+- [x] T009 [US2] Create shared workflow DTOs/forms in
       `src/main/java/org/openelisglobal/barcode/form/LabelsSectionForm.java`,
       `src/main/java/org/openelisglobal/barcode/form/LabelRowForm.java`, and
       `src/main/java/org/openelisglobal/barcode/form/PostSavePrintDialogForm.java`
-- [ ] T010 [US2] Create shared orchestration service interface and
+- [x] T010 [US2] Create shared orchestration service interface and
       implementation in
       `src/main/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintService.java`
       and
@@ -122,7 +126,9 @@ without changing the completed baseline behavior.
       `specs/OGC-284-barcode-label-quantity-management/data-model.md`, and
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`, including
       print-PDF endpoint patterns for `/api/barcode/print/{orderId}/{labelType}`
-      and `/api/barcode/print/{orderId}/{labelType}/{sampleId}`
+      and `/api/barcode/print/{orderId}/{labelType}/{sampleId}`. Acceptance:
+      OpenAPI and quickstart document the print-PDF paths; data-model reflects
+      labels-section and post-save dialog structures.
 - [ ] T013 [US2] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
 - [ ] T014 Create milestone PR for M5 with shared workflow foundation summary
@@ -145,8 +151,10 @@ total, then submits the selected values for persistence.
       `feat/284-barcode-label-quantity-management-m6-pre-save-labels-ui` from
       `feat/284-barcode-label-quantity-management-m5-shared-workflow-foundation`
       and add worktree at `/workspace-worktrees/ogc-284-m6-labels-ui`
-- [ ] T016 [P] [US2] Create frontend tests for the pre-save labels section in
-      `frontend/src/components/barcodeWorkflow/LabelsSection.test.jsx`
+- [ ] T016 [P] [US2] Expand frontend tests in
+      `frontend/src/components/barcodeWorkflow/LabelsSection.test.jsx` for
+      pre-save labels section (submit, validation, running total, integration
+      with order-entry flow). Complements T007 stub/row-model tests.
 - [ ] T017 [P] [US2] Create integration tests for Add Order
       (`/SamplePatientEntry`) label quantity submission in
       `src/test/java/org/openelisglobal/sample/controller/SamplePatientEntryLabelsIntegrationTest.java`
@@ -188,9 +196,13 @@ tabs, and a Done button.
       and add worktree at `/workspace-worktrees/ogc-284-m7-print-dialog`
 - [ ] T025 [P] [US3] Create frontend dialog tests in
       `frontend/src/components/barcodeWorkflow/PostSavePrintDialog.test.jsx`
-- [ ] T026 [P] [US3] Create backend orchestration and print-job dispatch tests
-      in
+- [ ] T025a [P] [US3] Add FR-011b negative test: verify label print is not
+      offered until order is saved and accession assigned (e.g. in
+      PostSavePrintDialog.test.jsx or Add Order integration test).
+- [ ] T026 [P] [US3] Extend
       `src/test/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintServiceTest.java`
+      with print-job dispatch and per-label-type PDF generation tests (add to
+      existing test class created in T006).
 - [ ] T027 [P] [US3] Create reprint tests for Order View page in
       `frontend/src/components/printBarcode/ExistingOrder.test.jsx`
 - [ ] T028 [US3] Implement shared post-save print dialog component in
@@ -238,23 +250,25 @@ suite passes.
       after merging/rebasing M7 and add worktree at
       `/workspace-worktrees/ogc-284-m8-rollout`
 - [ ] T037 [P] [US2] Create workflow rollout tests for notebook and batch order
-      entry (initial candidate workflows; finalize exact list from M5 inventory)
-      in `frontend/src/components/notebook/NotebookSampleOrder.test.jsx` and
+      entry using the **workflow inventory** in quickstart (see T008) in
+      `frontend/src/components/notebook/NotebookSampleOrder.test.jsx` and
       `frontend/src/components/batchOrderEntry/SampleBatchEntry.test.jsx`
 - [ ] T038 [P] [US2] Create workflow rollout tests for pathology-related flows
-      (initial candidate workflows; finalize exact list from M5 inventory) in
+      using the **workflow inventory** in quickstart (see T008) in
       `frontend/src/components/pathology/PathologyCaseView.test.jsx`,
       `frontend/src/components/immunohistochemistry/ImmunohistochemistryCaseView.test.jsx`,
       and `frontend/src/components/cytology/CytologyCaseView.test.jsx`
 - [ ] T039 [P] [US3] Create Playwright end-to-end coverage for the full OGC-284
       workflow in `frontend/playwright/tests/ogc-284-labels-ui.spec.ts` and
       `frontend/playwright/tests/ogc-284-post-save-printing.spec.ts`
-- [ ] T040 [US2] Roll out shared labels-section integration to
+- [ ] T040 [US2] Roll out shared labels-section integration to generic/notebook/batch
+      entry points per **workflow inventory** in quickstart (T008): e.g.
       `frontend/src/components/genericSample/GenericSampleOrder.js`,
       `frontend/src/components/notebook/NotebookSampleOrder.js`, and
       `frontend/src/components/batchOrderEntry/SampleBatchEntry.js`
 - [ ] T041 [US2] Roll out shared labels-section integration to pathology-related
-      flows in `frontend/src/components/pathology/PathologyCaseView.js`,
+      flows per **workflow inventory** in quickstart (T008): e.g.
+      `frontend/src/components/pathology/PathologyCaseView.js`,
       `frontend/src/components/immunohistochemistry/ImmunohistochemistryCaseView.js`,
       and `frontend/src/components/cytology/CytologyCaseView.js`
 - [ ] T042 [US3] Align save/reprint backend orchestration for all rolled-out
