@@ -248,23 +248,33 @@ public class AnalyzerResultsController extends BaseController {
             }
             analyzerResultsList = getAnalyzerResults();
         } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "showRestAnalyzerResults",
+                    "Error loading analyzer results: " + e.getMessage());
+            LogEvent.logError(e);
             return form;
         }
 
-        AnalyzerResultsPaging paging = new AnalyzerResultsPaging();
-        if (GenericValidator.isBlankOrNull(request.getParameter("page"))) {
-            // get list of AnalyzerData from table based on analyzer type
-            if (analyzerResultsList.isEmpty()) {
-                form.setResultList(new ArrayList<AnalyzerResultItem>());
-                form.setDisplayNotFoundMsg(true);
-                paging.setEmptyPageBean(request, form);
-
+        try {
+            AnalyzerResultsPaging paging = new AnalyzerResultsPaging();
+            if (GenericValidator.isBlankOrNull(request.getParameter("page"))) {
+                if (analyzerResultsList.isEmpty()) {
+                    form.setResultList(new ArrayList<AnalyzerResultItem>());
+                    form.setDisplayNotFoundMsg(true);
+                    paging.setEmptyPageBean(request, form);
+                } else {
+                    paging.setDatabaseResults(request, form, getAnalyzerResultItemList(analyzerResultsList, form));
+                }
             } else {
                 paging.setDatabaseResults(request, form, getAnalyzerResultItemList(analyzerResultsList, form));
+                paging.page(request, form, Integer.parseInt(request.getParameter("page")));
             }
-        } else {
-            paging.setDatabaseResults(request, form, getAnalyzerResultItemList(analyzerResultsList, form));
-            paging.page(request, form, Integer.parseInt(request.getParameter("page")));
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "showRestAnalyzerResults",
+                    "Error processing analyzer results for display: " + e.getMessage());
+            LogEvent.logError(e);
+            // Return what we have — results loaded but display processing failed
+            form.setResultList(new ArrayList<AnalyzerResultItem>());
+            form.setDisplayNotFoundMsg(true);
         }
 
         addFlashMsgsToRequest(request);
@@ -607,6 +617,9 @@ public class AnalyzerResultsController extends BaseController {
     }
 
     private String getSignificantDigitsFromAnalyzerResults(AnalyzerResults result) {
+        if (result.getTestId() == null) {
+            return result.getResult();
+        }
 
         List<TestResult> testResults = testResultService.getActiveTestResultsByTest(result.getTestId());
 
