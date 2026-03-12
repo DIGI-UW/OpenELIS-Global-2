@@ -1,4 +1,8 @@
+import React from "react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import { buildLabelRowsModel, calculateRunningTotal } from "./LabelsSection";
+import LabelsSection from "./LabelsSection";
 
 describe("LabelsSection shared row model", () => {
   test("buildLabelRowsModel creates order row, sample rows, and running total", () => {
@@ -51,5 +55,40 @@ describe("LabelsSection shared row model", () => {
     ]);
 
     expect(runningTotal).toBe(8);
+  });
+});
+
+describe("LabelsSection component", () => {
+  test("renders one order row, sample rows, and running total", () => {
+    render(<LabelsSection orderQuantity={2} specimenQuantities={[1, 3]} />);
+
+    expect(screen.getByLabelText("Order labels")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Specimen labels sample 1"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Specimen labels sample 2"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Running total: 6")).toBeInTheDocument();
+  });
+
+  test("calls onChange with updated model when quantity changes", () => {
+    const onChange = jest.fn();
+    render(
+      <LabelsSection
+        orderQuantity={2}
+        specimenQuantities={[1]}
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Order labels"), {
+      target: { value: "4" },
+    });
+
+    expect(onChange).toHaveBeenCalled();
+    const lastModel = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(lastModel.orderRow.quantities.order).toBe(4);
+    expect(lastModel.runningTotal).toBe(5);
   });
 });

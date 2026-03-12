@@ -147,30 +147,30 @@ without changing the completed baseline behavior.
 order row, one row per sample, editable applicable label counts, and a running
 total, then submits the selected values for persistence.
 
-- [ ] T015 Create milestone branch
+- [x] T015 Create milestone branch
       `feat/284-barcode-label-quantity-management-m6-pre-save-labels-ui` from
       `feat/284-barcode-label-quantity-management-m5-shared-workflow-foundation`
       and add worktree at `/workspace-worktrees/ogc-284-m6-labels-ui`
-- [ ] T016 [P] [US2] Expand frontend tests in
+- [x] T016 [P] [US2] Expand frontend tests in
       `frontend/src/components/barcodeWorkflow/LabelsSection.test.jsx` for
       pre-save labels section (submit, validation, running total, integration
       with order-entry flow). Complements T007 stub/row-model tests.
-- [ ] T017 [P] [US2] Create integration tests for Add Order
+- [x] T017 [P] [US2] Create integration tests for Add Order
       (`/SamplePatientEntry`) label quantity submission in
       `src/test/java/org/openelisglobal/sample/controller/SamplePatientEntryLabelsIntegrationTest.java`
-- [ ] T018 [US2] Implement shared labels section component in
+- [x] T018 [US2] Implement shared labels section component in
       `frontend/src/components/barcodeWorkflow/LabelsSection.jsx`
-- [ ] T019 [US2] Integrate labels-section UI into the primary order-entry flow
+- [x] T019 [US2] Integrate labels-section UI into the primary order-entry flow
       in `frontend/src/components/addOrder/SampleType.js` and
       `frontend/src/components/addOrder/OrderSuccessMessage.js`
-- [ ] T020 [US2] Wire Add Order (`/SamplePatientEntry`) request payload and
+- [x] T020 [US2] Wire Add Order (`/SamplePatientEntry`) request payload and
       persistence mapping in
       `src/main/java/org/openelisglobal/sample/form/SampleEntryByProjectForm.java`,
       `src/main/java/org/openelisglobal/sample/controller/rest/SamplePatientEntryRestController.java`,
       and `src/main/java/org/openelisglobal/patient/saving/SampleEntry.java`
-- [ ] T021 [US2] Externalize any new labels-step strings in
+- [x] T021 [US2] Externalize any new labels-step strings in
       `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
-- [ ] T022 [US2] Run milestone tests and record verification evidence in
+- [x] T022 [US2] Run milestone tests and record verification evidence in
       `specs/OGC-284-barcode-label-quantity-management/quickstart.md`
 - [ ] T023 Create milestone PR for M6 with primary labels UI evidence
 

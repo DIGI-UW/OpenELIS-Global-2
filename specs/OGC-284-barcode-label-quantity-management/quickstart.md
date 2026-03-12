@@ -507,3 +507,47 @@ Minimum CI closure target:
 - Frontend command:
   `CI=true npm test -- --watch=false --runTestsByPath src/components/barcodeWorkflow/LabelsSection.test.jsx src/components/admin/barcodeConfiguration/BarcodeConfiguration.test.js`
   - Result: PASS (2 suites, 6 tests, 0 failures)
+
+---
+
+## M6 execution evidence (2026-03-11)
+
+### Branch
+
+- `feat/284-barcode-label-quantity-management-m6-pre-save-labels-ui` (from M5
+  branch).
+
+### M6 implementation coverage (T016, T017, T018, T019, T020, T021)
+
+- **T016/T018**: `LabelsSection.test.jsx` expanded to rendering and change-event
+  coverage; `LabelsSection.jsx` implemented with Carbon `NumberInput` controls
+  and running-total updates.
+- **T019/T021**: Add Order sample workflow (`SampleType.js`, `Index.js`) now
+  includes labels section + persisted per-sample label counts in `sampleXML`;
+  i18n keys added in `frontend/src/languages/en.json` and
+  `frontend/src/languages/fr.json`:
+  - `barcode.labels.section.title`
+  - `barcode.labels.order.row`
+  - `barcode.labels.sample.row`
+  - `barcode.labels.running.total`
+- **T020**: Backend Add Order save flow now accepts/persists label counts:
+  - `SampleAddService` parses `numOrderLabels` / `numSpecimenLabels` from each
+    `<sample .../>` element in `sampleXML`.
+  - `SamplePatientEntryServiceImpl` persists order/specimen barcode counts
+    through `BarcodeInfoService`.
+- **T017**: Add Order label submission response includes orchestration models:
+  - `SamplePatientEntryForm` now carries `labelsSection` and
+    `postSavePrintDialog`.
+  - `SamplePatientEntryRestController` builds these models from submitted label
+    quantities and accession number.
+  - New tests: `SamplePatientEntryLabelsIntegrationTest`,
+    `SamplePatientEntryServiceImplTest`.
+
+### Test execution (T022)
+
+- Backend command:
+  `mvn -Dtest=SamplePatientEntryLabelsIntegrationTest,SamplePatientEntryServiceImplTest,GenericSampleOrderServiceImplTest,BarcodeWorkflowPrintServiceTest,BarcodeConfigurationRestControllerValidationTest,BarcodeInfoServiceImplTest,HibernateMappingValidationTest,BarcodeSchemaValidationTest test`
+  - Result: PASS (33 tests, 0 failures, 0 errors)
+- Frontend command:
+  `CI=true npm test -- --watch=false --runTestsByPath src/components/barcodeWorkflow/LabelsSection.test.jsx src/components/admin/barcodeConfiguration/BarcodeConfiguration.test.js`
+  - Result: PASS (2 suites, 8 tests, 0 failures)

@@ -10,6 +10,7 @@ import org.openelisglobal.address.service.OrganizationAddressService;
 import org.openelisglobal.address.valueholder.OrganizationAddress;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.barcode.service.BarcodeInfoService;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
@@ -110,6 +111,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private ImmunohistochemistrySampleService immunohistochemistrySampleService;
     @Autowired
     private ProgramSampleService programSampleService;
+    @Autowired
+    private BarcodeInfoService barcodeInfoService;
 
     @Transactional
     @Override
@@ -294,6 +297,14 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             }
         }
 
+        int numOrderLabels = 1;
+        int numSpecimenLabels = 1;
+        if (updateData.getSampleItemsTests() != null && !updateData.getSampleItemsTests().isEmpty()) {
+            SampleTestCollection firstSampleTest = updateData.getSampleItemsTests().getFirst();
+            numOrderLabels = firstSampleTest.numOrderLabels;
+            numSpecimenLabels = firstSampleTest.numSpecimenLabels;
+        }
+        persistOrderSpecimenBarcodeCounts(updateData.getSample(), numOrderLabels, numSpecimenLabels);
         updateData.buildSampleHuman();
 
         sampleHumanService.insert(updateData.getSampleHuman());
@@ -301,6 +312,18 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         if (updateData.getElectronicOrder() != null) {
             electronicOrderService.update(updateData.getElectronicOrder());
         }
+    }
+
+    void persistOrderSpecimenBarcodeCounts(org.openelisglobal.sample.valueholder.Sample sample, Integer numOrderLabels,
+            Integer numSpecimenLabels) {
+        if (sample == null) {
+            return;
+        }
+
+        int normalizedOrderLabels = numOrderLabels != null && numOrderLabels > 0 ? numOrderLabels : 1;
+        int normalizedSpecimenLabels = numSpecimenLabels != null && numSpecimenLabels > 0 ? numSpecimenLabels : 1;
+        barcodeInfoService.saveBarcodeInfoForSampleAndSampleItems(sample, normalizedOrderLabels,
+                normalizedSpecimenLabels);
     }
 
     /*

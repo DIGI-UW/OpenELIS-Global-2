@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { NumberInput, Stack } from "@carbon/react";
 
 const normalizeQuantity = (quantity) => {
   if (quantity === null || quantity === undefined || Number(quantity) < 0) {
@@ -52,8 +53,95 @@ export const buildLabelRowsModel = (orderQuantity, specimenQuantities) => {
   };
 };
 
-const LabelsSection = () => {
-  return <div data-testid="labels-section-root" />;
+const LabelsSection = ({
+  orderQuantity = 0,
+  specimenQuantities = [],
+  onChange = undefined,
+  orderLabelText = "Order labels",
+  specimenLabelFormatter = (sampleNumber) =>
+    `Specimen labels sample ${sampleNumber}`,
+  runningTotalLabel = "Running total",
+}) => {
+  const [model, setModel] = useState(() =>
+    buildLabelRowsModel(orderQuantity, specimenQuantities),
+  );
+
+  useEffect(() => {
+    setModel(buildLabelRowsModel(orderQuantity, specimenQuantities));
+  }, [orderQuantity, specimenQuantities]);
+
+  const updateModel = (nextModel) => {
+    setModel(nextModel);
+    if (onChange) {
+      onChange(nextModel);
+    }
+  };
+
+  const updateOrderQuantity = (nextValue) => {
+    const normalizedOrderQuantity = normalizeQuantity(nextValue);
+    const nextOrderRow = {
+      ...model.orderRow,
+      quantities: {
+        ...model.orderRow.quantities,
+        order: normalizedOrderQuantity,
+      },
+      rowTotal: normalizedOrderQuantity,
+    };
+    const nextModel = {
+      ...model,
+      orderRow: nextOrderRow,
+      runningTotal: calculateRunningTotal(nextOrderRow, model.sampleRows),
+    };
+    updateModel(nextModel);
+  };
+
+  const updateSpecimenQuantity = (index, nextValue) => {
+    const normalizedSpecimenQuantity = normalizeQuantity(nextValue);
+    const nextSampleRows = model.sampleRows.map((row, rowIndex) => {
+      if (rowIndex !== index) {
+        return row;
+      }
+      return {
+        ...row,
+        quantities: { ...row.quantities, specimen: normalizedSpecimenQuantity },
+        rowTotal: normalizedSpecimenQuantity,
+      };
+    });
+
+    const nextModel = {
+      ...model,
+      sampleRows: nextSampleRows,
+      runningTotal: calculateRunningTotal(model.orderRow, nextSampleRows),
+    };
+    updateModel(nextModel);
+  };
+
+  return (
+    <div data-testid="labels-section-root">
+      <Stack gap={5}>
+        <NumberInput
+          id="labels-order"
+          label={orderLabelText}
+          min={0}
+          value={model.orderRow.quantities.order}
+          onChange={(event, { value }) => updateOrderQuantity(value)}
+        />
+        {model.sampleRows.map((sampleRow, index) => (
+          <NumberInput
+            key={sampleRow.rowId}
+            id={sampleRow.rowId}
+            label={specimenLabelFormatter(index + 1)}
+            min={0}
+            value={sampleRow.quantities.specimen}
+            onChange={(event, { value }) =>
+              updateSpecimenQuantity(index, value)
+            }
+          />
+        ))}
+        <p>{`${runningTotalLabel}: ${model.runningTotal}`}</p>
+      </Stack>
+    </div>
+  );
 };
 
 export default LabelsSection;
