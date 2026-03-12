@@ -38,7 +38,7 @@ public class ASTMAnalyzerReaderIdentificationTest extends BaseWebContextSensitiv
         // Create and save an analyzer with IP+port (no type required)
         testAnalyzer = new Analyzer();
         testAnalyzer.setName("Test ASTM Analyzer");
-        testAnalyzer.setIpAddress("192.168.1.100");
+        testAnalyzer.setIpAddress("10.99.99.42");
         testAnalyzer.setPort(9000);
         testAnalyzer = analyzerService.save(testAnalyzer);
     }
@@ -49,7 +49,7 @@ public class ASTMAnalyzerReaderIdentificationTest extends BaseWebContextSensitiv
      */
     @Test
     public void ipPortLookup_withMatchingAnalyzer_returnsAnalyzer() {
-        Optional<Analyzer> found = analyzerService.getByIpAddressAndPort("192.168.1.100", 9000);
+        Optional<Analyzer> found = analyzerService.getByIpAddressAndPort("10.99.99.42", 9000);
         assertTrue("Analyzer should be findable by IP+port", found.isPresent());
         assertEquals(testAnalyzer.getId(), found.get().getId());
     }
@@ -59,7 +59,7 @@ public class ASTMAnalyzerReaderIdentificationTest extends BaseWebContextSensitiv
      */
     @Test
     public void ipLookup_withMatchingAnalyzer_returnsAnalyzer() {
-        Optional<Analyzer> found = analyzerService.getByIpAddress("192.168.1.100");
+        Optional<Analyzer> found = analyzerService.getByIpAddress("10.99.99.42");
         assertTrue("Analyzer should be findable by IP", found.isPresent());
         assertEquals(testAnalyzer.getId(), found.get().getId());
     }
