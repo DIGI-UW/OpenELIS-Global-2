@@ -45,12 +45,18 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.provider.service.ProviderService;
+import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.result.service.LogbookResultsPersistService;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.samplehuman.valueholder.SampleHuman;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -85,6 +91,14 @@ public class ObservationProvider implements IResourceProvider {
 
     @Autowired
     private FhirTransformService fhirTransformService;
+
+    @Autowired
+    private SampleItemService sampleItemService;
+    @Autowired
+    private SampleHumanService sampleHumanService;
+
+    @Autowired
+    private ProviderService providerService;
 
     @Autowired
     private FhirPersistanceService fhirPersistenceService;
@@ -151,6 +165,36 @@ public class ObservationProvider implements IResourceProvider {
                 throw new UnprocessableEntityException("Failed to transform Observation into TestResultItem");
             }
 
+            if (item.getSampleItemId() == null) {
+                throw new UnprocessableEntityException("SampleItemId is null in TestResultItem");
+            }
+
+            SampleItem sample = sampleItemService.get(item.getSampleItemId());
+
+            if (sample == null) {
+                throw new UnprocessableEntityException("SampleItem not found: " + item.getSampleItemId());
+            }
+
+            SampleHuman sampleHuman = sampleHumanService.getMatch("sampleId", sample.getId()).orElse(null);
+
+            if (sampleHuman == null) {
+                throw new UnprocessableEntityException("Failed to get SampleHuman for sample: " + sample.getId());
+            }
+
+            if (observation.hasPerformer()) {
+
+                String practitionerUUID = observation.getPerformerFirstRep().getReferenceElement().getIdPart();
+
+                Provider provider = fhirTransformService.getItemByFhirId(practitionerUUID, providerService);
+
+                if (provider == null) {
+                    throw new UnprocessableEntityException("Provider not found: " + practitionerUUID);
+                }
+
+                sampleHuman.setProviderId(provider.getId());
+                sampleHumanService.save(sampleHuman);
+            }
+
             item.setIsModified(true);
 
             LogEvent.logInfo(getClass().getSimpleName(), method, "Transformed Observation to TestResultItem");
@@ -160,7 +204,9 @@ public class ObservationProvider implements IResourceProvider {
 
             List<IResultUpdate> updaters = ResultUpdateRegister.getRegisteredUpdaters();
 
-            ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(FhirProviderUtils.getSysUserId(request));
+            String sysUserId = FhirProviderUtils.getSysUserId(request);
+
+            ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(sysUserId);
 
             actionDataSet.filterModifiedItems(items);
 
@@ -183,8 +229,9 @@ public class ObservationProvider implements IResourceProvider {
                             "code=" + error.getCode() + ", message=" + error.getDefaultMessage());
 
                     outcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
-                            .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getCode());
+                            .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getDefaultMessage());
                 }
+
                 throw new UnprocessableEntityException(outcome);
             }
 
@@ -204,8 +251,7 @@ public class ObservationProvider implements IResourceProvider {
 
             ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
 
-            logbookResultsPersistService.persistDataSet(actionDataSet, updaters,
-                    FhirProviderUtils.getSysUserId(request));
+            logbookResultsPersistService.persistDataSet(actionDataSet, updaters, sysUserId);
 
             fhirTransformService.transformPersistResultsEntryFhirObjects(actionDataSet);
 
@@ -214,10 +260,16 @@ public class ObservationProvider implements IResourceProvider {
 
             MethodOutcome outcome = new MethodOutcome();
             outcome.setCreated(true);
-            for (ResultSet resultSet : actionDataSet.getNewResults()) {
-                Observation fhirObservation = fhirTransformService.transformResultToObservation(resultSet.result);
-                outcome.setResource(fhirObservation);
 
+            for (ResultSet resultSet : actionDataSet.getNewResults()) {
+
+                if (resultSet == null || resultSet.result == null) {
+                    continue;
+                }
+
+                Observation fhirObservation = fhirTransformService.transformResultToObservation(resultSet.result);
+
+                outcome.setResource(fhirObservation);
             }
 
             return outcome;
@@ -227,6 +279,7 @@ public class ObservationProvider implements IResourceProvider {
             throw e;
 
         } catch (Exception e) {
+
             e.printStackTrace();
 
             LogEvent.logError(e);
@@ -281,6 +334,36 @@ public class ObservationProvider implements IResourceProvider {
             if (item == null) {
                 LogEvent.logError(getClass().getSimpleName(), method, "createResultFromObservation returned NULL");
                 throw new InternalErrorException("Failed to transform Observation to TestResultItem");
+            }
+
+            if (item.getSampleItemId() == null) {
+                throw new UnprocessableEntityException("SampleItemId is null in TestResultItem");
+            }
+
+            SampleItem sample = sampleItemService.get(item.getSampleItemId());
+
+            if (sample == null) {
+                throw new UnprocessableEntityException("SampleItem not found: " + item.getSampleItemId());
+            }
+
+            SampleHuman sampleHuman = sampleHumanService.getMatch("sampleId", sample.getId()).orElse(null);
+
+            if (sampleHuman == null) {
+                throw new UnprocessableEntityException("Failed to get SampleHuman for sample: " + sample.getId());
+            }
+
+            if (fhirObservation.hasPerformer()) {
+
+                String practitionerUUID = fhirObservation.getPerformerFirstRep().getReferenceElement().getIdPart();
+
+                Provider provider = fhirTransformService.getItemByFhirId(practitionerUUID, providerService);
+
+                if (provider == null) {
+                    throw new UnprocessableEntityException("Provider not found: " + practitionerUUID);
+                }
+
+                sampleHuman.setProviderId(provider.getId());
+                sampleHumanService.save(sampleHuman);
             }
 
             Result transformedResult = item.getResult();
@@ -380,6 +463,7 @@ public class ObservationProvider implements IResourceProvider {
             for (ResultSet resultSet : actionDataSet.getModifiedResults()) {
 
                 if (resultSet == null || resultSet.result == null) {
+
                     LogEvent.logWarn(getClass().getSimpleName(), method,
                             "Null ResultSet encountered during response building");
                     continue;
@@ -403,6 +487,7 @@ public class ObservationProvider implements IResourceProvider {
         } catch (Exception e) {
 
             e.printStackTrace();
+
             LogEvent.logError(getClass().getSimpleName(), method, "Unexpected error during Observation update");
 
             OperationOutcome outcome = new OperationOutcome();
@@ -411,7 +496,6 @@ public class ObservationProvider implements IResourceProvider {
                     .setCode(OperationOutcome.IssueType.EXCEPTION).setDiagnostics(e.getMessage());
 
             throw new InternalErrorException(outcome.toString());
-
         }
     }
 

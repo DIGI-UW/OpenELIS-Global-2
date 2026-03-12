@@ -1303,14 +1303,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         Result result = new Result();
         bean.setResult(result);
 
-        if (observation.hasPerformer()) {
-            String performerUUID = observation.getPerformerFirstRep().getReferenceElement().getIdPart();
-            Organization provider = getItemByFhirId(performerUUID, organizationService);
-            if (provider != null) {
-                bean.setTechnician(provider.getName());
-            }
-        }
-
         if (observation.hasSpecimen()) {
             String sampleItemUUID = observation.getSpecimen().getReferenceElement().getIdPart();
             SampleItem sampleItem = getItemByFhirId(sampleItemUUID, sampleItemService);
