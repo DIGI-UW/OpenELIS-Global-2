@@ -53,10 +53,10 @@ import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.result.service.LogbookResultsPersistService;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
-import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -169,7 +169,7 @@ public class ObservationProvider implements IResourceProvider {
                 throw new UnprocessableEntityException("SampleItemId is null in TestResultItem");
             }
 
-            SampleItem sample = sampleItemService.get(item.getSampleItemId());
+            Sample sample = sampleItemService.get(item.getSampleItemId()).getSample();
 
             if (sample == null) {
                 throw new UnprocessableEntityException("SampleItem not found: " + item.getSampleItemId());
@@ -340,7 +340,7 @@ public class ObservationProvider implements IResourceProvider {
                 throw new UnprocessableEntityException("SampleItemId is null in TestResultItem");
             }
 
-            SampleItem sample = sampleItemService.get(item.getSampleItemId());
+            Sample sample = sampleItemService.get(item.getSampleItemId()).getSample();
 
             if (sample == null) {
                 throw new UnprocessableEntityException("SampleItem not found: " + item.getSampleItemId());

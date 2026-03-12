@@ -223,6 +223,9 @@
     <person id="2" last_name="Jane" first_name="Georgia"
         lastupdated="2023-11-01 12:00:00" />
 
+    <person id="3" last_name="Patric" first_name="Vicent"
+        lastupdated="2023-11-01 12:00:00" />
+
 
     <patient id="1" person_id="1" lastupdated="2023-11-01 12:00:00"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440001" />
@@ -230,8 +233,15 @@
     <patient id="2" person_id="2" lastupdated="2023-11-01 12:00:00"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
-    <sample_human id="1" samp_id="1" patient_id="1"
+    <provider id="1" person_id="3" provider_type="P"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655441004"
         lastupdated="2023-11-01 12:00:00" />
+
+    <sample_human id="1" provider_id="1" samp_id="1"
+        patient_id="1" lastupdated="2023-11-01 12:00:00" />
+
+    <sample_human id="2" provider_id="1" samp_id="2"
+        patient_id="2" lastupdated="2023-11-01 12:00:00" />
 
     <sample_human id="2" samp_id="2" patient_id="2"
         lastupdated="2023-11-01 12:00:00" />
@@ -249,5 +259,6 @@
     <observation_history id="1" patient_id="1"
         sample_id="1" observation_history_type_id="5" value_type="L"
         value="Histopathology" />
+
 
 </dataset>
