@@ -47,6 +47,7 @@ export default defineConfig({
         /.*analyzer-plugin-config\.spec\.ts/,
         /.*analyzer-simulator\.spec\.ts/,
         /.*analyzer-hl7-simulate\.spec\.ts/,
+        /.*demo-quantstudio.*\.spec\.ts/,
       ],
       use: {
         ...devices["Desktop Chrome"],
@@ -67,6 +68,7 @@ export default defineConfig({
         "**/analyzer-plugin-config*",
         "**/analyzer-simulator*",
         "**/analyzer-hl7-simulate*",
+        "**/demo-quantstudio*",
       ],
     },
   ],

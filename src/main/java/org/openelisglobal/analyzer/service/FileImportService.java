@@ -111,6 +111,8 @@ public interface FileImportService extends BaseObjectService<FileImportConfigura
      * @param analyzerId   the newly created analyzer's ID (as String)
      * @param configData   the full profile JSON parsed as a Map
      * @param analyzerName the analyzer name (used for default directory paths)
+     * @param sysUserId    the current user's ID (required for audit column)
      */
-    void autoCreateFromProfile(String analyzerId, Map<String, Object> configData, String analyzerName);
+    void autoCreateFromProfile(String analyzerId, Map<String, Object> configData, String analyzerName,
+            String sysUserId);
 }

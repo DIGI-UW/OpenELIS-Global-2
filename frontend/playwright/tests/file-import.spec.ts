@@ -22,14 +22,6 @@ const FILE_ANALYZERS = [
     fileFormat: "EXCEL",
     filePattern: "*.xls",
   },
-  { name: "E2E-FILE-Tecan-F50", fileFormat: "CSV", filePattern: "*.csv" },
-  { name: "E2E-FILE-Multiskan-FC", fileFormat: "CSV", filePattern: "*.csv" },
-  {
-    name: "E2E-FILE-FluoroCycler-XT",
-    fileFormat: "EXCEL",
-    filePattern: "*.xlsx",
-  },
-  { name: "E2E-FILE-DT-Prime", fileFormat: "XML", filePattern: "*.xml" },
 ];
 
 function apiBase(baseURL: string | undefined): string {
