@@ -13,7 +13,9 @@ import org.openelisglobal.sampleitem.form.SampleItemForm;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
@@ -87,7 +89,7 @@ public class SampleItemController extends BaseController {
 
     @PostMapping(value = "Aliquot", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public Map<String, List<String>> updateSampleItem(HttpServletRequest request,
+    public ResponseEntity<Map<String, List<String>>> updateSampleItem(HttpServletRequest request,
             @Validated(SampleItemAliquotForm.SampleItemAliquot.class) @RequestBody SampleItemAliquotForm form,
             BindingResult result) {
 
@@ -96,10 +98,9 @@ public class SampleItemController extends BaseController {
         try {
             if (result.hasErrors()) {
                 response.put("errors", List.of("Validation failed"));
-                return response;
+                return ResponseEntity.badRequest().body(response);
             }
 
-            String accessionNumber = form.getAccessionNumber();
             List<SampleItemAliquotForm.SampleItem> sampleItems = form.getSampleItems();
 
             for (SampleItemAliquotForm.SampleItem sampleItem : sampleItems) {
@@ -109,7 +110,7 @@ public class SampleItemController extends BaseController {
 
                 if (lastSampleItem == null) {
                     response.put("errors", List.of("Sample item not found for external ID: " + sampleItemExternalId));
-                    return response;
+                    return ResponseEntity.badRequest().body(response);
                 }
                 List<SampleItem> sampleItemsToInsert = new ArrayList<>();
                 List<List<String>> analysisGroups = new ArrayList<>();
@@ -120,6 +121,9 @@ public class SampleItemController extends BaseController {
                     SampleItem sampleItemToInsert = new SampleItem();
                     BeanUtils.copyProperties(sampleItemToInsert, lastSampleItem);
 
+                    // BeanUtils shares mutable references (including collections).
+                    // Ensure each new aliquot has its own child list instance.
+                    sampleItemToInsert.setChildAliquots(new ArrayList<>());
                     sampleItemToInsert.setId(null);
                     String aliquotExternalId = aliquot.getExternalId();
                     Double quantity = aliquot.getQuantity();
@@ -140,11 +144,11 @@ public class SampleItemController extends BaseController {
             }
 
             response.put("success", List.of("Aliquoting completed successfully"));
-            return response;
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             response.put("errors", List.of("Error processing aliquoting: " + e.getMessage()));
-            return response;
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
