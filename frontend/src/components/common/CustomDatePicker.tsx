@@ -44,7 +44,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
       isFrenchLocale ? "dd/MM/yyyy" : "MM/dd/yyyy",
     );
     setCurrentDate(formatDate);
-    onChange(formatDate);
+    onChange(formatDate); 
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,10 +57,6 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
       e.target.value = ""; // Clear invalid input
     }
   };
-
-  useEffect(() => {
-    onChange(currentDate);
-  }, [currentDate, onChange]);
 
   useEffect(() => {
     if (updateStateValue) {
