@@ -266,9 +266,10 @@ public class ExcelAnalyzerReader extends AnalyzerReader {
         for (String internalField : PREFERRED_FIELD_ORDER) {
             String value = parsedRecord.get(internalField);
             if (value != null && !value.isBlank()) {
-                lineBuilder.append(value).append("\t");
+                lineBuilder.append(value);
                 usedKeys.add(internalField);
             }
+            lineBuilder.append("\t");
         }
         for (Map.Entry<String, String> entry : parsedRecord.entrySet()) {
             if (usedKeys.contains(entry.getKey())) {

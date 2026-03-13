@@ -68,8 +68,7 @@ jobs:
           docker exec openelisglobal-webapp mkdir -p \
             /data/analyzer-imports/e2e-qs5/incoming \
             /data/analyzer-imports/e2e-qs7/incoming \
-            /data/analyzer-imports/e2e-fluorocycler/incoming \
-            /data/analyzer-imports/e2e-csv/incoming
+            /data/analyzer-imports/e2e-fluorocycler/incoming
 
       - name: Copy fixture files into container
         run: |

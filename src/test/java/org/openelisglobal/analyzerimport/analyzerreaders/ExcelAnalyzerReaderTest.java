@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzerimport.analyzerreaders;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -59,6 +60,40 @@ public class ExcelAnalyzerReaderTest {
         @SuppressWarnings("unchecked")
         List<String> lines = (List<String>) ReflectionTestUtils.getField(reader, "lines");
         assertTrue("Reader should parse at least one data row from XLSX", lines != null && !lines.isEmpty());
+    }
+
+    @Test
+    public void testRead_DataLinesPreservePositionalAlignment() throws Exception {
+        // Mapping only sampleId (pos 0), testCode (pos 1), result (pos 2) — no
+        // interpretation, position, etc.
+        // The output should still have empty tabs for the absent PREFERRED_FIELD_ORDER
+        // positions
+        ExcelAnalyzerReader reader = new ExcelAnalyzerReader(configuration);
+        byte[] content = createWorkbookBytes(false);
+
+        reader.readStream(new ByteArrayInputStream(content));
+
+        @SuppressWarnings("unchecked")
+        List<String> lines = (List<String>) ReflectionTestUtils.getField(reader, "lines");
+        assertTrue("Should have header + data lines", lines != null && lines.size() >= 2);
+
+        // lines[0] is the header, lines[1] is the first data row
+        String dataLine = lines.get(1);
+        String[] tokens = dataLine.split("\t", -1);
+
+        // PREFERRED_FIELD_ORDER has 7 fields: sampleId, testCode, result,
+        // interpretation, position, testDate, testTime
+        // Data line should have at least 7 tab-separated tokens (some empty) to
+        // preserve positions
+        assertTrue("Data line should have at least 7 positional tokens, got " + tokens.length, tokens.length >= 7);
+
+        // Position 0 = sampleId, 1 = testCode, 2 = result (from column mapping)
+        assertEquals("SAMPLE-001", tokens[0]);
+        assertEquals("HIV-VL", tokens[1]);
+        assertEquals("34.5", tokens[2]);
+
+        // Position 3 = interpretation (not mapped, should be empty)
+        assertEquals("interpretation position should be empty", "", tokens[3]);
     }
 
     private byte[] createWorkbookBytes(boolean xls) throws Exception {
