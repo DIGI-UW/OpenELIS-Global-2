@@ -7,12 +7,17 @@ const AUTH_FILE = "playwright/.auth/user.json";
  *
  * Flow:
  *   1. Verify backend health (API responds, not just HTML shell)
- *   2. Login with retry (handles transient CSRF / session issues)
- *   3. Verify authenticated state on a protected route
+ *   2. Login via in-page fetch (same ValidateLogin endpoint the React form uses)
+ *   3. Navigate to verify authenticated state and capture cookies
  *   4. Save storage state for downstream tests
+ *
+ * Note: The login uses page.evaluate() to call ValidateLogin directly rather
+ * than clicking the UI form. OE's React login fires doLogin() twice with an
+ * async GET /LoginPage in between, which creates navigation timing issues
+ * with Playwright's waitForURL. The direct fetch approach is deterministic.
  */
 setup("authenticate", async ({ page, request }, testInfo) => {
-  testInfo.setTimeout(120_000);
+  testInfo.setTimeout(60_000);
 
   const username = process.env.TEST_USER;
   const password = process.env.TEST_PASS;
@@ -20,15 +25,14 @@ setup("authenticate", async ({ page, request }, testInfo) => {
   if (!username || !password) {
     throw new Error(
       "TEST_USER and TEST_PASS environment variables must be set.\n" +
-        "  export TEST_USER=admin TEST_PASS='adminADMIN!'",
+        "  export TEST_USER=admin TEST_PASS='adminADMIN!'\n" +
+        "  Note: use single quotes to prevent zsh history expansion of !",
     );
   }
 
   // ── Step 1: Backend health check ──────────────────────────────
-  // Wait for OE to be fully booted (not just serving HTML).
-  // The login page can render before Spring Security is initialized.
   let backendReady = false;
-  for (let attempt = 1; attempt <= 24; attempt++) {
+  for (let attempt = 1; attempt <= 12; attempt++) {
     try {
       const health = await request.get("/health", { timeout: 5_000 });
       if (health.ok()) {
@@ -36,9 +40,9 @@ setup("authenticate", async ({ page, request }, testInfo) => {
         break;
       }
     } catch {
-      // connection refused or timeout — backend not ready yet
+      // connection refused or timeout
     }
-    if (attempt % 6 === 0) {
+    if (attempt % 4 === 0) {
       console.log(
         `  auth-setup: waiting for backend... (${attempt * 5}s elapsed)`,
       );
@@ -47,105 +51,54 @@ setup("authenticate", async ({ page, request }, testInfo) => {
   }
   if (!backendReady) {
     throw new Error(
-      "Backend health check failed after 120s.\n" +
-        "  Ensure the OE container is running and accessible at the baseURL.\n" +
-        '  Check logs: docker logs <oe-container> 2>&1 | grep -i "error\\|exception"',
+      "Backend health check failed after 60s.\n" +
+        "  Ensure the OE container is running and accessible at the baseURL.",
     );
   }
 
-  // ── Step 2: Login with retry ──────────────────────────────────
-  // Retry the full login flow (navigate → fill → submit → verify redirect).
-  // This handles transient failures: CSRF token mismatch, stale session,
-  // form not yet hydrated, or server temporarily rejecting logins.
-  const MAX_LOGIN_ATTEMPTS = 3;
-  let loginSuccess = false;
-  let lastError: string | undefined;
+  // ── Step 2: Login ─────────────────────────────────────────────
+  // Navigate to login page to establish browser session cookie,
+  // then call ValidateLogin via fetch from the page context.
+  await page.goto("login", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1_000);
 
-  for (let attempt = 1; attempt <= MAX_LOGIN_ATTEMPTS; attempt++) {
-    // Navigate to login page with a fresh page state
-    await page.goto("login", { waitUntil: "domcontentloaded" });
+  const loginResult = await page.evaluate(
+    async ({ user, pass }) => {
+      await fetch("/api/OpenELIS-Global/LoginPage", {
+        credentials: "include",
+      });
+      const res = await fetch(
+        "/api/OpenELIS-Global/ValidateLogin?apiCall=true",
+        {
+          credentials: "include",
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `loginName=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`,
+        },
+      );
+      const data = await res.json().catch(() => null);
+      return { status: res.status, data };
+    },
+    { user: username, pass: password },
+  );
 
-    // If we're already past login (e.g., session still valid), skip
-    if (!page.url().includes("/login")) {
-      loginSuccess = true;
-      break;
-    }
-
-    // Wait for form inputs to appear (OE renders shell before hydration)
-    const usernameInput = page
-      .getByRole("textbox", { name: /username/i })
-      .or(page.locator('input[name="loginName"]'))
-      .first();
-    const passwordInput = page
-      .locator('input[type="password"]')
-      .or(page.locator('input[name="password"]'))
-      .first();
-
-    try {
-      await expect(usernameInput).toBeVisible({ timeout: 10_000 });
-      await expect(passwordInput).toBeVisible({ timeout: 5_000 });
-    } catch {
-      lastError = `Login form not visible (attempt ${attempt})`;
-      await page.waitForTimeout(3_000);
-      continue;
-    }
-
-    // Clear and fill credentials
-    await usernameInput.clear();
-    await usernameInput.fill(username);
-    await passwordInput.clear();
-    await passwordInput.fill(password);
-
-    // Submit and wait for redirect away from /login
-    const loginButton = page
-      .getByRole("button", { name: /^(login|submit|sign.in)$/i })
-      .first();
-    try {
-      await Promise.all([
-        page.waitForURL((url) => !url.pathname.endsWith("/login"), {
-          timeout: 15_000,
-        }),
-        loginButton.click(),
-      ]);
-      loginSuccess = true;
-      break;
-    } catch {
-      // Check what went wrong
-      const currentUrl = page.url();
-      if (!currentUrl.includes("/login")) {
-        // Actually navigated away — success despite timeout race
-        loginSuccess = true;
-        break;
-      }
-      // Check for visible error messages on the page
-      const errorText = await page
-        .locator(".error, .login-error, [role='alert']")
-        .textContent()
-        .catch(() => null);
-      lastError = errorText
-        ? `Login rejected (attempt ${attempt}): ${errorText}`
-        : `Login did not redirect (attempt ${attempt}). Page stayed on /login.`;
-      console.log(`  auth-setup: ${lastError}`);
-      // Brief pause before retry to let server state settle
-      await page.waitForTimeout(2_000);
-    }
-  }
-
-  if (!loginSuccess) {
+  if (loginResult.status !== 200 || !loginResult.data?.success) {
     throw new Error(
-      `Authentication failed after ${MAX_LOGIN_ATTEMPTS} attempts.\n` +
-        `  Last error: ${lastError}\n` +
+      `Login API returned ${loginResult.status}: ${JSON.stringify(loginResult.data)}\n` +
         `  Credentials: ${username} / ***\n` +
         "  Possible causes:\n" +
         "    - Wrong password (check TEST_PASS env var)\n" +
-        "    - Account locked (check login_user.account_locked in DB)\n" +
-        '    - Backend error (check: docker logs <oe-container> 2>&1 | grep "login")',
+        '    - zsh ! escaping: use double quotes: TEST_PASS="adminADMIN!"\n' +
+        "    - Account locked (check login_user.account_locked in DB)",
     );
   }
 
+  // Navigate to propagate cookies and verify auth
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1_000);
+
   // ── Step 3: Verify authenticated state ────────────────────────
-  // Navigate to a protected route and confirm we're not bounced to /login.
-  await page.goto("analyzers", { waitUntil: "networkidle" });
+  await page.goto("analyzers", { waitUntil: "domcontentloaded" });
   await expect(page).not.toHaveURL(/\/login(?:\?|$)/, { timeout: 15_000 });
 
   // ── Step 4: Save session ──────────────────────────────────────

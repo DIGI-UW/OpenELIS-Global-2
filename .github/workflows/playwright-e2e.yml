@@ -10,7 +10,8 @@ jobs:
     name: Run Playwright E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    
+    environment: e2e
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -63,13 +64,13 @@ jobs:
             < src/test/resources/fixtures/file-import-e2e.sql
 
       - name: Run Playwright tests
-        run: npm run pw:test -- --project=setup --project=chromium --project=file-import
+        run: npm run pw:test -- --project=core-app
         working-directory: frontend
         env:
           CI: true
           BASE_URL: https://localhost
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
-          TEST_PASS: ${{ secrets.TEST_PASS || 'adminADMIN!' }}
+          TEST_PASS: ${{ secrets.TEST_PASS }}
 
       - name: Upload Playwright HTML report
         if: failure()

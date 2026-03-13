@@ -19,6 +19,8 @@ export class AnalyzerFormPage {
   readonly ipAddressInput: Locator;
   readonly portInput: Locator;
   readonly statusDropdown: Locator;
+  readonly connectionFields: Locator;
+  readonly fileProtocolInfo: Locator;
   readonly saveButton: Locator;
   readonly cancelButton: Locator;
   readonly notification: Locator;
@@ -49,6 +51,12 @@ export class AnalyzerFormPage {
     this.portInput = page.locator('[data-testid="analyzer-form-port-input"]');
     this.statusDropdown = page.locator(
       '[data-testid="analyzer-form-status-dropdown"]',
+    );
+    this.connectionFields = page.locator(
+      '[data-testid="analyzer-form-connection-fields"]',
+    );
+    this.fileProtocolInfo = page.locator(
+      '[data-testid="analyzer-form-file-protocol-info"]',
     );
     this.saveButton = page.locator('[data-testid="analyzer-form-save-button"]');
     this.cancelButton = page.locator(
@@ -110,6 +118,11 @@ export class AnalyzerFormPage {
   /** Assert a success notification appeared */
   async expectSuccessNotification() {
     await expect(this.notification).toBeVisible({ timeout: 10000 });
+    const cls = await this.notification.getAttribute("class");
+    if (cls && /error/i.test(cls)) {
+      const text = await this.notification.textContent();
+      throw new Error(`Expected success notification but got error: ${text}`);
+    }
     await expect(this.notification).toHaveAttribute("class", /success|info/i);
   }
 

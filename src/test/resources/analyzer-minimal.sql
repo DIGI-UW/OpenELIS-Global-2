@@ -1,6 +1,6 @@
 -- Analyzer Minimal Fixture (2-Table Model)
 -- Self-contained, hand-authored SQL for focused plugin testing.
--- Creates 3 analyzers (2006, 2007, 2013) with config columns on the analyzer row.
+-- Creates 4 analyzers (2006, 2007, 2013, 2014) with config columns on the analyzer row.
 -- No dependency on xml-to-sql.py or load-analyzer-test-data.sh.
 --
 -- Schema: 2-table model (analyzer_type + analyzer) after PR #2802 merge.
@@ -14,8 +14,9 @@ SET search_path TO clinlims;
 -- =============================================================================
 -- PluginRegistryService auto-creates these at startup when plugin JARs are loaded.
 -- Names MUST match PluginRegistryService.derivePluginName() output:
---   GenericASTMAnalyzer → "Generic ASTM"
---   GenericHL7Analyzer  → "Generic HL7"
+--   GenericASTMAnalyzer  → "Generic ASTM"
+--   GenericHL7Analyzer   → "Generic HL7"
+--   GenericFileAnalyzer  → "Generic File"
 -- These INSERTs are a fallback for environments where plugins aren't loaded
 -- (e.g., unit tests without the full plugin JAR lifecycle).
 
@@ -29,6 +30,12 @@ INSERT INTO analyzer_type (id, name, description, plugin_class_name, protocol, i
 VALUES (nextval('analyzer_type_seq'), 'Generic HL7', 'Generic HL7 - Dashboard-configurable analyzer (requires identifier_pattern)',
         'org.openelisglobal.plugins.analyzer.generichl7.GenericHL7Analyzer',
         'HL7', true, true, NOW())
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO analyzer_type (id, name, description, plugin_class_name, protocol, is_generic_plugin, is_active, last_updated)
+VALUES (nextval('analyzer_type_seq'), 'Generic File', 'Generic File - Dashboard-configurable file import analyzer',
+        'org.openelisglobal.plugins.analyzer.genericfile.GenericFileAnalyzer',
+        'FILE', true, true, NOW())
 ON CONFLICT (name) DO NOTHING;
 
 -- =============================================================================
@@ -54,7 +61,11 @@ VALUES
   -- OE identifies the analyzer from the ASTM H-record, not the source IP.
   (2013, 'Cepheid GeneXpert (ASTM Mode)', 'MOLECULAR', 'ASTM LIS2-A2 over TCP/IP', true,
    '172.20.1.100', 9600, 'ASTM_LIS2_A2', 'ACTIVE',
-   'GENEXPERT.*|CEPHEID.*', NOW())
+   'GENEXPERT.*|CEPHEID.*', NOW()),
+  -- QuantStudio 5: GenericFile, molecular, FILE import (EXCEL)
+  (2014, 'QuantStudio 5', 'MOLECULAR', 'QuantStudio QS5 Real-Time PCR (FILE import)', true,
+   NULL, NULL, NULL, 'ACTIVE',
+   NULL, NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- =============================================================================
@@ -68,6 +79,10 @@ UPDATE analyzer SET analyzer_type_id = (
 UPDATE analyzer SET analyzer_type_id = (
   SELECT id FROM analyzer_type WHERE name = 'Generic HL7'
 ) WHERE id = 2007 AND analyzer_type_id IS NULL;
+
+UPDATE analyzer SET analyzer_type_id = (
+  SELECT id FROM analyzer_type WHERE name = 'Generic File'
+) WHERE id = 2014 AND analyzer_type_id IS NULL;
 
 -- =============================================================================
 -- 4. TEST MAPPINGS for GeneXpert ASTM (analyzer_test_map composite PK)
@@ -86,7 +101,47 @@ VALUES
 ON CONFLICT (analyzer_type_id, analyzer_test_name) DO NOTHING;
 
 -- =============================================================================
--- 5. ADVANCE SEQUENCE (avoid ID collisions with future inserts)
+-- 5. FILE IMPORT CONFIGURATION for QuantStudio 5
+-- =============================================================================
+
+INSERT INTO file_import_configuration (
+  id, analyzer_id, import_directory, file_pattern,
+  archive_directory, error_directory, column_mappings,
+  delimiter, has_header, active, fhir_uuid, sys_user_id,
+  last_updated, file_format
+) VALUES (
+  'a0000000-0000-0000-0000-000000002014',
+  2014,
+  '/data/analyzer-imports/quantstudio-5/incoming',
+  '*.xls',
+  '/data/analyzer-imports/quantstudio-5/processed',
+  '/data/analyzer-imports/quantstudio-5/errors',
+  '{"Sample Name":"sampleId","Target Name":"testCode","Quantity Mean":"result","CT":"ctValue","Well Position":"position"}',
+  E'\t',
+  true,
+  true,
+  'a0000000-0000-0000-0000-000000002014',
+  '1',
+  NOW(),
+  'EXCEL'
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO analyzer_plugin_config (analyzer_id, config, sys_user_id, last_updated)
+VALUES (
+  2014,
+  '{
+    "profileMeta":{"id":"quantstudio","version":"1.1.0","displayName":"QuantStudio QS5/QS7"},
+    "protocol":{"name":"FILE","format":"EXCEL"},
+    "column_mapping":{"Sample Name":"sampleId","Target Name":"testCode","Quantity Mean":"result","CT":"ctValue","Well Position":"position"},
+    "default_test_mappings":{"VIH-1":"HIV-1 VL (LOINC 20447-9)","IC":"Internal Control"},
+    "configDefaults":{"fileFormat":"EXCEL","hasHeader":true,"sheetIndex":0}
+  }'::jsonb,
+  '1',
+  NOW()
+) ON CONFLICT (analyzer_id) DO NOTHING;
+
+-- =============================================================================
+-- 6. ADVANCE SEQUENCE (avoid ID collisions with future inserts)
 -- =============================================================================
 
 SELECT setval('analyzer_seq', GREATEST(
@@ -95,7 +150,7 @@ SELECT setval('analyzer_seq', GREATEST(
 ));
 
 -- =============================================================================
--- 6. VERIFICATION (DO block — raises NOTICE, never fails)
+-- 7. VERIFICATION (DO block — raises NOTICE, never fails)
 -- =============================================================================
 
 DO $$
@@ -104,15 +159,18 @@ DECLARE
   v_type_count       INTEGER;
   v_map_count        INTEGER;
   v_linked_count     INTEGER;
+  v_file_cfg_count   INTEGER;
 BEGIN
-  SELECT COUNT(*) INTO v_analyzer_count FROM analyzer WHERE id IN (2006, 2007, 2013);
-  SELECT COUNT(*) INTO v_type_count FROM analyzer_type WHERE name IN ('Generic ASTM', 'Generic HL7');
+  SELECT COUNT(*) INTO v_analyzer_count FROM analyzer WHERE id IN (2006, 2007, 2013, 2014);
+  SELECT COUNT(*) INTO v_type_count FROM analyzer_type WHERE name IN ('Generic ASTM', 'Generic HL7', 'Generic File');
   SELECT COUNT(*) INTO v_map_count FROM analyzer_test_map WHERE analyzer_id = '2013';
-  SELECT COUNT(*) INTO v_linked_count FROM analyzer WHERE id IN (2006, 2007, 2013) AND analyzer_type_id IS NOT NULL;
+  SELECT COUNT(*) INTO v_linked_count FROM analyzer WHERE id IN (2006, 2007, 2013, 2014) AND analyzer_type_id IS NOT NULL;
+  SELECT COUNT(*) INTO v_file_cfg_count FROM file_import_configuration WHERE analyzer_id = 2014;
 
   RAISE NOTICE 'analyzer-minimal.sql verification:';
-  RAISE NOTICE '  analyzers:      % / 3 expected', v_analyzer_count;
-  RAISE NOTICE '  analyzer_types: % / 2 expected', v_type_count;
+  RAISE NOTICE '  analyzers:      % / 4 expected', v_analyzer_count;
+  RAISE NOTICE '  analyzer_types: % / 3 expected', v_type_count;
   RAISE NOTICE '  test_mappings:  % / 4 expected', v_map_count;
-  RAISE NOTICE '  type_linked:    % / 3 expected', v_linked_count;
+  RAISE NOTICE '  type_linked:    % / 4 expected', v_linked_count;
+  RAISE NOTICE '  file_configs:   % / 1 expected', v_file_cfg_count;
 END $$;

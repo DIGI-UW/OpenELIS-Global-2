@@ -11,24 +11,48 @@ test.describe("Analyzer Plugin Config", () => {
 
     await list.goto();
     await list.expectLoaded();
-    await list.clickAdd();
-    await form.expectOpen();
 
-    // Generic profile defaults are only available when a generic plugin is selected.
-    // Plugin options load async, so retry opening/selecting briefly.
+    // Open form and select plugin. When running in parallel with other tests
+    // that also hit /analyzers, the modal can close from session interference.
+    // Retry the full open→select flow if the dropdown isn't reachable.
     let selectedPlugin = false;
-    for (let attempt = 1; attempt <= 4; attempt++) {
-      await form.pluginTypeDropdown.click();
-      const genericAstmOption = page
-        .getByRole("option", { name: /Generic ASTM/i })
-        .first();
-      if (await genericAstmOption.isVisible().catch(() => false)) {
-        await genericAstmOption.click();
-        selectedPlugin = true;
-        break;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await list.clickAdd();
+      await form.expectOpen();
+
+      try {
+        await expect(form.pluginTypeDropdown).toBeVisible({ timeout: 5_000 });
+      } catch {
+        // Modal may have closed — retry
+        if (await form.modal.isVisible()) {
+          await form.cancelButton.click().catch(() => {});
+        }
+        await page.waitForTimeout(1_000);
+        continue;
       }
-      await page.keyboard.press("Escape");
-      await page.waitForTimeout(1_000);
+
+      for (let sel = 1; sel <= 4; sel++) {
+        await form.pluginTypeDropdown.click();
+        const genericAstmOption = page
+          .getByRole("option", { name: /Generic ASTM/i })
+          .first();
+        if (await genericAstmOption.isVisible().catch(() => false)) {
+          await genericAstmOption.click();
+          selectedPlugin = true;
+          break;
+        }
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(1_000);
+      }
+      if (selectedPlugin) break;
+
+      // Close form and retry
+      if (await form.modal.isVisible()) {
+        await form.cancelButton.click().catch(() => {});
+        await expect(form.modal)
+          .not.toBeVisible({ timeout: 2_000 })
+          .catch(() => {});
+      }
     }
     expect(
       selectedPlugin,

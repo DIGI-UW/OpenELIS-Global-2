@@ -60,7 +60,7 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
     @Override
     @Transactional(readOnly = true)
     public List<AnalyzerResults> getResultsbyAnalyzer(String analyzerId) {
-        return baseObjectDAO.getAllMatchingOrdered("analyzerId", Integer.parseInt(analyzerId), "id", false);
+        return baseObjectDAO.getAllMatchingOrdered("analyzerId", analyzerId, "id", false);
     }
 
     @Override
