@@ -313,28 +313,14 @@ for (const analyzer of ANALYZERS) {
       const resultsTable = page.locator("table, .orderLegendBody");
       await expect(resultsTable.first()).toBeVisible({ timeout: 15_000 });
 
-      // Check for sample accession numbers
+      // Check for sample accession numbers — MUST find at least one
       const sampleLocators = analyzer.sampleIds.map((id) => page.getByText(id));
       const anyResult = sampleLocators.reduce((acc, loc) => acc.or(loc));
 
-      try {
-        await expect(anyResult.first()).toBeVisible({ timeout: 15_000 });
-        console.log(
-          `Results found in Analyzer Results page for ${analyzer.name}!`,
-        );
-      } catch {
-        console.log(
-          "No results visible in table. Console errors:",
-          consoleErrors,
-        );
-        console.log("Current URL:", page.url());
-
-        const bodyText = await page
-          .locator("body")
-          .textContent({ timeout: 2_000 })
-          .catch(() => "(empty)");
-        console.log("Page text:", bodyText?.substring(0, 1000));
-      }
+      await expect(anyResult.first()).toBeVisible({ timeout: 15_000 });
+      console.log(
+        `Results found in Analyzer Results page for ${analyzer.name}!`,
+      );
 
       // Scroll through results for the video
       await page.waitForTimeout(2_000);
