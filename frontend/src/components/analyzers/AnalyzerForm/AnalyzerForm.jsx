@@ -181,6 +181,16 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     return defaultConfigs.filter((c) => c.protocol === proto);
   }, [defaultConfigs, selectedPluginType]);
 
+  // Filter profiles by the selected plugin type's protocol
+  const filteredDefaultConfigs =
+    isGenericPlugin && selectedPluginType?.protocol
+      ? defaultConfigs.filter(
+          (c) =>
+            c.protocol?.toUpperCase() ===
+            selectedPluginType.protocol?.toUpperCase(),
+        )
+      : defaultConfigs;
+
   useEffect(() => {
     if (open) {
       setLoadingDefaults(true);

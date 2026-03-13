@@ -57,7 +57,7 @@ jobs:
           timeout 60 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done' || exit 1
           echo "Application is ready"
 
-      - name: Load FILE analyzer E2E fixtures
+      - name: Load FILE analyzer E2E fixtures (deactivate legacy types)
         run: |
           docker exec -i openelisglobal-database \
             psql -U clinlims -d clinlims \
@@ -69,15 +69,6 @@ jobs:
             /data/analyzer-imports/e2e-qs5/incoming \
             /data/analyzer-imports/e2e-qs7/incoming \
             /data/analyzer-imports/e2e-fluorocycler/incoming
-
-      - name: Copy fixture files into container
-        run: |
-          docker cp frontend/playwright/fixtures/quantstudio-e2e-results-qs5.xls \
-            openelisglobal-webapp:/data/analyzer-imports/e2e-qs5/incoming/
-          docker cp frontend/playwright/fixtures/quantstudio-e2e-results.xlsx \
-            openelisglobal-webapp:/data/analyzer-imports/e2e-qs7/incoming/
-          docker cp frontend/playwright/fixtures/fluorocycler-e2e-results.xlsx \
-            openelisglobal-webapp:/data/analyzer-imports/e2e-fluorocycler/incoming/
 
       - name: Run Playwright tests
         run: npm run pw:test -- --project=core-app
