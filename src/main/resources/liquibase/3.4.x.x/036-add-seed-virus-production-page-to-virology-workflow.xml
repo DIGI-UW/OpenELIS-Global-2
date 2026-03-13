@@ -27,6 +27,8 @@
   </changeSet>
 
   <changeSet id="2" author="AI-Assistant" >
+    <validCheckSum>8:afa1dd5a7b283d562456d52440ec7192</validCheckSum>
+    <validCheckSum>8:6a852497044506c72e3d6a265a1c52a6</validCheckSum>
     <comment>Add Seed Virus Production page to existing Virology notebook instances</comment>
     <sql>
       INSERT INTO clinlims.notebook_page (id, notebook_id, title, page_order, instructions, last_updated)

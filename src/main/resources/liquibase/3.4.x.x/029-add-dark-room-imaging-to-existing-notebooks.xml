@@ -15,6 +15,8 @@
     -->
 
     <changeSet id="add-dark-room-imaging-page-to-existing-notebooks" author="openelis-virology">
+        <validCheckSum>8:25c076fc0e7798082b15619d64c1b66a</validCheckSum>
+        <validCheckSum>8:98ea634f2b09e14f94fd00478fca4ead</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <!-- Only run if the Virology template exists -->
             <sqlCheck expectedResult="1">

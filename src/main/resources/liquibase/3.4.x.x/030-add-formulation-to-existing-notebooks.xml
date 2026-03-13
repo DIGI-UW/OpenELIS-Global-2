@@ -15,6 +15,8 @@
     -->
 
     <changeSet id="add-formulation-page-to-existing-notebooks" author="openelis-virology">
+        <validCheckSum>8:763543b1867b17df2cbf27ae18247484</validCheckSum>
+        <validCheckSum>8:5f8f9ca9ea7dd56af286e34de708060d</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <!-- Only run if the Virology template exists -->
             <sqlCheck expectedResult="1">

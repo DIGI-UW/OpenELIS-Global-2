@@ -27,6 +27,8 @@
   </changeSet>
 
   <changeSet id="2" author="AI-Assistant" >
+    <validCheckSum>8:3cda842feadf5513911cd580192fdb20</validCheckSum>
+    <validCheckSum>8:8c61d097a0c77f25a0d4db4267479944</validCheckSum>
     <comment>Add Preclinical and Clinical Trials page to existing Virology notebook instances</comment>
     <sql>
       INSERT INTO clinlims.notebook_page (id, notebook_id, title, page_order, instructions, last_updated)

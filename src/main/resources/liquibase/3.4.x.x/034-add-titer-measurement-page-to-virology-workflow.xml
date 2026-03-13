@@ -49,6 +49,8 @@
     </changeSet>
 
     <changeSet id="add-titer-measurement-page-to-existing-virology-notebooks" author="openelis-virology">
+        <validCheckSum>8:ffbda6327602f40317cea1e928128e93</validCheckSum>
+        <validCheckSum>8:4c9b5475deb58002995a038ebb7cb1fa</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook

@@ -77,6 +77,8 @@
     </changeSet>
 
     <changeSet id="add-packaging-page-to-existing-virology-notebooks" author="openelis-virology">
+        <validCheckSum>8:09ce71d72c9e2bd6b9da013f8d8e4380</validCheckSum>
+        <validCheckSum>8:de1fb413bf6bd76de7a38ed273a2891c</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <!-- Only run if the Virology template exists -->
             <sqlCheck expectedResult="1">

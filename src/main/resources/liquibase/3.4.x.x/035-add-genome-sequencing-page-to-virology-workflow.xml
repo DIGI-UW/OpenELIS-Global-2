@@ -27,6 +27,8 @@
   </changeSet>
 
   <changeSet id="2" author="AI-Assistant">
+    <validCheckSum>8:720e0126754b6a0b6a78e414ca23be17</validCheckSum>
+    <validCheckSum>8:2e149a8fba70253744e740849b49028f</validCheckSum>
     <comment>Add Genome Sequencing page to existing Virology notebook instances</comment>
     <sql>
       INSERT INTO clinlims.notebook_page (id, notebook_id, title, page_order, instructions, last_updated)

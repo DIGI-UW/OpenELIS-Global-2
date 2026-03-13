@@ -49,6 +49,8 @@
     </changeSet>
 
     <changeSet id="add-virus-isolation-page-to-existing-virology-notebooks" author="openelis-virology">
+        <validCheckSum>8:00fe227430bb7d96e7ddfb9f4711d6f2</validCheckSum>
+        <validCheckSum>8:cb21474b8c765a807ec0efb4b312831f</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook
