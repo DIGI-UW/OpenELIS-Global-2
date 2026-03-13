@@ -5,6 +5,7 @@
     "displayName": "QuantStudio QS5/QS7",
     "manufacturer": "Thermo Fisher"
   },
+  "category": "MOLECULAR",
   "protocol": {
     "name": "FILE",
     "format": "EXCEL"

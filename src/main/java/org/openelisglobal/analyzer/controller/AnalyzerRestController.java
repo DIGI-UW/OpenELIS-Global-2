@@ -203,8 +203,10 @@ public class AnalyzerRestController extends BaseRestController {
             analyzer.setIpAddress(
                     form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty() ? form.getIpAddress() : null);
             analyzer.setPort(form.getPort());
-            ProtocolVersion pv = ProtocolVersion.fromValue(form.getProtocolVersion());
-            analyzer.setProtocolVersion(pv != null ? pv : ProtocolVersion.ASTM_LIS2_A2);
+            if (form.getProtocolVersion() != null && !form.getProtocolVersion().trim().isEmpty()) {
+                ProtocolVersion pv = ProtocolVersion.fromValue(form.getProtocolVersion());
+                analyzer.setProtocolVersion(pv != null ? pv : ProtocolVersion.ASTM_LIS2_A2);
+            }
             analyzer.setTestUnitIds(form.getTestUnitIds() != null ? form.getTestUnitIds() : new ArrayList<>());
             if (form.getIdentifierPattern() != null) {
                 analyzer.setIdentifierPattern(form.getIdentifierPattern());
@@ -238,7 +240,8 @@ public class AnalyzerRestController extends BaseRestController {
 
                     // For FILE protocol profiles, auto-create FileImportConfiguration
                     if (isFileProtocol(configData)) {
-                        fileImportService.autoCreateFromProfile(analyzerId, configData, form.getName());
+                        fileImportService.autoCreateFromProfile(analyzerId, configData, form.getName(),
+                                getSysUserId(request));
                     }
                 } else {
                     logger.warn("Could not load default config '{}' for test mapping auto-creation",
@@ -1232,9 +1235,27 @@ public class AnalyzerRestController extends BaseRestController {
                     String filename = file.getFileName().toString().replace(".json", "");
                     template.put("id", protocol + "/" + filename);
                     template.put("protocol", protocol.toUpperCase());
-                    template.put("analyzerName", config.get("analyzer_name"));
-                    template.put("manufacturer", config.get("manufacturer"));
-                    template.put("category", config.get("category"));
+
+                    // Top-level keys (ASTM/HL7 profiles)
+                    String analyzerName = (String) config.get("analyzer_name");
+                    String manufacturer = (String) config.get("manufacturer");
+                    String category = (String) config.get("category");
+
+                    // Fallback to profileMeta (FILE profiles store data there)
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> profileMeta = (Map<String, Object>) config.get("profileMeta");
+                    if (profileMeta != null) {
+                        if (analyzerName == null) {
+                            analyzerName = (String) profileMeta.get("displayName");
+                        }
+                        if (manufacturer == null) {
+                            manufacturer = (String) profileMeta.get("manufacturer");
+                        }
+                    }
+
+                    template.put("analyzerName", analyzerName);
+                    template.put("manufacturer", manufacturer);
+                    template.put("category", category);
 
                     templates.add(template);
                 } catch (Exception e) {
