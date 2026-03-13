@@ -6,10 +6,12 @@ import { showTitleCard, showStepCard } from "../helpers/title-card";
 /**
  * FILE Import → Results E2E Tests (Parameterized)
  *
- * Demonstrates the watcher-pipeline MVP workflow for each analyzer:
- *   1. Copy a results file into the analyzer's watched directory
- *   2. Wait for FileImportWatchService to process it (polls every 60s)
- *   3. Navigate to Analyzer Results and verify imported data appears
+ * Demonstrates the full FILE analyzer workflow for each analyzer:
+ *   1. View analyzer configuration (name, type, protocol)
+ *   2. View file import settings (directory, pattern, column mappings)
+ *   3. Copy a results file into the analyzer's watched directory
+ *   4. Wait for FileImportWatchService to process it (polls every 60s)
+ *   5. Navigate to Analyzer Results and verify imported data appears
  *
  * Produces demo videos with title/transition screens when run with:
  *   CLEANUP=false PLAYWRIGHT_VIDEO=on TEST_USER=admin TEST_PASS='adminADMIN!' \
@@ -58,9 +60,9 @@ for (const analyzer of ANALYZERS) {
   const fileExtension = path.extname(analyzer.fixture);
 
   test.describe(`${analyzer.name} File Import → Results`, () => {
-    test.setTimeout(180_000); // 3 min — accounts for 60s poll interval
+    test.setTimeout(240_000); // 4 min — accounts for config viewing + 60s poll
 
-    test(`drop ${fileExtension} file, verify results appear in OE`, async ({
+    test(`full flow: config → file drop → results (${fileExtension})`, async ({
       page,
     }) => {
       // Skip if analyzer harness import directory doesn't exist (e.g. in CI)
@@ -75,20 +77,19 @@ for (const analyzer of ANALYZERS) {
         if (msg.type() === "error") consoleErrors.push(msg.text());
       });
 
+      // Verify fixture exists
+      expect(fs.existsSync(FIXTURE_FILE)).toBeTruthy();
+
       // ── Title Card ─────────────────────────────────────────────────
       await showTitleCard(
         page,
         `${analyzer.name} — File Import`,
-        `Watcher pipeline → Analyzer Results (${fileExtension})`,
+        `Full flow: Configuration → Import → Results (${fileExtension})`,
       );
 
-      // ── Step 1: Verify fixture file exists ─────────────────────────
-      expect(fs.existsSync(FIXTURE_FILE)).toBeTruthy();
+      // ── Step 1: Navigate to analyzer list ──────────────────────────
+      await showStepCard(page, 1, "Navigate to Analyzer Dashboard");
 
-      // ── Step 2: Navigate to analyzer list ──────────────────────────
-      await showStepCard(page, 1, "Navigate to Analyzer List");
-
-      // Wait for initial analyzer API response before interacting with the page
       const analyzerApiPromise = page.waitForResponse(
         (resp) =>
           resp.url().includes("/rest/analyzer/analyzers") &&
@@ -101,14 +102,12 @@ for (const analyzer of ANALYZERS) {
       await expect(page.locator('[data-testid="analyzers-list"]')).toBeVisible({
         timeout: 30_000,
       });
-
-      // Wait for at least one row to appear (confirms data rendered)
       await expect(page.locator("tbody tr").first()).toBeVisible({
         timeout: 10_000,
       });
-      await page.waitForTimeout(1_000);
+      await page.waitForTimeout(1_500);
 
-      // Search for this analyzer (use analyzerName for exact backend match)
+      // Search for this analyzer
       const searchInput = page.locator('[data-testid="analyzer-search-input"]');
       await searchInput.fill(analyzer.analyzerName);
       await page.waitForTimeout(1_500);
@@ -122,11 +121,111 @@ for (const analyzer of ANALYZERS) {
       await expect(analyzerRow.first()).toBeVisible({ timeout: 10_000 });
       await page.waitForTimeout(1_000);
 
-      // ── Step 3: Copy file into watched directory ───────────────────
+      // ── Step 2: View analyzer configuration ────────────────────────
+      await showStepCard(page, 2, "View Analyzer Configuration");
+
+      // Click overflow menu on the analyzer row
+      const overflowMenu = analyzerRow
+        .first()
+        .locator('[aria-label="Actions"], .cds--overflow-menu');
+      await overflowMenu.click();
+      await page.waitForTimeout(500);
+
+      // Click "Edit" to open the analyzer form
+      const editButton = page.locator(`[data-testid^="analyzer-action-edit-"]`);
+      await editButton.click();
+      await page.waitForTimeout(2_000);
+
+      // The AnalyzerForm modal should be visible — show it for the video
+      const analyzerFormModal = page.locator(".cds--modal.is-visible");
+      if (
+        await analyzerFormModal
+          .first()
+          .isVisible({ timeout: 5_000 })
+          .catch(() => false)
+      ) {
+        console.log("Analyzer form modal visible");
+        await page.waitForTimeout(3_000); // Pause for video viewers
+
+        // Close the modal
+        const closeButton = analyzerFormModal.locator(
+          'button[aria-label="close"], .cds--modal-close',
+        );
+        if (
+          await closeButton
+            .first()
+            .isVisible({ timeout: 2_000 })
+            .catch(() => false)
+        ) {
+          await closeButton.first().click();
+        } else {
+          await page.keyboard.press("Escape");
+        }
+        await page.waitForTimeout(1_000);
+      }
+
+      // ── Step 3: View file import configuration ─────────────────────
+      await showStepCard(page, 3, "View File Import Configuration");
+
+      // Re-open overflow menu
+      await overflowMenu.click();
+      await page.waitForTimeout(500);
+
+      // Click "Configure File Import"
+      const fileImportButton = page.locator(
+        `[data-testid^="analyzer-action-file-import-"]`,
+      );
+      await fileImportButton.click();
+      await page.waitForTimeout(2_000);
+
+      // The FileImportConfiguration modal should be visible
+      const fileImportModal = page.locator(".cds--modal.is-visible");
+      if (
+        await fileImportModal
+          .first()
+          .isVisible({ timeout: 5_000 })
+          .catch(() => false)
+      ) {
+        console.log("File import config modal visible");
+        // Scroll down slowly to show all fields in the video
+        await page.waitForTimeout(2_000);
+        const modalContent = fileImportModal.locator(
+          ".cds--modal-content, .cds--modal-container",
+        );
+        if (
+          await modalContent
+            .first()
+            .isVisible({ timeout: 1_000 })
+            .catch(() => false)
+        ) {
+          await modalContent
+            .first()
+            .evaluate((el) => el.scrollBy({ top: 300, behavior: "smooth" }));
+        }
+        await page.waitForTimeout(2_000);
+
+        // Close the modal
+        const closeButton = fileImportModal.locator(
+          'button[aria-label="close"], .cds--modal-close',
+        );
+        if (
+          await closeButton
+            .first()
+            .isVisible({ timeout: 2_000 })
+            .catch(() => false)
+        ) {
+          await closeButton.first().click();
+        } else {
+          await page.keyboard.press("Escape");
+        }
+        await page.waitForTimeout(1_000);
+      }
+
+      // ── Step 4: Copy file into watched directory ───────────────────
       await showStepCard(
         page,
-        2,
-        `Copy ${fileExtension} file to watched directory`,
+        4,
+        `Drop ${fileExtension} file into watched directory`,
       );
 
       const timestamp = Date.now();
@@ -138,26 +237,24 @@ for (const analyzer of ANALYZERS) {
       expect(fs.existsSync(destPath)).toBeTruthy();
       await page.waitForTimeout(2_000);
 
-      // ── Step 4: Wait for FileImportWatchService to process ─────────
+      // ── Step 5: Wait for FileImportWatchService to process ─────────
       await showStepCard(
         page,
-        3,
+        5,
         "Waiting for FileImportWatchService (polls every 60s)...",
       );
 
-      let resultsFound = false;
+      let fileProcessed = false;
       const maxWaitMs = 120_000;
       const pollIntervalMs = 5_000;
       let elapsed = 0;
 
-      console.log(
-        "Waiting for FileImportWatchService to process file (polls every 60s)...",
-      );
+      console.log("Waiting for FileImportWatchService to process file...");
 
       while (elapsed < maxWaitMs) {
         if (!fs.existsSync(destPath)) {
           console.log(`File processed after ${elapsed / 1000}s`);
-          resultsFound = true;
+          fileProcessed = true;
           break;
         }
         await page.waitForTimeout(pollIntervalMs);
@@ -168,7 +265,7 @@ for (const analyzer of ANALYZERS) {
         }
       }
 
-      if (!resultsFound) {
+      if (!fileProcessed) {
         console.log(
           "File not moved after timeout — checking API for results anyway",
         );
@@ -176,8 +273,8 @@ for (const analyzer of ANALYZERS) {
 
       await page.waitForTimeout(2_000);
 
-      // ── Step 5: Navigate to Analyzer Results page ──────────────────
-      await showStepCard(page, 4, "View imported results");
+      // ── Step 6: Navigate to Analyzer Results page ──────────────────
+      await showStepCard(page, 6, "View Imported Results");
 
       const apiResponsePromise = page
         .waitForResponse(
@@ -205,19 +302,14 @@ for (const analyzer of ANALYZERS) {
               "First result:",
               JSON.stringify(json.resultList[0]).substring(0, 300),
             );
-          } else {
-            console.log("Response keys:", Object.keys(json));
-            console.log("displayNotFoundMsg:", json.displayNotFoundMsg);
           }
         } catch {
-          console.log("Response body (first 500):", body.substring(0, 500));
+          // Non-JSON response
         }
-      } else {
-        console.log("No API response intercepted for /rest/AnalyzerResults");
       }
       await page.waitForTimeout(3_000);
 
-      // ── Step 6: Verify results appear ──────────────────────────────
+      // ── Step 7: Verify results appear ──────────────────────────────
       const resultsTable = page.locator("table, .orderLegendBody");
       await expect(resultsTable.first()).toBeVisible({ timeout: 15_000 });
 
@@ -237,11 +329,6 @@ for (const analyzer of ANALYZERS) {
         );
         console.log("Current URL:", page.url());
 
-        const noResults = page.getByText(/no.*result|empty/i);
-        if (await noResults.isVisible({ timeout: 2_000 }).catch(() => false)) {
-          console.log("'No results' message displayed");
-        }
-
         const bodyText = await page
           .locator("body")
           .textContent({ timeout: 2_000 })
@@ -249,9 +336,8 @@ for (const analyzer of ANALYZERS) {
         console.log("Page text:", bodyText?.substring(0, 1000));
       }
 
-      await page.waitForTimeout(3_000);
-
-      // ── Step 7: Scroll through results ─────────────────────────────
+      // Scroll through results for the video
+      await page.waitForTimeout(2_000);
       await page.evaluate(() => window.scrollBy(0, 300));
       await page.waitForTimeout(2_000);
 
