@@ -236,7 +236,7 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
     public List<SampleItem> getSampleItemsByExternalID(String externalId) throws LIMSRuntimeException {
         List<SampleItem> sampleItems = null;
         try {
-            String hql = "FROM SampleItem WHERE external_id = :externalId";
+            String hql = "FROM SampleItem s WHERE s.externalId = :externalId ORDER BY s.id";
             sampleItems = entityManager.unwrap(Session.class).createQuery(hql, SampleItem.class)
                     .setParameter("externalId", externalId).getResultList();
         } catch (RuntimeException e) {
@@ -313,8 +313,8 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
         List<Integer> analysisIdInts = analysisIds.stream().map(Integer::parseInt).collect(Collectors.toList());
         Integer aliquotIdInt = Integer.parseInt(aliquot.getId().toString());
         String updateQuery = "UPDATE analysis SET sampitem_id = :aliquotId WHERE id IN (:analysisIds)";
-        entityManager.createNativeQuery(updateQuery).setParameter("aliquotId", aliquotIdInt)
-                .setParameter("analysisIds", analysisIdInts).executeUpdate();
+        entityManager.unwrap(Session.class).createNativeQuery(updateQuery).setParameter("aliquotId", aliquotIdInt)
+                .setParameterList("analysisIds", analysisIdInts).executeUpdate();
     }
 
     @Override
