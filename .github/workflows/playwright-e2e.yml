@@ -63,6 +63,23 @@ jobs:
             psql -U clinlims -d clinlims \
             < src/test/resources/fixtures/file-import-e2e.sql
 
+      - name: Create analyzer import directories in container
+        run: |
+          docker exec openelisglobal-webapp mkdir -p \
+            /data/analyzer-imports/e2e-qs5/incoming \
+            /data/analyzer-imports/e2e-qs7/incoming \
+            /data/analyzer-imports/e2e-fluorocycler/incoming \
+            /data/analyzer-imports/e2e-csv/incoming
+
+      - name: Copy fixture files into container
+        run: |
+          docker cp frontend/playwright/fixtures/quantstudio-e2e-results-qs5.xls \
+            openelisglobal-webapp:/data/analyzer-imports/e2e-qs5/incoming/
+          docker cp frontend/playwright/fixtures/quantstudio-e2e-results.xlsx \
+            openelisglobal-webapp:/data/analyzer-imports/e2e-qs7/incoming/
+          docker cp frontend/playwright/fixtures/fluorocycler-e2e-results.xlsx \
+            openelisglobal-webapp:/data/analyzer-imports/e2e-fluorocycler/incoming/
+
       - name: Run Playwright tests
         run: npm run pw:test -- --project=core-app
         working-directory: frontend

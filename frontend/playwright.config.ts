@@ -48,12 +48,26 @@ export default defineConfig({
         /.*analyzer-simulator\.spec\.ts/,
         /.*analyzer-hl7-simulate\.spec\.ts/,
         /.*demo-quantstudio.*\.spec\.ts/,
+        /.*file-import-results\.spec\.ts/,
       ],
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
       },
       dependencies: ["setup"],
+    },
+    // Video demo project — slowMo for watchable recordings, local use only
+    {
+      name: "file-import-video",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+        launchOptions: {
+          slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
+        },
+      },
+      dependencies: ["setup"],
+      testMatch: ["**/file-import-results*"],
     },
     // Analyzer harness tests — needs bridge + simulator, runs via analyzer-e2e.yml
     {
@@ -69,6 +83,7 @@ export default defineConfig({
         "**/analyzer-simulator*",
         "**/analyzer-hl7-simulate*",
         "**/demo-quantstudio*",
+        "**/file-import-results*",
       ],
     },
   ],
