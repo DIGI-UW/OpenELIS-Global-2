@@ -110,4 +110,22 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
         Analyzer result = query.uniqueResult();
         return Optional.ofNullable(result);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByIpAddressAndPort(String ipAddress, Integer port) {
+        if (ipAddress == null || ipAddress.trim().isEmpty() || port == null || port < 1) {
+            return Optional.empty();
+        }
+        try {
+            String hql = "FROM Analyzer a WHERE a.ipAddress = :ipAddress AND a.port = :port";
+            Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
+            query.setParameter("ipAddress", ipAddress.trim());
+            query.setParameter("port", port);
+            Analyzer result = query.uniqueResult();
+            return Optional.ofNullable(result);
+        } catch (org.hibernate.NonUniqueResultException e) {
+            throw new LIMSRuntimeException("Multiple Analyzers found for IP " + ipAddress + " and port " + port, e);
+        }
+    }
 }
