@@ -13,6 +13,8 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -43,6 +45,8 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 
+@Component("patientHaitiClinical")
+@Scope("prototype")
 public class PatientClinicalReport extends PatientReport implements IReportCreator, IReportParameterSetter {
 
     private static Set<Integer> analysisStatusIds;
@@ -307,11 +311,11 @@ public class PatientClinicalReport extends PatientReport implements IReportCreat
                     .getMessage(sampleCompleteMap.get(reportItem.getAccessionNumber()) ? "report.status.complete"
                             : "report.status.partial"));
             if (reportItem.isCorrectedResult()) {
-                // The report is French only
+                String correctedResult = MessageUtil.getMessage("report.corrected.result");
                 if (reportItem.getNote() != null && reportItem.getNote().length() > 0) {
-                    reportItem.setNote("Résultat corrigé<br/>" + reportItem.getNote());
+                    reportItem.setNote(correctedResult + "<br/>" + reportItem.getNote());
                 } else {
-                    reportItem.setNote("Résultat corrigé");
+                    reportItem.setNote(correctedResult);
                 }
             }
 
