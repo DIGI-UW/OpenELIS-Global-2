@@ -71,7 +71,7 @@ jobs:
             /data/analyzer-imports/e2e-fluorocycler/incoming
 
       - name: Run Playwright tests
-        run: npm run pw:test -- --project=core-app --project=demo
+        run: npm run pw:test -- --project=core-app
         working-directory: frontend
         env:
           CI: true

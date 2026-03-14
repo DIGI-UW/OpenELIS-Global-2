@@ -1548,15 +1548,15 @@ allowlist in `playwright.config.ts`.
 | ------------ | ------------------------------------------------- | -------------------- | ---------------- |
 | `core-app`   | Core UI tests (no plugins/bridge)                 | `playwright-e2e.yml` | Build stack only |
 | `harness`    | Analyzer infra tests (bridge, simulator, plugins) | `analyzer-e2e.yml`   | Full harness     |
-| `demo`       | Workflow demos at normal speed (CI validation)    | Both workflows       | Depends on test  |
+| `demo`       | Workflow demos at normal speed (CI validation)    | `analyzer-e2e.yml`   | Full harness     |
 | `demo-video` | Same demos with `slowMo` + video recording        | Local only           | Harness          |
 
 #### CI Workflows
 
-| Workflow             | Compose Files                                          | Projects Run        | Fixtures Loaded                                    |
-| -------------------- | ------------------------------------------------------ | ------------------- | -------------------------------------------------- |
-| `playwright-e2e.yml` | `build.docker-compose.yml`                             | `core-app` + `demo` | `file-import-e2e.sql`                              |
-| `analyzer-e2e.yml`   | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `demo`  | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+| Workflow             | Compose Files                                          | Projects Run       | Fixtures Loaded                                    |
+| -------------------- | ------------------------------------------------------ | ------------------ | -------------------------------------------------- |
+| `playwright-e2e.yml` | `build.docker-compose.yml`                             | `core-app`         | `file-import-e2e.sql`                              |
+| `analyzer-e2e.yml`   | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
 
 #### Key Patterns
 
@@ -1985,8 +1985,7 @@ Before creating PR, verify ALL items:
 **GitHub Actions workflows (MUST pass):**
 
 - `ci.yml` — Maven build + Spotless format check + unit tests (PR + push)
-- `playwright-e2e.yml` — Build stack + Playwright E2E: `core-app` + `demo`
-  projects (PR)
+- `playwright-e2e.yml` — Build stack + Playwright E2E: `core-app` project (PR)
 - `analyzer-e2e.yml` — Full analyzer harness + Playwright E2E: `harness` +
   `demo` projects (PR)
 - `frontend-qa.yml` — Frontend Docker image build + QA checks (PR)
