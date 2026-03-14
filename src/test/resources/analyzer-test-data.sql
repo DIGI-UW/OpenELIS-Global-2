@@ -25,13 +25,16 @@ INSERT INTO analyzer (id, name, analyzer_type, is_active,
                       ip_address, port, protocol_version, status, test_unit_ids,
                       last_updated)
 VALUES
-  (1000, 'Mock Hematology Analyzer (ASTM Simulator)', 'HEMATOLOGY', true,
+  -- IDs 1000-1003: Feature 004 ASTM mapping test analyzers. Set inactive so they
+  -- don't clutter the analyzer dashboard (no analyzer_plugin_config → "Plugin not found").
+  -- Reactivate with --dataset-004 if testing ASTM field mapping workflows.
+  (1000, 'Mock Hematology Analyzer (ASTM Simulator)', 'HEMATOLOGY', false,
    '172.20.1.100', 5000, 'ASTM_LIS2_A2', 'SETUP', '1,2,3', NOW()),
-  (1001, 'Chemistry Analyzer 1', 'CHEMISTRY', true,
+  (1001, 'Chemistry Analyzer 1', 'CHEMISTRY', false,
    '192.168.1.101', 8081, 'ASTM_LIS2_A2', 'ERROR_PENDING', '1,2', NOW()),
-  (1002, 'Immunology Analyzer 1', 'IMMUNOLOGY', true,
+  (1002, 'Immunology Analyzer 1', 'IMMUNOLOGY', false,
    '192.168.1.102', 8082, 'ASTM_LIS2_A2', 'VALIDATION', '1,2,3,4', NOW()),
-  (1003, 'Microbiology Analyzer 1', 'MICROBIOLOGY', true,
+  (1003, 'Microbiology Analyzer 1', 'MICROBIOLOGY', false,
    '192.168.1.103', 8083, 'ASTM_LIS2_A2', 'SETUP', '1,2', NOW()),
   (1004, 'Hematology Analyzer 2 (Inactive)', 'HEMATOLOGY', false,
    '192.168.1.104', 8084, 'ASTM_LIS2_A2', 'INACTIVE', NULL, NOW())

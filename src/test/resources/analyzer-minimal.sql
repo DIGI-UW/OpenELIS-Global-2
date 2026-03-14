@@ -48,12 +48,12 @@ INSERT INTO analyzer (id, name, analyzer_type, description, is_active,
                       ip_address, port, protocol_version, status,
                       identifier_pattern, last_updated)
 VALUES
-  -- Mindray BA-88A: GenericASTM, chemistry, RS232
-  (2006, 'Mindray BA-88A', 'CHEMISTRY', 'ASTM over RS232 Serial', true,
+  -- Mindray BA-88A: GenericASTM, chemistry, RS232 (inactive — not in MVP UAT scope)
+  (2006, 'Mindray BA-88A', 'CHEMISTRY', 'ASTM over RS232 Serial', false,
    '172.20.1.100', 9600, 'ASTM_LIS2_A2', 'ACTIVE',
    'MINDRAY.*BA-88A|BA88A', NOW()),
-  -- Mindray BC-5380: GenericHL7, hematology, TCP/MLLP
-  (2007, 'Mindray BC-5380', 'HEMATOLOGY', 'HL7 v2.3.1 over TCP/IP (MLLP)', true,
+  -- Mindray BC-5380: GenericHL7, hematology, TCP/MLLP (inactive — not in MVP UAT scope)
+  (2007, 'Mindray BC-5380', 'HEMATOLOGY', 'HL7 v2.3.1 over TCP/IP (MLLP)', false,
    '172.20.1.101', 5562, 'HL7_V2_3_1', 'ACTIVE',
    'MINDRAY.*BC.?5380|BC5380', NOW()),
   -- GeneXpert ASTM Mode: GenericASTM, molecular, TCP/IP

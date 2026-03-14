@@ -15,31 +15,33 @@
     <!-- identifier_pattern on analyzer row = runtime pattern matching -->
     <!-- ================================================================= -->
 
+    <!-- IDs 2006-2012: Mindray analyzers — inactive for MVP UAT (no plugin
+        configs). Reactivate when Mindray ASTM/HL7 integration is ready. -->
     <!-- ID 2006: Mindray BA-88A (GenericASTM / CHEMISTRY) -->
     <analyzer id="2006" name="Mindray BA-88A"
         analyzer_type="CHEMISTRY" DESCRIPTION="ASTM over RS232 Serial"
-        identifier_pattern="MINDRAY.*BA-88A|BA88A" is_active="true"
+        identifier_pattern="MINDRAY.*BA-88A|BA88A" is_active="false"
         ip_address="172.20.1.100" port="9600" protocol_version="ASTM_LIS2_A2"
         status="ACTIVE" last_updated="2026-02-02 00:00:00" />
 
     <!-- ID 2007: Mindray BC-5380 (GenericHL7 / HEMATOLOGY) -->
     <analyzer id="2007" name="Mindray BC-5380"
         analyzer_type="HEMATOLOGY" DESCRIPTION="HL7 v2.3.1 over TCP/IP (MLLP)"
-        identifier_pattern="MINDRAY.*BC.?5380|BC5380" is_active="true"
+        identifier_pattern="MINDRAY.*BC.?5380|BC5380" is_active="false"
         ip_address="172.20.1.101" port="5562" protocol_version="HL7_V2_3_1"
         status="ACTIVE" last_updated="2026-02-02 00:00:00" />
 
     <!-- ID 2008: Mindray BS-360E (GenericHL7 / CHEMISTRY) -->
     <analyzer id="2008" name="Mindray BS-360E"
         analyzer_type="CHEMISTRY" DESCRIPTION="HL7 v2.3.1 over TCP/IP (MLLP)"
-        identifier_pattern="MINDRAY.*BS.?360E|BS360E" is_active="true"
+        identifier_pattern="MINDRAY.*BS.?360E|BS360E" is_active="false"
         ip_address="172.20.1.102" port="5563" protocol_version="HL7_V2_3_1"
         status="ACTIVE" last_updated="2026-02-02 00:00:00" />
 
     <!-- ID 2012: Mindray BC2000 (GenericHL7 / HEMATOLOGY) -->
     <analyzer id="2012" name="Mindray BC2000"
         analyzer_type="HEMATOLOGY" DESCRIPTION="HL7 v2.3.1 over TCP/IP (MLLP)"
-        identifier_pattern="MINDRAY.*BC.?2000" is_active="true"
+        identifier_pattern="MINDRAY.*BC.?2000" is_active="false"
         ip_address="172.20.1.103" port="5564" protocol_version="HL7_V2_3_1"
         status="ACTIVE" last_updated="2026-02-02 00:00:00" />
 
