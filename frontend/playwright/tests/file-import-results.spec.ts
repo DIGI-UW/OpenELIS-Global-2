@@ -29,10 +29,10 @@ const ANALYZERS = [
     name: "QuantStudio 5",
     profileText: "QuantStudio", // text to match in the profile dropdown
     fixture: "quantstudio-e2e-results-qs5.xls",
-    importSubdir: "e2e-qs5/incoming",
-    importDir: "/data/analyzer-imports/e2e-qs5/incoming",
-    archiveDir: "/data/analyzer-imports/e2e-qs5/processed",
-    errorDir: "/data/analyzer-imports/e2e-qs5/errors",
+    importSubdir: "demo-qs5/incoming",
+    importDir: "/data/analyzer-imports/demo-qs5/incoming",
+    archiveDir: "/data/analyzer-imports/demo-qs5/processed",
+    errorDir: "/data/analyzer-imports/demo-qs5/errors",
     filePattern: "*.xls",
     filePrefix: "qs5-results-",
     columnMappings: JSON.stringify(
@@ -58,10 +58,10 @@ const ANALYZERS = [
     name: "QuantStudio 7",
     profileText: "QuantStudio",
     fixture: "quantstudio-e2e-results.xlsx",
-    importSubdir: "e2e-qs7/incoming",
-    importDir: "/data/analyzer-imports/e2e-qs7/incoming",
-    archiveDir: "/data/analyzer-imports/e2e-qs7/processed",
-    errorDir: "/data/analyzer-imports/e2e-qs7/errors",
+    importSubdir: "demo-qs7/incoming",
+    importDir: "/data/analyzer-imports/demo-qs7/incoming",
+    archiveDir: "/data/analyzer-imports/demo-qs7/processed",
+    errorDir: "/data/analyzer-imports/demo-qs7/errors",
     filePattern: "*.xlsx",
     filePrefix: "qs7-results-",
     columnMappings: JSON.stringify(
@@ -87,10 +87,10 @@ const ANALYZERS = [
     name: "FluoroCycler XT",
     profileText: "FluoroCycler",
     fixture: "fluorocycler-e2e-results.xlsx",
-    importSubdir: "e2e-fluorocycler/incoming",
-    importDir: "/data/analyzer-imports/e2e-fluorocycler/incoming",
-    archiveDir: "/data/analyzer-imports/e2e-fluorocycler/processed",
-    errorDir: "/data/analyzer-imports/e2e-fluorocycler/errors",
+    importSubdir: "demo-fluorocycler/incoming",
+    importDir: "/data/analyzer-imports/demo-fluorocycler/incoming",
+    archiveDir: "/data/analyzer-imports/demo-fluorocycler/processed",
+    errorDir: "/data/analyzer-imports/demo-fluorocycler/errors",
     filePattern: "*.xlsx",
     filePrefix: "fc-results-",
     columnMappings: JSON.stringify(
@@ -116,11 +116,11 @@ const ANALYZERS = [
 ];
 
 for (const analyzer of ANALYZERS) {
-  const HOST_IMPORT_DIR = path.join(
+  const HOST_IMPORTS_BASE = path.join(
     REPO_ROOT,
     "projects/analyzer-harness/volume/analyzer-imports",
-    analyzer.importSubdir,
   );
+  const HOST_IMPORT_DIR = path.join(HOST_IMPORTS_BASE, analyzer.importSubdir);
   const FIXTURE_FILE = path.join(FIXTURES_DIR, analyzer.fixture);
   const fileExtension = path.extname(analyzer.fixture);
 
@@ -132,11 +132,16 @@ for (const analyzer of ANALYZERS) {
     test(`full flow: create → configure → import → results (${fileExtension})`, async ({
       page,
     }, testInfo) => {
-      // Skip if analyzer harness import directory doesn't exist (e.g. in CI)
+      // Skip if analyzer harness bind-mount base doesn't exist (e.g. in CI)
       test.skip(
-        !fs.existsSync(HOST_IMPORT_DIR),
-        "Requires analyzer harness bind-mount (HOST_IMPORT_DIR not found)",
+        !fs.existsSync(HOST_IMPORTS_BASE),
+        "Requires analyzer harness bind-mount (analyzer-imports not found)",
       );
+
+      // Create demo-specific subdirectory if it doesn't exist
+      if (!fs.existsSync(HOST_IMPORT_DIR)) {
+        fs.mkdirSync(HOST_IMPORT_DIR, { recursive: true });
+      }
 
       // Verify fixture exists
       expect(fs.existsSync(FIXTURE_FILE)).toBeTruthy();
@@ -207,10 +212,15 @@ for (const analyzer of ANALYZERS) {
       await videoPause(page, 500, testInfo);
 
       // Select plugin type — Generic File (FILE)
+      // Carbon places data-testid on the wrapper div; click the inner trigger button.
       const pluginTypeDropdown = page.locator(
         '[data-testid="analyzer-form-plugin-type-dropdown"]',
       );
-      await pluginTypeDropdown.click();
+      const pluginTypeTrigger = pluginTypeDropdown.locator(
+        'button[role="combobox"], .cds--list-box__field',
+      );
+      await expect(pluginTypeTrigger).toBeEnabled({ timeout: 10_000 });
+      await pluginTypeTrigger.click();
       await videoPause(page, 500, testInfo);
 
       const filePluginOption = page
@@ -224,8 +234,11 @@ for (const analyzer of ANALYZERS) {
       const defaultConfigDropdown = page.locator(
         '[data-testid="analyzer-form-default-config-dropdown"]',
       );
-      await expect(defaultConfigDropdown).toBeVisible({ timeout: 5_000 });
-      await defaultConfigDropdown.click();
+      const defaultConfigTrigger = defaultConfigDropdown.locator(
+        'button[role="combobox"], .cds--list-box__field',
+      );
+      await expect(defaultConfigTrigger).toBeEnabled({ timeout: 10_000 });
+      await defaultConfigTrigger.click();
       await videoPause(page, 500, testInfo);
 
       const profileOption = page
@@ -239,7 +252,11 @@ for (const analyzer of ANALYZERS) {
       const typeDropdown = page.locator(
         '[data-testid="analyzer-form-type-dropdown"]',
       );
-      await typeDropdown.click();
+      const typeTrigger = typeDropdown.locator(
+        'button[role="combobox"], .cds--list-box__field',
+      );
+      await expect(typeTrigger).toBeEnabled({ timeout: 10_000 });
+      await typeTrigger.click();
       await videoPause(page, 500, testInfo);
 
       const molecularOption = page
@@ -300,7 +317,11 @@ for (const analyzer of ANALYZERS) {
       const formatDropdown = page.locator(
         '[data-testid="file-import-configuration-file-format-dropdown"]',
       );
-      await formatDropdown.click();
+      const formatTrigger = formatDropdown.locator(
+        'button[role="combobox"], .cds--list-box__field',
+      );
+      await expect(formatTrigger).toBeEnabled({ timeout: 10_000 });
+      await formatTrigger.click();
       await videoPause(page, 500, testInfo);
 
       const excelOption = page

@@ -1,5 +1,7 @@
 package org.openelisglobal.analyzer.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumSet;
@@ -51,6 +53,9 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     @Autowired
     PluginAnalyzerService pluginAnalyzerService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     AnalyzerServiceImpl() {
         super(Analyzer.class);
@@ -355,5 +360,36 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
                     "Auto-created " + created + " test mappings for analyzer " + analyzerId);
         }
+    }
+
+    @Override
+    @Transactional
+    public void deleteWithDependents(Analyzer analyzer) {
+        String id = analyzer.getId();
+        Integer idInt = Integer.valueOf(id);
+
+        // Delete all dependent records via native SQL to avoid needing entity mappings
+        // for every FK table. Order: leaf tables first, then parent.
+        String[] dependentTables = { "analyzer_results", "analyzer_experiment", "notebook_analysers",
+                "analyzer_pending_code", "analyzer_field_mapping", "analyzer_field", "analyzer_error",
+                "serial_port_configuration", "file_import_configuration", "analyzer_plugin_config",
+                "analyzer_file_upload" };
+
+        for (String table : dependentTables) {
+            String column = "notebook_analysers".equals(table) ? "analyser_id" : "analyzer_id";
+            int deleted = entityManager
+                    .createNativeQuery("DELETE FROM clinlims." + table + " WHERE " + column + " = :id")
+                    .setParameter("id", idInt).executeUpdate();
+            if (deleted > 0) {
+                LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents",
+                        "Deleted " + deleted + " row(s) from " + table + " for analyzer " + id);
+            }
+        }
+
+        // Now safe to delete the analyzer itself
+        delete(analyzer);
+
+        LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents",
+                "Deleted analyzer " + id + " (" + analyzer.getName() + ") with all dependents");
     }
 }
