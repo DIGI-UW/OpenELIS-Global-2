@@ -29,10 +29,7 @@ const ANALYZERS = [
     name: "QuantStudio 5",
     profileText: "QuantStudio", // text to match in the profile dropdown
     fixture: "quantstudio-e2e-results-qs5.xls",
-    importSubdir: "demo-qs5/incoming",
-    importDir: "/data/analyzer-imports/demo-qs5/incoming",
-    archiveDir: "/data/analyzer-imports/demo-qs5/processed",
-    errorDir: "/data/analyzer-imports/demo-qs5/errors",
+    importSubdir: "demo-qs5",
     filePattern: "*.xls",
     filePrefix: "qs5-results-",
     columnMappings: JSON.stringify(
@@ -58,10 +55,7 @@ const ANALYZERS = [
     name: "QuantStudio 7",
     profileText: "QuantStudio",
     fixture: "quantstudio-e2e-results.xlsx",
-    importSubdir: "demo-qs7/incoming",
-    importDir: "/data/analyzer-imports/demo-qs7/incoming",
-    archiveDir: "/data/analyzer-imports/demo-qs7/processed",
-    errorDir: "/data/analyzer-imports/demo-qs7/errors",
+    importSubdir: "demo-qs7",
     filePattern: "*.xlsx",
     filePrefix: "qs7-results-",
     columnMappings: JSON.stringify(
@@ -87,10 +81,7 @@ const ANALYZERS = [
     name: "FluoroCycler XT",
     profileText: "FluoroCycler",
     fixture: "fluorocycler-e2e-results.xlsx",
-    importSubdir: "demo-fluorocycler/incoming",
-    importDir: "/data/analyzer-imports/demo-fluorocycler/incoming",
-    archiveDir: "/data/analyzer-imports/demo-fluorocycler/processed",
-    errorDir: "/data/analyzer-imports/demo-fluorocycler/errors",
+    importSubdir: "demo-fluorocycler",
     filePattern: "*.xlsx",
     filePrefix: "fc-results-",
     columnMappings: JSON.stringify(
@@ -120,7 +111,6 @@ for (const analyzer of ANALYZERS) {
     REPO_ROOT,
     "projects/analyzer-harness/volume/analyzer-imports",
   );
-  const HOST_IMPORT_DIR = path.join(HOST_IMPORTS_BASE, analyzer.importSubdir);
   const FIXTURE_FILE = path.join(FIXTURES_DIR, analyzer.fixture);
   const fileExtension = path.extname(analyzer.fixture);
 
@@ -128,6 +118,9 @@ for (const analyzer of ANALYZERS) {
     test.setTimeout(300_000); // 5 min — create + config + 60s poll + results
 
     let createdAnalyzerName: string;
+    // Unique per-run directory to avoid overlapping config conflicts with
+    // stale E2E analyzers from previous runs (findOverlappingConfigs check).
+    let HOST_IMPORT_DIR: string;
 
     test(`full flow: create → configure → import → results (${fileExtension})`, async ({
       page,
@@ -138,16 +131,29 @@ for (const analyzer of ANALYZERS) {
         "Requires analyzer harness bind-mount (analyzer-imports not found)",
       );
 
-      // Create demo-specific subdirectory if it doesn't exist
+      // Use a unique name and directory per run to avoid collisions
+      const runId = Date.now();
+      createdAnalyzerName = `${analyzer.name} E2E ${runId}`;
+      const dirSlug = analyzer.importSubdir;
+      HOST_IMPORT_DIR = path.join(
+        HOST_IMPORTS_BASE,
+        `${dirSlug}-${runId}`,
+        "incoming",
+      );
+
+      // Compute unique container-side directories matching the host path
+      const containerDirBase = `/data/analyzer-imports/${dirSlug}-${runId}`;
+      const containerImportDir = `${containerDirBase}/incoming`;
+      const containerArchiveDir = `${containerDirBase}/processed`;
+      const containerErrorDir = `${containerDirBase}/errors`;
+
+      // Create host-side subdirectory
       if (!fs.existsSync(HOST_IMPORT_DIR)) {
         fs.mkdirSync(HOST_IMPORT_DIR, { recursive: true });
       }
 
       // Verify fixture exists
       expect(fs.existsSync(FIXTURE_FILE)).toBeTruthy();
-
-      // Use a unique name to avoid collisions
-      createdAnalyzerName = `${analyzer.name} E2E ${Date.now()}`;
 
       // Capture errors for debugging
       const consoleErrors: string[] = [];
@@ -313,6 +319,14 @@ for (const analyzer of ANALYZERS) {
       await expect(fileImportForm).toBeVisible({ timeout: 10_000 });
       await videoPause(page, 1_000, testInfo);
 
+      // Wait for the auto-created config to load into the form.
+      // autoCreateFromProfile pre-populates the directory field; we must wait
+      // for it before filling, or a subsequent re-render overwrites our values.
+      const directoryInput = page.locator(
+        '[data-testid="file-import-configuration-directory-input"]',
+      );
+      await expect(directoryInput).not.toHaveValue("", { timeout: 10_000 });
+
       // Select file format — EXCEL
       const formatDropdown = page.locator(
         '[data-testid="file-import-configuration-file-format-dropdown"]',
@@ -331,11 +345,9 @@ for (const analyzer of ANALYZERS) {
       await excelOption.first().click();
       await videoPause(page, 500, testInfo);
 
-      // Set import directory
-      const directoryInput = page.locator(
-        '[data-testid="file-import-configuration-directory-input"]',
-      );
-      await directoryInput.fill(analyzer.importDir);
+      // Set import directory (clear auto-created value first)
+      await directoryInput.clear();
+      await directoryInput.fill(containerImportDir);
       await videoPause(page, 500, testInfo);
 
       // Set file pattern
@@ -350,14 +362,16 @@ for (const analyzer of ANALYZERS) {
       const archiveInput = page.locator(
         '[data-testid="file-import-configuration-archive-input"]',
       );
-      await archiveInput.fill(analyzer.archiveDir);
+      await archiveInput.clear();
+      await archiveInput.fill(containerArchiveDir);
       await videoPause(page, 500, testInfo);
 
       // Set error directory
       const errorInput = page.locator(
         '[data-testid="file-import-configuration-error-input"]',
       );
-      await errorInput.fill(analyzer.errorDir);
+      await errorInput.clear();
+      await errorInput.fill(containerErrorDir);
       await videoPause(page, 500, testInfo);
 
       // Set column mappings
