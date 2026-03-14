@@ -17,14 +17,10 @@ import { AnalyzerFormPage } from "../fixtures/analyzer-form";
  *   9. Verify FileImportConfiguration created with EXCEL format
  *  10. Cleanup
  *
- * Run with: PLAYWRIGHT_VIDEO=on TEST_USER=admin TEST_PASS="adminADMIN!" \
- *           npx playwright test demo-quantstudio --project=analyzer-harness
+ * Run with:
+ *   Normal:  npx playwright test demo-quantstudio --project=demo
+ *   Video:   npx playwright test demo-quantstudio --project=demo-video
  */
-// Video recording — only enable when explicitly requested via env var.
-// Playwright requires test.use outside describe.
-if (process.env.PLAYWRIGHT_VIDEO === "on") {
-  test.use({ video: "on" });
-}
 
 test.describe("Demo: QuantStudio 7 Generic File Config", () => {
   test.describe.configure({ mode: "serial" });

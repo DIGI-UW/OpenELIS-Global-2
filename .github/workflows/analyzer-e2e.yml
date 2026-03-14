@@ -87,7 +87,7 @@ jobs:
           docker exec -i openelisglobal-database psql -U clinlims -d clinlims < src/test/resources/analyzer-harness-e2e.sql
 
       - name: Run analyzer Playwright tests
-        run: npm run pw:test -- --project=analyzer-harness
+        run: npm run pw:test -- --project=harness --project=demo
         working-directory: frontend
         env:
           CI: true

@@ -2,8 +2,27 @@ import { defineConfig, devices } from "@playwright/test";
 
 /**
  * OpenELIS Global Playwright Configuration
+ *
+ * Projects are organized by environment requirement:
+ *
+ *   core-app      — CI build stack (no plugins, bridge, or import dirs)
+ *   harness       — Analyzer harness infra tests (bridge, simulator, plugins)
+ *   demo          — End-to-end workflow demos (run on harness, normal speed)
+ *   demo-video    — Same demo tests with slowMo + video (local recording only)
+ *
+ * New test files must be explicitly added to a project's testMatch.
+ * Unmatched files won't run — this is intentional (allowlist, not blocklist).
+ *
  * @see https://playwright.dev/docs/test-configuration
  */
+
+// Demo workflow tests — shared between demo and demo-video projects
+const DEMO_TESTS = [
+  "**/demo-quantstudio*.spec.ts",
+  "**/file-import-ui.spec.ts",
+  "**/file-import-results.spec.ts",
+];
+
 export default defineConfig({
   testDir: "./playwright/tests",
 
@@ -34,21 +53,22 @@ export default defineConfig({
   },
 
   projects: [
-    // Auth setup - runs once, saves session
+    // Auth setup — runs once, saves session state
     {
       name: "setup",
       testMatch: /.*\.setup\.ts/,
     },
-    // Core app tests — default stack + seeded FILE fixtures
+
+    // Core app — runs on CI build stack (no plugins, bridge, or import dirs)
     {
       name: "core-app",
-      testIgnore: [
-        /.*analyzer-test-connection\.spec\.ts/,
-        /.*analyzer-plugin-config\.spec\.ts/,
-        /.*analyzer-simulator\.spec\.ts/,
-        /.*analyzer-hl7-simulate\.spec\.ts/,
-        /.*demo-quantstudio.*\.spec\.ts/,
-        /.*file-import-results\.spec\.ts/,
+      testMatch: [
+        "**/analyzer-form.spec.ts",
+        "**/analyzer-list.spec.ts",
+        "**/analyzer-navigation.spec.ts",
+        "**/error-dashboard.spec.ts",
+        "**/navbar.spec.ts",
+        "**/sidenav.spec.ts",
       ],
       use: {
         ...devices["Desktop Chrome"],
@@ -56,35 +76,48 @@ export default defineConfig({
       },
       dependencies: ["setup"],
     },
-    // Video demo project — slowMo for watchable recordings, local use only
+
+    // Harness — infrastructure tests needing bridge, simulator, plugins
     {
-      name: "file-import-video",
+      name: "harness",
+      testMatch: [
+        "**/analyzer-test-connection.spec.ts",
+        "**/analyzer-plugin-config.spec.ts",
+        "**/analyzer-simulator.spec.ts",
+        "**/analyzer-hl7-simulate.spec.ts",
+        "**/file-import.spec.ts",
+      ],
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+
+    // Demo — workflow tests at normal speed (CI validation on harness)
+    {
+      name: "demo",
+      testMatch: DEMO_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+
+    // Demo video — same tests with slowMo for watchable recordings (local only)
+    {
+      name: "demo-video",
+      testMatch: DEMO_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+        video: "on",
         launchOptions: {
           slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
         },
       },
       dependencies: ["setup"],
-      testMatch: ["**/file-import-results*"],
-    },
-    // Analyzer harness tests — needs bridge + simulator, runs via analyzer-e2e.yml
-    {
-      name: "analyzer-harness",
-      use: {
-        ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/user.json",
-      },
-      dependencies: ["setup"],
-      testMatch: [
-        "**/analyzer-test-connection*",
-        "**/analyzer-plugin-config*",
-        "**/analyzer-simulator*",
-        "**/analyzer-hl7-simulate*",
-        "**/demo-quantstudio*",
-        "**/file-import-results*",
-      ],
     },
   ],
 });
