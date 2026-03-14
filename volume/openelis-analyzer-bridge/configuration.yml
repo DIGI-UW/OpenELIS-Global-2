@@ -3,7 +3,7 @@
 # Feature: 011-madagascar-analyzer-integration
 
 openelis:
-  url: https://oe.openelis.org:8443/api/OpenELIS-Global/analyzer/astm
+  url: https://oe.openelis.org:8443/OpenELIS-Global/analyzer/astm
   timeout: 30000
   ssl:
     verify: false  # Development only - uses self-signed certs

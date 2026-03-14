@@ -21,17 +21,29 @@
 
     <!-- Localization Entries -->
     <localization id="1"
-        description="Localization for Dictionary Entry 1"
-        english="Localized Name 1" french="Nom localisé 1"
-        lastUpdated="2023-11-01 12:00:00" />
+        description="Localization for Dictionary Entry 1" />
     <localization id="2"
-        description="Localization for Dictionary Entry 2"
-        english="Localized Name 2" french="Nom localisé 2"
-        lastUpdated="2023-12-01 12:00:00" />
+        description="Localization for Dictionary Entry 2" />
     <localization id="3"
-        description="Localization for Dictionary Entry 3"
-        english="Localized Name 3" french="Nom localisé 3"
-        lastUpdated="2023-10-01 12:00:00" />
+        description="Localization for Dictionary Entry 3" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Localized Name 1" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="Nom localisé 1" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Localized Name 2" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Nom localisé 2" />
+    <localization_value id="5" localization_id="3"
+        locale="en" value="Localized Name 3" />
+    <localization_value id="6" localization_id="3"
+        locale="fr" value="Nom localisé 3" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 
     <!-- Dictionary Entries -->
     <dictionary id="1" is_active="Y"
