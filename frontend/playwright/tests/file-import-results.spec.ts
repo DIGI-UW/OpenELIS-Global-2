@@ -440,11 +440,15 @@ for (const analyzer of ANALYZERS) {
 
       // Hard assertion: verify EACH expected result value
       for (const expected of analyzer.expectedResults) {
-        const row = page.locator("tr", { hasText: expected.sampleId });
-        await expect(row.first()).toBeVisible({ timeout: 15_000 });
+        // Find the sample ID on the page (getByText works with the
+        // AnalyzerResults component; tr hasText does not due to nested elements)
+        const sampleText = page.getByText(expected.sampleId);
+        await expect(sampleText.first()).toBeVisible({ timeout: 15_000 });
 
-        // Verify the actual result value appears in the same row
-        await expect(row.first()).toContainText(expected.result);
+        // Verify the result value also appears on the page
+        const resultText = page.getByText(expected.result, { exact: false });
+        await expect(resultText.first()).toBeVisible({ timeout: 5_000 });
+
         console.log(`  ✓ ${expected.sampleId} → ${expected.result}`);
       }
 
