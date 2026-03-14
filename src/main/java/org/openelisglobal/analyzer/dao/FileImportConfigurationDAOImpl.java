@@ -77,7 +77,7 @@ public class FileImportConfigurationDAOImpl extends BaseDAOImpl<FileImportConfig
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "findActiveByImportDirectoryAndFileFormat",
                     "Error checking for overlapping configs: " + e.getMessage());
-            return List.of();
+            throw new LIMSRuntimeException("Error checking for overlapping file import configs", e);
         }
     }
 }

@@ -134,7 +134,7 @@
 
     <rollback>
       <sql>
-        -- Revert all to NO ACTION
+        -- Revert all to NO ACTION (default PostgreSQL FK behavior)
         ALTER TABLE clinlims.analyzer_field DROP CONSTRAINT IF EXISTS fk_analyzer_field_analyzer;
         ALTER TABLE clinlims.analyzer_field ADD CONSTRAINT fk_analyzer_field_analyzer FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id);
         ALTER TABLE clinlims.analyzer_experiment DROP CONSTRAINT IF EXISTS fk_analyzer_experiment_analyzer;
@@ -143,6 +143,12 @@
         ALTER TABLE clinlims.analyzer_pending_code ADD CONSTRAINT analyzer_pending_code_analyzer_fk FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id);
         ALTER TABLE clinlims.analyzer_plugin_config DROP CONSTRAINT IF EXISTS analyzer_plugin_config_analyzer_fk;
         ALTER TABLE clinlims.analyzer_plugin_config ADD CONSTRAINT analyzer_plugin_config_analyzer_fk FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id);
+        ALTER TABLE clinlims.analyzer_field_mapping DROP CONSTRAINT IF EXISTS fk_field_mapping_analyzer;
+        ALTER TABLE clinlims.analyzer_field_mapping ADD CONSTRAINT fk_field_mapping_analyzer FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id);
+        ALTER TABLE clinlims.serial_port_configuration DROP CONSTRAINT IF EXISTS fk_serial_port_analyzer;
+        ALTER TABLE clinlims.serial_port_configuration ADD CONSTRAINT fk_serial_port_analyzer FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id);
+        ALTER TABLE clinlims.file_import_configuration DROP CONSTRAINT IF EXISTS fk_file_import_analyzer;
+        ALTER TABLE clinlims.file_import_configuration ADD CONSTRAINT fk_file_import_analyzer FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id);
       </sql>
     </rollback>
   </changeSet>

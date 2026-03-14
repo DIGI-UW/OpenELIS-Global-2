@@ -366,20 +366,50 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Transactional
     public void deleteWithDependents(Analyzer analyzer) {
         String id = analyzer.getId();
-        Integer idInt = Integer.valueOf(id);
+        Long idLong = Long.valueOf(id);
 
-        // Delete all dependent records via native SQL to avoid needing entity mappings
-        // for every FK table. Order: leaf tables first, then parent.
-        String[] dependentTables = { "analyzer_results", "analyzer_experiment", "notebook_analysers",
-                "analyzer_pending_code", "analyzer_field_mapping", "analyzer_field", "analyzer_error",
-                "serial_port_configuration", "file_import_configuration", "analyzer_plugin_config",
-                "analyzer_file_upload" };
+        // Tiered FK strategy — matches Liquibase 004 constraints:
+        //
+        // RESTRICT tier: analyzer_results, notebook_analysers
+        // → Must not exist; throw if they do (clinical/reference data).
+        // SET NULL tier: analyzer_error, analyzer_file_upload
+        // → Preserve audit trail by nulling the FK, not deleting rows.
+        // CASCADE tier: config tables
+        // → Explicit delete as defense-in-depth (DB would CASCADE anyway).
 
-        for (String table : dependentTables) {
-            String column = "notebook_analysers".equals(table) ? "analyser_id" : "analyzer_id";
-            int deleted = entityManager
-                    .createNativeQuery("DELETE FROM clinlims." + table + " WHERE " + column + " = :id")
-                    .setParameter("id", idInt).executeUpdate();
+        // 1. RESTRICT tier — block if clinical/reference data exists
+        Long resultCount = (Long) entityManager
+                .createNativeQuery("SELECT COUNT(*) FROM clinlims.analyzer_results WHERE analyzer_id = :id")
+                .setParameter("id", idLong).getSingleResult();
+        if (resultCount > 0) {
+            throw new LIMSRuntimeException("Cannot delete analyzer " + id + ": " + resultCount
+                    + " analyzer_results rows exist. Remove or reassign results first.");
+        }
+        Long notebookCount = (Long) entityManager
+                .createNativeQuery("SELECT COUNT(*) FROM clinlims.notebook_analysers WHERE analyser_id = :id")
+                .setParameter("id", idLong).getSingleResult();
+        if (notebookCount > 0) {
+            throw new LIMSRuntimeException("Cannot delete analyzer " + id + ": " + notebookCount
+                    + " notebook_analysers rows exist. Remove references first.");
+        }
+
+        // 2. SET NULL tier — preserve audit trail
+        for (String table : new String[] { "analyzer_error", "analyzer_file_upload" }) {
+            int updated = entityManager
+                    .createNativeQuery("UPDATE clinlims." + table + " SET analyzer_id = NULL WHERE analyzer_id = :id")
+                    .setParameter("id", idLong).executeUpdate();
+            if (updated > 0) {
+                LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents",
+                        "Set analyzer_id = NULL on " + updated + " row(s) in " + table + " for analyzer " + id);
+            }
+        }
+
+        // 3. CASCADE tier — explicit delete (defense-in-depth; DB cascades these too)
+        String[] cascadeTables = { "analyzer_experiment", "analyzer_pending_code", "analyzer_field_mapping",
+                "analyzer_field", "serial_port_configuration", "file_import_configuration", "analyzer_plugin_config" };
+        for (String table : cascadeTables) {
+            int deleted = entityManager.createNativeQuery("DELETE FROM clinlims." + table + " WHERE analyzer_id = :id")
+                    .setParameter("id", idLong).executeUpdate();
             if (deleted > 0) {
                 LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents",
                         "Deleted " + deleted + " row(s) from " + table + " for analyzer " + id);
