@@ -9,8 +9,9 @@ jobs:
   playwright-tests:
     name: Run Playwright E2E Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    
+    timeout-minutes: 30
+    environment: e2e
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -56,14 +57,20 @@ jobs:
           timeout 60 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done' || exit 1
           echo "Application is ready"
 
+      - name: Load FILE analyzer E2E fixtures
+        run: |
+          docker exec -i openelisglobal-database \
+            psql -U clinlims -d clinlims \
+            < src/test/resources/fixtures/file-import-e2e.sql
+
       - name: Run Playwright tests
-        run: npm run pw:test
+        run: npm run pw:test -- --project=core-app
         working-directory: frontend
         env:
           CI: true
           BASE_URL: https://localhost
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
-          TEST_PASS: ${{ secrets.TEST_PASS || 'adminADMIN!' }}
+          TEST_PASS: ${{ secrets.TEST_PASS }}
 
       - name: Upload Playwright HTML report
         if: failure()

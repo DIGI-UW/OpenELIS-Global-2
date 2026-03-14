@@ -26,6 +26,7 @@ FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
 ANALYZER_SQL_FILE="$SCRIPT_DIR/analyzer-test-data.sql"
 ANALYZER_MINIMAL_SQL_FILE="$SCRIPT_DIR/analyzer-minimal.sql"
 ANALYZER_TYPE_LINKING_SQL="$SCRIPT_DIR/analyzer-type-linking.sql"
+FILE_IMPORT_E2E_SQL="$SCRIPT_DIR/fixtures/file-import-e2e.sql"
 RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
 
 RESET=false
@@ -274,6 +275,11 @@ load_analyzer_fixtures() {
 
             # Link fixture analyzers to their AnalyzerType records
             load_sql_file "$ANALYZER_TYPE_LINKING_SQL" "analyzer-type-linking.sql (plugin type linking)"
+
+            # Load FILE import E2E fixtures (Feature 014, 6 FILE analyzers)
+            if [ -f "$FILE_IMPORT_E2E_SQL" ]; then
+                load_sql_file "$FILE_IMPORT_E2E_SQL" "file-import-e2e.sql (Feature 014, FILE analyzers)"
+            fi
             ;;
     esac
 }

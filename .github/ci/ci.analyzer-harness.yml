@@ -1,0 +1,74 @@
+version: "3.3"
+
+services:
+  astm-simulator:
+    build:
+      context: ./tools/analyzer-mock-server
+      dockerfile: Dockerfile
+    container_name: openelis-astm-simulator
+    ports:
+      - "5000:9600"
+      - "8085:8080"
+    environment:
+      - ASTM_PORT=9600
+      - ASTM_TEMPLATE=genexpert_astm
+      - RESPONSE_DELAY_MS=0
+    command: >
+      python -u server.py
+      --port 9600
+      --simulate-api-port 8080
+      --verbose
+    networks:
+      analyzer-net:
+        ipv4_address: 172.21.1.100
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1',9600)); s.close()\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  openelis-analyzer-bridge:
+    build:
+      context: ./tools/openelis-analyzer-bridge
+      dockerfile: Dockerfile
+    image: openelis-analyzer-bridge.ci
+    container_name: openelis-analyzer-bridge
+    ports:
+      - "8442:8443"
+      - "12000:12001"
+    volumes:
+      - ./volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - LOGGING_LEVEL_ORG_ITECH=INFO
+      # Bridge connects directly to app (not through proxy), so no /api/ prefix
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe.openelis.org:8443/OpenELIS-Global/analyzer/astm
+      - ORG_ITECH_AHB_LISTEN_ASTM_SERVER_PORT=12001
+      - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_HOST_NAME=astm-simulator
+      - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_PORT=9600
+    networks:
+      - analyzer-net
+    restart: unless-stopped
+
+  oe.openelis.org:
+    environment:
+      - ANALYZER_BRIDGE_URL=http://openelis-analyzer-bridge:8443
+    volumes:
+      - ./projects/analyzer-profiles:/data/analyzer-profiles:ro
+    networks:
+      - default
+      - analyzer-net
+
+  proxy:
+    networks:
+      - default
+      - analyzer-net
+
+networks:
+  analyzer-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.1.0/24
