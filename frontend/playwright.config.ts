@@ -20,7 +20,7 @@ export default defineConfig({
   expect: { timeout: 5_000 },
 
   // Reporting
-  reporter: process.env.CI ? "github" : "html",
+  reporter: process.env.CI ? "blob" : "html",
 
   // Global settings
   use: {
@@ -30,7 +30,7 @@ export default defineConfig({
     // Evidence collection
     trace: "on-first-retry",
     screenshot: "only-on-failure",
-    video: "off",
+    video: process.env.PLAYWRIGHT_VIDEO === "on" ? "on" : "off",
   },
 
   projects: [
@@ -39,14 +39,37 @@ export default defineConfig({
       name: "setup",
       testMatch: /.*\.setup\.ts/,
     },
-    // Main tests - depend on auth
+    // Core app tests — default stack + seeded FILE fixtures
     {
-      name: "chromium",
+      name: "core-app",
+      testIgnore: [
+        /.*analyzer-test-connection\.spec\.ts/,
+        /.*analyzer-plugin-config\.spec\.ts/,
+        /.*analyzer-simulator\.spec\.ts/,
+        /.*analyzer-hl7-simulate\.spec\.ts/,
+        /.*demo-quantstudio.*\.spec\.ts/,
+      ],
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
       },
       dependencies: ["setup"],
+    },
+    // Analyzer harness tests — needs bridge + simulator, runs via analyzer-e2e.yml
+    {
+      name: "analyzer-harness",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+      testMatch: [
+        "**/analyzer-test-connection*",
+        "**/analyzer-plugin-config*",
+        "**/analyzer-simulator*",
+        "**/analyzer-hl7-simulate*",
+        "**/demo-quantstudio*",
+      ],
     },
   ],
 });

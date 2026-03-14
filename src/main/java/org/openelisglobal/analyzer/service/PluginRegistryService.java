@@ -67,6 +67,7 @@ public class PluginRegistryService {
 
     private static final String GENERIC_ASTM_CLASS = "org.openelisglobal.plugins.analyzer.genericastm.GenericASTMAnalyzer";
     private static final String GENERIC_HL7_CLASS = "org.openelisglobal.plugins.analyzer.generichl7.GenericHL7Analyzer";
+    private static final String GENERIC_FILE_CLASS = "org.openelisglobal.plugins.analyzer.genericfile.GenericFileAnalyzer";
 
     @Autowired
     private AnalyzerTypeService analyzerTypeService;
@@ -369,6 +370,9 @@ public class PluginRegistryService {
         }
         if (className.equals(GENERIC_HL7_CLASS)) {
             return ".*"; // Match any - to be configured per-analyzer via UI
+        }
+        if (className.equals(GENERIC_FILE_CLASS)) {
+            return ".*"; // Match any - file parser behavior configured per-analyzer profile
         }
         return null; // Non-generic plugins don't use patterns
     }

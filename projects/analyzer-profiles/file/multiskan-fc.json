@@ -1,0 +1,43 @@
+{
+  "profileMeta": {
+    "id": "multiskan-fc",
+    "version": "1.0.0",
+    "displayName": "Thermo Multiskan FC",
+    "manufacturer": "Thermo Fisher"
+  },
+  "protocol": {
+    "name": "FILE",
+    "format": "CSV"
+  },
+  "supported_extensions": [
+    ".csv",
+    ".tsv",
+    ".txt",
+    ".xlsx"
+  ],
+  "column_mapping": {
+    "Well": "position",
+    "Sample ID": "sampleId",
+    "Absorbance (450 nm)": "result",
+    "Absorbance": "result",
+    "Content": "content",
+    "Concentration": "concentration"
+  },
+  "layouts": {
+    "plate_grid": {
+      "description": "8x12 plate grid after metadata header",
+      "metadata_rows": ["Instrument", "Protocol", "Date", "Time", "Filter", "Plate Type"],
+      "grid_rows": 8,
+      "grid_cols": 12
+    },
+    "well_per_row": {
+      "description": "One row per well with Well, Sample ID, Absorbance",
+      "columns": ["Well", "Sample ID", "Absorbance (450 nm)", "Content"]
+    }
+  },
+  "configDefaults": {
+    "fileFormat": "CSV",
+    "delimiter": ",",
+    "hasHeader": true
+  }
+}

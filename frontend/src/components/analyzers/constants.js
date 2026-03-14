@@ -17,7 +17,6 @@ export const PROTOCOL_VERSIONS = [
 export const PLUGIN_PROTOCOL_DEFAULTS = {
   ASTM: "ASTM_LIS2_A2",
   HL7: "HL7_V2_3_1",
-  FILE: "ASTM_LIS2_A2", // FILE is transport, default message format is ASTM
 };
 
 /** Default protocol version for new analyzers. */
