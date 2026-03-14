@@ -221,6 +221,19 @@ public class FileImportRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
 
+            // Check for overlapping directory + file format (prevents ambiguous routing)
+            List<FileImportConfiguration> overlapping = fileImportService
+                    .findOverlappingConfigs(configuration.getImportDirectory(), configuration.getFileFormat(), null);
+            if (!overlapping.isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error",
+                        "Another active analyzer (ID " + overlapping.get(0).getAnalyzerId()
+                                + ") already watches this directory with the same file format. "
+                                + "Use a different directory or file format to avoid ambiguous file routing.");
+                error.put("overlappingAnalyzerId", overlapping.get(0).getAnalyzerId());
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+            }
+
             String sysUserId = getSysUserIdWithFallback(request);
             if (sysUserId == null) {
                 Map<String, Object> error = new HashMap<>();
@@ -262,6 +275,21 @@ public class FileImportRestController extends BaseRestController {
                 Map<String, Object> error = new HashMap<>();
                 error.put("error", "Directory paths must be within " + baseImportDir);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
+            // Check for overlapping directory + file format (exclude this analyzer)
+            String newFormat = configuration.getFileFormat() != null ? configuration.getFileFormat()
+                    : existing.getFileFormat();
+            List<FileImportConfiguration> overlapping = fileImportService
+                    .findOverlappingConfigs(configuration.getImportDirectory(), newFormat, existing.getAnalyzerId());
+            if (!overlapping.isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error",
+                        "Another active analyzer (ID " + overlapping.get(0).getAnalyzerId()
+                                + ") already watches this directory with the same file format. "
+                                + "Use a different directory or file format to avoid ambiguous file routing.");
+                error.put("overlappingAnalyzerId", overlapping.get(0).getAnalyzerId());
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
 
             // Update fields
