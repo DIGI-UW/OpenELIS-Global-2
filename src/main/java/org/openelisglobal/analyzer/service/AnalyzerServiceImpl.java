@@ -378,16 +378,16 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         // → Explicit delete as defense-in-depth (DB would CASCADE anyway).
 
         // 1. RESTRICT tier — block if clinical/reference data exists
-        Long resultCount = (Long) entityManager
+        long resultCount = ((Number) entityManager
                 .createNativeQuery("SELECT COUNT(*) FROM clinlims.analyzer_results WHERE analyzer_id = :id")
-                .setParameter("id", idLong).getSingleResult();
+                .setParameter("id", idLong).getSingleResult()).longValue();
         if (resultCount > 0) {
             throw new LIMSRuntimeException("Cannot delete analyzer " + id + ": " + resultCount
                     + " analyzer_results rows exist. Remove or reassign results first.");
         }
-        Long notebookCount = (Long) entityManager
+        long notebookCount = ((Number) entityManager
                 .createNativeQuery("SELECT COUNT(*) FROM clinlims.notebook_analysers WHERE analyser_id = :id")
-                .setParameter("id", idLong).getSingleResult();
+                .setParameter("id", idLong).getSingleResult()).longValue();
         if (notebookCount > 0) {
             throw new LIMSRuntimeException("Cannot delete analyzer " + id + ": " + notebookCount
                     + " notebook_analysers rows exist. Remove references first.");
