@@ -48,7 +48,7 @@ WHERE name IN ('Generic ASTM', 'Generic HL7', 'Generic File');
 -- 6. Seed E2E-FILE-CSV-Analyzer (ID 3001)
 INSERT INTO analyzer (
     id, name, analyzer_type, description, is_active,
-    protocol_version, status, analyzer_type_id, last_updated
+    status, analyzer_type_id, last_updated
 )
 VALUES (
     3001,
@@ -56,7 +56,6 @@ VALUES (
     'CHEMISTRY',
     'E2E test: CSV file import',
     true,
-    'FILE',
     'ACTIVE',
     (SELECT id FROM analyzer_type WHERE name = 'Generic File'),
     NOW()
@@ -68,7 +67,7 @@ SET name = EXCLUDED.name, is_active = EXCLUDED.is_active,
 -- 7. Seed E2E-FILE-QuantStudio5-Analyzer (ID 3002)
 INSERT INTO analyzer (
     id, name, analyzer_type, description, is_active,
-    protocol_version, status, analyzer_type_id, last_updated
+    status, analyzer_type_id, last_updated
 )
 VALUES (
     3002,
@@ -76,7 +75,6 @@ VALUES (
     'MOLECULAR',
     'E2E test: QuantStudio 5 Excel (.xls) import',
     true,
-    'FILE',
     'ACTIVE',
     (SELECT id FROM analyzer_type WHERE name = 'Generic File'),
     NOW()
@@ -88,7 +86,7 @@ SET name = EXCLUDED.name, is_active = EXCLUDED.is_active,
 -- 8. Seed E2E-FILE-QuantStudio7-Analyzer (ID 3003)
 INSERT INTO analyzer (
     id, name, analyzer_type, description, is_active,
-    protocol_version, status, analyzer_type_id, last_updated
+    status, analyzer_type_id, last_updated
 )
 VALUES (
     3003,
@@ -96,7 +94,6 @@ VALUES (
     'MOLECULAR',
     'E2E test: QuantStudio 7 Excel (.xlsx) import',
     true,
-    'FILE',
     'ACTIVE',
     (SELECT id FROM analyzer_type WHERE name = 'Generic File'),
     NOW()
@@ -129,7 +126,7 @@ VALUES (
     ',',
     true,
     true,
-    'a0000001-e2e0-file-csv0-000000000001',
+    'a0000001-0e2e-4000-8001-000000000001',
     '1',
     NOW()
 );
@@ -153,7 +150,7 @@ VALUES (
     ',',
     true,
     true,
-    'a0000002-e2e0-file-qs50-000000000002',
+    'a0000002-0e2e-4000-8002-000000000002',
     '1',
     NOW()
 );
@@ -177,7 +174,7 @@ VALUES (
     ',',
     true,
     true,
-    'a0000003-e2e0-file-qs70-000000000003',
+    'a0000003-0e2e-4000-8003-000000000003',
     '1',
     NOW()
 );

@@ -75,7 +75,7 @@ VALUES (
     true,
     '172.21.1.101',
     2575,
-    'HL7_V251',
+    'HL7_V2_5',
     'ACTIVE',
     'MINDRAY.*|BC-5380.*',
     (SELECT id FROM analyzer_type WHERE name = 'Generic HL7'),
