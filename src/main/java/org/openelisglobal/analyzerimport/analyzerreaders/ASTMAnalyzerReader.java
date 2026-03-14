@@ -41,6 +41,7 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     private boolean hasResponse = false;
     private String responseBody;
     private String clientIpAddress;
+    private Integer clientPort;
 
     @Override
     public boolean readStream(InputStream stream) {
@@ -238,13 +239,20 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     }
 
     /**
-     * Identify analyzer from ASTM message
-     * 
-     * Attempts to identify the analyzer by: 1. Parsing ASTM header (H segment) for
-     * analyzer identification 2. Looking up Analyzer by IP address (if available)
-     * 3. Matching by analyzer name from plugin
-     * 
-     * @return Optional Analyzer if identified, empty otherwise
+     * Set client port from bridge X-Source-Port header for analyzer identification
+     */
+    public void setClientPort(Integer port) {
+        this.clientPort = port;
+    }
+
+    /**
+     * Identify analyzer from ASTM message using a tiered strategy:
+     * <ol>
+     * <li>Strategy 0: Exact IP+port from bridge headers (deterministic)</li>
+     * <li>Strategy 1: ASTM H-segment name → getByName()</li>
+     * <li>Strategy 2: Client IP only → getByIpAddress()</li>
+     * <li>Strategy 3: Identifier pattern regex → fallback only</li>
+     * </ol>
      */
     private Optional<Analyzer> identifyAnalyzerFromMessage() {
         try {
@@ -260,6 +268,17 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                 return Optional.empty();
             }
 
+            // Strategy 0: Exact IP+port lookup from bridge headers (deterministic)
+            if (clientIpAddress != null && !clientIpAddress.trim().isEmpty() && clientPort != null) {
+                Optional<Analyzer> analyzerOpt = analyzerService.getByIpAddressAndPort(clientIpAddress.trim(),
+                        clientPort);
+                if (analyzerOpt.isPresent()) {
+                    LogEvent.logDebug(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
+                            "Identified analyzer from IP+port: " + clientIpAddress + ":" + clientPort);
+                    return analyzerOpt;
+                }
+            }
+
             // Strategy 1: Parse ASTM H-segment for manufacturer/model
             String analyzerName = parseAnalyzerNameFromHeader();
             if (analyzerName != null && !analyzerName.trim().isEmpty()) {
@@ -271,7 +290,7 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                 }
             }
 
-            // Strategy 2: Client IP address (for direct HTTP push)
+            // Strategy 2: Client IP address only (from bridge X-Source-Id header)
             if (clientIpAddress != null && !clientIpAddress.trim().isEmpty()) {
                 Optional<Analyzer> analyzerOpt = analyzerService.getByIpAddress(clientIpAddress.trim());
                 if (analyzerOpt.isPresent()) {
@@ -281,7 +300,7 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                 }
             }
 
-            // Strategy 3: Identifier pattern match (GenericASTM/GenericHL7)
+            // Strategy 3: Identifier pattern match (regex fallback)
             String identifier = parseIdentifierFromAstmHeader();
             if (identifier != null && !identifier.trim().isEmpty()) {
                 Optional<Analyzer> analyzerOpt = analyzerService.findByIdentifierPatternMatch(identifier.trim());
