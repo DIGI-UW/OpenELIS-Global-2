@@ -92,7 +92,7 @@ INSERT INTO file_import_configuration (
   ',',
   true,
   true,
-  'e2e-file-cfg-csv-00000000-0001',
+  'e2e00000-0000-4000-a001-000000000001',
   '1',
   NOW(),
   'CSV'
@@ -121,7 +121,7 @@ INSERT INTO file_import_configuration (
   E'\t',
   true,
   true,
-  'e2e-file-cfg-qs5-00000000-0002',
+  'e2e00000-0000-4000-a002-000000000002',
   '1',
   NOW(),
   'EXCEL'
@@ -151,7 +151,7 @@ INSERT INTO file_import_configuration (
   E'\t',
   true,
   true,
-  'e2e-file-cfg-qs7-00000000-0003',
+  'e2e00000-0000-4000-a003-000000000003',
   '1',
   NOW(),
   'EXCEL'

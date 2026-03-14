@@ -194,8 +194,9 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 
 **Testing:**
 
-- **Cypress 12.17.3** (E2E tests - existing)
-- **Playwright 1.57.0** (E2E tests - recommended for new tests)
+- **Playwright 1.57.0** (E2E tests — **recommended for all new tests**)
+- **Cypress 12.17.3** (E2E tests — **deprecated**, existing tests will be
+  migrated to Playwright)
 - **Jest + React Testing Library** (unit tests)
 
 **Code Quality:**
@@ -1396,7 +1397,12 @@ public class SampleServiceIntegrationTest extends BaseWebContextSensitiveTest {
 }
 ```
 
-### E2E Tests (Cypress)
+### E2E Tests (Cypress) — DEPRECATED
+
+> **Cypress is deprecated.** All new E2E tests should use Playwright. Existing
+> Cypress tests will be migrated to Playwright over time. See the
+> [Playwright section below](#e2e-tests-playwright--recommended) for the
+> recommended approach.
 
 **Location:** `frontend/cypress/e2e/{feature}.cy.js`
 
@@ -1522,10 +1528,120 @@ describe("User Story P1: Sample Storage Assignment", () => {
 - ❌ Recreating test data via UI (use API-based setup)
 - ❌ Starting new sessions unnecessarily (use cy.session())
 
+### E2E Tests (Playwright) — RECOMMENDED
+
+> **Playwright is the recommended E2E framework** for all new tests. It provides
+> project-based organization, built-in video recording, and faster execution
+> than Cypress.
+
+**Location:** `frontend/playwright/tests/{feature}.spec.ts` **Config:**
+`frontend/playwright.config.ts` **Helpers:** `frontend/playwright/helpers/`
+**Full Guide:** `frontend/playwright/README.md`
+
+#### Playwright Projects
+
+Tests are organized into 4 projects, each targeting a different infrastructure
+level. New test files must be explicitly added to a project's `testMatch`
+allowlist in `playwright.config.ts`.
+
+| Project      | Purpose                                           | CI Workflow          | Infra Required   |
+| ------------ | ------------------------------------------------- | -------------------- | ---------------- |
+| `core-app`   | Core UI tests (no plugins/bridge)                 | `playwright-e2e.yml` | Build stack only |
+| `harness`    | Analyzer infra tests (bridge, simulator, plugins) | `analyzer-e2e.yml`   | Full harness     |
+| `demo`       | Workflow demos at normal speed (CI validation)    | Both workflows       | Depends on test  |
+| `demo-video` | Same demos with `slowMo` + video recording        | Local only           | Harness          |
+
+#### CI Workflows
+
+| Workflow             | Compose Files                                          | Projects Run        | Fixtures Loaded                                    |
+| -------------------- | ------------------------------------------------------ | ------------------- | -------------------------------------------------- |
+| `playwright-e2e.yml` | `build.docker-compose.yml`                             | `core-app` + `demo` | `file-import-e2e.sql`                              |
+| `analyzer-e2e.yml`   | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `demo`  | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+
+#### Key Patterns
+
+- **Allowlist-based `testMatch`**: New test files are NOT auto-discovered. You
+  must add the glob pattern to the appropriate project in
+  `playwright.config.ts`.
+- **`videoPause(page, ms, testInfo)`** (`helpers/video-pause.ts`): Conditional
+  timeout — pauses only in `demo-video` project, no-op everywhere else. Use this
+  instead of `page.waitForTimeout()` for video pacing.
+- **`showTitleCard()` / `showStepCard()`** (`helpers/title-card.ts`): DOM
+  overlay helpers for demo videos. Pass `testInfo` to skip overlays in non-video
+  projects.
+- **`testInfo`**: Playwright's 2nd test callback parameter
+  (`async ({ page }, testInfo)`). Provides `testInfo.project.name` to determine
+  which project is running.
+- **`DEMO_TESTS` constant**: Shared test list between `demo` and `demo-video`
+  projects — defined once in `playwright.config.ts`.
+
+#### Available npm Scripts
+
+```bash
+cd frontend
+
+# Run all projects
+npm run pw:test
+
+# Run specific project
+npm run pw:test -- --project=core-app
+npm run pw:test -- --project=harness
+npm run pw:test -- --project=demo
+
+# Record demo videos (local only, requires harness stack)
+npm run pw:test -- --project=demo-video
+
+# Run specific test file
+npm run pw:test -- playwright/tests/file-import-ui.spec.ts
+
+# Interactive UI mode
+npm run pw:test:ui
+```
+
+#### Local Execution
+
+**Prerequisites:**
+
+1. App running at `https://localhost` (or set `BASE_URL`)
+2. Auth env vars: `TEST_USER` and `TEST_PASS`
+
+**Core-app tests (build stack):**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
+```
+
+**Harness/demo tests (analyzer harness stack):**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness
+```
+
+**Demo video recording:**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=demo-video
+# Videos saved to frontend/test-results/
+```
+
+#### Adding New Tests
+
+1. Create test file in `frontend/playwright/tests/`
+2. Add the glob pattern to the appropriate project's `testMatch` array in
+   `playwright.config.ts`
+3. For demo workflow tests, add to the `DEMO_TESTS` constant (shared between
+   `demo` and `demo-video`)
+4. Use `videoPause()` instead of `page.waitForTimeout()` for any video pacing
+
 ### Testing Resources
 
 **Comprehensive Guides**:
 
+- **Playwright README**: `frontend/playwright/README.md` — Project matrix, CI
+  workflows, fixture loading, and local execution guide
 - **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Comprehensive
   testing guide for all test types (backend and frontend)
 - **Backend Testing Best Practices**:
@@ -1868,10 +1984,14 @@ Before creating PR, verify ALL items:
 
 **GitHub Actions workflows (MUST pass):**
 
-- `ci.yml` - Maven build + JaCoCo coverage report
-- `publish-and-test.yml` - Docker image build + integration tests
-- `frontend-qa.yml` - Cypress E2E tests
-- `build-installer.yml` - Offline installer packaging
+- `ci.yml` — Maven build + Spotless format check + unit tests (PR + push)
+- `playwright-e2e.yml` — Build stack + Playwright E2E: `core-app` + `demo`
+  projects (PR)
+- `analyzer-e2e.yml` — Full analyzer harness + Playwright E2E: `harness` +
+  `demo` projects (PR)
+- `frontend-qa.yml` — Frontend Docker image build + QA checks (PR)
+- `publish-and-test.yml` — Docker publish + E2E tests (push to `develop` +
+  releases only)
 
 ### Code Review Standards
 
