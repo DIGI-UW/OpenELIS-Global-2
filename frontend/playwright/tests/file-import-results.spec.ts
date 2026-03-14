@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import * as fs from "fs";
 import * as path from "path";
 import { showTitleCard, showStepCard } from "../helpers/title-card";
+import { videoPause } from "../helpers/video-pause";
 
 /**
  * FILE Import → Results E2E Tests (Parameterized)
@@ -130,7 +131,7 @@ for (const analyzer of ANALYZERS) {
 
     test(`full flow: create → configure → import → results (${fileExtension})`, async ({
       page,
-    }) => {
+    }, testInfo) => {
       // Skip if analyzer harness import directory doesn't exist (e.g. in CI)
       test.skip(
         !fs.existsSync(HOST_IMPORT_DIR),
@@ -154,10 +155,18 @@ for (const analyzer of ANALYZERS) {
         page,
         `${analyzer.name} — File Import MVP`,
         `Create → Configure → Import → Results (${fileExtension})`,
+        3000,
+        testInfo,
       );
 
       // ── Step 1: Navigate to analyzer dashboard ─────────────────────
-      await showStepCard(page, 1, "Navigate to Analyzer Dashboard");
+      await showStepCard(
+        page,
+        1,
+        "Navigate to Analyzer Dashboard",
+        2000,
+        testInfo,
+      );
 
       const analyzerApiPromise = page.waitForResponse(
         (resp) =>
@@ -171,10 +180,16 @@ for (const analyzer of ANALYZERS) {
       await expect(page.locator('[data-testid="analyzers-list"]')).toBeVisible({
         timeout: 30_000,
       });
-      await page.waitForTimeout(1_500);
+      await videoPause(page, 1_500, testInfo);
 
       // ── Step 2: Create analyzer ────────────────────────────────────
-      await showStepCard(page, 2, `Create ${analyzer.name} Analyzer`);
+      await showStepCard(
+        page,
+        2,
+        `Create ${analyzer.name} Analyzer`,
+        2000,
+        testInfo,
+      );
 
       const addButton = page.locator('[data-testid="add-analyzer-button"]');
       await expect(addButton).toBeVisible({ timeout: 5_000 });
@@ -182,28 +197,28 @@ for (const analyzer of ANALYZERS) {
 
       const analyzerForm = page.locator('[data-testid="analyzer-form"]');
       await expect(analyzerForm).toBeVisible({ timeout: 10_000 });
-      await page.waitForTimeout(1_000);
+      await videoPause(page, 1_000, testInfo);
 
       // Fill name
       const nameInput = page.locator(
         '[data-testid="analyzer-form-name-input"]',
       );
       await nameInput.fill(createdAnalyzerName);
-      await page.waitForTimeout(500);
+      await videoPause(page, 500, testInfo);
 
       // Select plugin type — Generic File (FILE)
       const pluginTypeDropdown = page.locator(
         '[data-testid="analyzer-form-plugin-type-dropdown"]',
       );
       await pluginTypeDropdown.click();
-      await page.waitForTimeout(500);
+      await videoPause(page, 500, testInfo);
 
       const filePluginOption = page
         .locator('[role="option"]')
         .filter({ hasText: /Generic File.*FILE|FILE.*Generic File/i });
       await expect(filePluginOption.first()).toBeVisible({ timeout: 3_000 });
       await filePluginOption.first().click();
-      await page.waitForTimeout(1_000);
+      await videoPause(page, 1_000, testInfo);
 
       // Select default config profile (QuantStudio or FluoroCycler)
       const defaultConfigDropdown = page.locator(
@@ -211,28 +226,28 @@ for (const analyzer of ANALYZERS) {
       );
       await expect(defaultConfigDropdown).toBeVisible({ timeout: 5_000 });
       await defaultConfigDropdown.click();
-      await page.waitForTimeout(500);
+      await videoPause(page, 500, testInfo);
 
       const profileOption = page
         .locator('[role="option"]')
         .filter({ hasText: new RegExp(analyzer.profileText, "i") });
       await expect(profileOption.first()).toBeVisible({ timeout: 3_000 });
       await profileOption.first().click();
-      await page.waitForTimeout(1_000);
+      await videoPause(page, 1_000, testInfo);
 
       // Select analyzer type — Molecular
       const typeDropdown = page.locator(
         '[data-testid="analyzer-form-type-dropdown"]',
       );
       await typeDropdown.click();
-      await page.waitForTimeout(500);
+      await videoPause(page, 500, testInfo);
 
       const molecularOption = page
         .locator('[role="option"]')
         .filter({ hasText: /Molecular/i });
       await expect(molecularOption.first()).toBeVisible({ timeout: 3_000 });
       await molecularOption.first().click();
-      await page.waitForTimeout(500);
+      await videoPause(page, 500, testInfo);
 
       // Save the analyzer
       const saveButton = page.locator(
@@ -241,14 +256,14 @@ for (const analyzer of ANALYZERS) {
       await saveButton.click();
       await expect(analyzerForm).toBeHidden({ timeout: 15_000 });
       console.log(`Created analyzer: ${createdAnalyzerName}`);
-      await page.waitForTimeout(1_500);
+      await videoPause(page, 1_500, testInfo);
 
       // ── Step 3: Find analyzer in the list ──────────────────────────
-      await showStepCard(page, 3, "Verify Analyzer Created");
+      await showStepCard(page, 3, "Verify Analyzer Created", 2000, testInfo);
 
       const searchInput = page.locator('[data-testid="analyzer-search-input"]');
       await searchInput.fill(createdAnalyzerName);
-      await page.waitForTimeout(1_500);
+      await videoPause(page, 1_500, testInfo);
 
       const analyzerRow = page.locator("tbody tr", {
         hasText: new RegExp(
@@ -257,17 +272,17 @@ for (const analyzer of ANALYZERS) {
         ),
       });
       await expect(analyzerRow.first()).toBeVisible({ timeout: 10_000 });
-      await page.waitForTimeout(1_000);
+      await videoPause(page, 1_000, testInfo);
 
       // ── Step 4: Configure file import ──────────────────────────────
-      await showStepCard(page, 4, "Configure File Import");
+      await showStepCard(page, 4, "Configure File Import", 2000, testInfo);
 
       const overflowMenu = analyzerRow
         .first()
         .locator(".cds--overflow-menu")
         .first();
       await overflowMenu.click();
-      await page.waitForTimeout(500);
+      await videoPause(page, 500, testInfo);
 
       const fileImportAction = page
         .locator('[data-testid*="analyzer-action-file-import"]')
@@ -279,28 +294,28 @@ for (const analyzer of ANALYZERS) {
         '[data-testid="file-import-configuration-form"]',
       );
       await expect(fileImportForm).toBeVisible({ timeout: 10_000 });
-      await page.waitForTimeout(1_000);
+      await videoPause(page, 1_000, testInfo);
 
       // Select file format — EXCEL
       const formatDropdown = page.locator(
         '[data-testid="file-import-configuration-file-format-dropdown"]',
       );
       await formatDropdown.click();
-      await page.waitForTimeout(500);
+      await videoPause(page, 500, testInfo);
 
       const excelOption = page
         .locator('[role="option"]')
         .filter({ hasText: /Excel/i });
       await expect(excelOption.first()).toBeVisible({ timeout: 3_000 });
       await excelOption.first().click();
-      await page.waitForTimeout(500);
+      await videoPause(page, 500, testInfo);
 
       // Set import directory
       const directoryInput = page.locator(
         '[data-testid="file-import-configuration-directory-input"]',
       );
       await directoryInput.fill(analyzer.importDir);
-      await page.waitForTimeout(500);
+      await videoPause(page, 500, testInfo);
 
       // Set file pattern
       const patternInput = page.locator(
@@ -308,21 +323,21 @@ for (const analyzer of ANALYZERS) {
       );
       await patternInput.clear();
       await patternInput.fill(analyzer.filePattern);
-      await page.waitForTimeout(500);
+      await videoPause(page, 500, testInfo);
 
       // Set archive directory
       const archiveInput = page.locator(
         '[data-testid="file-import-configuration-archive-input"]',
       );
       await archiveInput.fill(analyzer.archiveDir);
-      await page.waitForTimeout(500);
+      await videoPause(page, 500, testInfo);
 
       // Set error directory
       const errorInput = page.locator(
         '[data-testid="file-import-configuration-error-input"]',
       );
       await errorInput.fill(analyzer.errorDir);
-      await page.waitForTimeout(500);
+      await videoPause(page, 500, testInfo);
 
       // Set column mappings
       const columnMappingsInput = page.locator(
@@ -330,7 +345,7 @@ for (const analyzer of ANALYZERS) {
       );
       await columnMappingsInput.clear();
       await columnMappingsInput.fill(analyzer.columnMappings);
-      await page.waitForTimeout(1_000);
+      await videoPause(page, 1_000, testInfo);
 
       // Save file import configuration
       const fileImportSave = page.locator(
@@ -339,13 +354,15 @@ for (const analyzer of ANALYZERS) {
       await fileImportSave.click();
       await expect(fileImportForm).toBeHidden({ timeout: 15_000 });
       console.log("File import configuration saved");
-      await page.waitForTimeout(1_500);
+      await videoPause(page, 1_500, testInfo);
 
       // ── Step 5: Drop file into watched directory ───────────────────
       await showStepCard(
         page,
         5,
         `Drop ${fileExtension} file into watched directory`,
+        2000,
+        testInfo,
       );
 
       const timestamp = Date.now();
@@ -355,13 +372,15 @@ for (const analyzer of ANALYZERS) {
       fs.copyFileSync(FIXTURE_FILE, destPath);
       console.log(`Copied fixture to: ${destPath}`);
       expect(fs.existsSync(destPath)).toBeTruthy();
-      await page.waitForTimeout(2_000);
+      await videoPause(page, 2_000, testInfo);
 
       // ── Step 6: Wait for FileImportWatchService ────────────────────
       await showStepCard(
         page,
         6,
         "Waiting for FileImportWatchService (polls every 60s)...",
+        2000,
+        testInfo,
       );
 
       let fileProcessed = false;
@@ -377,7 +396,7 @@ for (const analyzer of ANALYZERS) {
           fileProcessed = true;
           break;
         }
-        await page.waitForTimeout(pollIntervalMs);
+        await page.waitForTimeout(pollIntervalMs); // Legitimate poll wait
         elapsed += pollIntervalMs;
 
         if (elapsed % 15_000 === 0) {
@@ -391,10 +410,10 @@ for (const analyzer of ANALYZERS) {
         );
       }
 
-      await page.waitForTimeout(2_000);
+      await videoPause(page, 2_000, testInfo);
 
       // ── Step 7: View imported results ──────────────────────────────
-      await showStepCard(page, 7, "View Imported Results");
+      await showStepCard(page, 7, "View Imported Results", 2000, testInfo);
 
       const apiResponsePromise = page
         .waitForResponse(
@@ -423,7 +442,7 @@ for (const analyzer of ANALYZERS) {
       }
 
       // Wait for results page to fully render
-      await page.waitForTimeout(3_000);
+      await videoPause(page, 3_000, testInfo);
 
       // ── Step 8: Verify actual result values ────────────────────────
       const resultsTable = page.locator("table, .orderLegendBody");
@@ -458,19 +477,21 @@ for (const analyzer of ANALYZERS) {
 
       // ── Linger on results page for the video ─────────────────────
       // Slow scroll through results so viewer can read values
-      await page.waitForTimeout(3_000);
+      await videoPause(page, 3_000, testInfo);
       await page.evaluate(() => window.scrollBy(0, 200));
-      await page.waitForTimeout(2_000);
+      await videoPause(page, 2_000, testInfo);
       await page.evaluate(() => window.scrollBy(0, 200));
-      await page.waitForTimeout(2_000);
+      await videoPause(page, 2_000, testInfo);
       await page.evaluate(() => window.scrollTo(0, 0));
-      await page.waitForTimeout(3_000);
+      await videoPause(page, 3_000, testInfo);
 
       // ── Completion Card (video ends here) ─────────────────────────
       await showTitleCard(
         page,
         "Import Complete",
         `${analyzer.name}: ${analyzer.expectedResults.length} result values verified`,
+        3000,
+        testInfo,
       );
     });
 
@@ -496,7 +517,7 @@ for (const analyzer of ANALYZERS) {
           '[data-testid="analyzer-search-input"]',
         );
         await searchInput.fill(createdAnalyzerName);
-        await page.waitForTimeout(1_000);
+        await page.waitForTimeout(1_000); // Cleanup stability
 
         const row = page.locator("tbody tr", {
           hasText: new RegExp(
@@ -512,7 +533,7 @@ for (const analyzer of ANALYZERS) {
         ) {
           const overflow = row.first().locator(".cds--overflow-menu").first();
           await overflow.click();
-          await page.waitForTimeout(500);
+          await page.waitForTimeout(500); // Cleanup stability
 
           const deleteAction = page
             .locator('[data-testid*="analyzer-action-delete"]')
@@ -530,7 +551,7 @@ for (const analyzer of ANALYZERS) {
                 .catch(() => false)
             ) {
               await confirmButton.click();
-              await page.waitForTimeout(1_000);
+              await page.waitForTimeout(1_000); // Cleanup stability
             }
           }
         }

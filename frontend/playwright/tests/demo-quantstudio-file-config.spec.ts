@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
+import { videoPause } from "../helpers/video-pause";
 
 /**
  * Demo: QuantStudio 7 — Generic File plugin configuration walkthrough.
@@ -44,19 +45,19 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
   test("create QuantStudio 7 analyzer via Generic File plugin + profile", async ({
     page,
     baseURL,
-  }) => {
+  }, testInfo) => {
     const list = new AnalyzerListPage(page);
     const form = new AnalyzerFormPage(page);
 
     // Step 1: Navigate to Analyzers list
     await list.goto();
     await list.expectLoaded();
-    await page.waitForTimeout(1_000); // Pause for video
+    await videoPause(page, 1_000, testInfo);
 
     // Step 2: Open Add Analyzer form
     await list.clickAdd();
     await form.expectOpen();
-    await page.waitForTimeout(500);
+    await videoPause(page, 500, testInfo);
 
     // Step 3: Select "Generic File" plugin type
     await form.pluginTypeDropdown.click();
@@ -64,9 +65,9 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
       .getByRole("option", { name: /Generic File/i })
       .first();
     await expect(genericFileOption).toBeVisible({ timeout: 10_000 });
-    await page.waitForTimeout(500); // Show the dropdown open
+    await videoPause(page, 500, testInfo);
     await genericFileOption.click();
-    await page.waitForTimeout(500);
+    await videoPause(page, 500, testInfo);
 
     // Step 4: Verify FILE-specific form behavior
     // Protocol version dropdown should NOT be visible
@@ -75,7 +76,7 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
     await expect(form.connectionFields).not.toBeVisible();
     // FILE protocol info tile SHOULD be visible
     await expect(form.fileProtocolInfo).toBeVisible();
-    await page.waitForTimeout(500);
+    await videoPause(page, 500, testInfo);
 
     // Step 5: Select "QuantStudio QS5/QS7" default profile
     await expect(form.defaultConfigDropdown).toBeVisible();
@@ -86,9 +87,9 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
       .getByRole("option", { name: /QuantStudio/i })
       .first();
     await expect(quantStudioOption).toBeVisible({ timeout: 10_000 });
-    await page.waitForTimeout(500); // Show profile options
+    await videoPause(page, 500, testInfo);
     await quantStudioOption.click();
-    await page.waitForTimeout(1_000); // Let profile load and fields populate
+    await videoPause(page, 1_000, testInfo);
 
     // Step 6: Verify prefilled fields from QuantStudio profile
     // The profile should set the analyzer type/category to MOLECULAR
@@ -96,7 +97,7 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
 
     // Step 7: Fill name
     await form.fillName(analyzerName);
-    await page.waitForTimeout(500);
+    await videoPause(page, 500, testInfo);
 
     // Step 8: Save — intercept API response for diagnostics
     const saveResponsePromise = page.waitForResponse(
@@ -112,7 +113,7 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
       console.error(`Save API returned ${saveResponse.status()}: ${body}`);
     }
     await form.expectSuccessNotification();
-    await page.waitForTimeout(1_500); // Show success notification
+    await videoPause(page, 1_500, testInfo);
 
     // Modal auto-closes after 1s
     await expect(form.modal).not.toBeVisible({ timeout: 5_000 });
@@ -120,14 +121,14 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
     // Step 9: Verify analyzer appears in list
     await list.expectLoaded();
     await list.search(analyzerName);
-    await page.waitForTimeout(500);
+    await videoPause(page, 500, testInfo);
 
     const rows = page.locator("tbody tr");
     await expect(rows).toHaveCount(1, { timeout: 10_000 });
     const row = rows.first();
     await expect(row).toContainText(analyzerName);
     await expect(row).toContainText("MOLECULAR");
-    await page.waitForTimeout(1_000);
+    await videoPause(page, 1_000, testInfo);
 
     // Extract ID for cleanup
     const testid = await row.getAttribute("data-testid");
@@ -148,6 +149,6 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
       expect(cfg.active).toBe(true);
     }
 
-    await page.waitForTimeout(2_000); // Final pause for video
+    await videoPause(page, 2_000, testInfo);
   });
 });

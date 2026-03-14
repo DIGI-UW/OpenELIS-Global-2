@@ -1,10 +1,12 @@
-import { Page } from "@playwright/test";
+import { Page, TestInfo } from "@playwright/test";
+import { isVideoProject } from "./video-pause";
 
 /**
  * Injects a full-screen title card overlay into the browser viewport.
  * Since Playwright records the viewport, these appear as title/transition
  * screens in the video with no post-processing needed.
  *
+ * No-op when not recording video (i.e., outside demo-video project).
  * Uses Carbon Design System dark theme colors and IBM Plex Sans.
  */
 export async function showTitleCard(
@@ -12,7 +14,10 @@ export async function showTitleCard(
   title: string,
   subtitle?: string,
   durationMs = 3000,
+  testInfo?: TestInfo,
 ) {
+  if (testInfo && !isVideoProject(testInfo)) return;
+
   await page.evaluate(
     ({ title, subtitle }) => {
       const overlay = document.createElement("div");
@@ -62,6 +67,7 @@ export async function showTitleCard(
 
 /**
  * Shows a step transition banner at the top of the screen.
+ * No-op when not recording video.
  * Uses Carbon blue (#0f62fe) for visual consistency.
  */
 export async function showStepCard(
@@ -69,7 +75,10 @@ export async function showStepCard(
   stepNumber: number,
   description: string,
   durationMs = 2000,
+  testInfo?: TestInfo,
 ) {
+  if (testInfo && !isVideoProject(testInfo)) return;
+
   await page.evaluate(
     ({ stepNumber, description }) => {
       const banner = document.createElement("div");
