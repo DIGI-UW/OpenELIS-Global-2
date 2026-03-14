@@ -1,6 +1,7 @@
 package org.openelisglobal.sampleitem.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
 import java.util.*;
 import org.apache.commons.beanutils.BeanUtils;
 import org.openelisglobal.analysis.service.AnalysisService;
@@ -66,6 +67,10 @@ public class SampleItemController extends BaseController {
 
             for (SampleItem item : sampleItems) {
                 List<Analysis> analysisList = analysisService.getAnalysesBySampleItemsExcludingByStatusIds(item, null);
+                List<SampleItemForm.AnalysisEntry> analysisEntries = new ArrayList<>();
+                for (Analysis analysis : analysisList) {
+                    analysisEntries.add(toAnalysisEntry(analysis));
+                }
 
                 // Create a new sample item entry
                 SampleItemForm.SampleItemEntry entry = new SampleItemForm.SampleItemEntry();
@@ -76,7 +81,7 @@ public class SampleItemController extends BaseController {
                 entry.setQuantity(item.getQuantity());
                 entry.setUom(item.getUnitOfMeasure());
                 entry.setExternalId(item.getExternalId());
-                entry.setAnalysis(analysisList);
+                entry.setAnalysis(analysisEntries);
 
                 sampleItemEntries.add(entry);
             }
@@ -116,6 +121,7 @@ public class SampleItemController extends BaseController {
                 List<List<String>> analysisGroups = new ArrayList<>();
 
                 List<SampleItemAliquotForm.Aliquot> aliquots = sampleItem.getAliquots();
+                BigDecimal totalAliquotedQuantity = BigDecimal.ZERO;
 
                 for (SampleItemAliquotForm.Aliquot aliquot : aliquots) {
                     SampleItem sampleItemToInsert = new SampleItem();
@@ -128,16 +134,24 @@ public class SampleItemController extends BaseController {
                     String aliquotExternalId = aliquot.getExternalId();
                     Double quantity = aliquot.getQuantity();
                     List<String> analysisIds = aliquot.getAnalyses();
+                    BigDecimal aliquotQuantity = BigDecimal.valueOf(quantity);
+                    totalAliquotedQuantity = totalAliquotedQuantity.add(aliquotQuantity);
 
                     analysisGroups.add(analysisIds);
                     sampleItemToInsert.setQuantity(quantity);
+                    sampleItemToInsert.setRemainingQuantity(aliquotQuantity);
+                    sampleItemToInsert.setParentSampleItem(lastSampleItem);
                     sampleItemToInsert.setExternalId(aliquotExternalId);
                     sampleItemToInsert.setFhirUuid(UUID.randomUUID());
                     sampleItemsToInsert.add(sampleItemToInsert);
 
                 }
-                lastSampleItem.setVoided(true);
-                lastSampleItem.setVoidReason("Aliquoted into new sample items");
+                if (!lastSampleItem.canAliquot(totalAliquotedQuantity)) {
+                    response.put("errors",
+                            List.of("Aliquot quantity exceeds remaining quantity for sample item: " + sampleItemExternalId));
+                    return ResponseEntity.badRequest().body(response);
+                }
+                lastSampleItem.decrementRemainingQuantity(totalAliquotedQuantity);
 
                 sampleItemService.insertAliquots(lastSampleItem, sampleItemsToInsert, analysisGroups);
 
@@ -173,5 +187,37 @@ public class SampleItemController extends BaseController {
     @Override
     protected String getPageSubtitleKey() {
         return null;
+    }
+
+    private SampleItemForm.AnalysisEntry toAnalysisEntry(Analysis analysis) {
+        SampleItemForm.AnalysisEntry entry = new SampleItemForm.AnalysisEntry();
+        entry.setId(analysis.getId());
+        entry.setStatusId(analysis.getStatusId());
+        entry.setStartedDate(analysis.getStartedDate());
+        entry.setStartedDateForDisplay(analysis.getStartedDateForDisplay());
+
+        if (analysis.getTest() != null) {
+            SampleItemForm.TestEntry testEntry = new SampleItemForm.TestEntry();
+            testEntry.setName(analysis.getTest().getName());
+            if (analysis.getTest().getLocalizedTestName() != null) {
+                SampleItemForm.LocalizationEntry localizationEntry = new SampleItemForm.LocalizationEntry();
+                localizationEntry.setLocalizedValue(analysis.getTest().getLocalizedTestName().getLocalizedValue());
+                testEntry.setLocalizedTestName(localizationEntry);
+            }
+            entry.setTest(testEntry);
+        }
+
+        if (analysis.getTestSection() != null) {
+            SampleItemForm.TestSectionEntry sectionEntry = new SampleItemForm.TestSectionEntry();
+            sectionEntry.setTestSectionName(analysis.getTestSection().getTestSectionName());
+            if (analysis.getTestSection().getLocalization() != null) {
+                SampleItemForm.LocalizationEntry localizationEntry = new SampleItemForm.LocalizationEntry();
+                localizationEntry.setLocalizedValue(analysis.getTestSection().getLocalization().getLocalizedValue());
+                sectionEntry.setLocalization(localizationEntry);
+            }
+            entry.setTestSection(sectionEntry);
+        }
+
+        return entry;
     }
 }
