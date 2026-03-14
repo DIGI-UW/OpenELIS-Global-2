@@ -29,7 +29,7 @@ services:
       --verbose
     networks:
       analyzer-net:
-        ipv4_address: 172.20.1.100
+        ipv4_address: 172.21.1.100
     restart: unless-stopped
     healthcheck:
       test:
@@ -107,7 +107,7 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.1.0/24
+        - subnet: 172.21.1.0/24
 
 volumes:
   serial-vol:
