@@ -203,8 +203,10 @@ public class AnalyzerRestController extends BaseRestController {
             analyzer.setIpAddress(
                     form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty() ? form.getIpAddress() : null);
             analyzer.setPort(form.getPort());
-            ProtocolVersion pv = ProtocolVersion.fromValue(form.getProtocolVersion());
-            analyzer.setProtocolVersion(pv != null ? pv : ProtocolVersion.ASTM_LIS2_A2);
+            if (form.getProtocolVersion() != null && !form.getProtocolVersion().trim().isEmpty()) {
+                ProtocolVersion pv = ProtocolVersion.fromValue(form.getProtocolVersion());
+                analyzer.setProtocolVersion(pv != null ? pv : ProtocolVersion.ASTM_LIS2_A2);
+            }
             analyzer.setTestUnitIds(form.getTestUnitIds() != null ? form.getTestUnitIds() : new ArrayList<>());
             if (form.getIdentifierPattern() != null) {
                 analyzer.setIdentifierPattern(form.getIdentifierPattern());
@@ -229,11 +231,18 @@ public class AnalyzerRestController extends BaseRestController {
             String analyzerId = analyzerService.insert(analyzer);
             pluginService.registerAnalyzerMenuAndPermission(analyzer.getName());
 
-            // Auto-create test mappings from default config if provided
+            // Auto-create test mappings and file import config from default profile if
+            // provided
             if (form.getDefaultConfigId() != null && !form.getDefaultConfigId().isEmpty()) {
                 Map<String, Object> configData = loadDefaultConfigFile(form.getDefaultConfigId());
                 if (configData != null) {
                     analyzerService.autoCreateTestMappings(analyzerId, configData, getSysUserId(request));
+
+                    // For FILE protocol profiles, auto-create FileImportConfiguration
+                    if (isFileProtocol(configData)) {
+                        fileImportService.autoCreateFromProfile(analyzerId, configData, form.getName(),
+                                getSysUserId(request));
+                    }
                 } else {
                     logger.warn("Could not load default config '{}' for test mapping auto-creation",
                             form.getDefaultConfigId());
@@ -1014,6 +1023,12 @@ public class AnalyzerRestController extends BaseRestController {
                 scanTemplates(hl7Dir, "hl7", templates);
             }
 
+            // Scan FILE directory
+            Path fileDir = baseDir.resolve("file");
+            if (Files.exists(fileDir) && Files.isDirectory(fileDir)) {
+                scanTemplates(fileDir, "file", templates);
+            }
+
             return ResponseEntity.ok(templates);
         } catch (Exception e) {
             logger.error("Error listing default configs", e);
@@ -1045,9 +1060,10 @@ public class AnalyzerRestController extends BaseRestController {
             Path templateFile = resolveConfigFilePath(protocol, name);
             if (templateFile == null) {
                 // Determine specific error for HTTP response
-                if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                            .body(AnalyzerControllerHelper.wrapError("Invalid protocol: must be 'astm' or 'hl7'"));
+                if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")
+                        && !protocol.equalsIgnoreCase("file")) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                            AnalyzerControllerHelper.wrapError("Invalid protocol: must be 'astm', 'hl7', or 'file'"));
                 }
                 if (!name.matches("^[a-zA-Z0-9\\-_.]+$")) {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(AnalyzerControllerHelper
@@ -1130,7 +1146,8 @@ public class AnalyzerRestController extends BaseRestController {
      *         file not found
      */
     private Path resolveConfigFilePath(String protocol, String name) {
-        if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")) {
+        if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")
+                && !protocol.equalsIgnoreCase("file")) {
             return null;
         }
         if (!name.matches("^[a-zA-Z0-9\\-_.]+$")) {
@@ -1185,6 +1202,16 @@ public class AnalyzerRestController extends BaseRestController {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private boolean isFileProtocol(Map<String, Object> configData) {
+        Object protocol = configData.get("protocol");
+        if (protocol instanceof Map) {
+            Object name = ((Map<String, Object>) protocol).get("name");
+            return "FILE".equalsIgnoreCase(name instanceof String ? (String) name : null);
+        }
+        return false;
+    }
+
     /**
      * Scan directory for JSON template files and add to list.
      *
@@ -1208,9 +1235,27 @@ public class AnalyzerRestController extends BaseRestController {
                     String filename = file.getFileName().toString().replace(".json", "");
                     template.put("id", protocol + "/" + filename);
                     template.put("protocol", protocol.toUpperCase());
-                    template.put("analyzerName", config.get("analyzer_name"));
-                    template.put("manufacturer", config.get("manufacturer"));
-                    template.put("category", config.get("category"));
+
+                    // Top-level keys (ASTM/HL7 profiles)
+                    String analyzerName = (String) config.get("analyzer_name");
+                    String manufacturer = (String) config.get("manufacturer");
+                    String category = (String) config.get("category");
+
+                    // Fallback to profileMeta (FILE profiles store data there)
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> profileMeta = (Map<String, Object>) config.get("profileMeta");
+                    if (profileMeta != null) {
+                        if (analyzerName == null) {
+                            analyzerName = (String) profileMeta.get("displayName");
+                        }
+                        if (manufacturer == null) {
+                            manufacturer = (String) profileMeta.get("manufacturer");
+                        }
+                    }
+
+                    template.put("analyzerName", analyzerName);
+                    template.put("manufacturer", manufacturer);
+                    template.put("category", category);
 
                     templates.add(template);
                 } catch (Exception e) {

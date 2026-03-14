@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- 014-hjra-file-stream-alignment: Isolated version for OGC-329, OGC-324 file stream work -->
+
+  <include relativeToChangelogFile="true" file="001-add-file-format-to-file-import-config.xml"/>
+  <include relativeToChangelogFile="true" file="002-create-analyzer-file-upload.xml"/>
+  <include relativeToChangelogFile="true" file="003-create-analyzer-run.xml"/>
+</databaseChangeLog>
