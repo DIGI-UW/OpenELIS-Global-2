@@ -12,19 +12,19 @@
 Tests are organized into 4 projects via allowlist-based `testMatch` in
 `playwright.config.ts`. New test files must be explicitly added to a project.
 
-| Project | Purpose | CI Workflow | Infra Required |
-|---------|---------|-------------|----------------|
-| `core-app` | Core UI tests (no plugins/bridge) | `playwright-e2e.yml` | Build stack |
-| `harness` | Analyzer infra tests (bridge, simulator, plugins) | `analyzer-e2e.yml` | Full harness |
-| `demo` | Workflow demos at normal speed | Both | Depends on test |
-| `demo-video` | Same demos with slowMo + video | Local only | Harness |
+| Project      | Purpose                                           | CI Workflow          | Infra Required  |
+| ------------ | ------------------------------------------------- | -------------------- | --------------- |
+| `core-app`   | Core UI tests (no plugins/bridge)                 | `playwright-e2e.yml` | Build stack     |
+| `harness`    | Analyzer infra tests (bridge, simulator, plugins) | `analyzer-e2e.yml`   | Full harness    |
+| `demo`       | Workflow demos at normal speed                    | Both                 | Depends on test |
+| `demo-video` | Same demos with slowMo + video                    | Local only           | Harness         |
 
 ## CI Workflows
 
-| Workflow | Compose Files | Projects | Fixtures |
-|----------|--------------|----------|----------|
-| `playwright-e2e.yml` | `build.docker-compose.yml` | `core-app` + `demo` | `file-import-e2e.sql` |
-| `analyzer-e2e.yml` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+| Workflow             | Compose Files                                          | Projects            | Fixtures                                           |
+| -------------------- | ------------------------------------------------------ | ------------------- | -------------------------------------------------- |
+| `playwright-e2e.yml` | `build.docker-compose.yml`                             | `core-app` + `demo` | `file-import-e2e.sql`                              |
+| `analyzer-e2e.yml`   | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `demo`  | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
 
 ## Fixtures
 
@@ -125,11 +125,11 @@ test("my demo test", async ({ page }, testInfo) => {
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `BASE_URL` | `https://localhost` | App URL |
-| `TEST_USER` | — | Login username (required) |
-| `TEST_PASS` | — | Login password (required) |
-| `PLAYWRIGHT_SLOWMO` | `500` | Milliseconds of slowMo for `demo-video` |
-| `PLAYWRIGHT_VIDEO` | `off` | Global video override (prefer `demo-video` project instead) |
-| `CI` | — | Set by GitHub Actions; enables single worker + retries |
+| Variable            | Default             | Description                                                 |
+| ------------------- | ------------------- | ----------------------------------------------------------- |
+| `BASE_URL`          | `https://localhost` | App URL                                                     |
+| `TEST_USER`         | —                   | Login username (required)                                   |
+| `TEST_PASS`         | —                   | Login password (required)                                   |
+| `PLAYWRIGHT_SLOWMO` | `500`               | Milliseconds of slowMo for `demo-video`                     |
+| `PLAYWRIGHT_VIDEO`  | `off`               | Global video override (prefer `demo-video` project instead) |
+| `CI`                | —                   | Set by GitHub Actions; enables single worker + retries      |
