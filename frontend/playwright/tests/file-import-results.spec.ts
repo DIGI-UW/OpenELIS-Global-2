@@ -46,6 +46,12 @@ const ANALYZERS = [
       2,
     ),
     sampleIds: ["E2E001", "E2E002", "E2E005"],
+    expectedResults: [
+      { sampleId: "E2E001", result: "1520.5" },
+      { sampleId: "E2E002", result: "45200" },
+      { sampleId: "E2E005", result: "3200.8" },
+    ],
+    headerMarker: "Sample Name", // should NOT appear in results (regression check)
   },
   {
     name: "QuantStudio 7",
@@ -69,6 +75,12 @@ const ANALYZERS = [
       2,
     ),
     sampleIds: ["E2E001", "E2E002", "E2E005"],
+    expectedResults: [
+      { sampleId: "E2E001", result: "1520.5" },
+      { sampleId: "E2E002", result: "45200" },
+      { sampleId: "E2E005", result: "3200.8" },
+    ],
+    headerMarker: "Sample Name",
   },
   {
     name: "FluoroCycler XT",
@@ -93,6 +105,12 @@ const ANALYZERS = [
       2,
     ),
     sampleIds: ["E2E-FC001", "E2E-FC002", "E2E-FC003"],
+    expectedResults: [
+      { sampleId: "E2E-FC001", result: "28.5" },
+      { sampleId: "E2E-FC002", result: "31.2" },
+      { sampleId: "E2E-FC003", result: "Negative" },
+    ],
+    headerMarker: "SampleID",
   },
 ];
 
@@ -403,39 +421,53 @@ for (const analyzer of ANALYZERS) {
           // Non-JSON response
         }
       }
+
+      // Wait for results page to fully render
       await page.waitForTimeout(3_000);
 
-      // ── Step 8: Verify results appear ──────────────────────────────
+      // ── Step 8: Verify actual result values ────────────────────────
       const resultsTable = page.locator("table, .orderLegendBody");
       await expect(resultsTable.first()).toBeVisible({ timeout: 15_000 });
 
-      // Check for sample accession numbers — MUST find at least one
-      const sampleLocators = analyzer.sampleIds.map((id) => page.getByText(id));
-      const anyResult = sampleLocators.reduce((acc, loc) => acc.or(loc));
-
-      await expect(anyResult.first()).toBeVisible({ timeout: 15_000 });
+      // Regression check: header row should NOT be imported as data
+      const headerMarkerLocator = page
+        .locator("td")
+        .filter({ hasText: new RegExp(`^${analyzer.headerMarker}$`) });
+      await expect(headerMarkerLocator).toHaveCount(0, { timeout: 5_000 });
       console.log(
-        `Results found in Analyzer Results page for ${analyzer.name}!`,
+        `Verified: no header row in results (no '${analyzer.headerMarker}' in table)`,
       );
 
-      // Scroll through results for the video
-      await page.waitForTimeout(2_000);
-      await page.evaluate(() => window.scrollBy(0, 300));
-      await page.waitForTimeout(2_000);
+      // Hard assertion: verify EACH expected result value
+      for (const expected of analyzer.expectedResults) {
+        const row = page.locator("tr", { hasText: expected.sampleId });
+        await expect(row.first()).toBeVisible({ timeout: 15_000 });
 
-      // ── Completion Card ────────────────────────────────────────────
+        // Verify the actual result value appears in the same row
+        await expect(row.first()).toContainText(expected.result);
+        console.log(`  ✓ ${expected.sampleId} → ${expected.result}`);
+      }
+
+      console.log(
+        `All ${analyzer.expectedResults.length} result values verified for ${analyzer.name}!`,
+      );
+
+      // ── Linger on results page for the video ─────────────────────
+      // Slow scroll through results so viewer can read values
+      await page.waitForTimeout(3_000);
+      await page.evaluate(() => window.scrollBy(0, 200));
+      await page.waitForTimeout(2_000);
+      await page.evaluate(() => window.scrollBy(0, 200));
+      await page.waitForTimeout(2_000);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.waitForTimeout(3_000);
+
+      // ── Completion Card (video ends here) ─────────────────────────
       await showTitleCard(
         page,
         "Import Complete",
-        `${analyzer.name} results successfully imported into OpenELIS`,
+        `${analyzer.name}: ${analyzer.expectedResults.length} result values verified`,
       );
-
-      // ── Navigate back to analyzer list ─────────────────────────────
-      await page.goto("analyzers", { waitUntil: "domcontentloaded" });
-      await expect(page.locator('[data-testid="analyzers-list"]')).toBeVisible({
-        timeout: 15_000,
-      });
-      await page.waitForTimeout(2_000);
     });
 
     test.afterEach(async ({ page }) => {

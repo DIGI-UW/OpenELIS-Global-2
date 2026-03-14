@@ -77,7 +77,11 @@ public class ExcelAnalyzerReader extends AnalyzerReader {
                 }
 
                 Map<String, Integer> headerIndex = buildHeaderIndex(headerRow, formatter);
-                prependHeaderLine(headerRow, formatter, headerIndex);
+                // Note: prependHeaderLine() is NOT called here. ExcelAnalyzerReader
+                // produces tab-delimited data lines in PREFERRED_FIELD_ORDER; the
+                // inserter uses lineFieldOrder from the profile config to parse them.
+                // Adding a synthetic header caused a dual-hasHeader bug where header
+                // rows were imported as data when the inserter's config didn't match.
                 for (int rowIndex = headerRowIndex + 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
                     Row row = sheet.getRow(rowIndex);
                     if (row == null) {
@@ -91,10 +95,13 @@ public class ExcelAnalyzerReader extends AnalyzerReader {
                             continue;
                         }
                         String value = formatter.formatCellValue(row.getCell(cellIndex));
-                        if (value != null && !value.isBlank()) {
-                            parsedRecord.put(mapping.getValue(), value);
-                            parsedRecord.put(mapping.getKey(), value);
-                        }
+                        // Always include mapped values, even empty ones — let
+                        // downstream inserter decide how to handle blanks (e.g.
+                        // FluoroCycler negative results have empty CP but valid
+                        // Interpretation).
+                        String safeValue = value != null ? value : "";
+                        parsedRecord.put(mapping.getValue(), safeValue);
+                        parsedRecord.put(mapping.getKey(), safeValue);
                     }
                     appendRecord(parsedRecord);
                 }
