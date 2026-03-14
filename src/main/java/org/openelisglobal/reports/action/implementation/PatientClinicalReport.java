@@ -45,8 +45,6 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 
-@Component("patientHaitiClinical")
-@Scope("prototype")
 public class PatientClinicalReport extends PatientReport implements IReportCreator, IReportParameterSetter {
 
     private static Set<Integer> analysisStatusIds;
