@@ -87,18 +87,12 @@ public class SamplePatientUpdateData {
     private Organization currentOrganization;
     private ElectronicOrder electronicOrder = null;
 
-    private boolean useReceiveDateForCollectionDate =
-        !FormFields.getInstance().useField(Field.CollectionDate);
+    private boolean useReceiveDateForCollectionDate = !FormFields.getInstance().useField(Field.CollectionDate);
     private String collectionDateFromReceiveDate = null;
 
-    private OrganizationService orgService = SpringContext.getBean(
-        OrganizationService.class
-    );
-    private ElectronicOrderService electronicOrderService =
-        SpringContext.getBean(ElectronicOrderService.class);
-    private ProgramService programService = SpringContext.getBean(
-        ProgramService.class
-    );
+    private OrganizationService orgService = SpringContext.getBean(OrganizationService.class);
+    private ElectronicOrderService electronicOrderService = SpringContext.getBean(ElectronicOrderService.class);
+    private ProgramService programService = SpringContext.getBean(ProgramService.class);
 
     private List<ObservationHistory> observations = new ArrayList<>();
     private List<OrganizationAddress> orgAddressExtra = new ArrayList<>();
@@ -193,9 +187,7 @@ public class SamplePatientUpdateData {
         return requesterSiteDepartment;
     }
 
-    private void setRequesterSiteDepartment(
-        SampleRequester requesterSiteDepartment
-    ) {
+    private void setRequesterSiteDepartment(SampleRequester requesterSiteDepartment) {
         this.requesterSiteDepartment = requesterSiteDepartment;
     }
 
@@ -203,9 +195,7 @@ public class SamplePatientUpdateData {
         return sampleItemsTests;
     }
 
-    public void setSampleItemsTests(
-        List<SampleTestCollection> sampleItemsTests
-    ) {
+    public void setSampleItemsTests(List<SampleTestCollection> sampleItemsTests) {
         this.sampleItemsTests = sampleItemsTests;
     }
 
@@ -237,9 +227,7 @@ public class SamplePatientUpdateData {
         return electronicOrder;
     }
 
-    public void setCollectionDateFromRecieveDateIfNeeded(
-        String collectionDateFromRecieveDate
-    ) {
+    public void setCollectionDateFromRecieveDateIfNeeded(String collectionDateFromRecieveDate) {
         if (useReceiveDateForCollectionDate) {
             collectionDateFromReceiveDate = collectionDateFromRecieveDate;
         }
@@ -257,11 +245,7 @@ public class SamplePatientUpdateData {
         return currentUserId;
     }
 
-    public void addOrgAddressExtra(
-        String value,
-        String type,
-        String addressPart
-    ) {
+    public void addOrgAddressExtra(String value, String type, String addressPart) {
         if (!GenericValidator.isBlankOrNull(value)) {
             OrganizationAddress orgAddress = new OrganizationAddress();
             orgAddress.setSysUserId(currentUserId);
@@ -272,15 +256,9 @@ public class SamplePatientUpdateData {
         }
     }
 
-    public void createObservation(
-        String observationData,
-        String observationType,
-        ObservationHistory.ValueType valueType
-    ) {
-        if (
-            !GenericValidator.isBlankOrNull(observationData) &&
-            !GenericValidator.isBlankOrNull(observationType)
-        ) {
+    public void createObservation(String observationData, String observationType,
+            ObservationHistory.ValueType valueType) {
+        if (!GenericValidator.isBlankOrNull(observationData) && !GenericValidator.isBlankOrNull(observationType)) {
             ObservationHistory observation = new ObservationHistory();
             observation.setObservationHistoryTypeId(observationType);
             observation.setSysUserId(currentUserId);
@@ -294,13 +272,8 @@ public class SamplePatientUpdateData {
         // assure accession number
 
         // TODO
-        IAccessionNumberValidator.ValidationResults result =
-            AccessionNumberUtil.checkAccessionNumberValidity(
-                accessionNumber,
-                null,
-                null,
-                null
-            );
+        IAccessionNumberValidator.ValidationResults result = AccessionNumberUtil
+                .checkAccessionNumberValidity(accessionNumber, null, null, null);
 
         if (result != IAccessionNumberValidator.ValidationResults.SUCCESS) {
             String message = AccessionNumberUtil.getInvalidMessage(result);
@@ -309,11 +282,8 @@ public class SamplePatientUpdateData {
 
         // assure that there is at least 1 sample
         if (sampleItemsTests.isEmpty()) {
-            errors.reject(
-                "errors.no.sample",
-                "No specimen type/test combination was found. " +
-                    "Please select at least one specimen container and one test."
-            );
+            errors.reject("errors.no.sample", "No specimen type/test combination was found. "
+                    + "Please select at least one specimen container and one test.");
         }
 
         // assure that all samples have tests
@@ -337,10 +307,7 @@ public class SamplePatientUpdateData {
         return true;
     }
 
-    public void createPopulatedSample(
-        String receivedDate,
-        SampleOrderItem sampleOrder
-    ) {
+    public void createPopulatedSample(String receivedDate, SampleOrderItem sampleOrder) {
         sample = new Sample();
         sample.setSysUserId(currentUserId);
         sample.setAccessionNumber(accessionNumber);
@@ -348,25 +315,15 @@ public class SamplePatientUpdateData {
 
         sample.setEnteredDate(DateUtil.getNowAsSqlDate());
 
-        sample.setReceivedTimestamp(
-            DateUtil.convertStringDateToTimestamp(receivedDate)
-        );
+        sample.setReceivedTimestamp(DateUtil.convertStringDateToTimestamp(receivedDate));
         sample.setReferringId(sampleOrder.getRequesterSampleID());
 
         if (useReceiveDateForCollectionDate) {
             sample.setCollectionDateForDisplay(collectionDateFromReceiveDate);
         }
 
-        sample.setDomain(
-            ConfigurationProperties.getInstance().getPropertyValue(
-                "domain.human"
-            )
-        );
-        sample.setStatusId(
-            SpringContext.getBean(IStatusService.class).getStatusID(
-                OrderStatus.Entered
-            )
-        );
+        sample.setDomain(ConfigurationProperties.getInstance().getPropertyValue("domain.human"));
+        sample.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Entered));
 
         setElectronicOrderIfNeeded(sampleOrder);
     }
@@ -375,17 +332,11 @@ public class SamplePatientUpdateData {
         electronicOrder = null;
         String externalOrderNumber = sampleOrder.getExternalOrderNumber();
         if (!GenericValidator.isBlankOrNull(externalOrderNumber)) {
-            List<ElectronicOrder> orders =
-                electronicOrderService.getElectronicOrdersByExternalId(
-                    externalOrderNumber
-                );
+            List<ElectronicOrder> orders = electronicOrderService.getElectronicOrdersByExternalId(externalOrderNumber);
             if (!orders.isEmpty()) {
                 electronicOrder = orders.get(orders.size() - 1);
                 electronicOrder.setStatusId(
-                    SpringContext.getBean(IStatusService.class).getStatusID(
-                        ExternalOrderStatus.Realized
-                    )
-                );
+                        SpringContext.getBean(IStatusService.class).getStatusID(ExternalOrderStatus.Realized));
                 electronicOrder.setSysUserId(currentUserId);
 
                 sample.setReferringId(externalOrderNumber);
@@ -398,16 +349,9 @@ public class SamplePatientUpdateData {
         providerPerson = null;
         if (noRequesterInformation(sampleOrder)) {
             provider = PatientUtil.getUnownProvider();
-        } else if (
-            !GenericValidator.isBlankOrNull(sampleOrder.getProviderPersonId())
-        ) {
-            provider = SpringContext.getBean(
-                ProviderService.class
-            ).getProviderByPerson(
-                SpringContext.getBean(PersonService.class).get(
-                    sampleOrder.getProviderPersonId()
-                )
-            );
+        } else if (!GenericValidator.isBlankOrNull(sampleOrder.getProviderPersonId())) {
+            provider = SpringContext.getBean(ProviderService.class).getProviderByPerson(
+                    SpringContext.getBean(PersonService.class).get(sampleOrder.getProviderPersonId()));
             providerPerson = provider.getPerson();
             providerPerson.setSysUserId(currentUserId);
         } else {
@@ -428,21 +372,13 @@ public class SamplePatientUpdateData {
     }
 
     private boolean noRequesterInformation(SampleOrderItem sampleOrder) {
-        return (
-            GenericValidator.isBlankOrNull(sampleOrder.getProviderPersonId()) &&
-            GenericValidator.isBlankOrNull(
-                sampleOrder.getProviderFirstName()
-            ) &&
-            GenericValidator.isBlankOrNull(
-                sampleOrder.getProviderWorkPhone()
-            ) &&
-            GenericValidator.isBlankOrNull(sampleOrder.getProviderLastName()) &&
-            GenericValidator.isBlankOrNull(
-                sampleOrder.getRequesterSampleID()
-            ) &&
-            GenericValidator.isBlankOrNull(sampleOrder.getProviderFax()) &&
-            GenericValidator.isBlankOrNull(sampleOrder.getProviderEmail())
-        );
+        return (GenericValidator.isBlankOrNull(sampleOrder.getProviderPersonId())
+                && GenericValidator.isBlankOrNull(sampleOrder.getProviderFirstName())
+                && GenericValidator.isBlankOrNull(sampleOrder.getProviderWorkPhone())
+                && GenericValidator.isBlankOrNull(sampleOrder.getProviderLastName())
+                && GenericValidator.isBlankOrNull(sampleOrder.getRequesterSampleID())
+                && GenericValidator.isBlankOrNull(sampleOrder.getProviderFax())
+                && GenericValidator.isBlankOrNull(sampleOrder.getProviderEmail()));
     }
 
     public void buildSampleHuman() {
@@ -470,10 +406,7 @@ public class SamplePatientUpdateData {
 
     public void updateCurrentOrgIfNeeded(String code, String orgId) {
         currentOrganization = orgService.getOrganizationById(orgId);
-        if (
-            StringUtil.compareWithNulls(code, currentOrganization.getCode()) !=
-            0
-        ) {
+        if (StringUtil.compareWithNulls(code, currentOrganization.getCode()) != 0) {
             currentOrganization.setCode(code);
             currentOrganization.setSysUserId(currentUserId);
         } else {
@@ -486,24 +419,17 @@ public class SamplePatientUpdateData {
             setRequesterSite(initSampleRequester(sampleOrder));
         }
         if (FormFields.getInstance().useField(Field.SITE_DEPARTMENT)) {
-            setRequesterSiteDepartment(
-                initSampleRequesterDepartment(sampleOrder)
-            );
+            setRequesterSiteDepartment(initSampleRequesterDepartment(sampleOrder));
         }
     }
 
-    private SampleRequester initSampleRequesterDepartment(
-        SampleOrderItem orderItem
-    ) {
+    private SampleRequester initSampleRequesterDepartment(SampleOrderItem orderItem) {
         SampleRequester requester = null;
 
         String orgId = orderItem.getReferringSiteDepartmentId();
 
         if (!GenericValidator.isBlankOrNull(orgId)) {
-            requester = createSiteRequester(
-                orgId,
-                TableIdService.getInstance().ORGANIZATION_REQUESTER_TYPE_ID
-            );
+            requester = createSiteRequester(orgId, TableIdService.getInstance().ORGANIZATION_REQUESTER_TYPE_ID);
         }
 
         return requester;
@@ -517,76 +443,36 @@ public class SamplePatientUpdateData {
         String orgId = orderItem.getReferringSiteId();
 
         if (!GenericValidator.isBlankOrNull(orgId)) {
-            requester = createSiteRequester(
-                orgId,
-                TableIdService.getInstance().ORGANIZATION_REQUESTER_TYPE_ID
-            );
-            if (
-                FormFields.getInstance().useField(
-                    Field.SampleEntryReferralSiteCode
-                )
-            ) {
-                updateCurrentOrgIfNeeded(
-                    orderItem.getReferringSiteCode(),
-                    orgId
-                );
+            requester = createSiteRequester(orgId, TableIdService.getInstance().ORGANIZATION_REQUESTER_TYPE_ID);
+            if (FormFields.getInstance().useField(Field.SampleEntryReferralSiteCode)) {
+                updateCurrentOrgIfNeeded(orderItem.getReferringSiteCode(), orgId);
             }
-        } else if (
-            !GenericValidator.isBlankOrNull(orderItem.getNewRequesterName())
-        ) {
+        } else if (!GenericValidator.isBlankOrNull(orderItem.getNewRequesterName())) {
             if (confirmNewRequesterName(orderItem.getNewRequesterName())) {
                 // will be corrected after newOrg is persisted
-                requester = createSiteRequester(
-                    "0",
-                    TableIdService.getInstance().ORGANIZATION_REQUESTER_TYPE_ID
-                );
+                requester = createSiteRequester("0", TableIdService.getInstance().ORGANIZATION_REQUESTER_TYPE_ID);
 
                 setNewOrganization(new Organization());
 
-                if (
-                    FormFields.getInstance().useField(
-                        Field.SampleEntryHealthFacilityAddress
-                    )
-                ) {
-                    addOrgAddressExtra(
-                        orderItem.getFacilityPhone(),
-                        "T",
-                        TableIdService.getInstance().ADDRESS_PHONE_ID
-                    );
-                    addOrgAddressExtra(
-                        orderItem.getFacilityFax(),
-                        "T",
-                        TableIdService.getInstance().ADDRESS_FAX_ID
-                    );
-                    addOrgAddressExtra(
-                        orderItem.getFacilityAddressCommune(),
-                        "T",
-                        TableIdService.getInstance().ADDRESS_COMMUNE_ID
-                    );
-                    addOrgAddressExtra(
-                        orderItem.getFacilityAddressStreet(),
-                        "T",
-                        TableIdService.getInstance().ADDRESS_STREET_ID
-                    );
+                if (FormFields.getInstance().useField(Field.SampleEntryHealthFacilityAddress)) {
+                    addOrgAddressExtra(orderItem.getFacilityPhone(), "T",
+                            TableIdService.getInstance().ADDRESS_PHONE_ID);
+                    addOrgAddressExtra(orderItem.getFacilityFax(), "T", TableIdService.getInstance().ADDRESS_FAX_ID);
+                    addOrgAddressExtra(orderItem.getFacilityAddressCommune(), "T",
+                            TableIdService.getInstance().ADDRESS_COMMUNE_ID);
+                    addOrgAddressExtra(orderItem.getFacilityAddressStreet(), "T",
+                            TableIdService.getInstance().ADDRESS_STREET_ID);
                 }
 
                 initializeNewOrganization(orderItem);
             } else {
                 Organization organization = new Organization();
-                organization.setOrganizationName(
-                    orderItem.getNewRequesterName()
-                );
-                organization = orgService.getActiveOrganizationByName(
-                    organization,
-                    true
-                );
+                organization.setOrganizationName(orderItem.getNewRequesterName());
+                organization = orgService.getActiveOrganizationByName(organization, true);
                 orgId = organization.getId();
 
                 if (!GenericValidator.isBlankOrNull(orgId)) {
-                    requester = createSiteRequester(
-                        orgId,
-                        TableIdService.getInstance().ORGANIZATION_REQUESTER_TYPE_ID
-                    );
+                    requester = createSiteRequester(orgId, TableIdService.getInstance().ORGANIZATION_REQUESTER_TYPE_ID);
                 }
             }
         }
@@ -604,10 +490,7 @@ public class SamplePatientUpdateData {
         boolean newName = true;
         Organization organization = new Organization();
         organization.setOrganizationName(requesterName);
-        organization = orgService.getActiveOrganizationByName(
-            organization,
-            true
-        );
+        organization = orgService.getActiveOrganizationByName(organization, true);
 
         if (organization == null) {
             newName = true;
@@ -617,10 +500,7 @@ public class SamplePatientUpdateData {
         return newName;
     }
 
-    private SampleRequester createSiteRequester(
-        String orgId,
-        long requesterTypeId
-    ) {
+    private SampleRequester createSiteRequester(String orgId, long requesterTypeId) {
         SampleRequester requester;
         requester = new SampleRequester();
         requester.setRequesterId(orgId);
@@ -629,44 +509,25 @@ public class SamplePatientUpdateData {
         return requester;
     }
 
-    public void initSampleData(
-        String sampleXML,
-        String receivedDate,
-        boolean trackPayments,
-        SampleOrderItem sampleOrder
-    ) {
+    public void initSampleData(String sampleXML, String receivedDate, boolean trackPayments,
+            SampleOrderItem sampleOrder) {
         createPopulatedSample(receivedDate, sampleOrder);
 
         addObservations(sampleOrder, trackPayments);
 
-        SampleAddService sampleAddService = new SampleAddService(
-            sampleXML,
-            currentUserId,
-            getSample(),
-            receivedDate
-        );
+        SampleAddService sampleAddService = new SampleAddService(sampleXML, currentUserId, getSample(), receivedDate);
         setSampleItemsTests(sampleAddService.createSampleTestCollection());
         setSampleAddService(sampleAddService);
     }
 
-    public void initProgramQuestions(
-        String programId,
-        QuestionnaireResponse additionalQuestions
-    ) {
+    public void initProgramQuestions(String programId, QuestionnaireResponse additionalQuestions) {
         Program program = programService.get(programId);
         setProgramQuestionnaireResponse(additionalQuestions);
         if (program.getProgramName().toLowerCase().contains("pathology")) {
             setProgramSample(new PathologySample());
-        } else if (
-            program
-                .getProgramName()
-                .toLowerCase()
-                .contains("immunohistochemistry")
-        ) {
+        } else if (program.getProgramName().toLowerCase().contains("immunohistochemistry")) {
             setProgramSample(new ImmunohistochemistrySample());
-        } else if (
-            program.getProgramName().toLowerCase().contains("cytology")
-        ) {
+        } else if (program.getProgramName().toLowerCase().contains("cytology")) {
             setProgramSample(new CytologySample());
         } else {
             setProgramSample(new ProgramSample());
@@ -675,109 +536,47 @@ public class SamplePatientUpdateData {
         getProgramSample().setSysUserId(currentUserId);
     }
 
-    private void addObservations(
-        SampleOrderItem sampleOrder,
-        boolean trackPayments
-    ) {
-        ObservationHistoryService observationHistoryService =
-            SpringContext.getBean(ObservationHistoryService.class);
+    private void addObservations(SampleOrderItem sampleOrder, boolean trackPayments) {
+        ObservationHistoryService observationHistoryService = SpringContext.getBean(ObservationHistoryService.class);
         if (trackPayments) {
-            createObservation(
-                sampleOrder.getPaymentOptionSelection(),
-                observationHistoryService.getObservationTypeIdForType(
-                    ObservationType.PAYMENT_STATUS
-                ),
-                ValueType.DICTIONARY
-            );
+            createObservation(sampleOrder.getPaymentOptionSelection(),
+                    observationHistoryService.getObservationTypeIdForType(ObservationType.PAYMENT_STATUS),
+                    ValueType.DICTIONARY);
         }
 
-        createObservation(
-            sampleOrder.getRequestDate(),
-            observationHistoryService.getObservationTypeIdForType(
-                ObservationType.REQUEST_DATE
-            ),
-            ValueType.LITERAL
-        );
-        createObservation(
-            sampleOrder.getNextVisitDate(),
-            observationHistoryService.getObservationTypeIdForType(
-                ObservationType.NEXT_VISIT_DATE
-            ),
-            ValueType.LITERAL
-        );
-        createObservation(
-            sampleOrder.getTestLocationCode(),
-            observationHistoryService.getObservationTypeIdForType(
-                ObservationType.TEST_LOCATION_CODE
-            ),
-            ValueType.DICTIONARY
-        );
-        createObservation(
-            sampleOrder.getOtherLocationCode(),
-            observationHistoryService.getObservationTypeIdForType(
-                ObservationType.TEST_LOCATION_CODE_OTHER
-            ),
-            ValueType.LITERAL
-        );
-        createObservation(
-            sampleOrder.getReferringPatientNumber(),
-            observationHistoryService.getObservationTypeIdForType(
-                ObservationType.REFERRERS_PATIENT_ID
-            ),
-            ValueType.LITERAL
-        );
-        createObservation(
-            sampleOrder.getProvisionalClinicalDiagnosis(),
-            observationHistoryService.getObservationTypeIdForType(
-                ObservationType.PROVISIONAL_CLINICAL_DIAGNOSIS
-            ),
-            ValueType.LITERAL
-        );
-        if (
-            ConfigurationProperties.getInstance().isPropertyValueEqual(
-                Property.USE_BILLING_REFERENCE_NUMBER,
-                "true"
-            )
-        ) {
-            createObservation(
-                sampleOrder.getBillingReferenceNumber(),
-                observationHistoryService.getObservationTypeIdForType(
-                    ObservationType.BILLING_REFERENCE_NUMBER
-                ),
-                ValueType.LITERAL
-            );
+        createObservation(sampleOrder.getRequestDate(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.REQUEST_DATE), ValueType.LITERAL);
+        createObservation(sampleOrder.getNextVisitDate(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.NEXT_VISIT_DATE),
+                ValueType.LITERAL);
+        createObservation(sampleOrder.getTestLocationCode(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.TEST_LOCATION_CODE),
+                ValueType.DICTIONARY);
+        createObservation(sampleOrder.getOtherLocationCode(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.TEST_LOCATION_CODE_OTHER),
+                ValueType.LITERAL);
+        createObservation(sampleOrder.getReferringPatientNumber(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.REFERRERS_PATIENT_ID),
+                ValueType.LITERAL);
+        createObservation(sampleOrder.getProvisionalClinicalDiagnosis(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.PROVISIONAL_CLINICAL_DIAGNOSIS),
+                ValueType.LITERAL);
+        if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.USE_BILLING_REFERENCE_NUMBER, "true")) {
+            createObservation(sampleOrder.getBillingReferenceNumber(),
+                    observationHistoryService.getObservationTypeIdForType(ObservationType.BILLING_REFERENCE_NUMBER),
+                    ValueType.LITERAL);
         }
 
-        if (
-            ConfigurationProperties.getInstance().isPropertyValueEqual(
-                Property.ORDER_PROGRAM,
-                "true"
-            )
-        ) {
-            createObservation(
-                sampleOrder.getProgram(),
-                observationHistoryService.getObservationTypeIdForType(
-                    ObservationType.PROGRAM
-                ),
-                ValueType.DICTIONARY
-            );
+        if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.ORDER_PROGRAM, "true")) {
+            createObservation(sampleOrder.getProgram(),
+                    observationHistoryService.getObservationTypeIdForType(ObservationType.PROGRAM),
+                    ValueType.DICTIONARY);
         }
-        if (
-            ConfigurationProperties.getInstance().isPropertyValueEqual(
-                Property.ORDER_PROGRAM,
-                "true"
-            )
-        ) {
+        if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.ORDER_PROGRAM, "true")) {
             if (!GenericValidator.isBlankOrNull(sampleOrder.getProgramId())) {
-                createObservation(
-                    programService
-                        .get(sampleOrder.getProgramId())
-                        .getProgramName(),
-                    observationHistoryService.getObservationTypeIdForType(
-                        ObservationType.PROGRAM
-                    ),
-                    ValueType.LITERAL
-                );
+                createObservation(programService.get(sampleOrder.getProgramId()).getProgramName(),
+                        observationHistoryService.getObservationTypeIdForType(ObservationType.PROGRAM),
+                        ValueType.LITERAL);
             }
         }
     }
@@ -794,9 +593,7 @@ public class SamplePatientUpdateData {
         return patientEmailNotificationTestIds;
     }
 
-    public void setPatientEmailNotificationTestIds(
-        List<String> patientEmailNotificationTestIds
-    ) {
+    public void setPatientEmailNotificationTestIds(List<String> patientEmailNotificationTestIds) {
         this.patientEmailNotificationTestIds = patientEmailNotificationTestIds;
     }
 
@@ -804,9 +601,7 @@ public class SamplePatientUpdateData {
         return patientSMSNotificationTestIds;
     }
 
-    public void setPatientSMSNotificationTestIds(
-        List<String> patientSMSNotificationTestIds
-    ) {
+    public void setPatientSMSNotificationTestIds(List<String> patientSMSNotificationTestIds) {
         this.patientSMSNotificationTestIds = patientSMSNotificationTestIds;
     }
 
@@ -814,20 +609,15 @@ public class SamplePatientUpdateData {
         return providerEmailNotificationTestIds;
     }
 
-    public void setProviderEmailNotificationTestIds(
-        List<String> providerEmailNotificationTestIds
-    ) {
-        this.providerEmailNotificationTestIds =
-            providerEmailNotificationTestIds;
+    public void setProviderEmailNotificationTestIds(List<String> providerEmailNotificationTestIds) {
+        this.providerEmailNotificationTestIds = providerEmailNotificationTestIds;
     }
 
     public List<String> getProviderSMSNotificationTestIds() {
         return providerSMSNotificationTestIds;
     }
 
-    public void setProviderSMSNotificationTestIds(
-        List<String> providerSMSNotificationTestIds
-    ) {
+    public void setProviderSMSNotificationTestIds(List<String> providerSMSNotificationTestIds) {
         this.providerSMSNotificationTestIds = providerSMSNotificationTestIds;
     }
 
@@ -873,9 +663,7 @@ public class SamplePatientUpdateData {
         return programQuestionnaireResponse;
     }
 
-    public void setProgramQuestionnaireResponse(
-        QuestionnaireResponse programQuestionnaireResponse
-    ) {
+    public void setProgramQuestionnaireResponse(QuestionnaireResponse programQuestionnaireResponse) {
         this.programQuestionnaireResponse = programQuestionnaireResponse;
     }
 }

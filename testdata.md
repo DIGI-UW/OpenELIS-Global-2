@@ -1,8 +1,11 @@
 cat > /tmp/arv_vl_test_data.md << 'EOF'
+
 # ARV - VIRAL LOAD FORM TEST DATA
 
 ## How to Test:
-1. Go to: http://localhost:3000/StudyInitialEntry (or http://localhost:8080/SampleEntryByProject for old UI)
+
+1. Go to: http://localhost:3000/StudyInitialEntry (or
+   http://localhost:8080/SampleEntryByProject for old UI)
 2. Select Project: **"ARV - Viral Load"**
 3. Fill the form with data below
 4. Click **Save**
@@ -12,38 +15,39 @@ cat > /tmp/arv_vl_test_data.md << 'EOF'
 
 ## STEP 1: Patient Information
 
-**Lab Number:** (Auto-generated, e.g., LVL00001)
-**Subject Number:** 1234567
-**Site Subject Number:** ABC-12-00001
-**Date of Birth:** 01/01/1985
-**Age:** 40 years
-**Gender:** Male (or Female to test pregnancy fields)
+**Lab Number:** (Auto-generated, e.g., LVL00001) **Subject Number:** 1234567
+**Site Subject Number:** ABC-12-00001 **Date of Birth:** 01/01/1985 **Age:** 40
+years **Gender:** Male (or Female to test pregnancy fields)
 
-**Received Date:** 10/02/2026
-**Received Time:** 10:30
-**Interview Date:** 10/02/2026
-**Interview Time:** 09:00
+**Received Date:** 10/02/2026 **Received Time:** 10:30 **Interview Date:**
+10/02/2026 **Interview Time:** 09:00
 
 ---
 
 ## STEP 2: VL Section Fields
 
 ### Organization
-- **ARV Center Name:** Select any center from dropdown (e.g., "Center 1" or first option)
+
+- **ARV Center Name:** Select any center from dropdown (e.g., "Center 1" or
+  first option)
 - **ARV Center Code:** Will auto-populate based on center name
 
 ### Clinician/Sampler
+
 - **Name of Clinician:** Dr. John Smith
 - **Name of Sampler:** Nurse Jane Doe
 
 ### Patient Info (Female only - will show if Gender = Female)
+
 - **Pregnant?:** Yes
 - **Breastfeeding?:** No
 
 ### HIV Status
-- **HIV Type:** HIV-1 *(REQUIRED)*
+
+- **HIV Type:** HIV-1 _(REQUIRED)_
 
 ### Under Investigation
+
 - **Under Investigation?:** Yes
 - **Investigation Notes:** Testing VL section implementation with new React UI
 
@@ -52,9 +56,11 @@ cat > /tmp/arv_vl_test_data.md << 'EOF'
 ## STEP 3: ARV Treatment
 
 ### Currently on ARV Treatment
+
 - **Currently on ARV Treatment?:** Yes
 
 ### If Yes, these fields appear:
+
 - **ARV Treatment Start Date:** 01/01/2024
 - **Therapeutic Line:** First Line (or select from dropdown)
 - **Current ARV Regimen:** AZT+3TC+EFV
@@ -64,19 +70,23 @@ cat > /tmp/arv_vl_test_data.md << 'EOF'
 ## STEP 4: VL Request Details
 
 ### Reason for VL Request
+
 - **Reason for VL Request:** Routine monitoring (or select from dropdown)
-- **Specify Other Reason:** (Only if "Other" selected above) - Leave blank for now
+- **Specify Other Reason:** (Only if "Other" selected above) - Leave blank for
+  now
 
 ---
 
 ## STEP 5: CD4 Counts
 
 ### CD4 Initial
+
 - **CD4 Count:** 350
 - **CD4 Percent:** 25
 - **CD4 Date:** 01/12/2025
 
 ### CD4 at Demand
+
 - **CD4 Count:** 400
 - **CD4 Percent:** 28
 - **CD4 Date:** 05/02/2026
@@ -86,9 +96,11 @@ cat > /tmp/arv_vl_test_data.md << 'EOF'
 ## STEP 6: Prior VL Information
 
 ### Prior VL Request
+
 - **Prior VL Request?:** Yes
 
 ### If Yes, these fields appear:
+
 - **Prior VL Lab:** Central Reference Lab
 - **Prior VL Value:** 5000
 - **Prior VL Date:** 01/12/2025
@@ -98,17 +110,20 @@ cat > /tmp/arv_vl_test_data.md << 'EOF'
 ## STEP 7: Specimens & Tests
 
 ### Specimens Collected (Check all that apply)
+
 - ☑ **EDTA Tube Taken**
 - ☑ **DBS (Dry Blood Spot)**
 - ☐ PSC
 
 ### Tests (Check all that apply)
-- ☑ **Viral Load Test** *(REQUIRED for VL project)*
+
+- ☑ **Viral Load Test** _(REQUIRED for VL project)_
 - ☑ **CD4/CD8 Test**
 - ☑ **CD4 Count Test**
 - ☐ CD3 Count Test
 
 ### Biochemistry Tests
+
 - ☑ **Glycemia Test**
 - ☑ **Creatinine Test**
 - ☐ Transaminase Test
@@ -116,6 +131,7 @@ cat > /tmp/arv_vl_test_data.md << 'EOF'
 - ☐ AST (SGOT) Test
 
 ### Hematology Tests (NFS)
+
 - ☑ **NFS (Full Blood Count)**
 - ☐ GB (White Blood Cells)
 - ☐ Neutrophils
@@ -196,6 +212,7 @@ To verify in database, run:
 ## QUICK MINIMAL TEST (If short on time)
 
 Just fill these REQUIRED fields:
+
 1. **Gender:** Male
 2. **ARV Center Name:** Any
 3. **HIV Type:** HIV-1
@@ -213,10 +230,10 @@ After saving, run in psql:
 
 ```sql
 -- Check sample created
-SELECT accession_number, entered_date 
-FROM sample 
-WHERE accession_number LIKE 'LVL%' 
-ORDER BY entered_date DESC 
+SELECT accession_number, entered_date
+FROM sample
+WHERE accession_number LIKE 'LVL%'
+ORDER BY entered_date DESC
 LIMIT 1;
 
 -- Check observations saved
@@ -234,14 +251,15 @@ ORDER BY oht.type_name;
 ## TROUBLESHOOTING
 
 **If Save fails:**
+
 - Check browser Console (F12) for errors
 - Check Network tab → POST request to `/rest/SampleEntryByProject`
 - Check Request Payload structure
 
 **If Backend doesn't show logs:**
+
 - Make sure backend is running with your updated code
 - Check terminal where backend is running
 - Logs appear BEFORE save completes
 
-EOF
-cat /tmp/arv_vl_test_data.md
+EOF cat /tmp/arv_vl_test_data.md

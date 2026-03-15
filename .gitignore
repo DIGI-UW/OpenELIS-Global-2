@@ -42,6 +42,8 @@ Patient/*
 volume/database/data
 volume/letsencrypt/
 tools/Liquibase-Outdated
+tools/astm-http-bridge/
+tools/astm-mock-server/
 volume/tomcat/*
 volume/database/data*/*
 volume/logs/*
