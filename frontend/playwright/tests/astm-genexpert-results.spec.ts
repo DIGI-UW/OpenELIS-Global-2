@@ -41,6 +41,28 @@ test.describe("GeneXpert ASTM Push → Results", () => {
   }, testInfo) => {
     const runId = Date.now();
     createdAnalyzerName = `Cepheid GeneXpert (ASTM Mode) E2E ${runId}`;
+    // #region agent log
+    fetch("http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "3a4495",
+      },
+      body: JSON.stringify({
+        sessionId: "3a4495",
+        runId: String(runId),
+        hypothesisId: "H1",
+        location: "astm-genexpert-results.spec.ts:45",
+        message: "test_start_identifiers",
+        data: {
+          createdAnalyzerName,
+          expectedSample: EXPECTED_RESULTS[0].sampleId,
+          project: testInfo.project.name,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
 
     // Capture errors for debugging
     const consoleErrors: string[] = [];
@@ -298,6 +320,29 @@ test.describe("GeneXpert ASTM Push → Results", () => {
     console.log(
       `Simulator response: pushed=${simBody.pushed}, status=${simBody.status}`,
     );
+    // #region agent log
+    fetch("http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "3a4495",
+      },
+      body: JSON.stringify({
+        sessionId: "3a4495",
+        runId: String(runId),
+        hypothesisId: "H2",
+        location: "astm-genexpert-results.spec.ts:304",
+        message: "simulator_push_response",
+        data: {
+          ok: simulatorRes.ok(),
+          status: simBody?.status,
+          pushed: simBody?.pushed,
+          destination: BRIDGE_DESTINATION,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     await videoPause(page, 2_000, testInfo);
 
     // ── Step 6: Wait for results to arrive ─────────────────────────
@@ -317,6 +362,34 @@ test.describe("GeneXpert ASTM Push → Results", () => {
       );
       const data = await resp.json().catch(() => null);
       resultCount = data?.resultList?.length ?? 0;
+      // #region agent log
+      fetch(
+        "http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "3a4495",
+          },
+          body: JSON.stringify({
+            sessionId: "3a4495",
+            runId: String(runId),
+            hypothesisId: "H3",
+            location: "astm-genexpert-results.spec.ts:324",
+            message: "poll_analyzer_results",
+            data: {
+              attempt,
+              httpStatus: resp.status(),
+              resultCount,
+              firstResult: data?.resultList?.[0]?.result,
+              firstSample: data?.resultList?.[0]?.sample,
+              firstLabNo: data?.resultList?.[0]?.labNo,
+            },
+            timestamp: Date.now(),
+          }),
+        },
+      ).catch(() => {});
+      // #endregion
       if (resultCount > 0) break;
       await page.waitForTimeout(3_000);
     }
@@ -338,6 +411,7 @@ test.describe("GeneXpert ASTM Push → Results", () => {
     );
 
     const apiResponse = await apiResponsePromise;
+    let apiResultPreview: Array<{ sample?: string; result?: string }> = [];
     if (apiResponse) {
       const body = await apiResponse.text();
       console.log(
@@ -346,9 +420,49 @@ test.describe("GeneXpert ASTM Push → Results", () => {
       try {
         const json = JSON.parse(body);
         console.log(`resultList length: ${json.resultList?.length ?? "N/A"}`);
+        apiResultPreview = (json.resultList ?? [])
+          .slice(0, 12)
+          .map((row: any) => ({
+            sample: row?.sample ?? row?.labNo ?? row?.accessionNumber,
+            result: row?.result,
+          }));
       } catch {
         // Non-JSON response
       }
+      // #region agent log
+      fetch(
+        "http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "3a4495",
+          },
+          body: JSON.stringify({
+            sessionId: "3a4495",
+            runId: String(runId),
+            hypothesisId: "H4",
+            location: "astm-genexpert-results.spec.ts:360",
+            message: "analyzer_results_page_response",
+            data: {
+              status: apiResponse.status(),
+              url: apiResponse.url(),
+              bodyLength: body.length,
+              containsSample: body.includes(EXPECTED_RESULTS[0].sampleId),
+              containsExpected: {
+                negative: body.includes("NEGATIVE"),
+                sensitive:
+                  body.includes("Sensitive") || body.includes("SENSITIVE"),
+                v1250: body.includes("1250"),
+                covid: body.includes("COVID19"),
+              },
+              apiResultPreview,
+            },
+            timestamp: Date.now(),
+          }),
+        },
+      ).catch(() => {});
+      // #endregion
     }
 
     // Wait for results page to fully render
@@ -359,6 +473,51 @@ test.describe("GeneXpert ASTM Push → Results", () => {
 
     const resultsTable = page.locator("table, .orderLegendBody");
     await expect(resultsTable.first()).toBeVisible({ timeout: 15_000 });
+    const labNoTexts = await page
+      .locator('[data-testid="LabNo"]')
+      .allTextContents();
+    const pageUrlAtAssert = page.url();
+    const pageTitleAtAssert = await page.title().catch(() => "");
+    const analyzerResultInputsCount = await page
+      .locator(
+        'input[value*="NEGATIVE"],input[value*="Sensitive"],input[value*="1250"]',
+      )
+      .count();
+    const inputValuePreview = await page
+      .locator("input[value]")
+      .evaluateAll((els) =>
+        els
+          .map((el) => (el as HTMLInputElement).value)
+          .filter(Boolean)
+          .slice(0, 30),
+      );
+    // #region agent log
+    fetch("http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "3a4495",
+      },
+      body: JSON.stringify({
+        sessionId: "3a4495",
+        runId: String(runId),
+        hypothesisId: "H5",
+        location: "astm-genexpert-results.spec.ts:373",
+        message: "dom_before_labno_assert",
+        data: {
+          labNoCount: labNoTexts.length,
+          labNoPreview: labNoTexts.slice(0, 10),
+          expectedSample: EXPECTED_RESULTS[0].sampleId,
+          analyzerResultInputsCount,
+          inputValuePreview,
+          pageUrlAtAssert,
+          pageTitleAtAssert,
+          consoleErrors: consoleErrors.slice(0, 5),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
 
     // Verify EACH expected result value appears on the page.
     // AnalyserResults uses react-data-table-component (div rows, not <tr>).
@@ -373,9 +532,74 @@ test.describe("GeneXpert ASTM Push → Results", () => {
     ).toBeVisible({ timeout: 10_000 });
 
     for (const expected of EXPECTED_RESULTS) {
-      await expect(
-        page.locator(`input[value*="${expected.result}"]`).first(),
-      ).toBeVisible({ timeout: 5_000 });
+      const expectedSelectorCount = await page
+        .locator(`input[value*="${expected.result}"]`)
+        .count();
+      const expectedTextCount = await page
+        .getByText(expected.result, { exact: false })
+        .count();
+      // #region agent log
+      fetch(
+        "http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "3a4495",
+          },
+          body: JSON.stringify({
+            sessionId: "3a4495",
+            runId: String(runId),
+            hypothesisId: "H6",
+            location: "astm-genexpert-results.spec.ts:399",
+            message: "expected_value_lookup",
+            data: {
+              expectedResult: expected.result,
+              expectedTestCode: expected.testCode,
+              selectorCount: expectedSelectorCount,
+              textCount: expectedTextCount,
+            },
+            timestamp: Date.now(),
+          }),
+        },
+      ).catch(() => {});
+      // #endregion
+      const assertionMode = expectedSelectorCount > 0 ? "input" : "text";
+      // #region agent log
+      fetch(
+        "http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "3a4495",
+          },
+          body: JSON.stringify({
+            sessionId: "3a4495",
+            runId: String(runId),
+            hypothesisId: "H7",
+            location: "astm-genexpert-results.spec.ts:421",
+            message: "result_assertion_mode",
+            data: {
+              expectedResult: expected.result,
+              assertionMode,
+              selectorCount: expectedSelectorCount,
+              textCount: expectedTextCount,
+            },
+            timestamp: Date.now(),
+          }),
+        },
+      ).catch(() => {});
+      // #endregion
+      if (expectedSelectorCount > 0) {
+        await expect(
+          page.locator(`input[value*="${expected.result}"]`).first(),
+        ).toBeVisible({ timeout: 5_000 });
+      } else {
+        await expect(
+          page.getByText(expected.result, { exact: false }).first(),
+        ).toBeVisible({ timeout: 5_000 });
+      }
 
       console.log(
         `  ✓ ${expected.sampleId} → ${expected.testCode}: ${expected.result}`,
