@@ -115,9 +115,27 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     }
 
     private void setInserterResponder() {
+        // Database-configured analyzers are authoritative. If the database
+        // identifies this message (via IP+port, name, or identifier_pattern),
+        // use GenericASTM directly — no plugin loop, no ambiguity.
+        Optional<Analyzer> dbAnalyzer = identifyAnalyzerFromMessage();
+        if (dbAnalyzer.isPresent()) {
+            PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
+            for (AnalyzerImporterPlugin p : pluginService.getAnalyzerPlugins()) {
+                if (p.isGenericPlugin() && p.isTargetAnalyzer(lines)) {
+                    this.plugin = p;
+                    inserter = p.getAnalyzerLineInserter();
+                    responder = p.getAnalyzerResponder();
+                    LogEvent.logInfo(getClass().getSimpleName(), "setInserterResponder",
+                            "Database analyzer matched: " + dbAnalyzer.get().getName() + " — using GenericASTM plugin");
+                    return;
+                }
+            }
+        }
+
+        // Fallback: legacy plugin loop (for analyzers not yet configured in DB)
         PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
-        List<AnalyzerImporterPlugin> plugins = choosePluginOrder(pluginService);
-        for (AnalyzerImporterPlugin plugin : plugins) {
+        for (AnalyzerImporterPlugin plugin : pluginService.getAnalyzerPlugins()) {
             if (plugin.isTargetAnalyzer(lines)) {
                 try {
                     this.plugin = plugin;
@@ -129,14 +147,6 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                 }
             }
         }
-    }
-
-    /**
-     * Return the plugin list in default order. (preferGenericPlugin flag has been
-     * removed.)
-     */
-    private List<AnalyzerImporterPlugin> choosePluginOrder(PluginAnalyzerService pluginService) {
-        return pluginService.getAnalyzerPlugins();
     }
 
     /**
