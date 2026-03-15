@@ -15,8 +15,6 @@ import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.validator.BaseErrors;
-import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -48,9 +46,6 @@ public class AnalyzerTestNameRestController extends BaseController {
     private AnalyzerTestMappingService analyzerTestMappingService;
     @Autowired
     private AnalyzerTypeService analyzerTypeService;
-
-    @Autowired
-    private TestService testService;
 
     @ModelAttribute("form")
     public AnalyzerTestNameForm initForm() {
@@ -98,10 +93,6 @@ public class AnalyzerTestNameRestController extends BaseController {
 
     private List<AnalyzerType> getAllAnalyzers() {
         return analyzerTypeService.getAll();
-    }
-
-    private List<Test> getAllTests() {
-        return testService.getAllActiveTests(false);
     }
 
     @PostMapping(value = "/AnalyzerTestName", consumes = MediaType.APPLICATION_JSON_VALUE)

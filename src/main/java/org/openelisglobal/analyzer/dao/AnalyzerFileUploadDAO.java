@@ -20,4 +20,13 @@ public interface AnalyzerFileUploadDAO extends BaseDAO<AnalyzerFileUpload, Long>
      * Find recent uploads for an analyzer (e.g. for audit display).
      */
     List<AnalyzerFileUpload> findByAnalyzerId(Integer analyzerId, int maxResults);
+
+    /**
+     * Set analyzer_id = NULL on all upload rows for a given analyzer. Used during
+     * analyzer deletion to preserve audit trail (SET NULL tier).
+     *
+     * @param analyzerId The analyzer ID
+     * @return Number of rows updated
+     */
+    int nullifyAnalyzerId(Integer analyzerId);
 }
