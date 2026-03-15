@@ -126,6 +126,7 @@ services:
             - './frontend/public:/app/public'
         environment:
             - CHOKIDAR_USEPOLLING=true
+            - NODE_OPTIONS=--max-old-space-size=4096
         tty: true
 
     proxy:

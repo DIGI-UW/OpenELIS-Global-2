@@ -1,4 +1,4 @@
-.dashboard-container {
+/* .dashboard-container {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 50px;
@@ -25,19 +25,18 @@
   margin-top: 10px;
   font-size: 1.5rem;
   font-weight: bold;
-}
+} */
 
-.patient-header {
+/* .patient-header {
   background-color: #f5f5f5;
   border: 1px solid #ddd;
-  /* padding: 20px; */
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
   text-align: left;
   margin-top: 20px;
-}
+} */
 
 /* .patient-name {
   font-size: 20px;
@@ -56,16 +55,14 @@
   color: #888;
 } */
 
-.file-container {
+/* .file-container {
   background-color: #f5f5f5;
   border: 1px solid #ddd;
   padding: 20px;
   width: 500px;
-  /* display: flex;
-  flex-direction: column; */
+
   align-items: flex-start;
   justify-content: center;
-  /* text-align: left; */
   margin-top: 20px;
 }
 
@@ -119,4 +116,154 @@
   .tile-title-Immuno {
     font-size: 0.9rem;
   }
+} */
+
+
+/* .pathology-layout-wrapper {
+  display: flex;
+}
+
+.pathology-sidebar {
+  position: sticky; 
+}
+
+.pathology-main-content {
+  flex: 1; 
+} */
+
+
+.app-shell {
+  height: calc(100vh - 48px);
+  overflow: hidden;   
+  display: flex;
+  flex-direction: column;
+  margin: -1rem; 
+  position: relative;
+  overflow-x: hidden !important;
+  margin: 0 !important;
+  max-width: 100vw;  
+}
+
+.page-header {
+  flex-shrink: 0;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 1rem;
+  z-index: 10;
+}
+
+.body-wrapper {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.pathology-sidebar {
+  position: relative !important;
+  left: 0 !important;  
+  padding-top: 5px;
+  padding-right: 30px;
+  padding-bottom: 130px;
+  padding-left: 20px;
+}
+
+.pathology-case-progress {
+  padding: 1rem;
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.sidebar-wrapper {
+  flex-direction: column;
+}
+
+.scrollable-content {
+  flex: 1;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  padding-bottom: 80vh !important; 
+  margin-top: 0 !important;
+  margin-left:  0 !important;
+  margin-right: 55px !important;
+}
+
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 1rem;
+}
+
+.sticky-footer {
+  height: 100px;
+  padding: 1rem;
+  align-items: center;
+  display: flex;
+  background-color: #ffffff;
+  gap: 1rem;
+}
+
+.sticky-footer button:first-child {
+  margin-right: auto;
+  margin-left: 2rem; 
+}
+
+
+.scrollable-content .cds--accordion__content:nth-child(3) {
+  margin-right: 1.5rem;
+}
+
+
+.scrollable-content .cds--accordion__title {
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
+  padding: 1rem !important;
+}
+
+.scrollable-content .cds--accordion__heading {
+  background-color: #ffffff !important;
+}
+
+.pathology-sidebar .cds--side-nav__link {
+  height: 3.2rem !important; 
+}
+
+.gridBoundary {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 4rem;
+  margin-top: 1rem;
+}
+
+.scrollable-content .cds--accordion__item {
+  border: 2px solid #c6c6c6 !important;
+  border-radius: 8px !important;
+  margin: 3rem !important;
+}
+
+.scrollable-content .cds--accordion__item.pathology-accent-item {
+  border-inline-start: 4px solid #0f62fe !important;
+}
+
+.scrollable-content .cds--accordion__item.pathology-case-info-item .cds--accordion__heading {
+  background-color: var(--cds-layer-selected-01, #e8f0fe) !important;
+}
+
+.cds--accordion__arrow {
+  width: 24px !important;  
+  height: 24px !important;
+
+  stroke: currentColor; 
+  stroke-width: 3.0px; 
+
+  transform: rotate(0deg) !important;
+  transition: transform 0.2s ease !important;
+}
+
+.cds--accordion__item--active .cds--accordion__arrow {
+  transform: rotate(90deg) !important;
 }
