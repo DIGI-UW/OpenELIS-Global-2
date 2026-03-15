@@ -25,6 +25,19 @@ npx playwright test sidenav.spec.ts
 npx playwright test -g "home page has collapsed nav"
 ```
 
+## Command-First Entry Points
+
+For AI-assisted Playwright work, use packaged commands first:
+
+- `/plan-record-playwright` - plan PR/feature scope, flow inventory, and
+  project-aware recording stages
+- `/write-playwright-test` - source-first authoring from requirements with
+  config registration checks
+- `/debug-playwright` - source-first + runtime-evidence-first failure diagnosis
+- `/audit-playwright` - selector quality and anti-pattern audits
+
+Packaged command source: `.ai/skills/playwright/commands/`
+
 ---
 
 ## Core Principles
@@ -161,7 +174,7 @@ export class Sidenav {
   constructor(page: Page) {
     this.page = page;
     this.nav = page.locator(".cds--side-nav");
-    this.menuButton = page.locator('[data-cy="menuButton"]');
+    this.menuButton = page.locator('[data-testid="menu-button"]');
   }
 
   async expectExpanded() {
@@ -216,7 +229,7 @@ test("storage page has expanded nav", async ({ page }) => {
 | -------- | ------------- | ----------------------------------------- | -------------------------------------- |
 | 1        | Role + Name   | `getByRole('button', { name: 'Submit' })` | Always prefer for interactive elements |
 | 2        | Label         | `getByLabel('Username')`                  | Form inputs                            |
-| 3        | Test ID       | `locator('[data-cy="menuButton"]')`       | When semantic selectors don't work     |
+| 3        | Test ID       | `locator('[data-testid="menu-button"]')`  | When semantic selectors don't work     |
 | 4        | Text          | `getByText('Dashboard')`                  | Static text content                    |
 | 5        | CSS Class     | `locator('.cds--side-nav')`               | Carbon structural elements only        |
 
@@ -399,6 +412,13 @@ Auto-captured on failure in `test-results/`. Review to understand failure state.
 npm run pw:test 2>&1 | tee /tmp/playwright.log
 ```
 
+### Mandatory Failure Triage Order
+
+1. Read failing spec + helper/page-object code first
+2. Inspect screenshot/trace/runtime DOM evidence
+3. State root cause hypothesis before changing selectors
+4. Apply minimal fix and run narrowest project/spec
+
 ---
 
 ## Adding New Tests
@@ -441,6 +461,12 @@ test("can select sample", async ({ page }) => {
 npx playwright test storage.spec.ts
 ```
 
+### 4. Validate Project Registration
+
+```bash
+python .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/storage.spec.ts
+```
+
 ---
 
 ## Anti-Patterns
@@ -468,5 +494,5 @@ npx playwright test storage.spec.ts
 
 ---
 
-**Last Updated:** 2025-12-22  
+**Last Updated:** 2026-03-14  
 **Applies To:** `frontend/playwright/`
