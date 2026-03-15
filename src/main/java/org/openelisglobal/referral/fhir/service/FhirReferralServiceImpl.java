@@ -218,10 +218,10 @@ public class FhirReferralServiceImpl implements FhirReferralService {
                 fhirPersistanceService.createFhirResourceInFhirStore(fhirOrg);
             } catch (FhirTransformationException e) {
                 // TODO Auto-generated catch block
-                e.printStackTrace();
+                LogEvent.logError(e.getMessage(), e);
             } catch (FhirPersistanceException e) {
                 // TODO Auto-generated catch block
-                e.printStackTrace();
+                LogEvent.logError(e.getMessage(), e);
             }
         }
 

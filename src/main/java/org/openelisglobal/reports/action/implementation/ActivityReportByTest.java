@@ -68,8 +68,6 @@ public class ActivityReportByTest extends ActivityReport implements IReportCreat
             if (result.getAnalysis() != null && result.getAnalysis().getId() != null) {
                 if (!currentAnalysisId.equals(result.getAnalysis().getId())) {
                     testsResults.add(createActivityReportBean(result, false));
-                    // System.out.println("ActivityReport:" + "in buildReportContent " +
-                    // result.getStringId());
                     currentAnalysisId = result.getAnalysis().getId();
                 }
             }

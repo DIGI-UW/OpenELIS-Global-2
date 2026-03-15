@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationListener;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DefaultConfigurationProperties;
@@ -140,7 +141,7 @@ public class GlobalLocaleResolver extends AbstractLocaleContextResolver implemen
     public void refreshConfiguration() {
         String localeTag = SpringContext.getBean(DefaultConfigurationProperties.class)
                 .getPropertyValue(Property.DEFAULT_LANG_LOCALE);
-        System.out.println("LOCALE IS: " + localeTag);
+        LogEvent.logInfo(this.getClass().getSimpleName(), "refreshConfiguration", "LOCALE IS: " + localeTag);
         Locale locale = GenericValidator.isBlankOrNull(localeTag) ? Locale.US : Locale.forLanguageTag(localeTag);
         setDefaultLocale(locale);
         LocaleContextHolder.setDefaultLocale(locale);
