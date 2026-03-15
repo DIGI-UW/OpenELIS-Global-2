@@ -227,29 +227,6 @@ test.describe("GeneXpert ASTM — Pre-loaded Validation", () => {
   test("pre-loaded: test connection → ASTM push → verify results", async ({
     page,
   }, testInfo) => {
-    const runId = Date.now();
-    // #region agent log
-    fetch("http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "3a4495",
-      },
-      body: JSON.stringify({
-        sessionId: "3a4495",
-        runId: String(runId),
-        hypothesisId: "H8",
-        location: "astm-genexpert-results.spec.ts:232",
-        message: "preloaded_test_start",
-        data: {
-          project: testInfo.project.name,
-          expectedPreloadedName: PRELOADED_NAME,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-
     // ── Title Card ─────────────────────────────────────────────────
     await showTitleCard(
       page,
@@ -280,30 +257,6 @@ test.describe("GeneXpert ASTM — Pre-loaded Validation", () => {
     const preloadedMatches = allAnalyzers.filter((a: any) =>
       (a?.name ?? "").includes(PRELOADED_NAME),
     );
-    // #region agent log
-    fetch("http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "3a4495",
-      },
-      body: JSON.stringify({
-        sessionId: "3a4495",
-        runId: String(runId),
-        hypothesisId: "H9",
-        location: "astm-genexpert-results.spec.ts:260",
-        message: "preloaded_inventory_before_search",
-        data: {
-          httpStatus: preloadedListResp.status(),
-          analyzerCount: allAnalyzers.length,
-          matchingCount: preloadedMatches.length,
-          sampleNames: allAnalyzers.slice(0, 10).map((a: any) => a?.name),
-          matchingNames: preloadedMatches.slice(0, 5).map((a: any) => a?.name),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     const analyzerRow = await findAnalyzerRow(page, PRELOADED_NAME, testInfo);
 
     // ── Step 3: Test Connection ────────────────────────────────────

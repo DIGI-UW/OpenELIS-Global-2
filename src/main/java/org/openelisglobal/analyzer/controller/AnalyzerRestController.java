@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
@@ -261,8 +262,8 @@ public class AnalyzerRestController extends BaseRestController {
             }
 
             // Register analyzer with bridge for transport-level identification.
-            // The bridge uses this to tag incoming traffic with X-Analyzer-Id.
-            registerWithBridge(createdAnalyzer);
+            // Fire-and-forget to avoid slowing down analyzer creation requests.
+            registerWithBridgeAsync(createdAnalyzer);
 
             Map<String, Object> response = analyzerToMap(createdAnalyzer, getLoadedPluginClassNames());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -840,8 +841,19 @@ public class AnalyzerRestController extends BaseRestController {
      * @return Map with success status and message
      */
     /**
-     * Register analyzer with the bridge for transport-level identification.
-     * Non-blocking — failures are logged but don't prevent analyzer creation.
+     * Register analyzer with the bridge for transport-level identification. Runs in
+     * background — failures are logged but don't prevent analyzer creation.
+     */
+    private void registerWithBridgeAsync(Analyzer createdAnalyzer) {
+        CompletableFuture.runAsync(() -> registerWithBridge(createdAnalyzer)).exceptionally(e -> {
+            logger.warn("Async bridge registration failed for analyzer {}: {}", createdAnalyzer.getName(),
+                    e.getMessage());
+            return null;
+        });
+    }
+
+    /**
+     * Performs the bridge registration call.
      */
     private void registerWithBridge(Analyzer createdAnalyzer) {
         try {

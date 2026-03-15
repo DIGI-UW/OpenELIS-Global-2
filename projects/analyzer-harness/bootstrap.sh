@@ -77,9 +77,17 @@ _ensure_generic_plugins() {
         continue
       fi
     fi
-    # Copy JAR to harness plugins (overwrite to pick up rebuilds)
-    # Filter out sources/javadoc JARs — only copy the main artifact
-    local jar=$(ls $jar_pattern 2>/dev/null | grep -v -e '-sources\.jar' -e '-javadoc\.jar' | head -1)
+    # Copy JAR to harness plugins (overwrite to pick up rebuilds).
+    # Select deterministically and skip non-runtime artifacts.
+    local jar=""
+    for candidate in "$src_dir"/target/"${plugin_name}"*.jar; do
+      [ -f "$candidate" ] || continue
+      case "$candidate" in
+        *-sources.jar|*-javadoc.jar|*-tests.jar|*-test.jar|*-original.jar) continue ;;
+      esac
+      jar="$candidate"
+      break
+    done
     if [ -n "$jar" ]; then
       cp "$jar" "$HARNESS_VOLUME/plugins/"
     fi
