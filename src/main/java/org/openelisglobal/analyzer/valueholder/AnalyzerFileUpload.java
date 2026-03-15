@@ -24,7 +24,7 @@ public class AnalyzerFileUpload extends BaseObject<Long> {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "analyzer_id", nullable = false)
+    @Column(name = "analyzer_id")
     private Integer analyzerId;
 
     @Column(name = "filename", nullable = false, length = 255)
