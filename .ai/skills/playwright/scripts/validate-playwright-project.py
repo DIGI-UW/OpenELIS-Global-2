@@ -45,6 +45,16 @@ def extract_globs(config_text: str, block: str) -> list[str]:
     return re.findall(r'"([^"]+\*[^"]+|[^"]+\.spec\.ts)"', block)
 
 
+def match_regex_block(spec: str, block: str) -> bool:
+    if not (block.startswith("/") and block.endswith("/")):
+        return False
+    pattern = block[1:-1]
+    try:
+        return re.search(pattern, spec) is not None
+    except re.error:
+        return False
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         usage()
@@ -62,6 +72,9 @@ def main() -> int:
 
     matches: list[str] = []
     for project_name, block in project_blocks:
+        if match_regex_block(spec, block):
+            matches.append(project_name)
+            continue
         globs = extract_globs(config_text, block)
         for glob in globs:
             if fnmatch(spec, glob):

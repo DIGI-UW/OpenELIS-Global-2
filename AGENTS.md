@@ -536,7 +536,7 @@ every stage.
 
 Before using SpecKit commands or packaged skills, install agent command assets:
 
-**Cross-platform (Python 3.7+):**
+**Cross-platform (Python 3.9+):**
 
 ```bash
 # Install legacy + packaged command assets for all supported AI agents

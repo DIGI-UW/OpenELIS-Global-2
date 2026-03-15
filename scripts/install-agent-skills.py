@@ -179,6 +179,20 @@ def build_targets(repo_root: Path, target: str) -> list[InstallTarget]:
     return targets
 
 
+def clean_generated_outputs(target: InstallTarget, legacy_only: bool) -> None:
+    """Remove previously generated command/skill outputs to avoid stale artifacts."""
+    target.commands_dir.mkdir(parents=True, exist_ok=True)
+    for command_file in target.commands_dir.glob("*.md"):
+        command_file.unlink()
+
+    if legacy_only:
+        return
+
+    if target.skills_dir.exists():
+        shutil.rmtree(target.skills_dir)
+    target.skills_dir.mkdir(parents=True, exist_ok=True)
+
+
 def main() -> None:
     args = parse_args()
     repo_root = get_repo_root()
@@ -189,6 +203,9 @@ def main() -> None:
 
     if not core_dir.exists():
         sys.exit(f"Error: Legacy core commands not found at {core_dir}")
+    legacy_command_files = list(core_dir.glob("speckit.*.md"))
+    if not legacy_command_files:
+        sys.exit(f"Error: No legacy SpecKit commands found at {core_dir}")
 
     if not args.yes:
         print("This will install AI command assets to:")
@@ -206,6 +223,7 @@ def main() -> None:
     total_skills = 0
     for target in targets:
         print(f"-> Installing to {target.name}...")
+        clean_generated_outputs(target, args.legacy_only)
         installed_names = install_legacy_commands(target.commands_dir, core_dir, oe_dir)
         packaged_commands: set[str] = set()
         packaged_skills: set[str] = set()
