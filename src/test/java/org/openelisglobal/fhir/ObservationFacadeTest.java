@@ -49,32 +49,13 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         objectMapper = new ObjectMapper();
     }
 
-    private MockHttpServletRequest buildRequest(String method, String pathInfo, String queryString) {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setMethod(method);
-        request.setContextPath("");
-        request.setServletPath("/fhir");
-        request.setPathInfo(pathInfo);
-        request.setRequestURI("/fhir" + pathInfo);
-        if (queryString != null) {
-            request.setQueryString(queryString);
-            for (String param : queryString.split("&")) {
-                String[] kv = param.split("=");
-                request.addParameter(kv[0], kv[1]);
-            }
-        }
-        request.setContentType("application/fhir+json");
-        request.addHeader("Accept", "application/fhir+json");
-        return request;
-    }
-
     @Test
     public void readObservation_shouldReturnSuccess() throws Exception {
         String fhirUuid = "550e8400-e29b-41d4-a716-446655440003";
         Result result = resultService.getResultByFhirUuid(fhirUuid);
         assertNotNull("Result not found in test data", result);
 
-        MockHttpServletRequest request = buildRequest("GET", "/Observation/" + fhirUuid, null);
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Observation/" + fhirUuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
         fhirServlet.service(request, response);
 
@@ -88,7 +69,7 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
     @Test
     public void readObservation_withNonExistentId_shouldReturn404() throws Exception {
         String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
-        MockHttpServletRequest request = buildRequest("GET", "/Observation/" + nonExistentUuid, null);
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Observation/" + nonExistentUuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
         fhirServlet.service(request, response);
 
@@ -97,14 +78,100 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
     }
 
-    // @Test
-    public void searchObservation_endpointExists_shouldNotReturn404() throws Exception {
-        String patientUuid = "550e8400-e29b-41d4-a716-446655440001";
-        MockHttpServletRequest request = buildRequest("GET", "/Observation", "patient=" + patientUuid);
+    @Test
+    public void updateObservation_shouldUpdateValue() throws Exception {
+        String fhirUuid = "550e8400-e29b-41d4-a716-446655440003";
+        Result result = resultService.getResultByFhirUuid(fhirUuid);
+        assertNotNull("Result not found in test data", result);
+
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Observation/" + fhirUuid);
+        String updateJson = """
+                {
+                  "resourceType": "Observation",
+                  "id": "%s",
+                  "status": "final",
+                  "code": {
+                    "coding": [{ "system": "http://loinc.org", "code": "718-7" }]
+                  },
+                  "valueQuantity": {
+                    "value": 99.0,
+                    "unit": "g/dL"
+                  }
+                }
+                """.formatted(fhirUuid);
+        request.setContent(updateJson.getBytes());
         MockHttpServletResponse response = new MockHttpServletResponse();
         fhirServlet.service(request, response);
 
-        // Search forwards to HAPI store
+        assertEquals(200, response.getStatus());
+        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+        assertEquals("Observation", jsonResponse.get("resourceType").asText());
+
+        Result updatedResult = resultService.getResultByFhirUuid(fhirUuid);
+        assertEquals("99.0", updatedResult.getValue());
+    }
+
+    @Test
+    public void updateObservation_withNonExistentId_shouldReturn404() throws Exception {
+        String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Observation/" + nonExistentUuid);
+        String updateJson = """
+                {
+                  "resourceType": "Observation",
+                  "id": "%s",
+                  "status": "final",
+                  "code": {
+                    "coding": [{ "system": "http://loinc.org", "code": "718-7" }]
+                  },
+                  "valueQuantity": { "value": 99.0, "unit": "g/dL" }
+                }
+                """.formatted(nonExistentUuid);
+        request.setContent(updateJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        assertEquals(404, response.getStatus());
+        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+        assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
+    }
+
+    @Test
+    public void deleteObservation_shouldReturn204() throws Exception {
+        String fhirUuid = "550e8400-e29b-41d4-a716-446655440003";
+        Result result = resultService.getResultByFhirUuid(fhirUuid);
+        assertNotNull("Result not found in test data", result);
+
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Observation/" + fhirUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        assertEquals(204, response.getStatus());
+
+        Result deletedResult = resultService.getResultByFhirUuid(fhirUuid);
+        assertNotNull("Result should still exist after soft-delete", deletedResult);
+    }
+
+    @Test
+    public void deleteObservation_withNonExistentId_shouldReturn404() throws Exception {
+        String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Observation/" + nonExistentUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        assertEquals(404, response.getStatus());
+        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+        assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
+    }
+
+    @Test
+    public void searchObservation_endpointExists_shouldNotReturn404() throws Exception {
+        String patientUuid = "550e8400-e29b-41d4-a716-446655440001";
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Observation");
+        request.setQueryString("patient=" + patientUuid);
+        request.addParameter("patient", patientUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
         assertNotNull(response);
         assertTrue(response.getStatus() != 404);
     }

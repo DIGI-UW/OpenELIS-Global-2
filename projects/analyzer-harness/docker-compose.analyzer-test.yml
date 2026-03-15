@@ -16,8 +16,8 @@ services:
       context: ../../tools/analyzer-mock-server
       dockerfile: Dockerfile
     ports:
-      - "5000:9600" # ASTM listen (fixture port=9600)
-      - "8085:8080" # HTTP simulate API
+      - "${ASTM_SIMULATOR_PORT:-5050}:9600" # ASTM listen (fixture port=9600; 5050 avoids macOS AirPlay on 5000)
+      - "${ASTM_SIMULATOR_HTTP_PORT:-8085}:8080" # HTTP simulate API
     environment:
       - ASTM_PORT=9600
       - ASTM_TEMPLATE=genexpert_astm
@@ -29,7 +29,7 @@ services:
       --verbose
     networks:
       analyzer-net:
-        ipv4_address: 172.20.1.100
+        ipv4_address: 172.21.1.100
     restart: unless-stopped
     healthcheck:
       test:
@@ -107,7 +107,7 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.1.0/24
+        - subnet: 172.21.1.0/24
 
 volumes:
   serial-vol:

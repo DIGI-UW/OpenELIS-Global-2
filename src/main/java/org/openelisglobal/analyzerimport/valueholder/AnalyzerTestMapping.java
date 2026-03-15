@@ -16,13 +16,14 @@
 package org.openelisglobal.analyzerimport.valueholder;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import org.apache.commons.validator.GenericValidator;
-import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 /**
  * Maps analyzer-specific test names to OpenELIS test IDs. Uses composite
@@ -43,12 +44,12 @@ public class AnalyzerTestMapping extends BaseObject<AnalyzerTestMappingPK> {
     private AnalyzerTestMappingPK compoundId = new AnalyzerTestMappingPK();
 
     @Column(name = "test_id")
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Convert(converter = StringToIntegerConverter.class)
     private String testId;
 
     /** Legacy column — nullable, no longer part of PK. */
     @Column(name = "analyzer_id")
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Convert(converter = StringToIntegerConverter.class)
     private String analyzerId;
 
     @Transient

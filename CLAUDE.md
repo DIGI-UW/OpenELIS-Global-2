@@ -96,7 +96,10 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 2. **Green:** Write minimal code to make test pass
 3. **Refactor:** Improve code quality while keeping tests green
 
-### Cypress E2E Test Execution (CRITICAL for Claude Code Environment)
+### Cypress E2E Test Execution — DEPRECATED (CRITICAL for Claude Code Environment)
+
+> **Cypress is deprecated.** All new E2E tests should use Playwright. Cypress
+> scripts below are retained for existing tests only.
 
 **IMPORTANT:** In Claude Code CLI environment, `ELECTRON_RUN_AS_NODE=1` is set,
 which breaks Cypress. All `npm run cy:*` scripts include
@@ -136,6 +139,33 @@ npm run cy:open
 
 **Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
 This wastes 60+ minutes of CI time.
+
+### Playwright E2E Test Execution — RECOMMENDED
+
+> **Playwright is the recommended E2E framework.** All new E2E tests should use
+> Playwright. See [AGENTS.md](AGENTS.md) § "E2E Tests (Playwright)" for full
+> details on projects, CI workflows, and fixtures.
+
+**Available Scripts:**
+
+```bash
+cd frontend
+
+# Run specific project
+npm run pw:test -- --project=core-app
+
+# Record demo videos (requires harness stack)
+npm run pw:test -- --project=demo-video
+
+# Run all tests
+npm run pw:test
+```
+
+**Key Rule:** Use `videoPause()` (from `helpers/video-pause.ts`) instead of
+`page.waitForTimeout()` for video pacing. No-ops in non-video projects.
+
+**Projects:** `core-app` (build stack), `harness` (full infra), `demo` (normal
+speed), `demo-video` (slowMo + video recording).
 
 ---
 

@@ -15,5 +15,8 @@
   <include relativeToChangelogFile="true" file="007-insert-seed-data.xml"/>
   <include relativeToChangelogFile="true" file="008-normalize-protocol-version-enum.xml"/>
   <include relativeToChangelogFile="true" file="009-decouple-test-mappings.xml"/>
-  <include relativeToChangelogFile="true" file="010-create-custom-fields-tables.xml"/>
+  <include relativeToChangelogFile="true" file="010-create-analyzer-plugin-config.xml"/>
+  <include relativeToChangelogFile="true" file="011-create-analyzer-pending-code.xml"/>
+  <include relativeToChangelogFile="true" file="012-add-organization-type-hierarchy-level.xml"/>
+  <!-- 013 moved to 3.4.14.x for 014-hjra-file-stream-alignment isolation -->
 </databaseChangeLog>
