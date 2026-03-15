@@ -519,8 +519,9 @@ public class AnalyzerRestController extends BaseRestController {
                 response.put("deleted", false); // Soft delete, not hard delete
                 return ResponseEntity.ok(response);
             } else {
-                // Hard delete: remove from database (no recent results)
-                analyzerService.delete(analyzer);
+                // Hard delete: remove dependent records first to avoid FK violations,
+                // then delete the analyzer itself.
+                analyzerService.deleteWithDependents(analyzer);
 
                 Map<String, Object> response = new LinkedHashMap<>();
                 response.put("message", "Analyzer permanently deleted");

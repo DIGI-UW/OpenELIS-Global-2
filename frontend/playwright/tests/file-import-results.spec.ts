@@ -1,235 +1,598 @@
 import { test, expect } from "@playwright/test";
 import * as fs from "fs";
 import * as path from "path";
+import { showTitleCard, showStepCard } from "../helpers/title-card";
+import { videoPause } from "../helpers/video-pause";
 
 /**
- * QuantStudio 7 MVP Workflow — Part 2: File Import → Results
+ * FILE Import → Results E2E Tests (Parameterized)
  *
- * Demonstrates the second stage of the MVP workflow:
- *   1. Copy an Excel results file into the analyzer's watched directory
- *   2. Wait for FileImportWatchService to process it (polls every 60s)
- *   3. Navigate to Analyzer Results and verify imported data appears
+ * Demonstrates the full FILE analyzer MVP workflow for each analyzer:
+ *   1. Create a new analyzer via the UI (select plugin type + profile)
+ *   2. Configure file import settings (directory, pattern, column mappings)
+ *   3. Copy a results file into the analyzer's watched directory
+ *   4. Wait for FileImportWatchService to process it (polls every 60s)
+ *   5. Navigate to Analyzer Results and verify imported data appears
  *
- * Prerequisites:
- *   - Fixture analyzer "E2E-FILE-QuantStudio-Analyzer" (id=2021) loaded
- *   - FileImportConfiguration for analyzer 2021 pointing to
- *     /data/analyzer-imports/e2e-qs/incoming with *.xlsx pattern
- *   - Host directory projects/analyzer-harness/volume/analyzer-imports/e2e-qs/incoming/ exists
- *   - Fixture Excel file at playwright/fixtures/quantstudio-e2e-results.xlsx
- *
- * Usage:
- *   CLEANUP=false PLAYWRIGHT_VIDEO=on TEST_USER=admin TEST_PASS="adminADMIN!" \
- *     npx playwright test file-import-results --project=file-import
+ * Produces demo videos with title/transition screens when run with:
+ *   CLEANUP=false PLAYWRIGHT_VIDEO=on TEST_USER=admin TEST_PASS='adminADMIN!' \
+ *     npx playwright test file-import-results --project=file-import-video
  */
 
 const CLEANUP = process.env.CLEANUP !== "false";
-
-// Paths — host-side directory that's bind-mounted into the container
 const REPO_ROOT = path.resolve(__dirname, "../../..");
-const HOST_IMPORT_DIR = path.join(
-  REPO_ROOT,
-  "projects/analyzer-harness/volume/analyzer-imports/e2e-qs/incoming",
-);
-const FIXTURE_FILE = path.join(
-  __dirname,
-  "../fixtures/quantstudio-e2e-results.xlsx",
-);
+const FIXTURES_DIR = path.join(__dirname, "../fixtures");
 
-// The analyzer name as registered in the DB (used for Results page URL)
-const ANALYZER_NAME = "E2E-FILE-QuantStudio-Analyzer";
+/** Analyzer configurations for parameterized tests */
+const ANALYZERS = [
+  {
+    name: "QuantStudio 5",
+    profileText: "QuantStudio", // text to match in the profile dropdown
+    fixture: "quantstudio-e2e-results-qs5.xls",
+    importSubdir: "demo-qs5",
+    filePattern: "*.xls",
+    filePrefix: "qs5-results-",
+    columnMappings: JSON.stringify(
+      {
+        "Sample Name": "sampleId",
+        "Target Name": "testCode",
+        "Quantity Mean": "result",
+        CT: "ctValue",
+        "Well Position": "position",
+      },
+      null,
+      2,
+    ),
+    sampleIds: ["E2E001", "E2E002", "E2E005"],
+    expectedResults: [
+      { sampleId: "E2E001", result: "1520.5" },
+      { sampleId: "E2E002", result: "45200" },
+      { sampleId: "E2E005", result: "3200.8" },
+    ],
+    headerMarker: "Sample Name", // should NOT appear in results (regression check)
+  },
+  {
+    name: "QuantStudio 7",
+    profileText: "QuantStudio",
+    fixture: "quantstudio-e2e-results.xlsx",
+    importSubdir: "demo-qs7",
+    filePattern: "*.xlsx",
+    filePrefix: "qs7-results-",
+    columnMappings: JSON.stringify(
+      {
+        "Sample Name": "sampleId",
+        "Target Name": "testCode",
+        "Quantity Mean": "result",
+        CT: "ctValue",
+        "Well Position": "position",
+      },
+      null,
+      2,
+    ),
+    sampleIds: ["E2E001", "E2E002", "E2E005"],
+    expectedResults: [
+      { sampleId: "E2E001", result: "1520.5" },
+      { sampleId: "E2E002", result: "45200" },
+      { sampleId: "E2E005", result: "3200.8" },
+    ],
+    headerMarker: "Sample Name",
+  },
+  {
+    name: "FluoroCycler XT",
+    profileText: "FluoroCycler",
+    fixture: "fluorocycler-e2e-results.xlsx",
+    importSubdir: "demo-fluorocycler",
+    filePattern: "*.xlsx",
+    filePrefix: "fc-results-",
+    columnMappings: JSON.stringify(
+      {
+        SampleID: "sampleId",
+        TargetName: "testCode",
+        WellPosition: "position",
+        CP: "result",
+        Interpretation: "interpretation",
+        RunDate: "testDate",
+      },
+      null,
+      2,
+    ),
+    sampleIds: ["E2E-FC001", "E2E-FC002", "E2E-FC003"],
+    expectedResults: [
+      { sampleId: "E2E-FC001", result: "28.5" },
+      { sampleId: "E2E-FC002", result: "31.2" },
+      { sampleId: "E2E-FC003", result: "Negative" },
+    ],
+    headerMarker: "SampleID",
+  },
+];
 
-test.describe("QuantStudio 7 File Import → Results", () => {
-  test.setTimeout(180_000); // 3 min — accounts for 60s poll interval
+for (const analyzer of ANALYZERS) {
+  const HOST_IMPORTS_BASE = path.join(
+    REPO_ROOT,
+    "projects/analyzer-harness/volume/analyzer-imports",
+  );
+  const FIXTURE_FILE = path.join(FIXTURES_DIR, analyzer.fixture);
+  const fileExtension = path.extname(analyzer.fixture);
 
-  test("drop Excel file, verify results appear in OE", async ({ page }) => {
-    // Skip if analyzer harness import directory doesn't exist (e.g. in CI)
-    test.skip(
-      !fs.existsSync(HOST_IMPORT_DIR),
-      "Requires analyzer harness bind-mount (HOST_IMPORT_DIR not found)",
-    );
+  test.describe(`${analyzer.name} File Import → Results`, () => {
+    test.setTimeout(300_000); // 5 min — create + config + 60s poll + results
 
-    // Capture errors for debugging
-    const consoleErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") consoleErrors.push(msg.text());
-    });
+    let createdAnalyzerName: string;
+    // Unique per-run directory to avoid overlapping config conflicts with
+    // stale E2E analyzers from previous runs (findOverlappingConfigs check).
+    let HOST_IMPORT_DIR: string;
 
-    // ── Step 1: Verify fixture file exists ──────────────────────────
-    expect(fs.existsSync(FIXTURE_FILE)).toBeTruthy();
-
-    // ── Step 2: Navigate to analyzer list to show starting state ────
-    await page.goto("analyzers", { waitUntil: "domcontentloaded" });
-    await expect(page.locator('[data-testid="analyzers-list"]')).toBeVisible({
-      timeout: 30_000,
-    });
-    await page.waitForTimeout(1_500);
-
-    // Search for the QuantStudio fixture analyzer
-    const searchInput = page.locator('[data-testid="analyzer-search-input"]');
-    await searchInput.fill("QuantStudio");
-    await page.waitForTimeout(1_500);
-
-    const qsRow = page.locator("tbody tr", {
-      hasText: /E2E-FILE-QuantStudio/i,
-    });
-    await expect(qsRow.first()).toBeVisible({ timeout: 10_000 });
-    await page.waitForTimeout(1_000);
-
-    // ── Step 3: Copy Excel file into watched directory ──────────────
-    // Use a unique filename to avoid duplicate detection
-    const timestamp = Date.now();
-    const destFilename = `quantstudio-results-${timestamp}.xlsx`;
-    const destPath = path.join(HOST_IMPORT_DIR, destFilename);
-
-    fs.copyFileSync(FIXTURE_FILE, destPath);
-    console.log(`Copied fixture to: ${destPath}`);
-
-    // Verify file landed on host
-    expect(fs.existsSync(destPath)).toBeTruthy();
-    await page.waitForTimeout(2_000);
-
-    // ── Step 4: Wait for FileImportWatchService to process ─────────
-    // The watch service polls every 60s. We'll check the DB for results
-    // by polling the analyzer results API endpoint.
-    let resultsFound = false;
-    const maxWaitMs = 120_000; // 2 minutes max
-    const pollIntervalMs = 5_000;
-    let elapsed = 0;
-
-    console.log(
-      "Waiting for FileImportWatchService to process file (polls every 60s)...",
-    );
-
-    while (elapsed < maxWaitMs) {
-      // Check if the file has been moved (processed = archived/deleted from incoming)
-      if (!fs.existsSync(destPath)) {
-        console.log(`File processed after ${elapsed / 1000}s`);
-        resultsFound = true;
-        break;
-      }
-      await page.waitForTimeout(pollIntervalMs);
-      elapsed += pollIntervalMs;
-
-      if (elapsed % 15_000 === 0) {
-        console.log(`  Still waiting... (${elapsed / 1000}s elapsed)`);
-      }
-    }
-
-    if (!resultsFound) {
-      // File might still be there if archive is in same parent dir
-      // Check the API instead
-      console.log(
-        "File not moved after timeout — checking API for results anyway",
+    test(`full flow: create → configure → import → results (${fileExtension})`, async ({
+      page,
+    }, testInfo) => {
+      // Skip if analyzer harness bind-mount base doesn't exist (e.g. in CI)
+      test.skip(
+        !fs.existsSync(HOST_IMPORTS_BASE),
+        "Requires analyzer harness bind-mount (analyzer-imports not found)",
       );
-    }
 
-    await page.waitForTimeout(2_000);
+      // Use a unique name and directory per run to avoid collisions
+      const runId = Date.now();
+      createdAnalyzerName = `${analyzer.name} E2E ${runId}`;
+      const dirSlug = analyzer.importSubdir;
+      HOST_IMPORT_DIR = path.join(
+        HOST_IMPORTS_BASE,
+        `${dirSlug}-${runId}`,
+        "incoming",
+      );
 
-    // ── Step 5: Navigate to Analyzer Results page ──────────────────
-    // Intercept the API call to debug
-    const apiResponsePromise = page
-      .waitForResponse((resp) => resp.url().includes("/rest/AnalyzerResults"), {
+      // Compute unique container-side directories matching the host path
+      const containerDirBase = `/data/analyzer-imports/${dirSlug}-${runId}`;
+      const containerImportDir = `${containerDirBase}/incoming`;
+      const containerArchiveDir = `${containerDirBase}/processed`;
+      const containerErrorDir = `${containerDirBase}/errors`;
+
+      // Create host-side subdirectory
+      if (!fs.existsSync(HOST_IMPORT_DIR)) {
+        fs.mkdirSync(HOST_IMPORT_DIR, { recursive: true });
+      }
+
+      // Verify fixture exists
+      expect(fs.existsSync(FIXTURE_FILE)).toBeTruthy();
+
+      // Capture errors for debugging
+      const consoleErrors: string[] = [];
+      page.on("console", (msg) => {
+        if (msg.type() === "error") consoleErrors.push(msg.text());
+      });
+
+      // ── Title Card ─────────────────────────────────────────────────
+      await showTitleCard(
+        page,
+        `${analyzer.name} — File Import MVP`,
+        `Create → Configure → Import → Results (${fileExtension})`,
+        3000,
+        testInfo,
+      );
+
+      // ── Step 1: Navigate to analyzer dashboard ─────────────────────
+      await showStepCard(
+        page,
+        1,
+        "Navigate to Analyzer Dashboard",
+        2000,
+        testInfo,
+      );
+
+      const analyzerApiPromise = page.waitForResponse(
+        (resp) =>
+          resp.url().includes("/rest/analyzer/analyzers") &&
+          resp.status() === 200,
+        { timeout: 30_000 },
+      );
+      await page.goto("analyzers", { waitUntil: "domcontentloaded" });
+      await analyzerApiPromise;
+
+      await expect(page.locator('[data-testid="analyzers-list"]')).toBeVisible({
         timeout: 30_000,
-      })
-      .catch(() => null);
+      });
+      await videoPause(page, 1_500, testInfo);
 
-    await page.goto(
-      `AnalyzerResults?type=${encodeURIComponent(ANALYZER_NAME)}`,
-      { waitUntil: "domcontentloaded" },
-    );
-
-    const apiResponse = await apiResponsePromise;
-    if (apiResponse) {
-      const body = await apiResponse.text();
-      console.log(
-        `API Response: status=${apiResponse.status()}, length=${body.length}`,
+      // ── Step 2: Create analyzer ────────────────────────────────────
+      await showStepCard(
+        page,
+        2,
+        `Create ${analyzer.name} Analyzer`,
+        2000,
+        testInfo,
       );
+
+      const addButton = page.locator('[data-testid="add-analyzer-button"]');
+      await expect(addButton).toBeVisible({ timeout: 5_000 });
+      await addButton.click();
+
+      const analyzerForm = page.locator('[data-testid="analyzer-form"]');
+      await expect(analyzerForm).toBeVisible({ timeout: 10_000 });
+      await videoPause(page, 1_000, testInfo);
+
+      // Fill name
+      const nameInput = page.locator(
+        '[data-testid="analyzer-form-name-input"]',
+      );
+      await nameInput.fill(createdAnalyzerName);
+      await videoPause(page, 500, testInfo);
+
+      // Select plugin type — Generic File (FILE)
+      // Carbon places data-testid on the wrapper div; click the inner trigger button.
+      const pluginTypeDropdown = page.locator(
+        '[data-testid="analyzer-form-plugin-type-dropdown"]',
+      );
+      const pluginTypeTrigger = pluginTypeDropdown.locator(
+        'button[role="combobox"], .cds--list-box__field',
+      );
+      await expect(pluginTypeTrigger).toBeEnabled({ timeout: 10_000 });
+      await pluginTypeTrigger.click();
+      await videoPause(page, 500, testInfo);
+
+      const filePluginOption = page
+        .locator('[role="option"]')
+        .filter({ hasText: /Generic File.*FILE|FILE.*Generic File/i });
+      await expect(filePluginOption.first()).toBeVisible({ timeout: 3_000 });
+      await filePluginOption.first().click();
+      await videoPause(page, 1_000, testInfo);
+
+      // Select default config profile (QuantStudio or FluoroCycler)
+      const defaultConfigDropdown = page.locator(
+        '[data-testid="analyzer-form-default-config-dropdown"]',
+      );
+      const defaultConfigTrigger = defaultConfigDropdown.locator(
+        'button[role="combobox"], .cds--list-box__field',
+      );
+      await expect(defaultConfigTrigger).toBeEnabled({ timeout: 10_000 });
+      await defaultConfigTrigger.click();
+      await videoPause(page, 500, testInfo);
+
+      const profileOption = page
+        .locator('[role="option"]')
+        .filter({ hasText: new RegExp(analyzer.profileText, "i") });
+      await expect(profileOption.first()).toBeVisible({ timeout: 3_000 });
+      await profileOption.first().click();
+      await videoPause(page, 1_000, testInfo);
+
+      // Select analyzer type — Molecular
+      const typeDropdown = page.locator(
+        '[data-testid="analyzer-form-type-dropdown"]',
+      );
+      const typeTrigger = typeDropdown.locator(
+        'button[role="combobox"], .cds--list-box__field',
+      );
+      await expect(typeTrigger).toBeEnabled({ timeout: 10_000 });
+      await typeTrigger.click();
+      await videoPause(page, 500, testInfo);
+
+      const molecularOption = page
+        .locator('[role="option"]')
+        .filter({ hasText: /Molecular/i });
+      await expect(molecularOption.first()).toBeVisible({ timeout: 3_000 });
+      await molecularOption.first().click();
+      await videoPause(page, 500, testInfo);
+
+      // Save the analyzer
+      const saveButton = page.locator(
+        '[data-testid="analyzer-form-save-button"]',
+      );
+      await saveButton.click();
+      await expect(analyzerForm).toBeHidden({ timeout: 15_000 });
+      console.log(`Created analyzer: ${createdAnalyzerName}`);
+      await videoPause(page, 1_500, testInfo);
+
+      // ── Step 3: Find analyzer in the list ──────────────────────────
+      await showStepCard(page, 3, "Verify Analyzer Created", 2000, testInfo);
+
+      const searchInput = page.locator('[data-testid="analyzer-search-input"]');
+      await searchInput.fill(createdAnalyzerName);
+      await videoPause(page, 1_500, testInfo);
+
+      const analyzerRow = page.locator("tbody tr", {
+        hasText: new RegExp(
+          createdAnalyzerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+          "i",
+        ),
+      });
+      await expect(analyzerRow.first()).toBeVisible({ timeout: 10_000 });
+      await videoPause(page, 1_000, testInfo);
+
+      // ── Step 4: Configure file import ──────────────────────────────
+      await showStepCard(page, 4, "Configure File Import", 2000, testInfo);
+
+      const overflowMenu = analyzerRow
+        .first()
+        .locator(".cds--overflow-menu")
+        .first();
+      await overflowMenu.click();
+      await videoPause(page, 500, testInfo);
+
+      const fileImportAction = page
+        .locator('[data-testid*="analyzer-action-file-import"]')
+        .first();
+      await expect(fileImportAction).toBeVisible({ timeout: 3_000 });
+      await fileImportAction.click();
+
+      const fileImportForm = page.locator(
+        '[data-testid="file-import-configuration-form"]',
+      );
+      await expect(fileImportForm).toBeVisible({ timeout: 10_000 });
+      await videoPause(page, 1_000, testInfo);
+
+      // Wait for the auto-created config to load into the form.
+      // autoCreateFromProfile pre-populates the directory field; we must wait
+      // for it before filling, or a subsequent re-render overwrites our values.
+      const directoryInput = page.locator(
+        '[data-testid="file-import-configuration-directory-input"]',
+      );
+      await expect(directoryInput).not.toHaveValue("", { timeout: 10_000 });
+
+      // Select file format — EXCEL
+      const formatDropdown = page.locator(
+        '[data-testid="file-import-configuration-file-format-dropdown"]',
+      );
+      const formatTrigger = formatDropdown.locator(
+        'button[role="combobox"], .cds--list-box__field',
+      );
+      await expect(formatTrigger).toBeEnabled({ timeout: 10_000 });
+      await formatTrigger.click();
+      await videoPause(page, 500, testInfo);
+
+      const excelOption = page
+        .locator('[role="option"]')
+        .filter({ hasText: /Excel/i });
+      await expect(excelOption.first()).toBeVisible({ timeout: 3_000 });
+      await excelOption.first().click();
+      await videoPause(page, 500, testInfo);
+
+      // Set import directory (clear auto-created value first)
+      await directoryInput.clear();
+      await directoryInput.fill(containerImportDir);
+      await videoPause(page, 500, testInfo);
+
+      // Set file pattern
+      const patternInput = page.locator(
+        '[data-testid="file-import-configuration-pattern-input"]',
+      );
+      await patternInput.clear();
+      await patternInput.fill(analyzer.filePattern);
+      await videoPause(page, 500, testInfo);
+
+      // Set archive directory
+      const archiveInput = page.locator(
+        '[data-testid="file-import-configuration-archive-input"]',
+      );
+      await archiveInput.clear();
+      await archiveInput.fill(containerArchiveDir);
+      await videoPause(page, 500, testInfo);
+
+      // Set error directory
+      const errorInput = page.locator(
+        '[data-testid="file-import-configuration-error-input"]',
+      );
+      await errorInput.clear();
+      await errorInput.fill(containerErrorDir);
+      await videoPause(page, 500, testInfo);
+
+      // Set column mappings
+      const columnMappingsInput = page.locator(
+        '[data-testid="file-import-configuration-column-mappings-input"]',
+      );
+      await columnMappingsInput.clear();
+      await columnMappingsInput.fill(analyzer.columnMappings);
+      await videoPause(page, 1_000, testInfo);
+
+      // Save file import configuration
+      const fileImportSave = page.locator(
+        '[data-testid="file-import-configuration-form-save-button"]',
+      );
+      await fileImportSave.click();
+      await expect(fileImportForm).toBeHidden({ timeout: 15_000 });
+      console.log("File import configuration saved");
+      await videoPause(page, 1_500, testInfo);
+
+      // ── Step 5: Drop file into watched directory ───────────────────
+      await showStepCard(
+        page,
+        5,
+        `Drop ${fileExtension} file into watched directory`,
+        2000,
+        testInfo,
+      );
+
+      const timestamp = Date.now();
+      const destFilename = `${analyzer.filePrefix}${timestamp}${fileExtension}`;
+      const destPath = path.join(HOST_IMPORT_DIR, destFilename);
+
+      fs.copyFileSync(FIXTURE_FILE, destPath);
+      console.log(`Copied fixture to: ${destPath}`);
+      expect(fs.existsSync(destPath)).toBeTruthy();
+      await videoPause(page, 2_000, testInfo);
+
+      // ── Step 6: Wait for FileImportWatchService ────────────────────
+      await showStepCard(
+        page,
+        6,
+        "Waiting for FileImportWatchService (polls every 60s)...",
+        2000,
+        testInfo,
+      );
+
+      let fileProcessed = false;
+      const maxWaitMs = 120_000;
+      const pollIntervalMs = 5_000;
+      let elapsed = 0;
+
+      console.log("Waiting for FileImportWatchService to process file...");
+
+      while (elapsed < maxWaitMs) {
+        if (!fs.existsSync(destPath)) {
+          console.log(`File processed after ${elapsed / 1000}s`);
+          fileProcessed = true;
+          break;
+        }
+        await page.waitForTimeout(pollIntervalMs); // Legitimate poll wait
+        elapsed += pollIntervalMs;
+
+        if (elapsed % 15_000 === 0) {
+          console.log(`  Still waiting... (${elapsed / 1000}s elapsed)`);
+        }
+      }
+
+      if (!fileProcessed) {
+        console.log(
+          "File not moved after timeout — checking API for results anyway",
+        );
+      }
+
+      await videoPause(page, 2_000, testInfo);
+
+      // ── Step 7: View imported results ──────────────────────────────
+      await showStepCard(page, 7, "View Imported Results", 2000, testInfo);
+
+      const apiResponsePromise = page
+        .waitForResponse(
+          (resp) => resp.url().includes("/rest/AnalyzerResults"),
+          { timeout: 30_000 },
+        )
+        .catch(() => null);
+
+      await page.goto(
+        `AnalyzerResults?type=${encodeURIComponent(createdAnalyzerName)}`,
+        { waitUntil: "domcontentloaded" },
+      );
+
+      const apiResponse = await apiResponsePromise;
+      if (apiResponse) {
+        const body = await apiResponse.text();
+        console.log(
+          `API Response: status=${apiResponse.status()}, length=${body.length}`,
+        );
+        try {
+          const json = JSON.parse(body);
+          console.log(`resultList length: ${json.resultList?.length ?? "N/A"}`);
+        } catch {
+          // Non-JSON response
+        }
+      }
+
+      // Wait for results page to fully render
+      await videoPause(page, 3_000, testInfo);
+
+      // ── Step 8: Verify actual result values ────────────────────────
+      const resultsTable = page.locator("table, .orderLegendBody");
+      await expect(resultsTable.first()).toBeVisible({ timeout: 15_000 });
+
+      // Regression check: header row should NOT be imported as data
+      const headerMarkerLocator = page
+        .locator("td")
+        .filter({ hasText: new RegExp(`^${analyzer.headerMarker}$`) });
+      await expect(headerMarkerLocator).toHaveCount(0, { timeout: 5_000 });
+      console.log(
+        `Verified: no header row in results (no '${analyzer.headerMarker}' in table)`,
+      );
+
+      // Hard assertion: verify EACH expected result value
+      for (const expected of analyzer.expectedResults) {
+        // Find the sample ID on the page (getByText works with the
+        // AnalyzerResults component; tr hasText does not due to nested elements)
+        const sampleText = page.getByText(expected.sampleId);
+        await expect(sampleText.first()).toBeVisible({ timeout: 15_000 });
+
+        // Verify the result value also appears on the page
+        const resultText = page.getByText(expected.result, { exact: false });
+        await expect(resultText.first()).toBeVisible({ timeout: 5_000 });
+
+        console.log(`  ✓ ${expected.sampleId} → ${expected.result}`);
+      }
+
+      console.log(
+        `All ${analyzer.expectedResults.length} result values verified for ${analyzer.name}!`,
+      );
+
+      // ── Linger on results page for the video ─────────────────────
+      // Slow scroll through results so viewer can read values
+      await videoPause(page, 3_000, testInfo);
+      await page.evaluate(() => window.scrollBy(0, 200));
+      await videoPause(page, 2_000, testInfo);
+      await page.evaluate(() => window.scrollBy(0, 200));
+      await videoPause(page, 2_000, testInfo);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await videoPause(page, 3_000, testInfo);
+
+      // ── Completion Card (video ends here) ─────────────────────────
+      await showTitleCard(
+        page,
+        "Import Complete",
+        `${analyzer.name}: ${analyzer.expectedResults.length} result values verified`,
+        3000,
+        testInfo,
+      );
+    });
+
+    test.afterEach(async ({ page }) => {
+      // Clean up dropped files
       try {
-        const json = JSON.parse(body);
-        console.log(`resultList length: ${json.resultList?.length ?? "N/A"}`);
-        if (json.resultList?.length > 0) {
-          console.log(
-            "First result:",
-            JSON.stringify(json.resultList[0]).substring(0, 300),
-          );
-        } else {
-          console.log("Response keys:", Object.keys(json));
-          console.log("displayNotFoundMsg:", json.displayNotFoundMsg);
+        const files = fs.readdirSync(HOST_IMPORT_DIR);
+        for (const file of files) {
+          if (file.startsWith(analyzer.filePrefix)) {
+            fs.unlinkSync(path.join(HOST_IMPORT_DIR, file));
+          }
         }
       } catch {
-        console.log("Response body (first 500):", body.substring(0, 500));
-      }
-    } else {
-      console.log("No API response intercepted for /rest/AnalyzerResults");
-    }
-    await page.waitForTimeout(3_000);
-
-    // ── Step 6: Verify results appear ──────────────────────────────
-    // Look for our sample accession numbers in the results table
-    const resultsTable = page.locator("table, .orderLegendBody");
-    await expect(resultsTable.first()).toBeVisible({ timeout: 15_000 });
-
-    // Check for at least one of our sample accession numbers
-    const e2e001 = page.getByText("E2E001");
-    const e2e002 = page.getByText("E2E002");
-    const e2e005 = page.getByText("E2E005");
-
-    // At least one sample result should be visible
-    const anyResult = e2e001.or(e2e002).or(e2e005);
-
-    try {
-      await expect(anyResult.first()).toBeVisible({ timeout: 15_000 });
-      console.log("Results found in Analyzer Results page!");
-    } catch {
-      // If no results found, take a screenshot for debugging
-      console.log(
-        "No results visible in table. Console errors:",
-        consoleErrors,
-      );
-      console.log("Current URL:", page.url());
-
-      // Check if there's a "no results" notification
-      const noResults = page.getByText(/no.*result|empty/i);
-      if (await noResults.isVisible({ timeout: 2_000 }).catch(() => false)) {
-        console.log("'No results' message displayed");
+        // Cleanup failure is not a test failure
       }
 
-      // Dump page text for debugging
-      const bodyText = await page
-        .locator("body")
-        .textContent({ timeout: 2_000 })
-        .catch(() => "(empty)");
-      console.log("Page text:", bodyText?.substring(0, 1000));
-    }
+      // Clean up created analyzer (unless CLEANUP=false for video inspection)
+      if (!CLEANUP || !createdAnalyzerName) return;
 
-    await page.waitForTimeout(3_000); // Hold for video
+      try {
+        await page.goto("analyzers", { waitUntil: "domcontentloaded" });
+        const searchInput = page.locator(
+          '[data-testid="analyzer-search-input"]',
+        );
+        await searchInput.fill(createdAnalyzerName);
+        await page.waitForTimeout(1_000); // Cleanup stability
 
-    // ── Step 7: Show results detail (scroll through) ───────────────
-    // Scroll down to show more results if present
-    await page.evaluate(() => window.scrollBy(0, 300));
-    await page.waitForTimeout(2_000);
+        const row = page.locator("tbody tr", {
+          hasText: new RegExp(
+            createdAnalyzerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+            "i",
+          ),
+        });
+        if (
+          await row
+            .first()
+            .isVisible({ timeout: 3_000 })
+            .catch(() => false)
+        ) {
+          const overflow = row.first().locator(".cds--overflow-menu").first();
+          await overflow.click();
+          await page.waitForTimeout(500); // Cleanup stability
 
-    // ── Step 8: Navigate back to analyzer list ─────────────────────
-    await page.goto("analyzers", { waitUntil: "domcontentloaded" });
-    await expect(page.locator('[data-testid="analyzers-list"]')).toBeVisible({
-      timeout: 15_000,
-    });
-    await page.waitForTimeout(2_000);
-  });
-
-  test.afterEach(async () => {
-    if (!CLEANUP) return;
-
-    // Clean up: remove any leftover files from the import directory
-    try {
-      const files = fs.readdirSync(HOST_IMPORT_DIR);
-      for (const file of files) {
-        if (file.startsWith("quantstudio-results-")) {
-          fs.unlinkSync(path.join(HOST_IMPORT_DIR, file));
+          const deleteAction = page
+            .locator('[data-testid*="analyzer-action-delete"]')
+            .first();
+          if (
+            await deleteAction.isVisible({ timeout: 2_000 }).catch(() => false)
+          ) {
+            await deleteAction.click();
+            const confirmButton = page
+              .getByRole("button", { name: /delete|confirm/i })
+              .last();
+            if (
+              await confirmButton
+                .isVisible({ timeout: 3_000 })
+                .catch(() => false)
+            ) {
+              await confirmButton.click();
+              await page.waitForTimeout(1_000); // Cleanup stability
+            }
+          }
         }
+      } catch {
+        // Cleanup failure is not a test failure
       }
-    } catch {
-      // Cleanup failure is not a test failure
-    }
+    });
   });
-});
+}

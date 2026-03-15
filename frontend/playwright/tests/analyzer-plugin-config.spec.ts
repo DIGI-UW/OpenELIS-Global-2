@@ -32,7 +32,11 @@ test.describe("Analyzer Plugin Config", () => {
       }
 
       for (let sel = 1; sel <= 4; sel++) {
-        await form.pluginTypeDropdown.click();
+        // Carbon places data-testid on wrapper div; click inner trigger button
+        const trigger = form.pluginTypeDropdown.locator(
+          'button[role="combobox"], .cds--list-box__field',
+        );
+        await trigger.click();
         const genericAstmOption = page
           .getByRole("option", { name: /Generic ASTM/i })
           .first();
@@ -60,7 +64,11 @@ test.describe("Analyzer Plugin Config", () => {
     ).toBeTruthy();
 
     await expect(form.defaultConfigDropdown).toBeVisible();
-    await form.defaultConfigDropdown.click();
+    // Carbon: click inner trigger, not wrapper div
+    const configTrigger = form.defaultConfigDropdown.locator(
+      'button[role="combobox"], .cds--list-box__field',
+    );
+    await configTrigger.click();
     const geneXpertProfile = page
       .getByRole("option", { name: /GeneXpert.*ASTM/i })
       .first();

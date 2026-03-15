@@ -5,8 +5,10 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
 import org.openelisglobal.common.log.LogEvent;
@@ -49,9 +51,14 @@ public class FileImportWatchService {
                 return;
             }
 
+            // Track files claimed during this poll cycle to prevent duplicate processing
+            // when multiple configs share a directory (defensive — the controller should
+            // block overlapping configs, but legacy data may still have them).
+            Set<Path> claimedThisCycle = new HashSet<>();
+
             for (FileImportConfiguration config : activeConfigs) {
                 try {
-                    scanDirectory(config);
+                    scanDirectory(config, claimedThisCycle);
                 } catch (Exception e) {
                     LogEvent.logError(this.getClass().getSimpleName(), "pollImportDirectories",
                             "Error scanning directory for analyzer " + config.getAnalyzerId() + ": " + e.getMessage());
@@ -65,10 +72,11 @@ public class FileImportWatchService {
 
     /**
      * Scans a single import directory for files matching the configured pattern.
-     * 
-     * @param config The file import configuration
+     *
+     * @param config           The file import configuration
+     * @param claimedThisCycle Files already claimed by another config in this poll
      */
-    private void scanDirectory(FileImportConfiguration config) {
+    private void scanDirectory(FileImportConfiguration config, Set<Path> claimedThisCycle) {
         try {
             Path importDir = Paths.get(config.getImportDirectory());
 
@@ -102,6 +110,16 @@ public class FileImportWatchService {
                     String fileName = path.getFileName().toString();
                     return pattern.matcher(fileName).matches() && matchesFileFormat(fileName, config.getFileFormat());
                 }).forEach(filePath -> {
+                    // Skip files already claimed by another config in this poll cycle
+                    Path normalizedPath = filePath.toAbsolutePath().normalize();
+                    if (!claimedThisCycle.add(normalizedPath)) {
+                        LogEvent.logWarn(this.getClass().getSimpleName(), "scanDirectory",
+                                "File " + filePath + " already claimed by another config in this poll cycle"
+                                        + " (analyzer " + config.getAnalyzerId()
+                                        + "). Skipping — check for overlapping directory/format configs.");
+                        return;
+                    }
+
                     try {
                         processFile(filePath, config);
                     } catch (Exception e) {
