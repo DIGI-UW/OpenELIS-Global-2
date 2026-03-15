@@ -4,13 +4,17 @@ import { isVideoProject, videoPause } from "../helpers/video-pause";
 import { acceptAndVerifyResults } from "../helpers/accept-results";
 
 /**
- * GeneXpert ASTM Push → Results E2E Test
+ * GeneXpert ASTM Push → Results E2E Tests
  *
- * Demonstrates the full ASTM push-mode workflow for GeneXpert:
- *   1. Create a new GeneXpert analyzer via the UI (selects ASTM profile)
- *   2. Trigger the mock simulator to push an ASTM message via the bridge
- *   3. Navigate to Analyzer Results and verify imported data appears
- *   4. Accept results and verify in AccessionResults with real test names
+ * Two complementary tests run in every project (harness, demo-video, etc.):
+ *
+ *   1. **Pre-loaded validation** — Finds the GeneXpert analyzer seeded by
+ *      seed-analyzers.sh, tests its connection, pushes ASTM, verifies results.
+ *      Validates that the profile-based seeding pipeline works end-to-end.
+ *
+ *   2. **Full create flow** — Creates a new GeneXpert analyzer via the UI,
+ *      pushes ASTM, verifies results, then cleans up. Validates the full
+ *      user-facing workflow from analyzer creation to result acceptance.
  *
  * The analyzer profile's default_test_mappings auto-creates analyzer_test_map
  * entries by looking up tests via LOINC codes against the test catalog.
@@ -24,6 +28,9 @@ const CLEANUP = process.env.CLEANUP !== "false";
 const SIMULATOR_URL = "http://localhost:8085";
 const BRIDGE_DESTINATION = "tcp://openelis-analyzer-bridge:12001";
 
+/** Name used by seed-analyzers.sh — must match exactly */
+const PRELOADED_NAME = "Cepheid GeneXpert (ASTM Mode)";
+
 const EXPECTED_RESULTS = [
   { sampleId: "SPECIMEN-GX-001", testCode: "MTB-RIF", result: "NEGATIVE" },
   { sampleId: "SPECIMEN-GX-001", testCode: "RIF", result: "Sensitive" },
@@ -31,38 +38,265 @@ const EXPECTED_RESULTS = [
   { sampleId: "SPECIMEN-GX-001", testCode: "COVID19", result: "NEGATIVE" },
 ];
 
-test.describe("GeneXpert ASTM Push → Results", () => {
-  test.setTimeout(300_000); // 5 min is enough for CI create + push + verify flow
+// ── Shared helpers ─────────────────────────────────────────────────────
+
+/** Navigate to analyzer dashboard and wait for API load */
+async function goToAnalyzerDashboard(page: any) {
+  const apiPromise = page.waitForResponse(
+    (resp: any) =>
+      resp.url().includes("/rest/analyzer/analyzers") && resp.status() === 200,
+    { timeout: 30_000 },
+  );
+  await page.goto("analyzers", { waitUntil: "domcontentloaded" });
+  await apiPromise;
+  await expect(page.locator('[data-testid="analyzers-list"]')).toBeVisible({
+    timeout: 30_000,
+  });
+}
+
+/** Find an analyzer row by name in the dashboard table */
+async function findAnalyzerRow(page: any, name: string, testInfo: any) {
+  const searchInput = page.locator('[data-testid="analyzer-search-input"]');
+  await searchInput.fill(name);
+  await videoPause(page, 1_500, testInfo);
+
+  const row = page.locator("tbody tr", {
+    hasText: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+  });
+  await expect(row.first()).toBeVisible({ timeout: 10_000 });
+  console.log(`Found analyzer: ${name}`);
+  return row;
+}
+
+/** Open overflow menu → Test Connection → verify success → close modal */
+async function testConnection(page: any, analyzerRow: any, testInfo: any) {
+  const overflow = analyzerRow.first().locator(".cds--overflow-menu").first();
+  await overflow.click();
+  await videoPause(page, 500, testInfo);
+
+  const testConnectionAction = page
+    .locator('[data-testid*="analyzer-action-test-connection"]')
+    .first();
+  await expect(testConnectionAction).toBeVisible({ timeout: 3_000 });
+  await testConnectionAction.click();
+
+  const connectionModal = page.locator('[data-testid="test-connection-modal"]');
+  await expect(connectionModal).toBeVisible({ timeout: 10_000 });
+
+  const testButton = page.locator(
+    '[data-testid="test-connection-test-button"]',
+  );
+  await testButton.click();
+
+  const successTag = page.locator('[data-testid="test-connection-success"]');
+  await expect(successTag).toBeVisible({ timeout: 15_000 });
+  console.log("  ✓ Test connection succeeded");
+
+  if (isVideoProject(testInfo)) {
+    await page.screenshot({
+      path: `test-results/gx-test-connection.png`,
+      fullPage: true,
+    });
+  }
+  await videoPause(page, 2_000, testInfo);
+
+  const closeButton = connectionModal
+    .locator('button:has-text("Close"), [aria-label="Close"]')
+    .first();
+  if (await closeButton.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await closeButton.click();
+  }
+  await videoPause(page, 500, testInfo);
+}
+
+/** Trigger ASTM push via simulator and poll until results arrive */
+async function pushAstmAndWaitForResults(
+  page: any,
+  analyzerName: string,
+  testInfo: any,
+) {
+  const simulatorRes = await page.request.post(
+    `${SIMULATOR_URL}/simulate/astm/genexpert_astm`,
+    { data: { destination: BRIDGE_DESTINATION, count: 1 } },
+  );
+  expect(simulatorRes.ok()).toBeTruthy();
+
+  const simBody = await simulatorRes.json();
+  console.log(
+    `Simulator response: pushed=${simBody.pushed}, status=${simBody.status}`,
+  );
+  await videoPause(page, 2_000, testInfo);
+
+  // Poll until results appear in the staging table
+  let resultCount = 0;
+  for (let attempt = 1; attempt <= 8; attempt++) {
+    const resp = await page.request.get(
+      `/api/OpenELIS-Global/rest/AnalyzerResults?type=${encodeURIComponent(analyzerName)}`,
+    );
+    const data = await resp.json().catch(() => null);
+    resultCount = data?.resultList?.length ?? 0;
+    if (resultCount > 0) break;
+    await page.waitForTimeout(3_000);
+  }
+  console.log(`Results available after polling: ${resultCount}`);
+  await videoPause(page, 1_000, testInfo);
+}
+
+/** Navigate to AnalyzerResults page and verify all expected values */
+async function verifyResults(page: any, analyzerName: string, testInfo: any) {
+  const apiResponsePromise = page
+    .waitForResponse(
+      (resp: any) => resp.url().includes("/rest/AnalyzerResults"),
+      { timeout: 30_000 },
+    )
+    .catch(() => null);
+
+  await page.goto(`AnalyzerResults?type=${encodeURIComponent(analyzerName)}`, {
+    waitUntil: "domcontentloaded",
+  });
+
+  const apiResponse = await apiResponsePromise;
+  if (apiResponse) {
+    const body = await apiResponse.text();
+    console.log(
+      `API Response: status=${apiResponse.status()}, length=${body.length}`,
+    );
+    try {
+      const json = JSON.parse(body);
+      console.log(`resultList length: ${json.resultList?.length ?? "N/A"}`);
+    } catch {
+      // Non-JSON response
+    }
+  }
+
+  await videoPause(page, 3_000, testInfo);
+
+  const resultsTable = page.locator("table, .orderLegendBody");
+  await expect(resultsTable.first()).toBeVisible({ timeout: 15_000 });
+
+  // Verify sample ID appears
+  await expect(
+    page
+      .locator('[data-testid="LabNo"]', {
+        hasText: EXPECTED_RESULTS[0].sampleId,
+      })
+      .first(),
+  ).toBeVisible({ timeout: 10_000 });
+
+  // Verify EACH expected result value (input or text, depending on render mode)
+  for (const expected of EXPECTED_RESULTS) {
+    const inputCount = await page
+      .locator(`input[value*="${expected.result}"]`)
+      .count();
+
+    if (inputCount > 0) {
+      await expect(
+        page.locator(`input[value*="${expected.result}"]`).first(),
+      ).toBeVisible({ timeout: 5_000 });
+    } else {
+      await expect(
+        page.getByText(expected.result, { exact: false }).first(),
+      ).toBeVisible({ timeout: 5_000 });
+    }
+
+    console.log(
+      `  ✓ ${expected.sampleId} → ${expected.testCode}: ${expected.result}`,
+    );
+  }
+
+  console.log(
+    `All ${EXPECTED_RESULTS.length} result values verified for GeneXpert ASTM!`,
+  );
+
+  if (isVideoProject(testInfo)) {
+    await page.screenshot({
+      path: `test-results/gx-staging-results.png`,
+      fullPage: true,
+    });
+  }
+  await videoPause(page, 2_000, testInfo);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Test 1: Validate pre-loaded GeneXpert (seeded by seed-analyzers.sh)
+// ═══════════════════════════════════════════════════════════════════════
+
+test.describe("GeneXpert ASTM — Pre-loaded Validation", () => {
+  test.setTimeout(300_000);
+
+  test("pre-loaded: test connection → ASTM push → verify results", async ({
+    page,
+  }, testInfo) => {
+    // ── Title Card ─────────────────────────────────────────────────
+    await showTitleCard(
+      page,
+      "GeneXpert — Validate Pre-loaded",
+      "Connection → Simulate → Results",
+      3000,
+      testInfo,
+    );
+
+    // ── Step 1: Navigate to dashboard ──────────────────────────────
+    await showStepCard(
+      page,
+      1,
+      "Navigate to Analyzer Dashboard",
+      2000,
+      testInfo,
+    );
+    await goToAnalyzerDashboard(page);
+    await videoPause(page, 1_500, testInfo);
+
+    // ── Step 2: Find pre-loaded analyzer ───────────────────────────
+    await showStepCard(page, 2, "Find Pre-loaded GeneXpert", 2000, testInfo);
+    const analyzerRow = await findAnalyzerRow(page, PRELOADED_NAME, testInfo);
+
+    // ── Step 3: Test Connection ────────────────────────────────────
+    await showStepCard(page, 3, "Test Analyzer Connection", 2000, testInfo);
+    await testConnection(page, analyzerRow, testInfo);
+
+    // ── Step 4: Trigger ASTM push ──────────────────────────────────
+    await showStepCard(
+      page,
+      4,
+      "Send ASTM Message via Simulator",
+      2000,
+      testInfo,
+    );
+    await pushAstmAndWaitForResults(page, PRELOADED_NAME, testInfo);
+
+    // ── Step 5: Verify results ─────────────────────────────────────
+    await showStepCard(page, 5, "Verify Imported Results", 2000, testInfo);
+    await verifyResults(page, PRELOADED_NAME, testInfo);
+
+    // ── Step 6: Accept results ─────────────────────────────────────
+    await acceptAndVerifyResults(page, testInfo, 6, "SPECIMEN-GX-001");
+
+    // ── Completion Card ────────────────────────────────────────────
+    await showTitleCard(
+      page,
+      "Validation Complete",
+      `Pre-loaded GeneXpert: ${EXPECTED_RESULTS.length} results accepted`,
+      3000,
+      testInfo,
+    );
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// Test 2: Full create flow (creates its own analyzer, cleans up after)
+// ═══════════════════════════════════════════════════════════════════════
+
+test.describe("GeneXpert ASTM — Full Create Flow", () => {
+  test.setTimeout(300_000);
 
   let createdAnalyzerName: string;
 
-  test("full flow: create analyzer → ASTM push → verify results", async ({
+  test("create analyzer → ASTM push → verify results", async ({
     page,
   }, testInfo) => {
     const runId = Date.now();
     createdAnalyzerName = `Cepheid GeneXpert (ASTM Mode) E2E ${runId}`;
-    // #region agent log
-    fetch("http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "3a4495",
-      },
-      body: JSON.stringify({
-        sessionId: "3a4495",
-        runId: String(runId),
-        hypothesisId: "H1",
-        location: "astm-genexpert-results.spec.ts:45",
-        message: "test_start_identifiers",
-        data: {
-          createdAnalyzerName,
-          expectedSample: EXPECTED_RESULTS[0].sampleId,
-          project: testInfo.project.name,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
 
     // Capture errors for debugging
     const consoleErrors: string[] = [];
@@ -87,19 +321,7 @@ test.describe("GeneXpert ASTM Push → Results", () => {
       2000,
       testInfo,
     );
-
-    const analyzerApiPromise = page.waitForResponse(
-      (resp) =>
-        resp.url().includes("/rest/analyzer/analyzers") &&
-        resp.status() === 200,
-      { timeout: 30_000 },
-    );
-    await page.goto("analyzers", { waitUntil: "domcontentloaded" });
-    await analyzerApiPromise;
-
-    await expect(page.locator('[data-testid="analyzers-list"]')).toBeVisible({
-      timeout: 30_000,
-    });
+    await goToAnalyzerDashboard(page);
 
     // Clean up stale E2E GeneXpert analyzers from previous runs.
     // Prevents routing ambiguity (multiple analyzers matching same identifier_pattern).
@@ -233,18 +455,12 @@ test.describe("GeneXpert ASTM Push → Results", () => {
     // ── Step 3: Verify analyzer in list ──────────────────────────
     await showStepCard(page, 3, "Verify Analyzer Created", 2000, testInfo);
 
-    const searchInput = page.locator('[data-testid="analyzer-search-input"]');
-    await searchInput.fill(createdAnalyzerName);
-    await videoPause(page, 1_500, testInfo);
+    const analyzerRow = await findAnalyzerRow(
+      page,
+      createdAnalyzerName,
+      testInfo,
+    );
 
-    const analyzerRow = page.locator("tbody tr", {
-      hasText: new RegExp(
-        createdAnalyzerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "i",
-      ),
-    });
-    await expect(analyzerRow.first()).toBeVisible({ timeout: 10_000 });
-    console.log(`Found analyzer: ${createdAnalyzerName}`);
     if (isVideoProject(testInfo)) {
       await page.screenshot({
         path: `test-results/gx-01-analyzer-created.png`,
@@ -255,49 +471,7 @@ test.describe("GeneXpert ASTM Push → Results", () => {
 
     // ── Step 4: Test Connection ────────────────────────────────────
     await showStepCard(page, 4, "Test Analyzer Connection", 2000, testInfo);
-
-    const overflow = analyzerRow.first().locator(".cds--overflow-menu").first();
-    await overflow.click();
-    await videoPause(page, 500, testInfo);
-
-    const testConnectionAction = page
-      .locator('[data-testid*="analyzer-action-test-connection"]')
-      .first();
-    await expect(testConnectionAction).toBeVisible({ timeout: 3_000 });
-    await testConnectionAction.click();
-
-    const connectionModal = page.locator(
-      '[data-testid="test-connection-modal"]',
-    );
-    await expect(connectionModal).toBeVisible({ timeout: 10_000 });
-
-    // Click "Test" and wait for result
-    const testButton = page.locator(
-      '[data-testid="test-connection-test-button"]',
-    );
-    await testButton.click();
-
-    // Wait for success or error (bridge ASTM round-trip ~2s)
-    const successTag = page.locator('[data-testid="test-connection-success"]');
-    await expect(successTag).toBeVisible({ timeout: 15_000 });
-    console.log("  ✓ Test connection succeeded");
-
-    if (isVideoProject(testInfo)) {
-      await page.screenshot({
-        path: `test-results/gx-01b-test-connection.png`,
-        fullPage: true,
-      });
-    }
-    await videoPause(page, 2_000, testInfo);
-
-    // Close the modal
-    const closeButton = connectionModal
-      .locator('button:has-text("Close"), [aria-label="Close"]')
-      .first();
-    if (await closeButton.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await closeButton.click();
-    }
-    await videoPause(page, 500, testInfo);
+    await testConnection(page, analyzerRow, testInfo);
 
     // ── Step 5: Trigger ASTM push via simulator ────────────────────
     await showStepCard(
@@ -307,320 +481,14 @@ test.describe("GeneXpert ASTM Push → Results", () => {
       2000,
       testInfo,
     );
+    await pushAstmAndWaitForResults(page, createdAnalyzerName, testInfo);
 
-    const simulatorRes = await page.request.post(
-      `${SIMULATOR_URL}/simulate/astm/genexpert_astm`,
-      {
-        data: { destination: BRIDGE_DESTINATION, count: 1 },
-      },
-    );
-    expect(simulatorRes.ok()).toBeTruthy();
+    // ── Step 6: Wait for and verify results ────────────────────────
+    await showStepCard(page, 6, "Verify Imported Results", 2000, testInfo);
+    await verifyResults(page, createdAnalyzerName, testInfo);
 
-    const simBody = await simulatorRes.json();
-    console.log(
-      `Simulator response: pushed=${simBody.pushed}, status=${simBody.status}`,
-    );
-    // #region agent log
-    fetch("http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "3a4495",
-      },
-      body: JSON.stringify({
-        sessionId: "3a4495",
-        runId: String(runId),
-        hypothesisId: "H2",
-        location: "astm-genexpert-results.spec.ts:304",
-        message: "simulator_push_response",
-        data: {
-          ok: simulatorRes.ok(),
-          status: simBody?.status,
-          pushed: simBody?.pushed,
-          destination: BRIDGE_DESTINATION,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-    await videoPause(page, 2_000, testInfo);
-
-    // ── Step 6: Wait for results to arrive ─────────────────────────
-    await showStepCard(
-      page,
-      6,
-      "Waiting for ASTM Results (near-instant via bridge)...",
-      2000,
-      testInfo,
-    );
-
-    // Poll until results appear in the staging table
-    let resultCount = 0;
-    for (let attempt = 1; attempt <= 8; attempt++) {
-      const resp = await page.request.get(
-        `/api/OpenELIS-Global/rest/AnalyzerResults?type=${encodeURIComponent(createdAnalyzerName)}`,
-      );
-      const data = await resp.json().catch(() => null);
-      resultCount = data?.resultList?.length ?? 0;
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Debug-Session-Id": "3a4495",
-          },
-          body: JSON.stringify({
-            sessionId: "3a4495",
-            runId: String(runId),
-            hypothesisId: "H3",
-            location: "astm-genexpert-results.spec.ts:324",
-            message: "poll_analyzer_results",
-            data: {
-              attempt,
-              httpStatus: resp.status(),
-              resultCount,
-              firstResult: data?.resultList?.[0]?.result,
-              firstSample: data?.resultList?.[0]?.sample,
-              firstLabNo: data?.resultList?.[0]?.labNo,
-            },
-            timestamp: Date.now(),
-          }),
-        },
-      ).catch(() => {});
-      // #endregion
-      if (resultCount > 0) break;
-      await page.waitForTimeout(3_000);
-    }
-    console.log(`Results available after polling: ${resultCount}`);
-    await videoPause(page, 1_000, testInfo);
-
-    // ── Step 7: View imported results ──────────────────────────────
-    await showStepCard(page, 7, "View Imported Results", 2000, testInfo);
-
-    const apiResponsePromise = page
-      .waitForResponse((resp) => resp.url().includes("/rest/AnalyzerResults"), {
-        timeout: 30_000,
-      })
-      .catch(() => null);
-
-    await page.goto(
-      `AnalyzerResults?type=${encodeURIComponent(createdAnalyzerName)}`,
-      { waitUntil: "domcontentloaded" },
-    );
-
-    const apiResponse = await apiResponsePromise;
-    let apiResultPreview: Array<{ sample?: string; result?: string }> = [];
-    if (apiResponse) {
-      const body = await apiResponse.text();
-      console.log(
-        `API Response: status=${apiResponse.status()}, length=${body.length}`,
-      );
-      try {
-        const json = JSON.parse(body);
-        console.log(`resultList length: ${json.resultList?.length ?? "N/A"}`);
-        apiResultPreview = (json.resultList ?? [])
-          .slice(0, 12)
-          .map((row: any) => ({
-            sample: row?.sample ?? row?.labNo ?? row?.accessionNumber,
-            result: row?.result,
-          }));
-      } catch {
-        // Non-JSON response
-      }
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Debug-Session-Id": "3a4495",
-          },
-          body: JSON.stringify({
-            sessionId: "3a4495",
-            runId: String(runId),
-            hypothesisId: "H4",
-            location: "astm-genexpert-results.spec.ts:360",
-            message: "analyzer_results_page_response",
-            data: {
-              status: apiResponse.status(),
-              url: apiResponse.url(),
-              bodyLength: body.length,
-              containsSample: body.includes(EXPECTED_RESULTS[0].sampleId),
-              containsExpected: {
-                negative: body.includes("NEGATIVE"),
-                sensitive:
-                  body.includes("Sensitive") || body.includes("SENSITIVE"),
-                v1250: body.includes("1250"),
-                covid: body.includes("COVID19"),
-              },
-              apiResultPreview,
-            },
-            timestamp: Date.now(),
-          }),
-        },
-      ).catch(() => {});
-      // #endregion
-    }
-
-    // Wait for results page to fully render
-    await videoPause(page, 3_000, testInfo);
-
-    // ── Step 8: Verify actual result values ────────────────────────
-    await showStepCard(page, 8, "Verify Result Values", 2000, testInfo);
-
-    const resultsTable = page.locator("table, .orderLegendBody");
-    await expect(resultsTable.first()).toBeVisible({ timeout: 15_000 });
-    const labNoTexts = await page
-      .locator('[data-testid="LabNo"]')
-      .allTextContents();
-    const pageUrlAtAssert = page.url();
-    const pageTitleAtAssert = await page.title().catch(() => "");
-    const analyzerResultInputsCount = await page
-      .locator(
-        'input[value*="NEGATIVE"],input[value*="Sensitive"],input[value*="1250"]',
-      )
-      .count();
-    const inputValuePreview = await page
-      .locator("input[value]")
-      .evaluateAll((els) =>
-        els
-          .map((el) => (el as HTMLInputElement).value)
-          .filter(Boolean)
-          .slice(0, 30),
-      );
-    // #region agent log
-    fetch("http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "3a4495",
-      },
-      body: JSON.stringify({
-        sessionId: "3a4495",
-        runId: String(runId),
-        hypothesisId: "H5",
-        location: "astm-genexpert-results.spec.ts:373",
-        message: "dom_before_labno_assert",
-        data: {
-          labNoCount: labNoTexts.length,
-          labNoPreview: labNoTexts.slice(0, 10),
-          expectedSample: EXPECTED_RESULTS[0].sampleId,
-          analyzerResultInputsCount,
-          inputValuePreview,
-          pageUrlAtAssert,
-          pageTitleAtAssert,
-          consoleErrors: consoleErrors.slice(0, 5),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-
-    // Verify EACH expected result value appears on the page.
-    // AnalyserResults uses react-data-table-component (div rows, not <tr>).
-    // The sample ID renders in [data-testid="LabNo"] only on the first row
-    // of each sample group.
-    await expect(
-      page
-        .locator('[data-testid="LabNo"]', {
-          hasText: EXPECTED_RESULTS[0].sampleId,
-        })
-        .first(),
-    ).toBeVisible({ timeout: 10_000 });
-
-    for (const expected of EXPECTED_RESULTS) {
-      const expectedSelectorCount = await page
-        .locator(`input[value*="${expected.result}"]`)
-        .count();
-      const expectedTextCount = await page
-        .getByText(expected.result, { exact: false })
-        .count();
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Debug-Session-Id": "3a4495",
-          },
-          body: JSON.stringify({
-            sessionId: "3a4495",
-            runId: String(runId),
-            hypothesisId: "H6",
-            location: "astm-genexpert-results.spec.ts:399",
-            message: "expected_value_lookup",
-            data: {
-              expectedResult: expected.result,
-              expectedTestCode: expected.testCode,
-              selectorCount: expectedSelectorCount,
-              textCount: expectedTextCount,
-            },
-            timestamp: Date.now(),
-          }),
-        },
-      ).catch(() => {});
-      // #endregion
-      const assertionMode = expectedSelectorCount > 0 ? "input" : "text";
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7243/ingest/f526e3a5-59c3-4c5f-82c9-b3796eaa35e5",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Debug-Session-Id": "3a4495",
-          },
-          body: JSON.stringify({
-            sessionId: "3a4495",
-            runId: String(runId),
-            hypothesisId: "H7",
-            location: "astm-genexpert-results.spec.ts:421",
-            message: "result_assertion_mode",
-            data: {
-              expectedResult: expected.result,
-              assertionMode,
-              selectorCount: expectedSelectorCount,
-              textCount: expectedTextCount,
-            },
-            timestamp: Date.now(),
-          }),
-        },
-      ).catch(() => {});
-      // #endregion
-      if (expectedSelectorCount > 0) {
-        await expect(
-          page.locator(`input[value*="${expected.result}"]`).first(),
-        ).toBeVisible({ timeout: 5_000 });
-      } else {
-        await expect(
-          page.getByText(expected.result, { exact: false }).first(),
-        ).toBeVisible({ timeout: 5_000 });
-      }
-
-      console.log(
-        `  ✓ ${expected.sampleId} → ${expected.testCode}: ${expected.result}`,
-      );
-    }
-
-    console.log(
-      `All ${EXPECTED_RESULTS.length} result values verified for GeneXpert ASTM!`,
-    );
-    if (isVideoProject(testInfo)) {
-      await page.screenshot({
-        path: `test-results/gx-02-staging-results.png`,
-        fullPage: true,
-      });
-    }
-
-    // ── Linger on staging results for the video ──────────────────
-    await videoPause(page, 2_000, testInfo);
-
-    // ── Steps 8-10: Accept results and verify in AccessionResults
-    await acceptAndVerifyResults(page, testInfo, 8, "SPECIMEN-GX-001");
+    // ── Steps 7-9: Accept results and verify in AccessionResults ──
+    await acceptAndVerifyResults(page, testInfo, 7, "SPECIMEN-GX-001");
 
     // ── Completion Card ───────────────────────────────────────────
     await showTitleCard(

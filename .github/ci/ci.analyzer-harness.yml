@@ -44,7 +44,8 @@ services:
       - SPRING_PROFILES_ACTIVE=dev
       - LOGGING_LEVEL_ORG_ITECH=INFO
       # Bridge connects directly to app (not through proxy), so no /api/ prefix
-      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe.openelis.org:8443/OpenELIS-Global/analyzer/astm
+      # HttpForwardingRouter appends /astm, /hl7, /csv per message protocol
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe.openelis.org:8443/OpenELIS-Global/analyzer
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_INSECURE_TLS=true
       # TEST-ONLY: disables hostname verification for self-signed harness certs
       - JDK_JAVA_OPTIONS=-Djdk.internal.httpclient.disableHostnameVerification=true
