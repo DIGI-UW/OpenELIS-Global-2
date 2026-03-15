@@ -1159,6 +1159,9 @@ public class AnalyzerRestController extends BaseRestController {
         case "generic-astm":
             lookupName = "Generic ASTM";
             break;
+        case "generic-file":
+            lookupName = "Generic File";
+            break;
         case "generic-hl7":
             lookupName = "Generic HL7";
             break;
