@@ -183,7 +183,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
         String identifier = analyzerIdentifier.trim();
         for (Analyzer analyzer : candidates) {
-            if (analyzer.getIdentifierPattern() == null) {
+            if (analyzer.getIdentifierPattern() == null || analyzer.getIdentifierPattern().trim().isEmpty()) {
                 continue;
             }
             try {
