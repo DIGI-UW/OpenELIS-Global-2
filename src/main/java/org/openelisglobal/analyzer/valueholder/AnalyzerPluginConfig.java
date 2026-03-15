@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.valueholder;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
@@ -8,6 +9,7 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.TypeDef;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 import org.openelisglobal.hibernate.type.JsonBinaryType;
 
 @Entity
@@ -19,9 +21,11 @@ public class AnalyzerPluginConfig extends BaseObject<String> {
 
     @Id
     @Column(name = "analyzer_id", nullable = false)
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Convert(converter = StringToIntegerConverter.class)
     private String analyzerId;
 
+    // @TypeDef + @Type("jsonb") kept until Hibernate 6 upgrade provides
+    // @JdbcTypeCode(SqlTypes.JSON) — no JPA AttributeConverter for JSONB exists
     @Type(type = "jsonb")
     @Column(name = "config", columnDefinition = "jsonb", nullable = false)
     private String config = "{}";
