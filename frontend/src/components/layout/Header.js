@@ -366,6 +366,13 @@ function OEHeader({
       );
     }
 
+    // Skip items hidden in the new React UI
+    if (menuItem.menu.hideInNewUI) {
+      return (
+        <React.Fragment key={menuItem.menu.elementId || path}></React.Fragment>
+      );
+    }
+
     // URL matching helpers
     // Normalize to ignore query/hash to fix cases like /WorkPlanByTest?type=test
     const normalizePath = (url) => {
