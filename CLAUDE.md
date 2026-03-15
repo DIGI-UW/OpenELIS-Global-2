@@ -26,8 +26,8 @@ When working on this project, follow this documentation order:
 
 This project uses **GitHub SpecKit** for Specification-Driven Development (SDD).
 
-**Setup:** Run `python scripts/install-speckit-commands.py` to install slash
-commands.
+**Setup:** Run `python3 scripts/install-agent-skills.py` to install slash
+commands and packaged skills.
 
 **Full documentation:** See [AGENTS.md](AGENTS.md) § "GitHub SpecKit
 Integration" for:
@@ -144,7 +144,7 @@ This wastes 60+ minutes of CI time.
 
 > **Playwright is the recommended E2E framework.** All new E2E tests should use
 > Playwright. See [AGENTS.md](AGENTS.md) § "E2E Tests (Playwright)" for full
-> details on projects, CI workflows, and fixtures.
+> details on projects, CI workflows, fixtures, and command entrypoints.
 
 **Available Scripts:**
 
@@ -166,6 +166,9 @@ npm run pw:test
 
 **Projects:** `core-app` (build stack), `harness` (full infra), `demo` (normal
 speed), `demo-video` (slowMo + video recording).
+
+**Skill Commands:** Use `/debug-playwright` for evidence-first failure diagnosis
+and `/audit-playwright` for selector/anti-pattern audits before committing.
 
 ---
 
