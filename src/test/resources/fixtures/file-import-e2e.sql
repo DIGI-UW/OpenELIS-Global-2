@@ -1,186 +1,188 @@
 SET search_path TO clinlims;
 
-DELETE FROM file_import_configuration
-WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name LIKE 'E2E-FILE-%');
+-- ============================================================================
+-- FILE Import E2E Fixtures
+--
+-- Purpose: (1) Clean up stale/out-of-scope analyzers for a clean dashboard,
+--          (2) Seed 3 E2E-FILE analyzers (IDs 3001-3003) with FileImportConfigs
+--              for file-import.spec.ts (harness project).
+--
+-- FK ordering: RESTRICT tables (analyzer_results, notebook_analysers) must be
+-- deleted explicitly before the analyzer. CASCADE tables (config) are handled
+-- automatically by DB constraints.
+-- ============================================================================
 
-DELETE FROM analyzer_plugin_config
-WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name LIKE 'E2E-FILE-%');
+-- 1. Clean up stale E2E analyzers created by Playwright (timestamped names)
+DELETE FROM analyzer_results
+WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name LIKE '%E2E %' OR name LIKE 'E2E-FILE-%');
+DELETE FROM notebook_analysers
+WHERE analyser_id IN (SELECT id FROM analyzer WHERE name LIKE '%E2E %' OR name LIKE 'E2E-FILE-%');
+DELETE FROM analyzer WHERE name LIKE '%E2E %';
+DELETE FROM analyzer WHERE name LIKE 'E2E-FILE-%';
 
-DELETE FROM analyzer
-WHERE name LIKE 'E2E-FILE-%';
+-- 2. Clean up legacy 1000-series analyzers (Feature 004, fully retired)
+DELETE FROM analyzer_results WHERE analyzer_id IN (1000,1001,1002,1003,1004);
+DELETE FROM notebook_analysers WHERE analyser_id IN (1000,1001,1002,1003,1004);
+DELETE FROM analyzer WHERE id IN (1000,1001,1002,1003,1004);
 
-DELETE FROM analyzer_type
-WHERE name LIKE 'E2E-FILE-%';
+-- 3. Clean up Mindray analyzers (not in current UAT scope)
+DELETE FROM analyzer_results WHERE analyzer_id IN (2006,2007,2008,2012);
+DELETE FROM notebook_analysers WHERE analyser_id IN (2006,2007,2008,2012);
+DELETE FROM analyzer WHERE id IN (2006,2007,2008,2012);
 
-INSERT INTO analyzer_type (
-  id,
-  name,
-  description,
-  protocol,
-  plugin_class_name,
-  is_generic_plugin,
-  is_active,
-  sys_user_id,
-  last_updated
-) VALUES (
-  nextval('analyzer_type_seq'),
-  'E2E-FILE-GenericFile',
-  'E2E GenericFile analyzer type',
-  'FILE',
-  'org.openelisglobal.plugins.analyzer.genericfile.GenericFileAnalyzer',
-  true,
-  true,
-  '1',
-  NOW()
-);
+-- 4. Deactivate all legacy (non-generic) analyzer types for clean dashboard
+UPDATE analyzer_type SET is_active = false
+WHERE name NOT IN ('Generic ASTM', 'Generic HL7', 'Generic File');
 
+-- 5. Ensure the 3 generic types are active
+UPDATE analyzer_type SET is_active = true
+WHERE name IN ('Generic ASTM', 'Generic HL7', 'Generic File');
+
+-- ============================================================================
+-- FILE Import E2E Analyzer Seeding — 3 E2E-FILE analyzers + FileImportConfigs
+--
+-- These are used by file-import.spec.ts (harness project).
+-- IDs 3001-3003 avoid conflict with UAT analyzers (2013-2016).
+-- ============================================================================
+
+-- 6. Seed E2E-FILE-CSV-Analyzer (ID 3001)
 INSERT INTO analyzer (
-  id,
-  name,
-  analyzer_type,
-  description,
-  is_active,
-  protocol_version,
-  status,
-  analyzer_type_id,
-  last_updated
-) VALUES (
-  nextval('analyzer_seq'),
-  'E2E-FILE-CSV-Analyzer',
-  'MOLECULAR',
-  'E2E file import analyzer',
-  true,
-  NULL,
-  'ACTIVE',
-  (SELECT id FROM analyzer_type WHERE name = 'E2E-FILE-GenericFile'),
-  NOW()
-);
+    id, name, analyzer_type, description, is_active,
+    status, analyzer_type_id, last_updated
+)
+VALUES (
+    3001,
+    'E2E-FILE-CSV-Analyzer',
+    'CHEMISTRY',
+    'E2E test: CSV file import',
+    true,
+    'ACTIVE',
+    (SELECT id FROM analyzer_type WHERE name = 'Generic File'),
+    NOW()
+)
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name, is_active = EXCLUDED.is_active,
+    analyzer_type_id = EXCLUDED.analyzer_type_id, last_updated = NOW();
 
-INSERT INTO file_import_configuration (
-  id,
-  analyzer_id,
-  import_directory,
-  file_pattern,
-  archive_directory,
-  error_directory,
-  column_mappings,
-  delimiter,
-  has_header,
-  active,
-  fhir_uuid,
-  sys_user_id,
-  last_updated,
-  file_format
-) VALUES (
-  '11111111-1111-1111-1111-111111111111',
-  (SELECT id FROM analyzer WHERE name = 'E2E-FILE-CSV-Analyzer'),
-  '/data/analyzer-imports/e2e-csv/incoming',
-  '*.csv',
-  '/data/analyzer-imports/e2e-csv/processed',
-  '/data/analyzer-imports/e2e-csv/errors',
-  '{"Sample_ID":"sampleId","Test_Code":"testCode","Result":"result"}',
-  ',',
-  true,
-  true,
-  '11111111-1111-1111-1111-111111111111',
-  '1',
-  NOW(),
-  'CSV'
-);
-
-INSERT INTO analyzer_plugin_config (
-  analyzer_id,
-  config,
-  sys_user_id,
-  last_updated
-) VALUES (
-  (SELECT id FROM analyzer WHERE name = 'E2E-FILE-CSV-Analyzer'),
-  '{
-    "profileMeta":{"id":"e2e-file-csv","version":"1.0","displayName":"E2E File CSV"},
-    "protocol":{"name":"FILE","format":"CSV"},
-    "column_mapping":{"Sample_ID":"sampleId","Test_Code":"testCode","Result":"result"},
-    "default_test_mappings":{"VL":"HIV-VL"},
-    "configDefaults":{"fileFormat":"CSV","delimiter":",","hasHeader":true}
-  }'::jsonb,
-  '1',
-  NOW()
-);
-
--- E2E-FILE-QuantStudio-Analyzer (GenericFile + QuantStudio profile)
+-- 7. Seed E2E-FILE-QuantStudio5-Analyzer (ID 3002)
 INSERT INTO analyzer (
-  id,
-  name,
-  analyzer_type,
-  description,
-  is_active,
-  protocol_version,
-  status,
-  analyzer_type_id,
-  last_updated
-) VALUES (
-  nextval('analyzer_seq'),
-  'E2E-FILE-QuantStudio-Analyzer',
-  'MOLECULAR',
-  'E2E QuantStudio file import analyzer',
-  true,
-  NULL,
-  'ACTIVE',
-  (SELECT id FROM analyzer_type WHERE name = 'E2E-FILE-GenericFile'),
-  NOW()
-);
+    id, name, analyzer_type, description, is_active,
+    status, analyzer_type_id, last_updated
+)
+VALUES (
+    3002,
+    'E2E-FILE-QuantStudio5-Analyzer',
+    'MOLECULAR',
+    'E2E test: QuantStudio 5 Excel (.xls) import',
+    true,
+    'ACTIVE',
+    (SELECT id FROM analyzer_type WHERE name = 'Generic File'),
+    NOW()
+)
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name, is_active = EXCLUDED.is_active,
+    analyzer_type_id = EXCLUDED.analyzer_type_id, last_updated = NOW();
 
+-- 8. Seed E2E-FILE-QuantStudio7-Analyzer (ID 3003)
+INSERT INTO analyzer (
+    id, name, analyzer_type, description, is_active,
+    status, analyzer_type_id, last_updated
+)
+VALUES (
+    3003,
+    'E2E-FILE-QuantStudio7-Analyzer',
+    'MOLECULAR',
+    'E2E test: QuantStudio 7 Excel (.xlsx) import',
+    true,
+    'ACTIVE',
+    (SELECT id FROM analyzer_type WHERE name = 'Generic File'),
+    NOW()
+)
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name, is_active = EXCLUDED.is_active,
+    analyzer_type_id = EXCLUDED.analyzer_type_id, last_updated = NOW();
+
+-- 9. Seed FileImportConfigurations for E2E-FILE analyzers
+-- Clean existing configs for these analyzers first (CASCADE would handle this,
+-- but explicit delete is safer for idempotent re-runs)
+DELETE FROM file_import_configuration WHERE analyzer_id IN (3001, 3002, 3003);
+
+-- CSV config (ID 3001)
 INSERT INTO file_import_configuration (
-  id,
-  analyzer_id,
-  import_directory,
-  file_pattern,
-  archive_directory,
-  error_directory,
-  column_mappings,
-  delimiter,
-  has_header,
-  active,
-  fhir_uuid,
-  sys_user_id,
-  last_updated,
-  file_format
-) VALUES (
-  '22222222-2222-2222-2222-222222222222',
-  (SELECT id FROM analyzer WHERE name = 'E2E-FILE-QuantStudio-Analyzer'),
-  '/data/analyzer-imports/e2e-qs/incoming',
-  '*.xls',
-  '/data/analyzer-imports/e2e-qs/processed',
-  '/data/analyzer-imports/e2e-qs/errors',
-  '{"Sample Name":"sampleId","Target Name":"testCode","Quantity Mean":"result","CT":"ctValue","Well Position":"position"}',
-  E'\t',
-  true,
-  true,
-  '22222222-2222-2222-2222-222222222222',
-  '1',
-  NOW(),
-  'EXCEL'
+    id, analyzer_id, import_directory, file_pattern, file_format,
+    archive_directory, error_directory,
+    column_mappings, delimiter, has_header, active,
+    fhir_uuid, sys_user_id, last_updated
+)
+VALUES (
+    'e2e-file-csv-config-001',
+    3001,
+    '/data/analyzer-imports/e2e-csv/incoming',
+    '*.csv',
+    'CSV',
+    '/data/analyzer-imports/e2e-csv/processed',
+    '/data/analyzer-imports/e2e-csv/errors',
+    '{"Sample_ID":"sampleId","Test_Code":"testCode","Result":"result"}',
+    ',',
+    true,
+    true,
+    'a0000001-0e2e-4000-8001-000000000001',
+    '1',
+    NOW()
 );
 
-INSERT INTO analyzer_plugin_config (
-  analyzer_id,
-  config,
-  sys_user_id,
-  last_updated
-) VALUES (
-  (SELECT id FROM analyzer WHERE name = 'E2E-FILE-QuantStudio-Analyzer'),
-  '{
-    "profileMeta":{"id":"quantstudio","version":"1.0.0","displayName":"QuantStudio QS5/QS7"},
-    "protocol":{"name":"FILE","format":"EXCEL"},
-    "column_mapping":{"Sample Name":"sampleId","Target Name":"testCode","Quantity Mean":"result","CT":"ctValue"},
-    "default_test_mappings":{"VIH-1":"HIV-1 VL (LOINC 20447-9)","IC":"Internal Control"},
-    "configDefaults":{"fileFormat":"EXCEL","hasHeader":true,"sheetIndex":0}
-  }'::jsonb,
-  '1',
-  NOW()
+-- QuantStudio 5 EXCEL config (ID 3002)
+INSERT INTO file_import_configuration (
+    id, analyzer_id, import_directory, file_pattern, file_format,
+    archive_directory, error_directory,
+    column_mappings, delimiter, has_header, active,
+    fhir_uuid, sys_user_id, last_updated
+)
+VALUES (
+    'e2e-file-qs5-config-001',
+    3002,
+    '/data/analyzer-imports/e2e-qs5/incoming',
+    '*.xls',
+    'EXCEL',
+    '/data/analyzer-imports/e2e-qs5/processed',
+    '/data/analyzer-imports/e2e-qs5/errors',
+    '{"Sample Name":"sampleId","Target Name":"testCode","Quantity Mean":"result","CT":"ctValue","Well Position":"position"}',
+    ',',
+    true,
+    true,
+    'a0000002-0e2e-4000-8002-000000000002',
+    '1',
+    NOW()
 );
 
+-- QuantStudio 7 EXCEL config (ID 3003)
+INSERT INTO file_import_configuration (
+    id, analyzer_id, import_directory, file_pattern, file_format,
+    archive_directory, error_directory,
+    column_mappings, delimiter, has_header, active,
+    fhir_uuid, sys_user_id, last_updated
+)
+VALUES (
+    'e2e-file-qs7-config-001',
+    3003,
+    '/data/analyzer-imports/e2e-qs7/incoming',
+    '*.xlsx',
+    'EXCEL',
+    '/data/analyzer-imports/e2e-qs7/processed',
+    '/data/analyzer-imports/e2e-qs7/errors',
+    '{"Sample Name":"sampleId","Target Name":"testCode","Quantity Mean":"result","CT":"ctValue","Well Position":"position"}',
+    ',',
+    true,
+    true,
+    'a0000003-0e2e-4000-8003-000000000003',
+    '1',
+    NOW()
+);
+
+-- Verification
 SELECT
-  (SELECT COUNT(*) FROM analyzer_type WHERE name = 'E2E-FILE-GenericFile') AS analyzer_type_count,
-  (SELECT COUNT(*) FROM analyzer WHERE name LIKE 'E2E-FILE-%') AS analyzer_count,
-  (SELECT COUNT(*) FROM file_import_configuration fic JOIN analyzer a ON fic.analyzer_id = a.id WHERE a.name LIKE 'E2E-FILE-%') AS file_config_count,
-  (SELECT COUNT(*) FROM analyzer_plugin_config apc JOIN analyzer a ON apc.analyzer_id = a.id WHERE a.name LIKE 'E2E-FILE-%') AS plugin_config_count;
+  (SELECT COUNT(*) FROM analyzer_type WHERE is_active = true) AS active_type_count,
+  (SELECT COUNT(*) FROM analyzer WHERE is_active = true) AS active_analyzer_count,
+  (SELECT COUNT(*) FROM file_import_configuration WHERE analyzer_id IN (3001, 3002, 3003)) AS e2e_file_config_count,
+  (SELECT string_agg(name, ', ' ORDER BY name) FROM analyzer_type WHERE is_active = true) AS active_types,
+  (SELECT string_agg(name, ', ' ORDER BY id) FROM analyzer WHERE is_active = true) AS active_analyzers;
