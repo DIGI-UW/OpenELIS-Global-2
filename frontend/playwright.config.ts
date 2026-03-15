@@ -21,6 +21,7 @@ const DEMO_TESTS = [
   "**/demo-quantstudio*.spec.ts",
   "**/file-import-ui.spec.ts",
   "**/file-import-results.spec.ts",
+  "**/astm-genexpert-results.spec.ts",
 ];
 
 export default defineConfig({
@@ -86,6 +87,7 @@ export default defineConfig({
         "**/analyzer-simulator.spec.ts",
         "**/analyzer-hl7-simulate.spec.ts",
         "**/file-import.spec.ts",
+        "**/astm-genexpert-results.spec.ts",
       ],
       use: {
         ...devices["Desktop Chrome"],
