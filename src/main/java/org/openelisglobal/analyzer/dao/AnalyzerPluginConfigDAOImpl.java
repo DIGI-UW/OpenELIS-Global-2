@@ -1,8 +1,6 @@
 package org.openelisglobal.analyzer.dao;
 
 import java.util.Optional;
-import org.hibernate.Session;
-import org.hibernate.query.Query;
 import org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.springframework.stereotype.Component;
@@ -23,10 +21,7 @@ public class AnalyzerPluginConfigDAOImpl extends BaseDAOImpl<AnalyzerPluginConfi
         if (analyzerId == null || analyzerId.trim().isEmpty()) {
             return Optional.empty();
         }
-        String sql = "SELECT * FROM clinlims.analyzer_plugin_config WHERE analyzer_id = CAST(:analyzerId AS NUMERIC)";
-        Query<AnalyzerPluginConfig> query = entityManager.unwrap(Session.class).createNativeQuery(sql,
-                AnalyzerPluginConfig.class);
-        query.setParameter("analyzerId", analyzerId.trim());
-        return Optional.ofNullable(query.uniqueResultOptional().orElse(null));
+        // analyzerId is the @Id field — entityManager.find() handles @Convert correctly
+        return Optional.ofNullable(entityManager.find(AnalyzerPluginConfig.class, analyzerId.trim()));
     }
 }
