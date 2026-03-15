@@ -105,6 +105,7 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerField</class>
         <!-- AnalyzerConfiguration removed: merged into Analyzer entity -->
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerFileUpload</class>
         <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig</class>

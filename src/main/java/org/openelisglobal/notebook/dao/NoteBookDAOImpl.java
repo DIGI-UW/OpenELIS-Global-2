@@ -159,6 +159,16 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public long countByAnalyzerId(String analyzerId) {
+        String hql = "SELECT COUNT(n) FROM NoteBook n JOIN n.analysers a WHERE a.id = :analyzerId";
+        Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+        query.setParameter("analyzerId", Integer.parseInt(analyzerId));
+        Long count = query.uniqueResult();
+        return count != null ? count : 0L;
+    }
+
+    @Override
     public String getTableName() {
         return "notebook";
     }

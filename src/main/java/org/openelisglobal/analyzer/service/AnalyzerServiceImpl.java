@@ -1,7 +1,5 @@
 package org.openelisglobal.analyzer.service;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumSet;
@@ -13,6 +11,8 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
+import org.openelisglobal.analyzer.dao.AnalyzerErrorDAO;
+import org.openelisglobal.analyzer.dao.AnalyzerFileUploadDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
@@ -24,6 +24,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.services.PluginAnalyzerService;
+import org.openelisglobal.notebook.dao.NoteBookDAO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,8 +55,14 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Autowired
     PluginAnalyzerService pluginAnalyzerService;
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    @Autowired
+    private AnalyzerErrorDAO analyzerErrorDAO;
+
+    @Autowired
+    private AnalyzerFileUploadDAO analyzerFileUploadDAO;
+
+    @Autowired
+    private NoteBookDAO noteBookDAO;
 
     AnalyzerServiceImpl() {
         super(Analyzer.class);
@@ -366,7 +373,6 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Transactional
     public void deleteWithDependents(Analyzer analyzer) {
         String id = analyzer.getId();
-        Long idLong = Long.valueOf(id);
 
         // Tiered FK strategy — matches Liquibase 004 constraints:
         //
@@ -375,48 +381,35 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         // SET NULL tier: analyzer_error, analyzer_file_upload
         // → Preserve audit trail by nulling the FK, not deleting rows.
         // CASCADE tier: config tables
-        // → Explicit delete as defense-in-depth (DB would CASCADE anyway).
+        // → DB ON DELETE CASCADE handles these automatically.
 
         // 1. RESTRICT tier — block if clinical/reference data exists
-        long resultCount = ((Number) entityManager
-                .createNativeQuery("SELECT COUNT(*) FROM clinlims.analyzer_results WHERE analyzer_id = :id")
-                .setParameter("id", idLong).getSingleResult()).longValue();
-        if (resultCount > 0) {
-            throw new LIMSRuntimeException("Cannot delete analyzer " + id + ": " + resultCount
+        List<AnalyzerResults> results = analyzerResultsService.getResultsbyAnalyzer(id);
+        if (!results.isEmpty()) {
+            throw new LIMSRuntimeException("Cannot delete analyzer " + id + ": " + results.size()
                     + " analyzer_results rows exist. Remove or reassign results first.");
         }
-        long notebookCount = ((Number) entityManager
-                .createNativeQuery("SELECT COUNT(*) FROM clinlims.notebook_analysers WHERE analyser_id = :id")
-                .setParameter("id", idLong).getSingleResult()).longValue();
+
+        long notebookCount = noteBookDAO.countByAnalyzerId(id);
         if (notebookCount > 0) {
             throw new LIMSRuntimeException("Cannot delete analyzer " + id + ": " + notebookCount
-                    + " notebook_analysers rows exist. Remove references first.");
+                    + " notebook references exist. Remove references first.");
         }
 
         // 2. SET NULL tier — preserve audit trail
-        for (String table : new String[] { "analyzer_error", "analyzer_file_upload" }) {
-            int updated = entityManager
-                    .createNativeQuery("UPDATE clinlims." + table + " SET analyzer_id = NULL WHERE analyzer_id = :id")
-                    .setParameter("id", idLong).executeUpdate();
-            if (updated > 0) {
-                LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents",
-                        "Set analyzer_id = NULL on " + updated + " row(s) in " + table + " for analyzer " + id);
-            }
+        int errorsNulled = analyzerErrorDAO.nullifyAnalyzerId(id);
+        int uploadsNulled = analyzerFileUploadDAO.nullifyAnalyzerId(Integer.valueOf(id));
+        if (errorsNulled > 0 || uploadsNulled > 0) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents", "Set analyzer_id = NULL on "
+                    + errorsNulled + " error(s) and " + uploadsNulled + " upload(s) for analyzer " + id);
         }
 
-        // 3. CASCADE tier — explicit delete (defense-in-depth; DB cascades these too)
-        String[] cascadeTables = { "analyzer_experiment", "analyzer_pending_code", "analyzer_field_mapping",
-                "analyzer_field", "serial_port_configuration", "file_import_configuration", "analyzer_plugin_config" };
-        for (String table : cascadeTables) {
-            int deleted = entityManager.createNativeQuery("DELETE FROM clinlims." + table + " WHERE analyzer_id = :id")
-                    .setParameter("id", idLong).executeUpdate();
-            if (deleted > 0) {
-                LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents",
-                        "Deleted " + deleted + " row(s) from " + table + " for analyzer " + id);
-            }
-        }
+        // 3. CASCADE tier — DB ON DELETE CASCADE handles config tables:
+        // analyzer_field, analyzer_field_mapping, serial_port_configuration,
+        // file_import_configuration, analyzer_plugin_config,
+        // analyzer_pending_code, analyzer_experiment
 
-        // Now safe to delete the analyzer itself
+        // Delete the analyzer — DB cascades config tables automatically
         delete(analyzer);
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents",
