@@ -57,6 +57,7 @@ services:
       - ANALYZER_BRIDGE_URL=http://openelis-analyzer-bridge:8443
     volumes:
       - ./projects/analyzer-profiles:/data/analyzer-profiles:ro
+      - ./projects/analyzer-harness/config-templates:/var/lib/openelis-global/configuration/backend:ro
     networks:
       - default
       - analyzer-net

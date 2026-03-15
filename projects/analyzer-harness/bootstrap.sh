@@ -17,9 +17,11 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 FORCE_BUILD_PLUGINS=false
+FORCE_RELOAD_CONFIG=false
 for arg in "$@"; do
   case $arg in
     --force-build-plugins) FORCE_BUILD_PLUGINS=true ;;
+    --force-reload-config) FORCE_RELOAD_CONFIG=true ;;
   esac
 done
 
@@ -76,7 +78,8 @@ _ensure_generic_plugins() {
       fi
     fi
     # Copy JAR to harness plugins (overwrite to pick up rebuilds)
-    local jar=$(ls $jar_pattern 2>/dev/null | head -1)
+    # Filter out sources/javadoc JARs — only copy the main artifact
+    local jar=$(ls $jar_pattern 2>/dev/null | grep -v -e '-sources\.jar' -e '-javadoc\.jar' | head -1)
     if [ -n "$jar" ]; then
       cp "$jar" "$HARNESS_VOLUME/plugins/"
     fi
@@ -110,8 +113,22 @@ else
   echo -e "  ${GREEN}✓ Harness plugins: generic only ($(ls "$HARNESS_VOLUME/plugins/"*.jar 2>/dev/null | wc -l | tr -d ' ') JARs)${NC}"
 fi
 mkdir -p "$HARNESS_VOLUME/programs"
-mkdir -p "$HARNESS_VOLUME/configuration"
+mkdir -p "$HARNESS_VOLUME/configuration/backend"
 mkdir -p "$HARNESS_VOLUME/analyzer-imports"
+
+# --- Copy configuration templates (test catalog CSVs) into volume ---
+# These are loaded by ConfigurationInitializationService on OE startup.
+CONFIG_TEMPLATES="$HARNESS_DIR/config-templates"
+if [ -d "$CONFIG_TEMPLATES" ]; then
+  cp -r "$CONFIG_TEMPLATES"/* "$HARNESS_VOLUME/configuration/backend/" 2>/dev/null || true
+  echo -e "  ${GREEN}✓ Configuration templates copied to volume${NC}"
+fi
+
+# Clear stale configuration checksums so CSVs are reloaded on next OE startup
+if [ "$FORCE_RELOAD_CONFIG" = "true" ]; then
+  rm -f "$HARNESS_VOLUME/configuration/backend/"*-checksums.properties 2>/dev/null
+  echo -e "  ${GREEN}✓ Cleared configuration checksums (will reload on restart)${NC}"
+fi
 
 # --- Copy/adapt from root volume (idempotent: only if source exists and target missing or we overwrite nginx) ---
 copy_if_missing() {

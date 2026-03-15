@@ -1,9 +1,10 @@
 import { Page, TestInfo, expect } from "@playwright/test";
 import { showStepCard } from "./title-card";
-import { videoPause } from "./video-pause";
+import { isVideoProject, videoPause } from "./video-pause";
 
 /**
- * Accept all analyzer results on the staging page and verify they were saved.
+ * Accept all analyzer results on the staging page, verify they were saved,
+ * and optionally navigate to AccessionResults to confirm the accepted results.
  *
  * Call this AFTER verifying results are visible on the AnalyzerResults page.
  *
@@ -12,6 +13,7 @@ import { videoPause } from "./video-pause";
  *   2. Click Save button (data-testid="Save-btn")
  *   3. Wait for POST /rest/AnalyzerResults → page reloads
  *   4. Verify staging page is now empty (results promoted to official result table)
+ *   5. (Optional) Navigate to AccessionResults to verify accepted results appear
  *
  * DOM references (from AnalyserResults.js):
  *   - Accept All checkbox label: text "Save All Results" (line 385)
@@ -19,15 +21,18 @@ import { videoPause } from "./video-pause";
  *   - POST to /rest/AnalyzerResults, reloads same page on success (line 134)
  *   - Empty state: resultList is empty → no table rows rendered (line 365)
  *
- * Note: Results only appear in /AccessionResults when the analyzer pushes
- * results for samples that already exist as orders in OE. Demo fixtures use
- * synthetic sample IDs (e.g. SPECIMEN-GX-001) that don't map to real orders,
- * so we verify acceptance by confirming the staging page empties.
+ * Note: OE auto-creates Sample/SampleItem/Analysis/Result records on accept,
+ * even when no pre-existing order exists. So AccessionResults will show results
+ * for any accession number — pre-existing orders are NOT required.
+ *
+ * @param accessionNumber If provided, navigates to AccessionResults after
+ *   acceptance to verify the results appear with proper test names.
  */
 export async function acceptAndVerifyResults(
   page: Page,
   testInfo: TestInfo,
   stepOffset: number,
+  accessionNumber?: string,
 ) {
   // ── Accept All ──────────────────────────────────────────────────
   await showStepCard(
@@ -80,5 +85,48 @@ export async function acceptAndVerifyResults(
     console.log("  ✓ Results saved (some may remain as unmatched)");
   }
 
+  if (isVideoProject(testInfo)) {
+    await page.screenshot({
+      path: `test-results/${testInfo.title.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 40)}-after-accept.png`,
+      fullPage: true,
+    });
+  }
   await videoPause(page, 2_000, testInfo);
+
+  // ── Navigate to AccessionResults (if accession number provided) ──
+  if (accessionNumber) {
+    await showStepCard(
+      page,
+      stepOffset + 3,
+      "View Accepted Results",
+      2000,
+      testInfo,
+    );
+
+    // AccessionResults auto-searches when accessionNumber is in the URL
+    const logbookPromise = page.waitForResponse(
+      (resp) => resp.url().includes("/rest/LogbookResults"),
+      { timeout: 30_000 },
+    );
+    await page.goto(`AccessionResults?accessionNumber=${accessionNumber}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await logbookPromise;
+
+    // Verify the accession number appears in the results table
+    await expect(page.getByText(accessionNumber).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    console.log(
+      `  ✓ Accepted results visible in AccessionResults for ${accessionNumber}`,
+    );
+    if (isVideoProject(testInfo)) {
+      await page.screenshot({
+        path: `test-results/${testInfo.title.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 40)}-accession-results.png`,
+        fullPage: true,
+      });
+    }
+
+    await videoPause(page, 3_000, testInfo);
+  }
 }

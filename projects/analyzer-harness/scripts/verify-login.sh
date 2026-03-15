@@ -24,7 +24,7 @@ RESULT=$(curl -sk \
     --data-urlencode "password=${PASS}" \
     "$LOGIN_URL" 2>/dev/null)
 
-if echo "$RESULT" | grep -q '"authenticated":true\|"success":true'; then
+if echo "$RESULT" | grep -qE '"authenticated"\s*:\s*true|"success"\s*:\s*true'; then
     echo "Login OK: ${USER} @ ${BASE_URL}"
     exit 0
 else

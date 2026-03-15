@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import * as fs from "fs";
 import * as path from "path";
 import { showTitleCard, showStepCard } from "../helpers/title-card";
-import { videoPause } from "../helpers/video-pause";
+import { isVideoProject, videoPause } from "../helpers/video-pause";
 import { acceptAndVerifyResults } from "../helpers/accept-results";
 
 /**
@@ -510,12 +510,18 @@ for (const analyzer of ANALYZERS) {
       console.log(
         `All ${analyzer.expectedResults.length} result values verified for ${analyzer.name}!`,
       );
+      if (isVideoProject(testInfo)) {
+        await page.screenshot({
+          path: `test-results/${analyzer.name.replace(/\s+/g, "-")}-staging-results.png`,
+          fullPage: true,
+        });
+      }
 
       // ── Linger on staging results for the video ──────────────────
       await videoPause(page, 2_000, testInfo);
 
-      // ── Steps 9-10: Accept results and verify in standard Results view
-      await acceptAndVerifyResults(page, testInfo, 8);
+      // ── Steps 9-11: Accept results and verify in AccessionResults
+      await acceptAndVerifyResults(page, testInfo, 8, analyzer.sampleIds[0]);
 
       // ── Completion Card (video ends here) ─────────────────────────
       await showTitleCard(

@@ -115,12 +115,13 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     }
 
     private void setInserterResponder() {
+        PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
+
         // Database-configured analyzers are authoritative. If the database
         // identifies this message (via IP+port, name, or identifier_pattern),
         // use GenericASTM directly — no plugin loop, no ambiguity.
         Optional<Analyzer> dbAnalyzer = identifyAnalyzerFromMessage();
         if (dbAnalyzer.isPresent()) {
-            PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
             for (AnalyzerImporterPlugin p : pluginService.getAnalyzerPlugins()) {
                 if (p.isGenericPlugin() && p.isTargetAnalyzer(lines)) {
                     this.plugin = p;
@@ -131,10 +132,15 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                     return;
                 }
             }
+            // DB identified the analyzer but no generic plugin could handle it.
+            // Do NOT fall through to legacy — the DB match is authoritative.
+            LogEvent.logError(getClass().getSimpleName(), "setInserterResponder",
+                    "Database identified analyzer '" + dbAnalyzer.get().getName()
+                            + "' but no GenericASTM plugin matched. Check plugin JARs are loaded.");
+            return;
         }
 
         // Fallback: legacy plugin loop (for analyzers not yet configured in DB)
-        PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
         for (AnalyzerImporterPlugin plugin : pluginService.getAnalyzerPlugins()) {
             if (plugin.isTargetAnalyzer(lines)) {
                 try {
