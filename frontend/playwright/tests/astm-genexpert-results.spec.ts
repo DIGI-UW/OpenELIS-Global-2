@@ -85,7 +85,8 @@ test.describe("GeneXpert ASTM Push → Results", () => {
       "/api/OpenELIS-Global/rest/analyzer/analyzers",
     );
     if (listResp.ok()) {
-      const analyzers = await listResp.json();
+      const data = await listResp.json();
+      const analyzers = data.analyzers ?? [];
       for (const a of analyzers) {
         if (a.name?.includes("GeneXpert") && a.name?.includes("E2E")) {
           await page.request.delete(
