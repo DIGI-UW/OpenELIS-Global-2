@@ -1,4 +1,4 @@
-name: Agent Command Validation
+name: SpecKit Validation
 on:
   pull_request:
     # Run on PRs to any branch when command or skill sources change
@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  validate-agent-commands:
+  validate-speckit-commands:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
