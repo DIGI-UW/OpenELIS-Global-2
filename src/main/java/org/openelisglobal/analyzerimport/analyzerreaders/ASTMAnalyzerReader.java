@@ -127,8 +127,8 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                     this.plugin = p;
                     inserter = p.getAnalyzerLineInserter();
                     responder = p.getAnalyzerResponder();
-                    LogEvent.logInfo(getClass().getSimpleName(), "setInserterResponder",
-                            "Database analyzer matched: " + dbAnalyzer.get().getName() + " — using GenericASTM plugin");
+                    LogEvent.logInfo(getClass().getSimpleName(), "setInserterResponder", "Database analyzer matched: "
+                            + dbAnalyzer.get().getName() + " — routed to plugin: " + p.getClass().getSimpleName());
                     return;
                 }
             }

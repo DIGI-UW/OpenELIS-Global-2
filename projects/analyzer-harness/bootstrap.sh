@@ -100,16 +100,10 @@ if [ "$HARNESS_PLUGINS" = "all" ]; then
     echo -e "  ${GREEN}✓ All plugins: $(ls "$HARNESS_VOLUME/plugins/"*.jar 2>/dev/null | wc -l | tr -d ' ') JARs${NC}"
   fi
 else
-  # Default: generic only — remove any legacy JARs, keep only Generic*
+  # Default: generic only — clean ALL existing JARs first (prevents stale
+  # Generic versions accumulating across rebuilds), then copy fresh generics.
+  rm -f "$HARNESS_VOLUME/plugins/"*.jar 2>/dev/null
   _ensure_generic_plugins "$FORCE_BUILD_PLUGINS"
-  # Clean out non-generic JARs so legacy plugins don't hijack routing
-  for jar in "$HARNESS_VOLUME/plugins/"*.jar; do
-    [ -e "$jar" ] || continue
-    case "$(basename "$jar")" in
-      Generic*) ;; # keep
-      *) rm -f "$jar" ;;
-    esac
-  done
   echo -e "  ${GREEN}✓ Harness plugins: generic only ($(ls "$HARNESS_VOLUME/plugins/"*.jar 2>/dev/null | wc -l | tr -d ' ') JARs)${NC}"
 fi
 mkdir -p "$HARNESS_VOLUME/programs"

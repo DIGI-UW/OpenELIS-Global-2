@@ -62,12 +62,18 @@ export async function acceptAndVerifyResults(
   const saveButton = page.locator('[data-testid="Save-btn"]');
   await expect(saveButton).toBeVisible({ timeout: 5_000 });
 
-  // Save POSTs to /rest/AnalyzerResults, then reloads the page (line 134)
-  const navigationPromise = page.waitForURL(/AnalyzerResults/, {
-    timeout: 30_000,
-  });
+  // Save POSTs to /rest/AnalyzerResults, then reloads the page (line 134).
+  // Wait for the POST response (not URL change, since we're already on AnalyzerResults).
+  const saveResponsePromise = page.waitForResponse(
+    (resp) =>
+      resp.url().includes("/rest/AnalyzerResults") &&
+      resp.request().method() === "POST",
+    { timeout: 30_000 },
+  );
   await saveButton.click();
-  await navigationPromise;
+  await saveResponsePromise;
+  // Wait for page reload after POST
+  await page.waitForLoadState("domcontentloaded");
   await videoPause(page, 2_000, testInfo);
 
   // ── Verify staging page is empty ────────────────────────────────
