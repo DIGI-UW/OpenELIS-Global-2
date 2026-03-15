@@ -33,7 +33,7 @@ export default defineConfig({
 
   // CI safeguards
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 0,
 
   // Timeouts
   timeout: 30_000,
@@ -87,7 +87,6 @@ export default defineConfig({
         "**/analyzer-simulator.spec.ts",
         "**/analyzer-hl7-simulate.spec.ts",
         "**/file-import.spec.ts",
-        "**/astm-genexpert-results.spec.ts",
       ],
       use: {
         ...devices["Desktop Chrome"],

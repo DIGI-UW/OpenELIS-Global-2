@@ -32,7 +32,7 @@ const EXPECTED_RESULTS = [
 ];
 
 test.describe("GeneXpert ASTM Push → Results", () => {
-  test.setTimeout(420_000); // 7 min — create + ASTM push + poll + accept + AccessionResults
+  test.setTimeout(300_000); // 5 min is enough for CI create + push + verify flow
 
   let createdAnalyzerName: string;
 
@@ -311,14 +311,14 @@ test.describe("GeneXpert ASTM Push → Results", () => {
 
     // Poll until results appear in the staging table
     let resultCount = 0;
-    for (let attempt = 1; attempt <= 12; attempt++) {
+    for (let attempt = 1; attempt <= 8; attempt++) {
       const resp = await page.request.get(
         `/api/OpenELIS-Global/rest/AnalyzerResults?type=${encodeURIComponent(createdAnalyzerName)}`,
       );
       const data = await resp.json().catch(() => null);
       resultCount = data?.resultList?.length ?? 0;
       if (resultCount > 0) break;
-      await page.waitForTimeout(5_000);
+      await page.waitForTimeout(3_000);
     }
     console.log(`Results available after polling: ${resultCount}`);
     await videoPause(page, 1_000, testInfo);
@@ -370,7 +370,7 @@ test.describe("GeneXpert ASTM Push → Results", () => {
           hasText: EXPECTED_RESULTS[0].sampleId,
         })
         .first(),
-    ).toBeVisible({ timeout: 15_000 });
+    ).toBeVisible({ timeout: 10_000 });
 
     for (const expected of EXPECTED_RESULTS) {
       await expect(
