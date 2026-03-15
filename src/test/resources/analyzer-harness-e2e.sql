@@ -73,10 +73,10 @@ INSERT INTO analyzer_test_map (
     analyzer_type_id, analyzer_id, analyzer_test_name, test_id, last_updated
 )
 VALUES
-    ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'MTB-RIF',  '3',   NOW()),
-    ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'RIF',      '5',   NOW()),
-    ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'HIV-VL',   '192', NOW()),
-    ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'COVID19',  '3',   NOW())
+    ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'MTB-RIF',  '175', NOW()),
+    ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'RIF',      '38',  NOW()),
+    ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'HIV-VL',   '313', NOW()),
+    ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'COVID19',  '300', NOW())
 ON CONFLICT (analyzer_type_id, analyzer_test_name) DO UPDATE
 SET
     analyzer_id = EXCLUDED.analyzer_id,

@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { showTitleCard, showStepCard } from "../helpers/title-card";
 import { videoPause } from "../helpers/video-pause";
+import { acceptAndVerifyResults } from "../helpers/accept-results";
 
 /**
  * GeneXpert ASTM Push → Results E2E Test
@@ -30,7 +31,7 @@ const EXPECTED_RESULTS = [
 ];
 
 test.describe("GeneXpert ASTM Push → Results", () => {
-  test.setTimeout(120_000); // 2 min — ASTM push is near-instant
+  test.setTimeout(360_000); // 6 min — slowMo=500ms adds up with step cards + accept + validate
 
   test("full flow: simulate ASTM push → verify results", async ({
     page,
@@ -157,13 +158,25 @@ test.describe("GeneXpert ASTM Push → Results", () => {
     const resultsTable = page.locator("table, .orderLegendBody");
     await expect(resultsTable.first()).toBeVisible({ timeout: 15_000 });
 
-    // Hard assertion: verify EACH expected result value
+    // Hard assertion: verify EACH expected result value appears in the table.
+    // Sample IDs render in <div data-testid="LabNo"> (plain text).
+    // Result values render in <input> textboxes (editable) or plain text
+    // (read-only). Use input[value] selector for editable results.
     for (const expected of EXPECTED_RESULTS) {
-      const sampleText = page.getByText(expected.sampleId);
-      await expect(sampleText.first()).toBeVisible({ timeout: 15_000 });
+      await expect(
+        page
+          .locator('[data-testid="LabNo"]', { hasText: expected.sampleId })
+          .first(),
+      ).toBeVisible({ timeout: 15_000 });
 
-      const resultText = page.getByText(expected.result, { exact: false });
-      await expect(resultText.first()).toBeVisible({ timeout: 5_000 });
+      // Match result value in input fields (editable) — handles "1250" matching "1250.00"
+      const resultPattern = expected.result.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&",
+      );
+      await expect(
+        page.locator(`input[value*="${expected.result}"]`).first(),
+      ).toBeVisible({ timeout: 5_000 });
 
       console.log(
         `  ✓ ${expected.sampleId} → ${expected.testCode}: ${expected.result}`,
@@ -174,20 +187,17 @@ test.describe("GeneXpert ASTM Push → Results", () => {
       `All ${EXPECTED_RESULTS.length} result values verified for GeneXpert ASTM!`,
     );
 
-    // ── Linger on results page for the video ─────────────────────
-    await videoPause(page, 3_000, testInfo);
-    await page.evaluate(() => window.scrollBy(0, 200));
+    // ── Linger on staging results for the video ──────────────────
     await videoPause(page, 2_000, testInfo);
-    await page.evaluate(() => window.scrollBy(0, 200));
-    await videoPause(page, 2_000, testInfo);
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await videoPause(page, 3_000, testInfo);
+
+    // ── Steps 6-7: Accept results and verify in standard Results view
+    await acceptAndVerifyResults(page, testInfo, 5);
 
     // ── Completion Card ───────────────────────────────────────────
     await showTitleCard(
       page,
       "Import Complete",
-      `GeneXpert ASTM: ${EXPECTED_RESULTS.length} result values verified`,
+      `GeneXpert ASTM: ${EXPECTED_RESULTS.length} results accepted & validated`,
       3000,
       testInfo,
     );

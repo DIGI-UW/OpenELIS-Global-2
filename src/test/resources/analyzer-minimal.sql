@@ -86,15 +86,15 @@ UPDATE analyzer SET analyzer_type_id = (
 -- 4. TEST MAPPINGS for GeneXpert ASTM
 -- =============================================================================
 -- Composite PK: (analyzer_type_id, analyzer_test_name)
--- test_id references clinlims.test (Liquibase-seeded): 3=Glucose, 5=Amylase, 192=CD4.
--- Placeholder mappings for E2E routing validation.
+-- test_id references clinlims.test (Liquibase-seeded): 175=DNA PCR, 38=ARV resistance,
+-- 313=HIV VIRAL LOAD, 300=COVID-19 PCR.
 
 INSERT INTO analyzer_test_map (analyzer_type_id, analyzer_id, analyzer_test_name, test_id, last_updated)
 VALUES
-  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'MTB-RIF',  '3',   NOW()),
-  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'RIF',      '5',   NOW()),
-  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'HIV-VL',   '192', NOW()),
-  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'COVID19',  '3',   NOW())
+  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'MTB-RIF',  '175', NOW()),
+  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'RIF',      '38',  NOW()),
+  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'HIV-VL',   '313', NOW()),
+  ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'COVID19',  '300', NOW())
 ON CONFLICT (analyzer_type_id, analyzer_test_name) DO NOTHING;
 
 -- =============================================================================

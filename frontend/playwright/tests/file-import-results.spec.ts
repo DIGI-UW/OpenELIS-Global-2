@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { showTitleCard, showStepCard } from "../helpers/title-card";
 import { videoPause } from "../helpers/video-pause";
+import { acceptAndVerifyResults } from "../helpers/accept-results";
 
 /**
  * FILE Import → Results E2E Tests (Parameterized)
@@ -510,21 +511,17 @@ for (const analyzer of ANALYZERS) {
         `All ${analyzer.expectedResults.length} result values verified for ${analyzer.name}!`,
       );
 
-      // ── Linger on results page for the video ─────────────────────
-      // Slow scroll through results so viewer can read values
-      await videoPause(page, 3_000, testInfo);
-      await page.evaluate(() => window.scrollBy(0, 200));
+      // ── Linger on staging results for the video ──────────────────
       await videoPause(page, 2_000, testInfo);
-      await page.evaluate(() => window.scrollBy(0, 200));
-      await videoPause(page, 2_000, testInfo);
-      await page.evaluate(() => window.scrollTo(0, 0));
-      await videoPause(page, 3_000, testInfo);
+
+      // ── Steps 9-10: Accept results and verify in standard Results view
+      await acceptAndVerifyResults(page, testInfo, 8);
 
       // ── Completion Card (video ends here) ─────────────────────────
       await showTitleCard(
         page,
         "Import Complete",
-        `${analyzer.name}: ${analyzer.expectedResults.length} result values verified`,
+        `${analyzer.name}: ${analyzer.expectedResults.length} results accepted & validated`,
         3000,
         testInfo,
       );
