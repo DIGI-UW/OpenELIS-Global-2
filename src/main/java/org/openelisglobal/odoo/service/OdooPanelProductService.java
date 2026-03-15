@@ -5,10 +5,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.odoo.client.OdooClient;
 import org.openelisglobal.odoo.client.OdooConnection;
 import org.openelisglobal.panel.valueholder.Panel;
-import org.openelisglobal.localization.valueholder.Localization;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -77,9 +77,8 @@ public class OdooPanelProductService {
                 // Update existing panel product using low-level OdooClient.write
                 List<Object> writeParams = List.of(List.of(existingProductId), product);
                 Boolean success = odooClient.write("product.template", writeParams);
-                log.info(
-                        "Updated Odoo panel product with ID {} for panel {} ({}), success={}",
-                        existingProductId, panel.getId(), panelCode, success);
+                log.info("Updated Odoo panel product with ID {} for panel {} ({}), success={}", existingProductId,
+                        panel.getId(), panelCode, success);
             } else {
                 // Create new panel product via OdooConnection abstraction
                 Integer productId = odooConnection.create("product.template", List.of(product));

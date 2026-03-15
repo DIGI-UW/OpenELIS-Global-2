@@ -1,7 +1,7 @@
 /** @module @category Navigation */
 import { navigateToUrl } from "single-spa";
 import { interpolateUrl } from "./interpolate-string";
-import type { } from "../globals/types";
+import type {} from "../globals/types";
 
 function trimTrailingSlash(str: string) {
   return str.replace(/\/$/, "");
@@ -49,7 +49,7 @@ export function navigate({ to, templateParams }: NavigateOptions): void {
   // Base path logic for OpenELIS
   const basePath = "/openelis"; // Consistent with other parts of the app
   let finalTarget = target;
-  if (target.startsWith('/') && !target.startsWith(basePath)) {
+  if (target.startsWith("/") && !target.startsWith(basePath)) {
     finalTarget = `${basePath}${target}`;
   }
 

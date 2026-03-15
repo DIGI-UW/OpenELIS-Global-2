@@ -23,12 +23,9 @@ public class IncomingOrderDAOImpl extends BaseDAOImpl<IncomingOrder, Integer> im
         }
 
         List<IncomingOrder> result = entityManager
-                .createQuery(
-                        "from IncomingOrder e where e.externalOrderNumber = :externalOrderNumber",
+                .createQuery("from IncomingOrder e where e.externalOrderNumber = :externalOrderNumber",
                         IncomingOrder.class)
-                .setParameter("externalOrderNumber", externalOrderNumber)
-                .setMaxResults(1)
-                .getResultList();
+                .setParameter("externalOrderNumber", externalOrderNumber).setMaxResults(1).getResultList();
 
         return result == null || result.isEmpty() ? Optional.empty() : Optional.of(result.get(0));
     }

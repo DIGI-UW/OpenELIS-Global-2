@@ -78,8 +78,8 @@ function OEHeader(props) {
   useEffect(() => {
     userSessionDetails.authenticated
       ? getFromOpenElisServer("/rest/menu", (res) => {
-        handleMenuItems("menu", res);
-      })
+          handleMenuItems("menu", res);
+        })
       : console.log("User not authenticated, not getting menu");
   }, [userSessionDetails.authenticated]);
 
@@ -205,9 +205,9 @@ function OEHeader(props) {
                 })}
                 key={"menu_" + index + "_" + level}
                 defaultExpanded={menuItem.expanded}
-              // onClick={(e) => { // not supported yet, but if it becomes so we can simplify the functionality here by having this here and not have a span around it
-              //   setMenuItemExpanded(e, menuItem, path);
-              // }}
+                // onClick={(e) => { // not supported yet, but if it becomes so we can simplify the functionality here by having this here and not have a span around it
+                //   setMenuItemExpanded(e, menuItem, path);
+                // }}
               >
                 <span
                   onClick={(e) => {
@@ -446,14 +446,14 @@ function OEHeader(props) {
                       isCollapsible={true}
                     />
                   )}
-                  <HeaderName href={getFullPath("/")} prefix="" style={{ padding: "0px" }}>
+                  <HeaderName
+                    href={getFullPath("/")}
+                    prefix=""
+                    style={{ padding: "0px" }}
+                  >
                     <span id="header-logo">{logo()}</span>
                     <div className="banner">
-                      <h5>{configurationProperties?.BANNER_TEXT}</h5>
-                      <p>
-                        <FormattedMessage id="header.label.version" /> &nbsp;{" "}
-                        {configurationProperties?.releaseNumber}
-                      </p>
+                      <h5>Nidan LIMS</h5>
                     </div>
                   </HeaderName>
                   <HeaderGlobalBar>
@@ -599,13 +599,6 @@ function OEHeader(props) {
                             ),
                           )}
                         </Select>
-                      </li>
-                      <li className="userDetails">
-                        <label className="cds--label">
-                          {" "}
-                          <FormattedMessage id="header.label.version" />:{" "}
-                          {configurationProperties?.releaseNumber}
-                        </label>
                       </li>
                     </ul>
                   </HeaderPanel>

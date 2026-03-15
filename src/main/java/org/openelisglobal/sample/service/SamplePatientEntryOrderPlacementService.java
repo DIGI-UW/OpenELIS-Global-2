@@ -11,9 +11,9 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
-import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notifications.dao.NotificationDAO;
@@ -188,7 +188,8 @@ public class SamplePatientEntryOrderPlacementService {
     }
 
     private String getSysUserId(HttpServletRequest request) {
-        Object usd = request.getSession().getAttribute(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA);
+        Object usd = request.getSession()
+                .getAttribute(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA);
         if (usd == null) {
             usd = request.getAttribute(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA);
             if (usd == null) {

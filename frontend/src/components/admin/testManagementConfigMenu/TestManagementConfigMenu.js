@@ -228,7 +228,10 @@ function TestManagementConfigMenu() {
                   </UnorderedList>
                 </ClickableTile>
                 <br />
-                <ClickableTile href={getFullPath("/MasterListsPage/TestAdd")} id="TestAdd">
+                <ClickableTile
+                  href={getFullPath("/MasterListsPage/TestAdd")}
+                  id="TestAdd"
+                >
                   <FormattedMessage id="configuration.test.add" />
                   <UnorderedList nested>
                     <ListItem>
@@ -336,7 +339,10 @@ function TestManagementConfigMenu() {
                   </UnorderedList>
                 </ClickableTile>
                 <br />
-                <ClickableTile href={getFullPath("/MasterListsPage/reflex")} id="reflex">
+                <ClickableTile
+                  href={getFullPath("/MasterListsPage/reflex")}
+                  id="reflex"
+                >
                   <FormattedMessage id="sidenav.label.admin.testmgt.reflex" />
                 </ClickableTile>
                 <br />

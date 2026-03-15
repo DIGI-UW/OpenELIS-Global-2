@@ -81,8 +81,8 @@ public class TestMiddlewareSyncServiceImpl implements TestMiddlewareSyncService 
                             + ", isUpdate=" + isUpdate + ", url=" + middlewareUrl);
 
             ReportTransmission transmission = new ReportTransmission();
-            transmission.sendRawReport(json, middlewareUrl, true, null, HTTP_TYPE.POST,
-                    "X-Nidan-Webhook-Secret", middlewareSecret);
+            transmission.sendRawReport(json, middlewareUrl, true, null, HTTP_TYPE.POST, "X-Nidan-Webhook-Secret",
+                    middlewareSecret);
 
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "syncTestToMiddleware",

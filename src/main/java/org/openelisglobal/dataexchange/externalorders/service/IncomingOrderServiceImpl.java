@@ -42,7 +42,8 @@ public class IncomingOrderServiceImpl extends AuditableBaseObjectServiceImpl<Inc
 
     @Override
     @Transactional
-    public Integer receiveOrder(ExternalOrderRequest externalOrderRequest, String payloadJson, String receivedSysUserId) {
+    public Integer receiveOrder(ExternalOrderRequest externalOrderRequest, String payloadJson,
+            String receivedSysUserId) {
         IncomingOrder holding = new IncomingOrder();
         holding.setExternalOrderNumber(externalOrderRequest.getExternalOrderNumber());
         holding.setPatientGuid(externalOrderRequest.getPatientGuid());
@@ -72,6 +73,11 @@ public class IncomingOrderServiceImpl extends AuditableBaseObjectServiceImpl<Inc
         IncomingOrder holding = baseObjectDAO.getByExternalOrderNumber(externalOrderRequest.getExternalOrderNumber())
                 .orElse(null);
         if (holding == null) {
+            // Prevent vacant holding creation for removal-only requests (e.g., DISCONTINUE
+            // after collection)
+            if (isRemovalOnlyRequest(externalOrderRequest)) {
+                return null; // Silent success - order already processed or doesn't exist
+            }
             Integer id = receiveOrder(externalOrderRequest, payloadJson, receivedSysUserId);
             return baseObjectDAO.get(id).orElseThrow(() -> new IllegalStateException("Unable to create holding"));
         }
@@ -88,6 +94,12 @@ public class IncomingOrderServiceImpl extends AuditableBaseObjectServiceImpl<Inc
         }
 
         ExternalOrderRequest merged = mergeExternalOrders(existing, externalOrderRequest);
+
+        // If merged result is empty (all tests/panels removed), delete the holding
+        if (isEmptyMergedRequest(merged)) {
+            baseObjectDAO.delete(holding);
+            return null;
+        }
 
         String mergedJson;
         try {
@@ -115,8 +127,8 @@ public class IncomingOrderServiceImpl extends AuditableBaseObjectServiceImpl<Inc
 
     @Override
     @Transactional
-    public IncomingOrder updateOrderByExternalOrderNumber(String externalOrderNumber, ExternalOrderRequest updatedRequest,
-            String payloadJson, String updatedSysUserId) {
+    public IncomingOrder updateOrderByExternalOrderNumber(String externalOrderNumber,
+            ExternalOrderRequest updatedRequest, String payloadJson, String updatedSysUserId) {
         IncomingOrder holding = baseObjectDAO.getByExternalOrderNumber(externalOrderNumber).orElse(null);
         if (holding == null) {
             throw new IllegalArgumentException("Unknown externalOrderNumber");
@@ -135,7 +147,8 @@ public class IncomingOrderServiceImpl extends AuditableBaseObjectServiceImpl<Inc
                 || !updatedRequest.getExternalOrderNumber().equals(holding.getExternalOrderNumber())) {
             throw new IllegalArgumentException("externalOrderNumber cannot be changed");
         }
-        if (updatedRequest.getPatientGuid() == null || !updatedRequest.getPatientGuid().equals(holding.getPatientGuid())) {
+        if (updatedRequest.getPatientGuid() == null
+                || !updatedRequest.getPatientGuid().equals(holding.getPatientGuid())) {
             throw new IllegalArgumentException("patientGuid cannot be changed");
         }
 
@@ -232,13 +245,13 @@ public class IncomingOrderServiceImpl extends AuditableBaseObjectServiceImpl<Inc
         out.setPatientGuid(existing.getPatientGuid());
 
         out.setPriority(incoming.getPriority() != null ? incoming.getPriority() : existing.getPriority());
-        out.setReferringSiteId(incoming.getReferringSiteId() != null ? incoming.getReferringSiteId()
-                : existing.getReferringSiteId());
+        out.setReferringSiteId(
+                incoming.getReferringSiteId() != null ? incoming.getReferringSiteId() : existing.getReferringSiteId());
         out.setReferringSiteName(incoming.getReferringSiteName() != null ? incoming.getReferringSiteName()
                 : existing.getReferringSiteName());
-        out.setReferringSiteDepartmentId(incoming.getReferringSiteDepartmentId() != null
-                ? incoming.getReferringSiteDepartmentId()
-                : existing.getReferringSiteDepartmentId());
+        out.setReferringSiteDepartmentId(
+                incoming.getReferringSiteDepartmentId() != null ? incoming.getReferringSiteDepartmentId()
+                        : existing.getReferringSiteDepartmentId());
 
         out.setProviderPersonId(incoming.getProviderPersonId() != null ? incoming.getProviderPersonId()
                 : existing.getProviderPersonId());
@@ -252,8 +265,10 @@ public class IncomingOrderServiceImpl extends AuditableBaseObjectServiceImpl<Inc
         out.setProviderEmail(
                 incoming.getProviderEmail() != null ? incoming.getProviderEmail() : existing.getProviderEmail());
 
-        out.setReceivedDate(incoming.getReceivedDate() != null ? incoming.getReceivedDate() : existing.getReceivedDate());
-        out.setReceivedTime(incoming.getReceivedTime() != null ? incoming.getReceivedTime() : existing.getReceivedTime());
+        out.setReceivedDate(
+                incoming.getReceivedDate() != null ? incoming.getReceivedDate() : existing.getReceivedDate());
+        out.setReceivedTime(
+                incoming.getReceivedTime() != null ? incoming.getReceivedTime() : existing.getReceivedTime());
         out.setRequestDate(incoming.getRequestDate() != null ? incoming.getRequestDate() : existing.getRequestDate());
         out.setProgramId(incoming.getProgramId() != null ? incoming.getProgramId() : existing.getProgramId());
 
@@ -310,7 +325,8 @@ public class IncomingOrderServiceImpl extends AuditableBaseObjectServiceImpl<Inc
     private ExternalOrderRequest.ExternalOrderSample mergeSample(ExternalOrderRequest.ExternalOrderSample existing,
             ExternalOrderRequest.ExternalOrderSample incoming) {
         ExternalOrderRequest.ExternalOrderSample out = new ExternalOrderRequest.ExternalOrderSample();
-        out.setSampleTypeId(incoming.getSampleTypeId() != null ? incoming.getSampleTypeId() : existing.getSampleTypeId());
+        out.setSampleTypeId(
+                incoming.getSampleTypeId() != null ? incoming.getSampleTypeId() : existing.getSampleTypeId());
 
         out.setCollectionDate(
                 incoming.getCollectionDate() != null ? incoming.getCollectionDate() : existing.getCollectionDate());
@@ -480,5 +496,46 @@ public class IncomingOrderServiceImpl extends AuditableBaseObjectServiceImpl<Inc
             return "loinc:" + loinc.trim();
         }
         return null;
+    }
+
+    /**
+     * Checks if the request contains only removals (removedTests/removedPanels)
+     * with no additions (tests/panels). Used to prevent vacant holding creation for
+     * DISCONTINUE after collection.
+     */
+    private boolean isRemovalOnlyRequest(ExternalOrderRequest request) {
+        if (request.getSamples() == null || request.getSamples().isEmpty()) {
+            return false;
+        }
+        for (ExternalOrderRequest.ExternalOrderSample sample : request.getSamples()) {
+            // Has additions?
+            if ((sample.getTests() != null && !sample.getTests().isEmpty())
+                    || (sample.getPanels() != null && !sample.getPanels().isEmpty())) {
+                return false;
+            }
+        }
+        // Only has removals, no additions
+        return true;
+    }
+
+    /**
+     * Checks if a merged request is empty (no tests or panels remaining). Used to
+     * delete holdings that become vacant after DISCONTINUE merge.
+     */
+    private boolean isEmptyMergedRequest(ExternalOrderRequest request) {
+        if (request == null) {
+            return true;
+        }
+        if (request.getSamples() == null || request.getSamples().isEmpty()) {
+            return true;
+        }
+        for (ExternalOrderRequest.ExternalOrderSample sample : request.getSamples()) {
+            boolean hasTests = sample.getTests() != null && !sample.getTests().isEmpty();
+            boolean hasPanels = sample.getPanels() != null && !sample.getPanels().isEmpty();
+            if (hasTests || hasPanels) {
+                return false;
+            }
+        }
+        return true;
     }
 }

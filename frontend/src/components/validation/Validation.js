@@ -133,7 +133,7 @@ const Validation = (props) => {
     if (status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      navigateTo("/validation") + props.params;
+      navigateTo("/validation" + props.params);
     }
     addNotification({
       kind: kind,

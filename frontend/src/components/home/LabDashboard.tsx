@@ -30,6 +30,7 @@ import {
   convertAlphaNumLabNumForDisplay,
   hasRole,
 } from "../utils/Utils.js";
+import { getFullPath } from "../utils/Navigation";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
@@ -280,7 +281,9 @@ const LabDashboard: React.FC<DashBoardProps> = () => {
     },
     {
       title: <FormattedMessage id="dashboard.samplesToCollect.label" />,
-      subTitle: <FormattedMessage id="dashboard.samplesToCollect.subtitle.label" />,
+      subTitle: (
+        <FormattedMessage id="dashboard.samplesToCollect.subtitle.label" />
+      ),
       type: "SAMPLES_TO_COLLECT",
       value: counts.samplesToCollect,
     },
@@ -289,15 +292,15 @@ const LabDashboard: React.FC<DashBoardProps> = () => {
   const tilesWithTabs = [
     "ORDERS_IN_PROGRESS",
     "ORDERS_READY_FOR_VALIDATION",
-    "ORDERS_COMPLETED_TODAY"
+    "ORDERS_COMPLETED_TODAY",
   ];
 
   const handleMinimizeClick = () => {
     console.log("Icon clicked!");
-      setSelectedTile(null);
-      hasRole(userSessionDetails, "Global Administrator")
-        ? setSelectedTestSection("all")
-        : setSelectedTestSection(testSections[0]?.id);
+    setSelectedTile(null);
+    hasRole(userSessionDetails, "Global Administrator")
+      ? setSelectedTestSection("all")
+      : setSelectedTestSection(testSections[0]?.id);
   };
 
   const handleMaximizeClick = (tile) => {
@@ -356,9 +359,14 @@ const LabDashboard: React.FC<DashBoardProps> = () => {
                   style={{ color: "blue" }}
                   href={
                     selectedTile.type == "ORDERS_IN_PROGRESS"
-                      ? "/result?type=order&doRange=false&accessionNumber=" +
-                        cell.value
-                      : "validation?type=order&accessionNumber=" + cell.value
+                      ? getFullPath(
+                          "/result?type=order&doRange=false&accessionNumber=" +
+                            cell.value,
+                        )
+                      : getFullPath(
+                          "/validation?type=order&accessionNumber=" +
+                            cell.value,
+                        )
                   }
                 >
                   <u>{convertAlphaNumLabNumForDisplay(cell.value)}</u>
@@ -472,199 +480,195 @@ const LabDashboard: React.FC<DashBoardProps> = () => {
               </Column>
             </Grid>
             <div className="gridBoundary">
-                <Grid>
-                  <Column lg={16} md={8} sm={4}>
-                    {pagination && (
-                      <Grid>
-                        <Column lg={14} />
-                        <Column
-                          lg={2}
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: "10px",
-                            width: "110%",
-                          }}
-                        >
-                          <Link>
-                            {currentApiPage} / {totalApiPages}
-                          </Link>
-                          <div style={{ display: "flex", gap: "10px" }}>
-                            <Button
-                              hasIconOnly
-                              id="loadpreviousresults"
-                              onClick={loadPreviousResultsPage}
-                              disabled={previousPage != null ? false : true}
-                              renderIcon={ArrowLeft}
-                              iconDescription="previous"
-                            ></Button>
-                            <Button
-                              hasIconOnly
-                              id="loadnextresults"
-                              onClick={loadNextResultsPage}
-                              disabled={nextPage != null ? false : true}
-                              renderIcon={ArrowRight}
-                              iconDescription="next"
-                            ></Button>
-                          </div>
-                        </Column>
-                      </Grid>
-                    )}
-                    {tilesWithTabs.includes(selectedTile.type) && (
-                      <Grid>
-                        <Column lg={16} md={8} sm={4}>
-                          <Tabs>
-                            {hasRole(
-                              userSessionDetails,
-                              "Global Administrator",
-                            ) ? (
-                              <TabList
-                                style={{ width: "100%" }}
-                                aria-label="List of tabs"
-                                contained
+              <Grid>
+                <Column lg={16} md={8} sm={4}>
+                  {pagination && (
+                    <Grid>
+                      <Column lg={14} />
+                      <Column
+                        lg={2}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: "10px",
+                          width: "110%",
+                        }}
+                      >
+                        <Link>
+                          {currentApiPage} / {totalApiPages}
+                        </Link>
+                        <div style={{ display: "flex", gap: "10px" }}>
+                          <Button
+                            hasIconOnly
+                            id="loadpreviousresults"
+                            onClick={loadPreviousResultsPage}
+                            disabled={previousPage != null ? false : true}
+                            renderIcon={ArrowLeft}
+                            iconDescription="previous"
+                          ></Button>
+                          <Button
+                            hasIconOnly
+                            id="loadnextresults"
+                            onClick={loadNextResultsPage}
+                            disabled={nextPage != null ? false : true}
+                            renderIcon={ArrowRight}
+                            iconDescription="next"
+                          ></Button>
+                        </div>
+                      </Column>
+                    </Grid>
+                  )}
+                  {tilesWithTabs.includes(selectedTile.type) && (
+                    <Grid>
+                      <Column lg={16} md={8} sm={4}>
+                        <Tabs>
+                          {hasRole(
+                            userSessionDetails,
+                            "Global Administrator",
+                          ) ? (
+                            <TabList
+                              style={{ width: "100%" }}
+                              aria-label="List of tabs"
+                              contained
+                            >
+                              <Tab
+                                onClick={() => setSelectedTestSection("all")}
                               >
-                                <Tab
-                                  onClick={() => setSelectedTestSection("all")}
-                                >
-                                  <FormattedMessage id="all.label" />
-                                </Tab>
+                                <FormattedMessage id="all.label" />
+                              </Tab>
 
-                                {testSections?.map((item, id) => {
-                                  return (
-                                    <Tab
-                                      key={id}
-                                      onClick={() =>
-                                        setSelectedTestSection(item.id)
-                                      }
-                                    >
-                                      {item.value}
-                                    </Tab>
-                                  );
-                                })}
-                              </TabList>
-                            ) : (
-                              <TabList
-                                style={{ width: "100%" }}
-                                aria-label="List of tabs"
-                                contained
-                              >
-                                {testSections?.map((item, id) => {
-                                  return (
-                                    <Tab
-                                      key={id}
-                                      onClick={() =>
-                                        setSelectedTestSection(item.id)
-                                      }
-                                    >
-                                      {item.value}
-                                    </Tab>
-                                  );
-                                })}
-                              </TabList>
-                            )}
-                          </Tabs>
-                        </Column>
-                      </Grid>
+                              {testSections?.map((item, id) => {
+                                return (
+                                  <Tab
+                                    key={id}
+                                    onClick={() =>
+                                      setSelectedTestSection(item.id)
+                                    }
+                                  >
+                                    {item.value}
+                                  </Tab>
+                                );
+                              })}
+                            </TabList>
+                          ) : (
+                            <TabList
+                              style={{ width: "100%" }}
+                              aria-label="List of tabs"
+                              contained
+                            >
+                              {testSections?.map((item, id) => {
+                                return (
+                                  <Tab
+                                    key={id}
+                                    onClick={() =>
+                                      setSelectedTestSection(item.id)
+                                    }
+                                  >
+                                    {item.value}
+                                  </Tab>
+                                );
+                              })}
+                            </TabList>
+                          )}
+                        </Tabs>
+                      </Column>
+                    </Grid>
+                  )}
+                  <DataTable
+                    rows={data
+                      .filter((item) =>
+                        tilesWithTabs.includes(selectedTile.type) &&
+                        selectedTestSection != "all"
+                          ? item.testSection === selectedTestSection
+                          : true,
+                      )
+                      .slice((page - 1) * pageSize, page * pageSize)}
+                    headers={orderHeaders}
+                    isSortable
+                  >
+                    {({ rows, headers, getHeaderProps, getTableProps }) => (
+                      <TableContainer title="" description="">
+                        <Table {...getTableProps()}>
+                          <TableHead>
+                            <TableRow>
+                              {headers.map((header) => (
+                                <TableHeader
+                                  key={header.key}
+                                  {...getHeaderProps({ header })}
+                                >
+                                  {header.header}
+                                </TableHeader>
+                              ))}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            <>
+                              {rows.map((row) => (
+                                <TableRow key={row.id}>
+                                  {row.cells.map((cell) =>
+                                    renderCell(cell, row),
+                                  )}
+                                </TableRow>
+                              ))}
+                            </>
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
                     )}
-                    <DataTable
-                      rows={data
-                        .filter((item) =>
-                          tilesWithTabs.includes(selectedTile.type) &&
-                          selectedTestSection != "all"
-                            ? item.testSection === selectedTestSection
-                            : true,
-                        )
-                        .slice((page - 1) * pageSize, page * pageSize)}
-                      headers={
-                          orderHeaders
-                      }
-                      isSortable
-                    >
-                      {({ rows, headers, getHeaderProps, getTableProps }) => (
-                        <TableContainer title="" description="">
-                          <Table {...getTableProps()}>
-                            <TableHead>
-                              <TableRow>
-                                {headers.map((header) => (
-                                  <TableHeader
-                                    key={header.key}
-                                    {...getHeaderProps({ header })}
-                                  >
-                                    {header.header}
-                                  </TableHeader>
-                                ))}
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              <>
-                                {rows.map((row) => (
-                                  <TableRow
-                                    key={row.id}
-                                  >
-                                    {row.cells.map((cell) =>
-                                      renderCell(cell, row),
-                                    )}
-                                  </TableRow>
-                                ))}
-                              </>
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                      )}
-                    </DataTable>
-                    <Pagination
-                      onChange={handlePageChange}
-                      page={page}
-                      pageSize={pageSize}
-                      pageSizes={[10, 20, 30, 50, 100]}
-                      totalItems={
-                        data.filter((item) =>
-                          tilesWithTabs.includes(selectedTile.type) &&
-                          selectedTestSection != "all"
-                            ? item.testSection === selectedTestSection
-                            : true,
-                        ).length
-                      }
-                      forwardText={intl.formatMessage({
-                        id: "pagination.forward",
-                      })}
-                      backwardText={intl.formatMessage({
-                        id: "pagination.backward",
-                      })}
-                      itemRangeText={(min, max, total) =>
-                        intl.formatMessage(
-                          { id: "pagination.item-range" },
-                          { min: min, max: max, total: total },
-                        )
-                      }
-                      itemsPerPageText={intl.formatMessage({
-                        id: "pagination.items-per-page",
-                      })}
-                      itemText={(min, max) =>
-                        intl.formatMessage(
-                          { id: "pagination.item" },
-                          { min: min, max: max },
-                        )
-                      }
-                      pageNumberText={intl.formatMessage({
-                        id: "pagination.page-number",
-                      })}
-                      pageRangeText={(_current, total) =>
-                        intl.formatMessage(
-                          { id: "pagination.page-range" },
-                          { total: total },
-                        )
-                      }
-                      pageText={(page, pagesUnknown) =>
-                        intl.formatMessage(
-                          { id: "pagination.page" },
-                          { page: pagesUnknown ? "" : page },
-                        )
-                      }
-                    />
-                  </Column>
-                </Grid>  
+                  </DataTable>
+                  <Pagination
+                    onChange={handlePageChange}
+                    page={page}
+                    pageSize={pageSize}
+                    pageSizes={[10, 20, 30, 50, 100]}
+                    totalItems={
+                      data.filter((item) =>
+                        tilesWithTabs.includes(selectedTile.type) &&
+                        selectedTestSection != "all"
+                          ? item.testSection === selectedTestSection
+                          : true,
+                      ).length
+                    }
+                    forwardText={intl.formatMessage({
+                      id: "pagination.forward",
+                    })}
+                    backwardText={intl.formatMessage({
+                      id: "pagination.backward",
+                    })}
+                    itemRangeText={(min, max, total) =>
+                      intl.formatMessage(
+                        { id: "pagination.item-range" },
+                        { min: min, max: max, total: total },
+                      )
+                    }
+                    itemsPerPageText={intl.formatMessage({
+                      id: "pagination.items-per-page",
+                    })}
+                    itemText={(min, max) =>
+                      intl.formatMessage(
+                        { id: "pagination.item" },
+                        { min: min, max: max },
+                      )
+                    }
+                    pageNumberText={intl.formatMessage({
+                      id: "pagination.page-number",
+                    })}
+                    pageRangeText={(_current, total) =>
+                      intl.formatMessage(
+                        { id: "pagination.page-range" },
+                        { total: total },
+                      )
+                    }
+                    pageText={(page, pagesUnknown) =>
+                      intl.formatMessage(
+                        { id: "pagination.page" },
+                        { page: pagesUnknown ? "" : page },
+                      )
+                    }
+                  />
+                </Column>
+              </Grid>
             </div>
           </Tile>
         </div>

@@ -427,11 +427,11 @@ function TestNotificationConfigEdit() {
                   // required={true}
                   value={
                     testNotificationConfigEditDataPost &&
-                      testNotificationConfigEditDataPost.systemDefaultPayloadTemplate &&
-                      testNotificationConfigEditDataPost
-                        .systemDefaultPayloadTemplate.subjectTemplate
+                    testNotificationConfigEditDataPost.systemDefaultPayloadTemplate &&
+                    testNotificationConfigEditDataPost
+                      .systemDefaultPayloadTemplate.subjectTemplate
                       ? testNotificationConfigEditDataPost
-                        .systemDefaultPayloadTemplate.subjectTemplate
+                          .systemDefaultPayloadTemplate.subjectTemplate
                       : ""
                   }
                   onChange={(e) => handleSubjectTemplateChange(e)}
@@ -465,11 +465,11 @@ function TestNotificationConfigEdit() {
                   // required={true}
                   value={
                     testNotificationConfigEditDataPost &&
-                      testNotificationConfigEditDataPost.systemDefaultPayloadTemplate &&
-                      testNotificationConfigEditDataPost
-                        .systemDefaultPayloadTemplate.messageTemplate
+                    testNotificationConfigEditDataPost.systemDefaultPayloadTemplate &&
+                    testNotificationConfigEditDataPost
+                      .systemDefaultPayloadTemplate.messageTemplate
                       ? testNotificationConfigEditDataPost
-                        .systemDefaultPayloadTemplate.messageTemplate
+                          .systemDefaultPayloadTemplate.messageTemplate
                       : ""
                   }
                   onChange={(e) => handleMessageTemplateChange(e)}
@@ -504,19 +504,19 @@ function TestNotificationConfigEdit() {
                   id="subject"
                   type="text"
                   labelText=""
-                // invalid={
-                //   userDataShow &&
-                //   userDataShow.userLoginName &&
-                //   !loginNameRegex.test(userDataShow.userLoginName)
-                // }
-                // // invalidText={errors.order}
-                // required={true}
-                // value={
-                //   userDataShow && userDataShow.userLoginName
-                //     ? userDataShow.userLoginName
-                //     : ""
-                // }
-                // onChange={(e) => handleUserLoginNameChange(e)}
+                  // invalid={
+                  //   userDataShow &&
+                  //   userDataShow.userLoginName &&
+                  //   !loginNameRegex.test(userDataShow.userLoginName)
+                  // }
+                  // // invalidText={errors.order}
+                  // required={true}
+                  // value={
+                  //   userDataShow && userDataShow.userLoginName
+                  //     ? userDataShow.userLoginName
+                  //     : ""
+                  // }
+                  // onChange={(e) => handleUserLoginNameChange(e)}
                 />
               </Column>
             </Grid>
@@ -533,19 +533,19 @@ function TestNotificationConfigEdit() {
                   id="message"
                   type="text"
                   labelText=""
-                // invalid={
-                //   userDataShow &&
-                //   userDataShow.userLoginName &&
-                //   !loginNameRegex.test(userDataShow.userLoginName)
-                // }
-                // // invalidText={errors.order}
-                // required={true}
-                // value={
-                //   userDataShow && userDataShow.userLoginName
-                //     ? userDataShow.userLoginName
-                //     : ""
-                // }
-                // onChange={(e) => handleUserLoginNameChange(e)}
+                  // invalid={
+                  //   userDataShow &&
+                  //   userDataShow.userLoginName &&
+                  //   !loginNameRegex.test(userDataShow.userLoginName)
+                  // }
+                  // // invalidText={errors.order}
+                  // required={true}
+                  // value={
+                  //   userDataShow && userDataShow.userLoginName
+                  //     ? userDataShow.userLoginName
+                  //     : ""
+                  // }
+                  // onChange={(e) => handleUserLoginNameChange(e)}
                 />
               </Column>
             </Grid>
@@ -646,19 +646,19 @@ function TestNotificationConfigEdit() {
                       id="subject"
                       type="text"
                       labelText=""
-                    // invalid={
-                    //   userDataShow &&
-                    //   userDataShow.userLoginName &&
-                    //   !loginNameRegex.test(userDataShow.userLoginName)
-                    // }
-                    // // invalidText={errors.order}
-                    // required={true}
-                    // value={
-                    //   userDataShow && userDataShow.userLoginName
-                    //     ? userDataShow.userLoginName
-                    //     : ""
-                    // }
-                    // onChange={(e) => handleUserLoginNameChange(e)}
+                      // invalid={
+                      //   userDataShow &&
+                      //   userDataShow.userLoginName &&
+                      //   !loginNameRegex.test(userDataShow.userLoginName)
+                      // }
+                      // // invalidText={errors.order}
+                      // required={true}
+                      // value={
+                      //   userDataShow && userDataShow.userLoginName
+                      //     ? userDataShow.userLoginName
+                      //     : ""
+                      // }
+                      // onChange={(e) => handleUserLoginNameChange(e)}
                     />
                   </Column>
                 </Grid>
@@ -672,19 +672,19 @@ function TestNotificationConfigEdit() {
                       id="subject"
                       type="text"
                       labelText=""
-                    // invalid={
-                    //   userDataShow &&
-                    //   userDataShow.userLoginName &&
-                    //   !loginNameRegex.test(userDataShow.userLoginName)
-                    // }
-                    // // invalidText={errors.order}
-                    // required={true}
-                    // value={
-                    //   userDataShow && userDataShow.userLoginName
-                    //     ? userDataShow.userLoginName
-                    //     : ""
-                    // }
-                    // onChange={(e) => handleUserLoginNameChange(e)}
+                      // invalid={
+                      //   userDataShow &&
+                      //   userDataShow.userLoginName &&
+                      //   !loginNameRegex.test(userDataShow.userLoginName)
+                      // }
+                      // // invalidText={errors.order}
+                      // required={true}
+                      // value={
+                      //   userDataShow && userDataShow.userLoginName
+                      //     ? userDataShow.userLoginName
+                      //     : ""
+                      // }
+                      // onChange={(e) => handleUserLoginNameChange(e)}
                     />
                   </Column>
                 </Grid>
@@ -701,19 +701,19 @@ function TestNotificationConfigEdit() {
                       id="message"
                       type="text"
                       labelText=""
-                    // invalid={
-                    //   userDataShow &&
-                    //   userDataShow.userLoginName &&
-                    //   !loginNameRegex.test(userDataShow.userLoginName)
-                    // }
-                    // // invalidText={errors.order}
-                    // required={true}
-                    // value={
-                    //   userDataShow && userDataShow.userLoginName
-                    //     ? userDataShow.userLoginName
-                    //     : ""
-                    // }
-                    // onChange={(e) => handleUserLoginNameChange(e)}
+                      // invalid={
+                      //   userDataShow &&
+                      //   userDataShow.userLoginName &&
+                      //   !loginNameRegex.test(userDataShow.userLoginName)
+                      // }
+                      // // invalidText={errors.order}
+                      // required={true}
+                      // value={
+                      //   userDataShow && userDataShow.userLoginName
+                      //     ? userDataShow.userLoginName
+                      //     : ""
+                      // }
+                      // onChange={(e) => handleUserLoginNameChange(e)}
                     />
                   </Column>
                 </Grid>
@@ -754,19 +754,19 @@ function TestNotificationConfigEdit() {
                       id="message"
                       type="text"
                       labelText=""
-                    // invalid={
-                    //   userDataShow &&
-                    //   userDataShow.userLoginName &&
-                    //   !loginNameRegex.test(userDataShow.userLoginName)
-                    // }
-                    // // invalidText={errors.order}
-                    // required={true}
-                    // value={
-                    //   userDataShow && userDataShow.userLoginName
-                    //     ? userDataShow.userLoginName
-                    //     : ""
-                    // }
-                    // onChange={(e) => handleUserLoginNameChange(e)}
+                      // invalid={
+                      //   userDataShow &&
+                      //   userDataShow.userLoginName &&
+                      //   !loginNameRegex.test(userDataShow.userLoginName)
+                      // }
+                      // // invalidText={errors.order}
+                      // required={true}
+                      // value={
+                      //   userDataShow && userDataShow.userLoginName
+                      //     ? userDataShow.userLoginName
+                      //     : ""
+                      // }
+                      // onChange={(e) => handleUserLoginNameChange(e)}
                     />
                   </Column>
                 </Grid>
@@ -786,9 +786,7 @@ function TestNotificationConfigEdit() {
                 </Button>{" "}
                 <Button
                   onClick={() =>
-                    assignTo(
-                      "/MasterListsPage/testNotificationConfigMenu",
-                    )
+                    assignTo("/MasterListsPage/testNotificationConfigMenu")
                   }
                   kind="tertiary"
                   type="button"

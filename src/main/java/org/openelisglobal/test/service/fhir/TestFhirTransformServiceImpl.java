@@ -5,22 +5,22 @@ import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IClientInterceptor;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.interceptor.BasicAuthInterceptor;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
-import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.CodeType;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
-import org.hl7.fhir.r4.model.CodeType;
 import org.hl7.fhir.r4.model.Enumerations;
 import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.ObservationDefinition;
-import org.hl7.fhir.r4.model.Range;
-import org.hl7.fhir.r4.model.Reference;
-import org.hl7.fhir.r4.model.SimpleQuantity;
-import org.hl7.fhir.r4.model.ValueSet;
 import org.hl7.fhir.r4.model.Questionnaire;
+import org.hl7.fhir.r4.model.Questionnaire.QuestionnaireItemAnswerOptionComponent;
 import org.hl7.fhir.r4.model.Questionnaire.QuestionnaireItemComponent;
 import org.hl7.fhir.r4.model.Questionnaire.QuestionnaireItemType;
-import org.hl7.fhir.r4.model.Questionnaire.QuestionnaireItemAnswerOptionComponent;
+import org.hl7.fhir.r4.model.Range;
+import org.hl7.fhir.r4.model.SimpleQuantity;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dictionary.service.DictionaryService;
@@ -34,27 +34,19 @@ import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 /**
- * Implementation of TestFhirTransformService.
- * Transforms OpenELIS Test entities to FHIR R4 ObservationDefinition resources
- * and syncs them to OpenMRS.
+ * Implementation of TestFhirTransformService. Transforms OpenELIS Test entities
+ * to FHIR R4 ObservationDefinition resources and syncs them to OpenMRS.
  * 
- * Phase 1-5: Supports TEXT, NUMERIC, and CODED tests
- * - TEXT: permittedDataType = STRING
- * - NUMERIC: permittedDataType = Quantity with quantitativeDetails and
- * qualifiedInterval
- * - CODED: permittedDataType = CodeableConcept with validCodedValueSet
+ * Phase 1-5: Supports TEXT, NUMERIC, and CODED tests - TEXT: permittedDataType
+ * = STRING - NUMERIC: permittedDataType = Quantity with quantitativeDetails and
+ * qualifiedInterval - CODED: permittedDataType = CodeableConcept with
+ * validCodedValueSet
  */
 @Service
 public class TestFhirTransformServiceImpl implements TestFhirTransformService {
@@ -156,15 +148,15 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "transformTestToObservationDefinition",
                 "Transformed test: " + testName + " (guid=" + test.getGuid() + ", loinc=" + test.getLoinc()
-                        + ", permittedDataType=" +
-                        (ResultType.NUMERIC.matches(resultType) ? "Quantity" : "string") + ")");
+                        + ", permittedDataType=" + (ResultType.NUMERIC.matches(resultType) ? "Quantity" : "string")
+                        + ")");
 
         return obsDef;
     }
 
     /**
-     * Add quantitativeDetails for numeric tests.
-     * Maps unitOfMeasure to FHIR unit and sets decimal precision.
+     * Add quantitativeDetails for numeric tests. Maps unitOfMeasure to FHIR unit
+     * and sets decimal precision.
      */
     private void addQuantitativeDetails(ObservationDefinition obsDef, Test test) {
         ObservationDefinition.ObservationDefinitionQuantitativeDetailsComponent quantDetails = new ObservationDefinition.ObservationDefinitionQuantitativeDetailsComponent();
@@ -187,8 +179,8 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
     }
 
     /**
-     * Add qualifiedInterval (reference ranges) for numeric tests.
-     * Maps OpenELIS result_limits to FHIR qualifiedInterval with extensions.
+     * Add qualifiedInterval (reference ranges) for numeric tests. Maps OpenELIS
+     * result_limits to FHIR qualifiedInterval with extensions.
      */
     private void addQualifiedIntervals(ObservationDefinition obsDef, Test test) {
         // Get result limits for this test
@@ -207,8 +199,7 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
 
         // Add NORMAL range if defined
         if (isValidRange(limit.getLowNormal(), limit.getHighNormal())) {
-            obsDef.addQualifiedInterval(createQualifiedInterval(
-                    limit.getLowNormal(), limit.getHighNormal(), "normal"));
+            obsDef.addQualifiedInterval(createQualifiedInterval(limit.getLowNormal(), limit.getHighNormal(), "normal"));
             intervalCount++;
             LogEvent.logDebug(this.getClass().getSimpleName(), "addQualifiedIntervals",
                     "Added NORMAL range: " + limit.getLowNormal() + " - " + limit.getHighNormal());
@@ -216,8 +207,8 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
 
         // Add TREATMENT range if defined
         if (isValidRange(limit.getLowCritical(), limit.getHighCritical())) {
-            obsDef.addQualifiedInterval(createQualifiedInterval(
-                    limit.getLowCritical(), limit.getHighCritical(), "treatment"));
+            obsDef.addQualifiedInterval(
+                    createQualifiedInterval(limit.getLowCritical(), limit.getHighCritical(), "treatment"));
             intervalCount++;
             LogEvent.logDebug(this.getClass().getSimpleName(), "addQualifiedIntervals",
                     "Added TREATMENT range: " + limit.getLowCritical() + " - " + limit.getHighCritical());
@@ -225,8 +216,7 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
 
         // Add ABSOLUTE range if defined
         if (isValidRange(limit.getLowValid(), limit.getHighValid())) {
-            obsDef.addQualifiedInterval(createQualifiedInterval(
-                    limit.getLowValid(), limit.getHighValid(), "absolute"));
+            obsDef.addQualifiedInterval(createQualifiedInterval(limit.getLowValid(), limit.getHighValid(), "absolute"));
             intervalCount++;
             LogEvent.logDebug(this.getClass().getSimpleName(), "addQualifiedIntervals",
                     "Added ABSOLUTE range: " + limit.getLowValid() + " - " + limit.getHighValid());
@@ -240,15 +230,14 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
      * Check if a range is valid (not null and not infinite).
      */
     private boolean isValidRange(Double low, Double high) {
-        return low != null && high != null &&
-                !Double.isInfinite(low) && !Double.isInfinite(high);
+        return low != null && high != null && !Double.isInfinite(low) && !Double.isInfinite(high);
     }
 
     /**
      * Create a qualifiedInterval component with range and extension.
      */
-    private ObservationDefinition.ObservationDefinitionQualifiedIntervalComponent createQualifiedInterval(
-            Double low, Double high, String rangeType) {
+    private ObservationDefinition.ObservationDefinitionQualifiedIntervalComponent createQualifiedInterval(Double low,
+            Double high, String rangeType) {
 
         ObservationDefinition.ObservationDefinitionQualifiedIntervalComponent interval = new ObservationDefinition.ObservationDefinitionQualifiedIntervalComponent();
 
@@ -268,8 +257,8 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
     }
 
     /**
-     * Get dictionary entries for a coded/dictionary test.
-     * Extracts dictionary IDs from test results where tst_rslt_type='D'.
+     * Get dictionary entries for a coded/dictionary test. Extracts dictionary IDs
+     * from test results where tst_rslt_type='D'.
      */
     private List<Dictionary> getDictionaryEntriesForTest(Test test) {
         List<Dictionary> dictEntries = new ArrayList<>();
@@ -301,8 +290,8 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
     }
 
     /**
-     * Generate a stable GUID for a dictionary entry.
-     * Uses UUID v5 (name-based) with dictionary ID as the name.
+     * Generate a stable GUID for a dictionary entry. Uses UUID v5 (name-based) with
+     * dictionary ID as the name.
      */
     private String generateStableGuidForDictionary(Dictionary dict) {
         // Use dictionary ID to generate stable UUID
@@ -316,9 +305,8 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
     }
 
     /**
-     * Transform Coded Test to FHIR Questionnaire.
-     * This enables diff-based answer updates and cleaner concept management in
-     * OpenMRS.
+     * Transform Coded Test to FHIR Questionnaire. This enables diff-based answer
+     * updates and cleaner concept management in OpenMRS.
      */
     private Questionnaire transformTestToQuestionnaire(Test test, List<Dictionary> dictEntries) {
         Questionnaire q = new Questionnaire();
@@ -374,9 +362,7 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
             }
 
             // PUT upsert
-            MethodOutcome outcome = fhirClient.update()
-                    .resource(questionnaire)
-                    .execute();
+            MethodOutcome outcome = fhirClient.update().resource(questionnaire).execute();
 
             if (outcome.getCreated() != null && outcome.getCreated()) {
                 LogEvent.logInfo(this.getClass().getSimpleName(), "syncQuestionnaireToServer",
@@ -403,8 +389,7 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
         }
 
         if (test == null) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "syncTestToFhir",
-                    "Cannot sync null test");
+            LogEvent.logWarn(this.getClass().getSimpleName(), "syncTestToFhir", "Cannot sync null test");
             return;
         }
 
@@ -446,8 +431,7 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "syncTestToFhir",
                     "Error syncing test to FHIR: " + e.getMessage());
-            LogEvent.logError(this.getClass().getSimpleName(), "syncTestToFhir",
-                    "Full stack trace: " + e.toString());
+            LogEvent.logError(this.getClass().getSimpleName(), "syncTestToFhir", "Full stack trace: " + e.toString());
             // Don't throw - keep async and non-blocking
         }
     }
@@ -455,15 +439,13 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
     /**
      * Sync ObservationDefinition to a specific FHIR server.
      * 
-     * IMPORTANT: Uses PUT upsert for BOTH create and update operations.
-     * This ensures OpenELIS GUID becomes the OpenMRS Concept.uuid (no UUID
-     * mismatch).
+     * IMPORTANT: Uses PUT upsert for BOTH create and update operations. This
+     * ensures OpenELIS GUID becomes the OpenMRS Concept.uuid (no UUID mismatch).
      * 
-     * From OpenMRS FHIR2 docs:
-     * "PUT /ObservationDefinition/{uuid} supports upsert semantics for test
-     * definitions.
-     * When creating via PUT, the translator sets the OpenMRS Concept.uuid to {uuid}
-     * from the URL/body BEFORE the concept is persisted."
+     * From OpenMRS FHIR2 docs: "PUT /ObservationDefinition/{uuid} supports upsert
+     * semantics for test definitions. When creating via PUT, the translator sets
+     * the OpenMRS Concept.uuid to {uuid} from the URL/body BEFORE the concept is
+     * persisted."
      */
     private void syncToServer(ObservationDefinition obsDef, String serverUrl, boolean isUpdate) {
         try {
@@ -480,15 +462,13 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
             // ALWAYS use PUT upsert (for both create and update)
             // This preserves OpenELIS GUID as OpenMRS UUID
             try {
-                ca.uhn.fhir.rest.api.MethodOutcome outcome = fhirClient.update()
-                        .resource(obsDef)
-                        .execute();
+                ca.uhn.fhir.rest.api.MethodOutcome outcome = fhirClient.update().resource(obsDef).execute();
 
                 // Check if this was a create or update
                 if (outcome.getCreated() != null && outcome.getCreated()) {
                     LogEvent.logInfo(this.getClass().getSimpleName(), "syncToServer",
-                            "✅ Created ObservationDefinition in OpenMRS via PUT upsert: " + serverUrl +
-                                    " (OpenELIS GUID=" + obsDef.getId() + " preserved as OpenMRS UUID)");
+                            "✅ Created ObservationDefinition in OpenMRS via PUT upsert: " + serverUrl
+                                    + " (OpenELIS GUID=" + obsDef.getId() + " preserved as OpenMRS UUID)");
                 } else {
                     LogEvent.logInfo(this.getClass().getSimpleName(), "syncToServer",
                             "✅ Updated ObservationDefinition in OpenMRS: " + serverUrl + " (id=" + obsDef.getId()
@@ -506,15 +486,13 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
                         "❌ FHIR Server Error - HTTP " + e.getStatusCode() + ": " + e.getMessage());
                 LogEvent.logError(this.getClass().getSimpleName(), "syncToServer",
                         "Response body: " + e.getResponseBody());
-                LogEvent.logError(this.getClass().getSimpleName(), "syncToServer",
-                        "OperationOutcome: "
-                                + (e.getOperationOutcome() != null ? e.getOperationOutcome().toString() : "null"));
+                LogEvent.logError(this.getClass().getSimpleName(), "syncToServer", "OperationOutcome: "
+                        + (e.getOperationOutcome() != null ? e.getOperationOutcome().toString() : "null"));
                 throw e;
             } catch (Exception e) {
                 LogEvent.logError(this.getClass().getSimpleName(), "syncToServer",
                         "Error syncing ObservationDefinition: " + e.getMessage());
-                LogEvent.logError(this.getClass().getSimpleName(), "syncToServer",
-                        "Full error: " + e.toString());
+                LogEvent.logError(this.getClass().getSimpleName(), "syncToServer", "Full error: " + e.toString());
                 throw e;
             }
 
@@ -526,8 +504,8 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
     }
 
     /**
-     * Get the display name for a test.
-     * Prefers localized name, falls back to description.
+     * Get the display name for a test. Prefers localized name, falls back to
+     * description.
      */
     private String getTestName(Test test) {
         // Try localized test name first
@@ -549,8 +527,8 @@ public class TestFhirTransformServiceImpl implements TestFhirTransformService {
     }
 
     /**
-     * Determine the result type of a test.
-     * Uses TestService.getResultType() which checks TestResult entries.
+     * Determine the result type of a test. Uses TestService.getResultType() which
+     * checks TestResult entries.
      */
     private String determineResultType(Test test) {
         try {

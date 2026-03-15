@@ -11,9 +11,9 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.common.ReportTransmission;
 import org.openelisglobal.dataexchange.common.ReportTransmission.HTTP_TYPE;
+import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
-import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -70,8 +70,8 @@ public class PanelMiddlewareSyncServiceImpl implements PanelMiddlewareSyncServic
                             + ", url=" + middlewareUrl);
 
             ReportTransmission transmission = new ReportTransmission();
-            transmission.sendRawReport(json, middlewareUrl, true, null, HTTP_TYPE.POST,
-                    "X-Nidan-Webhook-Secret", middlewareSecret);
+            transmission.sendRawReport(json, middlewareUrl, true, null, HTTP_TYPE.POST, "X-Nidan-Webhook-Secret",
+                    middlewareSecret);
 
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "syncPanelToMiddleware",

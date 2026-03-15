@@ -10,7 +10,8 @@ public interface IncomingOrderService {
 
     Integer receiveOrder(ExternalOrderRequest externalOrderRequest, String payloadJson, String receivedSysUserId);
 
-    IncomingOrder receiveOrMergeOrder(ExternalOrderRequest externalOrderRequest, String payloadJson, String receivedSysUserId);
+    IncomingOrder receiveOrMergeOrder(ExternalOrderRequest externalOrderRequest, String payloadJson,
+            String receivedSysUserId);
 
     List<IncomingOrder> getOrders();
 

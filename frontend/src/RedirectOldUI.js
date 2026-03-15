@@ -5,7 +5,9 @@ import { stripBasePath } from "./components/utils/Navigation";
 function RedirectOldUI() {
   useEffect(() => {
     window.location.href =
-      config.serverBaseUrl + stripBasePath(window.location.pathname) + window.location.search;
+      config.serverBaseUrl +
+      stripBasePath(window.location.pathname) +
+      window.location.search;
   }, []);
 
   return <></>;

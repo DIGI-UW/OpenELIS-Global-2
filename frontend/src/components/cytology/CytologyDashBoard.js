@@ -96,7 +96,7 @@ function CytologyDashboard() {
   const assignCurrentUserAsPathologist = (event, pathologySampleId) => {
     postToOpenElisServerFullResponse(
       "/rest/cytology/assignCytoPathologist?cytologySampleId=" +
-      pathologySampleId,
+        pathologySampleId,
       {},
       refreshItems,
     );
@@ -182,7 +182,7 @@ function CytologyDashboard() {
   const getSelectedValue = () => {
     const selectedValue =
       filters.statuses.length === inProgressStatuses.length &&
-        filters.statuses.every((status) => inProgressStatuses.includes(status.id))
+      filters.statuses.every((status) => inProgressStatuses.includes(status.id))
         ? "IN_PROGRESS"
         : filters.statuses.length > 1
           ? "All"

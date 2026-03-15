@@ -12,6 +12,7 @@ import { Admin } from "./components";
 import ResultSearch from "./components/resultPage/ResultSearch";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { getFromOpenElisServer } from "./components/utils/Utils";
+import { getBasePath } from "./components/utils/Navigation";
 import "./App.css";
 import { languages } from "./languages";
 import config from "./config.json";
@@ -235,7 +236,7 @@ export default function App() {
         }}
       >
         <>
-          <Router basename="/openelis">
+          <Router basename={getBasePath()}>
             <Layout onChangeLanguage={onChangeLanguage}>
               <Switch>
                 <Route path="/login" exact component={() => <Login />} />

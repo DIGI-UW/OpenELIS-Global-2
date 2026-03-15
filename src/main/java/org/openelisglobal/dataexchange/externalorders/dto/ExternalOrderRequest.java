@@ -14,8 +14,8 @@ import org.openelisglobal.common.validator.ValidationHelper;
  * This DTO is intentionally small and focused on the quintessential fields
  * required to place an order via the existing SamplePatientEntry pipeline.
  *
- * We can expand this later as requirements grow without impacting the
- * internal order creation flow.
+ * We can expand this later as requirements grow without impacting the internal
+ * order creation flow.
  */
 public class ExternalOrderRequest {
 
@@ -354,4 +354,3 @@ public class ExternalOrderRequest {
         }
     }
 }
-

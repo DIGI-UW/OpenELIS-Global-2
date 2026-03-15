@@ -127,9 +127,7 @@ function TestNotificationConfigMenu() {
   }, [testNamesList]);
 
   const handleEditButtonClick = (id) => {
-    assignTo(
-      `/MasterListsPage/testNotificationConfig?testId=${id}`,
-    );
+    assignTo(`/MasterListsPage/testNotificationConfig?testId=${id}`);
   };
 
   function testNotificationConfigMenuSavePostCall() {
@@ -289,9 +287,7 @@ function TestNotificationConfigMenu() {
                 </Button>{" "}
                 <Button
                   onClick={() =>
-                    assignTo(
-                      "/MasterListsPage/testNotificationConfigMenu",
-                    )
+                    assignTo("/MasterListsPage/testNotificationConfigMenu")
                   }
                   kind="tertiary"
                   type="button"
@@ -460,9 +456,7 @@ function TestNotificationConfigMenu() {
               </Button>{" "}
               <Button
                 onClick={() =>
-                  assignTo(
-                    "/MasterListsPage/testNotificationConfigMenu",
-                  )
+                  assignTo("/MasterListsPage/testNotificationConfigMenu")
                 }
                 kind="tertiary"
                 type="button"

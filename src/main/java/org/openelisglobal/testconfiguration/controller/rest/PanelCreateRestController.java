@@ -38,8 +38,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest")
 public class PanelCreateRestController extends BaseController {
 
-    private static final String[] ALLOWED_FIELDS = new String[] { "panelEnglishName", "panelFrenchName",
-            "sampleTypeId", "panelPrice" };
+    private static final String[] ALLOWED_FIELDS = new String[] { "panelEnglishName", "panelFrenchName", "sampleTypeId",
+            "panelPrice" };
 
     @Autowired
     private PanelService panelService;

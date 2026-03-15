@@ -159,7 +159,8 @@ public class PanelItemServiceImpl extends AuditableBaseObjectServiceImpl<PanelIt
             panelService.update(panel);
         }
 
-        // Publish event so integrations (e.g. Odoo) can react to panel membership changes
+        // Publish event so integrations (e.g. Odoo) can react to panel membership
+        // changes
         eventPublisher.publishEvent(new PanelCreatedOrUpdatedEvent(this, panel));
     }
 

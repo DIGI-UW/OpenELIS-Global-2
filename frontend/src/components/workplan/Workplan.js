@@ -22,6 +22,7 @@ import {
   postToOpenElisServerForPDF,
   convertAlphaNumLabNumForDisplay,
 } from "../utils/Utils";
+import { getFullPath } from "../utils/Navigation";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { ConfigurationContext } from "../layout/Layout";
@@ -319,10 +320,12 @@ export default function Workplan(props) {
                                 {showAccessionNumber && (
                                   <Link
                                     style={{ color: "blue" }}
-                                    href={
-                                      `/result?type=order&doRange=false&source=${sourceTitle}&accessionNumber=` +
-                                      row.accessionNumber
-                                    }
+                                    href={getFullPath(
+                                      "/result?type=order&doRange=false&source=" +
+                                        sourceTitle +
+                                        "&accessionNumber=" +
+                                        row.accessionNumber,
+                                    )}
                                   >
                                     <u>
                                       {convertAlphaNumLabNumForDisplay(

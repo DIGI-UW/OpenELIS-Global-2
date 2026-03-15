@@ -13,9 +13,7 @@ import {
 } from "@carbon/react";
 import { useHistory } from "react-router-dom";
 import { FormattedMessage, useIntl } from "react-intl";
-import {
-  getFromOpenElisServer,
-} from "../utils/Utils";
+import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 
@@ -30,18 +28,40 @@ export default function IncomingOrders() {
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
 
+  // Format timestamp to mm/dd hh:mm (24-hour format)
+  const formatReceivedTimestamp = (timestamp) => {
+    if (!timestamp) return "";
+    try {
+      const date = new Date(Number(timestamp));
+      if (isNaN(date.getTime())) return "";
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      const hh = String(date.getHours()).padStart(2, "0");
+      const min = String(date.getMinutes()).padStart(2, "0");
+      return `${mm}/${dd} ${hh}:${min}`;
+    } catch (e) {
+      return "";
+    }
+  };
+
   const headers = [
     {
-      key: "externalOrderNumber",
-      header: intl.formatMessage({ id: "incomingOrders.table.externalOrderNumber" }),
-    },
-    {
-      key: "patientGuid",
-      header: intl.formatMessage({ id: "incomingOrders.table.patientGuid" }),
+      key: "patientName",
+      header: intl.formatMessage({ id: "incomingOrders.table.patientName" }),
     },
     {
       key: "receivedTimestamp",
-      header: intl.formatMessage({ id: "incomingOrders.table.receivedTimestamp" }),
+      header: intl.formatMessage({
+        id: "incomingOrders.table.receivedTimestamp",
+      }),
+    },
+    {
+      key: "testCount",
+      header: intl.formatMessage({ id: "incomingOrders.table.testCount" }),
+    },
+    {
+      key: "source",
+      header: intl.formatMessage({ id: "incomingOrders.table.source" }),
     },
     {
       key: "actions",
@@ -58,9 +78,12 @@ export default function IncomingOrders() {
       const list = Array.isArray(data) ? data : [];
       const mapped = list.map((item) => ({
         id: String(item.externalOrderNumber || ""),
+        // Keep externalOrderNumber in data for collection flow (hidden from UI)
         externalOrderNumber: item.externalOrderNumber || "",
-        patientGuid: item.patientGuid || "",
-        receivedTimestamp: item.receivedTimestamp || "",
+        patientName: item.patientName || "",
+        receivedTimestamp: formatReceivedTimestamp(item.receivedTimestamp),
+        testCount: item.testCount != null ? String(item.testCount) : "",
+        source: item.source || "",
       }));
       setRows(mapped);
       setLoading(false);

@@ -44,12 +44,14 @@ function PanelRenameEntry() {
   const [panelPost, setPanelPost] = useState({});
   const [entityNamesProvider, setEntityNamesProvider] = useState({
     name: { english: "", french: "" },
+    price: "",
   });
   const [entityNamesProviderPost, setEntityNamesProviderPost] = useState({
     name: {
       english: "",
       french: "",
     },
+    price: "",
   });
   const [entityId, setEntityId] = useState();
   const [entityName, setEntityName] = useState("panel");
@@ -86,13 +88,31 @@ function PanelRenameEntry() {
     if (!res) {
       setIsLoading(true);
     } else {
-      setEntityNamesProvider(res);
-      setEntityNamesProviderPost(res);
+      setEntityNamesProvider({
+        name: {
+          english: res?.name?.english || "",
+          french: res?.name?.french || "",
+        },
+        price: res?.price ?? "",
+      });
+      setEntityNamesProviderPost({
+        name: {
+          english: res?.name?.english || "",
+          french: res?.name?.french || "",
+        },
+        price: res?.price ?? "",
+      });
     }
   };
 
+  const [priceError, setPriceError] = useState(false);
+
   function panelUpdatePost() {
     setIsLoading(true);
+    if (priceError) {
+      setIsLoading(false);
+      return;
+    }
     if (confirmationStep) {
       postToOpenElisServerJsonResponse(
         `/rest/PanelRenameEntry`,
@@ -169,6 +189,23 @@ function PanelRenameEntry() {
     setInputError(false);
   };
 
+  const onPriceChange = (e) => {
+    e.preventDefault();
+    const priceValue = e.target.value;
+    setEntityNamesProviderPost((prev) => ({
+      ...prev,
+      price: priceValue,
+    }));
+
+    if (!priceValue) {
+      setPriceError(false);
+      return;
+    }
+
+    const isValid = /^[0-9]+(\.[0-9]{1,2})?$/.test(priceValue);
+    setPriceError(!isValid);
+  };
+
   useEffect(() => {
     if (entityId && entityNamesProviderPost && entityNamesProviderPost.name) {
       setPanelPost((prev) => ({
@@ -176,6 +213,7 @@ function PanelRenameEntry() {
         panelId: entityId,
         nameEnglish: entityNamesProviderPost.name.english,
         nameFrench: entityNamesProviderPost.name.french,
+        panelPrice: entityNamesProviderPost.price,
       }));
     }
   }, [entityNamesProviderPost, entityId]);
@@ -220,6 +258,10 @@ function PanelRenameEntry() {
             langPost={entityNamesProviderPost}
             selectedItem={selectedItem}
             hasFrench={true}
+            showPrice={true}
+            priceValue={entityNamesProviderPost.price}
+            onPriceChange={onPriceChange}
+            priceError={priceError}
           />
         </div>
       </div>

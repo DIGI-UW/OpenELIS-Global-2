@@ -143,8 +143,8 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             // the local FHIR store abstraction. This method already encapsulates
             // identifier-based and remote-system-based lookups, so it is safe for
             // both legacy and Task-based orders.
-            Optional<ServiceRequest> optionalServiceRequest =
-                    fhirPersistanceService.getServiceRequestByReferingId(orderNumber);
+            Optional<ServiceRequest> optionalServiceRequest = fhirPersistanceService
+                    .getServiceRequestByReferingId(orderNumber);
 
             if (optionalServiceRequest.isPresent()) {
                 serviceRequest = optionalServiceRequest.get();
@@ -285,8 +285,7 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
         if (serviceRequest == null || patient == null || task == null) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
                     "missing FHIR resources for external order " + orderNumber + ": serviceRequest="
-                            + (serviceRequest != null) + ", patient=" + (patient != null) + ", task="
-                            + (task != null));
+                            + (serviceRequest != null) + ", patient=" + (patient != null) + ", task=" + (task != null));
             result = NOT_FOUND;
             xml.append("empty");
         } else {
@@ -410,8 +409,7 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                     requesterValuesMap.put(PROVIDER_FAX, contact.getValue());
                 }
             }
-            String requesterFhirId = requesterPerson.getIdElement() != null
-                    ? requesterPerson.getIdElement().getIdPart()
+            String requesterFhirId = requesterPerson.getIdElement() != null ? requesterPerson.getIdElement().getIdPart()
                     : null;
             if (!GenericValidator.isBlankOrNull(requesterFhirId)) {
                 try {

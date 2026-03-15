@@ -233,7 +233,7 @@ function ChangePassword() {
                         invalid={
                           formik.touched.confirmPassword &&
                           formik.values.newPassword !==
-                          formik.values.confirmPassword
+                            formik.values.confirmPassword
                         }
                       />
                       <Stack orientation="horizontal">

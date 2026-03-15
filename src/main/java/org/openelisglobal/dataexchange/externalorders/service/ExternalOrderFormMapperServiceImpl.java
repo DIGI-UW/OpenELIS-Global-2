@@ -2,11 +2,15 @@ package org.openelisglobal.dataexchange.externalorders.service;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.dataexchange.externalorders.ExternalOrderXmlBuilder;
 import org.openelisglobal.dataexchange.externalorders.dto.ExternalOrderRequest;
+import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
@@ -15,18 +19,16 @@ import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
-import org.openelisglobal.organization.service.OrganizationService;
-import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
-import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
-import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -70,7 +72,8 @@ public class ExternalOrderFormMapperServiceImpl implements ExternalOrderFormMapp
         if (patient.getPerson() != null) {
             patientInfo.setFirstName(patient.getPerson().getFirstName());
             patientInfo.setLastName(patient.getPerson().getLastName());
-            if (patient.getPerson().getPrimaryPhone() != null && !patient.getPerson().getPrimaryPhone().trim().isEmpty()) {
+            if (patient.getPerson().getPrimaryPhone() != null
+                    && !patient.getPerson().getPrimaryPhone().trim().isEmpty()) {
                 patientInfo.setPrimaryPhone(patient.getPerson().getPrimaryPhone());
             } else {
                 patientInfo.setPrimaryPhone(patient.getPerson().getWorkPhone());
@@ -139,10 +142,10 @@ public class ExternalOrderFormMapperServiceImpl implements ExternalOrderFormMapp
         }
 
         ExternalOrderXmlBuilder xmlBuilder = new ExternalOrderXmlBuilder();
-        List<ExternalOrderRequest.ExternalOrderSample> samples = externalOrderRequest.getSamples();
+        List<ExternalOrderRequest.ExternalOrderSample> originalSamples = externalOrderRequest.getSamples();
 
         String fallbackCollectionDate = fallbackUiDate;
-        for (ExternalOrderRequest.ExternalOrderSample sample : samples) {
+        for (ExternalOrderRequest.ExternalOrderSample sample : originalSamples) {
             if (sample.getCollectionDate() == null || sample.getCollectionDate().trim().isEmpty()) {
                 sample.setCollectionDate(fallbackCollectionDate);
             }
@@ -151,58 +154,123 @@ public class ExternalOrderFormMapperServiceImpl implements ExternalOrderFormMapp
             }
         }
 
-        List<List<String>> sampleTestIds = new ArrayList<>();
-        List<List<String>> samplePanelIds = new ArrayList<>();
+        // Expanded lists - one entry per sample type (may be larger than original
+        // samples)
+        List<ExternalOrderRequest.ExternalOrderSample> expandedSamples = new ArrayList<>();
+        List<List<String>> expandedTestIds = new ArrayList<>();
+        List<List<String>> expandedPanelIds = new ArrayList<>();
+        List<String> expandedTestSampleTypeMaps = new ArrayList<>();
 
-        for (ExternalOrderRequest.ExternalOrderSample sample : samples) {
-            Set<String> testIds = new LinkedHashSet<>();
-            Set<String> panelIds = new LinkedHashSet<>();
+        for (ExternalOrderRequest.ExternalOrderSample originalSample : originalSamples) {
+            // Collect all test IDs and panel IDs for this sample
+            Set<String> allTestIds = new LinkedHashSet<>();
+            Set<String> allPanelIds = new LinkedHashSet<>();
 
-            if (sample.getTests() != null) {
-                for (ExternalOrderRequest.ExternalOrderTestRef testRef : sample.getTests()) {
+            if (originalSample.getTests() != null) {
+                for (ExternalOrderRequest.ExternalOrderTestRef testRef : originalSample.getTests()) {
                     String id = resolveTestId(testRef);
                     if (id == null) {
                         throw new IllegalArgumentException("Unknown test reference");
                     }
-                    testIds.add(id);
+                    allTestIds.add(id);
                 }
             }
 
-            if (sample.getPanels() != null) {
-                for (ExternalOrderRequest.ExternalOrderPanelRef panelRef : sample.getPanels()) {
+            if (originalSample.getPanels() != null) {
+                for (ExternalOrderRequest.ExternalOrderPanelRef panelRef : originalSample.getPanels()) {
                     Panel panel = resolvePanel(panelRef);
                     if (panel == null) {
                         throw new IllegalArgumentException("Unknown panel reference");
                     }
-                    panelIds.add(panel.getId());
+                    allPanelIds.add(panel.getId());
 
                     List<PanelItem> panelItems = panelItemService.getPanelItemsForPanel(panel.getId());
                     if (panelItems != null) {
                         for (PanelItem pi : panelItems) {
                             if (pi.getTest() != null && pi.getTest().getId() != null) {
-                                testIds.add(pi.getTest().getId());
+                                allTestIds.add(pi.getTest().getId());
                             }
                         }
                     }
                 }
             }
 
-            sampleTestIds.add(new ArrayList<>(testIds));
-            samplePanelIds.add(new ArrayList<>(panelIds));
-        }
-
-        for (int i = 0; i < samples.size(); i++) {
-            ExternalOrderRequest.ExternalOrderSample sample = samples.get(i);
-            if (sample.getSampleTypeId() == null || sample.getSampleTypeId().trim().isEmpty()) {
-                String resolvedSampleTypeId = resolveSampleTypeId(sampleTestIds.get(i));
-                if (resolvedSampleTypeId == null) {
-                    throw new IllegalArgumentException("Unable to resolve sample type");
+            // If sampleTypeId is explicitly provided, use it directly (backward compatible)
+            if (originalSample.getSampleTypeId() != null && !originalSample.getSampleTypeId().trim().isEmpty()) {
+                // Build testSampleTypeMap for all tests pointing to this sample type
+                StringBuilder testSampleTypeMapBuilder = new StringBuilder();
+                for (String testId : allTestIds) {
+                    if (testSampleTypeMapBuilder.length() > 0) {
+                        testSampleTypeMapBuilder.append(",");
+                    }
+                    testSampleTypeMapBuilder.append(testId).append(":").append(originalSample.getSampleTypeId());
                 }
-                sample.setSampleTypeId(resolvedSampleTypeId);
+
+                expandedSamples.add(originalSample);
+                expandedTestIds.add(new ArrayList<>(allTestIds));
+                expandedPanelIds.add(new ArrayList<>(allPanelIds));
+                expandedTestSampleTypeMaps.add(testSampleTypeMapBuilder.toString());
+            } else {
+                // Group tests by sample type - create separate samples for each type
+                Map<String, List<String>> sampleTypeToTestIds = new LinkedHashMap<>();
+                Map<String, String> testToSampleType = new LinkedHashMap<>();
+
+                for (String testId : allTestIds) {
+                    List<TypeOfSampleTest> mappings = typeOfSampleTestService.getTypeOfSampleTestsForTest(testId);
+                    if (mappings != null && !mappings.isEmpty()) {
+                        // Use first mapping (most common case: test maps to single sample type)
+                        String sampleTypeId = mappings.get(0).getTypeOfSampleId();
+                        if (sampleTypeId != null && !sampleTypeId.trim().isEmpty()) {
+                            testToSampleType.put(testId, sampleTypeId);
+                            sampleTypeToTestIds.computeIfAbsent(sampleTypeId, k -> new ArrayList<>()).add(testId);
+                        }
+                    }
+                }
+
+                if (sampleTypeToTestIds.isEmpty()) {
+                    throw new IllegalArgumentException("Unable to resolve sample type for tests in sample");
+                }
+
+                // Create a separate sample entry for each sample type
+                for (Map.Entry<String, List<String>> entry : sampleTypeToTestIds.entrySet()) {
+                    String sampleTypeId = entry.getKey();
+                    List<String> testsForType = entry.getValue();
+
+                    // Build testSampleTypeMap for this group
+                    StringBuilder testSampleTypeMapBuilder = new StringBuilder();
+                    for (String testId : testsForType) {
+                        if (testSampleTypeMapBuilder.length() > 0) {
+                            testSampleTypeMapBuilder.append(",");
+                        }
+                        testSampleTypeMapBuilder.append(testId).append(":").append(sampleTypeId);
+                    }
+
+                    // Create a new sample object with the resolved sample type
+                    ExternalOrderRequest.ExternalOrderSample splitSample = new ExternalOrderRequest.ExternalOrderSample();
+                    splitSample.setSampleTypeId(sampleTypeId);
+                    splitSample.setCollectionDate(originalSample.getCollectionDate());
+                    splitSample.setCollectionTime(originalSample.getCollectionTime());
+                    splitSample.setCollector(originalSample.getCollector());
+                    splitSample.setQuantity(originalSample.getQuantity());
+                    splitSample.setUom(originalSample.getUom());
+
+                    expandedSamples.add(splitSample);
+                    expandedTestIds.add(testsForType);
+                    // Panels are associated with original sample, not split by type
+                    // For simplicity, panels remain with first sample type group
+                    expandedPanelIds.add(new ArrayList<>());
+                    expandedTestSampleTypeMaps.add(testSampleTypeMapBuilder.toString());
+                }
+
+                // Add panels to the first sample type group only
+                if (!allPanelIds.isEmpty() && !expandedPanelIds.isEmpty()) {
+                    expandedPanelIds.set(0, new ArrayList<>(allPanelIds));
+                }
             }
         }
 
-        form.setSampleXML(xmlBuilder.buildSamplesXml(samples, sampleTestIds, samplePanelIds));
+        form.setSampleXML(xmlBuilder.buildSamplesXml(expandedSamples, expandedTestIds, expandedPanelIds,
+                expandedTestSampleTypeMaps));
         return form;
     }
 
@@ -233,7 +301,8 @@ public class ExternalOrderFormMapperServiceImpl implements ExternalOrderFormMapp
             return;
         }
 
-        // If only ID is provided, populate display name so the UI doesn't show raw numeric IDs.
+        // If only ID is provided, populate display name so the UI doesn't show raw
+        // numeric IDs.
         if (sampleOrderItems.getReferringSiteId() != null && !sampleOrderItems.getReferringSiteId().trim().isEmpty()
                 && (sampleOrderItems.getReferringSiteName() == null
                         || sampleOrderItems.getReferringSiteName().trim().isEmpty())) {
@@ -243,7 +312,8 @@ public class ExternalOrderFormMapperServiceImpl implements ExternalOrderFormMapp
             }
         }
 
-        // If only free-text name is provided, try to resolve an existing organization ID (best-effort).
+        // If only free-text name is provided, try to resolve an existing organization
+        // ID (best-effort).
         if ((sampleOrderItems.getReferringSiteId() == null || sampleOrderItems.getReferringSiteId().trim().isEmpty())
                 && sampleOrderItems.getReferringSiteName() != null
                 && !sampleOrderItems.getReferringSiteName().trim().isEmpty()) {
@@ -290,7 +360,8 @@ public class ExternalOrderFormMapperServiceImpl implements ExternalOrderFormMapp
             }
         }
 
-        if (sampleOrderItems.getProviderFirstName() == null || sampleOrderItems.getProviderFirstName().trim().isEmpty()) {
+        if (sampleOrderItems.getProviderFirstName() == null
+                || sampleOrderItems.getProviderFirstName().trim().isEmpty()) {
             sampleOrderItems.setProviderFirstName("Unknown");
         }
         if (sampleOrderItems.getProviderLastName() == null || sampleOrderItems.getProviderLastName().trim().isEmpty()) {
@@ -331,8 +402,8 @@ public class ExternalOrderFormMapperServiceImpl implements ExternalOrderFormMapp
     private String generateAccessionNumber() {
         int attempts = 0;
         while (attempts < 100) {
-            String candidate = AccessionNumberUtil.getMainAccessionNumberGenerator().getNextAvailableAccessionNumber(null,
-                    true);
+            String candidate = AccessionNumberUtil.getMainAccessionNumberGenerator()
+                    .getNextAvailableAccessionNumber(null, true);
             if (candidate != null && !AccessionNumberUtil.isUsed(candidate)) {
                 return candidate;
             }

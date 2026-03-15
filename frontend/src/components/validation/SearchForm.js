@@ -20,6 +20,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { Formik, Field } from "formik";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
 import { getFromOpenElisServer, Roles } from "../utils/Utils";
+import { stripBasePath } from "../utils/Navigation";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 import { format } from "date-fns";
@@ -175,22 +176,23 @@ const SearchForm = (props) => {
 
   useEffect(() => {
     var param = "";
-    if (window.location.pathname == "/validation") {
+    const pathname = stripBasePath(window.location.pathname);
+    if (pathname == "/validation") {
       param = new URLSearchParams(window.location.search).get("type");
-    } else if (window.location.pathname == "/ResultValidation") {
+    } else if (pathname == "/ResultValidation") {
       param = "routine";
-    } else if (window.location.pathname == "/AccessionValidation") {
+    } else if (pathname == "/AccessionValidation") {
       param = "order";
-    } else if (window.location.pathname == "/AccessionValidationRange") {
+    } else if (pathname == "/AccessionValidationRange") {
       param = "range";
-    } else if (window.location.pathname == "/ResultValidationByTestDate") {
+    } else if (pathname == "/ResultValidationByTestDate") {
       param = "testDate";
     }
     setSearchBy(param);
     if (param === "order") {
       setDoRagnge(false);
     }
-    switch (searchBy) {
+    switch (param) {
       case "routine": {
         let testSectionId = new URLSearchParams(window.location.search).get(
           "testSectionId",

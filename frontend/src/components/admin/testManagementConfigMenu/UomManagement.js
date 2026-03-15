@@ -86,7 +86,10 @@ function UomManagement() {
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <UnorderedList>
-                <ClickableTile href={getFullPath("/MasterListsPage/UomCreate")} id="UomCreate">
+                <ClickableTile
+                  href={getFullPath("/MasterListsPage/UomCreate")}
+                  id="UomCreate"
+                >
                   <FormattedMessage id="configuration.uom.create" />
                 </ClickableTile>
               </UnorderedList>

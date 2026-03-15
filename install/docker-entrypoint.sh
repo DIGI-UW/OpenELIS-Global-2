@@ -29,7 +29,7 @@ if [ -f /usr/local/tomcat/conf/server.xml ]; then
     # Enable HTTP connector on port 8080 (uncomment it)
     sed -i 's|<!-- <Connector port="8080" protocol="HTTP/1.1"|          <Connector port="8080" protocol="HTTP/1.1"|g' /usr/local/tomcat/conf/server.xml
     sed -i 's|               redirectPort="8443" /> -->|               redirectPort="8443" />|g' /usr/local/tomcat/conf/server.xml
-    
+
     # Add RemoteIpValve to trust proxy headers (so HTTPS redirects work correctly behind proxy)
     # This tells Tomcat to trust X-Forwarded-Proto header from the gateway
     if ! grep -q "RemoteIpValve" /usr/local/tomcat/conf/server.xml; then
@@ -56,15 +56,15 @@ REMOTEIP_VALVE
         sed -i 's|192\.168\.d{1,3}\.d{1,3}|192\\.168\\.\\d{1,3}\\.\\d{1,3}|g' /usr/local/tomcat/conf/server.xml
         echo "Fixed RemoteIpValve regex pattern"
     fi
-    
+
     # Update context path - handle both old format (/api/OpenELIS-Global/) and new format
     sed -i "s|path=\"/api/OpenELIS-Global/\"|path=\"${CONTEXT_PATH}\"|g" /usr/local/tomcat/conf/server.xml
     sed -i "s|path=\"/api/OpenELIS-Global\"|path=\"${CONTEXT_PATH}\"|g" /usr/local/tomcat/conf/server.xml
     sed -i "s|path=\"/lab\"|path=\"${CONTEXT_PATH}\"|g" /usr/local/tomcat/conf/server.xml
-    
+
     # Remove ROOT context if it exists (we don't need /api anymore)
     sed -i '/<Context docBase="ROOT" path="\/api"\/>/d' /usr/local/tomcat/conf/server.xml
-    
+
     echo "Updated server.xml: enabled HTTP connector and set context path to ${CONTEXT_PATH}"
 else
     echo "WARNING: server.xml not found at /usr/local/tomcat/conf/server.xml"

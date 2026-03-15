@@ -132,7 +132,8 @@ const Index = () => {
         });
 
         const mappedSamples = mapSamplesFromXml(form.sampleXML);
-        const initialSamples = mappedSamples.length > 0 ? mappedSamples : [sampleObject];
+        const initialSamples =
+          mappedSamples.length > 0 ? mappedSamples : [sampleObject];
         setSamples(initialSamples);
         resolveIncomingSampleNames(initialSamples);
         setPage(orderPageNumber);
@@ -198,10 +199,7 @@ const Index = () => {
                       return {
                         ...t,
                         name:
-                          testsById[id] ||
-                          globalTestsById[id] ||
-                          t.name ||
-                          id,
+                          testsById[id] || globalTestsById[id] || t.name || id,
                       };
                     })
                   : current.tests,
@@ -880,7 +878,10 @@ const Index = () => {
     if (payload.patientProperties && "days" in payload.patientProperties) {
       delete payload.patientProperties.days;
     }
-    if (payload.sampleOrderItems && "questionnaire" in payload.sampleOrderItems) {
+    if (
+      payload.sampleOrderItems &&
+      "questionnaire" in payload.sampleOrderItems
+    ) {
       delete payload.sampleOrderItems.questionnaire;
     }
 

@@ -1,6 +1,9 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
 
+    <!-- Empty type_of_sample table to ensure truncation before test -->
+    <type_of_sample />
+
     <system_role id="501" name="Global Administrator"
         description="Change tests panels etc." is_grouping_role="false"
         display_key="role.maintenance" active="1" editable="false" />

@@ -6,13 +6,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.odoo.client.OdooClient;
 import org.openelisglobal.odoo.client.OdooConnection;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.test.valueholder.Test;
-import org.openelisglobal.localization.valueholder.Localization;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -138,7 +138,8 @@ public class OdooPanelComboService {
 
     private void linkComboToPanelProduct(Integer panelTemplateId, Integer comboId, Panel panel) {
         try {
-            // Use Odoo M2M command: [(6, 0, [comboId])] to replace combo_ids with this combo
+            // Use Odoo M2M command: [(6, 0, [comboId])] to replace combo_ids with this
+            // combo
             List<Object> command = new ArrayList<>();
             command.add(6); // replace
             command.add(0);
@@ -152,8 +153,8 @@ public class OdooPanelComboService {
 
             List<Object> writeParams = List.of(List.of(panelTemplateId), update);
             Boolean success = odooClient.write("product.template", writeParams);
-            log.info("Linked combo {} to panel product.template {} for panel {}, success={}", comboId,
-                    panelTemplateId, panel.getId(), success);
+            log.info("Linked combo {} to panel product.template {} for panel {}, success={}", comboId, panelTemplateId,
+                    panel.getId(), success);
         } catch (Exception e) {
             log.warn("Failed to link combo {} to panel product.template {} for panel {}: {}", comboId, panelTemplateId,
                     panel.getId(), e.getMessage());

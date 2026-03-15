@@ -491,10 +491,7 @@ export default function GenericSampleOrder({
                     defaultMessage="Create Another Sample"
                   />
                 </Button>
-                <Button
-                  kind="tertiary"
-                  onClick={() => (navigateTo("/"))}
-                >
+                <Button kind="tertiary" onClick={() => navigateTo("/")}>
                   <FormattedMessage id="button.home" defaultMessage="Home" />
                 </Button>
               </div>

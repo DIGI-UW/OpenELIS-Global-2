@@ -7,9 +7,21 @@ import {
   SideNavMenuItem,
 } from "@carbon/react";
 import PathRoute from "../utils/PathRoute";
+import { getFullPath } from "../utils/Navigation";
 
 const GlobalSideBar = (props) => {
   const { sideNav } = props;
+
+  // Helper to resolve link: use getFullPath for internal links, pass through external links
+  const resolveLink = (link) => {
+    if (!link) return link;
+    // External links (http/https) should not be prefixed
+    if (link.startsWith("http://") || link.startsWith("https://")) {
+      return link;
+    }
+    // Internal links get the base path prefix
+    return getFullPath(link);
+  };
 
   return (
     <>
@@ -29,7 +41,7 @@ const GlobalSideBar = (props) => {
                       <div key={index + "_" + subIndex}>
                         <SideNavMenuItem
                           key={index + "_" + subIndex}
-                          href={subItem.link}
+                          href={resolveLink(subItem.link)}
                         >
                           {subItem.label}
                         </SideNavMenuItem>

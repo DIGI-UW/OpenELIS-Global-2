@@ -249,7 +249,7 @@ function UomCreate() {
             )}
           </Grid>
         </div>
-      </div >
+      </div>
 
       <Modal
         open={isConfirmModalOpen}

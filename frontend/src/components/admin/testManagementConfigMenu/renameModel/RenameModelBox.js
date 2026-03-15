@@ -30,6 +30,10 @@ const RenameModelBox = ({
   langPost,
   selectedItem,
   hasFrench,
+  showPrice = false,
+  priceValue = "",
+  onPriceChange,
+  priceError = false,
 }) => {
   return (
     <>
@@ -153,6 +157,30 @@ const RenameModelBox = ({
                   />
                 </>
               )}
+              {showPrice && (
+                <>
+                  <br />
+                  <br />
+                  <>
+                    <FormattedMessage id="field.price" /> : {lang?.price || ""}
+                  </>
+                  <br />
+                  <br />
+                  <TextInput
+                    id={`price`}
+                    labelText=""
+                    hideLabel
+                    value={priceValue || ""}
+                    onChange={(e) => {
+                      if (onPriceChange) {
+                        onPriceChange(e);
+                      }
+                    }}
+                    invalid={priceError}
+                    invalidText="Price must be a number with up to 2 decimal places"
+                  />
+                </>
+              )}
             </Column>
           </Grid>
         ) : (
@@ -197,6 +225,10 @@ RenameModelBox.propTypes = {
   lang: PropTypes.object.isRequired,
   langPost: PropTypes.object.isRequired,
   selectedItem: PropTypes.object.isRequired,
+  showPrice: PropTypes.bool,
+  priceValue: PropTypes.string,
+  onPriceChange: PropTypes.func,
+  priceError: PropTypes.bool,
 };
 
 export default injectIntl(RenameModelBox);

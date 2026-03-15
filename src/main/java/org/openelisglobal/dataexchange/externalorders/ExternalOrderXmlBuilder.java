@@ -6,8 +6,22 @@ import org.openelisglobal.dataexchange.externalorders.dto.ExternalOrderRequest;
 
 public class ExternalOrderXmlBuilder {
 
-    public String buildSamplesXml(List<ExternalOrderRequest.ExternalOrderSample> samples, List<List<String>> sampleTestIds,
-            List<List<String>> samplePanelIds) {
+    /**
+     * Builds sample XML with testSampleTypeMap populated for proper UI test
+     * checkbox rendering.
+     * 
+     * @param samples                  List of sample objects (may be expanded from
+     *                                 original request if tests span multiple
+     *                                 sample types)
+     * @param sampleTestIds            Test IDs for each sample
+     * @param samplePanelIds           Panel IDs for each sample
+     * @param sampleTestSampleTypeMaps testSampleTypeMap strings for each sample
+     *                                 (format: "testId:sampleTypeId,...")
+     * @return XML string for samples
+     */
+    public String buildSamplesXml(List<ExternalOrderRequest.ExternalOrderSample> samples,
+            List<List<String>> sampleTestIds, List<List<String>> samplePanelIds,
+            List<String> sampleTestSampleTypeMaps) {
 
         StringBuilder sb = new StringBuilder();
         sb.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
@@ -17,6 +31,9 @@ public class ExternalOrderXmlBuilder {
             ExternalOrderRequest.ExternalOrderSample sample = samples.get(i);
             List<String> testIds = sampleTestIds.get(i);
             List<String> panelIds = samplePanelIds.get(i);
+            String testSampleTypeMap = (sampleTestSampleTypeMaps != null && i < sampleTestSampleTypeMaps.size())
+                    ? sampleTestSampleTypeMaps.get(i)
+                    : "";
 
             sb.append("<sample");
             appendAttr(sb, "sampleID", sample.getSampleTypeId());
@@ -27,7 +44,7 @@ public class ExternalOrderXmlBuilder {
             appendAttr(sb, "uom", nullToEmpty(sample.getUom()));
             appendAttr(sb, "tests", joinComma(testIds));
             appendAttr(sb, "testSectionMap", "");
-            appendAttr(sb, "testSampleTypeMap", "");
+            appendAttr(sb, "testSampleTypeMap", nullToEmpty(testSampleTypeMap));
             appendAttr(sb, "panels", joinComma(panelIds));
             appendAttr(sb, "rejected", "false");
             appendAttr(sb, "rejectReasonId", "");
@@ -40,6 +57,18 @@ public class ExternalOrderXmlBuilder {
 
         sb.append("</samples>");
         return sb.toString();
+    }
+
+    /**
+     * Legacy method for backward compatibility - builds XML without
+     * testSampleTypeMap.
+     * 
+     * @deprecated Use {@link #buildSamplesXml(List, List, List, List)} instead.
+     */
+    @Deprecated
+    public String buildSamplesXml(List<ExternalOrderRequest.ExternalOrderSample> samples,
+            List<List<String>> sampleTestIds, List<List<String>> samplePanelIds) {
+        return buildSamplesXml(samples, sampleTestIds, samplePanelIds, null);
     }
 
     private static void appendAttr(StringBuilder sb, String name, String value) {
@@ -67,7 +96,7 @@ public class ExternalOrderXmlBuilder {
         if (s == null) {
             return "";
         }
-        return s.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;")
-                .replace(">", "&gt;").replace("'", "&apos;");
+        return s.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;").replace("'",
+                "&apos;");
     }
 }

@@ -495,9 +495,7 @@ const SampleBatchEntry = (props) => {
               <Grid>
                 <Button
                   data-cy="finishButton"
-                  onClick={() =>
-                    (navigateTo("/SampleBatchEntrySetup"))
-                  }
+                  onClick={() => navigateTo("/SampleBatchEntrySetup")}
                 >
                   <FormattedMessage id="label.button.finish" />
                 </Button>

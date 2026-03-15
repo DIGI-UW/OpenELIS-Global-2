@@ -53,9 +53,16 @@ function TestAdd() {
       }, 500);
     }
     setIsLoading(true);
+    const normalizedUom =
+      values && values.uom && values.uom !== "" ? values.uom : "0";
+
+    const payload = {
+      ...values,
+      uom: normalizedUom,
+    };
     postToOpenElisServerJsonResponse(
       `/rest/TestAdd`,
-      JSON.stringify({ jsonWad: JSON.stringify(values) }),
+      JSON.stringify({ jsonWad: JSON.stringify(payload) }),
       (res) => {
         handelTestAddPostCallback(res);
       },

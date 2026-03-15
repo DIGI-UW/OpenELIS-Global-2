@@ -182,8 +182,7 @@ public class OdooTestProductService {
             log.info("Created Odoo product category with ID {} for test section {}", categoryId, categoryName);
             return categoryId;
         } catch (Exception e) {
-            log.warn("Failed to resolve or create Odoo category for test section {}: {}", categoryName,
-                    e.getMessage());
+            log.warn("Failed to resolve or create Odoo category for test section {}: {}", categoryName, e.getMessage());
             return null;
         }
     }

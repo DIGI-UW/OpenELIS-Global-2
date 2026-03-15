@@ -235,14 +235,12 @@ public class PatientDashBoardProvider {
 
                 if (sample != null) {
                     orderBean.setPriority(sample.getPriority() != null ? sample.getPriority().toString() : "");
-                    orderBean.setLabNumber(
-                            sample.getAccessionNumber() != null ? sample.getAccessionNumber() : "");
+                    orderBean.setLabNumber(sample.getAccessionNumber() != null ? sample.getAccessionNumber() : "");
                     orderBean.setPatientId(sampleHumanService.getPatientForSample(sample).getNationalId());
                 }
 
                 orderBean.setOrderDate(analysis.getStartedDateForDisplay());
-                orderBean.setTestSection(
-                        analysis.getTestSection() != null ? analysis.getTestSection().getId() : "");
+                orderBean.setTestSection(analysis.getTestSection() != null ? analysis.getTestSection().getId() : "");
                 orderBean.setTestCount(1);
 
                 labNumberToBeanMap.put(key, orderBean);
@@ -462,6 +460,31 @@ public class PatientDashBoardProvider {
         if (GenericValidator.isBlankOrNull(requestedPage)) {
             List<Analysis> analyses = analysisService
                     .getAnalysesForStatusId(iStatusService.getStatusID(AnalysisStatus.NotStarted));
+            orderDisplayBeans = convertAnalysesToGroupedOrderBean(analyses);
+
+            paging.setDatabaseResults(request, response, orderDisplayBeans);
+        } else {
+            int requestedPageNumber = Integer.parseInt(requestedPage);
+
+            paging.page(request, response, requestedPageNumber);
+        }
+
+        return response;
+    }
+
+    @GetMapping(value = "home-dashboard/VALIDATION-Grouped", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public PatientDashBoardForm getGroupedValidationOrders(HttpServletRequest request)
+            throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
+
+        PatientDashBoardForm response = new PatientDashBoardForm();
+        PatientDashBoardPaging paging = new PatientDashBoardPaging();
+        List<OrderDisplayBean> orderDisplayBeans = new ArrayList<>();
+
+        String requestedPage = request.getParameter("page");
+        if (GenericValidator.isBlankOrNull(requestedPage)) {
+            List<Analysis> analyses = analysisService
+                    .getAnalysesForStatusId(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
             orderDisplayBeans = convertAnalysesToGroupedOrderBean(analyses);
 
             paging.setDatabaseResults(request, response, orderDisplayBeans);

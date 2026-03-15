@@ -12,12 +12,12 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 /**
- * Event listener for syncing OpenELIS tests to OpenMRS via FHIR.
- * Listens to TestCreatedEvent and triggers FHIR sync.
+ * Event listener for syncing OpenELIS tests to OpenMRS via FHIR. Listens to
+ * TestCreatedEvent and triggers FHIR sync.
  * 
  * Runs AFTER Odoo listener (Order 2) to avoid interfering with existing
- * integrations.
- * Async and non-blocking to prevent impacting test creation/update performance.
+ * integrations. Async and non-blocking to prevent impacting test
+ * creation/update performance.
  */
 @Component
 public class TestFhirSyncEventListener {
@@ -29,8 +29,8 @@ public class TestFhirSyncEventListener {
     private boolean syncEnabled;
 
     /**
-     * Handle test created/updated events.
-     * Syncs the test to configured FHIR servers (OpenMRS).
+     * Handle test created/updated events. Syncs the test to configured FHIR servers
+     * (OpenMRS).
      * 
      * @param event the test created event
      */
@@ -49,9 +49,8 @@ public class TestFhirSyncEventListener {
             boolean isUpdate = event.isUpdate();
 
             String operation = isUpdate ? "UPDATE" : "CREATE";
-            LogEvent.logInfo(this.getClass().getSimpleName(), "handleTestCreatedEvent",
-                    "Syncing test to FHIR: " + test.getDescription() + " (operation=" + operation + ", guid="
-                            + test.getGuid() + ")");
+            LogEvent.logInfo(this.getClass().getSimpleName(), "handleTestCreatedEvent", "Syncing test to FHIR: "
+                    + test.getDescription() + " (operation=" + operation + ", guid=" + test.getGuid() + ")");
 
             // Trigger async FHIR sync
             testFhirTransformService.syncTestToFhir(test, isUpdate);

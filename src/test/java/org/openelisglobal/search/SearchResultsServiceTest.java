@@ -85,7 +85,7 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
         String gender = "M";
 
         List<PatientSearchResults> searchResults = DBSearchResultsServiceImpl.getSearchResults(searchLastName,
-                searchFirstName, null, null, null, null, null, null, searchDateOfBirth, searchGender);
+                searchFirstName, null, null, null, null, null, null, searchDateOfBirth, searchGender, null);
 
         Assert.assertEquals(1, searchResults.size());
         PatientSearchResults result = searchResults.get(0);
@@ -105,7 +105,7 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
         String gender = "M";
 
         List<PatientSearchResults> searchResults = DBSearchResultsServiceImpl.getSearchResultsExact(searchLastName,
-                searchFirstName, null, null, null, null, null, null, searchDateOfBirth, searchGender);
+                searchFirstName, null, null, null, null, null, null, searchDateOfBirth, searchGender, null);
 
         Assert.assertEquals(1, searchResults.size());
         PatientSearchResults result = searchResults.get(0);
@@ -126,7 +126,7 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
         String patientId = patientService.insert(pat);
 
         List<PatientSearchResults> searchResults = luceneSearchResultsServiceImpl.getSearchResults(searchLastName,
-                searchFirstName, null, null, null, null, null, null, searchDateOfBirth, searchGender);
+                searchFirstName, null, null, null, null, null, null, searchDateOfBirth, searchGender, null);
 
         Assert.assertEquals(1, searchResults.size());
         PatientSearchResults result = searchResults.get(0);
@@ -151,7 +151,7 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
         String patientId = patientService.insert(pat);
 
         List<PatientSearchResults> searchResults = luceneSearchResultsServiceImpl.getSearchResultsExact(searchLastName,
-                searchFirstName, null, null, null, null, null, null, searchDateOfBirth, searchGender);
+                searchFirstName, null, null, null, null, null, null, searchDateOfBirth, searchGender, null);
 
         Assert.assertEquals(1, searchResults.size());
         PatientSearchResults result = searchResults.get(0);
@@ -219,7 +219,7 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
 
         // Search by merged patient's national ID
         List<PatientSearchResults> searchResults = DBSearchResultsServiceImpl.getSearchResults(null, null, null, null,
-                "MERGED-001", null, null, null, null, null);
+                "MERGED-001", null, null, null, null, null, null);
 
         // Should return primary patient, not merged patient
         Assert.assertEquals(1, searchResults.size());
@@ -253,7 +253,7 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
         // Search by merged patient's name - should return the merged patient (no
         // redirect)
         List<PatientSearchResults> searchResults = DBSearchResultsServiceImpl.getSearchResults("Merged", "Jane", null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         // Should return merged patient since we searched by name, not identifier
         Assert.assertEquals(1, searchResults.size());
@@ -284,7 +284,7 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
 
         // Search by partial national ID that matches both
         List<PatientSearchResults> searchResults = DBSearchResultsServiceImpl.getSearchResults(null, null, null, null,
-                "TEST", null, null, null, null, null);
+                "TEST", null, null, null, null, null, null);
 
         // Should return only the primary patient (deduplicated)
         Assert.assertEquals(1, searchResults.size());
@@ -305,7 +305,7 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
 
         // Search by national ID
         List<PatientSearchResults> searchResults = DBSearchResultsServiceImpl.getSearchResults(null, null, null, null,
-                "NORMAL-001", null, null, null, null, null);
+                "NORMAL-001", null, null, null, null, null, null);
 
         // Should return the patient normally
         Assert.assertEquals(1, searchResults.size());
@@ -337,7 +337,7 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
 
         // Search by merged patient's exact national ID
         List<PatientSearchResults> searchResults = DBSearchResultsServiceImpl.getSearchResultsExact(null, null, null,
-                null, "MERGED-EXACT", null, null, null, null, null);
+                null, "MERGED-EXACT", null, null, null, null, null, null);
 
         // Should return primary patient
         Assert.assertEquals(1, searchResults.size());

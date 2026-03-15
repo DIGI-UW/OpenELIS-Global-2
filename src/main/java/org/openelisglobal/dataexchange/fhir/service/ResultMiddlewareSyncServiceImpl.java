@@ -14,8 +14,8 @@ import org.springframework.stereotype.Service;
  * Default implementation of {@link ResultMiddlewareSyncService} that sends
  * validated result FHIR Bundles to an external middleware via HTTP POST.
  *
- * Behaviour is fully controlled via configuration properties and is disabled
- * by default to avoid impacting existing deployments.
+ * Behaviour is fully controlled via configuration properties and is disabled by
+ * default to avoid impacting existing deployments.
  */
 @Service
 public class ResultMiddlewareSyncServiceImpl implements ResultMiddlewareSyncService {
@@ -60,8 +60,8 @@ public class ResultMiddlewareSyncServiceImpl implements ResultMiddlewareSyncServ
                             + ", url=" + middlewareUrl);
 
             ReportTransmission transmission = new ReportTransmission();
-            transmission.sendRawReport(json, middlewareUrl, true, null, HTTP_TYPE.POST,
-                    "X-Nidan-Webhook-Secret", middlewareSecret);
+            transmission.sendRawReport(json, middlewareUrl, true, null, HTTP_TYPE.POST, "X-Nidan-Webhook-Secret",
+                    middlewareSecret);
 
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "sendValidatedResultsBundle",

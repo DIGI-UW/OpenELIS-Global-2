@@ -125,8 +125,7 @@ public class ReportTransmission {
     }
 
     public void sendRawReport(String contents, String url, boolean sendAsychronously,
-            ITransmissionResponseHandler responseHandler, HTTP_TYPE httpType,
-            String headerName, String headerValue) {
+            ITransmissionResponseHandler responseHandler, HTTP_TYPE httpType, String headerName, String headerValue) {
         try {
             IExternalSender sender;
             switch (httpType) {

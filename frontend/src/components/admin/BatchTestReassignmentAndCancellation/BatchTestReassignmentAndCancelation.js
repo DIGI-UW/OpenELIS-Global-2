@@ -509,8 +509,8 @@ function BatchTestReassignmentAndCancelation() {
                 onChange={(e) => handleSampleTypeListSelectIdTest(e)}
               >
                 {sampleTypeToGetIdData &&
-                  sampleTypeToGetIdData.tests &&
-                  sampleTypeToGetIdData.tests.length > 0 ? (
+                sampleTypeToGetIdData.tests &&
+                sampleTypeToGetIdData.tests.length > 0 ? (
                   sampleTypeToGetIdData.tests.map((section) => (
                     <SelectItem
                       key={section.id}
@@ -568,8 +568,8 @@ function BatchTestReassignmentAndCancelation() {
                 onChange={(e) => handleSampleTypeListSelectIdTestTag(e)}
               >
                 {sampleTypeToGetIdDataTag &&
-                  sampleTypeToGetIdDataTag.tests &&
-                  sampleTypeToGetIdDataTag.tests.length > 0 ? (
+                sampleTypeToGetIdDataTag.tests &&
+                sampleTypeToGetIdDataTag.tests.length > 0 ? (
                   sampleTypeToGetIdDataTag.tests.map((section) => (
                     <SelectItem
                       key={section.id}
@@ -590,7 +590,7 @@ function BatchTestReassignmentAndCancelation() {
                 style={{ marginBottom: "1.188rem" }}
               >
                 {sampleTestTypeToGetTagList &&
-                  sampleTestTypeToGetTagList.length ? (
+                sampleTestTypeToGetTagList.length ? (
                   <>
                     {sampleTestTypeToGetTagList.map((section, index) => (
                       <Tag
@@ -622,7 +622,7 @@ function BatchTestReassignmentAndCancelation() {
           <Grid fullWidth={true}>
             <Column lg={4} md={4} sm={2}>
               {sampleTypeTestIdToGetIdPendingData &&
-                sampleTypeTestIdToGetIdPendingData.notStarted ? (
+              sampleTypeTestIdToGetIdPendingData.notStarted ? (
                 <>
                   <FormattedMessage id="label.analysisNotStarted" />
                   <br />
@@ -663,7 +663,7 @@ function BatchTestReassignmentAndCancelation() {
             </Column>
             <Column lg={4} md={4} sm={2}>
               {sampleTypeTestIdToGetIdPendingData &&
-                sampleTypeTestIdToGetIdPendingData.technicianRejection ? (
+              sampleTypeTestIdToGetIdPendingData.technicianRejection ? (
                 <>
                   <FormattedMessage id="label.rejectedByTechnician" />
                   <br />
@@ -704,7 +704,7 @@ function BatchTestReassignmentAndCancelation() {
             </Column>
             <Column lg={4} md={4} sm={2}>
               {sampleTypeTestIdToGetIdPendingData &&
-                sampleTypeTestIdToGetIdPendingData.biologistRejection ? (
+              sampleTypeTestIdToGetIdPendingData.biologistRejection ? (
                 <>
                   <FormattedMessage id="label.rejectedByBiologist" />
                   <br />
@@ -745,7 +745,7 @@ function BatchTestReassignmentAndCancelation() {
             </Column>
             <Column lg={4} md={4} sm={2}>
               {sampleTypeTestIdToGetIdPendingData &&
-                sampleTypeTestIdToGetIdPendingData.notValidated ? (
+              sampleTypeTestIdToGetIdPendingData.notValidated ? (
                 <>
                   <FormattedMessage id="label.notValidated" />
                   <br />
@@ -808,9 +808,7 @@ function BatchTestReassignmentAndCancelation() {
                 data-cy="cancelButton"
                 onClick={() => {
                   resetToDefault();
-                  assignTo(
-                    "/MasterListsPage",
-                  )
+                  assignTo("/MasterListsPage");
                 }}
                 kind="tertiary"
                 type="button"
@@ -1016,11 +1014,7 @@ function BatchTestReassignmentAndCancelation() {
                     <FormattedMessage id="column.name.accept" />
                   </Button>{" "}
                   <Button
-                    onClick={() =>
-                      assignTo(
-                        "/MasterListsPage",
-                      )
-                    }
+                    onClick={() => assignTo("/MasterListsPage")}
                     kind="tertiary"
                     type="button"
                   >
@@ -1033,7 +1027,7 @@ function BatchTestReassignmentAndCancelation() {
             <></>
           )}
         </div>
-      </div >
+      </div>
     </>
   );
 }

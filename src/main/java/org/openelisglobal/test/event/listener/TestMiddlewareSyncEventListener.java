@@ -25,9 +25,8 @@ public class TestMiddlewareSyncEventListener {
             boolean isUpdate = event.isUpdate();
 
             String operation = isUpdate ? "UPDATE" : "CREATE";
-            LogEvent.logInfo(this.getClass().getSimpleName(), "handleTestCreatedEvent",
-                    "Syncing test to middleware: " + test.getDescription() + " (operation=" + operation + ", guid="
-                            + test.getGuid() + ")");
+            LogEvent.logInfo(this.getClass().getSimpleName(), "handleTestCreatedEvent", "Syncing test to middleware: "
+                    + test.getDescription() + " (operation=" + operation + ", guid=" + test.getGuid() + ")");
 
             testMiddlewareSyncService.syncTestToMiddleware(test, isUpdate);
 

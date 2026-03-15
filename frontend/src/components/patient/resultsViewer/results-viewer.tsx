@@ -8,6 +8,7 @@ import {
   Breadcrumb,
   BreadcrumbItem,
   Tag,
+  Button,
 } from "@carbon/react";
 import { useTranslation } from "react-i18next";
 import { EmptyState, ErrorState } from "./commons";
@@ -36,6 +37,7 @@ interface Patient {
   subjectNumber: string;
   nationalId: string;
   patientPK: number;
+  primaryPhone?: string;
 }
 const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
   const patientObj: Patient = {
@@ -46,6 +48,7 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
     subjectNumber: "",
     nationalId: "",
     patientPK: null,
+    primaryPhone: "",
   };
 
   const { patientId } = useParams();
@@ -137,6 +140,7 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
             dob={patient.birthDateForDisplay}
             subjectNumber={patient.subjectNumber}
             nationalId={patient.nationalId}
+            primaryPhone={patient.primaryPhone}
             className="patient-header2"
           >
             {" "}
@@ -180,6 +184,19 @@ const ResultsViewer: React.FC<ResultsViewerProps> = ({
   const { totalResultsCount } = useContext(FilterContext);
   const { type, testUuid } = useParams();
   const intl = useIntl();
+
+  const handleReportPrint = () => {
+    const reportUrl =
+      `${config.serverBaseUrl}/ReportPrint` +
+      `?report=patientCILNSP_vreduit` +
+      `&type=patient` +
+      `&selPatient=${patientId}` +
+      `&onlyResults=true` +
+      `&dateType=RESULT_DATE`;
+
+    window.open(reportUrl, "_blank");
+  };
+
   return (
     <div className="resultsContainer">
       <div className="resultsHeader">
@@ -188,6 +205,13 @@ const ResultsViewer: React.FC<ResultsViewerProps> = ({
             id: "sidenav.label.results",
           })} ${totalResultsCount ? `(${totalResultsCount})` : ""}`}</h4>
         </div>
+        <Button
+          data-cy="printableVersion"
+          type="button"
+          onClick={handleReportPrint}
+        >
+          Print Result
+        </Button>
       </div>
 
       <div className="flex">

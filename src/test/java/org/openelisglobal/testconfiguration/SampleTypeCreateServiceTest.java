@@ -48,7 +48,7 @@ public class SampleTypeCreateServiceTest extends BaseWebContextSensitiveTest {
         localization.setEnglish("Hi!");
 
         TypeOfSample typeOfSample = new TypeOfSample();
-        typeOfSample.setDescription("Fluidal acids");
+        typeOfSample.setDescription("Test Sample Type Unique");
         typeOfSample.setDomain("H");
         typeOfSample.setLastupdated(Timestamp.valueOf("2024-11-01 12:00:00"));
         typeOfSample.setLocalAbbreviation("Fluids");
@@ -109,8 +109,9 @@ public class SampleTypeCreateServiceTest extends BaseWebContextSensitiveTest {
         // index
         // to avoid issues with test isolation and sorting changes
         TypeOfSample createdSample = newTypeOfSamples.stream()
-                .filter(sample -> "Fluidal acids".equals(sample.getDescription())).findFirst().orElse(null);
-        assertNotNull("Newly created TypeOfSample with description 'Fluidal acids' should be found", createdSample);
+                .filter(sample -> "Test Sample Type Unique".equals(sample.getDescription())).findFirst().orElse(null);
+        assertNotNull("Newly created TypeOfSample with description 'Test Sample Type Unique' should be found",
+                createdSample);
 
         List<SystemModule> newSystemModules = systemModuleService.getAll();
         assertEquals(initialSystemModuleCount + 3, newSystemModules.size());

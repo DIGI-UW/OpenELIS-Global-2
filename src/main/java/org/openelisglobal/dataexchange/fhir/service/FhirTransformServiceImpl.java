@@ -675,17 +675,17 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             return TaskPriority.ROUTINE;
         }
         switch (orderPriority) {
-            case ROUTINE:
-                return TaskPriority.ROUTINE;
-            case ASAP:
-                return TaskPriority.ASAP;
-            case STAT:
-            case FUTURE_STAT:
-                return TaskPriority.STAT;
-            case TIMED:
-                return TaskPriority.URGENT;
-            default:
-                return TaskPriority.ROUTINE;
+        case ROUTINE:
+            return TaskPriority.ROUTINE;
+        case ASAP:
+            return TaskPriority.ASAP;
+        case STAT:
+        case FUTURE_STAT:
+            return TaskPriority.STAT;
+        case TIMED:
+            return TaskPriority.URGENT;
+        default:
+            return TaskPriority.ROUTINE;
         }
     }
 
@@ -694,17 +694,17 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             return ServiceRequestPriority.ROUTINE;
         }
         switch (orderPriority) {
-            case ROUTINE:
-                return ServiceRequestPriority.ROUTINE;
-            case ASAP:
-                return ServiceRequestPriority.ASAP;
-            case STAT:
-            case FUTURE_STAT:
-                return ServiceRequestPriority.STAT;
-            case TIMED:
-                return ServiceRequestPriority.URGENT;
-            default:
-                return ServiceRequestPriority.ROUTINE;
+        case ROUTINE:
+            return ServiceRequestPriority.ROUTINE;
+        case ASAP:
+            return ServiceRequestPriority.ASAP;
+        case STAT:
+        case FUTURE_STAT:
+            return ServiceRequestPriority.STAT;
+        case TIMED:
+            return ServiceRequestPriority.URGENT;
+        default:
+            return ServiceRequestPriority.ROUTINE;
         }
     }
 
@@ -822,15 +822,15 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
 
         switch (fhirPatient.getGender()) {
-            case MALE:
-                patientSearchResults.setGender("M");
-                break;
-            case FEMALE:
-                patientSearchResults.setGender("F");
-                break;
-            default:
-                patientSearchResults.setGender(null);
-                break;
+        case MALE:
+            patientSearchResults.setGender("M");
+            break;
+        case FEMALE:
+            patientSearchResults.setGender("F");
+            break;
+        default:
+            patientSearchResults.setGender(null);
+            break;
         }
 
         if (fhirPatient.getBirthDate() != null) {
@@ -944,9 +944,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         serviceRequest.addIdentifier(
                 this.createIdentifier(fhirConfig.getOeFhirSystem() + "/analysis_uuid", analysis.getFhirUuidAsString()));
         if (sample != null && !GenericValidator.isBlankOrNull(sample.getReferringId())) {
-            serviceRequest.addIdentifier(
-                    this.createIdentifier(fhirConfig.getOeFhirSystem() + "/external_order_uuid",
-                            "sr-" + sample.getReferringId()));
+            serviceRequest.addIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/external_order_uuid",
+                    "sr-" + sample.getReferringId()));
         }
         serviceRequest.setRequisition(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/samp_labNo",
                 analysis.getSampleItem().getSample().getAccessionNumber()));

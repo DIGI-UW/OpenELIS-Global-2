@@ -650,8 +650,8 @@ function OrganizationAddModify() {
                       }
                       value={
                         typeOfActivity &&
-                          typeOfActivity.organization &&
-                          typeOfActivity.organization.organizationName != ""
+                        typeOfActivity.organization &&
+                        typeOfActivity.organization.organizationName != ""
                           ? typeOfActivity.organization.organizationName
                           : ""
                       }
@@ -743,9 +743,9 @@ function OrganizationAddModify() {
                             indeterminate={
                               selectedRowIds.length > 0 &&
                               selectedRowIds.length <
-                              typeOfActivityShow
-                                .slice((page - 1) * pageSize, page * pageSize)
-                                .filter((row) => !row.disabled).length
+                                typeOfActivityShow
+                                  .slice((page - 1) * pageSize, page * pageSize)
+                                  .filter((row) => !row.disabled).length
                             }
                             onSelect={() => {
                               setSaveButton(false);

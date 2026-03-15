@@ -132,7 +132,7 @@ function ImmunohistochemistryDashboard() {
   ) => {
     postToOpenElisServerFullResponse(
       "/rest/immunohistochemistry/assignTechnician?immunohistochemistrySampleId=" +
-      immunohistochemistrySampleId,
+        immunohistochemistrySampleId,
       {},
       refreshItems,
     );
@@ -144,7 +144,7 @@ function ImmunohistochemistryDashboard() {
   ) => {
     postToOpenElisServerFullResponse(
       "/rest/immunohistochemistry/assignPathologist?immunohistochemistrySampleId=" +
-      immunohistochemistrySampleId,
+        immunohistochemistrySampleId,
       {},
       refreshItems,
     );

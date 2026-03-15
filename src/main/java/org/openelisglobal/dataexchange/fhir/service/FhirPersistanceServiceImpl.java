@@ -212,8 +212,8 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
         Bundle bundle = localFhirClient.search() //
                 .forResource(Patient.class) //
                 .returnBundle(Bundle.class) //
-                .where(Patient.IDENTIFIER.exactly()
-                        .systemAndIdentifier(fhirConfig.getOeFhirSystem() + "/pat_guid", guid)) //
+                .where(Patient.IDENTIFIER.exactly().systemAndIdentifier(fhirConfig.getOeFhirSystem() + "/pat_guid",
+                        guid)) //
                 .execute();
         if (bundle.hasEntry()) {
             return Optional.of((Patient) bundle.getEntryFirstRep().getResource());

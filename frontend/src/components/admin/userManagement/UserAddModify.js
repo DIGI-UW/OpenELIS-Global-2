@@ -921,7 +921,7 @@ function UserAddModify() {
                           )) ||
                         (passwordTouched.confirmPassword &&
                           userDataShow.confirmPassword !==
-                          userDataShow.userPassword)
+                            userDataShow.userPassword)
                       }
                       // invalidText={errors.order}
                       value={
@@ -1232,8 +1232,8 @@ function UserAddModify() {
                     <br />
                     <FormGroup legendId="globalRules" legendText="">
                       {userDataShow &&
-                        userDataShow.globalRoles &&
-                        userDataShow.globalRoles.length > 0 ? (
+                      userDataShow.globalRoles &&
+                      userDataShow.globalRoles.length > 0 ? (
                         userDataShow.globalRoles.map((section) => (
                           <Checkbox
                             key={section.elementID}
@@ -1278,11 +1278,11 @@ function UserAddModify() {
                           noLabel={true}
                           defaultValue={
                             userDataShow &&
-                              userDataShow.testSections &&
-                              userDataShow.testSections.length > 0
+                            userDataShow.testSections &&
+                            userDataShow.testSections.length > 0
                               ? userDataShow.testSections.find(
-                                (section) => section.id === key,
-                              )?.id || userDataShow.testSections[0].id
+                                  (section) => section.id === key,
+                                )?.id || userDataShow.testSections[0].id
                               : ""
                           }
                           onChange={(e) =>
@@ -1290,8 +1290,8 @@ function UserAddModify() {
                           }
                         >
                           {userDataShow &&
-                            userDataShow.testSections &&
-                            userDataShow.testSections.length > 0 ? (
+                          userDataShow.testSections &&
+                          userDataShow.testSections.length > 0 ? (
                             userDataShow.testSections
                               .filter(
                                 (section) =>
@@ -1357,8 +1357,8 @@ function UserAddModify() {
                           legendText=""
                         >
                           {userDataShow &&
-                            userDataShow.labUnitRoles &&
-                            userDataShow.labUnitRoles.length > 0 ? (
+                          userDataShow.labUnitRoles &&
+                          userDataShow.labUnitRoles.length > 0 ? (
                             userDataShow.labUnitRoles.map((section) => (
                               <Checkbox
                                 key={`${section.elementID}-${key}`}
@@ -1436,9 +1436,7 @@ function UserAddModify() {
                     </Button>{" "}
                     <Button
                       onClick={() =>
-                        assignTo(
-                          "/MasterListsPage/userManagement",
-                        )
+                        assignTo("/MasterListsPage/userManagement")
                       }
                       data-cy="exitButton"
                       kind="tertiary"

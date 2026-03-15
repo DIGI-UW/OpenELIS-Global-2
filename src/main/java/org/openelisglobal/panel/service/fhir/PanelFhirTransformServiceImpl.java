@@ -22,9 +22,9 @@ import org.springframework.stereotype.Service;
 /**
  * Implementation of Panel FHIR transformation and sync service.
  * 
- * Transforms OpenELIS Panels to FHIR List resources and syncs to OpenMRS:
- * - Panel → FHIR List → OpenMRS LabSet Concept
- * - Panel members (tests) → List entries → Concept setMembers
+ * Transforms OpenELIS Panels to FHIR List resources and syncs to OpenMRS: -
+ * Panel → FHIR List → OpenMRS LabSet Concept - Panel members (tests) → List
+ * entries → Concept setMembers
  */
 @Service
 public class PanelFhirTransformServiceImpl implements PanelFhirTransformService {
@@ -44,14 +44,12 @@ public class PanelFhirTransformServiceImpl implements PanelFhirTransformService 
     @Override
     public void syncPanelToFhir(Panel panel) {
         if (!syncEnabled) {
-            LogEvent.logDebug(this.getClass().getSimpleName(), "syncPanelToFhir",
-                    "Panel FHIR sync is disabled");
+            LogEvent.logDebug(this.getClass().getSimpleName(), "syncPanelToFhir", "Panel FHIR sync is disabled");
             return;
         }
 
         if (panel == null) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "syncPanelToFhir",
-                    "Panel is null, skipping sync");
+            LogEvent.logWarn(this.getClass().getSimpleName(), "syncPanelToFhir", "Panel is null, skipping sync");
             return;
         }
 
@@ -82,11 +80,8 @@ public class PanelFhirTransformServiceImpl implements PanelFhirTransformService 
     /**
      * Transform OpenELIS Panel to FHIR List resource.
      * 
-     * Mapping:
-     * - panel.guid → List.id
-     * - panel.description → List.title
-     * - "current" → List.status
-     * - panel_item.test.guid → List.entry[].item.reference
+     * Mapping: - panel.guid → List.id - panel.description → List.title - "current"
+     * → List.status - panel_item.test.guid → List.entry[].item.reference
      */
     private ListResource transformPanelToList(Panel panel) {
         ListResource list = new ListResource();
@@ -138,9 +133,8 @@ public class PanelFhirTransformServiceImpl implements PanelFhirTransformService 
             }
         }
 
-        LogEvent.logInfo(this.getClass().getSimpleName(), "transformPanelToList",
-                "Transformed panel: " + panel.getDescription() +
-                        " (guid=" + panel.getGuid() + ", members=" + list.getEntry().size() + ")");
+        LogEvent.logInfo(this.getClass().getSimpleName(), "transformPanelToList", "Transformed panel: "
+                + panel.getDescription() + " (guid=" + panel.getGuid() + ", members=" + list.getEntry().size() + ")");
 
         return list;
     }
@@ -154,22 +148,19 @@ public class PanelFhirTransformServiceImpl implements PanelFhirTransformService 
 
             // Add authentication if configured
             if (!GenericValidator.isBlankOrNull(fhirConfig.getUsername())) {
-                IClientInterceptor authInterceptor = new BasicAuthInterceptor(
-                        fhirConfig.getUsername(),
+                IClientInterceptor authInterceptor = new BasicAuthInterceptor(fhirConfig.getUsername(),
                         fhirConfig.getPassword());
                 fhirClient.registerInterceptor(authInterceptor);
             }
 
             // PUT upsert (create or update)
-            MethodOutcome outcome = fhirClient.update()
-                    .resource(list)
-                    .execute();
+            MethodOutcome outcome = fhirClient.update().resource(list).execute();
 
             // Check if this was a create or update
             if (outcome.getCreated() != null && outcome.getCreated()) {
                 LogEvent.logInfo(this.getClass().getSimpleName(), "syncToServer",
-                        "✅ Created Panel in OpenMRS via PUT upsert: " + serverUrl +
-                                " (Panel GUID=" + list.getId() + " preserved as OpenMRS UUID)");
+                        "✅ Created Panel in OpenMRS via PUT upsert: " + serverUrl + " (Panel GUID=" + list.getId()
+                                + " preserved as OpenMRS UUID)");
             } else {
                 LogEvent.logInfo(this.getClass().getSimpleName(), "syncToServer",
                         "✅ Updated Panel in OpenMRS: " + serverUrl + " (id=" + list.getId() + ")");
@@ -184,8 +175,7 @@ public class PanelFhirTransformServiceImpl implements PanelFhirTransformService 
         } catch (ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "syncToServer",
                     "❌ FHIR Server Error - HTTP " + e.getStatusCode() + ": " + e.getMessage());
-            LogEvent.logError(this.getClass().getSimpleName(), "syncToServer",
-                    "Response body: " + e.getResponseBody());
+            LogEvent.logError(this.getClass().getSimpleName(), "syncToServer", "Response body: " + e.getResponseBody());
             throw e;
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "syncToServer",

@@ -100,7 +100,7 @@ function PathologyDashboard() {
   const assignCurrentUserAsPathologist = (event, pathologySampleId) => {
     postToOpenElisServerFullResponse(
       "/rest/pathology/assignPathologist?pathologySampleId=" +
-      pathologySampleId,
+        pathologySampleId,
       {},
       refreshItems,
     );
@@ -187,7 +187,7 @@ function PathologyDashboard() {
   const getSelectedValue = () => {
     const selectedValue =
       filters.statuses.length === inProgressStatuses.length &&
-        filters.statuses.every((status) => inProgressStatuses.includes(status.id))
+      filters.statuses.every((status) => inProgressStatuses.includes(status.id))
         ? "IN_PROGRESS"
         : filters.statuses.length > 1
           ? "All"

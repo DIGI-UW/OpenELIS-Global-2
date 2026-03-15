@@ -70,6 +70,7 @@ services:
         -  lucene_index-vol:/var/lib/lucene_index
     secrets:
         - source: common.properties
+        - source: datasource.password
     healthcheck:
       test: ["CMD", "/healthcheck.sh"]
       timeout: 10s
@@ -146,6 +147,8 @@ services:
 secrets:
   common.properties:
     file:  ./volume/properties/common.properties
+  datasource.password:
+    file:  ./volume/properties/datasource.password
 
 networks:
   default:

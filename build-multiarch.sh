@@ -51,20 +51,20 @@ build_and_push() {
     local dockerfile=$2
     local image_name=$3
     local tag="${DOCKERHUB_USER}/${image_name}:${VERSION}"
-    
+
     echo_info "Building ${image_name}..."
     echo_info "  Context: ${context}"
     echo_info "  Dockerfile: ${dockerfile}"
     echo_info "  Tag: ${tag}"
     echo_info "  Platforms: ${PLATFORMS}"
-    
+
     docker buildx build \
         --platform ${PLATFORMS} \
         --file "${dockerfile}" \
         --tag "${tag}" \
         --push \
         "${context}"
-    
+
     if [ $? -eq 0 ]; then
         echo_info "Successfully built and pushed ${tag}"
     else
@@ -117,4 +117,3 @@ echo_info "  - ${DOCKERHUB_USER}/openelis-global-2-database:${VERSION}"
 echo_info "  - ${DOCKERHUB_USER}/openelis-global-2:${VERSION}"
 echo_info "  - ${DOCKERHUB_USER}/openelis-global-2-fhir:${VERSION}"
 echo_info "  - ${DOCKERHUB_USER}/openelis-global-2-frontend:${VERSION}"
-

@@ -132,10 +132,9 @@ public class PatientManagementRestController extends BaseRestController {
                 java.util.Map<String, Object> body = new java.util.HashMap<>();
                 java.util.List<java.util.Map<String, String>> errorList = new java.util.ArrayList<>();
                 bindingResult.getFieldErrors().forEach(error -> {
-                    errorList.add(java.util.Map.of(
-                            "field", error.getField(),
-                            "code", error.getCode() == null ? "" : error.getCode(),
-                            "message", error.getDefaultMessage() == null ? "" : error.getDefaultMessage()));
+                    errorList.add(java.util.Map.of("field", error.getField(), "code",
+                            error.getCode() == null ? "" : error.getCode(), "message",
+                            error.getDefaultMessage() == null ? "" : error.getDefaultMessage()));
                 });
                 body.put("status", "ERROR");
                 body.put("errors", errorList);
@@ -147,8 +146,7 @@ public class PatientManagementRestController extends BaseRestController {
                     (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD));
             photoService.savePhoto(patient.getId(), patientInfo.getPhoto());
             java.util.Map<String, Object> body = new java.util.HashMap<>();
-            body.put("status",
-                    patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD ? "CREATED" : "UPDATED");
+            body.put("status", patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD ? "CREATED" : "UPDATED");
             body.put("patientId", patient.getId());
             body.put("guid", patientInfo.getGuid());
             body.put("fhirUuid", patient.getFhirUuid() != null ? patient.getFhirUuid().toString() : null);
@@ -158,13 +156,13 @@ public class PatientManagementRestController extends BaseRestController {
             if (e.getCause() instanceof StaleObjectStateException) {
                 LogEvent.logDebug(e);
                 request.setAttribute(ALLOW_EDITS_KEY, "false");
-                return ResponseEntity.status(409).body(
-                        Map.of("status", "ERROR", "message", "Stale object state while saving patient"));
+                return ResponseEntity.status(409)
+                        .body(Map.of("status", "ERROR", "message", "Stale object state while saving patient"));
             } else {
                 LogEvent.logDebug(e);
                 request.setAttribute(ALLOW_EDITS_KEY, "false");
-                return ResponseEntity.status(500).body(
-                        Map.of("status", "ERROR", "message", "Unexpected error while saving patient"));
+                return ResponseEntity.status(500)
+                        .body(Map.of("status", "ERROR", "message", "Unexpected error while saving patient"));
             }
 
         } catch (FhirTransformationException | FhirPersistanceException e) {
@@ -173,9 +171,7 @@ public class PatientManagementRestController extends BaseRestController {
                     .body(Map.of("status", "ERROR", "message", "FHIR transformation/persistence error"));
         } catch (Exception e) {
             LogEvent.logError(e);
-            return ResponseEntity.status(500).body(Map.of(
-                    "status", "ERROR",
-                    "message", "Unexpected server error",
+            return ResponseEntity.status(500).body(Map.of("status", "ERROR", "message", "Unexpected server error",
                     "exception", e.getClass().getSimpleName()));
         }
     }

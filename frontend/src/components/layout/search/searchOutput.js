@@ -1,10 +1,13 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Grid, Column, Section, Tag, Tile } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import Avatar from "react-avatar";
 import { openPatientResults } from "./searchService";
+import { ConfigurationContext } from "../Layout";
 
 const SearchOutput = ({ patientData, className = "patientHead" }) => {
+  const { configurationProperties } = useContext(ConfigurationContext);
+
   return (
     <div>
       {patientData.map((patient) => {
@@ -56,6 +59,17 @@ const SearchOutput = ({ patientData, className = "patientHead" }) => {
                         <FormattedMessage id="patient.natioanalid" /> :{" "}
                         <strong>{patient.nationalId}</strong>
                       </Tag>
+                      {patient.contactPhone && (
+                        <Tag size="md" type="blue">
+                          <FormattedMessage
+                            id="patient.label.primaryphone"
+                            defaultMessage="Primary phone"
+                            values={{ PHONE_FORMAT: "" }}
+                          />
+                          {": "}
+                          <strong>{patient.contactPhone}</strong>
+                        </Tag>
+                      )}
                       {/* <Tag size="md" type="blue">
                         <FormattedMessage id="patient.subject.number" /> :{" "}
                         <strong>{patient.subjectNumber}</strong>

@@ -30,6 +30,7 @@ import {
   convertAlphaNumLabNumForDisplay,
   hasRole,
 } from "../utils/Utils.js";
+import { getFullPath } from "../utils/Navigation";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
@@ -55,7 +56,8 @@ type MetricType =
   | "INCOMING_ORDERS"
   | "AVERAGE_TURN_AROUND_TIME"
   | "DELAYED_TURN_AROUND"
-  | "ORDERS_FOR_USER";
+  | "ORDERS_FOR_USER"
+  | "SAMPLES_TO_COLLECT";
 
 interface UserSessionDetails {
   userSessionDetails: any;
@@ -81,6 +83,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     incomigOrders: 0,
     averageTurnAroudTime: 0,
     delayedTurnAround: 0,
+    samplesToCollect: 0,
   });
 
   const [timeMetrics, setTimeMetrics] = useState({
@@ -117,6 +120,16 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
 
   useEffect(() => {
     getFromOpenElisServer("/rest/home-dashboard/metrics", loadCount);
+    getFromOpenElisServer("/rest/incoming-orders", (data) => {
+      if (!componentMounted.current) {
+        return;
+      }
+      const list = Array.isArray(data) ? data : [];
+      setCounts((prev) => ({
+        ...prev,
+        samplesToCollect: list.length,
+      }));
+    });
 
     return () => {
       // This code runs when component is unmounted
@@ -141,6 +154,15 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
             selectedTile.type +
             "?systemUserId=" +
             selectedTile.id,
+          loadData,
+        );
+      } else if (selectedTile.type == "ORDERS_IN_PROGRESS") {
+        // Always use grouped endpoint for ORDERS_IN_PROGRESS
+        getFromOpenElisServer("/rest/home-dashboard/ORDERS-Grouped", loadData);
+      } else if (selectedTile.type == "ORDERS_READY_FOR_VALIDATION") {
+        // Always use grouped endpoint for ORDERS_READY_FOR_VALIDATION
+        getFromOpenElisServer(
+          "/rest/home-dashboard/VALIDATION-Grouped",
           loadData,
         );
       } else {
@@ -258,52 +280,18 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       value: counts.ordersCompletedToday,
     },
     {
-      title: <FormattedMessage id="dashboard.partially.completed.label" />,
-      subTitle: (
-        <FormattedMessage id="dashboard.partially.completed..subtitle.label" />
-      ),
-      type: "ORDERS_PATIALLY_COMPLETED_TODAY",
-      value: counts.patiallyCompletedToday,
-    },
-    {
       title: <FormattedMessage id="dashboard.user.orders.label" />,
       subTitle: <FormattedMessage id="dashboard.user.orders.subtitle.label" />,
       type: "ORDERS_ENTERED_BY_USER_TODAY",
       value: counts.orderEnterdByUserToday,
     },
     {
-      title: <FormattedMessage id="dashboard.rejected.orders" />,
-      subTitle: <FormattedMessage id="dashboard.rejected.orders.subtitle" />,
-      type: "ORDERS_REJECTED_TODAY",
-      value: counts.ordersRejectedToday,
-    },
-    {
-      title: <FormattedMessage id="dashboard.unprints.results.label" />,
+      title: <FormattedMessage id="dashboard.samplesToCollect.label" />,
       subTitle: (
-        <FormattedMessage id="dashboard.unprints.results.subtitle.label" />
+        <FormattedMessage id="dashboard.samplesToCollect.subtitle.label" />
       ),
-      type: "UN_PRINTED_RESULTS",
-      value: counts.unPritendResults,
-    },
-    {
-      title: <FormattedMessage id="sidenav.label.incomingorder" />,
-      subTitle: <FormattedMessage id="label.electronic.orders" />,
-      type: "INCOMING_ORDERS",
-      value: counts.incomigOrders,
-    },
-    {
-      title: <FormattedMessage id="dashboard.avg.turn.around.label" />,
-      subTitle: (
-        <FormattedMessage id="dashboard.avg.turn.around.subtitle.label" />
-      ),
-      type: "AVERAGE_TURN_AROUND_TIME",
-      value: counts.averageTurnAroudTime,
-    },
-    {
-      title: <FormattedMessage id="dashboard.turn.around.label" />,
-      subTitle: <FormattedMessage id="dashboard.turn.around.subtitle.label" />,
-      type: "DELAYED_TURN_AROUND",
-      value: counts.delayedTurnAround,
+      type: "SAMPLES_TO_COLLECT",
+      value: counts.samplesToCollect,
     },
   ];
 
@@ -328,16 +316,8 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     },
   ];
 
-  const tilesWithTabs = [
-    "ORDERS_IN_PROGRESS",
-    "ORDERS_READY_FOR_VALIDATION",
-    "ORDERS_COMPLETED_TODAY",
-    "ORDERS_REJECTED_TODAY",
-    "UN_PRINTED_RESULTS",
-    "DELAYED_TURN_AROUND",
-    "ORDERS_FOR_USER",
-    "ORDERS_PATIALLY_COMPLETED_TODAY",
-  ];
+  // Tiles that show department tabs (ORDERS_IN_PROGRESS and ORDERS_READY_FOR_VALIDATION excluded - always shows grouped view)
+  const tilesWithTabs = ["ORDERS_COMPLETED_TODAY", "ORDERS_FOR_USER"];
 
   const handleMinimizeClick = () => {
     console.log("Icon clicked!");
@@ -360,6 +340,10 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   };
 
   const handleMaximizeClick = (tile) => {
+    if (tile?.type === "SAMPLES_TO_COLLECT") {
+      window.location.href = getFullPath("/IncomingOrders");
+      return;
+    }
     if (
       testSections?.length > 0 ||
       hasRole(userSessionDetails, "Global Administrator")
@@ -433,9 +417,14 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                   style={{ color: "blue" }}
                   href={
                     selectedTile.type == "ORDERS_IN_PROGRESS"
-                      ? "/result?type=order&doRange=false&accessionNumber=" +
-                        cell.value
-                      : "validation?type=order&accessionNumber=" + cell.value
+                      ? getFullPath(
+                          "/result?type=order&doRange=false&accessionNumber=" +
+                            cell.value,
+                        )
+                      : getFullPath(
+                          "/validation?type=order&accessionNumber=" +
+                            cell.value,
+                        )
                   }
                 >
                   <u>{convertAlphaNumLabNumForDisplay(cell.value)}</u>
@@ -458,6 +447,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     }
   };
 
+  // Headers for per-test view (used by ORDERS_READY_FOR_VALIDATION, ORDERS_COMPLETED_TODAY)
   const orderHeaders = [
     {
       key: "priority",
@@ -478,6 +468,30 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     {
       key: "testName",
       header: <FormattedMessage id="eorder.test.name" />,
+    },
+  ];
+
+  // Headers for grouped view (used by ORDERS_IN_PROGRESS)
+  const groupedOrderHeaders = [
+    {
+      key: "priority",
+      header: <FormattedMessage id="eorder.priority" />,
+    },
+    {
+      key: "orderDate",
+      header: <FormattedMessage id="sample.label.orderdate" />,
+    },
+    {
+      key: "patientId",
+      header: <FormattedMessage id="patient.id" />,
+    },
+    {
+      key: "labNumber",
+      header: <FormattedMessage id="eorder.labNumber" />,
+    },
+    {
+      key: "testCount",
+      header: <FormattedMessage id="eorder.test.count" />,
     },
   ];
 
@@ -667,9 +681,12 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                         )
                         .slice((page - 1) * pageSize, page * pageSize)}
                       headers={
-                        selectedTile.type != "ORDERS_ENTERED_BY_USER_TODAY"
-                          ? orderHeaders
-                          : userHeaders
+                        selectedTile.type == "ORDERS_IN_PROGRESS" ||
+                        selectedTile.type == "ORDERS_READY_FOR_VALIDATION"
+                          ? groupedOrderHeaders
+                          : selectedTile.type != "ORDERS_ENTERED_BY_USER_TODAY"
+                            ? orderHeaders
+                            : userHeaders
                       }
                       isSortable
                     >

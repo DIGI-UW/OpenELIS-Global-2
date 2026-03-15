@@ -87,7 +87,7 @@ const LandingPage: React.FC = () => {
     }
   };
 
-  const handlePostLabUbit = (status) => { };
+  const handlePostLabUbit = (status) => {};
 
   return (
     <Grid
@@ -153,8 +153,9 @@ const LandingPage: React.FC = () => {
               {filteredDepartments?.map((dept) => (
                 <div
                   key={dept.id}
-                  className={`department-item ${selectedDepartment === dept.id ? "selected" : ""
-                    }`}
+                  className={`department-item ${
+                    selectedDepartment === dept.id ? "selected" : ""
+                  }`}
                   style={{
                     padding: "0.75rem",
                     cursor: "pointer",

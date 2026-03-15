@@ -7,7 +7,7 @@ import {
   convertAlphaNumLabNumForDisplay,
   Roles,
 } from "../utils/Utils";
-import { stripBasePath } from "../utils/Navigation";
+import { stripBasePath, getFullPath } from "../utils/Navigation";
 import {
   Form,
   TextInput,
@@ -213,15 +213,15 @@ export function SearchResultForm(props) {
       case "date":
         props.setParam(
           "&selectedTest=" +
-          values.testName +
-          "&selectedSampleStatus=" +
-          values.sampleStatusType +
-          "&selectedAnalysisStatus=" +
-          values.analysisStatus +
-          "&collectionDate=" +
-          values.collectionDate +
-          "&recievedDate=" +
-          values.recievedDate,
+            values.testName +
+            "&selectedSampleStatus=" +
+            values.sampleStatusType +
+            "&selectedAnalysisStatus=" +
+            values.analysisStatus +
+            "&collectionDate=" +
+            values.collectionDate +
+            "&recievedDate=" +
+            values.recievedDate,
         );
         break;
       case "range":
@@ -454,7 +454,7 @@ export function SearchResultForm(props) {
           <Form
             onSubmit={handleSubmit}
             onChange={handleChange}
-          //onBlur={handleBlur}
+            //onBlur={handleBlur}
           >
             <Stack gap={2}>
               <Grid>
@@ -883,10 +883,10 @@ export function SearchResults(props) {
     var win = window.open();
     win.document.write(
       '<iframe src="' +
-      fileType +
-      ";base64," +
-      content +
-      '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
+        fileType +
+        ";base64," +
+        content +
+        '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
     );
   };
 
@@ -1327,7 +1327,7 @@ export function SearchResults(props) {
       locationData?.sample?.id ||
       sampleItemId ||
       (sampleLocations[analysisId] &&
-        typeof sampleLocations[analysisId] === "object"
+      typeof sampleLocations[analysisId] === "object"
         ? sampleLocations[analysisId].sampleItemId
         : null);
 
@@ -1839,12 +1839,13 @@ export function SearchResults(props) {
         kind: NotificationKinds.success,
       });
       if (props.refreshOnSubmit) {
-        window.location.href =
+        window.location.href = getFullPath(
           "/result?type=" +
-          props.searchBy.type +
-          "&doRange=" +
-          props.searchBy.doRange +
-          props.extraParams;
+            props.searchBy.type +
+            "&doRange=" +
+            props.searchBy.doRange +
+            props.extraParams,
+        );
       }
     } else {
       addNotification({
@@ -1925,7 +1926,7 @@ export function SearchResults(props) {
           }) => (
             <Form
               onChange={handleChange}
-            //onBlur={handleBlur}
+              //onBlur={handleBlur}
             >
               <DataTable
                 data={props.results?.testResult?.slice(

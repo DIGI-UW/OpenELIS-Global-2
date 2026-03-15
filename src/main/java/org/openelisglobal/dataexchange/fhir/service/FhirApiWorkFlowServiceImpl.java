@@ -575,7 +575,8 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
                         "Reusing existing Patient from local FHIR store for guid=" + guid);
                 objects.patient = existingPatient.get();
             } else {
-                // No existing patient with this GUID; fall back to creating/updating from bundle.
+                // No existing patient with this GUID; fall back to creating/updating from
+                // bundle.
                 LogEvent.logDebug(this.getClass().getSimpleName(), "buildOriginalReferralObjectsFromBundle",
                         "No existing Patient found for guid=" + guid
                                 + ", upserting incoming Patient from order bundle");
@@ -609,8 +610,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
 
     private ServiceRequest findServiceRequestInBundle(Bundle bundle, String idPart) {
         for (BundleEntryComponent entry : bundle.getEntry()) {
-            if (entry.hasResource()
-                    && ResourceType.ServiceRequest.equals(entry.getResource().getResourceType())
+            if (entry.hasResource() && ResourceType.ServiceRequest.equals(entry.getResource().getResourceType())
                     && idPart.equals(entry.getResource().getIdElement().getIdPart())) {
                 return (ServiceRequest) entry.getResource();
             }
