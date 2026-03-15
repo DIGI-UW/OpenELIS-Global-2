@@ -167,9 +167,10 @@ npm run pw:test
 **Projects:** `core-app` (build stack), `harness` (full infra), `demo` (normal
 speed), `demo-video` (slowMo + video recording).
 
-**Skill Commands:** Use `/write-playwright-test` for first-pass authoring,
-`/audit-playwright` for selector/anti-pattern audits, and `/debug-playwright`
-for evidence-first runtime failure diagnosis.
+**Skill Commands:** Use `/plan-record-playwright` to plan feature/PR flow
+coverage and recording stages, `/write-playwright-test` for first-pass
+authoring, `/audit-playwright` for selector/anti-pattern audits, and
+`/debug-playwright` for evidence-first runtime failure diagnosis.
 
 ---
 

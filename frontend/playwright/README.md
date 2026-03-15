@@ -11,6 +11,7 @@
 
 For AI-assisted Playwright work, start with:
 
+- `/plan-record-playwright` to review feature/PR scope, identify flows, and map project/recording stages
 - `/write-playwright-test` for source-first, first-time-correct test authoring
 - `/debug-playwright` for evidence-first failure diagnosis (source + screenshot/trace)
 - `/audit-playwright` for selector quality and anti-pattern audits
@@ -134,8 +135,9 @@ test("my demo test", async ({ page }, testInfo) => {
 4. Use `videoPause()` for any video pacing (not `page.waitForTimeout()`)
 5. Validate project registration with:
    `python .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/{feature}.spec.ts`
-6. For AI-assisted authoring, run `/write-playwright-test` then
-   `/audit-playwright`; use `/debug-playwright` on runtime failures
+6. For AI-assisted workflows, run:
+   `/plan-record-playwright` -> `/write-playwright-test` -> `/audit-playwright`
+   and use `/debug-playwright` on runtime failures
 
 ## Environment Variables
 

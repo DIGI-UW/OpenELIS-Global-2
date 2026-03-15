@@ -2086,6 +2086,8 @@ for comprehensive patterns and examples.
 
 **Command-first workflow**:
 
+- `/plan-record-playwright` for planning feature/PR flow coverage and
+  project-aware recording stages
 - `/write-playwright-test` for first-pass authoring and project registration
 - `/debug-playwright` for evidence-first debugging
 - `/audit-playwright` for selector and anti-pattern audits

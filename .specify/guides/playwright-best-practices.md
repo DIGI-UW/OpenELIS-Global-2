@@ -29,6 +29,8 @@ npx playwright test -g "home page has collapsed nav"
 
 For AI-assisted Playwright work, use packaged commands first:
 
+- `/plan-record-playwright` - plan PR/feature scope, flow inventory, and
+  project-aware recording stages
 - `/write-playwright-test` - source-first authoring from requirements with
   config registration checks
 - `/debug-playwright` - source-first + runtime-evidence-first failure diagnosis
