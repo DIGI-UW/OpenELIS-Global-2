@@ -11,6 +11,8 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
+import org.openelisglobal.analyzer.dao.AnalyzerErrorDAO;
+import org.openelisglobal.analyzer.dao.AnalyzerFileUploadDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
@@ -22,6 +24,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.services.PluginAnalyzerService;
+import org.openelisglobal.notebook.dao.NoteBookDAO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +54,15 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     @Autowired
     PluginAnalyzerService pluginAnalyzerService;
+
+    @Autowired
+    private AnalyzerErrorDAO analyzerErrorDAO;
+
+    @Autowired
+    private AnalyzerFileUploadDAO analyzerFileUploadDAO;
+
+    @Autowired
+    private NoteBookDAO noteBookDAO;
 
     AnalyzerServiceImpl() {
         super(Analyzer.class);
@@ -355,5 +367,52 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
                     "Auto-created " + created + " test mappings for analyzer " + analyzerId);
         }
+    }
+
+    @Override
+    @Transactional
+    public void deleteWithDependents(Analyzer analyzer) {
+        String id = analyzer.getId();
+
+        // Tiered FK strategy — matches Liquibase 004 constraints:
+        //
+        // RESTRICT tier: analyzer_results, notebook_analysers
+        // → Must not exist; throw if they do (clinical/reference data).
+        // SET NULL tier: analyzer_error, analyzer_file_upload
+        // → Preserve audit trail by nulling the FK, not deleting rows.
+        // CASCADE tier: config tables
+        // → DB ON DELETE CASCADE handles these automatically.
+
+        // 1. RESTRICT tier — block if clinical/reference data exists
+        List<AnalyzerResults> results = analyzerResultsService.getResultsbyAnalyzer(id);
+        if (!results.isEmpty()) {
+            throw new LIMSRuntimeException("Cannot delete analyzer " + id + ": " + results.size()
+                    + " analyzer_results rows exist. Remove or reassign results first.");
+        }
+
+        long notebookCount = noteBookDAO.countByAnalyzerId(id);
+        if (notebookCount > 0) {
+            throw new LIMSRuntimeException("Cannot delete analyzer " + id + ": " + notebookCount
+                    + " notebook references exist. Remove references first.");
+        }
+
+        // 2. SET NULL tier — preserve audit trail
+        int errorsNulled = analyzerErrorDAO.nullifyAnalyzerId(id);
+        int uploadsNulled = analyzerFileUploadDAO.nullifyAnalyzerId(Integer.valueOf(id));
+        if (errorsNulled > 0 || uploadsNulled > 0) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents", "Set analyzer_id = NULL on "
+                    + errorsNulled + " error(s) and " + uploadsNulled + " upload(s) for analyzer " + id);
+        }
+
+        // 3. CASCADE tier — DB ON DELETE CASCADE handles config tables:
+        // analyzer_field, analyzer_field_mapping, serial_port_configuration,
+        // file_import_configuration, analyzer_plugin_config,
+        // analyzer_pending_code, analyzer_experiment
+
+        // Delete the analyzer — DB cascades config tables automatically
+        delete(analyzer);
+
+        LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents",
+                "Deleted analyzer " + id + " (" + analyzer.getName() + ") with all dependents");
     }
 }
