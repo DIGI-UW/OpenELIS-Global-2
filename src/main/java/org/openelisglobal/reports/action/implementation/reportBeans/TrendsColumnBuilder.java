@@ -90,7 +90,6 @@ public class TrendsColumnBuilder extends CIColumnBuilder {
         /////////
         // no don't insert another crosstab or table here, go up before the main WHERE
         ///////// clause
-        // System.out.println(query.toString());
         return;
     }
 }
