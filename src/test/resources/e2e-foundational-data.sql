@@ -152,6 +152,21 @@ AND NOT EXISTS (
 );
 
 -- =============================================================================
+-- ADMIN PASSWORD RESET
+-- =============================================================================
+-- adminPassword.txt ships a PHP-generated $2y bcrypt hash. CreateAdminUserTask
+-- swaps the prefix to $2a, but the underlying hash bytes from PHP's
+-- password_hash() are not always accepted by Java's BCryptPasswordEncoder.
+-- This replaces it with a Java-native $2a hash for "adminADMIN!" so E2E tests
+-- can log in reliably after a fresh database (--full-reset).
+
+UPDATE login_user
+SET password = '$2a$12$/VIVAChxVWKeJDkFzf1OF.e7oTFa.nhE8JDEdsYPP6X7Ew0m8c.o2',
+    account_locked = 'N',
+    account_disabled = 'N'
+WHERE login_name = 'admin';
+
+-- =============================================================================
 -- VERIFICATION
 -- =============================================================================
 
