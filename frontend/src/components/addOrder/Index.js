@@ -1,19 +1,20 @@
-import React, { useContext, useEffect, useState } from "react";
 import { Button, ProgressIndicator, ProgressStep, Stack } from "@carbon/react";
-import PatientInfo from "./PatientInfo";
-import AddSample from "./AddSample";
-import AddOrder from "./AddOrder";
-import "./add-order.scss";
-import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
-import { NotificationContext, ConfigurationContext } from "../layout/Layout";
+import { useContext, useEffect, useState } from "react";
+import { FormattedMessage, useIntl } from "react-intl";
+import config from "../../config.json";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import PageBreadCrumb from "../common/PageBreadCrumb";
+import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
+import OrderEntryValidationSchema from "../formModel/validationSchema/OrderEntryValidationSchema";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
+import AddOrder from "./AddOrder";
+import AddSample from "./AddSample";
+import CustomFields from "./CustomFields";
 import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
-import { FormattedMessage, useIntl } from "react-intl";
-import OrderEntryValidationSchema from "../formModel/validationSchema/OrderEntryValidationSchema";
-import config from "../../config.json";
-import PageBreadCrumb from "../common/PageBreadCrumb";
+import PatientInfo from "./PatientInfo";
+import "./add-order.scss";
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "sidenav.label.addorder", link: "/SamplePatientEntry" },
@@ -102,8 +103,8 @@ const Index = () => {
 
     fetch(
       config.serverBaseUrl +
-        "/ajaxQueryXML?asJSON=true&provider=LabOrderSearchProvider&orderNumber=" +
-        orderNumber,
+      "/ajaxQueryXML?asJSON=true&provider=LabOrderSearchProvider&orderNumber=" +
+      orderNumber,
       {
         method: "get",
         //indicator: 'throbbing',
@@ -792,11 +793,24 @@ const Index = () => {
               />
             )}
             {page === samplePageNumber && (
-              <AddSample
-                error={elementError}
-                setSamples={setSamples}
-                samples={samples}
-              />
+              <>
+                <AddSample
+                  error={elementError}
+                  setSamples={setSamples}
+                  samples={samples}
+                />
+                <CustomFields
+                  customFieldValues={
+                    orderFormValues.customFieldValues || []
+                  }
+                  setCustomFieldValues={(values) =>
+                    setOrderFormValues({
+                      ...orderFormValues,
+                      customFieldValues: values,
+                    })
+                  }
+                />
+              </>
             )}
             {page === orderPageNumber && (
               <AddOrder
@@ -841,10 +855,10 @@ const Index = () => {
                   className="forwardButton"
                   disabled={
                     isSubmitting ||
-                    Object.values(phoneValidation).some(
-                      (item) => item.status === false,
-                    ) ||
-                    errors?.errors?.length > 0
+                      Object.values(phoneValidation).some(
+                        (item) => item.status === false,
+                      ) ||
+                      errors?.errors?.length > 0
                       ? true
                       : false
                   }

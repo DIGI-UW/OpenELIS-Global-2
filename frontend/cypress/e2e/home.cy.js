@@ -74,3 +74,35 @@ describe("User navigates to different tiles", function () {
     home.selectDelayedTurnAround();
   });
 });
+
+describe("In Progress widget includes retest requests (Issue #2890)", function () {
+  it("should fetch In Progress orders from the API endpoint", function () {
+    // Intercept the API call for In Progress orders
+    cy.intercept("GET", "/rest/home-dashboard/ORDERS_IN_PROGRESS*").as(
+      "getInProgressOrders",
+    );
+
+    // Navigate to In Progress tile
+    home.selectInProgress();
+
+    // Wait for the API call and verify it succeeds
+    cy.wait("@getInProgressOrders").then((interception) => {
+      expect(interception.response.statusCode).to.eq(200);
+    });
+  });
+
+  it("should fetch dashboard metrics including In Progress count", function () {
+    // Intercept the metrics API call
+    cy.intercept("GET", "/rest/home-dashboard/metrics").as("getMetrics");
+
+    // Reload the dashboard to trigger metrics fetch
+    cy.visit("/");
+
+    // Wait for the API call and verify it succeeds
+    cy.wait("@getMetrics").then((interception) => {
+      expect(interception.response.statusCode).to.eq(200);
+      // Verify the response contains ordersInProgress field
+      expect(interception.response.body).to.have.property("ordersInProgress");
+    });
+  });
+});

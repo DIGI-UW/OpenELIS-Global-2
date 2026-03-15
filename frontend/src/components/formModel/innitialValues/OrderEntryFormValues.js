@@ -112,6 +112,7 @@ export const SampleOrderFormValues = {
     additionalQuestions: null,
   },
   initialSampleConditionList: [],
+  customFieldValues: [],
   sampleNatureList: null,
   testSectionList: null,
   warning: false,
