@@ -19,7 +19,7 @@ const FILE_ANALYZERS = [
   {
     name: "QuantStudio 7",
     fileFormat: "EXCEL",
-    filePattern: "*.xls",
+    filePattern: "*.xlsx",
   },
   {
     name: "FluoroCycler XT",
