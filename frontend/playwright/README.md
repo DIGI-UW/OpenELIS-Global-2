@@ -7,6 +7,17 @@
 **Tests:** `frontend/playwright/tests/`
 **Helpers:** `frontend/playwright/helpers/`
 
+## AI Command Workflow
+
+For AI-assisted Playwright work, start with:
+
+- `/plan-record-playwright` to review feature/PR scope, identify flows, and map project/recording stages
+- `/write-playwright-test` for source-first, first-time-correct test authoring
+- `/debug-playwright` for evidence-first failure diagnosis (source + screenshot/trace)
+- `/audit-playwright` for selector quality and anti-pattern audits
+
+Packaged source for these commands lives in `.ai/skills/playwright/`.
+
 ## Projects
 
 Tests are organized into 4 projects via allowlist-based `testMatch` in
@@ -122,6 +133,11 @@ test("my demo test", async ({ page }, testInfo) => {
 3. For demo workflow tests, add to the `DEMO_TESTS` constant (shared between
    `demo` and `demo-video`)
 4. Use `videoPause()` for any video pacing (not `page.waitForTimeout()`)
+5. Validate project registration with:
+   `python .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/{feature}.spec.ts`
+6. For AI-assisted workflows, run:
+   `/plan-record-playwright` -> `/write-playwright-test` -> `/audit-playwright`
+   and use `/debug-playwright` on runtime failures
 
 ## Environment Variables
 

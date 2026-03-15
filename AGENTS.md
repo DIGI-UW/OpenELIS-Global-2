@@ -534,31 +534,35 @@ every stage.
 
 **Setup (Required for AI Agents):**
 
-Before using SpecKit commands, install them to your AI agent's command
-directory. This is the **single entry point** for SpecKit setup:
+Before using SpecKit commands or packaged skills, install agent command assets:
 
-**Cross-platform (Python 3.7+):**
+**Cross-platform (Python 3.9+):**
 
 ```bash
-# Install commands for all supported AI agents (Cursor + Claude Code)
-python scripts/install-speckit-commands.py
+# Install legacy + packaged command assets for all supported AI agents
+python3 scripts/install-agent-skills.py
 
 # Or install for specific agent only
-python scripts/install-speckit-commands.py cursor   # Cursor IDE
-python scripts/install-speckit-commands.py claude   # Claude Code CLI
+python3 scripts/install-agent-skills.py cursor   # Cursor IDE
+python3 scripts/install-agent-skills.py claude   # Claude Code CLI
 
 # Skip confirmation prompt (for automation/CI)
-python scripts/install-speckit-commands.py -y all
+python3 scripts/install-agent-skills.py -y all
+
+# Legacy compatibility (SpecKit-only install path)
+python3 scripts/install-speckit-commands.py -y all
 ```
 
 > **Note:** A `.python-version` file is provided for version managers (pyenv,
 > asdf, uv). If you use one, it will automatically select Python 3.11.
 
-This compiles command definitions from `.specify/core/commands/` (upstream
-SpecKit) and `.specify/oe/commands/` (OpenELIS extensions) into agent-specific
-directories (`.cursor/commands/`, `.claude/commands/`).
+This compiles command definitions from legacy SpecKit sources
+(`.specify/core/commands/` + `.specify/oe/commands/`) and packaged skills in
+`.ai/skills/` into agent-specific directories (`.cursor/commands/`,
+`.claude/commands/`, plus packaged skill mirrors under `.cursor/skills/` and
+`.claude/skills/`).
 
-**CI Validation:** The CI pipeline automatically validates that all 9 SpecKit
+**CI Validation:** The CI pipeline validates that required legacy and packaged
 commands compile correctly and contain valid paths.
 
 **Available Commands:**
@@ -574,6 +578,13 @@ commands compile correctly and contain valid paths.
 - `/speckit.constitution` - Create/update project constitution
 - `/speckit.checklist` - Generate custom quality validation checklist
 - `/speckit.taskstoissues` - Convert tasks.md into GitHub issues
+- `/plan-record-playwright` - Plan feature/PR E2E flows and orchestrate
+  write/audit/record lifecycle with correct project usage
+- `/write-playwright-test` - Playwright test authoring from requirements with
+  project registration and narrow-scope validation
+- `/debug-playwright` - Playwright failure diagnosis using source/runtime
+  evidence
+- `/audit-playwright` - Playwright test quality audit and selector hardening
 
 **Standard Workflow:**
 
@@ -1537,6 +1548,10 @@ describe("User Story P1: Sample Storage Assignment", () => {
 **Location:** `frontend/playwright/tests/{feature}.spec.ts` **Config:**
 `frontend/playwright.config.ts` **Helpers:** `frontend/playwright/helpers/`
 **Full Guide:** `frontend/playwright/README.md`
+
+**Command-first workflow:** Use `/plan-record-playwright` to scope flows and
+project targets, `/write-playwright-test` to author tests, `/audit-playwright`
+to review selectors/quality, and `/debug-playwright` for runtime failures.
 
 #### Playwright Projects
 
