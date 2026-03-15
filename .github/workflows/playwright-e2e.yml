@@ -10,7 +10,8 @@ jobs:
     name: Run Playwright E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    
+    environment: e2e
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -56,20 +57,27 @@ jobs:
           timeout 60 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done' || exit 1
           echo "Application is ready"
 
-      - name: Load FILE analyzer E2E fixtures
+      - name: Load FILE analyzer E2E fixtures (deactivate legacy types)
         run: |
           docker exec -i openelisglobal-database \
             psql -U clinlims -d clinlims \
             < src/test/resources/fixtures/file-import-e2e.sql
 
+      - name: Create analyzer import directories in container
+        run: |
+          docker exec openelisglobal-webapp mkdir -p \
+            /data/analyzer-imports/e2e-qs5/incoming \
+            /data/analyzer-imports/e2e-qs7/incoming \
+            /data/analyzer-imports/e2e-fluorocycler/incoming
+
       - name: Run Playwright tests
-        run: npm run pw:test -- --project=setup --project=chromium --project=file-import
+        run: npm run pw:test -- --project=core-app
         working-directory: frontend
         env:
           CI: true
           BASE_URL: https://localhost
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
-          TEST_PASS: ${{ secrets.TEST_PASS || 'adminADMIN!' }}
+          TEST_PASS: ${{ secrets.TEST_PASS }}
 
       - name: Upload Playwright HTML report
         if: failure()

@@ -7,12 +7,22 @@ const AUTH_FILE = "playwright/.auth/user.json";
  *
  * Flow:
  *   1. Verify backend health (API responds, not just HTML shell)
- *   2. Login with retry (handles transient CSRF / session issues)
- *   3. Verify authenticated state on a protected route
- *   4. Save storage state for downstream tests
+ *   2. Login via Playwright request API (ValidateLogin endpoint)
+ *   3. Inject the authenticated JSESSIONID into the browser context
+ *   4. Navigate to verify authenticated state
+ *   5. Save storage state for downstream tests
+ *
+ * Why request API + cookie injection:
+ *   - The React login page creates an anonymous JSESSIONID on mount.
+ *     Spring Security's session fixation protection rejects credentials
+ *     when a prior session exists → UI form login fails from Playwright.
+ *   - The request API avoids this, but its JSESSIONID has path=/api/...
+ *     which doesn't cover frontend routes.
+ *   - Solution: authenticate via request API, extract the JSESSIONID,
+ *     and add it to the browser context with path=/ so all routes work.
  */
-setup("authenticate", async ({ page, request }, testInfo) => {
-  testInfo.setTimeout(120_000);
+setup("authenticate", async ({ page, request, context }, testInfo) => {
+  testInfo.setTimeout(60_000);
 
   const username = process.env.TEST_USER;
   const password = process.env.TEST_PASS;
@@ -20,15 +30,14 @@ setup("authenticate", async ({ page, request }, testInfo) => {
   if (!username || !password) {
     throw new Error(
       "TEST_USER and TEST_PASS environment variables must be set.\n" +
-        "  export TEST_USER=admin TEST_PASS='adminADMIN!'",
+        "  export TEST_USER=admin TEST_PASS='adminADMIN!'\n" +
+        "  Note: use single quotes to prevent zsh history expansion of !",
     );
   }
 
   // ── Step 1: Backend health check ──────────────────────────────
-  // Wait for OE to be fully booted (not just serving HTML).
-  // The login page can render before Spring Security is initialized.
   let backendReady = false;
-  for (let attempt = 1; attempt <= 24; attempt++) {
+  for (let attempt = 1; attempt <= 12; attempt++) {
     try {
       const health = await request.get("/health", { timeout: 5_000 });
       if (health.ok()) {
@@ -36,9 +45,9 @@ setup("authenticate", async ({ page, request }, testInfo) => {
         break;
       }
     } catch {
-      // connection refused or timeout — backend not ready yet
+      // connection refused or timeout
     }
-    if (attempt % 6 === 0) {
+    if (attempt % 4 === 0) {
       console.log(
         `  auth-setup: waiting for backend... (${attempt * 5}s elapsed)`,
       );
@@ -47,107 +56,83 @@ setup("authenticate", async ({ page, request }, testInfo) => {
   }
   if (!backendReady) {
     throw new Error(
-      "Backend health check failed after 120s.\n" +
-        "  Ensure the OE container is running and accessible at the baseURL.\n" +
-        '  Check logs: docker logs <oe-container> 2>&1 | grep -i "error\\|exception"',
+      "Backend health check failed after 60s.\n" +
+        "  Ensure the OE container is running and accessible at the baseURL.",
     );
   }
 
-  // ── Step 2: Login with retry ──────────────────────────────────
-  // Retry the full login flow (navigate → fill → submit → verify redirect).
-  // This handles transient failures: CSRF token mismatch, stale session,
-  // form not yet hydrated, or server temporarily rejecting logins.
-  const MAX_LOGIN_ATTEMPTS = 3;
-  let loginSuccess = false;
-  let lastError: string | undefined;
+  // ── Step 2: Login via request API ───────────────────────────────
+  const loginResponse = await request.post(
+    "/api/OpenELIS-Global/ValidateLogin?apiCall=true",
+    {
+      form: { loginName: username, password: password },
+    },
+  );
+  const loginData = await loginResponse.json().catch(() => null);
 
-  for (let attempt = 1; attempt <= MAX_LOGIN_ATTEMPTS; attempt++) {
-    // Navigate to login page with a fresh page state
-    await page.goto("login", { waitUntil: "domcontentloaded" });
-
-    // If we're already past login (e.g., session still valid), skip
-    if (!page.url().includes("/login")) {
-      loginSuccess = true;
-      break;
-    }
-
-    // Wait for form inputs to appear (OE renders shell before hydration)
-    const usernameInput = page
-      .getByRole("textbox", { name: /username/i })
-      .or(page.locator('input[name="loginName"]'))
-      .first();
-    const passwordInput = page
-      .locator('input[type="password"]')
-      .or(page.locator('input[name="password"]'))
-      .first();
-
-    try {
-      await expect(usernameInput).toBeVisible({ timeout: 10_000 });
-      await expect(passwordInput).toBeVisible({ timeout: 5_000 });
-    } catch {
-      lastError = `Login form not visible (attempt ${attempt})`;
-      await page.waitForTimeout(3_000);
-      continue;
-    }
-
-    // Clear and fill credentials
-    await usernameInput.clear();
-    await usernameInput.fill(username);
-    await passwordInput.clear();
-    await passwordInput.fill(password);
-
-    // Submit and wait for redirect away from /login
-    const loginButton = page
-      .getByRole("button", { name: /^(login|submit|sign.in)$/i })
-      .first();
-    try {
-      await Promise.all([
-        page.waitForURL((url) => !url.pathname.endsWith("/login"), {
-          timeout: 15_000,
-        }),
-        loginButton.click(),
-      ]);
-      loginSuccess = true;
-      break;
-    } catch {
-      // Check what went wrong
-      const currentUrl = page.url();
-      if (!currentUrl.includes("/login")) {
-        // Actually navigated away — success despite timeout race
-        loginSuccess = true;
-        break;
-      }
-      // Check for visible error messages on the page
-      const errorText = await page
-        .locator(".error, .login-error, [role='alert']")
-        .textContent()
-        .catch(() => null);
-      lastError = errorText
-        ? `Login rejected (attempt ${attempt}): ${errorText}`
-        : `Login did not redirect (attempt ${attempt}). Page stayed on /login.`;
-      console.log(`  auth-setup: ${lastError}`);
-      // Brief pause before retry to let server state settle
-      await page.waitForTimeout(2_000);
-    }
-  }
-
-  if (!loginSuccess) {
+  if (loginResponse.status() !== 200 || !loginData?.success) {
     throw new Error(
-      `Authentication failed after ${MAX_LOGIN_ATTEMPTS} attempts.\n` +
-        `  Last error: ${lastError}\n` +
+      `Login API returned ${loginResponse.status()}: ${JSON.stringify(loginData)}\n` +
         `  Credentials: ${username} / ***\n` +
         "  Possible causes:\n" +
         "    - Wrong password (check TEST_PASS env var)\n" +
+        '    - zsh ! escaping: use double quotes: TEST_PASS="adminADMIN!"\n' +
         "    - Account locked (check login_user.account_locked in DB)\n" +
-        '    - Backend error (check: docker logs <oe-container> 2>&1 | grep "login")',
+        "    - Fixtures not loaded (run load-test-fixtures.sh to reset admin password)",
     );
   }
 
-  // ── Step 3: Verify authenticated state ────────────────────────
-  // Navigate to a protected route and confirm we're not bounced to /login.
-  await page.goto("analyzers", { waitUntil: "networkidle" });
+  // ── Step 3: Inject JSESSIONID into browser context ──────────────
+  // The request API's JSESSIONID has path=/api/OpenELIS-Global — too
+  // narrow for frontend routes. Extract it and re-add with path=/.
+  const setCookieHeaders = loginResponse
+    .headersArray()
+    .filter((h) => h.name.toLowerCase() === "set-cookie");
+
+  let jsessionId: string | null = null;
+  for (const header of setCookieHeaders) {
+    const match = header.value.match(/JSESSIONID=([^;]+)/);
+    if (match) {
+      jsessionId = match[1];
+      break;
+    }
+  }
+
+  if (!jsessionId) {
+    // Fallback: try to get from the request context's stored cookies
+    const storageState = await request.storageState();
+    const sessionCookie = storageState.cookies.find(
+      (c) => c.name === "JSESSIONID",
+    );
+    if (sessionCookie) {
+      jsessionId = sessionCookie.value;
+    }
+  }
+
+  if (!jsessionId) {
+    throw new Error(
+      "Login succeeded but no JSESSIONID cookie found in response.\n" +
+        "  This is unexpected — check proxy/backend cookie configuration.",
+    );
+  }
+
+  // Add the cookie to the browser context with root path
+  await context.addCookies([
+    {
+      name: "JSESSIONID",
+      value: jsessionId,
+      domain: "localhost",
+      path: "/",
+      httpOnly: true,
+      secure: true,
+      sameSite: "Lax",
+    },
+  ]);
+
+  // ── Step 4: Verify authenticated state ────────────────────────
+  await page.goto("analyzers", { waitUntil: "domcontentloaded" });
   await expect(page).not.toHaveURL(/\/login(?:\?|$)/, { timeout: 15_000 });
 
-  // ── Step 4: Save session ──────────────────────────────────────
+  // ── Step 5: Save session ──────────────────────────────────────
   await page.context().storageState({ path: AUTH_FILE });
 });

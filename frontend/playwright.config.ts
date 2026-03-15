@@ -2,8 +2,27 @@ import { defineConfig, devices } from "@playwright/test";
 
 /**
  * OpenELIS Global Playwright Configuration
+ *
+ * Projects are organized by environment requirement:
+ *
+ *   core-app      — CI build stack (no plugins, bridge, or import dirs)
+ *   harness       — Analyzer harness infra tests (bridge, simulator, plugins)
+ *   demo          — End-to-end workflow demos (run on harness, normal speed)
+ *   demo-video    — Same demo tests with slowMo + video (local recording only)
+ *
+ * New test files must be explicitly added to a project's testMatch.
+ * Unmatched files won't run — this is intentional (allowlist, not blocklist).
+ *
  * @see https://playwright.dev/docs/test-configuration
  */
+
+// Demo workflow tests — shared between demo and demo-video projects
+const DEMO_TESTS = [
+  "**/demo-quantstudio*.spec.ts",
+  "**/file-import-ui.spec.ts",
+  "**/file-import-results.spec.ts",
+];
+
 export default defineConfig({
   testDir: "./playwright/tests",
 
@@ -20,7 +39,7 @@ export default defineConfig({
   expect: { timeout: 5_000 },
 
   // Reporting
-  reporter: process.env.CI ? "github" : "html",
+  reporter: process.env.CI ? "blob" : "html",
 
   // Global settings
   use: {
@@ -30,55 +49,75 @@ export default defineConfig({
     // Evidence collection
     trace: "on-first-retry",
     screenshot: "only-on-failure",
-    video: "off",
+    video: process.env.PLAYWRIGHT_VIDEO === "on" ? "on" : "off",
   },
 
   projects: [
-    // Auth setup - runs once, saves session
+    // Auth setup — runs once, saves session state
     {
       name: "setup",
       testMatch: /.*\.setup\.ts/,
     },
-    // Main UI tests (excludes analyzer-specific specs)
+
+    // Core app — runs on CI build stack (no plugins, bridge, or import dirs)
     {
-      name: "chromium",
-      use: {
-        ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/user.json",
-      },
-      dependencies: ["setup"],
-      testIgnore: [
-        "**/file-import*",
-        "**/analyzer-test-connection*",
-        "**/analyzer-plugin-config*",
-        "**/analyzer-simulator*",
-        "**/analyzer-hl7-simulate*",
-      ],
-    },
-    // FILE analyzer tests — pure REST API, runs in default CI with DB fixtures
-    {
-      name: "file-import",
-      use: {
-        ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/user.json",
-      },
-      dependencies: ["setup"],
-      testMatch: ["**/file-import*"],
-    },
-    // Analyzer harness tests — needs bridge + simulator, runs via analyzer-e2e.yml
-    {
-      name: "analyzer-harness",
-      use: {
-        ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/user.json",
-      },
-      dependencies: ["setup"],
+      name: "core-app",
       testMatch: [
-        "**/analyzer-test-connection*",
-        "**/analyzer-plugin-config*",
-        "**/analyzer-simulator*",
-        "**/analyzer-hl7-simulate*",
+        "**/analyzer-form.spec.ts",
+        "**/analyzer-list.spec.ts",
+        "**/analyzer-navigation.spec.ts",
+        "**/error-dashboard.spec.ts",
+        "**/navbar.spec.ts",
+        "**/sidenav.spec.ts",
       ],
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+
+    // Harness — infrastructure tests needing bridge, simulator, plugins
+    {
+      name: "harness",
+      testMatch: [
+        "**/analyzer-test-connection.spec.ts",
+        "**/analyzer-plugin-config.spec.ts",
+        "**/analyzer-simulator.spec.ts",
+        "**/analyzer-hl7-simulate.spec.ts",
+        "**/file-import.spec.ts",
+      ],
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+
+    // Demo — workflow tests at normal speed (CI validation on harness)
+    {
+      name: "demo",
+      testMatch: DEMO_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+
+    // Demo video — same tests with slowMo for watchable recordings (local only)
+    {
+      name: "demo-video",
+      testMatch: DEMO_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+        video: "on",
+        launchOptions: {
+          slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
+        },
+      },
+      dependencies: ["setup"],
     },
   ],
 });

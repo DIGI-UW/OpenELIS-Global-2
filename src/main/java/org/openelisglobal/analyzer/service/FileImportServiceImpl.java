@@ -101,6 +101,14 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<FileImportConfiguration> findOverlappingConfigs(String importDirectory, String fileFormat,
+            Integer excludeAnalyzerId) {
+        return fileImportConfigurationDAO.findActiveByImportDirectoryAndFileFormat(importDirectory, fileFormat,
+                excludeAnalyzerId);
+    }
+
+    @Override
     public boolean processFile(Path filePath, FileImportConfiguration configuration, String systemUserId) {
         try (InputStream fileStream = Files.newInputStream(filePath)) {
             AnalyzerReader reader = getReaderForFormat(configuration);
@@ -575,7 +583,8 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
 
     @Override
     @SuppressWarnings("unchecked")
-    public void autoCreateFromProfile(String analyzerId, Map<String, Object> configData, String analyzerName) {
+    public void autoCreateFromProfile(String analyzerId, Map<String, Object> configData, String analyzerName,
+            String sysUserId) {
         if (analyzerId == null || configData == null) {
             return;
         }
@@ -654,6 +663,7 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
         config.setErrorDirectory(errorDir);
         config.setDelimiter(fileFormat.equals("TSV") ? "\t" : ",");
         config.setActive(true);
+        config.setSysUserId(sysUserId);
 
         fileImportConfigurationDAO.insert(config);
 
