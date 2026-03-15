@@ -354,6 +354,22 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
                     AnalyzerTestNameCache.getInstance().registerPluginAnalyzer(analyzer.getAnalyzerType().getName(),
                             typeId);
                     created++;
+                } else {
+                    // Update existing mapping if test_id changed (e.g., test catalog updated)
+                    for (AnalyzerTestMapping existing : dbTestMappings) {
+                        if (Objects.equals(existing.getAnalyzerTypeId(), atm.getAnalyzerTypeId())
+                                && existing.getAnalyzerTestName().equals(atm.getAnalyzerTestName())
+                                && !Objects.equals(existing.getTestId(), atm.getTestId())) {
+                            existing.setTestId(atm.getTestId());
+                            existing.setAnalyzerId(atm.getAnalyzerId());
+                            existing.setSysUserId(sysUserId);
+                            analyzerMappingService.update(existing);
+                            created++;
+                            LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                                    "Updated stale test mapping for '" + analyzerCode + "' → test " + test.getId());
+                            break;
+                        }
+                    }
                 }
 
             } catch (Exception e) {

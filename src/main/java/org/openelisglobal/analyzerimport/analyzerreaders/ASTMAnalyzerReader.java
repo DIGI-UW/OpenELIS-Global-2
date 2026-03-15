@@ -42,6 +42,7 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     private String responseBody;
     private String clientIpAddress;
     private Integer clientPort;
+    private String registeredAnalyzerId;
 
     @Override
     public boolean readStream(InputStream stream) {
@@ -246,8 +247,17 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     }
 
     /**
+     * Set registered analyzer ID from bridge X-Analyzer-Id header. When set, this
+     * takes highest priority in identification — direct DB lookup, no pattern
+     * matching.
+     */
+    public void setRegisteredAnalyzerId(String analyzerId) {
+        this.registeredAnalyzerId = analyzerId;
+    }
+
+    /**
      * Set client IP address for analyzer identification
-     * 
+     *
      * @param ip The client IP address
      */
     public void setClientIpAddress(String ip) {
@@ -282,6 +292,20 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
                         "AnalyzerService not available for analyzer identification");
                 return Optional.empty();
+            }
+
+            // Strategy -1: Bridge-registered analyzer ID (highest priority, deterministic)
+            // Set from X-Analyzer-Id header — the bridge looked up the source in its
+            // registry and resolved the OE analyzer ID before forwarding.
+            if (registeredAnalyzerId != null && !registeredAnalyzerId.trim().isEmpty()) {
+                Analyzer analyzer = analyzerService.get(registeredAnalyzerId.trim());
+                if (analyzer != null) {
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
+                            "Identified analyzer from bridge registration (X-Analyzer-Id): " + analyzer.getName());
+                    return Optional.of(analyzer);
+                }
+                LogEvent.logWarn(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage", "X-Analyzer-Id '"
+                        + registeredAnalyzerId + "' not found in database — falling back to other strategies");
             }
 
             // Strategy 0: Exact IP+port lookup from bridge headers (deterministic)
