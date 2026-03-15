@@ -116,9 +116,21 @@ test.describe("GeneXpert ASTM Push → Results", () => {
       testInfo,
     );
 
-    // ASTM push through the bridge is near-instant, but give OE a moment
-    // to process and persist the analyzer results.
-    await page.waitForTimeout(5_000);
+    // Poll until results appear in the staging table. Under concurrent load
+    // (e.g. parallel file-import tests), OE may take longer to process the
+    // bridge's HTTP forward. Polling is both faster (no wasted wait when
+    // results arrive quickly) and more robust (no failure under load).
+    let resultCount = 0;
+    for (let attempt = 1; attempt <= 12; attempt++) {
+      const resp = await page.request.get(
+        `/api/OpenELIS-Global/rest/AnalyzerResults?type=${encodeURIComponent(GENEXPERT_ANALYZER_NAME)}`,
+      );
+      const data = await resp.json().catch(() => null);
+      resultCount = data?.resultList?.length ?? 0;
+      if (resultCount > 0) break;
+      await page.waitForTimeout(5_000);
+    }
+    console.log(`Results available after polling: ${resultCount}`);
     await videoPause(page, 1_000, testInfo);
 
     // ── Step 4: View imported results ──────────────────────────────
