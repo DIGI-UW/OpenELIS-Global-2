@@ -9,15 +9,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-/**
- * Registers and unregisters analyzers with the analyzer bridge.
- * <p>
- * When an analyzer is created or updated in the OE dashboard, this service
- * notifies the bridge so it can tag incoming traffic with the correct OE
- * analyzer ID ({@code X-Analyzer-Id} header). The bridge only receives the
- * minimum transport config — all business logic stays in OE.
- * </p>
- */
+/** Bridge registration client for analyzer transport metadata. */
 @Service
 public class BridgeRegistrationService {
 
@@ -32,16 +24,7 @@ public class BridgeRegistrationService {
         this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     }
 
-    /**
-     * Register a TCP analyzer (ASTM/HL7) with the bridge.
-     *
-     * @param oeAnalyzerId OE analyzer ID
-     * @param name         human-readable name
-     * @param ip           expected source IP address
-     * @param port         expected source port (nullable)
-     * @param protocol     ASTM or HL7
-     * @return true if registration succeeded
-     */
+    /** Register a TCP analyzer (ASTM/HL7) with the bridge. */
     public boolean registerTcp(String oeAnalyzerId, String name, String ip, Integer port, String protocol) {
         if (!isBridgeConfigured()) {
             return false;
@@ -54,15 +37,7 @@ public class BridgeRegistrationService {
         return callRegister(json, oeAnalyzerId);
     }
 
-    /**
-     * Register a FILE analyzer with the bridge.
-     *
-     * @param oeAnalyzerId OE analyzer ID
-     * @param name         human-readable name
-     * @param watchDir     directory to watch for files
-     * @param filePattern  glob pattern for matching files
-     * @return true if registration succeeded
-     */
+    /** Register a FILE analyzer with the bridge. */
     public boolean registerFile(String oeAnalyzerId, String name, String watchDir, String filePattern) {
         if (!isBridgeConfigured()) {
             return false;
@@ -76,12 +51,7 @@ public class BridgeRegistrationService {
         return callRegister(json, oeAnalyzerId);
     }
 
-    /**
-     * Unregister an analyzer from the bridge.
-     *
-     * @param oeAnalyzerId OE analyzer ID to unregister
-     * @return true if unregistration succeeded
-     */
+    /** Unregister an analyzer from the bridge. */
     public boolean unregister(String oeAnalyzerId) {
         if (!isBridgeConfigured()) {
             return false;

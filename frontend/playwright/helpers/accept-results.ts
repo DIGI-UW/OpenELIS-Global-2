@@ -80,16 +80,7 @@ export async function acceptAndVerifyResults(
   // After save, the page reloads and should show no results
   // (all were accepted → promoted to result table)
   const noResults = page.getByText("There are no records to display");
-  const emptyTable = await noResults
-    .isVisible({ timeout: 5_000 })
-    .catch(() => false);
-
-  if (emptyTable) {
-    console.log("  ✓ All results accepted — staging page is empty");
-  } else {
-    // Some results may remain (e.g. QC samples without matching orders)
-    console.log("  ✓ Results saved (some may remain as unmatched)");
-  }
+  await noResults.isVisible({ timeout: 5_000 }).catch(() => false);
 
   if (isVideoProject(testInfo)) {
     await page.screenshot({
@@ -121,20 +112,11 @@ export async function acceptAndVerifyResults(
 
     // Verify the accession number appears in the results table.
     // Auto-created samples may not appear immediately — check but don't block.
-    const accessionVisible = await page
+    await page
       .getByText(accessionNumber)
       .first()
       .isVisible({ timeout: 10_000 })
       .catch(() => false);
-    if (accessionVisible) {
-      console.log(
-        `  ✓ Accepted results visible in AccessionResults for ${accessionNumber}`,
-      );
-    } else {
-      console.log(
-        `  ⚠ AccessionResults did not show ${accessionNumber} — results may need manual validation`,
-      );
-    }
     if (isVideoProject(testInfo)) {
       await page.screenshot({
         path: `test-results/${testInfo.title.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 40)}-accession-results.png`,

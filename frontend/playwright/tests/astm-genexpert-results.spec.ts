@@ -174,7 +174,6 @@ async function verifyResults(page: any, analyzerName: string, testInfo: any) {
   const resultsTable = page.locator("table, .orderLegendBody");
   await expect(resultsTable.first()).toBeVisible({ timeout: 15_000 });
 
-  // Verify sample ID appears
   await expect(
     page
       .locator('[data-testid="LabNo"]', {
@@ -183,7 +182,6 @@ async function verifyResults(page: any, analyzerName: string, testInfo: any) {
       .first(),
   ).toBeVisible({ timeout: 10_000 });
 
-  // Verify EACH expected result value (input or text, depending on render mode)
   for (const expected of EXPECTED_RESULTS) {
     const inputCount = await page
       .locator(`input[value*="${expected.result}"]`)
@@ -451,7 +449,6 @@ test.describe("GeneXpert ASTM — Full Create Flow", () => {
       await videoPause(page, 500, testInfo);
     }
 
-    // Save the analyzer — triggers autoCreateTestMappings() + bridge registration
     const saveButton = page.locator(
       '[data-testid="analyzer-form-save-button"]',
     );

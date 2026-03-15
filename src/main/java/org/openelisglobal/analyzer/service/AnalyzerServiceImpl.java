@@ -355,7 +355,6 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
                             typeId);
                     created++;
                 } else {
-                    // Update existing mapping if test_id changed (e.g., test catalog updated)
                     for (AnalyzerTestMapping existing : dbTestMappings) {
                         if (Objects.equals(existing.getAnalyzerTypeId(), atm.getAnalyzerTypeId())
                                 && existing.getAnalyzerTestName().equals(atm.getAnalyzerTestName())

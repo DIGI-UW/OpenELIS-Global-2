@@ -253,7 +253,6 @@ async function verifyFileResults(
     `Verified: no header row in results (no '${headerMarker}' in table)`,
   );
 
-  // Verify EACH expected result value
   for (const expected of expectedResults) {
     const sampleText = page.getByText(expected.sampleId);
     await expect(sampleText.first()).toBeVisible({ timeout: 15_000 });
