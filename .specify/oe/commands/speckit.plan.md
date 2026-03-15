@@ -4,8 +4,9 @@ If any guidance conflicts with the core SpecKit command, follow this section.
   source.
 - Use `.specify/guides/testing-roadmap.md` for testing requirements and
   references.
-- For Playwright test planning, route to `/audit-playwright` and
-  `/debug-playwright` (packaged source under `.ai/skills/playwright/`).
+- For Playwright test planning, route to `/write-playwright-test` first, then
+  `/audit-playwright`, and use `/debug-playwright` for runtime failures
+  (packaged source under `.ai/skills/playwright/`).
 - Constitution Principle IX applies: include a Milestone Plan when the effort is
   expected to exceed 3 days.
 - The Milestone Plan must include milestone IDs, branch suffixes, scope, user

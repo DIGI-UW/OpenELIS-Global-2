@@ -2086,6 +2086,7 @@ for comprehensive patterns and examples.
 
 **Command-first workflow**:
 
+- `/write-playwright-test` for first-pass authoring and project registration
 - `/debug-playwright` for evidence-first debugging
 - `/audit-playwright` for selector and anti-pattern audits
 

@@ -3,7 +3,9 @@ name: playwright
 description:
   Playwright test authoring, auditing, and debugging skill for OpenELIS with
   source-first investigation, runtime evidence checks, stable selector policy,
-  and project-registration validation.
+  and project-registration validation. Use when creating, writing, adding, or
+  updating new Playwright tests in TDD red phase, auditing selector quality, or
+  debugging failing Playwright runtime flows.
 ---
 
 # Playwright Skill
@@ -16,6 +18,8 @@ Use this skill when:
 
 ## Primary Entrypoints
 
+- `/write-playwright-test` - author new tests from requirements and register
+  them correctly in Playwright project allowlists
 - `/debug-playwright` - failure diagnosis and remediation workflow
 - `/audit-playwright` - quality and maintainability audit workflow
 
@@ -30,6 +34,7 @@ Use this skill when:
 
 ## Reusable Assets
 
+- Reference: `reference/write-workflow.md`
 - Reference: `reference/debug-workflow.md`
 - Reference: `reference/selector-policy.md`
 - Template: `templates/PlaywrightE2E.spec.ts.template`

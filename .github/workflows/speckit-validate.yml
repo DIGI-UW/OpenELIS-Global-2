@@ -35,7 +35,7 @@ jobs:
 
       - name: Verify required command outputs exist
         run: |
-          EXPECTED_COMMANDS="speckit.analyze speckit.checklist speckit.clarify speckit.constitution speckit.implement speckit.plan speckit.specify speckit.tasks speckit.taskstoissues debug-playwright audit-playwright"
+          EXPECTED_COMMANDS="speckit.analyze speckit.checklist speckit.clarify speckit.constitution speckit.implement speckit.plan speckit.specify speckit.tasks speckit.taskstoissues write-playwright-test debug-playwright audit-playwright"
           for cmd in $EXPECTED_COMMANDS; do
             if [ ! -f ".cursor/commands/${cmd}.md" ]; then
               echo "ERROR: Missing .cursor/commands/${cmd}.md"

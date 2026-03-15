@@ -1,9 +1,19 @@
 import { test, expect } from "@playwright/test";
+import { captureDebugContext } from "../helpers/debug-context";
 import { videoPause } from "../helpers/video-pause";
 
 test.describe("Feature Name", () => {
   test("user-visible behavior", async ({ page }, testInfo) => {
+    const consoleErrors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") consoleErrors.push(msg.text());
+    });
+    page.on("pageerror", (err) => {
+      consoleErrors.push(`PAGE ERROR: ${err.message}`);
+    });
+
     // Arrange
+    // Selector priority: getByRole -> getByLabel -> data-testid -> text -> CSS(last resort)
     await page.goto("/path", { waitUntil: "domcontentloaded" });
 
     // Act
@@ -15,7 +25,29 @@ test.describe("Feature Name", () => {
     const result = page.locator('[data-testid="expected-result"]');
     await expect(result).toBeVisible();
 
+    // Optional debug context capture pattern for unstable async flows
+    // try {
+    //   await expect(page.locator('[data-testid="async-state"]')).toBeVisible();
+    // } catch (e) {
+    //   const context = await captureDebugContext(page, consoleErrors);
+    //   console.log("Console errors captured:", context.consoleErrors);
+    //   console.log("Current URL:", context.url);
+    //   console.log("Page body text:", context.bodyPreview);
+    //   throw e;
+    // }
+
     // Optional demo pacing (no-op outside demo-video)
     await videoPause(page, 750, testInfo);
   });
 });
+
+/**
+ * Post-write checklist:
+ * [ ] Added spec to frontend/playwright.config.ts testMatch (or DEMO_TESTS)
+ * [ ] Validation passed:
+ *     python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/<spec>.spec.ts
+ * [ ] Ran narrow scope:
+ *     cd frontend && npm run pw:test -- playwright/tests/<spec>.spec.ts --project=<project>
+ * [ ] Ran /audit-playwright before finalizing
+ * [ ] Use /debug-playwright if runtime failures persist
+ */

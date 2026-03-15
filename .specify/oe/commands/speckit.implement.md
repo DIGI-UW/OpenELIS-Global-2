@@ -8,7 +8,9 @@ If any guidance conflicts with the core SpecKit command, follow this section.
     milestone branch first.
   - Warn if scope exceeds 30 tasks or 20 files, and do not auto-proceed without
     user confirmation.
-- For Playwright implementation/debug loops, prefer `/debug-playwright` and
-  `/audit-playwright` command workflows from `.ai/skills/playwright/`.
+- For Playwright implementation loops, start the Red phase with
+  `/write-playwright-test`, then use `/audit-playwright`; if runtime failures
+  persist, use `/debug-playwright` command workflows from
+  `.ai/skills/playwright/`.
 - Do not auto-advance to the next milestone. Prompt the user to create a PR
   after completing a milestone.

@@ -578,6 +578,8 @@ commands compile correctly and contain valid paths.
 - `/speckit.constitution` - Create/update project constitution
 - `/speckit.checklist` - Generate custom quality validation checklist
 - `/speckit.taskstoissues` - Convert tasks.md into GitHub issues
+- `/write-playwright-test` - Playwright test authoring from requirements with
+  project registration and narrow-scope validation
 - `/debug-playwright` - Playwright failure diagnosis using source/runtime
   evidence
 - `/audit-playwright` - Playwright test quality audit and selector hardening
@@ -1545,8 +1547,9 @@ describe("User Story P1: Sample Storage Assignment", () => {
 `frontend/playwright.config.ts` **Helpers:** `frontend/playwright/helpers/`
 **Full Guide:** `frontend/playwright/README.md`
 
-**Command-first workflow:** Use `/debug-playwright` for failures and
-`/audit-playwright` for test reviews before editing selectors.
+**Command-first workflow:** Use `/write-playwright-test` to author new tests,
+`/audit-playwright` to review selectors/quality, and `/debug-playwright` for
+runtime failures.
 
 #### Playwright Projects
 
