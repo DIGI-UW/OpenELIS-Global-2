@@ -85,7 +85,6 @@ export default defineConfig({
         "**/analyzer-test-connection.spec.ts",
         "**/analyzer-plugin-config.spec.ts",
         "**/analyzer-simulator.spec.ts",
-        "**/analyzer-hl7-simulate.spec.ts",
         "**/file-import.spec.ts",
       ],
       use: {
