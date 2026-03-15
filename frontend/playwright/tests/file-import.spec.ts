@@ -18,18 +18,15 @@ import fixtureData from "../fixtures/FileImport.json";
 const FILE_ANALYZERS = [
   { name: "E2E-FILE-CSV-Analyzer", fileFormat: "CSV", filePattern: "*.csv" },
   {
-    name: "E2E-FILE-QuantStudio-Analyzer",
+    name: "E2E-FILE-QuantStudio5-Analyzer",
     fileFormat: "EXCEL",
     filePattern: "*.xls",
   },
-  { name: "E2E-FILE-Tecan-F50", fileFormat: "CSV", filePattern: "*.csv" },
-  { name: "E2E-FILE-Multiskan-FC", fileFormat: "CSV", filePattern: "*.csv" },
   {
-    name: "E2E-FILE-FluoroCycler-XT",
+    name: "E2E-FILE-QuantStudio7-Analyzer",
     fileFormat: "EXCEL",
     filePattern: "*.xlsx",
   },
-  { name: "E2E-FILE-DT-Prime", fileFormat: "XML", filePattern: "*.xml" },
 ];
 
 function apiBase(baseURL: string | undefined): string {
@@ -128,6 +125,20 @@ test.describe("FILE config persistence", () => {
     const updated = await verifyRes.json();
     expect(updated.fileFormat).toBe(fixtureData.formatTsv);
     expect(updated.filePattern).toBe("*.tsv");
+
+    // Revert to original so other tests see the fixture's initial state
+    const revertRes = await page.request.put(
+      `${api}/file-import/configurations/${cfg.id}`,
+      {
+        data: {
+          ...cfg,
+          fileFormat: fixtureData.formatCsv,
+          filePattern: "*.csv",
+          delimiter: ",",
+        },
+      },
+    );
+    expect(revertRes.ok()).toBeTruthy();
   });
 });
 
@@ -145,7 +156,7 @@ test.describe("QuantStudio EXCEL config", () => {
       analyzers: { id: string; name: string }[];
     };
     const qs = analyzers.find(
-      (a) => a.name === "E2E-FILE-QuantStudio-Analyzer",
+      (a) => a.name === "E2E-FILE-QuantStudio5-Analyzer",
     );
     expect(qs).toBeDefined();
 

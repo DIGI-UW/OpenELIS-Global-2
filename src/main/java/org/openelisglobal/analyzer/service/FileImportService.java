@@ -105,12 +105,27 @@ public interface FileImportService extends BaseObjectService<FileImportConfigura
     void submitResults(Integer analyzerId, SubmitRequestForm request, String systemUserId);
 
     /**
+     * Find active configs that overlap with the given directory and file format,
+     * excluding a specific analyzer ID (use null for create validation).
+     *
+     * @param importDirectory   the import directory to check
+     * @param fileFormat        the file format (CSV, EXCEL, etc.)
+     * @param excludeAnalyzerId analyzer ID to exclude from results (null for
+     *                          create)
+     * @return list of overlapping active configurations
+     */
+    List<FileImportConfiguration> findOverlappingConfigs(String importDirectory, String fileFormat,
+            Integer excludeAnalyzerId);
+
+    /**
      * Auto-create a FileImportConfiguration from a loaded profile's config data.
      * Called during analyzer creation when the profile protocol is FILE.
      *
      * @param analyzerId   the newly created analyzer's ID (as String)
      * @param configData   the full profile JSON parsed as a Map
      * @param analyzerName the analyzer name (used for default directory paths)
+     * @param sysUserId    the current user's ID (required for audit column)
      */
-    void autoCreateFromProfile(String analyzerId, Map<String, Object> configData, String analyzerName);
+    void autoCreateFromProfile(String analyzerId, Map<String, Object> configData, String analyzerName,
+            String sysUserId);
 }
