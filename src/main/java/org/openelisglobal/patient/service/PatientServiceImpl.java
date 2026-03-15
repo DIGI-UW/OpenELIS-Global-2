@@ -768,10 +768,6 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
 
     public void persistIdentityType(String paramValue, String type, PatientManagementInfo patientInfo, Patient patient,
             String sysUserId) throws LIMSRuntimeException {
-        if (GenericValidator.isBlankOrNull(paramValue) && patientInfo.getPatientIdentities().isEmpty()) {
-            return;
-        }
-
         Boolean newIdentityNeeded = true;
         String typeID = PatientIdentityTypeMap.getInstance().getIDForType(type);
 
