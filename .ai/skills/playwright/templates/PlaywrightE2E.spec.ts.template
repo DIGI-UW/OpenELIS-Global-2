@@ -1,0 +1,21 @@
+import { test, expect } from "@playwright/test";
+import { videoPause } from "../helpers/video-pause";
+
+test.describe("Feature Name", () => {
+  test("user-visible behavior", async ({ page }, testInfo) => {
+    // Arrange
+    await page.goto("/path", { waitUntil: "domcontentloaded" });
+
+    // Act
+    const primaryAction = page.locator('[data-testid="primary-action"]');
+    await expect(primaryAction).toBeVisible();
+    await primaryAction.click();
+
+    // Assert
+    const result = page.locator('[data-testid="expected-result"]');
+    await expect(result).toBeVisible();
+
+    // Optional demo pacing (no-op outside demo-video)
+    await videoPause(page, 750, testInfo);
+  });
+});
