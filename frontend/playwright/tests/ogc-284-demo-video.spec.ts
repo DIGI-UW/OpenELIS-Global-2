@@ -195,9 +195,10 @@ async function clickNext(page: Page, pause: PauseFn) {
  * Tries known panel names first, falls back to the first available checkbox.
  */
 async function selectPanelOrTest(page: Page, pause: PauseFn) {
-  const bilan = page.getByRole("checkbox", { name: "Bilan Biochimique" });
-  await bilan.scrollIntoViewIfNeeded();
-  await bilan.check({ timeout: 5000 });
+  // Carbon checkbox: the <input> is visually hidden; click the <label> instead.
+  const label = page.locator('label:has-text("Bilan Biochimique")');
+  await label.scrollIntoViewIfNeeded();
+  await label.click({ timeout: 5000 });
   await pause(400);
 }
 
