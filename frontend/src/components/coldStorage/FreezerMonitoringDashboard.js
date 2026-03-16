@@ -53,7 +53,7 @@ import {
 } from "./api";
 import AlertDetailModal from "./AlertDetailModal";
 import DeviceHistoryExpansion from "./DeviceHistoryExpansion";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
 import { NotificationContext } from "../layout/Layout";
 
 const COLUMNS = [

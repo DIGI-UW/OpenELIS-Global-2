@@ -17,7 +17,7 @@ import {
 } from "@carbon/react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
 import { getFromOpenElisServer } from "../utils/Utils";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 

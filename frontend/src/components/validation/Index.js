@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import SearchForm from "./SearchForm";
 import Validation from "./Validation";
-import { AlertDialog } from "../common/CustomNotification";
+import { AlertDialog } from "../common/AlertDialog";
 import { NotificationContext } from "../layout/Layout";
 import { Heading, Grid, Column, Section } from "@carbon/react";
 import { injectIntl, FormattedMessage } from "react-intl";

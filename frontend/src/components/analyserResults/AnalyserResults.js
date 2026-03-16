@@ -16,7 +16,7 @@ import { Copy } from "@carbon/icons-react";
 import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
-import { NotificationKinds } from "../common/CustomNotification";
+import { NotificationKinds } from "../common/AlertDialog";
 import { postToOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";

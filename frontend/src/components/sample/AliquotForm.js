@@ -34,7 +34,7 @@ import {
 } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { Formik, Field } from "formik";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 

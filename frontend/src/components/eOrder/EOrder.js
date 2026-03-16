@@ -21,7 +21,7 @@ import { ChevronDown, Edit, TaskAdd } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../utils/Utils";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
-import { NotificationKinds } from "../common/CustomNotification";
+import { NotificationKinds } from "../common/AlertDialog";
 
 const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
   const { setNotificationVisible, addNotification } =

@@ -1,8 +1,8 @@
 import React, { useContext, useState, useEffect } from "react";
 import AnalyserResults from "./AnalyserResults";
-import { AlertDialog } from "../common/CustomNotification";
+import { AlertDialog } from "../common/AlertDialog";
 import { NotificationContext } from "../layout/Layout";
-import { NotificationKinds } from "../common/CustomNotification";
+import { NotificationKinds } from "../common/AlertDialog";
 import {
   Heading,
   Grid,

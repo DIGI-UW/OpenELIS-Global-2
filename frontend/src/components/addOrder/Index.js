@@ -6,11 +6,8 @@ import AddOrder from "./AddOrder";
 import "./add-order.scss";
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../utils/Utils";
+import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
+import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
 import { FormattedMessage, useIntl } from "react-intl";

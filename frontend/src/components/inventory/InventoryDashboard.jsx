@@ -24,7 +24,7 @@ import {
 import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
 import { InventoryItemAPI, InventoryLotAPI } from "./InventoryService";
 import LotEntryModal from "./LotEntryModal";
 import RecordUsageModal from "./RecordUsageModal";

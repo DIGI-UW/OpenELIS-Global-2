@@ -15,7 +15,7 @@ import { Minimize, Maximize, ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import { FormattedMessage, useIntl, injectIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
-import { NotificationKinds, AlertDialog } from "../common/CustomNotification";
+import { NotificationKinds, AlertDialog } from "../common/AlertDialog";
 
 const EOrderSearch = ({
   setEOrders = (eOrders) => {

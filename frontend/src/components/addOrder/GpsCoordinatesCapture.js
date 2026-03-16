@@ -15,7 +15,7 @@ import {
 } from "@carbon/react/icons";
 import { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { NotificationKinds } from "../common/CustomNotification";
+import { NotificationKinds } from "../common/AlertDialog";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 
 /**

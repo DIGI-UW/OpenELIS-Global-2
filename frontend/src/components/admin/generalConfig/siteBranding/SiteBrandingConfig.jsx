@@ -23,10 +23,7 @@ import {
   resetBranding,
 } from "../../../utils/BrandingUtils";
 import { NotificationContext } from "../../../layout/Layout";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../../common/CustomNotification";
+import { AlertDialog, NotificationKinds } from "../../../common/AlertDialog";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";

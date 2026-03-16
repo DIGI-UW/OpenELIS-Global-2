@@ -23,7 +23,7 @@ import {
   convertAlphaNumLabNumForDisplay,
 } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
 import { ConfigurationContext } from "../layout/Layout";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 

@@ -17,7 +17,7 @@ import Spinner from "../common/Sprinner";
 import { useIntl } from "react-intl";
 import { useContext, useEffect, useState } from "react";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog } from "../common/CustomNotification";
+import { AlertDialog } from "../common/AlertDialog";
 import NoNotificationSVG from "./NoNotificationSVG";
 
 export default function SlideOverNotifications(props) {

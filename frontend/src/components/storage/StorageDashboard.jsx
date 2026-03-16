@@ -44,7 +44,7 @@ import {
 } from "../utils/Utils";
 import config from "../../config.json";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog } from "../common/CustomNotification";
+import { AlertDialog } from "../common/AlertDialog";
 import StorageLocationsMetricCard from "./StorageDashboard/StorageLocationsMetricCard";
 import LocationFilterDropdown from "./StorageDashboard/LocationFilterDropdown";
 import BoxCrudControls from "./StorageDashboard/BoxCrudControls";

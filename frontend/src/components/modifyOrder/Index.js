@@ -3,7 +3,7 @@ import { FormattedMessage } from "react-intl";
 
 import { Column, Grid, Heading, Section } from "@carbon/react";
 import SearchOrder from "./SearchOrder";
-import { AlertDialog } from "../common/CustomNotification";
+import { AlertDialog } from "../common/AlertDialog";
 import { NotificationContext } from "../layout/Layout";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 let breadcrumbs = [{ label: "home.label", link: "/" }];

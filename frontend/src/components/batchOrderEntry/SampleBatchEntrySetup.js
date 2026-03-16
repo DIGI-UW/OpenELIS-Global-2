@@ -19,7 +19,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import SampleType from "./SampleType";
 import BatchOrderEntryFormValues from "../formModel/innitialValues/BatchOrderEntryFormValues";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog } from "../common/CustomNotification";
+import { AlertDialog } from "../common/AlertDialog";
 import AutoComplete from "../common/AutoComplete";
 import "../Style.css";
 import {

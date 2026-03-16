@@ -23,7 +23,7 @@ import {
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getFromOpenElisServer, hasRole } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog } from "../common/CustomNotification";
+import { AlertDialog } from "../common/AlertDialog";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";

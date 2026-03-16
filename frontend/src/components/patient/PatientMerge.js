@@ -10,7 +10,7 @@ import {
 } from "@carbon/react";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
 import PatientSelectionStep from "./patientMerge/PatientSelectionStep";
 import PrimarySelectionStep from "./patientMerge/PrimarySelectionStep";
 import ConfirmationStep from "./patientMerge/ConfirmationStep";

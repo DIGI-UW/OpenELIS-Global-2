@@ -16,7 +16,7 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import OrderReferralRequest from "../addOrder/OrderReferralRequest";
 import CustomCheckBox from "../common/CustomCheckBox";
 import CustomDatePicker from "../common/CustomDatePicker";
-import { NotificationKinds } from "../common/CustomNotification";
+import { NotificationKinds } from "../common/AlertDialog";
 import CustomSelect from "../common/CustomSelect";
 import CustomTextInput from "../common/CustomTextInput";
 import CustomTimePicker from "../common/CustomTimePicker";

@@ -23,7 +23,7 @@ import {
   postToOpenElisServerJsonResponse,
   convertAlphaNumLabNumForDisplay,
 } from "../utils/Utils";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import DataTable from "react-data-table-component";
 import { Formik } from "formik";

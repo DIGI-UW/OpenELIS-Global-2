@@ -10,7 +10,7 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
-import { NotificationKinds } from "../common/CustomNotification";
+import { NotificationKinds } from "../common/AlertDialog";
 import { InventoryItemAPI } from "./InventoryService";
 
 const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {

@@ -37,7 +37,7 @@ import {
   fetchAuditTrail,
   downloadReportDirect,
 } from "./api";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
 import { NotificationContext } from "../layout/Layout";
 
 const REPORT_TYPES = ["Daily Log", "Weekly Log", "Monthly Log"];

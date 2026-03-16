@@ -17,7 +17,7 @@ import {
   FlexGrid,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
 import "../Style.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import {

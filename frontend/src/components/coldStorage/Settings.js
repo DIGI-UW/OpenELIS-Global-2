@@ -13,7 +13,7 @@ import DeviceManagement from "./settings/DeviceManagement";
 import TemperatureThresholds from "./settings/TemperatureThresholds";
 import AlertSettings from "./settings/AlertSettings";
 import SystemSettings from "./settings/SystemSettings";
-import { AlertDialog } from "../common/CustomNotification";
+import { AlertDialog } from "../common/AlertDialog";
 import { NotificationContext } from "../layout/Layout";
 
 function Settings({ intl }) {

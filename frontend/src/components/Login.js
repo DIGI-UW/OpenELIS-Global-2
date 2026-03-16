@@ -17,7 +17,7 @@ import {
   Loading,
 } from "@carbon/react";
 import { Formik } from "formik";
-import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
+import { AlertDialog, NotificationKinds } from "./common/AlertDialog";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./layout/Layout";
 import { getBranding } from "./utils/BrandingUtils";

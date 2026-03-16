@@ -19,7 +19,7 @@ import {
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { Formik } from "formik";
 import * as Yup from "yup";
-import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
+import { AlertDialog, NotificationKinds } from "./common/AlertDialog";
 import { NotificationContext } from "./layout/Layout";
 
 function ChangePassword() {

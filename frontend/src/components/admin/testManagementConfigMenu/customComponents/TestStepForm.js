@@ -20,7 +20,7 @@ import {
   ClickableTile,
   Loading,
 } from "@carbon/react";
-import { NotificationKinds } from "../../../common/CustomNotification";
+import { NotificationKinds } from "../../../common/AlertDialog";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
