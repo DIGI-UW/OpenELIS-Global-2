@@ -32,7 +32,11 @@ test.describe("Analyzer Plugin Config", () => {
       }
 
       for (let sel = 1; sel <= 4; sel++) {
-        await form.pluginTypeDropdown.click();
+        // Carbon places data-testid on wrapper div; click inner trigger button
+        const trigger = form.pluginTypeDropdown.locator(
+          'button[role="combobox"], .cds--list-box__field',
+        );
+        await trigger.click();
         const genericAstmOption = page
           .getByRole("option", { name: /Generic ASTM/i })
           .first();
@@ -60,7 +64,11 @@ test.describe("Analyzer Plugin Config", () => {
     ).toBeTruthy();
 
     await expect(form.defaultConfigDropdown).toBeVisible();
-    await form.defaultConfigDropdown.click();
+    // Carbon: click inner trigger, not wrapper div
+    const configTrigger = form.defaultConfigDropdown.locator(
+      'button[role="combobox"], .cds--list-box__field',
+    );
+    await configTrigger.click();
     const geneXpertProfile = page
       .getByRole("option", { name: /GeneXpert.*ASTM/i })
       .first();
@@ -77,7 +85,39 @@ test.describe("Analyzer Plugin Config", () => {
   test("mappings page shows plugin-config snapshot and pending-codes panel", async ({
     page,
   }) => {
-    const analyzerId = "2013";
+    // Find or create a GeneXpert analyzer for testing
+    const listResp = await page.request.get(
+      "/api/OpenELIS-Global/rest/analyzer/analyzers",
+    );
+    const data = await listResp.json();
+    const existing = (data.analyzers ?? []).find(
+      (a: any) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
+    );
+
+    let analyzerId: string;
+    if (existing) {
+      analyzerId = String(existing.id);
+    } else {
+      const createResp = await page.request.post(
+        "/api/OpenELIS-Global/rest/analyzer/analyzers",
+        {
+          data: {
+            name: "Cepheid GeneXpert (ASTM Mode)",
+            analyzerType: "MOLECULAR",
+            pluginTypeId: "generic-astm",
+            ipAddress: "172.21.1.100",
+            port: 9600,
+            protocolVersion: "ASTM_LIS2_A2",
+            identifierPattern: "GENEXPERT|CEPHEID",
+            status: "ACTIVE",
+            defaultConfigId: "astm/genexpert-astm",
+          },
+        },
+      );
+      const created = await createResp.json();
+      analyzerId = String(created.id);
+    }
+
     const list = new AnalyzerListPage(page);
 
     await list.goto();
