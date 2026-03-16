@@ -18,25 +18,25 @@
   "msh3_pattern": "GENEXPERT|CEPHEID",
   "default_test_mappings": [
     {
-      "obx_identifier": "MTB",
+      "analyzer_code": "MTB",
       "test_name_hint": "Mycobacterium tuberculosis DNA",
       "loinc": "23826-1",
       "unit": ""
     },
     {
-      "obx_identifier": "RIF",
+      "analyzer_code": "RIF",
       "test_name_hint": "Rifampin Resistance",
       "loinc": "46244-0",
       "unit": ""
     },
     {
-      "obx_identifier": "COVID19",
+      "analyzer_code": "COVID19",
       "test_name_hint": "SARS-CoV-2 RNA",
       "loinc": "94500-6",
       "unit": ""
     },
     {
-      "obx_identifier": "HIV",
+      "analyzer_code": "HIV",
       "test_name_hint": "HIV-1 RNA",
       "loinc": "20447-9",
       "unit": "copies/mL"
