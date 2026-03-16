@@ -71,13 +71,11 @@ async function selectPatient(
   await searchBtn.click();
   await pause(3000);
 
-  // Select first result via RadioButton (clicking it auto-switches to patient form tab)
   const firstRadio = page.locator('[data-cy="radioButton"]').first();
-  if (await firstRadio.isVisible({ timeout: 4000 }).catch(() => false)) {
-    await scrollToAndPause(page, firstRadio, pause, 800);
-    await firstRadio.click();
-    await pause(1500); // wait for tab switch + form population
-  }
+  await expect(firstRadio).toBeVisible({ timeout: 5000 });
+  await scrollToAndPause(page, firstRadio, pause, 800);
+  await firstRadio.click();
+  await pause(1500); // wait for tab switch + form population
 }
 
 /**
