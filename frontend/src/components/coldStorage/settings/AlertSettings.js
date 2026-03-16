@@ -26,7 +26,10 @@ import {
 import { Notification } from "@carbon/icons-react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { fetchAlertConfig, saveAlertConfig } from "../api";
-import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { NotificationContext } from "../../layout/Layout";
 
 // Map UI alert types to backend NotificationNature enum values
@@ -62,7 +65,7 @@ function AlertSettings() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const notify = useCallback(
-    ({ kind = NotificationKinds.info, title, subtitle, message }) => {
+    ({ kind = OEToastNotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
       addNotification({
         kind,
@@ -119,7 +122,7 @@ function AlertSettings() {
       // If config doesn't exist yet, use defaults
       console.warn("Alert config not found, using defaults:", err);
       notify({
-        kind: NotificationKinds.info,
+        kind: OEToastNotificationKinds.info,
         title: intl.formatMessage({ id: "coldStorage.noConfigFound" }),
         subtitle: intl.formatMessage({ id: "coldStorage.usingDefaults" }),
       });
@@ -164,7 +167,7 @@ function AlertSettings() {
       await saveAlertConfig(config);
 
       notify({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.success" }),
         subtitle: intl.formatMessage({ id: "coldStorage.alert.saveSuccess" }),
       });
@@ -172,7 +175,7 @@ function AlertSettings() {
       await loadConfig();
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle:
           intl.formatMessage({ id: "coldStorage.alert.saveFailed" }) +
@@ -206,7 +209,7 @@ function AlertSettings() {
 
   return (
     <div style={{ padding: "1rem 0" }}>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
 
       <Section>
         <div

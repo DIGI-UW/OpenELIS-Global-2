@@ -23,7 +23,7 @@ import {
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getFromOpenElisServer, hasRole } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog } from "../common/AlertDialog";
+import { OEToastNotification } from "../common/OEToastNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
@@ -307,7 +307,7 @@ function NoteBookDashBoard() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {loading && (
         <Loading
           description={intl.formatMessage({ id: "loading.description" })}

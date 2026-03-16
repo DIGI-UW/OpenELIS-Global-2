@@ -23,7 +23,10 @@ import {
 } from "@carbon/react";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import "../../Style.css";
@@ -245,13 +248,13 @@ function DictionaryManagement() {
     setNotificationVisible(true);
     if (res.status == "201" || res.status == "200") {
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "success.add.edited.msg" }),
       });
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "error.add.edited.msg" }),
       });
@@ -402,7 +405,7 @@ function DictionaryManagement() {
     setNotificationVisible(true);
     if (status == "200") {
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "dictionary.menu.deactivate.success",
@@ -410,7 +413,7 @@ function DictionaryManagement() {
       });
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "dictionary.menu.deactivate.fail" }),
       });
@@ -430,7 +433,7 @@ function DictionaryManagement() {
 
   return (
     <div className="adminPageContent">
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },

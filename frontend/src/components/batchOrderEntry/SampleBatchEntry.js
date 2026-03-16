@@ -17,7 +17,10 @@ import {
   FlexGrid,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import "../Style.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import {
@@ -247,7 +250,7 @@ const SampleBatchEntry = (props) => {
     if (!res?.error && responseStatus < 400) {
       showAlertMessage(
         <FormattedMessage id="save.order.success.msg" />,
-        NotificationKinds.success,
+        OEToastNotificationKinds.success,
       );
       setSaveResponse(res);
     }
@@ -310,7 +313,7 @@ const SampleBatchEntry = (props) => {
 
   return (
     <>
-      {notificationVisible && <AlertDialog />}
+      {notificationVisible && <OEToastNotification />}
       {loading && <Loading description="Loading Dasboard..." />}
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       {!showSampleComponent && (

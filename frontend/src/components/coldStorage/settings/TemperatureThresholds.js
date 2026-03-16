@@ -11,7 +11,10 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { fetchDevices, updateDeviceThresholds } from "../api";
-import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { NotificationContext } from "../../layout/Layout";
 
 function TemperatureThresholds() {
@@ -19,7 +22,7 @@ function TemperatureThresholds() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const notify = useCallback(
-    ({ kind = NotificationKinds.info, title, subtitle, message }) => {
+    ({ kind = OEToastNotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
       addNotification({
         kind,
@@ -54,7 +57,7 @@ function TemperatureThresholds() {
       setThresholds(initialThresholds);
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle:
           intl.formatMessage({ id: "coldStorage.error.loadDevices" }) +
@@ -97,7 +100,7 @@ function TemperatureThresholds() {
       }
 
       notify({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.success" }),
         subtitle: intl.formatMessage({
           id: "coldStorage.threshold.saveSuccess",
@@ -106,7 +109,7 @@ function TemperatureThresholds() {
       await loadDevices();
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle:
           intl.formatMessage({ id: "coldStorage.error.saveThreshold" }) +
@@ -127,7 +130,7 @@ function TemperatureThresholds() {
 
   return (
     <div style={{ padding: "1rem 0" }}>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
 
       <Section>
         <div

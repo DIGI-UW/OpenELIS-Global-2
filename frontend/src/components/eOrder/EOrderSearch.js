@@ -15,7 +15,10 @@ import { Minimize, Maximize, ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import { FormattedMessage, useIntl, injectIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
-import { NotificationKinds, AlertDialog } from "../common/AlertDialog";
+import {
+  OEToastNotificationKinds,
+  OEToastNotification,
+} from "../common/OEToastNotification";
 
 const EOrderSearch = ({
   setEOrders = (eOrders) => {
@@ -132,7 +135,7 @@ const EOrderSearch = ({
     }
     if (response.eOrders.length == 0) {
       addNotification({
-        kind: NotificationKinds.warning,
+        kind: OEToastNotificationKinds.warning,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "eorder.search.noresults",
@@ -161,7 +164,7 @@ const EOrderSearch = ({
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <Column lg={16} md={8} sm={4}>
         <FormattedMessage id="eorder.search1.text" />
       </Column>

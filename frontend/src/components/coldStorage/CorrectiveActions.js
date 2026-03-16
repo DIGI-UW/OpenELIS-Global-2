@@ -45,7 +45,10 @@ import {
   createDevice,
   createRoom,
 } from "./api";
-import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { NotificationContext } from "../layout/Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { useIntl } from "react-intl";
@@ -144,7 +147,7 @@ export default function CorrectiveActions() {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
 
   const notify = useCallback(
-    ({ kind = NotificationKinds.info, title, subtitle, message }) => {
+    ({ kind = OEToastNotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
       addNotification({
         kind,
@@ -271,7 +274,7 @@ export default function CorrectiveActions() {
       setActions(normalizedActions);
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle: intl.formatMessage({ id: "coldStorage.error.loadActions" }),
       });
@@ -308,7 +311,7 @@ export default function CorrectiveActions() {
       setDevices(mappedDevices);
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle: intl.formatMessage({ id: "coldStorage.error.loadDevices" }),
       });
@@ -322,7 +325,7 @@ export default function CorrectiveActions() {
       setUsers(items || []);
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle: intl.formatMessage({ id: "coldStorage.error.loadUsers" }),
       });
@@ -496,7 +499,7 @@ export default function CorrectiveActions() {
       handleCloseViewModal();
 
       notify({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.success" }),
         subtitle: intl.formatMessage({
           id: "coldStorage.action.updateSuccess",
@@ -506,7 +509,7 @@ export default function CorrectiveActions() {
       loadCorrectiveActions();
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle: intl.formatMessage({ id: "coldStorage.error.updateAction" }),
       });
@@ -518,7 +521,7 @@ export default function CorrectiveActions() {
   const handleRetractAction = async () => {
     if (!selectedAction || !retractionReason.trim()) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "coldStorage.validation.error" }),
         subtitle: intl.formatMessage({
           id: "coldStorage.validation.retractionReason",
@@ -537,7 +540,7 @@ export default function CorrectiveActions() {
       handleCloseRetractModal();
 
       notify({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.success" }),
         subtitle: intl.formatMessage({
           id: "coldStorage.action.retractSuccess",
@@ -547,7 +550,7 @@ export default function CorrectiveActions() {
       loadCorrectiveActions();
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle: intl.formatMessage({
           id: "coldStorage.error.retractAction",
@@ -561,7 +564,7 @@ export default function CorrectiveActions() {
   const handleCreateDevice = async (formData) => {
     if (!formData.roomId || formData.roomId === "") {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "coldStorage.validation.error" }),
         subtitle: intl.formatMessage({
           id: "coldStorage.validation.selectRoom",
@@ -605,7 +608,7 @@ export default function CorrectiveActions() {
       setIsAddModalOpen(true);
 
       notify({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "coldStorage.device.created" }),
         subtitle: intl.formatMessage(
           { id: "coldStorage.device.createdSuccess" },
@@ -616,7 +619,7 @@ export default function CorrectiveActions() {
       loadDevices();
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle: intl.formatMessage({ id: "coldStorage.error.createDevice" }),
       });
@@ -640,7 +643,7 @@ export default function CorrectiveActions() {
       setIsDeviceModalOpen(true);
 
       notify({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.success" }),
         subtitle: intl.formatMessage({ id: "coldStorage.room.created" }),
       });
@@ -648,7 +651,7 @@ export default function CorrectiveActions() {
       loadLocations();
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle:
           intl.formatMessage({ id: "coldStorage.error.createRoom" }) +
@@ -689,7 +692,7 @@ export default function CorrectiveActions() {
       resetForm();
 
       notify({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.success" }),
         subtitle: intl.formatMessage({
           id: "coldStorage.action.createSuccess",
@@ -699,7 +702,7 @@ export default function CorrectiveActions() {
       loadCorrectiveActions();
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle: intl.formatMessage({ id: "coldStorage.error.createAction" }),
       });
@@ -727,7 +730,7 @@ export default function CorrectiveActions() {
 
   return (
     <div style={{ padding: "1rem 0" }}>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {loading ? (
         <div>Loading corrective actions...</div>
       ) : (

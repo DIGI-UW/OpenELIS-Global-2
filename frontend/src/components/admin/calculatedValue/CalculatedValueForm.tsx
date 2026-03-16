@@ -32,7 +32,10 @@ import {
   postToOpenElisServer,
 } from "../../utils/Utils.js";
 import { NotificationContext } from "../../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
 const breadcrumbs = [
@@ -213,14 +216,14 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     setNotificationVisible(true);
     if (status == "200") {
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "delete.success.msg" }),
       });
       window.location.reload();
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "delete.error.msg" }),
       });
@@ -355,13 +358,13 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
       ) as HTMLInputElement;
       element.disabled = true;
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: "Succesfuly saved",
       });
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: "Duplicate Calculation Name or Error while saving",
       });
@@ -416,7 +419,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     } catch (error) {
       setNotificationVisible(true);
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: "Invalid Calculation Logic : " + error.message,
       });
@@ -637,7 +640,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
           </Section>
         </Column>
       </Grid>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {loading && <Loading></Loading>}
       {calculationList.map((calculation, index) => (
         <div key={index} className="rules">

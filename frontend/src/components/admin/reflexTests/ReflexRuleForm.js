@@ -22,7 +22,10 @@ import AutoComplete from "../../common/AutoComplete.js";
 import RuleBuilderFormValues from "../../formModel/innitialValues/RuleBuilderFormValues";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./ReflexStyles.css";
 
@@ -301,14 +304,14 @@ function ReflexRule() {
     setNotificationVisible(true);
     if (status == "200") {
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "delete.success.msg" }),
       });
       window.location.reload();
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "delete.error.msg" }),
       });
@@ -344,13 +347,13 @@ function ReflexRule() {
       const element = document.getElementById("submit_" + index);
       element.disabled = true;
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.success" }),
       });
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "error.duplicate.calculationname" }),
       });
@@ -454,7 +457,7 @@ function ReflexRule() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {loading && <Loading></Loading>}
       {ruleList.map((rule, index) => (
         <div key={index} className="rules">

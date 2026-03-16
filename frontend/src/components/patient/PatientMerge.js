@@ -10,7 +10,10 @@ import {
 } from "@carbon/react";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import PatientSelectionStep from "./patientMerge/PatientSelectionStep";
 import PrimarySelectionStep from "./patientMerge/PrimarySelectionStep";
 import ConfirmationStep from "./patientMerge/ConfirmationStep";
@@ -77,7 +80,7 @@ function PatientMerge() {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: errorMsg,
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
       });
       setNotificationVisible(true);
       return false;
@@ -112,7 +115,7 @@ function PatientMerge() {
             auditId: result.auditId,
           },
         ),
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
       });
       setNotificationVisible(true);
 
@@ -126,7 +129,7 @@ function PatientMerge() {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: errorMsg,
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
       });
       setNotificationVisible(true);
     } finally {
@@ -226,7 +229,7 @@ function PatientMerge() {
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Stack gap={10}>
         <div className="pageContent">
-          {notificationVisible && <AlertDialog />}
+          {notificationVisible && <OEToastNotification />}
           {isLoading && <Loading />}
 
           <div className="orderWorkFlowDiv">

@@ -16,7 +16,7 @@ import { Copy } from "@carbon/icons-react";
 import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
-import { NotificationKinds } from "../common/AlertDialog";
+import { OEToastNotificationKinds } from "../common/OEToastNotification";
 import { postToOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -127,11 +127,11 @@ const Validation = (props) => {
   };
   const handleResponse = (status) => {
     let message = intl.formatMessage({ id: "validation.save.error" });
-    let kind = NotificationKinds.error;
+    let kind = OEToastNotificationKinds.error;
     setIsSubmitting(false);
     if (status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
-      kind = NotificationKinds.success;
+      kind = OEToastNotificationKinds.success;
       window.location.href = "/validation" + props.params;
     }
     addNotification({

@@ -13,7 +13,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import "../../Style.css";
 import { getFromOpenElisServer } from "../../utils/Utils";
-import { AlertDialog } from "../../common/AlertDialog";
+import { OEToastNotification } from "../../common/OEToastNotification";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import config from "../../../config.json";
 import { encodeDate } from "../../utils/Utils";
@@ -91,7 +91,7 @@ const ReferredOut = () => {
       setNotificationVisible(true);
     } else {
       setLoading(false);
-      <AlertDialog />;
+      <OEToastNotification />;
     }
   };
 

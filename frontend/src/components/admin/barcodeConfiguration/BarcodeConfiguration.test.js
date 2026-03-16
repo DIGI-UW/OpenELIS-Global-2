@@ -19,9 +19,9 @@ jest.mock("../../common/PageBreadCrumb.js", () => () => (
   <div data-testid="barcode-breadcrumb" />
 ));
 
-jest.mock("../../common/CustomNotification.js", () => ({
-  AlertDialog: () => null,
-  NotificationKinds: {
+jest.mock("../../common/OEToastNotification", () => ({
+  OEToastNotification: () => null,
+  OEToastNotificationKinds: {
     success: "success",
     error: "error",
   },

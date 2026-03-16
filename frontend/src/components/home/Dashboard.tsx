@@ -33,7 +33,10 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 
 interface DashBoardProps {}
 
@@ -368,7 +371,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     } else {
       setNotificationVisible(true);
       addNotification({
-        kind: NotificationKinds.warning,
+        kind: OEToastNotificationKinds.warning,
         title: intl.formatMessage({ id: "accessDenied.title" }),
         message: intl.formatMessage({ id: "accessDenied.message" }),
       });
@@ -499,7 +502,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   return (
     <>
       {loading && <Loading description="Loading Dasboard..." />}
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {selectedTile == null ? (
         <div className="home-dashboard-container">
           {tileList.map((tile, index) => (

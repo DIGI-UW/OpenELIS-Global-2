@@ -30,7 +30,10 @@ import {
   ConfigurationContext,
   NotificationContext,
 } from "../../layout/Layout.js";
-import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
@@ -141,7 +144,7 @@ function AnalyzerTestName() {
       if (response.analyzerList.length == 0) {
         setNotificationVisible(true);
         addNotification({
-          kind: NotificationKinds.warning,
+          kind: OEToastNotificationKinds.warning,
           title: intl.formatMessage({ id: "notification.title" }),
           message: intl.formatMessage({ id: "message.noPluginFound" }),
         });
@@ -180,13 +183,13 @@ function AnalyzerTestName() {
     setNotificationVisible(true);
     if (res.status == "201" || res.status == "200") {
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.config.success.msg" }),
       });
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -311,7 +314,7 @@ function AnalyzerTestName() {
   const handleAddAnalyzer = () => {
     if (checkIfCombinationExists()) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "analyzer.combinationName.notification",
@@ -343,7 +346,7 @@ function AnalyzerTestName() {
   const handleUpdateAnalyzer = () => {
     if (!originalAnalyzerId || !originalAnalyzerTestName || !selectedTestId) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "error.required.fields",
@@ -409,7 +412,7 @@ function AnalyzerTestName() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <Grid fullWidth={true}>

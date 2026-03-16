@@ -5,7 +5,10 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
 import { NotificationContext } from "../../layout/Layout.js";
-import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import RenameModelBox from "./renameModel/RenameModelBox.js";
@@ -117,7 +120,7 @@ function UomRenameEntry() {
         message: intl.formatMessage({
           id: "notification.user.post.save.success",
         }),
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
       });
       setNotificationVisible(true);
       setIsAddModalOpen(false);
@@ -126,7 +129,7 @@ function UomRenameEntry() {
       }, 10);
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -186,7 +189,7 @@ function UomRenameEntry() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <div className="orderLegendBody">

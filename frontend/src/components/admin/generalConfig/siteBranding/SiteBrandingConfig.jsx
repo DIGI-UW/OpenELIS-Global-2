@@ -23,7 +23,10 @@ import {
   resetBranding,
 } from "../../../utils/BrandingUtils";
 import { NotificationContext } from "../../../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../../common/OEToastNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
@@ -292,7 +295,7 @@ function SiteBrandingConfig() {
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
           message: errorText,
-          kind: NotificationKinds.error,
+          kind: OEToastNotificationKinds.error,
         });
         setNotificationVisible(true);
         return;
@@ -345,7 +348,7 @@ function SiteBrandingConfig() {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "site.branding.save.success" }),
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
       });
       setNotificationVisible(true);
     });
@@ -415,14 +418,14 @@ function SiteBrandingConfig() {
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
           message: intl.formatMessage({ id: "site.branding.reset.success" }),
-          kind: NotificationKinds.success,
+          kind: OEToastNotificationKinds.success,
         });
         setNotificationVisible(true);
       } else {
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
           message: intl.formatMessage({ id: "site.branding.reset.error" }),
-          kind: NotificationKinds.error,
+          kind: OEToastNotificationKinds.error,
         });
         setNotificationVisible(true);
       }
@@ -445,7 +448,7 @@ function SiteBrandingConfig() {
 
   return (
     <div className="adminPageContent">
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>

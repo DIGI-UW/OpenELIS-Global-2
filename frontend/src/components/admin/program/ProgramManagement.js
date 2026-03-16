@@ -19,7 +19,10 @@ import {
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import EditAdditionalOrderEntryQuestions from "./EditAdditionalOrderEntryQuestions.js";
@@ -101,7 +104,7 @@ function ProgramManagement() {
     setIsSubmitting(false);
     if (res.status == "200") {
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "success.add.edited.msg" }),
       });
@@ -118,7 +121,7 @@ function ProgramManagement() {
       setProgramValues(newProgramValues);
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "error.add.edited.msg" }),
       });
@@ -158,7 +161,7 @@ function ProgramManagement() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <Grid fullWidth={true}>

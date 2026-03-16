@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
-import { AlertDialog } from "../../common/AlertDialog";
+import { OEToastNotification } from "../../common/OEToastNotification";
 import { NotificationContext } from "../../layout/Layout";
 import { Heading, Grid, Column, Section, Loading } from "@carbon/react";
 import { injectIntl, FormattedMessage, useIntl } from "react-intl";
@@ -124,7 +124,7 @@ const RoutineIndex = () => {
         ]}
       />
       <div className="orderLegendBody">
-        {notificationVisible === true && <AlertDialog />}
+        {notificationVisible === true && <OEToastNotification />}
         {isLoading && <Loading />}
         {!isLoading && <RoutineReports type={type} report={report} />}
       </div>

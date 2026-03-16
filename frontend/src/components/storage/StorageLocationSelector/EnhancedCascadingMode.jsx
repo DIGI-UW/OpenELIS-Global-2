@@ -21,7 +21,7 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
-import { NotificationKinds } from "../../common/AlertDialog";
+import { OEToastNotificationKinds } from "../../common/OEToastNotification";
 import "./EnhancedCascadingMode.css";
 
 /**
@@ -1124,7 +1124,7 @@ const EnhancedCascadingMode = ({
                 { id: "storage.create.room.error" },
                 { error: response.error },
               ) || `Failed to create room: ${response.error}`,
-            kind: NotificationKinds.error,
+            kind: OEToastNotificationKinds.error,
           });
           setNotificationVisible(true);
           // Don't clear state - keep user's input so they can fix it
@@ -1149,7 +1149,7 @@ const EnhancedCascadingMode = ({
               { id: "storage.create.room.success" },
               { name: response.name },
             ) || `Room "${response.name}" created successfully`,
-          kind: NotificationKinds.success,
+          kind: OEToastNotificationKinds.success,
         });
         setNotificationVisible(true);
 
@@ -1212,7 +1212,7 @@ const EnhancedCascadingMode = ({
                 { id: "storage.create.device.error" },
                 { error: response.error },
               ) || `Failed to create device: ${response.error}`,
-            kind: NotificationKinds.error,
+            kind: OEToastNotificationKinds.error,
           });
           setNotificationVisible(true);
           return;
@@ -1232,7 +1232,7 @@ const EnhancedCascadingMode = ({
               { id: "storage.create.device.success" },
               { name: response.name },
             ) || `Device "${response.name}" created successfully`,
-          kind: NotificationKinds.success,
+          kind: OEToastNotificationKinds.success,
         });
         setNotificationVisible(true);
 
@@ -1292,7 +1292,7 @@ const EnhancedCascadingMode = ({
                 { id: "storage.create.shelf.error" },
                 { error: response.error },
               ) || `Failed to create shelf: ${response.error}`,
-            kind: NotificationKinds.error,
+            kind: OEToastNotificationKinds.error,
           });
           setNotificationVisible(true);
           return;
@@ -1312,7 +1312,7 @@ const EnhancedCascadingMode = ({
               { id: "storage.create.shelf.success" },
               { label: response.label },
             ) || `Shelf "${response.label}" created successfully`,
-          kind: NotificationKinds.success,
+          kind: OEToastNotificationKinds.success,
         });
         setNotificationVisible(true);
 
@@ -1374,7 +1374,7 @@ const EnhancedCascadingMode = ({
                 { id: "storage.create.rack.error" },
                 { error: response.error },
               ) || `Failed to create rack: ${response.error}`,
-            kind: NotificationKinds.error,
+            kind: OEToastNotificationKinds.error,
           });
           setNotificationVisible(true);
           return;
@@ -1394,7 +1394,7 @@ const EnhancedCascadingMode = ({
               { id: "storage.create.rack.success" },
               { label: response.label },
             ) || `Rack "${response.label}" created successfully`,
-          kind: NotificationKinds.success,
+          kind: OEToastNotificationKinds.success,
         });
         setNotificationVisible(true);
 

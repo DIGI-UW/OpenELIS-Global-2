@@ -19,7 +19,10 @@ import {
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { Formik } from "formik";
 import * as Yup from "yup";
-import { AlertDialog, NotificationKinds } from "./common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "./common/OEToastNotification";
 import { NotificationContext } from "./layout/Layout";
 
 function ChangePassword() {
@@ -43,7 +46,7 @@ function ChangePassword() {
         console.log(response);
         if (response.redirected === true) {
           addNotification({
-            kind: NotificationKinds.success,
+            kind: OEToastNotificationKinds.success,
             title: intl.formatMessage({ id: "notification.title" }),
             message: intl.formatMessage({
               id: "notification.password.change.success",
@@ -55,7 +58,7 @@ function ChangePassword() {
           }, 2000);
         } else {
           addNotification({
-            kind: NotificationKinds.error,
+            kind: OEToastNotificationKinds.error,
             title: intl.formatMessage({ id: "notification.title" }),
             message: intl.formatMessage({
               id: "notification.password.change.fail",
@@ -67,7 +70,7 @@ function ChangePassword() {
       })
       .catch((error) => {
         addNotification({
-          kind: NotificationKinds.error,
+          kind: OEToastNotificationKinds.error,
           title: intl.formatMessage({ id: "notification.title" }),
           message: error.message,
         });
@@ -109,7 +112,7 @@ function ChangePassword() {
   return (
     <>
       <div className="changePasswordPage">
-        {notificationVisible === true ? <AlertDialog /> : ""}
+        {notificationVisible === true ? <OEToastNotification /> : ""}
         <Grid fullWidth={true}>
           <Column lg={0} md={0} sm={4}>
             <LoginComlexityMessage />

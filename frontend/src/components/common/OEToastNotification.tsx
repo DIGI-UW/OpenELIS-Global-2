@@ -2,16 +2,16 @@ import React, { useContext } from "react";
 import { ToastNotification } from "@carbon/react";
 import { NotificationContext } from "../layout/Layout";
 
-export const NotificationKinds = {
+export const OEToastNotificationKinds = {
   info: "info",
   error: "error",
   success: "success",
   warning: "warning",
 };
 
-export type NotificationKind = keyof typeof NotificationKinds;
+export type OEToastNotificationKind = keyof typeof OEToastNotificationKinds;
 
-export interface NotificationBody {
+export interface OEToastNotificationBody {
   title: string;
   kind:
     | "error"
@@ -25,11 +25,11 @@ export interface NotificationBody {
   message?: React.ReactNode;
 }
 
-export const AlertDialog: React.FC = () => {
+export const OEToastNotification: React.FC = () => {
   const { notifications, removeNotification } = useContext(
     NotificationContext,
   ) as {
-    notifications: NotificationBody[];
+    notifications: OEToastNotificationBody[];
     removeNotification: (index: number) => void;
   };
 
@@ -37,13 +37,13 @@ export const AlertDialog: React.FC = () => {
     <div className="toastDisplay">
       {notifications &&
         notifications.map(
-          (notificationBody: NotificationBody, index: number) => {
+          (notificationBody: OEToastNotificationBody, index: number) => {
             return (
               <ToastNotification
                 key={index}
                 title={notificationBody.title}
                 timeout={
-                  notificationBody.kind !== NotificationKinds.error
+                  notificationBody.kind !== OEToastNotificationKinds.error
                     ? 2000
                     : 3000
                 }

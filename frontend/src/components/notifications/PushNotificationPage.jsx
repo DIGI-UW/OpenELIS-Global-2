@@ -9,7 +9,10 @@ import {
   TextArea,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import AutoComplete from "../common/AutoComplete";
@@ -42,7 +45,7 @@ export default function PushNotificationPage() {
             message: intl.formatMessage({
               id: `notify.user.success.notification`,
             }),
-            kind: NotificationKinds.success,
+            kind: OEToastNotificationKinds.success,
           });
           setNotificationVisible(true);
           setData({ message: "" });
@@ -80,7 +83,7 @@ export default function PushNotificationPage() {
 
   return (
     <div className="adminPageContent">
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },

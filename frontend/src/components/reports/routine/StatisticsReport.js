@@ -13,7 +13,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, Roles } from "../../utils/Utils";
 import "../../Style.css";
-import { AlertDialog } from "../../common/AlertDialog";
+import { OEToastNotification } from "../../common/OEToastNotification";
 import config from "../../../config.json";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 

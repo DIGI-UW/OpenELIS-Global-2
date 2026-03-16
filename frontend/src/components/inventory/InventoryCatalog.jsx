@@ -22,7 +22,10 @@ import {
 import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { InventoryItemAPI } from "./InventoryService";
 import InventoryItemForm from "./InventoryItemForm";
 
@@ -32,7 +35,7 @@ const InventoryCatalog = () => {
     useContext(NotificationContext);
 
   const notify = useCallback(
-    ({ kind = NotificationKinds.info, title, subtitle, message }) => {
+    ({ kind = OEToastNotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
       addNotification({
         kind,
@@ -145,7 +148,7 @@ const InventoryCatalog = () => {
       console.error("Error fetching catalog items:", error);
       setItems([]);
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.error" }),
         subtitle: "Error loading catalog items",
       });
@@ -200,7 +203,7 @@ const InventoryCatalog = () => {
     setSelectedItem(null);
     fetchItems();
     notify({
-      kind: NotificationKinds.success,
+      kind: OEToastNotificationKinds.success,
       title: intl.formatMessage({ id: "notification.success" }),
       subtitle: intl.formatMessage({ id: "catalog.item.save.success" }),
     });
@@ -223,14 +226,14 @@ const InventoryCatalog = () => {
       await InventoryItemAPI.activate(item.id);
       fetchItems();
       notify({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.success" }),
         subtitle: intl.formatMessage({ id: "catalog.item.activate.success" }),
       });
     } catch (error) {
       console.error("Error activating item:", error);
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.error" }),
         subtitle: "Error activating item",
       });
@@ -246,14 +249,14 @@ const InventoryCatalog = () => {
       setItemToDeactivate(null);
       fetchItems();
       notify({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.success" }),
         subtitle: intl.formatMessage({ id: "catalog.item.deactivate.success" }),
       });
     } catch (error) {
       console.error("Error deactivating item:", error);
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.error" }),
         subtitle: "Error deactivating item",
       });
@@ -267,7 +270,7 @@ const InventoryCatalog = () => {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <DataTable rows={rows} headers={headers} isSortable>
         {({
           rows,

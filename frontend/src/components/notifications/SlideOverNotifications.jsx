@@ -17,7 +17,7 @@ import Spinner from "../common/Sprinner";
 import { useIntl } from "react-intl";
 import { useContext, useEffect, useState } from "react";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog } from "../common/AlertDialog";
+import { OEToastNotification } from "../common/OEToastNotification";
 import NoNotificationSVG from "./NoNotificationSVG";
 
 export default function SlideOverNotifications(props) {
@@ -176,7 +176,7 @@ export default function SlideOverNotifications(props) {
         error,
       );
 
-      // let a = NotificationKinds.
+      // let a = OEToastNotificationKinds.
 
       addNotification({
         kind: "warning",
@@ -245,7 +245,7 @@ export default function SlideOverNotifications(props) {
         margin: "0 auto",
       }}
     >
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         <br />
 

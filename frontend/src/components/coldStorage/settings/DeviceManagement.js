@@ -36,7 +36,10 @@ import {
   deleteDevice,
   createRoom,
 } from "../api";
-import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { NotificationContext } from "../../layout/Layout";
 import AddDeviceModal from "../shared/AddDeviceModal";
 
@@ -95,7 +98,7 @@ function DeviceManagement() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const notify = useCallback(
-    ({ kind = NotificationKinds.info, title, subtitle, message }) => {
+    ({ kind = OEToastNotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
       addNotification({
         kind,
@@ -155,7 +158,7 @@ function DeviceManagement() {
     } catch (err) {
       console.error("Failed to load locations:", err);
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle:
           intl.formatMessage({ id: "coldStorage.error.loadLocations" }) +
@@ -257,7 +260,7 @@ function DeviceManagement() {
       setDeviceToToggle(null);
 
       notify({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.success" }),
         subtitle: intl.formatMessage(
           { id: "coldStorage.device.statusChanged" },
@@ -274,7 +277,7 @@ function DeviceManagement() {
       loadDevices();
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle:
           intl.formatMessage({ id: "coldStorage.error.toggleStatus" }) +
@@ -304,7 +307,7 @@ function DeviceManagement() {
       setDeviceToDelete(null);
 
       notify({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.success" }),
         subtitle: intl.formatMessage(
           { id: "coldStorage.device.deleted" },
@@ -316,7 +319,7 @@ function DeviceManagement() {
       loadDevices();
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle:
           intl.formatMessage({ id: "coldStorage.error.deleteDevice" }) +
@@ -338,7 +341,7 @@ function DeviceManagement() {
     // Validate roomId
     if (!formData.roomId || formData.roomId === "") {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "coldStorage.validation.error" }),
         subtitle: intl.formatMessage({
           id: "coldStorage.validation.selectRoom",
@@ -379,7 +382,7 @@ function DeviceManagement() {
         setEditingDevice(null);
 
         notify({
-          kind: NotificationKinds.success,
+          kind: OEToastNotificationKinds.success,
           title: intl.formatMessage({ id: "notification.success" }),
           subtitle: intl.formatMessage({ id: "coldStorage.device.updated" }),
         });
@@ -391,7 +394,7 @@ function DeviceManagement() {
         setEditingDevice(null);
 
         notify({
-          kind: NotificationKinds.success,
+          kind: OEToastNotificationKinds.success,
           title: intl.formatMessage({ id: "notification.success" }),
           subtitle: intl.formatMessage({ id: "coldStorage.device.created" }),
         });
@@ -401,7 +404,7 @@ function DeviceManagement() {
       loadDevices();
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle:
           intl.formatMessage({
@@ -432,7 +435,7 @@ function DeviceManagement() {
       setIsModalOpen(true);
 
       notify({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.success" }),
         subtitle: intl.formatMessage({ id: "coldStorage.room.created" }),
       });
@@ -448,7 +451,7 @@ function DeviceManagement() {
       }
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle:
           intl.formatMessage({ id: "coldStorage.error.createRoom" }) +
@@ -523,7 +526,7 @@ function DeviceManagement() {
 
   return (
     <div style={{ padding: "1rem 0" }}>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <DataTable rows={rows} headers={getDeviceColumns(intl)}>
         {({
           rows,

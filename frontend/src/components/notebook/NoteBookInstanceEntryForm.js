@@ -48,7 +48,10 @@ import {
 } from "@carbon/react/icons";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   NoteBookFormValues,
@@ -194,7 +197,7 @@ const NoteBookInstanceEntryForm = () => {
     setNotificationVisible(true);
     if (status == "200") {
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.success" }),
       });
@@ -204,7 +207,7 @@ const NoteBookInstanceEntryForm = () => {
       loadAuditTrail(body.id);
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "error.save.msg" }),
       });
@@ -271,7 +274,7 @@ const NoteBookInstanceEntryForm = () => {
     if (status === 200) {
       showAlertMessage(
         <FormattedMessage id="save.order.success.msg" />,
-        NotificationKinds.success,
+        OEToastNotificationKinds.success,
       );
       setSamples([sampleObject]);
       getFromOpenElisServer(
@@ -281,7 +284,7 @@ const NoteBookInstanceEntryForm = () => {
     } else {
       showAlertMessage(
         <FormattedMessage id="server.error.msg" />,
-        NotificationKinds.error,
+        OEToastNotificationKinds.error,
       );
     }
   };
@@ -560,7 +563,7 @@ const NoteBookInstanceEntryForm = () => {
   const checkAuthorization = (technicianId) => {
     if (technicianId && userSessionDetails.userId != technicianId) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "notebook.error.notAssigned",
@@ -770,7 +773,7 @@ const NoteBookInstanceEntryForm = () => {
     const accession = sample.accessionNumber || "";
     if (!accession) {
       addNotification({
-        kind: NotificationKinds.warning,
+        kind: OEToastNotificationKinds.warning,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "notebook.results.noAccession",
@@ -850,7 +853,7 @@ const NoteBookInstanceEntryForm = () => {
     refreshSampleList();
     // Show success notification
     addNotification({
-      kind: NotificationKinds.success,
+      kind: OEToastNotificationKinds.success,
       title: intl.formatMessage({ id: "notification.title" }),
       message: intl.formatMessage(
         { id: "genericSample.order.success.message" },
@@ -871,7 +874,7 @@ const NoteBookInstanceEntryForm = () => {
     refreshSampleList();
     // Show success notification
     addNotification({
-      kind: NotificationKinds.success,
+      kind: OEToastNotificationKinds.success,
       title: intl.formatMessage({ id: "notification.title" }),
       message: intl.formatMessage(
         { id: "genericSample.edit.success" },
@@ -892,7 +895,7 @@ const NoteBookInstanceEntryForm = () => {
     refreshSampleList();
     // Show success notification
     addNotification({
-      kind: NotificationKinds.success,
+      kind: OEToastNotificationKinds.success,
       title: intl.formatMessage({ id: "notification.title" }),
       message: intl.formatMessage(
         { id: "genericSample.import.success" },
@@ -1018,7 +1021,7 @@ const NoteBookInstanceEntryForm = () => {
                 id: "storage.location.assigned.success",
                 defaultMessage: "Location assigned successfully",
               }),
-              kind: NotificationKinds.success,
+              kind: OEToastNotificationKinds.success,
             });
             setNotificationVisible(true);
           }
@@ -1032,7 +1035,7 @@ const NoteBookInstanceEntryForm = () => {
           id: "storage.location.assigned.error",
           defaultMessage: "Failed to assign location",
         }),
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
       });
       setNotificationVisible(true);
     }
@@ -1052,7 +1055,7 @@ const NoteBookInstanceEntryForm = () => {
           </Section>
         </Column>
       </Grid>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {loading && <Loading></Loading>}
       <Grid fullWidth={true} className="orderLegendBody">
         {/* Status & Metadata Section */}
@@ -1475,7 +1478,7 @@ const NoteBookInstanceEntryForm = () => {
                     onSaveSuccess={handleSampleCreationSuccess}
                     onSaveError={(error) => {
                       addNotification({
-                        kind: NotificationKinds.error,
+                        kind: OEToastNotificationKinds.error,
                         title: intl.formatMessage({ id: "notification.title" }),
                         message: error,
                       });
@@ -1554,7 +1557,7 @@ const NoteBookInstanceEntryForm = () => {
                     onSaveSuccess={handleSampleEditSuccess}
                     onSaveError={(error) => {
                       addNotification({
-                        kind: NotificationKinds.error,
+                        kind: OEToastNotificationKinds.error,
                         title: intl.formatMessage({ id: "notification.title" }),
                         message: error,
                       });
@@ -1604,7 +1607,7 @@ const NoteBookInstanceEntryForm = () => {
                     onImportSuccess={handleSampleImportSuccess}
                     onImportError={(error) => {
                       addNotification({
-                        kind: NotificationKinds.error,
+                        kind: OEToastNotificationKinds.error,
                         title: intl.formatMessage({ id: "notification.title" }),
                         message: error,
                       });

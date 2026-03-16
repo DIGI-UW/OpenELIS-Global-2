@@ -12,7 +12,7 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../../Style.css";
-import { AlertDialog } from "../../common/AlertDialog";
+import { OEToastNotification } from "../../common/OEToastNotification";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import config from "../../../config.json";
 import { encodeDate, getFromOpenElisServer } from "../../utils/Utils";
@@ -159,7 +159,7 @@ const ReportByDateCSV = (props) => {
           </FormLabel>
         </Column>
       </Grid>
-      {notificationVisible && <AlertDialog />}
+      {notificationVisible && <OEToastNotification />}
       {loading && <Loading />}
       <Grid fullWidth={true}>
         <Column lg={16} md={6} sm={4}>

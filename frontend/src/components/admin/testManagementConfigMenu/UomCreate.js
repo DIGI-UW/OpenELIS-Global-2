@@ -14,7 +14,10 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
 import { NotificationContext } from "../../layout/Layout.js";
-import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 
@@ -70,7 +73,7 @@ function UomCreate() {
     } else {
       setNotificationVisible(true);
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({
           id: "notification.title",
         }),
@@ -124,7 +127,7 @@ function UomCreate() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <div className="orderLegendBody">
@@ -173,7 +176,7 @@ function UomCreate() {
                     setSaveButton(true);
                     setNotificationVisible(true);
                     addNotification({
-                      kind: NotificationKinds.error,
+                      kind: OEToastNotificationKinds.error,
                       title: intl.formatMessage({
                         id: "notification.title",
                       }),

@@ -21,7 +21,10 @@ import {
   Checkbox,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { NotificationKinds, AlertDialog } from "../../common/AlertDialog";
+import {
+  OEToastNotificationKinds,
+  OEToastNotification,
+} from "../../common/OEToastNotification";
 import { NotificationContext } from "../../layout/Layout";
 import {
   getFromOpenElisServer,
@@ -236,7 +239,7 @@ export const ReportNonConformingEvent = () => {
 
           if (data.success) {
             addNotification({
-              kind: NotificationKinds.success,
+              kind: OEToastNotificationKinds.success,
               title: intl.formatMessage({ id: "notification.title" }),
               message: intl.formatMessage({
                 id: "nonconform.order.save.success",
@@ -244,7 +247,7 @@ export const ReportNonConformingEvent = () => {
             });
           } else {
             addNotification({
-              kind: NotificationKinds.error,
+              kind: OEToastNotificationKinds.error,
               title: intl.formatMessage({ id: "notification.title" }),
               message: intl.formatMessage({ id: "nonconform.order.save.fail" }),
             });
@@ -256,7 +259,7 @@ export const ReportNonConformingEvent = () => {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <h2>

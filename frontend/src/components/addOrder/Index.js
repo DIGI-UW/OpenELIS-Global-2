@@ -6,7 +6,10 @@ import AddOrder from "./AddOrder";
 import "./add-order.scss";
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
@@ -127,7 +130,7 @@ const Index = () => {
             message: intl.formatMessage({
               id: "notification.response.syntax.error",
             }),
-            kind: NotificationKinds.error,
+            kind: OEToastNotificationKinds.error,
           });
           setNotificationVisible(true);
         }
@@ -558,13 +561,13 @@ const Index = () => {
       setSaveResponse(response);
       showAlertMessage(
         <FormattedMessage id="save.order.success.msg" />,
-        NotificationKinds.success,
+        OEToastNotificationKinds.success,
       );
       setPage(page + 1);
     } else {
       showAlertMessage(
         <FormattedMessage id="server.error.msg" />,
-        NotificationKinds.error,
+        OEToastNotificationKinds.error,
       );
     }
   };
@@ -751,7 +754,7 @@ const Index = () => {
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Stack gap={10}>
         <div className="pageContent">
-          {notificationVisible === true ? <AlertDialog /> : ""}
+          {notificationVisible === true ? <OEToastNotification /> : ""}
           <div className="orderWorkFlowDiv">
             <h2>
               <FormattedMessage id="order.test.request.heading" />

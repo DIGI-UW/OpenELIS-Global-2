@@ -20,7 +20,10 @@ import {
   convertAlphaNumLabNumForDisplay,
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../../layout/Layout";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
@@ -85,7 +88,7 @@ function LabNumberManagement() {
     setIsSubmitting(false);
     if (res.status == "200") {
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "success.add.edited.msg" }),
       });
@@ -93,7 +96,7 @@ function LabNumberManagement() {
       setLabNumberValues({ ...LabNumberFormValues, ...body });
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "error.add.edited.msg" }),
       });
@@ -159,7 +162,7 @@ function LabNumberManagement() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {loading && <Loading />}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />

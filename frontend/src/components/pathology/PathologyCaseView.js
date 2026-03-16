@@ -29,7 +29,10 @@ import {
 } from "../utils/Utils";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import PatientHeader from "../common/PatientHeader";
 import QuestionnaireResponse from "../common/QuestionnaireResponse";
@@ -92,14 +95,14 @@ function PathologyCaseView() {
       save1.disabled = true;
       save2.disabled = true;
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "success.save.msg" }),
       });
       setPostSavePrintModel(body?.postSavePrintDialog || null);
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "error.save.msg" }),
       });
@@ -111,7 +114,7 @@ function PathologyCaseView() {
     setLoadingReport(false);
     if (pdfGenerated) {
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "success.report.status" }),
       });
@@ -134,7 +137,7 @@ function PathologyCaseView() {
       });
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "error.report.status" }),
       });
@@ -380,7 +383,7 @@ function PathologyCaseView() {
         </Column>
       </Grid>
       <Grid fullWidth={true} className="orderLegendBody">
-        {notificationVisible === true ? <AlertDialog /> : ""}
+        {notificationVisible === true ? <OEToastNotification /> : ""}
         {loading && <Loading description="Loading Dasboard..." />}
         <Column lg={16} md={8} sm={4}>
           <Button

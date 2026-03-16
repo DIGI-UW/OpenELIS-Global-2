@@ -53,7 +53,10 @@ import {
 } from "./api";
 import AlertDetailModal from "./AlertDetailModal";
 import DeviceHistoryExpansion from "./DeviceHistoryExpansion";
-import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { NotificationContext } from "../layout/Layout";
 
 const COLUMNS = [
@@ -187,7 +190,7 @@ function FreezerMonitoringDashboard({ intl }) {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const notify = useCallback(
-    ({ kind = NotificationKinds.info, title, subtitle, message }) => {
+    ({ kind = OEToastNotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
       addNotification({
         kind,
@@ -302,7 +305,7 @@ function FreezerMonitoringDashboard({ intl }) {
       setLastUpdated(new Date().toISOString());
     } catch (error) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: "Unable to update cold storage data",
         subtitle:
           error.message || "Unable to load cold storage monitoring data.",
@@ -336,13 +339,13 @@ function FreezerMonitoringDashboard({ intl }) {
         }
         await loadDashboardData();
         notify({
-          kind: NotificationKinds.success,
+          kind: OEToastNotificationKinds.success,
           title: "Success",
           subtitle: `Alert ${action === "acknowledge" ? "acknowledged" : "resolved"} successfully`,
         });
       } catch (error) {
         notify({
-          kind: NotificationKinds.error,
+          kind: OEToastNotificationKinds.error,
           title: "Error",
           subtitle: error.message || `Unable to ${action} alert ${alertId}`,
         });
@@ -381,7 +384,7 @@ function FreezerMonitoringDashboard({ intl }) {
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
-          {notificationVisible === true ? <AlertDialog /> : ""}
+          {notificationVisible === true ? <OEToastNotification /> : ""}
           <Section>
             <Section>
               <Heading>

@@ -27,7 +27,10 @@ import {
   ConfigurationContext,
   NotificationContext,
 } from "../../layout/Layout.js";
-import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
@@ -293,7 +296,7 @@ function OrganizationAddModify() {
           message: intl.formatMessage({
             id: "notification.organization.post.internetAddress",
           }),
-          kind: NotificationKinds.info,
+          kind: OEToastNotificationKinds.info,
         });
       }
     } else {
@@ -379,7 +382,7 @@ function OrganizationAddModify() {
       message: intl.formatMessage({
         id: "notification.organization.post.success",
       }),
-      kind: NotificationKinds.success,
+      kind: OEToastNotificationKinds.success,
     });
     setTimeout(() => {
       window.location.assign("/MasterListsPage/organizationManagement");
@@ -423,7 +426,7 @@ function OrganizationAddModify() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <Grid fullWidth={true}>

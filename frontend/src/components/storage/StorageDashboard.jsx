@@ -44,7 +44,7 @@ import {
 } from "../utils/Utils";
 import config from "../../config.json";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog } from "../common/AlertDialog";
+import { OEToastNotification } from "../common/OEToastNotification";
 import StorageLocationsMetricCard from "./StorageDashboard/StorageLocationsMetricCard";
 import LocationFilterDropdown from "./StorageDashboard/LocationFilterDropdown";
 import BoxCrudControls from "./StorageDashboard/BoxCrudControls";
@@ -2985,7 +2985,7 @@ const StorageDashboard = () => {
 
   return (
     <div className="storage-dashboard">
-      {notificationVisible && <AlertDialog />}
+      {notificationVisible && <OEToastNotification />}
       <Grid fullWidth>
         {/* Dashboard Title */}
         <Column lg={16} md={8} sm={4}>

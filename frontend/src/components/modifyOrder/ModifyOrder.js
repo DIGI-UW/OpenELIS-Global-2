@@ -15,7 +15,10 @@ import AddOrder from "../addOrder/AddOrder";
 import "../addOrder/add-order.scss";
 import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { postToOpenElisServer, getFromOpenElisServer } from "../utils/Utils";
 import EditOrderEntryAdditionalQuestions from "./EditOrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "../addOrder/OrderSuccessMessage";
@@ -130,12 +133,12 @@ const ModifyOrder = () => {
     if (status === 200) {
       showAlertMessage(
         <FormattedMessage id="save.order.success.msg" />,
-        NotificationKinds.success,
+        OEToastNotificationKinds.success,
       );
     } else {
       showAlertMessage(
         <FormattedMessage id="server.error.msg" />,
-        NotificationKinds.error,
+        OEToastNotificationKinds.error,
       );
     }
   };
@@ -284,7 +287,7 @@ const ModifyOrder = () => {
         <Column lg={16} md={8} sm={4}>
           <Stack gap={10}>
             <div className="pageContent">
-              {notificationVisible === true ? <AlertDialog /> : ""}
+              {notificationVisible === true ? <OEToastNotification /> : ""}
               {orderFormValues?.sampleOrderItems && (
                 <div className="orderWorkFlowDiv">
                   <h2>

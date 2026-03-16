@@ -5,7 +5,7 @@ import {
 } from "../../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../layout/Layout";
-import { AlertDialog } from "../../common/AlertDialog";
+import { OEToastNotification } from "../../common/OEToastNotification";
 import {
   Grid,
   Heading,
@@ -63,7 +63,7 @@ export const CommonProperties = () => {
   return (
     <>
       <div className="adminPageContent">
-        {notificationVisible === true ? <AlertDialog /> : ""}
+        {notificationVisible === true ? <OEToastNotification /> : ""}
         <PageBreadCrumb
           breadcrumbs={[
             { label: "home.label", link: "/" },

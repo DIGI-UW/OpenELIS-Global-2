@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
-import { AlertDialog } from "../../common/AlertDialog";
+import { OEToastNotification } from "../../common/OEToastNotification";
 import { NotificationContext } from "../../layout/Layout";
 import { injectIntl, FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";

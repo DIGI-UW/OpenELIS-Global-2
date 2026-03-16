@@ -2,7 +2,10 @@ import { useContext, useState, useRef } from "react";
 import { Heading, Loading, Grid, Column, Section, Toggle } from "@carbon/react";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils.js";
 import { NotificationContext } from "../../layout/Layout.js";
-import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import { CustomShowGuide } from "./customComponents/CustomShowGuide.js";
@@ -40,7 +43,7 @@ function TestAdd() {
   const handleTestAddPostCall = (values) => {
     if (!values) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: "Form submission failed due to missing data.",
       });
@@ -69,7 +72,7 @@ function TestAdd() {
         message: intl.formatMessage({
           id: "notification.user.post.save.success",
         }),
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
       });
       setNotificationVisible(true);
       setTimeout(() => {
@@ -77,7 +80,7 @@ function TestAdd() {
       }, 200);
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -185,7 +188,7 @@ function TestAdd() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <div className="orderLegendBody">

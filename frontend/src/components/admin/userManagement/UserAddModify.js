@@ -20,7 +20,10 @@ import {
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
-import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import {
   ConfigurationContext,
   NotificationContext,
@@ -355,7 +358,7 @@ function UserAddModify() {
         message: intl.formatMessage({
           id: "notification.user.post.save.success",
         }),
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
       });
       setNotificationVisible(true);
       setTimeout(() => {
@@ -363,7 +366,7 @@ function UserAddModify() {
       }, 200);
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -386,7 +389,7 @@ function UserAddModify() {
           message: intl.formatMessage({
             id: "notification.invalid.loginName",
           }),
-          kind: NotificationKinds.info,
+          kind: OEToastNotificationKinds.info,
         });
       }
       setSaveButton(true);
@@ -423,7 +426,7 @@ function UserAddModify() {
           message: intl.formatMessage({
             id: "notification.invalid.password",
           }),
-          kind: NotificationKinds.info,
+          kind: OEToastNotificationKinds.info,
         });
       }
       setSaveButton(true);
@@ -460,7 +463,7 @@ function UserAddModify() {
           message: intl.formatMessage({
             id: "notification.invalid.confirm.password",
           }),
-          kind: NotificationKinds.info,
+          kind: OEToastNotificationKinds.info,
         });
       }
       setSaveButton(true);
@@ -493,7 +496,7 @@ function UserAddModify() {
           message: intl.formatMessage({
             id: "notification.invalid.name",
           }),
-          kind: NotificationKinds.info,
+          kind: OEToastNotificationKinds.info,
         });
       }
       setSaveButton(true);
@@ -526,7 +529,7 @@ function UserAddModify() {
           message: intl.formatMessage({
             id: "notification.invalid.name",
           }),
-          kind: NotificationKinds.info,
+          kind: OEToastNotificationKinds.info,
         });
       }
       setSaveButton(true);
@@ -771,7 +774,7 @@ function UserAddModify() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <Grid>

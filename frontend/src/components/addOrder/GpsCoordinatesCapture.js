@@ -15,7 +15,7 @@ import {
 } from "@carbon/react/icons";
 import { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { NotificationKinds } from "../common/AlertDialog";
+import { OEToastNotificationKinds } from "../common/OEToastNotification";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 
 /**
@@ -93,7 +93,7 @@ const GpsCoordinatesCapture = ({
       acc > gpsConfig.requiredAccuracyMeters
     ) {
       addNotification({
-        kind: NotificationKinds.warning,
+        kind: OEToastNotificationKinds.warning,
         title: intl.formatMessage({ id: "gps.accuracy.warning.title" }),
         message: intl.formatMessage(
           { id: "gps.accuracy.warning.message" },

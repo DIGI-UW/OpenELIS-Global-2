@@ -17,7 +17,10 @@ import {
   Loading,
 } from "@carbon/react";
 import { Formik } from "formik";
-import { AlertDialog, NotificationKinds } from "./common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "./common/OEToastNotification";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./layout/Layout";
 import { getBranding } from "./utils/BrandingUtils";
@@ -152,7 +155,7 @@ function Login(props) {
             message: props.intl.formatMessage({
               id: data.error,
             }),
-            kind: NotificationKinds.error,
+            kind: OEToastNotificationKinds.error,
           });
           setNotificationVisible(true);
         }
@@ -168,7 +171,7 @@ function Login(props) {
             message: props.intl.formatMessage({
               id: "notification.login.syntax.error",
             }),
-            kind: NotificationKinds.error,
+            kind: OEToastNotificationKinds.error,
           });
           setNotificationVisible(true);
         } else {
@@ -179,7 +182,7 @@ function Login(props) {
             message: props.intl.formatMessage({
               id: "notification.login.generic.error",
             }),
-            kind: NotificationKinds.error,
+            kind: OEToastNotificationKinds.error,
           });
           setNotificationVisible(true);
         }
@@ -211,7 +214,7 @@ function Login(props) {
         data-cy="login-Page-Content"
         className="loginPageContent oe-loginPageContent"
       >
-        {notificationVisible === true ? <AlertDialog /> : ""}
+        {notificationVisible === true ? <OEToastNotification /> : ""}
         <div className="oe-loginPageCenter">
           <Grid fullWidth={true}>{loginMessage()}</Grid>
           <Grid fullWidth={false}>

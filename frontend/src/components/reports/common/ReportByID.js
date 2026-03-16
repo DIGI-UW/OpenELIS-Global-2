@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { Form, Grid, Column, Section, Button, Loading } from "@carbon/react";
 import CustomLabNumberInput from "../../common/CustomLabNumberInput";
-import { AlertDialog } from "../../common/AlertDialog";
+import { OEToastNotification } from "../../common/OEToastNotification";
 import config from "../../../config.json";
 
 function ReportByID(props) {
@@ -54,7 +54,7 @@ function ReportByID(props) {
           </Column>
         </Grid>
         <br />
-        {notificationVisible && <AlertDialog />}
+        {notificationVisible && <OEToastNotification />}
         {loading && <Loading />}
         <Grid fullWidth={true}>
           <Column lg={16} md={8} sm={4}>

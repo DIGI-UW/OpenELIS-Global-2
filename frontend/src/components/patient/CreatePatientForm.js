@@ -33,7 +33,10 @@ import AddressSearch from "./AddressSearch";
 import { Formik, Field, ErrorMessage } from "formik";
 import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFormValues";
 import PatientFormObserver from "./PatientFormObserver";
-import { AlertDialog, NotificationKinds } from "../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import CreatePatientValidationSchema from "../formModel/validationSchema/CreatePatientValidationShema";
 import CustomDatePicker from "../common/CustomDatePicker";
@@ -645,7 +648,7 @@ function CreatePatientForm(props) {
     ) {
       setNotificationVisible(true);
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: numberType + ":" + numberValue + " Already in use",
       });
@@ -725,20 +728,20 @@ function CreatePatientForm(props) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "success.save.patient" }),
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
       });
     } else {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "error.save.patient" }),
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
       });
     }
   };
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <Formik
         initialValues={patientDetails}
         enableReinitialize

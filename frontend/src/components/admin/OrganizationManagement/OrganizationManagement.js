@@ -22,7 +22,10 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
 import { NotificationContext } from "../../layout/Layout.js";
-import { AlertDialog, NotificationKinds } from "../../common/AlertDialog";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
@@ -105,7 +108,7 @@ function OrganizationManagement() {
       message: intl.formatMessage({
         id: "notification.organization.post.delete.success",
       }),
-      kind: NotificationKinds.success,
+      kind: OEToastNotificationKinds.success,
     });
     setTimeout(() => {
       window.location.reload();
@@ -246,7 +249,7 @@ function OrganizationManagement() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <Grid fullWidth={true}>

@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import SearchForm from "./SearchForm";
 import Validation from "./Validation";
-import { AlertDialog } from "../common/AlertDialog";
+import { OEToastNotification } from "../common/OEToastNotification";
 import { NotificationContext } from "../layout/Layout";
 import { Heading, Grid, Column, Section } from "@carbon/react";
 import { injectIntl, FormattedMessage } from "react-intl";
@@ -28,7 +28,7 @@ const Index = () => {
         </Column>
       </Grid>
       <div className="orderLegendBody">
-        {notificationVisible === true ? <AlertDialog /> : ""}
+        {notificationVisible === true ? <OEToastNotification /> : ""}
         <SearchForm setParams={setParams} setResults={setResults} />
         <Validation params={params} results={results} />
       </div>
