@@ -1,11 +1,10 @@
 package org.openelisglobal.alert.controller.rest;
 
-import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -56,7 +55,7 @@ public class AlertNotificationConfigRestControllerIntegrationTest extends BaseWe
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Alert notification configuration saved successfully")));
+            .andExpect(jsonPath("$.message").value("Alert notification configuration saved successfully"));
     }
 
     @Test
