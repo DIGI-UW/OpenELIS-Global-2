@@ -104,9 +104,9 @@ public class ProgramAutocreateService {
                             String[] lines = linee.split("	");
                             UUID uuid = UUID.randomUUID();
                             LogEvent.logInfo(this.getClass().getSimpleName(), "autocreateProgram",
-                                    "\t\t<insert schemaName=\"clinlims\" tableName=\"localization\">\n" + //
-                                            "\t\t\t<column name=\"id\" valueSequenceNext=\"localization_seq\" />\n" + //
-                                            "\t\t\t<column name=\"lastupdated\" valueComputed=\"${now}\" />\n" + //
+                                    "Prepared auto-create entries for test '" + lines[1].trim()
+                                            + "' (reporting name '" + lines[2].trim()
+                                            + "') with generated UUID " + uuid);
                                             "\t\t\t<column name=\"description\" value=\"test name\" />\n" + //
                                             "\t\t\t<column name=\"english\" value=\"" + lines[1].trim() + "\" />\n" + //
                                             "\t\t\t<column name=\"french\" value=\"" + lines[1].trim() + "\"/>\n" + //
