@@ -666,7 +666,7 @@ describe("Study Initial Entry – Special Request form", () => {
       studyEntryPage.enterBirthDate(data.specialRequest.birthDate);
       cy.get("body").type("{esc}");
       cy.get("input#dryTubeTaken").check({ force: true });
-      cy.get("input#serologyHIVTest").check({ force: true });
+      cy.get("input#murexTest").check({ force: true });
       studyEntryPage.clickSave();
       cy.wait("@saveSPE", { timeout: 20000 }).then((i) => {
         expect(i.request.body.labNo).to.equal(
@@ -721,8 +721,8 @@ describe("Study Initial Entry – Recency Testing form", () => {
       cy.get("select#gender").select(data.recencyTesting.gender);
       studyEntryPage.enterBirthDate(data.recencyTesting.birthDate);
       cy.get("body").type("{esc}");
-      cy.get("input#dryTubeTaken").check({ force: true });
-      cy.get("input#serologyHIVTest").check({ force: true });
+      cy.get("input#plasmaTaken").check({ force: true });
+      cy.get("input#asanteTest").check({ force: true });
       studyEntryPage.clickSave();
       cy.wait("@saveREC", { timeout: 20000 }).then((i) => {
         expect(i.request.body.labNo).to.equal(
@@ -1011,8 +1011,8 @@ describe("Study Initial Entry – lab number normalisation", () => {
         RTN: ["dryTubeTaken", "serologyHIVTest"],
         EID: ["dbsTaken", "dnaPCR"],
         INDETERMINATE: ["dryTubeTaken", "serologyHIVTest"],
-        SPECIAL_REQUEST: ["dryTubeTaken", "serologyHIVTest"],
-        RECENCY_TESTING: ["dryTubeTaken", "serologyHIVTest"],
+        SPECIAL_REQUEST: ["dryTubeTaken", "murexTest"],
+        RECENCY_TESTING: ["plasmaTaken", "asanteTest"],
         HPV_TESTING: ["preservCytTaken", "hpvTest"],
       };
       const pair = specimenTestMap[project] || [

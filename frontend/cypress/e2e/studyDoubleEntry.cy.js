@@ -886,8 +886,8 @@ describe("Study Double Entry – lab number normalisation", () => {
         RTN: ["dryTubeTaken", "serologyHIVTest"],
         EID: ["dbsTaken", "dnaPCR"],
         INDETERMINATE: ["dryTubeTaken", "serologyHIVTest"],
-        SPECIAL_REQUEST: ["dryTubeTaken", "serologyHIVTest"],
-        RECENCY_TESTING: ["dryTubeTaken", "serologyHIVTest"],
+        SPECIAL_REQUEST: ["dryTubeTaken", "murexTest"],
+        RECENCY_TESTING: ["plasmaTaken", "asanteTest"],
         HPV_TESTING: ["preservCytTaken", "hpvTest"],
       };
       const pair = specimenTestMap[project] || [
