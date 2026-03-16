@@ -66,15 +66,16 @@
 ### Services and business logic
 
 - [x] T017 [M1] Implement `AnalyzerPluginConfigService` (CRUD + validation +
-      QC/transform evaluators).
+      QC/transform evaluators). [Refs: FR-014, FR-015, FR-016, FR-018, FR-019,
+      BR-13, CR-006]
 - [ ] T018 [P] [M1] Implement `AnalyzerPendingCodeService`
-      (detect/increment/cap/purge/resolve/ignore).
+      (detect/increment/cap/purge/resolve/ignore). [Refs: FR-021, BR-16, SC-005]
 - [ ] T019 [M1] Enhance `AnalyzerServiceImpl.autoCreateTestMappings()` to
-      populate `configDefaults`.
+      populate `configDefaults`. [Refs: FR-022, FR-024, SC-002]
 - [ ] T020 [M1] Enforce activation gate in analyzer status transition (BR-12 via
-      JSONB config).
+      JSONB config). [Refs: BR-12, SC-003]
 - [ ] T021 [M1] Extend `AnalyzerMappingPreviewServiceImpl` with v1.2 outputs
-      from JSONB config.
+      from JSONB config. [Refs: FR-020, BR-15, SC-004]
 - [ ] T060 [M1] Implement port conflict validation for active analyzer listeners
       (BR-11).
 - [ ] T061 [M1] Implement profile schema validation on profile read/apply path
@@ -84,9 +85,9 @@
 
 ### Controllers and RBAC
 
-- [x] T022 [M1] Implement `AnalyzerPluginConfigRestController`.
+- [x] T022 [M1] Implement `AnalyzerPluginConfigRestController`. [Refs: CR-003]
 - [x] T023 [M1] Apply `@PreAuthorize("hasRole('GLOBAL_ADMIN')")` to new
-      endpoints.
+      endpoints. [Refs: CR-007 (MVP), VIII]
 - [x] T024 [M1] Standardize structured error responses via
       `AnalyzerControllerHelper`.
 
@@ -97,8 +98,9 @@
 - [ ] T027 [P] [M1] Service unit tests for pending code service.
 - [ ] T028 [P] [M1] Controller tests for plugin-config APIs and RBAC.
 - [ ] T029 [M1] Integration test: profile apply -> mappings + plugin config
-      defaults.
+      defaults. [Refs: FR-024, SC-002]
 - [ ] T030 [M1] Integration test: activation gate + preview extension behavior.
+      [Refs: BR-12, FR-020, SC-003, SC-004]
 - [ ] T063 [P] [M1] Validation tests for aggregation window bounds (`BY_SESSION`
       5-300) (BR-14).
 - [ ] T064 [P] [M1] Integration tests for pending-code cap/purge behavior and
@@ -123,15 +125,18 @@
 
 ## Phase 3: M2 - Analyzer UI Workflows
 
-**Depends on**: M1
+**Depends on**: M1 **Execution note**: Selected M2 tasks were completed under an
+approved parallel exception to unblock harness/demo stabilization. Remaining M2
+work still requires M1 foundations and verification gates.
 
 - [x] T035 [M2] Update analyzer UI flows to consume plugin-config APIs (not
-      astm-config APIs).
+      astm-config APIs). [Refs: FR-024, CR-003]
 - [ ] T036 [P] [M2] Implement/adjust UI for QC rules, transforms, extraction,
-      aggregation, flag mappings.
+      aggregation, flag mappings. [Refs: FR-015, FR-016, FR-017, FR-018, FR-019,
+      CR-001]
 - [x] T037 [P] [M2] Extend simulator UI to show v1.2 preview payload.
 - [x] T038 [P] [M2] Add pending-code UI workflow.
-- [x] T039 [M2] Update i18n keys for new/changed labels.
+- [x] T039 [M2] Update i18n keys for new/changed labels. [Refs: CR-002]
 - [x] T040 [M2] Remove profile-library and lab-unit UI/API assumptions from M2
       scope.
 - [x] T041 [M2] Jest tests for updated UI components.
@@ -169,6 +174,17 @@
 - [ ] T057 [M4] Final formatting/build verification.
 - [ ] T058 [M4] Final documentation alignment and evidence packaging.
 - [ ] T059 [M4] Open final regression-gating PR.
+- [ ] T069 [M4] Measure and record SC-001 onboarding time (<10 minutes) using
+      built-in profile flow in harness stack. [Refs: SC-001]
+- [ ] T070 [M4] Verify SC-008 localization coverage for all new UI strings in
+      EN/FR and document evidence. [Refs: SC-008, CR-002]
+- [ ] T071 [M4] Execute requirements traceability gate across implementation and
+      tests. [Refs: FR-014, FR-015, FR-016, FR-018, FR-019, FR-020, FR-021,
+      FR-022, FR-023, FR-024, FR-026, BR-13, BR-15, BR-19, CR-001, CR-004,
+      CR-006, CR-007 (MVP), SC-002, SC-003, SC-004]
+- [ ] T072 [M4] Execute mapping/quality traceability gate across integration
+      tests and persistence behavior. [Refs: FR-017, BR-11, BR-14, BR-16, BR-17,
+      BR-18, BR-20, CR-008, SC-005]
 
 ---
 

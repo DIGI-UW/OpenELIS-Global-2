@@ -8,15 +8,42 @@ import { AnalyzerListPage } from "../fixtures/analyzer-list";
  * open mappings -> open test mapping modal -> preview sample ASTM payload.
  */
 test.describe("Analyzer Simulator", () => {
-  test.skip(
-    process.env.CI === "true",
-    "Requires analyzer harness with fixture data (not available in CI)",
-  );
-
   test("GeneXpert preview-mapping shows v1.2 simulator payload", async ({
     page,
   }) => {
-    const GENEXPERT_ID = "2013";
+    // Find or create a GeneXpert analyzer for testing
+    const listResp = await page.request.get(
+      "/api/OpenELIS-Global/rest/analyzer/analyzers",
+    );
+    const data = await listResp.json();
+    const existing = (data.analyzers ?? []).find(
+      (a: any) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
+    );
+
+    let GENEXPERT_ID: string;
+    if (existing) {
+      GENEXPERT_ID = String(existing.id);
+    } else {
+      const createResp = await page.request.post(
+        "/api/OpenELIS-Global/rest/analyzer/analyzers",
+        {
+          data: {
+            name: "Cepheid GeneXpert (ASTM Mode)",
+            analyzerType: "MOLECULAR",
+            pluginTypeId: "generic-astm",
+            ipAddress: "172.21.1.100",
+            port: 9600,
+            protocolVersion: "ASTM_LIS2_A2",
+            identifierPattern: "GENEXPERT|CEPHEID",
+            status: "ACTIVE",
+            defaultConfigId: "astm/genexpert-astm",
+          },
+        },
+      );
+      const created = await createResp.json();
+      GENEXPERT_ID = String(created.id);
+    }
+
     const list = new AnalyzerListPage(page);
 
     await list.goto();

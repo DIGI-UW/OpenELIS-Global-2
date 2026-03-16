@@ -18,9 +18,12 @@ package org.openelisglobal.analyzerimport.analyzerreaders;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Optional;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.HL7MessageService;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.plugin.AnalyzerImporterPlugin;
@@ -38,6 +41,8 @@ public class HL7AnalyzerReader extends AnalyzerReader {
 
     private List<String> lines;
     private String error;
+    private String clientIpAddress;
+    private Integer clientPort;
 
     @Override
     public boolean readStream(InputStream stream) {
@@ -71,6 +76,9 @@ public class HL7AnalyzerReader extends AnalyzerReader {
             return false;
         }
 
+        // Try deterministic identification via bridge headers before plugin matching
+        Optional<Analyzer> analyzer = identifyAnalyzerFromHeaders();
+
         PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
         List<AnalyzerImporterPlugin> plugins = choosePluginOrder(pluginService);
 
@@ -81,6 +89,10 @@ public class HL7AnalyzerReader extends AnalyzerReader {
                     pluginMatched = true;
                     AnalyzerLineInserter inserter = plugin.getAnalyzerLineInserter();
                     if (inserter != null) {
+                        // Inject analyzer context ID if identified from headers
+                        if (analyzer.isPresent()) {
+                            inserter.setContextAnalyzerId(analyzer.get().getId());
+                        }
                         boolean success = inserter.insert(lines, systemUserId);
                         if (!success) {
                             error = inserter.getError();
@@ -111,21 +123,63 @@ public class HL7AnalyzerReader extends AnalyzerReader {
         return pluginService.getAnalyzerPlugins();
     }
 
-    /** HL7 MSH segment field 3 (sending application). Same as GenericHL7. */
-    private String parseMsh3(List<String> lines) {
-        if (lines == null) {
-            return null;
-        }
-        for (String line : lines) {
-            if (line != null && line.startsWith("MSH|")) {
-                String[] fields = line.split("\\|");
-                if (fields.length > 2 && !StringUtils.isBlank(fields[2])) {
-                    return fields[2].trim();
-                }
-                break;
+    /**
+     * Set client IP from bridge X-Source-Id header. Used by
+     * {@link #identifyAnalyzerFromHeaders()} for deterministic analyzer lookup.
+     */
+    public void setClientIpAddress(String ip) {
+        this.clientIpAddress = ip;
+    }
+
+    /**
+     * Set client port from bridge X-Source-Port header. Used by
+     * {@link #identifyAnalyzerFromHeaders()} for deterministic analyzer lookup.
+     */
+    public void setClientPort(Integer port) {
+        this.clientPort = port;
+    }
+
+    /**
+     * Identify analyzer from bridge headers using tiered strategy:
+     * <ol>
+     * <li>IP+port exact match (deterministic, from X-Source-Id +
+     * X-Source-Port)</li>
+     * <li>IP-only match (from X-Source-Id)</li>
+     * </ol>
+     * Falls back to empty if no headers set or no match found.
+     */
+    private Optional<Analyzer> identifyAnalyzerFromHeaders() {
+        try {
+            AnalyzerService analyzerService = SpringContext.getBean(AnalyzerService.class);
+            if (analyzerService == null) {
+                return Optional.empty();
             }
+
+            // Strategy 0: Exact IP+port lookup
+            if (clientIpAddress != null && !clientIpAddress.trim().isEmpty() && clientPort != null) {
+                Optional<Analyzer> match = analyzerService.getByIpAddressAndPort(clientIpAddress.trim(), clientPort);
+                if (match.isPresent()) {
+                    LogEvent.logDebug(getClass().getSimpleName(), "identifyAnalyzerFromHeaders",
+                            "Identified analyzer from IP+port: " + clientIpAddress + ":" + clientPort);
+                    return match;
+                }
+            }
+
+            // Strategy 1: IP-only lookup
+            if (clientIpAddress != null && !clientIpAddress.trim().isEmpty()) {
+                Optional<Analyzer> match = analyzerService.getByIpAddress(clientIpAddress.trim());
+                if (match.isPresent()) {
+                    LogEvent.logDebug(getClass().getSimpleName(), "identifyAnalyzerFromHeaders",
+                            "Identified analyzer from IP: " + clientIpAddress);
+                    return match;
+                }
+            }
+
+            return Optional.empty();
+        } catch (Exception e) {
+            LogEvent.logError("Error identifying HL7 analyzer from headers: " + e.getMessage(), e);
+            return Optional.empty();
         }
-        return null;
     }
 
     @Override

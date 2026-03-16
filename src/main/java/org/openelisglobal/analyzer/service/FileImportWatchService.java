@@ -1,15 +1,16 @@
 package org.openelisglobal.analyzer.service;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
-import org.openelisglobal.analyzerimport.analyzerreaders.FileAnalyzerReader;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,9 +51,14 @@ public class FileImportWatchService {
                 return;
             }
 
+            // Track files claimed during this poll cycle to prevent duplicate processing
+            // when multiple configs share a directory (defensive — the controller should
+            // block overlapping configs, but legacy data may still have them).
+            Set<Path> claimedThisCycle = new HashSet<>();
+
             for (FileImportConfiguration config : activeConfigs) {
                 try {
-                    scanDirectory(config);
+                    scanDirectory(config, claimedThisCycle);
                 } catch (Exception e) {
                     LogEvent.logError(this.getClass().getSimpleName(), "pollImportDirectories",
                             "Error scanning directory for analyzer " + config.getAnalyzerId() + ": " + e.getMessage());
@@ -66,10 +72,11 @@ public class FileImportWatchService {
 
     /**
      * Scans a single import directory for files matching the configured pattern.
-     * 
-     * @param config The file import configuration
+     *
+     * @param config           The file import configuration
+     * @param claimedThisCycle Files already claimed by another config in this poll
      */
-    private void scanDirectory(FileImportConfiguration config) {
+    private void scanDirectory(FileImportConfiguration config, Set<Path> claimedThisCycle) {
         try {
             Path importDir = Paths.get(config.getImportDirectory());
 
@@ -98,20 +105,32 @@ public class FileImportWatchService {
             Pattern pattern = convertGlobToRegex(filePattern);
 
             // Scan directory for matching files
-            Files.list(importDir).filter(Files::isRegularFile).filter(path -> {
-                String fileName = path.getFileName().toString();
-                return pattern.matcher(fileName).matches();
-            }).forEach(filePath -> {
-                try {
-                    processFile(filePath, config);
-                } catch (Exception e) {
-                    LogEvent.logError(this.getClass().getSimpleName(), "scanDirectory",
-                            "Error processing file " + filePath + ": " + e.getMessage());
-                    // Move to error directory on exception
-                    fileImportService.moveToErrorDirectory(filePath, config,
-                            "Exception during processing: " + e.getMessage());
-                }
-            });
+            try (var fileStream = Files.list(importDir)) {
+                fileStream.filter(Files::isRegularFile).filter(path -> {
+                    String fileName = path.getFileName().toString();
+                    return pattern.matcher(fileName).matches() && matchesFileFormat(fileName, config.getFileFormat());
+                }).forEach(filePath -> {
+                    // Skip files already claimed by another config in this poll cycle
+                    Path normalizedPath = filePath.toAbsolutePath().normalize();
+                    if (!claimedThisCycle.add(normalizedPath)) {
+                        LogEvent.logWarn(this.getClass().getSimpleName(), "scanDirectory",
+                                "File " + filePath + " already claimed by another config in this poll cycle"
+                                        + " (analyzer " + config.getAnalyzerId()
+                                        + "). Skipping — check for overlapping directory/format configs.");
+                        return;
+                    }
+
+                    try {
+                        processFile(filePath, config);
+                    } catch (Exception e) {
+                        LogEvent.logError(this.getClass().getSimpleName(), "scanDirectory",
+                                "Error processing file " + filePath + ": " + e.getMessage());
+                        // Move to error directory on exception
+                        fileImportService.moveToErrorDirectory(filePath, config,
+                                "Exception during processing: " + e.getMessage());
+                    }
+                });
+            }
         } catch (IOException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "scanDirectory",
                     "Error scanning directory " + config.getImportDirectory() + ": " + e.getMessage());
@@ -128,44 +147,23 @@ public class FileImportWatchService {
         LogEvent.logInfo(this.getClass().getSimpleName(), "processFile",
                 "Processing file: " + filePath + " for analyzer: " + config.getAnalyzerId());
 
-        try (InputStream fileStream = Files.newInputStream(filePath)) {
-            // Create FileAnalyzerReader with configuration
-            FileAnalyzerReader reader = new FileAnalyzerReader(config);
-
-            // Read and parse the file
-            boolean readSuccess = reader.readStream(fileStream);
-            if (!readSuccess) {
-                String error = reader.getError();
-                LogEvent.logError(this.getClass().getSimpleName(), "processFile",
-                        "Failed to read file " + filePath + ": " + error);
-                fileImportService.moveToErrorDirectory(filePath, config, error);
-                return;
-            }
-
-            // Insert analyzer data - use system user ID from config or default
+        try {
             String systemUserId = config.getSysUserId() != null ? config.getSysUserId() : "1";
-            boolean insertSuccess = reader.insertAnalyzerData(systemUserId);
-            if (!insertSuccess) {
-                String error = reader.getError();
-                LogEvent.logError(this.getClass().getSimpleName(), "processFile",
-                        "Failed to insert analyzer data from file " + filePath + ": " + error);
-                fileImportService.moveToErrorDirectory(filePath, config, error);
+            boolean processSuccess = fileImportService.processFile(filePath, config, systemUserId);
+            if (!processSuccess) {
+                fileImportService.moveToErrorDirectory(filePath, config, "File processing failed");
                 return;
             }
 
-            // Success - archive the file
             boolean archiveSuccess = fileImportService.archiveFile(filePath, config);
             if (!archiveSuccess) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "processFile",
                         "File processed successfully but archiving failed: " + filePath);
-            } else {
-                LogEvent.logInfo(this.getClass().getSimpleName(), "processFile",
-                        "Successfully processed and archived file: " + filePath);
+                return;
             }
-        } catch (IOException e) {
-            LogEvent.logError(this.getClass().getSimpleName(), "processFile",
-                    "IO error processing file " + filePath + ": " + e.getMessage());
-            fileImportService.moveToErrorDirectory(filePath, config, "IO error: " + e.getMessage());
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), "processFile",
+                    "Successfully processed and archived file: " + filePath);
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "processFile",
                     "Unexpected error processing file " + filePath + ": " + e.getMessage());
@@ -183,5 +181,23 @@ public class FileImportWatchService {
         // Escape special regex characters, then convert glob wildcards
         String regex = globPattern.replace(".", "\\.").replace("*", ".*").replace("?", ".");
         return Pattern.compile(regex);
+    }
+
+    private boolean matchesFileFormat(String fileName, String fileFormat) {
+        String normalizedFormat = fileFormat == null ? "CSV" : fileFormat.trim().toUpperCase(Locale.ROOT);
+        String normalizedName = fileName.toLowerCase(Locale.ROOT);
+
+        switch (normalizedFormat) {
+        case "CSV":
+            return normalizedName.endsWith(".csv");
+        case "TSV":
+            return normalizedName.endsWith(".tsv") || normalizedName.endsWith(".txt");
+        case "EXCEL":
+            return normalizedName.endsWith(".xls") || normalizedName.endsWith(".xlsx");
+        case "XML":
+            return normalizedName.endsWith(".xml");
+        default:
+            return true;
+        }
     }
 }
