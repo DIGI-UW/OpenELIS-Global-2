@@ -102,13 +102,6 @@ async function fillSampleStep(page: Page, pause: PauseFn) {
   }
   await pause(800);
 
-  const collectionDate = page.locator("input#collectionDate_0");
-  if (await collectionDate.isVisible().catch(() => false)) {
-    await collectionDate.fill("13/03/2026");
-    await page.locator("h3").first().click();
-    await pause(400);
-  }
-
   await selectPanelOrTest(page, pause);
 }
 
