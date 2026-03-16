@@ -386,8 +386,6 @@ const StudyInitialEntry = () => {
           normalizedLabNo = `${prefix}${digitsOnly.slice(-5)}`;
         }
       }
-
-
     }
 
     setSaving(true);
