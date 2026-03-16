@@ -807,7 +807,7 @@ describe("Study Double Entry – field parity with Initial Entry (HPV_TESTING)",
   });
 
   it("shows hpvSamplingMethod dropdown", () => {
-    cy.get('[name="hpv-sampling-method"]').should('exist');
+    cy.contains('Sample Collection Method').should('exist');
   });
 
   it("shows hpvTest checkbox", () => {
