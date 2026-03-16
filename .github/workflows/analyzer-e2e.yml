@@ -93,10 +93,8 @@ jobs:
           timeout 120 bash -c 'until curl -s -f http://localhost:8442/actuator/health > /dev/null; do sleep 2; done'
           timeout 120 bash -c 'until curl -s -f http://localhost:8085/health > /dev/null; do sleep 2; done'
 
-      - name: Load analyzer harness fixture dataset (types + cleanup only)
-        run: |
-          docker exec -i openelisglobal-database psql -U clinlims -d clinlims < src/test/resources/analyzer-harness-e2e.sql
-          docker exec -i openelisglobal-database psql -U clinlims -d clinlims < src/test/resources/fixtures/file-import-e2e.sql
+      - name: Load test fixtures (parity with local: foundational + analyzer types + cleanup + storage)
+        run: ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
 
       - name: Seed analyzers via REST API (profile-based test mappings + bridge registration)
         run: bash projects/analyzer-harness/seed-analyzers.sh
