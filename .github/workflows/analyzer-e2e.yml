@@ -7,9 +7,20 @@ on:
 
 jobs:
   analyzer-e2e:
+    name: Analyzer E2E (shard ${{ matrix.shard_index }}/${{ matrix.shard_total }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: e2e
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_index: 1
+            shard_total: 2
+            run_demo: true
+          - shard_index: 2
+            shard_total: 2
+            run_demo: false
 
     steps:
       - name: Checkout code
@@ -82,13 +93,31 @@ jobs:
           timeout 120 bash -c 'until curl -s -f http://localhost:8442/actuator/health > /dev/null; do sleep 2; done'
           timeout 120 bash -c 'until curl -s -f http://localhost:8085/health > /dev/null; do sleep 2; done'
 
-      - name: Load analyzer harness fixture dataset
+      - name: Load analyzer harness fixture dataset (types + cleanup only)
         run: |
           docker exec -i openelisglobal-database psql -U clinlims -d clinlims < src/test/resources/analyzer-harness-e2e.sql
           docker exec -i openelisglobal-database psql -U clinlims -d clinlims < src/test/resources/fixtures/file-import-e2e.sql
 
-      - name: Run analyzer Playwright tests
-        run: npm run pw:test -- --project=harness --project=demo
+      - name: Seed analyzers via REST API (profile-based test mappings + bridge registration)
+        run: bash projects/analyzer-harness/seed-analyzers.sh
+        env:
+          BASE_URL: https://localhost
+          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ secrets.TEST_PASS }}
+
+      - name: Run analyzer Playwright harness shard
+        run: npm run pw:test -- --project=harness --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
+        working-directory: frontend
+        env:
+          CI: true
+          ANALYZER_HARNESS: "true"
+          BASE_URL: https://localhost
+          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ secrets.TEST_PASS }}
+
+      - name: Run analyzer Playwright demo workflow
+        if: matrix.run_demo
+        run: npm run pw:test -- --project=demo
         working-directory: frontend
         env:
           CI: true
@@ -101,7 +130,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: analyzer-playwright-report
+          name: analyzer-playwright-report-shard-${{ matrix.shard_index }}
           path: frontend/playwright-report/
           retention-days: 7
 
@@ -109,7 +138,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: analyzer-playwright-screenshots
+          name: analyzer-playwright-screenshots-shard-${{ matrix.shard_index }}
           path: frontend/test-results/**/test-failed-*.png
           retention-days: 7
           if-no-files-found: ignore
@@ -118,7 +147,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: analyzer-playwright-traces
+          name: analyzer-playwright-traces-shard-${{ matrix.shard_index }}
           path: frontend/test-results/**/trace.zip
           retention-days: 7
           if-no-files-found: ignore

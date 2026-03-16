@@ -17,49 +17,49 @@
   "msh3_pattern": "MINDRAY",
   "default_test_mappings": [
     {
-      "obx_identifier": "GLU",
+      "analyzer_code": "GLU",
       "test_name_hint": "Glucose",
       "loinc": "2345-7",
       "unit": "mg/dL"
     },
     {
-      "obx_identifier": "CREA",
+      "analyzer_code": "CREA",
       "test_name_hint": "Creatinine",
       "loinc": "2160-0",
       "unit": "mg/dL"
     },
     {
-      "obx_identifier": "ALT",
+      "analyzer_code": "ALT",
       "test_name_hint": "Alanine Aminotransferase",
       "loinc": "1742-6",
       "unit": "U/L"
     },
     {
-      "obx_identifier": "AST",
+      "analyzer_code": "AST",
       "test_name_hint": "Aspartate Aminotransferase",
       "loinc": "1920-8",
       "unit": "U/L"
     },
     {
-      "obx_identifier": "ALB",
+      "analyzer_code": "ALB",
       "test_name_hint": "Albumin",
       "loinc": "1751-7",
       "unit": "g/dL"
     },
     {
-      "obx_identifier": "TP",
+      "analyzer_code": "TP",
       "test_name_hint": "Total Protein",
       "loinc": "2885-2",
       "unit": "g/dL"
     },
     {
-      "obx_identifier": "TBIL",
+      "analyzer_code": "TBIL",
       "test_name_hint": "Total Bilirubin",
       "loinc": "1975-2",
       "unit": "mg/dL"
     },
     {
-      "obx_identifier": "UREA",
+      "analyzer_code": "UREA",
       "test_name_hint": "Blood Urea Nitrogen",
       "loinc": "3094-0",
       "unit": "mg/dL"

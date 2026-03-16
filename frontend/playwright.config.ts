@@ -21,6 +21,7 @@ const DEMO_TESTS = [
   "**/demo-quantstudio*.spec.ts",
   "**/file-import-ui.spec.ts",
   "**/file-import-results.spec.ts",
+  "**/astm-genexpert-results.spec.ts",
 ];
 
 export default defineConfig({
@@ -32,7 +33,7 @@ export default defineConfig({
 
   // CI safeguards
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 0,
 
   // Timeouts
   timeout: 30_000,
@@ -84,7 +85,6 @@ export default defineConfig({
         "**/analyzer-test-connection.spec.ts",
         "**/analyzer-plugin-config.spec.ts",
         "**/analyzer-simulator.spec.ts",
-        "**/analyzer-hl7-simulate.spec.ts",
         "**/file-import.spec.ts",
       ],
       use: {

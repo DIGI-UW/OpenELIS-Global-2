@@ -19,8 +19,13 @@ function assertValidContainerName(containerName: string): void {
 }
 
 /**
- * Loads file import E2E fixtures into the database via docker exec.
- * Idempotent: SQL deletes existing E2E-FILE-% rows before inserting.
+ * Legacy helper for direct SQL fixture loading (pre-REST-seeding model).
+ *
+ * Active harness CI uses:
+ *  1) analyzer-harness-e2e.sql + file-import-e2e.sql for cleanup/type baseline
+ *  2) projects/analyzer-harness/seed-analyzers.sh for analyzer creation
+ *
+ * Keep this helper only for historical/local experiments.
  * Container: DATABASE_CONTAINER or FILE_IMPORT_DB_CONTAINER env, else openelisglobal-database.
  */
 export function loadFileImportFixtures(): void {
@@ -37,11 +42,11 @@ export function loadFileImportFixtures(): void {
 }
 
 /**
- * Returns true if file import fixtures (E2E-FILE-% analyzers) exist in the DB.
+ * Returns true if API-seeded FILE analyzers exist in the DB.
  */
 export function checkFileImportFixturesExist(): boolean {
   assertValidContainerName(DB_CONTAINER);
-  const checkSql = `SELECT COUNT(*) FROM clinlims.analyzer WHERE name LIKE 'E2E-FILE-%';`;
+  const checkSql = `SELECT COUNT(*) FROM clinlims.analyzer WHERE name IN ('QuantStudio 5','QuantStudio 7','FluoroCycler XT');`;
   try {
     const result = execFileSync(
       "docker",
@@ -70,7 +75,7 @@ export function checkFileImportFixturesExist(): boolean {
 }
 
 /**
- * Deletes file import E2E fixtures from the database.
+ * Deletes legacy E2E-FILE fixture rows from the database.
  */
 export function cleanFileImportTestData(): void {
   assertValidContainerName(DB_CONTAINER);
