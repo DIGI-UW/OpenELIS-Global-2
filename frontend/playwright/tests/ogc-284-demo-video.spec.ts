@@ -195,19 +195,17 @@ async function clickNext(page: Page, pause: PauseFn) {
  * Tries known panel names first, falls back to the first available checkbox.
  */
 async function selectPanelOrTest(page: Page, pause: PauseFn) {
-  const knownPanels = ["Bilan Biochimique", "Serologie VIH", "NFS"];
-  for (const name of knownPanels) {
-    const panelSpan = page.locator("span").filter({ hasText: name }).first();
-    if (await panelSpan.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await panelSpan.click();
-      await pause(400);
-      return;
-    }
+  const bilan = page.getByRole("checkbox", { name: "Bilan Biochimique" });
+  if (await bilan.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await bilan.scrollIntoViewIfNeeded();
+    await bilan.check();
+    await pause(400);
+    return;
   }
-  // Fallback: click the first unchecked test/panel checkbox
-  const firstCheckbox = page.locator('[type="checkbox"]').first();
-  if (await firstCheckbox.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await firstCheckbox.click();
+  const serologie = page.getByRole("checkbox", { name: "Serologie VIH" });
+  if (await serologie.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await serologie.scrollIntoViewIfNeeded();
+    await serologie.check();
     await pause(400);
   }
 }
