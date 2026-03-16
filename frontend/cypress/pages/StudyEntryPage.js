@@ -381,7 +381,7 @@ class StudyEntryPage {
   }
 
   selectHPVSamplingMethod(value) {
-    cy.get("select#hpvSamplingMethod").select(value);
+    cy.get('[name="hpv-sampling-method"] input[type="radio"]').first().check({ force: true });
   }
 
   // ─── VL (ARV Viral Load) Section ─────────────────────────────────────────

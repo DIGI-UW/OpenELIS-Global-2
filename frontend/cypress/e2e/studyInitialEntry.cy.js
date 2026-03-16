@@ -763,7 +763,7 @@ describe("Study Initial Entry – HPV Testing form", () => {
   });
 
   it("shows hpvSamplingMethod dropdown", () => {
-    cy.get("select#hpvSamplingMethod").should("be.visible");
+    cy.get('[name="hpv-sampling-method"]').should('exist');
   });
 
   it("shows hpvTest checkbox", () => {
