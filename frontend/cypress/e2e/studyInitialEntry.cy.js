@@ -949,7 +949,7 @@ describe("Study Initial Entry – form-level validation", () => {
 // 13. LAB NUMBER NORMALISATION (all prefixes)
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("Study Initial Entry – lab number normalisation", () => {
+describe.only("Study Initial Entry – lab number normalisation", () => {
   const cases = [
     { project: "ARV_INITIAL", digitsOnly: "11111", expected: "LARC11111" },
     { project: "ARV_FOLLOWUP", digitsOnly: "22222", expected: "LARC22222" },
@@ -997,13 +997,17 @@ describe("Study Initial Entry – lab number normalisation", () => {
         });
       }
       // EID/IND projects need site name
-      if (project === "EID" || project === "INDETERMINATE") {
-        cy.get("select#eidsiteName, select#indsiteName")
-          .first()
-          .then(($sel) => {
-            const first = [...$sel.find("option")].find((o) => o.value !== "");
-            if (first) $sel.val(first.value).trigger("change");
-          });
+      if (project === "EID") {
+        cy.get("select#eidsiteName").then(($sel) => {
+          const first = [...$sel.find("option")].find((o) => o.value !== "");
+          if (first) cy.get("select#eidsiteName").select(first.value);
+        });
+      }
+      if (project === "INDETERMINATE") {
+        cy.get("select#indsiteName").then(($sel) => {
+          const first = [...$sel.find("option")].find((o) => o.value !== "");
+          if (first) cy.get("select#indsiteName").select(first.value);
+        });
       }
       // Special Request needs reason for request selected
       if (project === "SPECIAL_REQUEST") {
@@ -1054,6 +1058,11 @@ describe("Study Initial Entry – lab number normalisation", () => {
     studyEntryPage.visitInitialEntry();
     studyEntryPage.waitForFormLoad();
     studyEntryPage.selectProject("ARV_INITIAL");
+    cy.get("select#arvcenterName").then(($sel) => {
+      const first = [...$sel.find("option")].find((o) => o.value !== "");
+      if (first) cy.get("select#arvcenterName").select(first.value);
+    });
+    cy.get("input#siteSubjectNumber").clear().type("TESTSUBJ01");
     studyEntryPage.enterLabNo("LARC11111");
     cy.get("select#gender").select("M");
     studyEntryPage.enterBirthDate("01/01/1990");
