@@ -35,6 +35,10 @@ const CustomDatePicker = (props) => {
 
     if (partialDateRegex.test(inputValue)) {
       e.target.value = inputValue;
+      if (fullDateRegex.test(inputValue)) {
+        setCurrentDate(inputValue);
+        props.onChange(inputValue);
+      }
     } else {
       e.target.value = ""; // Clear invalid input
     }

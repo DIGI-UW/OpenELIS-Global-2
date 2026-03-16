@@ -381,7 +381,9 @@ class StudyEntryPage {
   }
 
   selectHPVSamplingMethod(value) {
-    cy.get('[name="hpv-sampling-method"] input[type="radio"]').first().check({ force: true });
+    cy.get('[name="hpv-sampling-method"] input[type="radio"]')
+      .first()
+      .check({ force: true });
   }
 
   // ─── VL (ARV Viral Load) Section ─────────────────────────────────────────
@@ -588,7 +590,10 @@ class StudyEntryPage {
   // ─── Action Buttons ───────────────────────────────────────────────────────
 
   clickSave() {
-    cy.contains("button", "Save").should("not.be.disabled").click();
+    cy.contains("button", "Save")
+      .should("not.be.disabled")
+      .scrollIntoView()
+      .click({ force: true });
   }
 
   assertSaveButtonVisible() {

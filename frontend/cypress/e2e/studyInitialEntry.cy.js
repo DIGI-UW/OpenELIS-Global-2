@@ -949,7 +949,7 @@ describe("Study Initial Entry – form-level validation", () => {
 // 13. LAB NUMBER NORMALISATION (all prefixes)
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe.only("Study Initial Entry – lab number normalisation", () => {
+describe("Study Initial Entry – lab number normalisation", () => {
   const cases = [
     { project: "ARV_INITIAL", digitsOnly: "11111", expected: "LARC11111" },
     { project: "ARV_FOLLOWUP", digitsOnly: "22222", expected: "LARC22222" },
@@ -1093,7 +1093,7 @@ describe("Study Initial Entry – menu navigation", () => {
     cy.fixture("StudyEntry").then((data) => {
       homePage.openNavigationMenu();
       cy.get("span#menu_sample_create").should("be.visible").click();
-      cy.get(`#${data.menuItems.oldInitialEntryId}`).should("not.be.visible");
+      cy.get(`#${data.menuItems.oldInitialEntryId}`).should("not.exist");
     });
   });
 

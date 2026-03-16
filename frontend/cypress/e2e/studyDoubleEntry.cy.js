@@ -352,6 +352,13 @@ describe("Study Double Entry – error scenarios", () => {
     studyEntryPage.waitForFormLoad();
     cy.fixture("StudyEntry").then((data) => {
       studyEntryPage.selectProject(data.doubleEntry.project);
+      cy.get("select#arvcenterName").then(($sel) => {
+        const first = [...$sel.find("option")].find((o) => o.value !== "");
+        if (first) cy.get("select#arvcenterName").select(first.value);
+      });
+      cy.get("input#siteSubjectNumber")
+        .clear()
+        .type(data.doubleEntry.siteSubjectNumber);
       studyEntryPage.enterLabNo(data.doubleEntry.validLabNo);
       cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.validation.futureBirthDate);
@@ -867,13 +874,17 @@ describe("Study Double Entry – lab number normalisation", () => {
         });
       }
       // EID/IND need site name
-      if (project === "EID" || project === "INDETERMINATE") {
-        cy.get("select#eidsiteName, select#indsiteName")
-          .first()
-          .then(($sel) => {
-            const first = [...$sel.find("option")].find((o) => o.value !== "");
-            if (first) $sel.val(first.value).trigger("change");
-          });
+      if (project === "EID") {
+        cy.get("select#eidsiteName").then(($sel) => {
+          const first = [...$sel.find("option")].find((o) => o.value !== "");
+          if (first) cy.get("select#eidsiteName").select(first.value);
+        });
+      }
+      if (project === "INDETERMINATE") {
+        cy.get("select#indsiteName").then(($sel) => {
+          const first = [...$sel.find("option")].find((o) => o.value !== "");
+          if (first) cy.get("select#indsiteName").select(first.value);
+        });
       }
       // Special Request needs reason for request selected
       if (project === "SPECIAL_REQUEST") {
@@ -967,7 +978,7 @@ describe("Study Double Entry – menu navigation", () => {
     cy.fixture("StudyEntry").then((data) => {
       homePage.openNavigationMenu();
       cy.get("span#menu_sample_create").should("be.visible").click();
-      cy.get(`#${data.menuItems.oldDoubleEntryId}`).should("not.be.visible");
+      cy.get(`#${data.menuItems.oldDoubleEntryId}`).should("not.exist");
     });
   });
 
