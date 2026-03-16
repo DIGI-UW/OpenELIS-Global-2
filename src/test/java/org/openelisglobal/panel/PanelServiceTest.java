@@ -10,6 +10,7 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -152,4 +153,37 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull("Duplicate panel description should be detected", fetchedPanel);
         assertEquals("Existing panel should be returned", existingPanel.getId(), fetchedPanel.getId());
     }
+
+    @Test(expected = LIMSDuplicateRecordException.class)
+    public void insert_shouldThrowException_whenDuplicatePanelNameExists() {
+
+        Panel existingPanel = panelService.getPanelByName("Dataset Panel 1");
+
+        Panel duplicatePanel = new Panel();
+        duplicatePanel.setPanelName(existingPanel.getPanelName());
+        duplicatePanel.setDescription("Another description");
+
+        panelService.insert(duplicatePanel);
+    }
+
+    @Test(expected = LIMSDuplicateRecordException.class)
+    public void insert_shouldThrowException_whenDuplicateDescriptionExists() {
+
+        Panel existingPanel = panelService.getPanelByName("Dataset Panel 1");
+
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("Unique Panel Name");
+        newPanel.setDescription(existingPanel.getDescription());
+
+        panelService.insert(newPanel);
+    }
+
+    @Test
+    public void getPanelById_shouldReturnNull_whenIdDoesNotExist() {
+
+        Panel panel = panelService.getPanelById("999999");
+
+        assertNull(panel);
+    }
+
 }
