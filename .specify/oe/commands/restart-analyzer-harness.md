@@ -5,7 +5,8 @@ perform an analyzer harness environment restart workflow with:
 
 - **Container restart** with force-recreate for harness services
 - **Optional database reset** (drop volumes with `--full-reset`)
-- **Analyzer fixture loading** (from canonical `analyzer-e2e.generated.sql`)
+- **Fixture loading** (`load-test-fixtures.sh --analyzers=full`) and **analyzer
+  seeding** (`seed-analyzers.sh`)
 - **Analyzer infrastructure verification** (ASTM bridge, simulator, virtual
   serial)
 
@@ -267,19 +268,34 @@ export DB_PORT=15432
 export DB_HOST=localhost
 
 if [ "$FULL_RESET" = true ]; then
-    ./src/test/resources/load-test-fixtures.sh --no-verify
+    ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
 else
-    ./src/test/resources/load-test-fixtures.sh --reset --no-verify
+    ./src/test/resources/load-test-fixtures.sh --analyzers=full --reset --no-verify
 fi
 ```
 
 This loads:
 
 - Foundational data (e2e-foundational-data.sql)
+- Analyzer types + cleanup (analyzer-minimal.sql, file-import-e2e.sql)
 - Storage fixtures (storage-e2e.generated.sql from DBUnit)
-- **Analyzer fixtures** (analyzer-e2e.generated.sql - 12 analyzers 2000-2012)
 
-Report: "Loaded fixtures (foundational + storage + analyzers)"
+Report: "Loaded fixtures (foundational + analyzer types + storage)"
+
+### 6b) Seed analyzers via REST API (checkpoint #6b)
+
+**Skip if `--skip-fixtures` was passed.**
+
+Create the four harness analyzers (GeneXpert ASTM, QuantStudio 5/7, FluoroCycler
+XT) so Playwright and manual tests see the same set as CI:
+
+```bash
+cd $REPO_ROOT
+# TEST_USER and TEST_PASS from .env (loaded in preflight)
+BASE_URL=https://localhost bash projects/analyzer-harness/seed-analyzers.sh
+```
+
+Report: "Seeded 4 analyzers via REST API"
 
 ### 7) Verify analyzer infrastructure (checkpoint #7)
 
@@ -308,7 +324,7 @@ Print summary:
   Login: admin (credentials from .env)
 
   Database: localhost:15432
-  Analyzers: 12 loaded (IDs 2000-2012)
+  Analyzers: 4 seeded via seed-analyzers.sh (GeneXpert ASTM, QuantStudio 5/7, FluoroCycler XT)
   Defaults: 11 templates at /data/analyzer-defaults (host path: projects/analyzer-defaults)
 
   Analyzer Infrastructure:
@@ -367,9 +383,10 @@ Where:
 
 - Harness compose files:
   `projects/analyzer-harness/docker-compose.{dev,analyzer-test,letsencrypt}.yml`
-- Fixture loader: `src/test/resources/load-test-fixtures.sh`
-- Analyzer fixtures: `src/test/resources/testdata/analyzer-e2e.generated.sql`
-  (canonical)
+- Fixture loader: `src/test/resources/load-test-fixtures.sh` (use
+  `--analyzers=full`)
+- Analyzer seeding: `projects/analyzer-harness/seed-analyzers.sh` (4 analyzers
+  via REST API)
 - Build script: `projects/analyzer-harness/build.sh` (WAR + harness images)
 - Reset script: `projects/analyzer-harness/reset-env.sh` (implements this
   workflow)
