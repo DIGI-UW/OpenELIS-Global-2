@@ -7,9 +7,8 @@
 # Usage: ./load-test-fixtures.sh [--reset] [--no-verify] [--analyzers=MODE]
 #
 # Analyzer modes (--analyzers=MODE):
-#   minimal  - analyzer-minimal.sql only (3 analyzers for focused plugin testing)
-#   legacy   - analyzer-test-data.sql only (Feature 004 UI testing, IDs 1000-1004)
-#   full     - Legacy + generated + type-linking (full regression, default)
+#   full     - Analyzer type safety net + cleanup + type linking (default)
+#   minimal  - analyzer-minimal.sql only (3 generic types, no cleanup)
 #   none     - Skip all analyzer fixtures (storage/patient only)
 #
 # Files loaded (in order):
@@ -23,9 +22,8 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
-ANALYZER_SQL_FILE="$SCRIPT_DIR/analyzer-test-data.sql"
 ANALYZER_MINIMAL_SQL_FILE="$SCRIPT_DIR/analyzer-minimal.sql"
-ANALYZER_TYPE_LINKING_SQL="$SCRIPT_DIR/analyzer-type-linking.sql"
+FILE_IMPORT_E2E_SQL="$SCRIPT_DIR/fixtures/file-import-e2e.sql"
 RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
 
 RESET=false
@@ -45,16 +43,16 @@ while [[ $# -gt 0 ]]; do
             ;;
         --analyzers=*)
             ANALYZER_MODE="${1#*=}"
-            if [[ ! "$ANALYZER_MODE" =~ ^(minimal|legacy|full|none)$ ]]; then
+            if [[ ! "$ANALYZER_MODE" =~ ^(minimal|full|none)$ ]]; then
                 echo "ERROR: Invalid analyzer mode: $ANALYZER_MODE"
-                echo "Valid modes: minimal, legacy, full, none"
+                echo "Valid modes: minimal, full, none"
                 exit 1
             fi
             shift
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--reset] [--no-verify] [--analyzers=minimal|legacy|full|none]"
+            echo "Usage: $0 [--reset] [--no-verify] [--analyzers=minimal|full|none]"
             exit 1
             ;;
     esac
@@ -113,17 +111,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Generate analyzer E2E SQL from DBUnit XML (Feature 011) — only for full mode
-ANALYZER_E2E_XML="$SCRIPT_DIR/testdata/madagascar-analyzer-test-data.xml"
-ANALYZER_E2E_SQL="$SCRIPT_DIR/testdata/analyzer-e2e.generated.sql"
-if [ "$ANALYZER_MODE" = "full" ] && [ -f "$ANALYZER_E2E_XML" ]; then
-    echo "Generating analyzer E2E SQL from DBUnit XML..."
-    python3 "$XML_TO_SQL_SCRIPT" "$ANALYZER_E2E_XML" "$ANALYZER_E2E_SQL" \
-        --on-conflict-do-nothing
-    if [ $? -ne 0 ]; then
-        echo "WARNING: Failed to generate analyzer E2E SQL (non-fatal)"
-    fi
-fi
 echo ""
 
 # Reset database if requested
@@ -254,26 +241,17 @@ load_analyzer_fixtures() {
             echo ""
             ;;
         minimal)
-            load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (3 analyzers, plugin testing)" "fatal"
-            ;;
-        legacy)
-            load_sql_file "$ANALYZER_SQL_FILE" "analyzer-test-data.sql (Feature 004, IDs 1000-1004)"
+            # 3 generic analyzer types (ASTM, HL7, File) — safety net for plugin loader
+            load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (3 generic types)" "fatal"
             ;;
         full)
-            # Load legacy fixtures (IDs 1000-1004)
-            load_sql_file "$ANALYZER_SQL_FILE" "analyzer-test-data.sql (Feature 004, IDs 1000-1004)"
+            # 3 generic analyzer types + cleanup + deactivation of non-generic types
+            load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (3 generic types)" "fatal"
 
-            # Load minimal fixtures (GeneXpert ID 2013, generic analyzer configs + test mappings)
-            # Uses ON CONFLICT DO NOTHING — safe to load alongside generated fixtures.
-            load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (GeneXpert + generic configs)"
-
-            # Load generated analyzer E2E fixtures (Feature 011, IDs 2006-2013)
-            if [ -f "$ANALYZER_E2E_SQL" ]; then
-                load_sql_file "$ANALYZER_E2E_SQL" "analyzer-e2e.generated.sql (Feature 011)"
+            # Clean up stale E2E/legacy analyzers + deactivate non-generic types
+            if [ -f "$FILE_IMPORT_E2E_SQL" ]; then
+                load_sql_file "$FILE_IMPORT_E2E_SQL" "file-import-e2e.sql (cleanup + dashboard deactivation)"
             fi
-
-            # Link fixture analyzers to their AnalyzerType records
-            load_sql_file "$ANALYZER_TYPE_LINKING_SQL" "analyzer-type-linking.sql (plugin type linking)"
             ;;
     esac
 }
@@ -449,6 +427,6 @@ fi
 echo ""
 echo "Test data ready for:"
 echo "  - Manual testing"
-echo "  - E2E testing (Cypress)"
+echo "  - E2E testing (Playwright)"
 echo "  - Integration testing"
 echo ""

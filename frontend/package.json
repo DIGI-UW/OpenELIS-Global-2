@@ -72,7 +72,8 @@
     "pw:install": "playwright install chromium",
     "pw:test": "playwright test",
     "pw:test:ui": "playwright test --ui",
-    "pw:test:headed": "playwright test --headed"
+    "pw:test:headed": "playwright test --headed",
+    "pw:test:video": "playwright test --config=playwright.video.config.ts"
   },
   "jest": {
     "transformIgnorePatterns": [
