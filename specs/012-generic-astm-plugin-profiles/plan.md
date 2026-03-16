@@ -1,6 +1,8 @@
 # Implementation Plan: Generic ASTM Plugin Profiles v1.2 (Simplified)
 
-**Branch**: `feat/012-ogc-337-generic-astm-plugin-profiles-m1-plugin-config`  
+**Branch (historical M1 reference)**:
+`feat/012-ogc-337-generic-astm-plugin-profiles-m1-plugin-config`  
+**Current implementation branch**: `feat/012-genexpert-astm-demo`  
 **Date**: 2026-02-27  
 **Spec**: [spec.md](./spec.md)  
 **Jira**: OGC-337
@@ -107,7 +109,8 @@ specs/012-generic-astm-plugin-profiles/
 
 projects/analyzer-profiles/
 ├── astm/*.json
-└── hl7/*.json
+├── hl7/*.json
+└── file/*.json
 
 src/main/resources/liquibase/3.4.x.x/
 ├── 009-decouple-test-mappings.xml

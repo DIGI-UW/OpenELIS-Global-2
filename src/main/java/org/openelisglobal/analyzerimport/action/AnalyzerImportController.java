@@ -201,6 +201,15 @@ public class AnalyzerImportController implements IActionConstants {
      * </p>
      */
     private void setBridgeHeaders(AnalyzerReader reader, HttpServletRequest request) {
+        // X-Analyzer-Id: deterministic routing from bridge registration.
+        // When present, this provides a direct DB lookup — no pattern matching needed.
+        String analyzerId = request.getHeader("X-Analyzer-Id");
+        if (analyzerId != null && !analyzerId.trim().isEmpty()) {
+            if (reader instanceof ASTMAnalyzerReader astmReader) {
+                astmReader.setRegisteredAnalyzerId(analyzerId.trim());
+            }
+        }
+
         String sourceIp = request.getHeader("X-Source-Id");
         String sourcePort = request.getHeader("X-Source-Port");
 
