@@ -348,6 +348,7 @@ test("US2 — Capture label quantities during sample creation", async ({
   const collectionDate = page.locator("input#collectionDate_0");
   if (await collectionDate.isVisible().catch(() => false)) {
     await collectionDate.fill("13/03/2026");
+    await page.keyboard.press("Escape");
     await pause(400);
   }
 
@@ -470,6 +471,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
     const collectionDate = page.locator("input#collectionDate_0");
     if (await collectionDate.isVisible().catch(() => false)) {
       await collectionDate.fill("13/03/2026");
+      await page.keyboard.press("Escape");
     }
     await selectPanelOrTest(page, pause);
   }
