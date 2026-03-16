@@ -197,9 +197,8 @@ describe("Study Initial Entry – Initial ARV form", () => {
       studyEntryPage.enterLabNo(d.labNo);
       cy.get("select#gender").select(data.common.gender);
       studyEntryPage.enterBirthDate(data.common.birthDate);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
       studyEntryPage.waitForInitialSave().then((interception) => {
         expect(interception.request.body.labNo).to.equal(d.expectedLabNo);
@@ -220,9 +219,8 @@ describe("Study Initial Entry – Initial ARV form", () => {
       studyEntryPage.enterLabNo(d.expectedLabNo);
       cy.get("select#gender").select(data.common.gender);
       studyEntryPage.enterBirthDate(data.common.birthDate);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
       studyEntryPage.assertSuccessNotification();
     });
@@ -239,9 +237,8 @@ describe("Study Initial Entry – Initial ARV form", () => {
       studyEntryPage.enterLabNo(data.arvInitial.expectedLabNo);
       cy.get("select#gender").select(data.common.gender);
       studyEntryPage.enterBirthDate(data.common.birthDate);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
       studyEntryPage.assertErrorNotification();
     });
@@ -288,9 +285,8 @@ describe("Study Initial Entry – Follow-up ARV form", () => {
       studyEntryPage.enterLabNo(data.arvFollowup.expectedLabNo);
       cy.get("select#gender").select(data.common.gender);
       studyEntryPage.enterBirthDate(data.common.birthDate);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
       cy.wait("@saveFARV").then((i) => {
         expect(i.request.url).to.include("type=initial");
@@ -388,9 +384,8 @@ describe("Study Initial Entry – RTN form", () => {
       studyEntryPage.enterLabNo(data.rtn.labNo);
       cy.get("select#gender").select(data.rtn.gender);
       studyEntryPage.enterBirthDate(data.rtn.birthDate);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#serologyHIVTest").check({ force: true });
       studyEntryPage.clickSave();
       cy.wait("@saveRTN").then((i) => {
         expect(i.request.body.labNo).to.equal(data.rtn.expectedLabNo);
@@ -489,9 +484,8 @@ describe("Study Initial Entry – EID form", () => {
       studyEntryPage.enterLabNo(data.eid.labNo);
       cy.get("select#gender").select(data.eid.gender);
       studyEntryPage.enterBirthDate(data.eid.birthDate);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#dnaPCR").check({ force: true });
       studyEntryPage.clickSave();
       cy.wait("@saveEID").then((i) => {
         expect(i.request.body.labNo).to.equal(data.eid.expectedLabNo);
@@ -548,9 +542,8 @@ describe("Study Initial Entry – Indeterminate form", () => {
       studyEntryPage.enterLabNo(data.indeterminate.labNo);
       cy.get("select#gender").select(data.indeterminate.gender);
       studyEntryPage.enterBirthDate(data.indeterminate.birthDate);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#serologyHIVTest").check({ force: true });
       studyEntryPage.clickSave();
       cy.wait("@saveIND").then((i) => {
         expect(i.request.body.labNo).to.equal(data.indeterminate.expectedLabNo);
@@ -599,9 +592,8 @@ describe("Study Initial Entry – Special Request form", () => {
       studyEntryPage.enterLabNo(data.specialRequest.labNo);
       cy.get("select#gender").select(data.specialRequest.gender);
       studyEntryPage.enterBirthDate(data.specialRequest.birthDate);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#serologyHIVTest").check({ force: true });
       studyEntryPage.clickSave();
       cy.wait("@saveSPE").then((i) => {
         expect(i.request.body.labNo).to.equal(
@@ -651,9 +643,8 @@ describe("Study Initial Entry – Recency Testing form", () => {
       studyEntryPage.enterLabNo(data.recencyTesting.labNo);
       cy.get("select#gender").select(data.recencyTesting.gender);
       studyEntryPage.enterBirthDate(data.recencyTesting.birthDate);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#serologyHIVTest").check({ force: true });
       studyEntryPage.clickSave();
       cy.wait("@saveREC").then((i) => {
         expect(i.request.body.labNo).to.equal(
@@ -711,9 +702,8 @@ describe("Study Initial Entry – HPV Testing form", () => {
       studyEntryPage.enterLabNo(data.hpvTesting.labNo);
       cy.get("select#gender").select(data.hpvTesting.gender);
       studyEntryPage.enterBirthDate(data.hpvTesting.birthDate);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#hpvTest").check({ force: true });
       studyEntryPage.clickSave();
       cy.wait("@saveHPV").then((i) => {
         expect(i.request.body.labNo).to.equal(data.hpvTesting.expectedLabNo);
@@ -823,10 +813,8 @@ describe("Study Initial Entry – form-level validation", () => {
       studyEntryPage.enterLabNo(data.arvInitial.expectedLabNo);
       // Intentionally omit gender — leave it at empty default
       studyEntryPage.enterBirthDate(data.common.birthDate);
-      // check first visible checkbox to satisfy test requirement
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
       studyEntryPage.assertErrorNotification();
     });
@@ -837,9 +825,8 @@ describe("Study Initial Entry – form-level validation", () => {
       studyEntryPage.selectProject("ARV_INITIAL");
       cy.get("select#gender").select(data.common.gender);
       studyEntryPage.enterBirthDate(data.common.birthDate);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#dryTubeTaken").check({ force: true });
       // Intentionally omit lab number
       studyEntryPage.clickSave();
       studyEntryPage.assertErrorNotification();
@@ -858,9 +845,8 @@ describe("Study Initial Entry – form-level validation", () => {
       studyEntryPage.enterLabNo(data.arvInitial.expectedLabNo);
       cy.get("select#gender").select(data.common.gender);
       studyEntryPage.enterBirthDate(data.validation.futureBirthDate);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
       studyEntryPage.assertErrorNotification();
     });
@@ -893,12 +879,24 @@ describe("Study Initial Entry – lab number normalisation", () => {
 
       studyEntryPage.selectProject(project);
       studyEntryPage.enterLabNo(digitsOnly);
-      studyEntryPage.selectGender("M");
+      cy.get("select#gender").select("M");
       studyEntryPage.enterBirthDate("01/01/1990");
-      // Check whichever test is first visible
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      // pick the right specimen checkbox per project type
+      const specimenMap = {
+        ARV_INITIAL: "dryTubeTaken",
+        ARV_FOLLOWUP: "dryTubeTaken",
+        ARV_VIRAL_LOAD: "dbsvlTaken",
+        RTN: "serologyHIVTest",
+        EID: "dnaPCR",
+        INDETERMINATE: "serologyHIVTest",
+        SPECIAL_REQUEST: "serologyHIVTest",
+        RECENCY_TESTING: "serologyHIVTest",
+        HPV_TESTING: "hpvTest",
+      };
+      cy.get(`input#${specimenMap[project] || "dryTubeTaken"}`).check({
+        force: true,
+      });
       studyEntryPage.clickSave();
       cy.wait("@saveLabNo").then((i) => {
         expect(i.request.body.labNo).to.equal(expected);
@@ -914,11 +912,10 @@ describe("Study Initial Entry – lab number normalisation", () => {
 
     studyEntryPage.selectProject("ARV_INITIAL");
     studyEntryPage.enterLabNo("LARC11111");
-    studyEntryPage.selectGender("M");
+    cy.get("select#gender").select("M");
     studyEntryPage.enterBirthDate("01/01/1990");
-    cy.get('.cds--checkbox input[type="checkbox"]')
-      .first()
-      .check({ force: true });
+    cy.get("body").type("{esc}");
+    cy.get("input#dryTubeTaken").check({ force: true });
     studyEntryPage.clickSave();
     cy.wait("@savePrefixed").then((i) => {
       expect(i.request.body.labNo).to.equal("LARC11111");

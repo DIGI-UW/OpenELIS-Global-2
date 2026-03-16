@@ -168,9 +168,10 @@ describe("Study Double Entry – POST type=verify", () => {
 
       studyEntryPage.selectProject(data.doubleEntry.project);
       studyEntryPage.enterLabNo(data.doubleEntry.validLabNo);
-      studyEntryPage.selectGender(data.doubleEntry.gender);
+      cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
-      studyEntryPage.checkTest("serologyHIVTest");
+      cy.get("body").type("{esc}");
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
 
       cy.wait("@saveVerify").then((interception) => {
@@ -188,9 +189,10 @@ describe("Study Double Entry – POST type=verify", () => {
 
       studyEntryPage.selectProject(data.doubleEntry.project);
       studyEntryPage.enterLabNo(data.doubleEntry.validLabNo);
-      studyEntryPage.selectGender(data.doubleEntry.gender);
+      cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
-      studyEntryPage.checkTest("serologyHIVTest");
+      cy.get("body").type("{esc}");
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
 
       cy.wait("@saveVerifyBody").then((interception) => {
@@ -210,10 +212,11 @@ describe("Study Double Entry – POST type=verify", () => {
 
       studyEntryPage.selectProject(data.doubleEntry.project);
       studyEntryPage.enterLabNo(data.doubleEntry.validLabNo);
-      studyEntryPage.selectGender(data.doubleEntry.gender);
+      cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
-      studyEntryPage.enterSubjectNumber(data.doubleEntry.subjectNumber);
-      studyEntryPage.checkTest("serologyHIVTest");
+      cy.get("body").type("{esc}");
+      studyEntryPage.enterSiteSubjectNumber(data.doubleEntry.siteSubjectNumber);
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
 
       cy.wait("@saveVerifyFields").then((interception) => {
@@ -252,9 +255,10 @@ describe("Study Double Entry – error scenarios", () => {
 
       studyEntryPage.selectProject(data.doubleEntry.project);
       studyEntryPage.enterLabNo(data.doubleEntry.invalidLabNo);
-      studyEntryPage.selectGender(data.doubleEntry.gender);
+      cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
-      studyEntryPage.checkTest("serologyHIVTest");
+      cy.get("body").type("{esc}");
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
 
       cy.wait("@saveVerifyNotFound");
@@ -277,9 +281,10 @@ describe("Study Double Entry – error scenarios", () => {
 
       studyEntryPage.selectProject(data.doubleEntry.project);
       studyEntryPage.enterLabNo(data.doubleEntry.alreadyVerifiedLabNo);
-      studyEntryPage.selectGender(data.doubleEntry.gender);
+      cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
-      studyEntryPage.checkTest("serologyHIVTest");
+      cy.get("body").type("{esc}");
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
 
       cy.wait("@saveVerifyConflict");
@@ -291,9 +296,10 @@ describe("Study Double Entry – error scenarios", () => {
     cy.fixture("StudyEntry").then((data) => {
       studyEntryPage.selectProject(data.doubleEntry.project);
       // Intentionally skip lab number
-      studyEntryPage.selectGender(data.doubleEntry.gender);
+      cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
-      studyEntryPage.checkTest("serologyHIVTest");
+      cy.get("body").type("{esc}");
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
       studyEntryPage.assertErrorNotification();
     });
@@ -305,9 +311,8 @@ describe("Study Double Entry – error scenarios", () => {
       studyEntryPage.enterLabNo(data.doubleEntry.validLabNo);
       // Intentionally skip gender
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
       studyEntryPage.assertErrorNotification();
     });
@@ -319,9 +324,8 @@ describe("Study Double Entry – error scenarios", () => {
       studyEntryPage.enterLabNo(data.doubleEntry.validLabNo);
       cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.validation.futureBirthDate);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
       studyEntryPage.assertErrorNotification();
     });
@@ -349,10 +353,9 @@ describe("Study Double Entry – successful save", () => {
       studyEntryPage.enterLabNo(data.doubleEntry.validLabNo);
       cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
-      studyEntryPage.enterSubjectNumber(data.doubleEntry.subjectNumber);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      studyEntryPage.enterSiteSubjectNumber(data.doubleEntry.siteSubjectNumber);
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
 
       cy.wait("@saveDoubleSuccess");
@@ -371,9 +374,8 @@ describe("Study Double Entry – successful save", () => {
       studyEntryPage.enterLabNo(data.doubleEntry.validLabNo);
       cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
 
       cy.wait("@saveDoubleReload");
@@ -392,9 +394,10 @@ describe("Study Double Entry – successful save", () => {
 
       studyEntryPage.selectProject("EID");
       studyEntryPage.enterLabNo(data.eid.labNo);
-      studyEntryPage.selectGender(data.eid.gender);
+      cy.get("select#gender").select(data.eid.gender);
       studyEntryPage.enterBirthDate(data.eid.birthDate);
-      studyEntryPage.checkTest("dnaPCR");
+      cy.get("body").type("{esc}");
+      cy.get("input#dnaPCR").check({ force: true });
       studyEntryPage.clickSave();
 
       cy.wait("@saveDoubleEID").then((interception) => {
@@ -414,9 +417,10 @@ describe("Study Double Entry – successful save", () => {
 
       studyEntryPage.selectProject("RTN");
       studyEntryPage.enterLabNo(data.rtn.labNo);
-      studyEntryPage.selectGender(data.rtn.gender);
+      cy.get("select#gender").select(data.rtn.gender);
       studyEntryPage.enterBirthDate(data.rtn.birthDate);
-      studyEntryPage.checkTest("serologyHIVTest");
+      cy.get("body").type("{esc}");
+      cy.get("input#serologyHIVTest").check({ force: true });
       studyEntryPage.clickSave();
 
       cy.wait("@saveDoubleRTN").then((interception) => {
@@ -461,8 +465,8 @@ describe("Study Double Entry – field parity with Initial Entry (ARV_INITIAL)",
     studyEntryPage.assertInterviewDateAutoFilled();
   });
 
-  it("shows subjectNumber, siteSubjectNumber, upidCode fields", () => {
-    studyEntryPage.assertSubjectNumberVisible();
+  it("hides subjectNumber (ARV uses siteSubjectNumber as Unique Health ID)", () => {
+    studyEntryPage.assertSubjectNumberNotVisible();
     studyEntryPage.assertSiteSubjectNumberVisible();
     studyEntryPage.assertUPIDCodeVisible();
   });
@@ -481,6 +485,7 @@ describe("Study Double Entry – field parity with Initial Entry (ARV_INITIAL)",
 
   it("age is read-only and auto-calculated from birth date", () => {
     studyEntryPage.enterBirthDate("01/01/1990");
+    cy.get("body").type("{esc}");
     studyEntryPage.assertAgeReadOnly();
   });
 
@@ -788,11 +793,23 @@ describe("Study Double Entry – lab number normalisation", () => {
 
       studyEntryPage.selectProject(project);
       studyEntryPage.enterLabNo(digitsOnly);
-      studyEntryPage.selectGender("M");
+      cy.get("select#gender").select("M");
       studyEntryPage.enterBirthDate("01/01/1990");
-      cy.get('.cds--checkbox input[type="checkbox"]')
-        .first()
-        .check({ force: true });
+      cy.get("body").type("{esc}");
+      const specimenMap = {
+        ARV_INITIAL: "dryTubeTaken",
+        ARV_FOLLOWUP: "dryTubeTaken",
+        ARV_VIRAL_LOAD: "dbsvlTaken",
+        RTN: "serologyHIVTest",
+        EID: "dnaPCR",
+        INDETERMINATE: "serologyHIVTest",
+        SPECIAL_REQUEST: "serologyHIVTest",
+        RECENCY_TESTING: "serologyHIVTest",
+        HPV_TESTING: "hpvTest",
+      };
+      cy.get(`input#${specimenMap[project] || "dryTubeTaken"}`).check({
+        force: true,
+      });
       studyEntryPage.clickSave();
 
       cy.wait("@saveVerifyLabNo").then((i) => {
@@ -809,11 +826,10 @@ describe("Study Double Entry – lab number normalisation", () => {
 
     studyEntryPage.selectProject("ARV_INITIAL");
     studyEntryPage.enterLabNo("LARC11111");
-    studyEntryPage.selectGender("M");
+    cy.get("select#gender").select("M");
     studyEntryPage.enterBirthDate("01/01/1990");
-    cy.get('.cds--checkbox input[type="checkbox"]')
-      .first()
-      .check({ force: true });
+    cy.get("body").type("{esc}");
+    cy.get("input#dryTubeTaken").check({ force: true });
     studyEntryPage.clickSave();
 
     cy.wait("@saveVerifyPrefixed").then((i) => {
