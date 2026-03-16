@@ -196,18 +196,9 @@ async function clickNext(page: Page, pause: PauseFn) {
  */
 async function selectPanelOrTest(page: Page, pause: PauseFn) {
   const bilan = page.getByRole("checkbox", { name: "Bilan Biochimique" });
-  if (await bilan.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await bilan.scrollIntoViewIfNeeded();
-    await bilan.check();
-    await pause(400);
-    return;
-  }
-  const serologie = page.getByRole("checkbox", { name: "Serologie VIH" });
-  if (await serologie.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await serologie.scrollIntoViewIfNeeded();
-    await serologie.check();
-    await pause(400);
-  }
+  await bilan.scrollIntoViewIfNeeded();
+  await bilan.check({ timeout: 5000 });
+  await pause(400);
 }
 
 // ─── User Story 1: Admin configures barcode label quantities ─────────────────
