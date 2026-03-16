@@ -83,7 +83,7 @@ export const NCECorrectiveAction = () => {
           },
         );
       } catch (error) {
-        console.log("Error fetching data", error);
+        // error handling could be added here
       }
     }
   }, [selected]);
