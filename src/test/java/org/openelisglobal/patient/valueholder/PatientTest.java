@@ -16,7 +16,8 @@ import org.openelisglobal.person.valueholder.Person;
 /**
  * Pure unit tests for the Patient valueholder.
  *
- * <p>These tests require NO Spring context and NO Docker — they validate the
+ * <p>
+ * These tests require NO Spring context and NO Docker — they validate the
  * entity's field behaviour, date-display synchronisation, FHIR UUID handling,
  * and merge-state logic in isolation.
  */
@@ -220,9 +221,7 @@ public class PatientTest {
     @Test
     public void getFhirUuidAsString_WhenUuidIsNull_ShouldReturnEmptyString() {
         // fhirUuid is null by default
-        assertEquals(
-                "getFhirUuidAsString() should return empty string when fhirUuid is null",
-                "",
+        assertEquals("getFhirUuidAsString() should return empty string when fhirUuid is null", "",
                 patient.getFhirUuidAsString());
     }
 
