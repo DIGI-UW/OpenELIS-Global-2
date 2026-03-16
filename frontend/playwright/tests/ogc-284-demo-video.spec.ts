@@ -81,6 +81,38 @@ async function selectPatient(
 }
 
 /**
+ * Fill the Add Sample step: select sample type, set collection date,
+ * and select at least one panel/test so sampleXML gets populated.
+ */
+async function fillSampleStep(page: Page, pause: PauseFn) {
+  const sampleSelect = page.locator("select#sampleId_0");
+  await expect(sampleSelect).toBeVisible({ timeout: 8000 });
+
+  // Wait for real options to load (not just "Select sample type")
+  await expect(
+    sampleSelect.locator("option:not(:first-child)"),
+  ).not.toHaveCount(0, { timeout: 8000 });
+
+  const options = await sampleSelect.locator("option").allTextContents();
+  const serum = options.find((o) => o.toLowerCase().includes("serum"));
+  if (serum) {
+    await sampleSelect.selectOption({ label: serum.trim() });
+  } else {
+    await sampleSelect.selectOption({ index: 1 });
+  }
+  await pause(800);
+
+  const collectionDate = page.locator("input#collectionDate_0");
+  if (await collectionDate.isVisible().catch(() => false)) {
+    await collectionDate.fill("13/03/2026");
+    await page.keyboard.press("Escape");
+    await pause(400);
+  }
+
+  await selectPanelOrTest(page, pause);
+}
+
+/**
  * Fill the Order Details step (Step 3) — lab number, dates, site, requester.
  */
 async function fillOrderDetails(page: Page, pause: PauseFn) {
@@ -332,27 +364,7 @@ test("US2 — Capture label quantities during sample creation", async ({
   // ── Step 2: Sample type ─────────────────────────────────────────
   await showSceneLabel(page, "US2 · Step 2: Sample Type", testInfo);
 
-  const sampleSelect = page.locator("select#sampleId_0");
-  await expect(sampleSelect).toBeVisible({ timeout: 8000 });
-  await scrollToAndPause(page, sampleSelect, pause, 800);
-
-  const options = await sampleSelect.locator("option").allTextContents();
-  const serum = options.find((o) => o.toLowerCase().includes("serum"));
-  if (serum) {
-    await sampleSelect.selectOption({ label: serum.trim() });
-  } else if (options.length > 1) {
-    await sampleSelect.selectOption({ index: 1 });
-  }
-  await pause(800);
-
-  const collectionDate = page.locator("input#collectionDate_0");
-  if (await collectionDate.isVisible().catch(() => false)) {
-    await collectionDate.fill("13/03/2026");
-    await page.keyboard.press("Escape");
-    await pause(400);
-  }
-
-  await selectPanelOrTest(page, pause);
+  await fillSampleStep(page, pause);
 
   // ── ★ KEY: Labels Section ───────────────────────────────────────
   await showTitleCard(
@@ -459,22 +471,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
     await pause(1200);
   }
 
-  // Sample type
-  const sampleSelect = page.locator("select#sampleId_0");
-  if (await sampleSelect.isVisible({ timeout: 8000 }).catch(() => false)) {
-    const options = await sampleSelect.locator("option").allTextContents();
-    const serum = options.find((o) => o.toLowerCase().includes("serum"));
-    if (serum) await sampleSelect.selectOption({ label: serum.trim() });
-    else if (options.length > 1) await sampleSelect.selectOption({ index: 1 });
-    await pause(600);
-
-    const collectionDate = page.locator("input#collectionDate_0");
-    if (await collectionDate.isVisible().catch(() => false)) {
-      await collectionDate.fill("13/03/2026");
-      await page.keyboard.press("Escape");
-    }
-    await selectPanelOrTest(page, pause);
-  }
+  await fillSampleStep(page, pause);
 
   // Show labels section briefly before moving on
   const labelsSection = page.getByTestId("labels-section-root");
