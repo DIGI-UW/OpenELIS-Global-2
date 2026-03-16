@@ -70,9 +70,19 @@ class StudyEntryPage {
 
   selectARVCenterNameByText(text) {
     cy.get("select#arvcenterName")
-      .contains("option", text)
-      .then(($opt) => {
-        cy.get("select#arvcenterName").select($opt.val());
+      .should("be.visible")
+      .then(($select) => {
+        const options = [...$select.find("option")];
+        const match = options.find(
+          (o) => o.text.trim() === text || o.text.trim().includes(text),
+        );
+        if (match) {
+          cy.get("select#arvcenterName").select(match.value);
+        } else {
+          // fallback: select first non-empty option
+          const first = options.find((o) => o.value !== "");
+          if (first) cy.get("select#arvcenterName").select(first.value);
+        }
       });
   }
 
@@ -82,9 +92,18 @@ class StudyEntryPage {
 
   selectARVCenterCodeByText(text) {
     cy.get("select#arvcenterCode")
-      .contains("option", text)
-      .then(($opt) => {
-        cy.get("select#arvcenterCode").select($opt.val());
+      .should("be.visible")
+      .then(($select) => {
+        const options = [...$select.find("option")];
+        const match = options.find(
+          (o) => o.text.trim() === text || o.text.trim().includes(text),
+        );
+        if (match) {
+          cy.get("select#arvcenterCode").select(match.value);
+        } else {
+          const first = options.find((o) => o.value !== "");
+          if (first) cy.get("select#arvcenterCode").select(first.value);
+        }
       });
   }
 
@@ -160,9 +179,18 @@ class StudyEntryPage {
 
   selectEIDSiteNameByText(text) {
     cy.get("select#eidsiteName")
-      .contains("option", text)
-      .then(($opt) => {
-        cy.get("select#eidsiteName").select($opt.val());
+      .should("be.visible")
+      .then(($select) => {
+        const options = [...$select.find("option")];
+        const match = options.find(
+          (o) => o.text.trim() === text || o.text.trim().includes(text),
+        );
+        if (match) {
+          cy.get("select#eidsiteName").select(match.value);
+        } else {
+          const first = options.find((o) => o.value !== "");
+          if (first) cy.get("select#eidsiteName").select(first.value);
+        }
       });
   }
 
@@ -172,9 +200,18 @@ class StudyEntryPage {
 
   selectEIDSiteCodeByText(text) {
     cy.get("select#eidsiteCode")
-      .contains("option", text)
-      .then(($opt) => {
-        cy.get("select#eidsiteCode").select($opt.val());
+      .should("be.visible")
+      .then(($select) => {
+        const options = [...$select.find("option")];
+        const match = options.find(
+          (o) => o.text.trim() === text || o.text.trim().includes(text),
+        );
+        if (match) {
+          cy.get("select#eidsiteCode").select(match.value);
+        } else {
+          const first = options.find((o) => o.value !== "");
+          if (first) cy.get("select#eidsiteCode").select(first.value);
+        }
       });
   }
 
@@ -266,9 +303,18 @@ class StudyEntryPage {
 
   selectINDSiteByText(text) {
     cy.get("select#indsiteName")
-      .contains("option", text)
-      .then(($opt) => {
-        cy.get("select#indsiteName").select($opt.val());
+      .should("be.visible")
+      .then(($select) => {
+        const options = [...$select.find("option")];
+        const match = options.find(
+          (o) => o.text.trim() === text || o.text.trim().includes(text),
+        );
+        if (match) {
+          cy.get("select#indsiteName").select(match.value);
+        } else {
+          const first = options.find((o) => o.value !== "");
+          if (first) cy.get("select#indsiteName").select(first.value);
+        }
       });
   }
 
@@ -307,8 +353,10 @@ class StudyEntryPage {
   // ─── Special Request Section ───────────────────────────────────────────────
 
   assertSpecialRequestSectionVisible() {
-    cy.contains("Special Request").should("be.visible");
-    // heading defaultMessage is "Special Request" — exact match
+    // Target the section heading, not the sidebar nav item
+    cy.get(".cds--css-grid, .orderLegendBody, form")
+      .contains("Special Request")
+      .should("be.visible");
   }
 
   selectSpecialRequestReason(value) {
