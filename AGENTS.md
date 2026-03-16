@@ -2132,6 +2132,76 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
+## Cursor Cloud specific instructions
+
+### Services overview
+
+OpenELIS Global 2 runs 6 core services via `dev.docker-compose.yml`:
+
+| Service               | Container                  | Purpose                                     |
+| --------------------- | -------------------------- | ------------------------------------------- |
+| certs                 | `oe-certs`                 | One-shot SSL keystore/truststore generation |
+| db.openelis.org       | `openelisglobal-database`  | PostgreSQL 14.4 (port 15432)                |
+| oe.openelis.org       | `openelisglobal-webapp`    | Java/Tomcat backend (ports 8080/8443)       |
+| fhir.openelis.org     | `external-fhir-api`        | HAPI FHIR R4 (ports 8081/8444)              |
+| frontend.openelis.org | `openelisglobal-front-end` | React dev server (hot-reload)               |
+| proxy                 | `openelisglobal-proxy`     | Nginx reverse proxy (ports 80/443)          |
+
+### Starting the dev environment
+
+```bash
+sudo service docker start || true
+for i in $(seq 1 30); do docker info >/dev/null 2>&1 && break; sleep 2; done
+docker compose -f dev.docker-compose.yml up -d
+```
+
+The webapp takes ~90-120 seconds to finish Liquibase migrations and start Tomcat
+on first boot. There is no healthcheck on the webapp container in dev compose;
+poll with `curl -ks https://localhost/ -o /dev/null -w '%{http_code}'` until you
+get 200.
+
+### Credentials
+
+- App login: `admin` / `adminADMIN!`
+- DB: `clinlims` / `clinlims` on `localhost:15432`, database `clinlims`
+
+### Building after code changes
+
+- **Backend:** `mvn clean install -DskipTests -Dmaven.test.skip=true` then
+  `docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org`
+- **Frontend:** Hot-reloaded automatically (source is volume-mounted).
+
+### Lint / format / test commands
+
+See `AGENTS.md` "Common Development Commands" and `CLAUDE.md` for full details.
+Key commands:
+
+- `mvn spotless:check` / `mvn spotless:apply` — backend formatting
+- `cd frontend && npm run format` — frontend Prettier
+- `mvn test` — backend unit tests
+- `cd frontend && npx react-scripts test --watchAll=false --ci` — frontend Jest
+- `mvn spotless:apply` **must** run before every commit (the
+  `.githooks/pre-commit` hook enforces this).
+
+### Docker-in-Docker gotchas
+
+The Cloud Agent VM is a container inside Firecracker. Docker requires:
+
+- `fuse-overlayfs` storage driver (`/etc/docker/daemon.json`)
+- `iptables-legacy` (not nftables)
+- `sudo chmod 666 /var/run/docker.sock` after starting the daemon
+
+These are handled by the snapshot; no manual action needed on future boots.
+
+### Git submodules
+
+The `Consolidated-Server` submodule uses an SSH URL (`git@github.com:...`) and
+will fail to clone without SSH keys. The setup script
+(`scripts/setup-workspace.sh`) tolerates this; it is not required for the core
+dev workflow.
+
+---
+
 **Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync
