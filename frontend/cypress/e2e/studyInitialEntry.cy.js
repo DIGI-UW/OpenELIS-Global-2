@@ -580,11 +580,11 @@ describe("Study Initial Entry – Indeterminate form", () => {
   it("shows first and second test date/name/result fields", () => {
     cy.get("input#indFirstTestDate").should("be.visible");
     cy.get("input#indFirstTestName").should("be.visible");
-    cy.get("select#indFirstTestResult").should("be.visible");
+    cy.get("input#indFirstTestResult").should("be.visible");
     cy.get("input#indSecondTestDate").should("be.visible");
     cy.get("input#indSecondTestName").should("be.visible");
-    cy.get("select#indSecondTestResult").should("be.visible");
-    cy.get("select#indSiteFinalResult").should("be.visible");
+    cy.get("input#indSecondTestResult").should("be.visible");
+    cy.get("input#indSiteFinalResult").should("be.visible");
   });
 
   it("normalises lab number to LIND + 5 digits", () => {

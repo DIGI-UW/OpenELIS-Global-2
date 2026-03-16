@@ -240,9 +240,10 @@ describe("Study Double Entry – POST type=verify", () => {
           "birthDateForDisplay",
           data.doubleEntry.birthDate,
         );
+        // ARV projects hide subjectNumber and use siteSubjectNumber instead
         expect(body).to.have.property(
-          "subjectNumber",
-          data.doubleEntry.subjectNumber,
+          "siteSubjectNumber",
+          data.doubleEntry.siteSubjectNumber,
         );
       });
     });
@@ -731,11 +732,11 @@ describe("Study Double Entry – field parity with Initial Entry (INDETERMINATE)
   it("shows first/second test result fields", () => {
     cy.get("input#indFirstTestDate").should("be.visible");
     cy.get("input#indFirstTestName").should("be.visible");
-    cy.get("select#indFirstTestResult").should("be.visible");
+    cy.get("input#indFirstTestResult").should("be.visible");
     cy.get("input#indSecondTestDate").should("be.visible");
     cy.get("input#indSecondTestName").should("be.visible");
-    cy.get("select#indSecondTestResult").should("be.visible");
-    cy.get("select#indSiteFinalResult").should("be.visible");
+    cy.get("input#indSecondTestResult").should("be.visible");
+    cy.get("input#indSiteFinalResult").should("be.visible");
   });
 });
 

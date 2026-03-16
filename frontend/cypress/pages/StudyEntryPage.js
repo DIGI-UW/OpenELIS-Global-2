@@ -331,7 +331,7 @@ class StudyEntryPage {
   }
 
   selectINDFirstTestResult(value) {
-    cy.get("select#indFirstTestResult").select(value);
+    cy.get("input#indFirstTestResult").select(value);
   }
 
   enterINDSecondTestDate(value) {
@@ -343,11 +343,11 @@ class StudyEntryPage {
   }
 
   selectINDSecondTestResult(value) {
-    cy.get("select#indSecondTestResult").select(value);
+    cy.get("input#indSecondTestResult").select(value);
   }
 
   selectINDSiteFinalResult(value) {
-    cy.get("select#indSiteFinalResult").select(value);
+    cy.get("input#indSiteFinalResult").select(value);
   }
 
   // ─── Special Request Section ───────────────────────────────────────────────
