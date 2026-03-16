@@ -22,6 +22,7 @@ const DEMO_TESTS = [
   "**/file-import-ui.spec.ts",
   "**/file-import-results.spec.ts",
   "**/astm-genexpert-results.spec.ts",
+  "**/ogc-284-demo-video.spec.ts",
 ];
 
 export default defineConfig({
