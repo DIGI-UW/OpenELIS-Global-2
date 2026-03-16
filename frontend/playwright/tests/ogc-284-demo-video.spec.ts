@@ -106,7 +106,7 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
   const siteInput = page.locator("input#siteName");
   if (await siteInput.isVisible().catch(() => false)) {
     await siteInput.clear();
-    await siteInput.fill("CAMES");
+    await siteInput.fill("CAMES MAN");
     await pause(1200);
     // Try each autocomplete suggestion selector
     for (const sel of [
@@ -123,14 +123,36 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
     await pause(600);
   }
 
+  // Select requester from autosuggest first; this is required in Add Order.
+  const requesterLookup = page.locator("input#requesterId");
+  if (await requesterLookup.isVisible().catch(() => false)) {
+    await requesterLookup.clear();
+    await requesterLookup.fill("Prime, Optimus");
+    await pause(800);
+    for (const sel of [
+      ".suggestion-active",
+      ".react-autosuggest__suggestion--highlighted",
+      ".react-autosuggest__suggestions-list li:first-child",
+    ]) {
+      const s = page.locator(sel).first();
+      if (await s.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await s.click();
+        break;
+      }
+    }
+    await pause(400);
+  }
+
   const requesterFirst = page.locator("input#requesterFirstName");
   if (await requesterFirst.isVisible().catch(() => false)) {
-    await requesterFirst.fill("Demo");
+    await requesterFirst.clear();
+    await requesterFirst.fill("Optimus");
     await pause(200);
   }
   const requesterLast = page.locator("input#requesterLastName");
   if (await requesterLast.isVisible().catch(() => false)) {
-    await requesterLast.fill("User");
+    await requesterLast.clear();
+    await requesterLast.fill("Prime");
     await pause(200);
   }
 }
@@ -141,6 +163,28 @@ async function clickNext(page: Page, pause: PauseFn) {
   await expect(btn).toBeVisible({ timeout: 5000 });
   await btn.click();
   await pause(1500);
+}
+
+/**
+ * Select at least one panel or test on the Add Sample step.
+ * Tries known panel names first, falls back to the first available checkbox.
+ */
+async function selectPanelOrTest(page: Page, pause: PauseFn) {
+  const knownPanels = ["Bilan Biochimique", "Serologie VIH", "NFS"];
+  for (const name of knownPanels) {
+    const panelSpan = page.locator("span").filter({ hasText: name }).first();
+    if (await panelSpan.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await panelSpan.click();
+      await pause(400);
+      return;
+    }
+  }
+  // Fallback: click the first unchecked test/panel checkbox
+  const firstCheckbox = page.locator('[type="checkbox"]').first();
+  if (await firstCheckbox.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await firstCheckbox.click();
+    await pause(400);
+  }
 }
 
 // ─── User Story 1: Admin configures barcode label quantities ─────────────────
@@ -307,12 +351,7 @@ test("US2 — Capture label quantities during sample creation", async ({
     await pause(400);
   }
 
-  const panel = page.locator("span").filter({ hasText: /bilan/i }).first();
-  if (await panel.isVisible().catch(() => false)) {
-    await scrollToAndPause(page, panel, pause, 500);
-    await panel.click();
-    await pause(500);
-  }
+  await selectPanelOrTest(page, pause);
 
   // ── ★ KEY: Labels Section ───────────────────────────────────────
   await showTitleCard(
@@ -432,9 +471,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
     if (await collectionDate.isVisible().catch(() => false)) {
       await collectionDate.fill("13/03/2026");
     }
-    const panel = page.locator("span").filter({ hasText: /bilan/i }).first();
-    if (await panel.isVisible().catch(() => false)) await panel.click();
-    await pause(400);
+    await selectPanelOrTest(page, pause);
   }
 
   // Show labels section briefly before moving on
