@@ -18,11 +18,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
+import org.openelisglobal.analyzer.service.BridgeRegistrationService;
 import org.openelisglobal.analyzer.service.FileImportService;
 import org.openelisglobal.analyzer.service.SerialPortService;
 import org.openelisglobal.analyzer.util.NetworkValidationUtil;
@@ -77,6 +79,9 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private PluginMenuService pluginService;
+
+    @Autowired
+    private BridgeRegistrationService bridgeRegistrationService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -255,6 +260,10 @@ public class AnalyzerRestController extends BaseRestController {
             if (createdAnalyzer == null) {
                 throw new LIMSRuntimeException("Failed to retrieve created analyzer");
             }
+
+            // Register analyzer with bridge for transport-level identification.
+            // Fire-and-forget to avoid slowing down analyzer creation requests.
+            registerWithBridgeAsync(createdAnalyzer);
 
             Map<String, Object> response = analyzerToMap(createdAnalyzer, getLoadedPluginClassNames());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -831,6 +840,46 @@ public class AnalyzerRestController extends BaseRestController {
      * @param analyzer Analyzer entity
      * @return Map with success status and message
      */
+    /**
+     * Register analyzer with the bridge for transport-level identification. Runs in
+     * background — failures are logged but don't prevent analyzer creation.
+     */
+    private void registerWithBridgeAsync(Analyzer createdAnalyzer) {
+        CompletableFuture.runAsync(() -> registerWithBridge(createdAnalyzer)).exceptionally(e -> {
+            logger.warn("Async bridge registration failed for analyzer {}: {}", createdAnalyzer.getName(),
+                    e.getMessage());
+            return null;
+        });
+    }
+
+    /**
+     * Performs the bridge registration call.
+     */
+    private void registerWithBridge(Analyzer createdAnalyzer) {
+        try {
+            String id = createdAnalyzer.getId();
+            String name = createdAnalyzer.getName();
+
+            // TCP/ASTM/HL7 analyzers: register by IP
+            if (createdAnalyzer.getIpAddress() != null && !createdAnalyzer.getIpAddress().isBlank()) {
+                String protocol = createdAnalyzer.getProtocolVersion() != null
+                        && createdAnalyzer.getProtocolVersion().isHl7() ? "HL7" : "ASTM";
+                bridgeRegistrationService.registerTcp(id, name, createdAnalyzer.getIpAddress(),
+                        createdAnalyzer.getPort(), protocol);
+            }
+
+            // FILE analyzers: register by watch directory
+            Integer analyzerIdInt = Integer.valueOf(id);
+            fileImportService.getByAnalyzerId(analyzerIdInt).ifPresent(fileConfig -> {
+                bridgeRegistrationService.registerFile(id, name, fileConfig.getImportDirectory(),
+                        fileConfig.getFilePattern());
+            });
+        } catch (Exception e) {
+            logger.warn("Bridge registration failed for analyzer {} — bridge may need manual config: {}",
+                    createdAnalyzer.getName(), e.getMessage());
+        }
+    }
+
     private Map<String, Object> testFileConfiguration(Analyzer analyzer) {
         Map<String, Object> response = new LinkedHashMap<>();
 
@@ -1121,6 +1170,9 @@ public class AnalyzerRestController extends BaseRestController {
         switch (pluginTypeId.toLowerCase()) {
         case "generic-astm":
             lookupName = "Generic ASTM";
+            break;
+        case "generic-file":
+            lookupName = "Generic File";
             break;
         case "generic-hl7":
             lookupName = "Generic HL7";

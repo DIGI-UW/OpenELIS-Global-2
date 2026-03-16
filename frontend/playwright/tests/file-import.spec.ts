@@ -1,6 +1,4 @@
 import { test, expect } from "@playwright/test";
-import fixtureData from "../fixtures/FileImport.json";
-
 /**
  * FILE protocol E2E tests.
  *
@@ -9,25 +7,28 @@ import fixtureData from "../fixtures/FileImport.json";
  *   2. A FileImportConfiguration with correct format, pattern, and directory
  *   3. Config persistence (update + re-read)
  *
- * Fixtures are loaded by the CI workflow (docker exec psql < file-import-e2e.sql)
- * before tests run. No skip guards needed — the Playwright project split
- * ensures these only run when the "file-import" project is selected.
+ * Harness runs seed analyzers through the REST API layer
+ * (`projects/analyzer-harness/seed-analyzers.sh`) after SQL cleanup fixtures
+ * are loaded. This spec validates the resulting FILE analyzers in the
+ * `harness` Playwright project.
  */
 
-/** All FILE analyzers seeded by file-import-e2e.sql */
+/** All FILE analyzers seeded by projects/analyzer-harness/seed-analyzers.sh */
 const FILE_ANALYZERS = [
-  { name: "E2E-FILE-CSV-Analyzer", fileFormat: "CSV", filePattern: "*.csv" },
+  { name: "QuantStudio 5", fileFormat: "EXCEL", filePattern: "*.xls" },
   {
-    name: "E2E-FILE-QuantStudio5-Analyzer",
+    name: "QuantStudio 7",
     fileFormat: "EXCEL",
-    filePattern: "*.xls",
+    filePattern: "*.xlsx",
   },
   {
-    name: "E2E-FILE-QuantStudio7-Analyzer",
+    name: "FluoroCycler XT",
     fileFormat: "EXCEL",
     filePattern: "*.xlsx",
   },
 ];
+
+const PERSIST_ANALYZER_NAME = "QuantStudio 5";
 
 function apiBase(baseURL: string | undefined): string {
   const base = baseURL || process.env.BASE_URL || "https://localhost";
@@ -77,13 +78,13 @@ test.describe("FILE config persistence", () => {
   }) => {
     const api = apiBase(baseURL);
 
-    // Find the CSV test analyzer
+    // Find the seeded analyzer used for persistence checks
     const listRes = await page.request.get(`${api}/analyzers`);
     expect(listRes.ok()).toBeTruthy();
     const { analyzers } = (await listRes.json()) as {
       analyzers: { id: string; name: string }[];
     };
-    const found = analyzers.find((a) => a.name === fixtureData.analyzerName);
+    const found = analyzers.find((a) => a.name === PERSIST_ANALYZER_NAME);
     expect(found).toBeDefined();
 
     // Read current config
@@ -92,18 +93,18 @@ test.describe("FILE config persistence", () => {
     );
     expect(cfgRes.ok()).toBeTruthy();
     const cfg = await cfgRes.json();
-    expect(cfg.fileFormat).toBe(fixtureData.formatCsv);
+    expect(cfg.fileFormat).toBe("EXCEL");
 
     // Update to TSV
     const putRes = await page.request.put(
       `${api}/file-import/configurations/${cfg.id}`,
       {
         data: {
-          importDirectory: fixtureData.importDirectory,
-          archiveDirectory: fixtureData.archiveDirectory,
-          errorDirectory: fixtureData.errorDirectory,
+          importDirectory: cfg.importDirectory,
+          archiveDirectory: cfg.archiveDirectory,
+          errorDirectory: cfg.errorDirectory,
           filePattern: "*.tsv",
-          fileFormat: fixtureData.formatTsv,
+          fileFormat: "TSV",
           columnMappings: {
             Sample_ID: "sampleId",
             Test_Code: "testCode",
@@ -123,18 +124,18 @@ test.describe("FILE config persistence", () => {
     );
     expect(verifyRes.ok()).toBeTruthy();
     const updated = await verifyRes.json();
-    expect(updated.fileFormat).toBe(fixtureData.formatTsv);
+    expect(updated.fileFormat).toBe("TSV");
     expect(updated.filePattern).toBe("*.tsv");
 
-    // Revert to original so other tests see the fixture's initial state
+    // Revert to original so other tests see the seeded state
     const revertRes = await page.request.put(
       `${api}/file-import/configurations/${cfg.id}`,
       {
         data: {
           ...cfg,
-          fileFormat: fixtureData.formatCsv,
-          filePattern: "*.csv",
-          delimiter: ",",
+          fileFormat: cfg.fileFormat,
+          filePattern: cfg.filePattern,
+          delimiter: cfg.delimiter,
         },
       },
     );
@@ -155,9 +156,7 @@ test.describe("QuantStudio EXCEL config", () => {
     const { analyzers } = (await listRes.json()) as {
       analyzers: { id: string; name: string }[];
     };
-    const qs = analyzers.find(
-      (a) => a.name === "E2E-FILE-QuantStudio5-Analyzer",
-    );
+    const qs = analyzers.find((a) => a.name === "QuantStudio 5");
     expect(qs).toBeDefined();
 
     const cfgRes = await page.request.get(

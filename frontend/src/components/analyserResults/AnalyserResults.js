@@ -389,6 +389,7 @@ const AnalyserResults = (props) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isAccepted",
                   );
+                  if (!checkbox) return;
                   checkbox.checked = e.target.checked;
                   handleAutomatedCheck(e.target.checked, checkbox.name);
                 });
@@ -406,6 +407,7 @@ const AnalyserResults = (props) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isRejected",
                   );
+                  if (!checkbox) return;
                   checkbox.checked = e.target.checked;
                   handleAutomatedCheck(e.target.checked, checkbox.name);
                 });
@@ -423,6 +425,7 @@ const AnalyserResults = (props) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isDeleted",
                   );
+                  if (!checkbox) return;
                   checkbox.checked = e.target.checked;
                   handleAutomatedCheck(e.target.checked, checkbox.name);
                 });
