@@ -155,6 +155,9 @@ describe("FileImportConfiguration", () => {
       screen.getByTestId("file-import-configuration-analyzer-dropdown"),
     ).toBeInTheDocument();
     expect(
+      screen.getByTestId("file-import-configuration-file-format-dropdown"),
+    ).toBeInTheDocument();
+    expect(
       screen.getByTestId("file-import-configuration-directory-input"),
     ).toBeInTheDocument();
     expect(
@@ -178,6 +181,70 @@ describe("FileImportConfiguration", () => {
     expect(
       screen.getByTestId("file-import-configuration-active-checkbox"),
     ).toBeInTheDocument();
+  });
+
+  test("testFileFormatDropdown_RendersCsvTsvExcelOptions", async () => {
+    renderWithIntl(<FileImportConfiguration open={true} onClose={jest.fn()} />);
+
+    const formatDropdown = await screen.findByTestId(
+      "file-import-configuration-file-format-dropdown",
+      {},
+      { timeout: 2000 },
+    );
+    const toggleButton = formatDropdown.querySelector("button");
+    await userEvent.click(toggleButton);
+
+    expect(
+      screen.getAllByText(messages["fileImport.format.csv"]).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(messages["fileImport.format.tsv"]).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText(messages["fileImport.format.excel"]),
+    ).toBeInTheDocument();
+  });
+
+  test("testFileFormatExcel_HidesDelimiterAndHeaderFields", async () => {
+    renderWithIntl(<FileImportConfiguration open={true} onClose={jest.fn()} />);
+
+    const formatDropdown = await screen.findByTestId(
+      "file-import-configuration-file-format-dropdown",
+      {},
+      { timeout: 2000 },
+    );
+    const toggleButton = formatDropdown.querySelector("button");
+    await userEvent.click(toggleButton);
+    await userEvent.click(
+      screen.getByText(messages["fileImport.format.excel"]),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("file-import-configuration-delimiter-input"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("file-import-configuration-has-header-checkbox"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test("testNoPlugins_ShowsEmptyStateMessage", async () => {
+    getAnalyzers.mockImplementation((filters, callback) => {
+      callback({ analyzers: [] });
+    });
+
+    renderWithIntl(<FileImportConfiguration open={true} onClose={jest.fn()} />);
+
+    expect(
+      await screen.findByTestId(
+        "file-import-configuration-empty-plugin-message",
+        {},
+        { timeout: 2000 },
+      ),
+    ).toHaveTextContent(
+      messages["file.import.configuration.analyzer.emptyState"],
+    );
   });
 
   test("testEditMode_DisablesAnalyzerDropdown", async () => {

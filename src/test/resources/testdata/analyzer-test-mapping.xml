@@ -19,25 +19,33 @@
         sort_order="2147483646" name="Urinalysis" orderable="true"
         guid="def-456" antimicrobial_resistance="false" />
 
+    <!-- Analyzer Type data (must come before analyzer for FK) -->
+    <analyzer_type id="901" name="Cobas 6800 Type"
+        plugin_class_name="oe.plugin.analyzer.Cobas6800" />
+    <analyzer_type id="902" name="ABL800 Type"
+        plugin_class_name="oe.plugin.analyzer.ABL800" />
+
     <!-- Analyzer data -->
     <analyzer id="1" name="Cobas 6800" analyzer_type="MOLECULAR"
+        analyzer_type_id="901"
         description="Automated molecular analyzer for PCR testing"
         location="Main Laboratory - Room 101" is_active="true"
         has_setup_page="true" last_updated="2023-01-01 12:00:00" />
     <analyzer id="2" name="ABL800 FLEX" analyzer_type="CHEMISTRY"
+        analyzer_type_id="902"
         description="Blood gas and electrolyte analyzer"
         location="Emergency Department - Station 3" is_active="true"
         has_setup_page="false" last_updated="2023-01-01 12:30:00" />
 
     <!-- Analyzer Test Map data -->
-    <analyzer_test_map analyzer_id="2"
-        analyzer_test_name="Glucose Test" test_id="101"
+    <analyzer_test_map analyzer_type_id="902"
+        analyzer_id="2" analyzer_test_name="Glucose Test" test_id="101"
         last_updated="2023-01-01 13:00:00" />
-    <analyzer_test_map analyzer_id="1"
-        analyzer_test_name="Hemoglobin Test" test_id="102"
+    <analyzer_test_map analyzer_type_id="901"
+        analyzer_id="1" analyzer_test_name="Hemoglobin Test" test_id="102"
         last_updated="2023-01-01 12:30:00" />
-    <analyzer_test_map analyzer_id="2"
-        analyzer_test_name="Potassium Test" test_id="102"
+    <analyzer_test_map analyzer_type_id="902"
+        analyzer_id="2" analyzer_test_name="Potassium Test" test_id="102"
         last_updated="2023-01-01 13:00:00" />
 
 </dataset>

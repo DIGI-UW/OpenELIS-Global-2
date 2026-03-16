@@ -4,20 +4,27 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
+import org.openelisglobal.analyzer.dao.AnalyzerErrorDAO;
+import org.openelisglobal.analyzer.dao.AnalyzerFileUploadDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
+import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.common.services.PluginAnalyzerService;
+import org.openelisglobal.notebook.dao.NoteBookDAO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +45,24 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
+
+    @Autowired
+    private org.openelisglobal.test.service.TestService testService;
+
+    @Autowired
+    private AnalyzerPluginConfigService analyzerPluginConfigService;
+
+    @Autowired
+    PluginAnalyzerService pluginAnalyzerService;
+
+    @Autowired
+    private AnalyzerErrorDAO analyzerErrorDAO;
+
+    @Autowired
+    private AnalyzerFileUploadDAO analyzerFileUploadDAO;
+
+    @Autowired
+    private NoteBookDAO noteBookDAO;
 
     AnalyzerServiceImpl() {
         super(Analyzer.class);
@@ -76,8 +101,21 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             update(analyzer);
         }
 
+        persistTestMappings(analyzer.getAnalyzerType() != null ? analyzer.getAnalyzerType().getId() : null,
+                testMappings, existingMappings);
+    }
+
+    @Override
+    @Transactional
+    public void persistTestMappings(String analyzerTypeId, List<AnalyzerTestMapping> testMappings,
+            List<AnalyzerTestMapping> existingMappings) {
+        if (analyzerTypeId == null) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "persistTestMappings",
+                    "analyzerTypeId is null — skipping " + testMappings.size() + " mapping(s)");
+            return;
+        }
         for (AnalyzerTestMapping mapping : testMappings) {
-            mapping.setAnalyzerId(analyzer.getId());
+            mapping.setAnalyzerTypeId(analyzerTypeId);
             if (newMapping(mapping, existingMappings)) {
                 mapping.setSysUserId("1");
                 analyzerMappingService.insert(mapping);
@@ -92,7 +130,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     private boolean newMapping(AnalyzerTestMapping mapping, List<AnalyzerTestMapping> existingMappings) {
         for (AnalyzerTestMapping existingMap : existingMappings) {
-            if (existingMap.getAnalyzerId().equals(mapping.getAnalyzerId())
+            if (Objects.equals(existingMap.getAnalyzerTypeId(), mapping.getAnalyzerTypeId())
                     && existingMap.getAnalyzerTestName().equals(mapping.getAnalyzerTestName())) {
                 return false;
             }
@@ -110,8 +148,20 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<Analyzer> getByIpAddressAndPort(String ipAddress, Integer port) {
+        return baseObjectDAO.findByIpAddressAndPort(ipAddress, port);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<Analyzer> getByName(String name) {
         return baseObjectDAO.findByName(name);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findActiveByListenPort(Integer port) {
+        return baseObjectDAO.findActiveByPort(port);
     }
 
     @Override
@@ -133,7 +183,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
         String identifier = analyzerIdentifier.trim();
         for (Analyzer analyzer : candidates) {
-            if (analyzer.getIdentifierPattern() == null) {
+            if (analyzer.getIdentifierPattern() == null || analyzer.getIdentifierPattern().trim().isEmpty()) {
                 continue;
             }
             try {
@@ -251,5 +301,133 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
                 + " status manually changed from " + oldStatus + " to " + status + " by user " + userId);
 
         return analyzer;
+    }
+
+    @Override
+    @Transactional
+    @SuppressWarnings("unchecked")
+    public void autoCreateTestMappings(String analyzerId, Map<String, Object> config, String sysUserId) {
+        analyzerPluginConfigService.applyConfigDefaults(analyzerId, config.get("configDefaults"), sysUserId);
+
+        Object mappingsObj = config.get("default_test_mappings");
+        if (!(mappingsObj instanceof List)) {
+            return;
+        }
+
+        List<Map<String, Object>> mappings = (List<Map<String, Object>>) mappingsObj;
+        int created = 0;
+        Analyzer analyzer = get(analyzerId);
+        List<AnalyzerTestMapping> dbTestMappings = analyzerMappingService.getAll();
+        for (Map<String, Object> mapping : mappings) {
+            String analyzerCode = (String) mapping.get("analyzer_code");
+            String loinc = (String) mapping.get("loinc");
+
+            if (analyzerCode == null || loinc == null || analyzerCode.isEmpty() || loinc.isEmpty()) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                        "Skipping test mapping with missing analyzer_code or loinc");
+                continue;
+            }
+
+            List<org.openelisglobal.test.valueholder.Test> tests = testService.getActiveTestsByLoinc(loinc);
+            if (tests == null || tests.isEmpty()) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                        "No active test found for LOINC '" + loinc + "' (analyzer_code '" + analyzerCode + "')");
+                continue;
+            }
+
+            org.openelisglobal.test.valueholder.Test test = tests.get(0);
+
+            String typeId = (analyzer != null && analyzer.getAnalyzerType() != null)
+                    ? analyzer.getAnalyzerType().getId()
+                    : null;
+
+            AnalyzerTestMapping atm = new AnalyzerTestMapping();
+            atm.setAnalyzerId(analyzerId);
+            atm.setAnalyzerTypeId(typeId);
+            atm.setAnalyzerTestName(analyzerCode);
+            atm.setTestId(test.getId());
+            atm.setSysUserId(sysUserId);
+
+            try {
+                if (newMapping(atm, dbTestMappings)) {
+                    analyzerMappingService.insert(atm);
+                    AnalyzerTestNameCache.getInstance().registerPluginAnalyzer(analyzer.getAnalyzerType().getName(),
+                            typeId);
+                    created++;
+                } else {
+                    for (AnalyzerTestMapping existing : dbTestMappings) {
+                        if (Objects.equals(existing.getAnalyzerTypeId(), atm.getAnalyzerTypeId())
+                                && existing.getAnalyzerTestName().equals(atm.getAnalyzerTestName())
+                                && !Objects.equals(existing.getTestId(), atm.getTestId())) {
+                            existing.setTestId(atm.getTestId());
+                            existing.setAnalyzerId(atm.getAnalyzerId());
+                            existing.setSysUserId(sysUserId);
+                            analyzerMappingService.update(existing);
+                            created++;
+                            LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                                    "Updated stale test mapping for '" + analyzerCode + "' → test " + test.getId());
+                            break;
+                        }
+                    }
+                }
+
+            } catch (Exception e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                        "Failed to create test mapping for analyzer_code '" + analyzerCode + "': " + e.getMessage());
+            }
+        }
+        AnalyzerTestNameCache.getInstance().reloadCache();
+
+        if (created > 0) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                    "Auto-created " + created + " test mappings for analyzer " + analyzerId);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteWithDependents(Analyzer analyzer) {
+        String id = analyzer.getId();
+
+        // Tiered FK strategy — matches Liquibase 004 constraints:
+        //
+        // RESTRICT tier: analyzer_results, notebook_analysers
+        // → Must not exist; throw if they do (clinical/reference data).
+        // SET NULL tier: analyzer_error, analyzer_file_upload
+        // → Preserve audit trail by nulling the FK, not deleting rows.
+        // CASCADE tier: config tables
+        // → DB ON DELETE CASCADE handles these automatically.
+
+        // 1. RESTRICT tier — block if clinical/reference data exists
+        List<AnalyzerResults> results = analyzerResultsService.getResultsbyAnalyzer(id);
+        if (!results.isEmpty()) {
+            throw new LIMSRuntimeException("Cannot delete analyzer " + id + ": " + results.size()
+                    + " analyzer_results rows exist. Remove or reassign results first.");
+        }
+
+        long notebookCount = noteBookDAO.countByAnalyzerId(id);
+        if (notebookCount > 0) {
+            throw new LIMSRuntimeException("Cannot delete analyzer " + id + ": " + notebookCount
+                    + " notebook references exist. Remove references first.");
+        }
+
+        // 2. SET NULL tier — preserve audit trail
+        int errorsNulled = analyzerErrorDAO.nullifyAnalyzerId(id);
+        int uploadsNulled = analyzerFileUploadDAO.nullifyAnalyzerId(Integer.valueOf(id));
+        if (errorsNulled > 0 || uploadsNulled > 0) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents", "Set analyzer_id = NULL on "
+                    + errorsNulled + " error(s) and " + uploadsNulled + " upload(s) for analyzer " + id);
+        }
+
+        // 3. CASCADE tier — DB ON DELETE CASCADE handles config tables:
+        // analyzer_field, analyzer_field_mapping, serial_port_configuration,
+        // file_import_configuration, analyzer_plugin_config,
+        // analyzer_pending_code, analyzer_experiment
+
+        // Delete the analyzer — DB cascades config tables automatically
+        delete(analyzer);
+
+        LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents",
+                "Deleted analyzer " + id + " (" + analyzer.getName() + ") with all dependents");
     }
 }
