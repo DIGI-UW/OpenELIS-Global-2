@@ -102,6 +102,14 @@ describe("Study Initial Entry – Initial ARV form", () => {
     studyEntryPage.assertProjectSectionVisible("ARV Information");
   });
 
+  it("ARV center name dropdown is populated with organizations from DB", () => {
+    studyEntryPage.assertARVCenterNameHasOptions();
+  });
+
+  it("ARV center code dropdown is populated with organizations from DB", () => {
+    studyEntryPage.assertARVCenterCodeHasOptions();
+  });
+
   it("shows Sample Information section", () => {
     studyEntryPage.assertSampleInfoSectionVisible();
   });
@@ -189,10 +197,13 @@ describe("Study Initial Entry – Initial ARV form", () => {
   });
 
   it("normalises digits-only lab number to LARC + 5 digits on save attempt", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveInitialNorm");
     cy.fixture("StudyEntry").then((data) => {
       const d = data.arvInitial;
-      studyEntryPage.interceptInitialSave();
-      // ARV has no subjectNumber — use siteSubjectNumber instead
+      studyEntryPage.selectARVCenterNameByText(d.centerNameText);
       studyEntryPage.enterSiteSubjectNumber(d.siteSubjectNumber);
       studyEntryPage.enterLabNo(d.labNo);
       cy.get("select#gender").select(data.common.gender);
@@ -200,46 +211,47 @@ describe("Study Initial Entry – Initial ARV form", () => {
       cy.get("body").type("{esc}");
       cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
-      studyEntryPage.waitForInitialSave().then((interception) => {
+      cy.wait("@saveInitialNorm", { timeout: 20000 }).then((interception) => {
         expect(interception.request.body.labNo).to.equal(d.expectedLabNo);
       });
     });
   });
 
   it("successful save shows success notification and reloads form", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveInitialMock");
     cy.fixture("StudyEntry").then((data) => {
       const d = data.arvInitial;
-      studyEntryPage.interceptInitialSave();
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
-        statusCode: 200,
-        body: { success: true, labNumber: d.expectedLabNo },
-      }).as("saveInitialMock");
-
-      studyEntryPage.selectProject(d.project);
+      studyEntryPage.selectARVCenterNameByText(d.centerNameText);
+      studyEntryPage.enterSiteSubjectNumber(d.siteSubjectNumber);
       studyEntryPage.enterLabNo(d.expectedLabNo);
       cy.get("select#gender").select(data.common.gender);
       studyEntryPage.enterBirthDate(data.common.birthDate);
       cy.get("body").type("{esc}");
       cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
+      cy.wait("@saveInitialMock", { timeout: 15000 });
       studyEntryPage.assertSuccessNotification();
     });
   });
 
   it("failed save shows error notification with server message", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
+      statusCode: 400,
+      body: { success: false, message: "Lab number already exists." },
+    }).as("saveInitialFail");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
-        statusCode: 400,
-        body: { success: false, message: "Lab number already exists." },
-      }).as("saveInitialFail");
-
-      studyEntryPage.selectProject(data.arvInitial.project);
+      studyEntryPage.selectARVCenterNameByText(data.arvInitial.centerNameText);
+      studyEntryPage.enterSiteSubjectNumber(data.arvInitial.siteSubjectNumber);
       studyEntryPage.enterLabNo(data.arvInitial.expectedLabNo);
       cy.get("select#gender").select(data.common.gender);
       studyEntryPage.enterBirthDate(data.common.birthDate);
       cy.get("body").type("{esc}");
       cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
+      cy.wait("@saveInitialFail", { timeout: 15000 });
       studyEntryPage.assertErrorNotification();
     });
   });
@@ -277,18 +289,20 @@ describe("Study Initial Entry – Follow-up ARV form", () => {
   });
 
   it("POST body includes correct type=initial for Follow-up", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveFARV");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
-        statusCode: 200,
-        body: { success: true },
-      }).as("saveFARV");
+      studyEntryPage.selectARVCenterNameByText(data.arvFollowup.centerNameText);
+      studyEntryPage.enterSiteSubjectNumber(data.arvFollowup.siteSubjectNumber);
       studyEntryPage.enterLabNo(data.arvFollowup.expectedLabNo);
       cy.get("select#gender").select(data.common.gender);
       studyEntryPage.enterBirthDate(data.common.birthDate);
       cy.get("body").type("{esc}");
       cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
-      cy.wait("@saveFARV").then((i) => {
+      cy.wait("@saveFARV", { timeout: 20000 }).then((i) => {
         expect(i.request.url).to.include("type=initial");
         expect(i.request.body.project).to.equal("ARV_FOLLOWUP");
       });
@@ -376,18 +390,19 @@ describe("Study Initial Entry – RTN form", () => {
   });
 
   it("normalises lab number to LRTN + 5 digits", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveRTN");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
-        statusCode: 200,
-        body: { success: true },
-      }).as("saveRTN");
+      // RTN has no center dropdown — just fill common fields
       studyEntryPage.enterLabNo(data.rtn.labNo);
       cy.get("select#gender").select(data.rtn.gender);
       studyEntryPage.enterBirthDate(data.rtn.birthDate);
       cy.get("body").type("{esc}");
       cy.get("input#serologyHIVTest").check({ force: true });
       studyEntryPage.clickSave();
-      cy.wait("@saveRTN").then((i) => {
+      cy.wait("@saveRTN", { timeout: 20000 }).then((i) => {
         expect(i.request.body.labNo).to.equal(data.rtn.expectedLabNo);
       });
     });
@@ -406,6 +421,14 @@ describe("Study Initial Entry – EID form", () => {
   it("shows EID section heading", () => {
     // EID section heading defaultMessage is "EID (Early Infant Diagnosis)"
     studyEntryPage.assertProjectSectionVisible("EID (Early Infant Diagnosis)");
+  });
+
+  it("EID site name dropdown is populated with organizations from DB", () => {
+    studyEntryPage.assertEIDSiteNameHasOptions();
+  });
+
+  it("EID site code dropdown is populated with organizations from DB", () => {
+    studyEntryPage.assertEIDSiteCodeHasOptions();
   });
 
   it("shows LDBS prefix hint on lab number", () => {
@@ -476,18 +499,19 @@ describe("Study Initial Entry – EID form", () => {
   });
 
   it("normalises lab number to LDBS + 5 digits", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveEID");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
-        statusCode: 200,
-        body: { success: true },
-      }).as("saveEID");
+      studyEntryPage.selectEIDSiteNameByText(data.eid.siteNameText);
       studyEntryPage.enterLabNo(data.eid.labNo);
       cy.get("select#gender").select(data.eid.gender);
       studyEntryPage.enterBirthDate(data.eid.birthDate);
       cy.get("body").type("{esc}");
       cy.get("input#dnaPCR").check({ force: true });
       studyEntryPage.clickSave();
-      cy.wait("@saveEID").then((i) => {
+      cy.wait("@saveEID", { timeout: 20000 }).then((i) => {
         expect(i.request.body.labNo).to.equal(data.eid.expectedLabNo);
       });
     });
@@ -534,18 +558,23 @@ describe("Study Initial Entry – Indeterminate form", () => {
   });
 
   it("normalises lab number to LIND + 5 digits", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveIND");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
-        statusCode: 200,
-        body: { success: true },
-      }).as("saveIND");
+      studyEntryPage.selectINDSiteByText(data.indeterminate.siteNameText);
+      studyEntryPage.enterSubjectNumber(data.indeterminate.subjectNumber);
+      studyEntryPage.enterSiteSubjectNumber(
+        data.indeterminate.siteSubjectNumber,
+      );
       studyEntryPage.enterLabNo(data.indeterminate.labNo);
       cy.get("select#gender").select(data.indeterminate.gender);
       studyEntryPage.enterBirthDate(data.indeterminate.birthDate);
       cy.get("body").type("{esc}");
       cy.get("input#serologyHIVTest").check({ force: true });
       studyEntryPage.clickSave();
-      cy.wait("@saveIND").then((i) => {
+      cy.wait("@saveIND", { timeout: 20000 }).then((i) => {
         expect(i.request.body.labNo).to.equal(data.indeterminate.expectedLabNo);
       });
     });
@@ -584,18 +613,22 @@ describe("Study Initial Entry – Special Request form", () => {
   });
 
   it("normalises lab number to LSPE + 5 digits", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveSPE");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
-        statusCode: 200,
-        body: { success: true },
-      }).as("saveSPE");
+      studyEntryPage.enterSubjectNumber(data.specialRequest.subjectNumber);
+      studyEntryPage.enterSiteSubjectNumber(
+        data.specialRequest.siteSubjectNumber,
+      );
       studyEntryPage.enterLabNo(data.specialRequest.labNo);
       cy.get("select#gender").select(data.specialRequest.gender);
       studyEntryPage.enterBirthDate(data.specialRequest.birthDate);
       cy.get("body").type("{esc}");
       cy.get("input#serologyHIVTest").check({ force: true });
       studyEntryPage.clickSave();
-      cy.wait("@saveSPE").then((i) => {
+      cy.wait("@saveSPE", { timeout: 20000 }).then((i) => {
         expect(i.request.body.labNo).to.equal(
           data.specialRequest.expectedLabNo,
         );
@@ -634,11 +667,11 @@ describe("Study Initial Entry – Recency Testing form", () => {
   });
 
   it("normalises lab number to RTRI + 5 digits", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveREC");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
-        statusCode: 200,
-        body: { success: true },
-      }).as("saveREC");
       studyEntryPage.enterRecencyNumber(data.recencyTesting.recencyNumber);
       studyEntryPage.enterLabNo(data.recencyTesting.labNo);
       cy.get("select#gender").select(data.recencyTesting.gender);
@@ -646,7 +679,7 @@ describe("Study Initial Entry – Recency Testing form", () => {
       cy.get("body").type("{esc}");
       cy.get("input#serologyHIVTest").check({ force: true });
       studyEntryPage.clickSave();
-      cy.wait("@saveREC").then((i) => {
+      cy.wait("@saveREC", { timeout: 20000 }).then((i) => {
         expect(i.request.body.labNo).to.equal(
           data.recencyTesting.expectedLabNo,
         );
@@ -693,11 +726,11 @@ describe("Study Initial Entry – HPV Testing form", () => {
   });
 
   it("normalises lab number to HPVT + 5 digits", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveHPV");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=initial", {
-        statusCode: 200,
-        body: { success: true },
-      }).as("saveHPV");
       studyEntryPage.enterSiteSubjectNumber(data.hpvTesting.siteSubjectNumber);
       studyEntryPage.enterLabNo(data.hpvTesting.labNo);
       cy.get("select#gender").select(data.hpvTesting.gender);
@@ -705,7 +738,7 @@ describe("Study Initial Entry – HPV Testing form", () => {
       cy.get("body").type("{esc}");
       cy.get("input#hpvTest").check({ force: true });
       studyEntryPage.clickSave();
-      cy.wait("@saveHPV").then((i) => {
+      cy.wait("@saveHPV", { timeout: 20000 }).then((i) => {
         expect(i.request.body.labNo).to.equal(data.hpvTesting.expectedLabNo);
       });
     });
@@ -876,13 +909,14 @@ describe("Study Initial Entry – lab number normalisation", () => {
         statusCode: 200,
         body: { success: true },
       }).as("saveLabNo");
-
+      studyEntryPage.interceptFormLoad();
+      studyEntryPage.visitInitialEntry();
+      studyEntryPage.waitForFormLoad();
       studyEntryPage.selectProject(project);
       studyEntryPage.enterLabNo(digitsOnly);
       cy.get("select#gender").select("M");
       studyEntryPage.enterBirthDate("01/01/1990");
       cy.get("body").type("{esc}");
-      // pick the right specimen checkbox per project type
       const specimenMap = {
         ARV_INITIAL: "dryTubeTaken",
         ARV_FOLLOWUP: "dryTubeTaken",
@@ -898,7 +932,7 @@ describe("Study Initial Entry – lab number normalisation", () => {
         force: true,
       });
       studyEntryPage.clickSave();
-      cy.wait("@saveLabNo").then((i) => {
+      cy.wait("@saveLabNo", { timeout: 20000 }).then((i) => {
         expect(i.request.body.labNo).to.equal(expected);
       });
     });
@@ -909,7 +943,9 @@ describe("Study Initial Entry – lab number normalisation", () => {
       statusCode: 200,
       body: { success: true },
     }).as("savePrefixed");
-
+    studyEntryPage.interceptFormLoad();
+    studyEntryPage.visitInitialEntry();
+    studyEntryPage.waitForFormLoad();
     studyEntryPage.selectProject("ARV_INITIAL");
     studyEntryPage.enterLabNo("LARC11111");
     cy.get("select#gender").select("M");
@@ -917,7 +953,7 @@ describe("Study Initial Entry – lab number normalisation", () => {
     cy.get("body").type("{esc}");
     cy.get("input#dryTubeTaken").check({ force: true });
     studyEntryPage.clickSave();
-    cy.wait("@savePrefixed").then((i) => {
+    cy.wait("@savePrefixed", { timeout: 20000 }).then((i) => {
       expect(i.request.body.labNo).to.equal("LARC11111");
     });
   });

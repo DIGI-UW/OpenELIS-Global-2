@@ -68,8 +68,24 @@ class StudyEntryPage {
     cy.get("select#arvcenterName").select(value);
   }
 
+  selectARVCenterNameByText(text) {
+    cy.get("select#arvcenterName")
+      .contains("option", text)
+      .then(($opt) => {
+        cy.get("select#arvcenterName").select($opt.val());
+      });
+  }
+
   selectARVCenterCode(value) {
     cy.get("select#arvcenterCode").select(value);
+  }
+
+  selectARVCenterCodeByText(text) {
+    cy.get("select#arvcenterCode")
+      .contains("option", text)
+      .then(($opt) => {
+        cy.get("select#arvcenterCode").select($opt.val());
+      });
   }
 
   enterDoctor(value) {
@@ -120,14 +136,46 @@ class StudyEntryPage {
     cy.get("select#arvcenterCode").should("not.have.value", "");
   }
 
+  assertARVCenterNameHasOptions() {
+    cy.get("select#arvcenterName option").should("have.length.gt", 1);
+  }
+
+  assertARVCenterCodeHasOptions() {
+    cy.get("select#arvcenterCode option").should("have.length.gt", 1);
+  }
+
+  assertEIDSiteNameHasOptions() {
+    cy.get("select#eidsiteName option").should("have.length.gt", 1);
+  }
+
+  assertEIDSiteCodeHasOptions() {
+    cy.get("select#eidsiteCode option").should("have.length.gt", 1);
+  }
+
   // ─── EID Section ──────────────────────────────────────────────────────────
 
   selectEIDSiteName(value) {
     cy.get("select#eidsiteName").select(value);
   }
 
+  selectEIDSiteNameByText(text) {
+    cy.get("select#eidsiteName")
+      .contains("option", text)
+      .then(($opt) => {
+        cy.get("select#eidsiteName").select($opt.val());
+      });
+  }
+
   selectEIDSiteCode(value) {
     cy.get("select#eidsiteCode").select(value);
+  }
+
+  selectEIDSiteCodeByText(text) {
+    cy.get("select#eidsiteCode")
+      .contains("option", text)
+      .then(($opt) => {
+        cy.get("select#eidsiteCode").select($opt.val());
+      });
   }
 
   selectEIDWhichPCR(value) {
@@ -214,6 +262,14 @@ class StudyEntryPage {
 
   selectINDSite(value) {
     cy.get("select#indsiteName").select(value);
+  }
+
+  selectINDSiteByText(text) {
+    cy.get("select#indsiteName")
+      .contains("option", text)
+      .then(($opt) => {
+        cy.get("select#indsiteName").select($opt.val());
+      });
   }
 
   assertINDSectionVisible() {
@@ -629,9 +685,14 @@ class StudyEntryPage {
   /**
    * Fill ARV-specific fields (center name + code + optional doctor).
    */
-  fillARVFields({ centerName, centerCode, doctor, underInvestigation } = {}) {
-    if (centerName) this.selectARVCenterName(centerName);
-    if (centerCode) this.selectARVCenterCode(centerCode);
+  fillARVFields({
+    centerNameText,
+    centerCodeText,
+    doctor,
+    underInvestigation,
+  } = {}) {
+    if (centerNameText) this.selectARVCenterNameByText(centerNameText);
+    if (centerCodeText) this.selectARVCenterCodeByText(centerCodeText);
     if (doctor) this.enterDoctor(doctor);
     if (underInvestigation) this.selectUnderInvestigation(underInvestigation);
   }
@@ -640,14 +701,14 @@ class StudyEntryPage {
    * Fill EID-specific fields.
    */
   fillEIDFields({
-    siteName,
-    siteCode,
+    siteNameText,
+    siteCodeText,
     whichPCR,
     mothersHIVStatus,
     mothersARV,
   } = {}) {
-    if (siteName) this.selectEIDSiteName(siteName);
-    if (siteCode) this.selectEIDSiteCode(siteCode);
+    if (siteNameText) this.selectEIDSiteNameByText(siteNameText);
+    if (siteCodeText) this.selectEIDSiteCodeByText(siteCodeText);
     if (whichPCR) this.selectEIDWhichPCR(whichPCR);
     if (mothersHIVStatus) this.selectEIDMothersHIVStatus(mothersHIVStatus);
     if (mothersARV) this.selectEIDMothersARV(mothersARV);

@@ -10,6 +10,21 @@
     "doctor": "Dr. Test Physician"
   },
 
+  "orgs": {
+    "arv": {
+      "centerNameText": "Centre ARV Hopital General",
+      "centerCodeText": "01",
+      "centerNameText2": "Centre ARV CHU Yopougon",
+      "centerCodeText2": "02"
+    },
+    "eid": {
+      "siteNameText": "Site EID ACONDA Abidjan",
+      "siteCodeText": "EID01",
+      "siteNameText2": "Site EID EGPAF Yopougon",
+      "siteCodeText2": "EID03"
+    }
+  },
+
   "arvInitial": {
     "project": "ARV_INITIAL",
     "labNo": "12345",
@@ -17,6 +32,8 @@
     "labNoPrefix": "LARC",
     "subjectNumber": "SUB001",
     "siteSubjectNumber": "SITE001",
+    "centerNameText": "Centre ARV Hopital General",
+    "centerCodeText": "01",
     "tests": {
       "serologyHIVTest": true,
       "dryTubeTaken": true,
@@ -34,6 +51,8 @@
     "labNoPrefix": "LARC",
     "subjectNumber": "SUB002",
     "siteSubjectNumber": "SITE002",
+    "centerNameText": "Centre ARV CHU Yopougon",
+    "centerCodeText": "02",
     "tests": {
       "creatinineTest": true,
       "dryTubeTaken": true
@@ -47,6 +66,8 @@
     "labNoPrefix": "LARC",
     "siteSubjectNumber": "SITE003",
     "gender": "F",
+    "centerNameText": "Centre ARV Bouake",
+    "centerCodeText": "03",
     "tests": {
       "viralLoadTest": true,
       "dbsvlTaken": true
@@ -76,6 +97,8 @@
     "birthDate": "10/03/2024",
     "nameOfRequestor": "Dr. EID Requestor",
     "nameOfSampler": "Nurse EID Sampler",
+    "siteNameText": "Site EID ACONDA Abidjan",
+    "siteCodeText": "EID01",
     "tests": {
       "dnaPCR": true,
       "dbsTaken": true
@@ -91,6 +114,7 @@
     "siteSubjectNumber": "INDSITE001",
     "gender": "F",
     "birthDate": "20/09/1995",
+    "siteNameText": "Site EID EGPAF Yopougon",
     "tests": {
       "serologyHIVTest": true,
       "dryTubeTaken": true
@@ -148,7 +172,9 @@
     "gender": "M",
     "birthDate": "01/01/1990",
     "subjectNumber": "SUB_DOUBLE",
-    "siteSubjectNumber": "SITE_DOUBLE"
+    "siteSubjectNumber": "SITE_DOUBLE",
+    "centerNameText": "Centre ARV Hopital General",
+    "centerCodeText": "01"
   },
 
   "labNoFormats": {

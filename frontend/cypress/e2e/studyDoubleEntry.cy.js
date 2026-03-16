@@ -160,13 +160,14 @@ describe("Study Double Entry – project selection renders correct sections", ()
 
 describe("Study Double Entry – POST type=verify", () => {
   it("sends type=verify when saving via Double Entry page", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveVerify");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
-        statusCode: 200,
-        body: { success: true, labNumber: data.doubleEntry.validLabNo },
-      }).as("saveVerify");
-
       studyEntryPage.selectProject(data.doubleEntry.project);
+      studyEntryPage.selectARVCenterNameByText(data.doubleEntry.centerNameText);
+      studyEntryPage.enterSiteSubjectNumber(data.doubleEntry.siteSubjectNumber);
       studyEntryPage.enterLabNo(data.doubleEntry.validLabNo);
       cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
@@ -181,13 +182,14 @@ describe("Study Double Entry – POST type=verify", () => {
   });
 
   it("request body includes project field with correct value", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveVerifyBody");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
-        statusCode: 200,
-        body: { success: true },
-      }).as("saveVerifyBody");
-
       studyEntryPage.selectProject(data.doubleEntry.project);
+      studyEntryPage.selectARVCenterNameByText(data.doubleEntry.centerNameText);
+      studyEntryPage.enterSiteSubjectNumber(data.doubleEntry.siteSubjectNumber);
       studyEntryPage.enterLabNo(data.doubleEntry.validLabNo);
       cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
@@ -204,18 +206,18 @@ describe("Study Double Entry – POST type=verify", () => {
   });
 
   it("request body includes gender, birthDate, and observations", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveVerifyFields");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
-        statusCode: 200,
-        body: { success: true },
-      }).as("saveVerifyFields");
-
       studyEntryPage.selectProject(data.doubleEntry.project);
+      studyEntryPage.selectARVCenterNameByText(data.doubleEntry.centerNameText);
+      studyEntryPage.enterSiteSubjectNumber(data.doubleEntry.siteSubjectNumber);
       studyEntryPage.enterLabNo(data.doubleEntry.validLabNo);
       cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
       cy.get("body").type("{esc}");
-      studyEntryPage.enterSiteSubjectNumber(data.doubleEntry.siteSubjectNumber);
       cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
 
@@ -241,19 +243,14 @@ describe("Study Double Entry – POST type=verify", () => {
 
 describe("Study Double Entry – error scenarios", () => {
   it("shows error when lab number does not exist (404 from server)", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
+      statusCode: 400,
+      body: { success: false, message: "Lab number does not exist." },
+    }).as("saveVerifyNotFound");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
-        statusCode: 400,
-        body: {
-          success: false,
-          message:
-            "Lab number " +
-            data.doubleEntry.invalidLabNo +
-            " does not exist. Please perform initial entry first.",
-        },
-      }).as("saveVerifyNotFound");
-
       studyEntryPage.selectProject(data.doubleEntry.project);
+      studyEntryPage.selectARVCenterNameByText(data.doubleEntry.centerNameText);
+      studyEntryPage.enterSiteSubjectNumber(data.doubleEntry.siteSubjectNumber);
       studyEntryPage.enterLabNo(data.doubleEntry.invalidLabNo);
       cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
@@ -267,19 +264,17 @@ describe("Study Double Entry – error scenarios", () => {
   });
 
   it("shows error when lab number is already verified (conflict from server)", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
+      statusCode: 409,
+      body: {
+        success: false,
+        message: "Lab number not eligible for double entry.",
+      },
+    }).as("saveVerifyConflict");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
-        statusCode: 409,
-        body: {
-          success: false,
-          message:
-            "Lab number " +
-            data.doubleEntry.alreadyVerifiedLabNo +
-            " is not eligible for double entry.",
-        },
-      }).as("saveVerifyConflict");
-
       studyEntryPage.selectProject(data.doubleEntry.project);
+      studyEntryPage.selectARVCenterNameByText(data.doubleEntry.centerNameText);
+      studyEntryPage.enterSiteSubjectNumber(data.doubleEntry.siteSubjectNumber);
       studyEntryPage.enterLabNo(data.doubleEntry.alreadyVerifiedLabNo);
       cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
@@ -295,6 +290,8 @@ describe("Study Double Entry – error scenarios", () => {
   it("shows validation error when saving without a lab number", () => {
     cy.fixture("StudyEntry").then((data) => {
       studyEntryPage.selectProject(data.doubleEntry.project);
+      studyEntryPage.selectARVCenterNameByText(data.doubleEntry.centerNameText);
+      studyEntryPage.enterSiteSubjectNumber(data.doubleEntry.siteSubjectNumber);
       // Intentionally skip lab number
       cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
@@ -308,6 +305,8 @@ describe("Study Double Entry – error scenarios", () => {
   it("shows validation error when saving without gender", () => {
     cy.fixture("StudyEntry").then((data) => {
       studyEntryPage.selectProject(data.doubleEntry.project);
+      studyEntryPage.selectARVCenterNameByText(data.doubleEntry.centerNameText);
+      studyEntryPage.enterSiteSubjectNumber(data.doubleEntry.siteSubjectNumber);
       studyEntryPage.enterLabNo(data.doubleEntry.validLabNo);
       // Intentionally skip gender
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
@@ -343,18 +342,18 @@ describe("Study Double Entry – error scenarios", () => {
 
 describe("Study Double Entry – successful save", () => {
   it("shows success notification after successful double entry (ARV_INITIAL)", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveDoubleSuccess");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
-        statusCode: 200,
-        body: { success: true, labNumber: data.doubleEntry.validLabNo },
-      }).as("saveDoubleSuccess");
-
       studyEntryPage.selectProject(data.doubleEntry.project);
+      studyEntryPage.selectARVCenterNameByText(data.doubleEntry.centerNameText);
+      studyEntryPage.enterSiteSubjectNumber(data.doubleEntry.siteSubjectNumber);
       studyEntryPage.enterLabNo(data.doubleEntry.validLabNo);
       cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
       cy.get("body").type("{esc}");
-      studyEntryPage.enterSiteSubjectNumber(data.doubleEntry.siteSubjectNumber);
       cy.get("input#dryTubeTaken").check({ force: true });
       studyEntryPage.clickSave();
 
@@ -364,13 +363,14 @@ describe("Study Double Entry – successful save", () => {
   });
 
   it("reloads/resets the form after successful save (URL stays on StudyDoubleEntry)", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveDoubleReload");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
-        statusCode: 200,
-        body: { success: true },
-      }).as("saveDoubleReload");
-
       studyEntryPage.selectProject(data.doubleEntry.project);
+      studyEntryPage.selectARVCenterNameByText(data.doubleEntry.centerNameText);
+      studyEntryPage.enterSiteSubjectNumber(data.doubleEntry.siteSubjectNumber);
       studyEntryPage.enterLabNo(data.doubleEntry.validLabNo);
       cy.get("select#gender").select(data.doubleEntry.gender);
       studyEntryPage.enterBirthDate(data.doubleEntry.birthDate);
@@ -386,13 +386,13 @@ describe("Study Double Entry – successful save", () => {
   });
 
   it("successful EID double entry sends correct labNo prefix LDBS", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveDoubleEID");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
-        statusCode: 200,
-        body: { success: true },
-      }).as("saveDoubleEID");
-
       studyEntryPage.selectProject("EID");
+      studyEntryPage.selectEIDSiteNameByText(data.eid.siteNameText);
       studyEntryPage.enterLabNo(data.eid.labNo);
       cy.get("select#gender").select(data.eid.gender);
       studyEntryPage.enterBirthDate(data.eid.birthDate);
@@ -409,12 +409,11 @@ describe("Study Double Entry – successful save", () => {
   });
 
   it("successful RTN double entry sends correct labNo prefix LRTN", () => {
+    cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("saveDoubleRTN");
     cy.fixture("StudyEntry").then((data) => {
-      cy.intercept("POST", "**/rest/SampleEntryByProject?type=verify", {
-        statusCode: 200,
-        body: { success: true },
-      }).as("saveDoubleRTN");
-
       studyEntryPage.selectProject("RTN");
       studyEntryPage.enterLabNo(data.rtn.labNo);
       cy.get("select#gender").select(data.rtn.gender);
@@ -790,7 +789,9 @@ describe("Study Double Entry – lab number normalisation", () => {
         statusCode: 200,
         body: { success: true },
       }).as("saveVerifyLabNo");
-
+      studyEntryPage.interceptFormLoad();
+      studyEntryPage.visitDoubleEntry();
+      studyEntryPage.waitForFormLoad();
       studyEntryPage.selectProject(project);
       studyEntryPage.enterLabNo(digitsOnly);
       cy.get("select#gender").select("M");
@@ -823,7 +824,9 @@ describe("Study Double Entry – lab number normalisation", () => {
       statusCode: 200,
       body: { success: true },
     }).as("saveVerifyPrefixed");
-
+    studyEntryPage.interceptFormLoad();
+    studyEntryPage.visitDoubleEntry();
+    studyEntryPage.waitForFormLoad();
     studyEntryPage.selectProject("ARV_INITIAL");
     studyEntryPage.enterLabNo("LARC11111");
     cy.get("select#gender").select("M");
