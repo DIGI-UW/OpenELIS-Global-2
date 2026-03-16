@@ -388,11 +388,11 @@ export const validateSpecialRequestSection = (projectData, selectedProject) => {
     return errors;
   }
 
-  // Reason for request is required for special requests
-  if (
-    !projectData.reasonForRequest ||
-    projectData.reasonForRequest.trim() === ""
-  ) {
+  // Reason for request is stored in observations (via onObservationChange in SpecialRequestSection)
+  // projectData.reasonForRequest may also be set — check both
+  const reasonForRequest =
+    projectData.reasonForRequest || projectData.observations?.reasonForRequest;
+  if (!reasonForRequest || String(reasonForRequest).trim() === "") {
     errors.push({
       field: "reasonForRequest",
       message: "Reason for request is required for special requests",
@@ -445,24 +445,10 @@ export const validateHPVSection = (projectData, selectedProject) => {
     return errors;
   }
 
-  // Collection method is required
-  if (
-    !projectData.selfCollection &&
-    !projectData.collectionDoneByHealthWorker
-  ) {
-    errors.push({
-      field: "hpvCollectionMethod",
-      message: "Collection method is required for HPV testing",
-    });
-  }
-
-  // At least one analysis type is required
-  if (!projectData.abbottOrRocheAnalysis && !projectData.geneXpertAnalysis) {
-    errors.push({
-      field: "hpvAnalysisType",
-      message: "At least one analysis type is required for HPV testing",
-    });
-  }
+  // hpvTest (HPV Kit) is required — the only mandatory test for HPV
+  // selfCollection / collectionDoneByHealthWorker are NOT rendered in the UI
+  // so we do not validate them here.
+  // abbottOrRocheAnalysis / geneXpertAnalysis are optional extras.
 
   return errors;
 };
@@ -474,7 +460,10 @@ export const validateIndeterminateSection = (projectData, selectedProject) => {
   const errors = [];
 
   // Only validate if Indeterminate project is selected
-  if (!selectedProject.includes("Indeterminate")) {
+  if (
+    !selectedProject.includes("Indeterminate") &&
+    selectedProject !== "INDETERMINATE"
+  ) {
     return errors;
   }
 
@@ -486,16 +475,8 @@ export const validateIndeterminateSection = (projectData, selectedProject) => {
     });
   }
 
-  // Investigation notes are required
-  if (
-    !projectData.underInvestigationNote ||
-    projectData.underInvestigationNote.trim() === ""
-  ) {
-    errors.push({
-      field: "underInvestigationNote",
-      message: "Investigation notes are required for indeterminate results",
-    });
-  }
+  // underInvestigationNote is only shown conditionally (when underInvestigation === Yes)
+  // so we do not require it unconditionally here.
 
   return errors;
 };

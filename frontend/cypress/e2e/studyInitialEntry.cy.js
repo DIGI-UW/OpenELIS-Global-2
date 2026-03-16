@@ -665,6 +665,11 @@ describe("Study Initial Entry – Special Request form", () => {
       cy.get("select#gender").select(data.specialRequest.gender);
       studyEntryPage.enterBirthDate(data.specialRequest.birthDate);
       cy.get("body").type("{esc}");
+      // select first available reason for request (required by validation)
+      cy.get("select#reasonForRequest").then(($sel) => {
+        const first = [...$sel.find("option")].find((o) => o.value !== "");
+        if (first) cy.get("select#reasonForRequest").select(first.value);
+      });
       cy.get("input#dryTubeTaken").check({ force: true });
       cy.get("input#murexTest").check({ force: true });
       studyEntryPage.clickSave();
@@ -763,7 +768,7 @@ describe("Study Initial Entry – HPV Testing form", () => {
   });
 
   it("shows hpvSamplingMethod dropdown", () => {
-    cy.contains('Sample Collection Method').should('exist');
+    cy.contains("Sample Collection Method").should("exist");
   });
 
   it("shows hpvTest checkbox", () => {
@@ -787,6 +792,7 @@ describe("Study Initial Entry – HPV Testing form", () => {
       cy.get("body").type("{esc}");
       cy.get("input#preservCytTaken").check({ force: true });
       cy.get("input#hpvTest").check({ force: true });
+      cy.get("input#abbottOrRocheAnalysis").check({ force: true });
       studyEntryPage.clickSave();
       cy.wait("@saveHPV", { timeout: 20000 }).then((i) => {
         expect(i.request.body.labNo).to.equal(data.hpvTesting.expectedLabNo);
@@ -999,6 +1005,13 @@ describe("Study Initial Entry – lab number normalisation", () => {
             if (first) $sel.val(first.value).trigger("change");
           });
       }
+      // Special Request needs reason for request selected
+      if (project === "SPECIAL_REQUEST") {
+        cy.get("select#reasonForRequest").then(($sel) => {
+          const first = [...$sel.find("option")].find((o) => o.value !== "");
+          if (first) cy.get("select#reasonForRequest").select(first.value);
+        });
+      }
       studyEntryPage.enterLabNo(digitsOnly);
       cy.get("select#gender").select("M");
       studyEntryPage.enterBirthDate("01/01/1990");
@@ -1021,6 +1034,10 @@ describe("Study Initial Entry – lab number normalisation", () => {
       ];
       cy.get(`input#${pair[0]}`).check({ force: true });
       cy.get(`input#${pair[1]}`).check({ force: true });
+      // HPV also needs abbottOrRocheAnalysis checked (analysis type)
+      if (project === "HPV_TESTING") {
+        cy.get("input#abbottOrRocheAnalysis").check({ force: true });
+      }
       studyEntryPage.clickSave();
       cy.wait("@saveLabNo", { timeout: 20000 }).then((i) => {
         expect(i.request.body.labNo).to.equal(expected);

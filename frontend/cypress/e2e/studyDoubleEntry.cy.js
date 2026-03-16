@@ -807,7 +807,7 @@ describe("Study Double Entry – field parity with Initial Entry (HPV_TESTING)",
   });
 
   it("shows hpvSamplingMethod dropdown", () => {
-    cy.contains('Sample Collection Method').should('exist');
+    cy.contains("Sample Collection Method").should("exist");
   });
 
   it("shows hpvTest checkbox", () => {
@@ -875,6 +875,13 @@ describe("Study Double Entry – lab number normalisation", () => {
             if (first) $sel.val(first.value).trigger("change");
           });
       }
+      // Special Request needs reason for request selected
+      if (project === "SPECIAL_REQUEST") {
+        cy.get("select#reasonForRequest").then(($sel) => {
+          const first = [...$sel.find("option")].find((o) => o.value !== "");
+          if (first) cy.get("select#reasonForRequest").select(first.value);
+        });
+      }
       studyEntryPage.enterLabNo(digitsOnly);
       cy.get("select#gender").select("M");
       studyEntryPage.enterBirthDate("01/01/1990");
@@ -896,6 +903,17 @@ describe("Study Double Entry – lab number normalisation", () => {
       ];
       cy.get(`input#${pair[0]}`).check({ force: true });
       cy.get(`input#${pair[1]}`).check({ force: true });
+      // Special Request needs reason for request selected
+      if (project === "SPECIAL_REQUEST") {
+        cy.get("select#reasonForRequest").then(($sel) => {
+          const first = [...$sel.find("option")].find((o) => o.value !== "");
+          if (first) cy.get("select#reasonForRequest").select(first.value);
+        });
+      }
+      // HPV also needs abbottOrRocheAnalysis checked
+      if (project === "HPV_TESTING") {
+        cy.get("input#abbottOrRocheAnalysis").check({ force: true });
+      }
       studyEntryPage.clickSave();
 
       cy.wait("@saveVerifyLabNo").then((i) => {
