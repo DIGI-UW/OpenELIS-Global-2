@@ -399,6 +399,7 @@ public class SamplePatientUpdateData {
     }
 
     public void initializeNewOrganization(SampleOrderItem orderItem) {
+        newOrganization.setFhirUuid(UUID.randomUUID());
         newOrganization.setCode(orderItem.getReferringSiteCode());
 
         newOrganization.setIsActive("Y");

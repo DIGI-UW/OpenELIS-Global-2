@@ -15,6 +15,7 @@ package org.openelisglobal.analyzer.service;
 
 import java.util.List;
 import java.util.Optional;
+import org.hibernate.Hibernate;
 import org.openelisglobal.analyzer.dao.AnalyzerTypeDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
@@ -80,6 +81,16 @@ public class AnalyzerTypeServiceImpl extends AuditableBaseObjectServiceImpl<Anal
             }
         }
         return Optional.empty();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnalyzerType> getAllWithInitializedInstances() {
+        List<AnalyzerType> types = getAll();
+        for (AnalyzerType type : types) {
+            Hibernate.initialize(type.getInstances());
+        }
+        return types;
     }
 
     @Override

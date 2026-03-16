@@ -73,9 +73,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
             // Set sequence to maxId (next nextval() will return maxId+1)
             jdbcTemplate.execute("SELECT setval('analyzer_seq', " + maxId + ", true)");
         } catch (Exception e) {
-            // Log but don't fail - cleanup is best effort
-            // Note: logger is package-private in BaseWebContextSensitiveTest
-            System.out.println("Failed to clean analyzer test data: " + e.getMessage());
+            // Cleanup is best effort - don't fail if it doesn't work
         }
     }
 
@@ -125,13 +123,6 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         int status = createResult.getResponse().getStatus();
         String responseBody = createResult.getResponse().getContentAsString();
 
-        // Debug: Print status and response if not 201
-        if (status != 201) {
-            System.out.println("DEBUG: Analyzer creation failed with status: " + status);
-            System.out.println("DEBUG: Response body: " + responseBody);
-            System.out.println("DEBUG: Request body: " + createBody);
-        }
-
         // Assert creation succeeded
         assertEquals("Analyzer creation should succeed", 201, status);
 
@@ -163,8 +154,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Act & Assert: GET endpoint should return analyzer
         mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON))
@@ -198,8 +192,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Update analyzer
         String updateBody = "{\"name\":\"Updated Name\",\"analyzerType\":\"Hematology Analyzer\",\"active\":false}";
@@ -231,8 +228,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Act & Assert: POST delete endpoint returns 200 with deletion result
         // (fresh analyzer has no recent results → hard delete → 200 with message)
@@ -265,8 +265,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Mock service to return job ID
         String mockJobId = "test-job-id-123";
@@ -304,8 +307,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         String jobId = "test-job-id-456";
 
@@ -344,8 +350,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         String invalidJobId = "invalid-job-id";
 
@@ -413,11 +422,68 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Act & Assert: pluginLoaded should be false (no plugin JAR loaded)
         mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.pluginLoaded").value(false));
+    }
+
+    /**
+     * Test: POST /rest/analyzer/analyzers with non-numeric pluginTypeId should not
+     * throw NumberFormatException.
+     *
+     * Regression test for "For input string: generic-astm" bug: the frontend
+     * fallback list used hardcoded string IDs like "generic-astm" instead of
+     * database numeric IDs. The backend should gracefully resolve these by name
+     * rather than crashing with a 500.
+     */
+    @Test
+    public void testCreateAnalyzer_WithNonNumericPluginTypeId_ReturnsCreated() throws Exception {
+        String uniqueName = "TEST-NonNumericPlugin-" + System.currentTimeMillis();
+        String requestBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\","
+                + "\"pluginTypeId\":\"generic-astm\"," + "\"ipAddress\":\"192.168.1.100\",\"port\":1200}";
+
+        // Should return 201 (gracefully ignoring unresolvable pluginTypeId)
+        // instead of 500 NumberFormatException
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.name").value(uniqueName));
+    }
+
+    /**
+     * Test: PUT /rest/analyzer/analyzers/{id} with non-numeric pluginTypeId should
+     * not throw NumberFormatException.
+     *
+     * Same regression test as above, but for the update path.
+     */
+    @Test
+    public void testUpdateAnalyzer_WithNonNumericPluginTypeId_ReturnsOk() throws Exception {
+        // Arrange: Create analyzer first (without pluginTypeId)
+        String uniqueName = "TEST-NonNumericPluginUpdate-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\","
+                + "\"ipAddress\":\"192.168.1.100\",\"port\":1200}";
+
+        MvcResult createResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andExpect(status().isCreated()).andReturn();
+
+        String responseBody = createResult.getResponse().getContentAsString();
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
+
+        // Act: Update with non-numeric pluginTypeId "generic-astm"
+        String updateBody = "{\"pluginTypeId\":\"generic-astm\"}";
+
+        // Should return 200 (gracefully resolving by name) instead of 500
+        mockMvc.perform(put("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON)
+                .content(updateBody)).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(analyzerId));
     }
 }

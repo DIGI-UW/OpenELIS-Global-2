@@ -3,7 +3,9 @@ package org.openelisglobal.sample.service;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
@@ -11,6 +13,7 @@ import org.openelisglobal.address.service.OrganizationAddressService;
 import org.openelisglobal.address.valueholder.OrganizationAddress;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.barcode.service.BarcodeInfoService;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
@@ -116,6 +119,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private ProgramSampleService programSampleService;
     @Autowired
     private SampleEQAService sampleEQAService;
+    private BarcodeInfoService barcodeInfoService;
 
     @Transactional
     @Override
@@ -269,12 +273,18 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             }
         }
 
+        Map<SampleItem, Integer> specimenLabelQuantities = new LinkedHashMap<>();
+        Integer orderLabelQuantity = null;
         for (SampleTestCollection sampleTestCollection : updateData.getSampleItemsTests()) {
             if (GenericValidator.isBlankOrNull(sampleTestCollection.item.getFhirUuidAsString())) {
                 sampleTestCollection.item.setFhirUuid(UUID.randomUUID());
             }
             String sampleId = sampleItemService.insert(sampleTestCollection.item);
             SampleItem savedItem = sampleItemService.get(sampleId);
+            specimenLabelQuantities.put(savedItem, sampleTestCollection.numSpecimenLabels);
+            if (orderLabelQuantity == null) {
+                orderLabelQuantity = sampleTestCollection.numOrderLabels;
+            }
             if (savedItem.isRejected()) {
                 String rejectReasonId = savedItem.getRejectReasonId();
                 String currentUserId = savedItem.getSysUserId();
@@ -303,6 +313,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             }
         }
 
+        persistOrderSpecimenBarcodeCounts(updateData.getSample(), orderLabelQuantity, specimenLabelQuantities);
         updateData.buildSampleHuman();
 
         sampleHumanService.insert(updateData.getSampleHuman());
@@ -332,6 +343,29 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
 
         sampleEQAService.insert(sampleEQA);
+    }
+    void persistOrderSpecimenBarcodeCounts(org.openelisglobal.sample.valueholder.Sample sample, Integer numOrderLabels,
+            Map<SampleItem, Integer> specimenLabelQuantities) {
+        if (sample == null) {
+            return;
+        }
+
+        int normalizedOrderLabels = normalizeLabelQuantity(numOrderLabels);
+        Map<SampleItem, Integer> normalizedSpecimenLabelQuantities = new LinkedHashMap<>();
+        if (specimenLabelQuantities != null) {
+            for (Map.Entry<SampleItem, Integer> entry : specimenLabelQuantities.entrySet()) {
+                if (entry.getKey() == null) {
+                    continue;
+                }
+                normalizedSpecimenLabelQuantities.put(entry.getKey(), normalizeLabelQuantity(entry.getValue()));
+            }
+        }
+        barcodeInfoService.saveBarcodeInfoForSampleAndSampleItems(sample, normalizedOrderLabels,
+                normalizedSpecimenLabelQuantities);
+    }
+
+    private int normalizeLabelQuantity(Integer quantity) {
+        return quantity != null && quantity > 0 ? quantity : 1;
     }
 
     /*

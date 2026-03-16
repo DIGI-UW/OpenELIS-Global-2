@@ -5,13 +5,28 @@ perform an analyzer harness environment restart workflow with:
 
 - **Container restart** with force-recreate for harness services
 - **Optional database reset** (drop volumes with `--full-reset`)
-- **Analyzer fixture loading** (from canonical `analyzer-e2e.generated.sql`)
+- **Fixture loading** (`load-test-fixtures.sh --analyzers=full`) and **analyzer
+  seeding** (`seed-analyzers.sh`)
 - **Analyzer infrastructure verification** (ASTM bridge, simulator, virtual
   serial)
 
 This command is for **analyzer manual testing and E2E validation**. It uses the
 harness stack (`projects/analyzer-harness/`) with full analyzer test
 infrastructure, NOT the root dev stack.
+
+## Credential Handling
+
+> **All credentials live in `$REPO_ROOT/.env`. NEVER construct passwords inline
+> in shell commands. NEVER modify password hashes anywhere.**
+
+- **Loading credentials**: `set -a; . "$REPO_ROOT/.env"; set +a` — this reads
+  values as plain text from the file, bypassing all shell escaping issues.
+- **Login verification**: Call
+  `$REPO_ROOT/projects/analyzer-harness/scripts/verify-login.sh` — it reads
+  `TEST_USER`/`TEST_PASS` from the environment and uses `--data-urlencode` for
+  curl.
+- **Playwright env**: After sourcing `.env`, `TEST_USER` and `TEST_PASS` are
+  already exported. No additional `export` commands needed.
 
 ## User Input
 
@@ -40,6 +55,8 @@ Interpret arguments best-effort. Support these patterns:
 - **Report** container status after restart (even if some containers fail).
 - If Let's Encrypt certs are missing, **warn but continue** (use self-signed
   certs).
+- **NEVER** modify, regenerate, or replace password hashes (SQL fixtures,
+  `adminPassword.txt`, or anywhere else). They work as-is.
 
 ## Workflow
 
@@ -48,7 +65,18 @@ Interpret arguments best-effort. Support these patterns:
 Set `REPO_ROOT=$(git rev-parse --show-toplevel)` and use `$REPO_ROOT` for all
 paths below (never hardcode `/home/ubuntu/OpenELIS-Global-2`).
 
-Run these and summarize the results:
+**Load `.env` first** — this is the single source for all credentials and
+config:
+
+```bash
+cd $REPO_ROOT
+set -a; . ./.env; set +a
+```
+
+This exports `TEST_USER`, `TEST_PASS`, `LETSENCRYPT_DOMAIN`,
+`LETSENCRYPT_EMAIL`, etc. from the file as plain text (no shell escaping).
+
+Then run these and summarize the results:
 
 - `git rev-parse --show-toplevel` (verify project root → REPO_ROOT)
 - **Detect harness directory**: `$REPO_ROOT/projects/analyzer-harness/` (must
@@ -66,17 +94,11 @@ Run these and summarize the results:
   `docker ps --filter name=openelisglobal- --format {{.Names}}`
   - If root stack is running, **warn** that port conflicts may occur (root uses
     80/443/15432, harness uses same ports)
-- **Load .env if present** (harness uses repo root .env for LETSENCRYPT_DOMAIN):
-  ```bash
-  set -a; [ -f .env ] && . ./.env; set +a
-  ```
 - `git status --porcelain` (warn if uncommitted changes)
-- Check `LETSENCRYPT_DOMAIN` and `LETSENCRYPT_EMAIL` (used for optional Let's
-  Encrypt setup; e.g. `madagascar.openelis-global.org`)
 
 Determine:
 
-- **DOMAIN**: From `LETSENCRYPT_DOMAIN` (after loading .env) or default
+- **DOMAIN**: From `LETSENCRYPT_DOMAIN` (from .env) or default
   `madagascar.openelis-global.org`
 - **FULL_RESET**: true if `--full-reset` flag present
 - **SKIP_FIXTURES**: true if `--skip-fixtures` flag present
@@ -165,7 +187,7 @@ This starts:
 
 Report: "Started harness stack (8 services)"
 
-### 5) Wait for webapp (checkpoint #5)
+### 5) Wait for webapp and verify login (checkpoint #5)
 
 Poll `https://localhost/` with curl until it responds (max 120 seconds). If the
 proxy is down or not ready, fall back to checking `https://localhost:8443/` (oe
@@ -197,21 +219,28 @@ fi
 
 Report: "Webapp ready at https://localhost/" (or note if only 8443 responded).
 
+**Then verify login** using the harness script (credentials come from `.env`
+which was sourced in preflight):
+
+```bash
+$REPO_ROOT/projects/analyzer-harness/scripts/verify-login.sh
+```
+
+If login fails, warn but continue (fixtures may not be loaded yet).
+
 ### 5b) Let's Encrypt setup (checkpoint #5b) — when env is set
 
-**Run only if** `LETSENCRYPT_DOMAIN` and `LETSENCRYPT_EMAIL` are set (e.g. from
-.env) **and** `--skip-letsencrypt` was **not** passed.
+**Run only if** `LETSENCRYPT_DOMAIN` and `LETSENCRYPT_EMAIL` are set (from .env)
+**and** `--skip-letsencrypt` was **not** passed.
 
 This obtains or renews Let's Encrypt certificates for the subdomain (e.g.
 `madagascar.openelis-global.org`) so the proxy serves valid HTTPS. Certs are
 written to repo root `volume/letsencrypt/` (proxy bind-mounts it).
 
-1. From repo root, ensure .env is loaded (already done in preflight). From
-   harness directory run the cert script:
+1. From harness directory run the cert script:
 
    ```bash
    cd $REPO_ROOT/projects/analyzer-harness
-   # LETSENCRYPT_DOMAIN and LETSENCRYPT_EMAIL from .env or environment
    ./scripts/generate-letsencrypt-certs.sh
    ```
 
@@ -239,19 +268,34 @@ export DB_PORT=15432
 export DB_HOST=localhost
 
 if [ "$FULL_RESET" = true ]; then
-    ./src/test/resources/load-test-fixtures.sh --no-verify
+    ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
 else
-    ./src/test/resources/load-test-fixtures.sh --reset --no-verify
+    ./src/test/resources/load-test-fixtures.sh --analyzers=full --reset --no-verify
 fi
 ```
 
 This loads:
 
 - Foundational data (e2e-foundational-data.sql)
+- Analyzer types + cleanup (analyzer-minimal.sql, file-import-e2e.sql)
 - Storage fixtures (storage-e2e.generated.sql from DBUnit)
-- **Analyzer fixtures** (analyzer-e2e.generated.sql - 12 analyzers 2000-2012)
 
-Report: "Loaded fixtures (foundational + storage + analyzers)"
+Report: "Loaded fixtures (foundational + analyzer types + storage)"
+
+### 6b) Seed analyzers via REST API (checkpoint #6b)
+
+**Skip if `--skip-fixtures` was passed.**
+
+Create the four harness analyzers (GeneXpert ASTM, QuantStudio 5/7, FluoroCycler
+XT) so Playwright and manual tests see the same set as CI:
+
+```bash
+cd $REPO_ROOT
+# TEST_USER and TEST_PASS from .env (loaded in preflight)
+BASE_URL=https://localhost bash projects/analyzer-harness/seed-analyzers.sh
+```
+
+Report: "Seeded 4 analyzers via REST API"
 
 ### 7) Verify analyzer infrastructure (checkpoint #7)
 
@@ -277,10 +321,10 @@ Print summary:
 ======================================
 
   Domain: https://[DOMAIN]/
-  Login: admin / adminADMIN!
+  Login: admin (credentials from .env)
 
   Database: localhost:15432
-  Analyzers: 12 loaded (IDs 2000-2012)
+  Analyzers: 4 seeded via seed-analyzers.sh (GeneXpert ASTM, QuantStudio 5/7, FluoroCycler XT)
   Defaults: 11 templates at /data/analyzer-defaults (host path: projects/analyzer-defaults)
 
   Analyzer Infrastructure:
@@ -339,14 +383,16 @@ Where:
 
 - Harness compose files:
   `projects/analyzer-harness/docker-compose.{dev,analyzer-test,letsencrypt}.yml`
-- Fixture loader: `src/test/resources/load-test-fixtures.sh`
-- Analyzer fixtures: `src/test/resources/testdata/analyzer-e2e.generated.sql`
-  (canonical)
+- Fixture loader: `src/test/resources/load-test-fixtures.sh` (use
+  `--analyzers=full`)
+- Analyzer seeding: `projects/analyzer-harness/seed-analyzers.sh` (4 analyzers
+  via REST API)
 - Build script: `projects/analyzer-harness/build.sh` (WAR + harness images)
 - Reset script: `projects/analyzer-harness/reset-env.sh` (implements this
   workflow)
 - Bootstrap script: `projects/analyzer-harness/bootstrap.sh` (idempotent
   volume + submodule setup)
+- Login verifier: `projects/analyzer-harness/scripts/verify-login.sh`
 
 ## Troubleshooting
 
@@ -356,3 +402,4 @@ Where:
 | **Uninitialized submodules**             | Docker build fails (e.g. analyzer-mock-server or openelis-analyzer-bridge context empty)                    | Run `git submodule update --init tools/analyzer-mock-server tools/openelis-analyzer-bridge plugins` from repo root. Bootstrap script does this.                                                                 |
 | **Missing harness volume**               | Compose fails on missing files (e.g. `volume/database/database.env`, `volume/properties/common.properties`) | Run `projects/analyzer-harness/bootstrap.sh`; it copies/adapts from root `volume/` and creates placeholders. `reset-env.sh` calls it automatically.                                                             |
 | **Nginx hostname mismatch**              | Proxy starts but frontend/API routes fail (e.g. 502 or wrong host)                                          | Harness uses Docker service names `frontend` and `oe`. Bootstrap generates `volume/nginx/nginx.conf` from root with `frontend.openelis.org`→`frontend`, `oe.openelis.org`→`oe`. Re-run bootstrap to regenerate. |
+| **Login 401**                            | Playwright or curl login fails with 401                                                                     | Re-source `.env` (`set -a; . .env; set +a`) and run `projects/analyzer-harness/scripts/verify-login.sh`. If that fails: check fixtures loaded, account not locked.                                              |
