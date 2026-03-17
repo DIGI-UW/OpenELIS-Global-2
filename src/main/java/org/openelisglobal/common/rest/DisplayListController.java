@@ -294,19 +294,19 @@ public class DisplayListController extends BaseRestController {
     @GetMapping(value = "education-list", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getEducationList() {
-        return DisplayListService.getInstance().getList(ListType.PATIENT_EDUCATION);
+        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_EDUCATION);
     }
 
     @GetMapping(value = "marital-statuses", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getMaritialList() {
-        return DisplayListService.getInstance().getList(ListType.PATIENT_MARITAL_STATUS);
+        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_MARITAL_STATUS);
     }
 
     @GetMapping(value = "nationalities", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getNationalityList() {
-        return DisplayListService.getInstance().getList(ListType.PATIENT_NATIONALITY);
+        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_NATIONALITY);
     }
 
     @GetMapping(value = "programs", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -388,6 +388,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         configs.put("FIRST_NAME_REGEX", FIRST_NAME_REGEX);
         configs.put("LAST_NAME_REGEX", LAST_NAME_REGEX);
+        configs.put(Property.USE_NEW_ADDRESS_HIERARCHY.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.USE_NEW_ADDRESS_HIERARCHY));
         return configs;
     }
 

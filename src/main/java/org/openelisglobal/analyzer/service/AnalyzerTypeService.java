@@ -68,6 +68,15 @@ public interface AnalyzerTypeService extends BaseObjectService<AnalyzerType, Str
     Optional<AnalyzerType> findMatchingType(String identifier);
 
     /**
+     * Get all analyzer types with their instances collection eagerly initialized.
+     * Use this when the caller needs to access instances outside a transaction
+     * (e.g., in a REST controller building a response map).
+     *
+     * @return List of AnalyzerType entities with initialized instances
+     */
+    List<AnalyzerType> getAllWithInitializedInstances();
+
+    /**
      * Get all analyzer instances for a given type.
      *
      * @param analyzerTypeId The ID of the analyzer type
