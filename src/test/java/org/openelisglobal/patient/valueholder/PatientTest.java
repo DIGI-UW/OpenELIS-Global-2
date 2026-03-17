@@ -90,8 +90,7 @@ public class PatientTest {
         assertEquals("Original ambiguous display value should be preserved", "xx/xx/2024",
                 patient.getBirthDateForDisplay());
         assertEquals("Ambiguous month and day should normalize to configured placeholder values",
-                LocalDate.of(2024, 1, 1),
-                patient.getBirthDate().toLocalDateTime().toLocalDate());
+                LocalDate.of(2024, 1, 1), patient.getBirthDate().toLocalDateTime().toLocalDate());
     }
 
     @Test
@@ -109,7 +108,8 @@ public class PatientTest {
         patient.setBirthTimeForDisplay("03/05/2024");
 
         assertEquals("Display value should be preserved", "03/05/2024", patient.getBirthTimeForDisplay());
-        assertEquals("Parsed SQL date should match the display date", Date.valueOf("2024-03-05"), patient.getBirthTime());
+        assertEquals("Parsed SQL date should match the display date", Date.valueOf("2024-03-05"),
+                patient.getBirthTime());
     }
 
     @Test
@@ -127,7 +127,8 @@ public class PatientTest {
         patient.setDeathDateForDisplay("04/06/2024");
 
         assertEquals("Display value should be preserved", "04/06/2024", patient.getDeathDateForDisplay());
-        assertEquals("Parsed SQL date should match the display date", Date.valueOf("2024-04-06"), patient.getDeathDate());
+        assertEquals("Parsed SQL date should match the display date", Date.valueOf("2024-04-06"),
+                patient.getDeathDate());
     }
 
     @Test
