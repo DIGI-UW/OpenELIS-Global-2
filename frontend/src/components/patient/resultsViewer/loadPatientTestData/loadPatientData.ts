@@ -131,7 +131,7 @@ async function reloadData(patientUuid: string) {
       }
     });
 
-  const sortedObs: PatientData = Object.fromEntries(
+  const sortedObs = Object.fromEntries(
     Object.entries(obsByClass)
       // remove concepts that did not have any observations
       .filter((x) => x[1].length)
@@ -149,12 +149,12 @@ async function reloadData(patientUuid: string) {
                 Date.parse(ent2.effectiveDateTime) -
                 Date.parse(ent1.effectiveDateTime),
             ),
-            type,
+            type: type as "LabSet" | "Test",
             uuid,
           },
         ];
       }),
-  );
+  ) as PatientData;
 
   if (entries.length > 0) {
     addUserDataToCache(patientUuid, sortedObs, entries[0].id);

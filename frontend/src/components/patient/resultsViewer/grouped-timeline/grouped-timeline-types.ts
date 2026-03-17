@@ -12,7 +12,7 @@ export interface DateHeaderGridProps {
   dayColumns: Array<Record<string, number | string>>;
   showShadow: boolean;
   xScroll: number;
-  setXScroll: any;
+  setXScroll: (value: number) => void;
 }
 
 interface DataEntry {
