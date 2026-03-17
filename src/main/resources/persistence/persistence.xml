@@ -16,6 +16,9 @@
         <class>org.openelisglobal.security.converter.EncryptionConverter</class>
 
         <!-- entities -->
+        <class>org.openelisglobal.localization.valueholder.Localization</class>
+        <class>org.openelisglobal.localization.valueholder.LocalizationValue</class>
+        <class>org.openelisglobal.localization.valueholder.SupportedLocale</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
@@ -77,6 +80,8 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
         <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerType</class>

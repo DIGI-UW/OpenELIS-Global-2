@@ -511,11 +511,7 @@ function NoteBookDashBoard() {
               <Column lg={16} md={8} sm={4}>
                 <FormattedMessage id="filters.label" /> :
               </Column>
-              <Column lg={16} md={8} sm={4}>
-                <br />
-              </Column>
-
-              <Column lg={16} md={8} sm={4}>
+              <Column lg={2} md={8} sm={4}>
                 <FilterableMultiSelect
                   id="statuses"
                   titleText={intl.formatMessage({ id: "label.filters.status" })}
@@ -528,11 +524,7 @@ function NoteBookDashBoard() {
                   selectionFeedback="top-after-reopen"
                 />
               </Column>
-              <Column lg={16} md={8} sm={4}>
-                <br />
-              </Column>
-
-              <Column lg={16} md={8} sm={4}>
+              <Column lg={3} md={8} sm={4}>
                 <FilterableMultiSelect
                   id="types"
                   titleText={intl.formatMessage({
@@ -547,11 +539,7 @@ function NoteBookDashBoard() {
                   selectionFeedback="top-after-reopen"
                 />
               </Column>
-              <Column lg={16} md={8} sm={4}>
-                <br />
-              </Column>
-
-              <Column lg={16} md={8} sm={4}>
+              <Column lg={2} md={8} sm={4}>
                 <TextInput
                   id="title"
                   name="title"
@@ -568,11 +556,7 @@ function NoteBookDashBoard() {
                   required
                 />
               </Column>
-              <Column lg={16} md={8} sm={4}>
-                <br />
-              </Column>
-
-              <Column lg={16} md={8} sm={4}>
+              <Column lg={3} md={8} sm={4}>
                 <CustomDatePicker
                   key="startDate"
                   id={"startDate"}
@@ -581,17 +565,13 @@ function NoteBookDashBoard() {
                     defaultMessage: "Start Date",
                   })}
                   autofillDate={true}
-                  value={filters.statuses}
+                  value={filters.fromdate}
                   onChange={(date) =>
                     handleDatePickerChangeDate("startDate", date)
                   }
                 />
               </Column>
-              <Column lg={16} md={8} sm={4}>
-                <br />
-              </Column>
-
-              <Column lg={16} md={8} sm={4}>
+              <Column lg={3} md={8} sm={4}>
                 <CustomDatePicker
                   key="endDate"
                   id={"endDate"}
@@ -606,9 +586,7 @@ function NoteBookDashBoard() {
                   }
                 />
               </Column>
-              <Column lg={16} md={8} sm={4}>
-                <br />
-              </Column>
+              <Column lg={16} md={8} sm={4}></Column>
             </Grid>
 
             <div className="notebook-dashboard-container">
