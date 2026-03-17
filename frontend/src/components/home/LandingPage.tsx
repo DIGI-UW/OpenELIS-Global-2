@@ -20,19 +20,19 @@ const LandingPage: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [rememberChoice, setRememberChoice] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  interface ConfigurationContextValue {
+    configurationProperties: Record<string, unknown>;
+  }
+
+  interface UserSessionDetailsContextValue {
+    userSessionDetails: Record<string, unknown>;
+  }
+
   const { configurationProperties } =
-    useContext<ConfigurationContext>(ConfigurationContext);
-  const { userSessionDetails } = useContext<UserSessionDetailsContext>(
+    useContext<ConfigurationContextValue>(ConfigurationContext);
+  const { userSessionDetails } = useContext<UserSessionDetailsContextValue>(
     UserSessionDetailsContext,
   );
-
-  interface UserSessionDetailsContext {
-    userSessionDetails: any;
-  }
-
-  interface ConfigurationContext {
-    configurationProperties: any;
-  }
 
   useEffect(() => {
     if (
@@ -60,7 +60,7 @@ const LandingPage: React.FC = () => {
     );
   };
 
-  const handleDepartmentSelect = (departmentId) => {
+  const handleDepartmentSelect = (departmentId: string) => {
     setSelectedDepartment(departmentId);
   };
 
@@ -83,7 +83,7 @@ const LandingPage: React.FC = () => {
     }
   };
 
-  const handlePostLabUbit = (status) => {};
+  const handlePostLabUbit = (_status: number) => {};
 
   return (
     <Grid
