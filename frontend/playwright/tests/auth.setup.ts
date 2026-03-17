@@ -25,8 +25,8 @@ const AUTH_FILE = "playwright/.auth/user.json";
 setup("authenticate", async ({ page, request, context }, testInfo) => {
   testInfo.setTimeout(NAV_TIMEOUT);
 
-  const username = process.env.TEST_USER;
-  const password = process.env.TEST_PASS;
+  const username = process.env.TEST_USER || "admin";
+  const password = process.env.TEST_PASS || "adminADMIN!";
 
   if (!username || !password) {
     throw new Error(
