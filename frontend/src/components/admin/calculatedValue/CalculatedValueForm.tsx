@@ -72,7 +72,7 @@ interface NotificationContextType {
 }
 
 interface NotificationBody {
-  kind: any;
+  kind: string;
   title: string | JSX.Element;
   message: string | JSX.Element;
 }
@@ -112,9 +112,8 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     };
   }, []);
 
-  const loadCalculationList = (calculations) => {
+  const loadCalculationList = (calculations: CalculatedValueFormModel[]) => {
     if (componentMounted.current) {
-      // console.log(JSON.stringify(reflexRuleList))
       const sampleList = [];
       if (calculations.length > 0) {
         setCalculationList(calculations);
@@ -241,7 +240,6 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     };
 
     list[index]["operations"].push(operation);
-    console.log(JSON.stringify(list[index]["operations"]));
     setCalculationList(list);
   };
 
@@ -260,7 +258,6 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     const list = [...calculationList];
     //list[index]['operations'].push(operation);
     list[index]["operations"].splice(operationIndex + 1, 0, operation);
-    console.log(JSON.stringify(list[index]["operations"]));
     setCalculationList(list);
   };
 
@@ -271,7 +268,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   };
 
   const handleSampleSelected = (
-    e: any,
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
     field: TestListField,
     index: number,
     item_index: number,
@@ -287,7 +284,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     field: TestListField,
     index: number,
     item_index: number,
-    resultList: any,
+    resultList: TestResponse[],
   ) => {
     const results = { ...sampleTestList };
     if (!results[field][index]) {
@@ -307,7 +304,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   };
 
   const fetchTests = (
-    testList: any,
+    testList: TestResponse[],
     field: TestListField,
     index: number,
     item_index: number,
@@ -331,7 +328,10 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     setCalculationList(list);
   }
 
-  const handleCalculationFieldChange = (e: any, index: number) => {
+  const handleCalculationFieldChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    index: number,
+  ) => {
     const { name, value } = e.target;
     const list = [...calculationList];
     list[index][name] = value;
@@ -339,7 +339,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   };
 
   const handleOperationFieldChange = (
-    e: any,
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
     index: number,
     operationIndex: number,
   ) => {
@@ -349,7 +349,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     setCalculationList(list);
   };
 
-  const handleCalculationSubmited = (status, index) => {
+  const handleCalculationSubmited = (status: string, index: number) => {
     setIsSubmitting(false);
     setNotificationVisible(true);
     if (status == "200") {
@@ -380,7 +380,10 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     return string.replace(regex, replacement);
   }
 
-  const handleSubmit = (event: any, index: number) => {
+  const handleSubmit = (
+    event: React.FormEvent<HTMLFormElement>,
+    index: number,
+  ) => {
     event.preventDefault();
     if (isSubmitting) {
       return;
@@ -410,18 +413,19 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     try {
       // Code that might throw an error
       eval(mathematicalOperation);
-      console.log(JSON.stringify(calculationList[index]));
       postToOpenElisServer(
         "/rest/test-calculation",
         JSON.stringify(calculationList[index]),
         (status) => handleCalculationSubmited(status, index),
       );
-    } catch (error) {
+    } catch (error: unknown) {
       setNotificationVisible(true);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: "Invalid Calculation Logic : " + error.message,
+        message:
+          "Invalid Calculation Logic : " +
+          (error instanceof Error ? error.message : String(error)),
       });
     }
   };
@@ -614,15 +618,15 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     }
   }
   const addOperationBySelect = (
-    e: any,
+    e: React.ChangeEvent<HTMLSelectElement>,
     index: number,
     operationIndex: number,
   ) => {
     const { value } = e.target;
-    insertOperation(index, operationIndex, value);
+    insertOperation(index, operationIndex, value as OperationType);
   };
 
-  const toggleCalculation = (e, index) => {
+  const toggleCalculation = (e: boolean, index: number) => {
     const list = [...calculationList];
     list[index]["toggled"] = e;
     setCalculationList(list);
