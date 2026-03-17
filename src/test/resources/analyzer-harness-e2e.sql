@@ -1,11 +1,11 @@
 -- Analyzer harness fixtures for CI E2E.
--- Scope: GeneXpert (ASTM) + Mindray BC-5380 (HL7). FILE fixtures in fixtures/file-import-e2e.sql.
--- Self-contained: creates analyzer_type rows if missing (fallback for environments
--- where plugin startup hasn't run or completed yet).
+-- Scope: analyzer_type safety net ONLY — no analyzer rows.
+-- All analyzers are created via REST API (seed-analyzers.sh) using profile-based
+-- defaultConfigId, which triggers autoCreateTestMappings() from LOINC lookup.
 SET search_path TO clinlims;
 
 -- ============================================================================
--- 0. ANALYZER TYPES (idempotent fallback — PluginRegistryService creates these
+-- ANALYZER TYPES (idempotent fallback — PluginRegistryService creates these
 --    at startup from plugin JARs, but CI fixture loading may run before plugins
 --    finish initializing)
 -- ============================================================================
@@ -29,114 +29,57 @@ VALUES (nextval('analyzer_type_seq'), 'Generic File', 'Generic File - Dashboard-
 ON CONFLICT (name) DO UPDATE SET is_active = true;
 
 -- ============================================================================
--- 1. GeneXpert ASTM Analyzer (ID 2013)
+-- DEMO WORKFLOW PATIENT FIXTURE (required by Add Order demo tests)
 -- ============================================================================
+-- Keep this lightweight and idempotent for analyzer harness CI.
+-- The Playwright OGC-284 demo searches for "Smith, John" and expects
+-- patient-details to include nationalId, birthDateForDisplay, and gender.
+INSERT INTO person (id, last_name, first_name, middle_name, city, state, zip_code, country,
+                    work_phone, home_phone, cell_phone, primary_phone, email, lastupdated)
+SELECT 9001000, 'TEST-Smith', 'John', 'Test', 'Test City', 'Test State', '12345', 'USA',
+       '555-0101', '555-0102', '555-0103', '555-0101', 'john.test@openelis.org', NOW()
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM person
+  WHERE first_name = 'John' AND last_name = 'TEST-Smith'
+);
 
--- Clean GeneXpert analyzer row by fixed ID.
-DELETE FROM analyzer_test_map WHERE analyzer_id = '2013';
-DELETE FROM analyzer_results WHERE analyzer_id = 2013;
-DELETE FROM analyzer WHERE id = 2013;
-
--- Seed GeneXpert ASTM analyzer.
-INSERT INTO analyzer (
-    id, name, analyzer_type, description, is_active,
-    ip_address, port, protocol_version, status,
-    identifier_pattern, analyzer_type_id, last_updated
-)
-VALUES (
-    2013,
-    'Cepheid GeneXpert (ASTM Mode)',
-    'MOLECULAR',
-    'ASTM LIS2-A2 over TCP/IP',
-    true,
-    '172.21.1.100',
-    9600,
-    'ASTM_LIS2_A2',
-    'ACTIVE',
-    'GENEXPERT.*|CEPHEID.*',
-    (SELECT id FROM analyzer_type WHERE name = 'Generic ASTM'),
-    NOW()
-)
-ON CONFLICT (id) DO UPDATE
-SET
-    name = EXCLUDED.name,
-    ip_address = EXCLUDED.ip_address,
-    port = EXCLUDED.port,
-    protocol_version = EXCLUDED.protocol_version,
-    status = EXCLUDED.status,
-    identifier_pattern = EXCLUDED.identifier_pattern,
-    analyzer_type_id = EXCLUDED.analyzer_type_id,
-    last_updated = NOW();
-
--- GeneXpert test mappings.
-INSERT INTO analyzer_test_map (
-    analyzer_type_id, analyzer_id, analyzer_test_name, test_id, last_updated
-)
-VALUES
-    ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'MTB-RIF',  '3',   NOW()),
-    ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'RIF',      '5',   NOW()),
-    ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'HIV-VL',   '192', NOW()),
-    ((SELECT analyzer_type_id FROM analyzer WHERE id = 2013), '2013', 'COVID19',  '3',   NOW())
-ON CONFLICT (analyzer_type_id, analyzer_test_name) DO UPDATE
-SET
-    analyzer_id = EXCLUDED.analyzer_id,
-    test_id = EXCLUDED.test_id,
-    last_updated = NOW();
+INSERT INTO patient (id, person_id, race, gender, birth_date, birth_time, national_id,
+                     ethnicity, external_id, entered_birth_date, lastupdated)
+SELECT 9001000, p.id, 'black', 'M', '1990-01-15 00:00:00'::timestamp,
+       '1990-01-15 10:00:00'::timestamp, 'E2E-PAT-001', 'U', 'E2E-PAT-001',
+       '01/15/1990', NOW()
+FROM person p
+WHERE p.first_name = 'John'
+  AND p.last_name = 'TEST-Smith'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM patient pat
+    WHERE pat.id = 9001000
+       OR pat.external_id = 'E2E-PAT-001'
+       OR pat.national_id = 'E2E-PAT-001'
+  );
 
 -- ============================================================================
--- Mindray BC-5380 HL7 analyzer (for analyzer-hl7-simulate.spec.ts)
+-- VERIFICATION
 -- ============================================================================
 
-DELETE FROM analyzer_test_map WHERE analyzer_id = '2014';
-DELETE FROM analyzer_results WHERE analyzer_id = 2014;
-DELETE FROM analyzer WHERE id = 2014;
+DO $$
+DECLARE
+  v_type_count INTEGER;
+  v_demo_patient_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO v_type_count FROM analyzer_type WHERE name IN ('Generic ASTM', 'Generic HL7', 'Generic File');
+  SELECT COUNT(*)
+    INTO v_demo_patient_count
+    FROM patient pat
+    JOIN person per ON per.id = pat.person_id
+   WHERE per.first_name = 'John'
+     AND per.last_name = 'TEST-Smith'
+     AND pat.gender = 'M'
+     AND pat.external_id = 'E2E-PAT-001';
 
-INSERT INTO analyzer (
-    id, name, analyzer_type, description, is_active,
-    ip_address, port, protocol_version, status,
-    identifier_pattern, analyzer_type_id, last_updated
-)
-VALUES (
-    2014,
-    'Mindray BC-5380',
-    'HEMATOLOGY',
-    'HL7 v2.5.1 over MLLP',
-    true,
-    '172.21.1.101',
-    2575,
-    'HL7_V2_5',
-    'ACTIVE',
-    'MINDRAY.*|BC-5380.*',
-    (SELECT id FROM analyzer_type WHERE name = 'Generic HL7'),
-    NOW()
-)
-ON CONFLICT (id) DO UPDATE
-SET
-    name = EXCLUDED.name,
-    ip_address = EXCLUDED.ip_address,
-    port = EXCLUDED.port,
-    protocol_version = EXCLUDED.protocol_version,
-    status = EXCLUDED.status,
-    identifier_pattern = EXCLUDED.identifier_pattern,
-    analyzer_type_id = EXCLUDED.analyzer_type_id,
-    last_updated = NOW();
-
--- Mindray BC-5380 test mappings (hematology panel).
-INSERT INTO analyzer_test_map (
-    analyzer_type_id, analyzer_id, analyzer_test_name, test_id, last_updated
-)
-VALUES
-    ((SELECT analyzer_type_id FROM analyzer WHERE id = 2014), '2014', 'WBC',  '3',   NOW()),
-    ((SELECT analyzer_type_id FROM analyzer WHERE id = 2014), '2014', 'HGB',  '5',   NOW()),
-    ((SELECT analyzer_type_id FROM analyzer WHERE id = 2014), '2014', 'PLT',  '192', NOW())
-ON CONFLICT (analyzer_type_id, analyzer_test_name) DO UPDATE
-SET
-    analyzer_id = EXCLUDED.analyzer_id,
-    test_id = EXCLUDED.test_id,
-    last_updated = NOW();
-
--- Verification summary.
-SELECT
-    (SELECT COUNT(*) FROM analyzer WHERE id IN (2013, 2014)) AS harness_analyzer_count,
-    (SELECT COUNT(*) FROM analyzer_type WHERE name IN ('Generic ASTM', 'Generic HL7', 'Generic File')) AS analyzer_type_count,
-    (SELECT COUNT(*) FROM analyzer_test_map WHERE analyzer_id IN ('2013', '2014')) AS harness_map_count;
+  RAISE NOTICE 'analyzer-harness-e2e.sql verification:';
+  RAISE NOTICE '  analyzer_types: % / 3 expected', v_type_count;
+  RAISE NOTICE '  demo_patient_john_test_smith: % / 1 expected', v_demo_patient_count;
+END $$;

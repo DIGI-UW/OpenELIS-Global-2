@@ -3,7 +3,8 @@
 # Feature: 011-madagascar-analyzer-integration
 
 openelis:
-  url: https://oe.openelis.org:8443/OpenELIS-Global/analyzer/astm
+  # HttpForwardingRouter appends /astm, /hl7, /csv per message protocol
+  url: https://oe.openelis.org:8443/OpenELIS-Global/analyzer
   timeout: 30000
   ssl:
     verify: false  # Development only - uses self-signed certs

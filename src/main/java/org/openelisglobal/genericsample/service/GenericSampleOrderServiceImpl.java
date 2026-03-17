@@ -35,6 +35,10 @@ import org.hl7.fhir.r4.model.QuestionnaireResponse.QuestionnaireResponseStatus;
 import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.TimeType;
 import org.hl7.fhir.r4.model.Type;
+import org.openelisglobal.barcode.form.LabelsSectionForm;
+import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
+import org.openelisglobal.barcode.service.BarcodeInfoService;
+import org.openelisglobal.barcode.service.BarcodeWorkflowPrintService;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
 import org.openelisglobal.common.services.IStatusService;
@@ -122,6 +126,12 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
     @Autowired
     private FhirConfig fhirConfig;
 
+    @Autowired
+    private BarcodeInfoService barcodeInfoService;
+
+    @Autowired
+    private BarcodeWorkflowPrintService barcodeWorkflowPrintService;
+
     @Override
     public Map<String, Object> saveGenericSampleOrder(GenericSampleOrderForm form, String sysUserId)
             throws FhirLocalPersistingException {
@@ -137,6 +147,10 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
         Map<String, Object> result = new HashMap<>();
 
         GenericSampleOrderForm.DefaultFields defaultFields = form.getDefaultFields();
+        if (defaultFields == null) {
+            defaultFields = new GenericSampleOrderForm.DefaultFields();
+            form.setDefaultFields(defaultFields);
+        }
 
         // Create and save Sample
         Sample sample = createSample(defaultFields, sysUserId);
@@ -242,6 +256,19 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
         saveAdditionalFields(sample, defaultFields, sysUserId);
         LogEvent.logInfo(this.getClass().getSimpleName(), "saveGenericSampleOrder",
                 "Additional fields saved successfully");
+
+        // Save barcode label counts for order/specimen (OGC-284)
+        int numOrderLabels = resolveLabelQuantity(defaultFields.getNumOrderLabels());
+        int numSpecimenLabels = resolveLabelQuantity(defaultFields.getNumSpecimenLabels());
+        barcodeInfoService.saveBarcodeInfoForSampleAndSampleItems(sample, numOrderLabels, numSpecimenLabels);
+
+        List<Integer> specimenQuantities = sampleItemId == null ? List.of() : List.of(numSpecimenLabels);
+        LabelsSectionForm labelsSection = barcodeWorkflowPrintService.buildLabelsSection(numOrderLabels,
+                specimenQuantities);
+        PostSavePrintDialogForm postSavePrintDialog = barcodeWorkflowPrintService
+                .buildPostSavePrintDialog(sample.getAccessionNumber(), labelsSection);
+        result.put("labelsSection", labelsSection);
+        result.put("postSavePrintDialog", postSavePrintDialog);
 
         // Save notebook sample and questionnaire response if notebook is selected
         if (form.getNotebookId() != null && form.getFhirQuestionnaire() != null && form.getFhirResponses() != null
@@ -396,6 +423,10 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
         }
 
         // Note: "collector" is stored in SampleItem
+    }
+
+    private int resolveLabelQuantity(Integer quantity) {
+        return quantity != null && quantity > 0 ? quantity : 1;
     }
 
     private void saveProgramSample(Sample sample, GenericSampleOrderForm form, String sysUserId)

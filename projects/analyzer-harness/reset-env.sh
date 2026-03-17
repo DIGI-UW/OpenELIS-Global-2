@@ -156,12 +156,19 @@ else
     export DB_HOST="${DB_HOST:-localhost}"
 
     if [ "$FULL_RESET" = true ]; then
-        ./src/test/resources/load-test-fixtures.sh --no-verify
+        ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
     else
-        ./src/test/resources/load-test-fixtures.sh --reset --no-verify
+        ./src/test/resources/load-test-fixtures.sh --analyzers=full --reset --no-verify
     fi
-    # 011 dataset is loaded by load-test-fixtures.sh (once); no separate call to avoid duplicate INSERT.
 
+    # Seed 4 harness analyzers via REST API (parity with CI and /restart-analyzer-harness)
+    set -a && [ -f .env ] && . ./.env && set +a
+    if [ -n "${TEST_PASS:-}" ]; then
+        BASE_URL=https://localhost bash projects/analyzer-harness/seed-analyzers.sh
+        echo -e "  ${GREEN}✓ Analyzers seeded${NC}"
+    else
+        echo -e "  ${YELLOW}⚠ TEST_PASS not set; run seed-analyzers.sh manually after adding to .env${NC}"
+    fi
     echo -e "  ${GREEN}✓ Fixtures loaded${NC}"
 fi
 

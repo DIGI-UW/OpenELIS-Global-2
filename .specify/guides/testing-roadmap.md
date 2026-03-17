@@ -2084,6 +2084,14 @@ module.exports = defineConfig({
 [Playwright Best Practices Guide](.specify/guides/playwright-best-practices.md)
 for comprehensive patterns and examples.
 
+**Command-first workflow**:
+
+- `/plan-record-playwright` for planning feature/PR flow coverage and
+  project-aware recording stages
+- `/write-playwright-test` for first-pass authoring and project registration
+- `/debug-playwright` for evidence-first debugging
+- `/audit-playwright` for selector and anti-pattern audits
+
 Playwright is the recommended E2E testing framework for new test development. It
 offers modern async/await patterns, auto-waiting, and better debugging tools.
 
@@ -2130,7 +2138,7 @@ setup("authenticate", async ({ page }) => {
   await page.getByLabel("Username").fill("admin");
   await page.getByLabel("Password").fill("adminADMIN!");
   await page.getByRole("button", { name: "Login" }).click();
-  await expect(page.locator('[data-cy="menuButton"]')).toBeVisible();
+  await expect(page.locator('[data-testid="menu-button"]')).toBeVisible();
   await page.context().storageState({ path: "playwright/.auth/user.json" });
 });
 ```
@@ -2151,7 +2159,7 @@ export class Sidenav {
   }
 
   async toggle() {
-    await this.page.locator('[data-cy="menuButton"]').click();
+    await this.page.locator('[data-testid="menu-button"]').click();
   }
 }
 ```
@@ -2178,6 +2186,12 @@ page.getByRole("button", { name: "Storage", exact: true });
 
 // Carbon structural elements (acceptable)
 page.locator(".cds--side-nav");
+```
+
+**Project registration check**:
+
+```bash
+python .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/sidenav.spec.ts
 ```
 
 #### Configuration (`playwright.config.ts`)

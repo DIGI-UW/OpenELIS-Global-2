@@ -105,3 +105,38 @@ export async function showStepCard(
   await page.waitForTimeout(durationMs);
   await page.evaluate(() => document.getElementById("e2e-step-card")?.remove());
 }
+
+/**
+ * Shows a compact scene label pinned to the top-left corner.
+ * No-op when not recording video.
+ */
+export async function showSceneLabel(
+  page: Page,
+  label: string,
+  testInfo?: TestInfo,
+) {
+  if (testInfo && !isVideoProject(testInfo)) return;
+
+  await page.evaluate((sceneLabel) => {
+    document.getElementById("e2e-scene-label")?.remove();
+    const el = document.createElement("div");
+    el.id = "e2e-scene-label";
+    Object.assign(el.style, {
+      position: "fixed",
+      top: "12px",
+      left: "12px",
+      zIndex: "99998",
+      background: "rgba(15,98,254,0.92)",
+      color: "#ffffff",
+      fontFamily: "'IBM Plex Sans', Arial, sans-serif",
+      fontSize: "11px",
+      fontWeight: "600",
+      letterSpacing: "1px",
+      textTransform: "uppercase",
+      padding: "5px 12px",
+      borderRadius: "4px",
+    });
+    el.textContent = sceneLabel;
+    document.body.appendChild(el);
+  }, label);
+}
