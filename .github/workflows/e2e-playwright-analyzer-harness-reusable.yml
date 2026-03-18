@@ -87,13 +87,14 @@ jobs:
       - name: Tag and push compose images to GHCR
         run: |
           TAG="pr-${{ github.event.pull_request.number || github.sha }}"
+          OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
           docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/analyzer-images.txt
           : > /tmp/analyzer-image-map.txt
           while IFS= read -r image; do
             [ -z "$image" ] && continue
             if docker image inspect "$image" >/dev/null 2>&1; then
               image_repo="$(echo "$image" | tr '[:upper:]' '[:lower:]' | sed 's|[^a-z0-9._/-]|-|g')"
-              ghcr_image="ghcr.io/${{ github.repository_owner }}/openelis-global-2/analyzer-cache/${image_repo}:${TAG}"
+              ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/analyzer-cache/${image_repo}:${TAG}"
               docker tag "$image" "$ghcr_image"
               docker push "$ghcr_image"
               printf "%s|%s\n" "$image" "$ghcr_image" >> /tmp/analyzer-image-map.txt

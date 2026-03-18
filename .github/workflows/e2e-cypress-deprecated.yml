@@ -37,7 +37,54 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build OpenELIS images (cached)
+      - name: Prepare compose images (reuse analyzer cache first)
+        id: prepare-images
+        run: |
+          TAG="pr-${{ github.event.pull_request.number || github.sha }}"
+          OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          docker compose -f build.docker-compose.yml config --images | sort -u > /tmp/cypress-images.txt
+          : > /tmp/cypress-image-map.txt
+          MISSING=0
+
+          # Prefer pulling analyzer-built images to avoid duplicate builds.
+          for attempt in {1..20}; do
+            MISSING=0
+            : > /tmp/cypress-image-map.txt
+            while IFS= read -r image; do
+              [ -z "$image" ] && continue
+              image_repo="$(echo "$image" | tr '[:upper:]' '[:lower:]' | sed 's|[^a-z0-9._/-]|-|g')"
+              ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/analyzer-cache/${image_repo}:${TAG}"
+              if docker pull "$ghcr_image" >/dev/null 2>&1; then
+                docker tag "$ghcr_image" "$image"
+                printf "%s|%s\n" "$image" "$ghcr_image" >> /tmp/cypress-image-map.txt
+              else
+                MISSING=1
+                break
+              fi
+            done < /tmp/cypress-images.txt
+
+            if [ "$MISSING" -eq 0 ]; then
+              echo "Using analyzer-built images from GHCR."
+              break
+            fi
+
+            echo "Analyzer images not ready yet (attempt ${attempt}/20); waiting 30s..."
+            sleep 30
+          done
+
+          if [ "$MISSING" -eq 0 ] && [ -s /tmp/cypress-image-map.txt ]; then
+            echo "Image mappings from analyzer cache:"
+            cat /tmp/cypress-image-map.txt
+            echo "needs_build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Analyzer images unavailable after retries; falling back to one-time Cypress build."
+          echo "needs_build=true" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      - name: Build OpenELIS images (cached fallback)
+        if: ${{ steps.prepare-images.outputs.needs_build == 'true' }}
         uses: docker/bake-action@v5
         with:
           files: build.docker-compose.yml
@@ -46,16 +93,17 @@ jobs:
             *.cache-from=type=gha,scope=cypress-e2e
             *.cache-to=type=gha,scope=cypress-e2e,mode=max
 
-      - name: Tag and push compose images to GHCR
+      - name: Tag and push fallback images to GHCR
+        if: ${{ steps.prepare-images.outputs.needs_build == 'true' }}
         run: |
           TAG="pr-${{ github.event.pull_request.number || github.sha }}"
-          docker compose -f build.docker-compose.yml config --images | sort -u > /tmp/cypress-images.txt
+          OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
           : > /tmp/cypress-image-map.txt
           while IFS= read -r image; do
             [ -z "$image" ] && continue
             if docker image inspect "$image" >/dev/null 2>&1; then
               image_repo="$(echo "$image" | tr '[:upper:]' '[:lower:]' | sed 's|[^a-z0-9._/-]|-|g')"
-              ghcr_image="ghcr.io/${{ github.repository_owner }}/openelis-global-2/cypress-cache/${image_repo}:${TAG}"
+              ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/cypress-cache/${image_repo}:${TAG}"
               docker tag "$image" "$ghcr_image"
               docker push "$ghcr_image"
               printf "%s|%s\n" "$image" "$ghcr_image" >> /tmp/cypress-image-map.txt
