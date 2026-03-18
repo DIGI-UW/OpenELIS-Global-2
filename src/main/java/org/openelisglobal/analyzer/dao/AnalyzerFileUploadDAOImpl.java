@@ -43,6 +43,24 @@ public class AnalyzerFileUploadDAOImpl extends BaseDAOImpl<AnalyzerFileUpload, L
     }
 
     @Override
+    public int nullifyAnalyzerId(Integer analyzerId) {
+        try {
+            // Hibernate 5.6-jakarta rejects all HQL/JPQL/CriteriaUpdate for UPDATE
+            // statements ("query must begin with SELECT or FROM"). Load + nullify + flush.
+            List<AnalyzerFileUpload> uploads = findByAnalyzerId(analyzerId, Integer.MAX_VALUE);
+            for (AnalyzerFileUpload upload : uploads) {
+                upload.setAnalyzerId(null);
+            }
+            if (!uploads.isEmpty()) {
+                entityManager.flush();
+            }
+            return uploads.size();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error nullifying analyzer ID on AnalyzerFileUpload rows", e);
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<AnalyzerFileUpload> findByAnalyzerId(Integer analyzerId, int maxResults) {
         try {

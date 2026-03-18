@@ -80,7 +80,13 @@ export class AnalyzerFormPage {
 
   /** Select an item from a Carbon Dropdown by visible text */
   private async selectDropdownItem(dropdown: Locator, text: string) {
-    await dropdown.click();
+    // Carbon places data-testid on the wrapper div, not the trigger button.
+    // Click the inner trigger button to reliably open the listbox.
+    const trigger = dropdown.locator(
+      'button[role="combobox"], .cds--list-box__field',
+    );
+    await expect(trigger).toBeEnabled({ timeout: 10_000 });
+    await trigger.click();
     const item = this.page.getByRole("option", { name: text });
     await item.first().click();
   }
