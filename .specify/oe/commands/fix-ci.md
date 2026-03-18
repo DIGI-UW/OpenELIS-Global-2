@@ -33,18 +33,18 @@ user text directly into shell commands. Support these patterns:
 
 **Behavior options:**
 
-| Flag                    | Default                | Description                                                                            |
-| ----------------------- | ---------------------- | -------------------------------------------------------------------------------------- |
-| `--max-iterations N`    | 5                      | Max fix-push-check cycles before escalating                                            |
-| `--dry-run`             | off                    | Diagnose only — no fixes, no pushes                                                    |
-| `--local-e2e`           | off                    | Run full local E2E suite in parallel with CI after push                                |
-| `--reset-env`           | off                    | Reset local E2E environment (fixtures) before local runs                               |
-| `--compose-file <path>` | dev.docker-compose.yml | Docker Compose file for local E2E (use `build.docker-compose.yml` to match CI exactly) |
-| `--flaky-retry N`       | 0                      | Re-run suspected flaky tests N times before diagnosing                                 |
-| `--skip-local-validate` | off                    | Skip local validation (push immediately after fix)                                     |
-| `--jobs <job-names>`    | all                    | Only fix specific jobs (e.g., `--jobs e2e-cypress`)                                    |
-| `--notify`              | off                    | Force NOTIFY level (always summarize, even for AUTO)                                   |
-| `--report-to-pr`        | off                    | Post resolution report as a PR comment when done                                       |
+| Flag                    | Default                | Description                                                                                                   |
+| ----------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `--max-iterations N`    | 5                      | Max fix-push-check cycles before escalating                                                                   |
+| `--dry-run`             | off                    | Diagnose only — no fixes, no pushes                                                                           |
+| `--local-e2e`           | off                    | Run full local E2E suite in parallel with CI after push                                                       |
+| `--reset-env`           | off                    | Reset local E2E environment (fixtures) before local runs                                                      |
+| `--compose-file <path>` | dev.docker-compose.yml | Docker Compose file for local E2E (use `build.docker-compose.yml` to match CI exactly)                        |
+| `--flaky-retry N`       | 0                      | Re-run suspected flaky tests N times before diagnosing                                                        |
+| `--skip-local-validate` | off                    | Skip local validation (push immediately after fix)                                                            |
+| `--jobs <job-names>`    | all                    | Only fix specific jobs (e.g., `--jobs "E2E / Playwright / Core"` or `--jobs "E2E / Cypress (Legacy) / Core"`) |
+| `--notify`              | off                    | Force NOTIFY level (always summarize, even for AUTO)                                                          |
+| `--report-to-pr`        | off                    | Post resolution report as a PR comment when done                                                              |
 
 **Examples:**
 
@@ -55,7 +55,7 @@ user text directly into shell commands. Support these patterns:
 /fix-ci --local-e2e --reset-env            # Full local replication + CI in parallel
 /fix-ci --local-e2e --compose-file build.docker-compose.yml  # Match CI exactly
 /fix-ci --flaky-retry 2                    # Retry suspected flaky tests twice
-/fix-ci --max-iterations 2 --jobs e2e-cypress  # Fix only Cypress, max 2 attempts
+/fix-ci --max-iterations 2 --jobs "E2E / Cypress (Legacy) / Core"  # Fix legacy Cypress core shard only
 /fix-ci --notify --report-to-pr            # Verbose + post report to PR
 ```
 
@@ -94,6 +94,11 @@ escalate when conditions are met.
 - **Always** use `npm run cy:*` scripts for Cypress, never raw `npx cypress`
   (`ELECTRON_RUN_AS_NODE` env var breaks Cypress in some agent environments; the
   npm scripts unset it automatically).
+- **Treat Cypress as legacy**: avoid introducing net-new Cypress scope during CI
+  remediation unless required for risk containment.
+- **Preserve ruleset-required gates**: when touching workflow/job names in
+  `.github/workflows/`, include or verify matching ruleset/branch-protection
+  updates for required CI contexts.
 - **Never** push to `develop`, `main`, or other protected branches. If the
   current branch is a protected branch, BREAK immediately and instruct the user
   to switch to a feature branch.

@@ -3,6 +3,10 @@
 **Quick Reference Guide** for common Cypress E2E testing patterns in OpenELIS
 Global 2.
 
+> **Lifecycle status:** Cypress in this repository is a **legacy/deprecation**
+> E2E track. Keep existing tests stable, but prefer Playwright for new
+> end-to-end scenarios.
+
 **For Comprehensive Guidance**: See
 [Testing Roadmap](.specify/guides/testing-roadmap.md) for detailed patterns and
 examples.
