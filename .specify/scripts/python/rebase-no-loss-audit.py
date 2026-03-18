@@ -34,7 +34,11 @@ def run_git(args: List[str]) -> str:
 
 
 def delta_files(base_ref: str, ref: str) -> Set[str]:
-    output = run_git(["diff", "--name-only", f"{base_ref}...{ref}"])
+    # Resolve base_ref to a concrete commit SHA to ensure a stable comparison base
+    base_sha = run_git(["rev-parse", base_ref])
+    # Use a direct two-dot diff from the pinned base SHA to the ref to avoid
+    # merge-base semantics that can change before vs. after a rebase.
+    output = run_git(["diff", "--name-only", f"{base_sha}..{ref}"])
     if not output:
         return set()
     return {line.strip() for line in output.splitlines() if line.strip()}
