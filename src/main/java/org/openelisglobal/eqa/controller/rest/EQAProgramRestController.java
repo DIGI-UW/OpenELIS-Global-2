@@ -35,7 +35,7 @@ public class EQAProgramRestController extends ControllerUtills {
     private EQAProgramEnrollmentService enrollmentService;
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-   // @PreAuthorize("hasRole('Global Administrator')")
+    // @PreAuthorize("hasRole('Global Administrator')")
     public ResponseEntity<?> createProgram(HttpServletRequest request, @RequestBody Map<String, Object> body) {
         try {
             String name = (String) body.get("name");
