@@ -68,7 +68,7 @@ jobs:
           CI: true
 
   frontend-gate:
-    name: Required Checkpoint (Frontend)
+    name: 00 Required Checkpoint (Frontend)
     if: always()
     needs: [static-checks, build-prod-frontend-image]
     runs-on: ubuntu-latest
