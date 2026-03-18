@@ -28,10 +28,10 @@ harness end-to-end behavior.
 
 ```mermaid
 flowchart LR
-  subgraph pr["Playwright E2E Tests (PR → develop)"]
-    H[Analyzer harness reusable<br/>build → shards → merge → gate]
-    C[Core Playwright<br/>tests → merge reports]
-    G[Playwright E2E Required Gate]
+  subgraph pr["E2E / Playwright (PR → develop)"]
+    H[E2E Playwright Analyzer<br/>Build Once → Shards → Report Merge → Required]
+    C[E2E Playwright Core<br/>Core → Core Report]
+    G[E2E Playwright Required]
     H --> G
     C --> G
   end
@@ -52,7 +52,7 @@ still use
 ### Analyzer harness (reusable + manual entry)
 
 - Implemented in `analyzer-e2e-reusable.yml`; PR path: job
-  `analyzer-harness-e2e` in `playwright-e2e.yml`.
+  `E2E / Playwright / Analyzer` in `playwright-e2e.yml`.
 - Build once in `build-once`:
   - Maven artifacts and plugin jars are built once.
   - Docker images are built once using Buildx with GHA cache scope
@@ -70,6 +70,12 @@ still use
   - Merge to a single HTML report with `playwright merge-reports`.
 - Enforce in `analyzer-e2e-gate`:
   - Required gate fails if shard or merge jobs fail.
+- UI naming for nested reusable jobs:
+  - `E2E / Playwright / Analyzer / Build Once`
+  - `E2E / Playwright / Analyzer / Shard 1/2`
+  - `E2E / Playwright / Analyzer / Shard 2/2`
+  - `E2E / Playwright / Analyzer / Report Merge`
+  - `E2E / Playwright / Analyzer / Required`
 
 ### Core Playwright workflow
 
@@ -78,9 +84,21 @@ still use
 - Analyzer harness can be intentionally skipped on a PR by adding label
   `skip-analyzer-e2e`; the analyzer job is then marked `skipped`.
 - Upload blob report, merge to HTML in a fan-in job.
-- `playwright-e2e-gate` fails if core tests, report merge, **or** the analyzer
-  harness reusable workflow fails (single blocking gate for PRs). Analyzer
-  `skipped` is treated as intentional pass.
+- `E2E / Playwright / Required` fails if core tests, report merge, **or** the
+  analyzer harness reusable workflow fails (single blocking gate for PRs).
+  Analyzer `skipped` is treated as intentional pass.
+
+## CI naming map
+
+- `CI / Backend / Required` from `.github/workflows/ci.yml`
+- `CI / Frontend / Image` and `CI / Frontend / Static` from
+  `.github/workflows/frontend-qa.yml`
+- `E2E / Playwright / Core`, `E2E / Playwright / Core Report`,
+  `E2E / Playwright / Required` from `.github/workflows/playwright-e2e.yml`
+- `E2E / Cypress (Legacy) / Core|Storage|Admin|Independent` and
+  `E2E / Cypress (Legacy) / Required` from `.github/workflows/frontend-qa.yml`
+- `Automation / Merge Conflicts`, `Validation / i18n`, `Validation / SpecKit`,
+  `Projects / Catalyst / Gateway|Agents|MCP` for ancillary PR checks
 
 ## Video and demo test policy
 
@@ -105,11 +123,20 @@ CLEANUP=false TEST_USER=admin TEST_PASS='<password>' npm run pw:test:video
 - `demo`: end-to-end feature workflow validation in CI.
 - `demo-video`: local demonstration capture only.
 
-## Branch protection guidance
+## Develop enforcement model
 
-- **`Playwright E2E Required Gate`** — required for PRs; it now enforces core
-  Playwright, merged HTML report, and analyzer harness success (or intentional
-  analyzer skip via `skip-analyzer-e2e` label).
-- **`Analyzer E2E Required Gate`** — still emitted by the reusable workflow (may
-  appear as a nested check name in the UI); optional as a second required check
-  if you want an explicit harness-only signal.
+CI enforcement is split into two layers:
+
+- **Ruleset-managed CI status checks (required):**
+  - `CI / Backend / Required`
+  - `CI / Frontend / Image`
+  - `E2E / Cypress (Legacy) / Required`
+  - `E2E / Playwright / Required`
+- **Classic branch protection (non-CI settings only):**
+  - required PR reviews
+  - code owner review requirements
+  - conversation resolution and other branch settings
+
+The old required contexts (`checkFormat-build-unitTest-and-run`,
+`build-prod-frontend-image`, `build-and-run-qa-tests`) are replaced by the new
+names above as part of the ruleset cutover.

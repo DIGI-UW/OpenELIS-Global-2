@@ -1,12 +1,12 @@
 # Invoked by playwright-e2e.yml (every PR to develop) and analyzer-e2e.yml (workflow_dispatch).
-name: Analyzer E2E (Harness) Reusable
+name: E2E / Playwright / Analyzer (Reusable)
 
 on:
   workflow_call:
 
 jobs:
   build-once:
-    name: Analyzer E2E Build Once
+    name: Build Once
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: e2e
@@ -101,7 +101,7 @@ jobs:
           retention-days: 1
 
   test-shards:
-    name: Analyzer E2E (shard ${{ matrix.shard_index }}/${{ matrix.shard_total }})
+    name: Shard ${{ matrix.shard_index }}/${{ matrix.shard_total }}
     needs: build-once
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -240,7 +240,7 @@ jobs:
           tail: "200"
 
   merge-reports:
-    name: Merge Analyzer Playwright Reports
+    name: Report Merge
     if: ${{ always() && !cancelled() }}
     needs: test-shards
     runs-on: ubuntu-latest
@@ -286,7 +286,7 @@ jobs:
           retention-days: 14
 
   analyzer-e2e-gate:
-    name: Analyzer E2E Required Gate
+    name: Required
     if: always()
     needs: [test-shards, merge-reports]
     runs-on: ubuntu-latest

@@ -1,4 +1,4 @@
-name: SpecKit Validation
+name: Validation / SpecKit
 on:
   pull_request:
     # Run on PRs to any branch when command or skill sources change
@@ -20,6 +20,7 @@ on:
 
 jobs:
   validate-speckit-commands:
+    name: Validation / SpecKit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

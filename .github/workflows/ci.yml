@@ -1,4 +1,4 @@
-name: OpenELIS-Global-2 CI Build
+name: CI / Backend
 on:
   push:
     branches: [develop]
@@ -7,6 +7,7 @@ on:
 
 jobs:
   checkFormat-build-unitTest-and-run:
+    name: CI / Backend / Required
     runs-on: ubuntu-latest
     steps:
       - name: Set up JDK 21
