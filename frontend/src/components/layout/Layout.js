@@ -12,7 +12,8 @@ import {
 } from "../../languages";
 
 export const ConfigurationContext = createContext(null);
-export const NotificationContext = createContext(null);
+export { NotificationContext } from "./NotificationContext";
+import { NotificationContext } from "./NotificationContext";
 
 export default function Layout(props) {
   const {
