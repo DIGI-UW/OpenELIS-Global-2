@@ -101,6 +101,14 @@ const ShipmentReport = React.lazy(
 );
 import ShipmentSettings from "./components/shipment/ShipmentSettings";
 import RouteErrorBoundary from "./components/common/RouteErrorBoundary";
+import {
+  OrderProvider,
+  OrderDashboard,
+  OrderEnter,
+  OrderCollect,
+  OrderLabel,
+  OrderQA,
+} from "./components/order";
 
 export default function App() {
   const defaultLocale =
@@ -514,6 +522,53 @@ export default function App() {
                     <RouteErrorBoundary {...routeErrorSamplePatientEntry}>
                       <AddOrder />
                     </RouteErrorBoundary>
+                  )}
+                  role={Roles.RECEPTION}
+                />
+                {/* Decoupled Sample Collection Workflow - NAV-2 */}
+                <SecureRoute
+                  path="/order"
+                  exact
+                  component={() => <OrderDashboard />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/order/enter"
+                  exact
+                  component={() => (
+                    <OrderProvider>
+                      <OrderEnter />
+                    </OrderProvider>
+                  )}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/order/collect"
+                  exact
+                  component={() => (
+                    <OrderProvider>
+                      <OrderCollect />
+                    </OrderProvider>
+                  )}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/order/label"
+                  exact
+                  component={() => (
+                    <OrderProvider>
+                      <OrderLabel />
+                    </OrderProvider>
+                  )}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/order/qa"
+                  exact
+                  component={() => (
+                    <OrderProvider>
+                      <OrderQA />
+                    </OrderProvider>
                   )}
                   role={Roles.RECEPTION}
                 />

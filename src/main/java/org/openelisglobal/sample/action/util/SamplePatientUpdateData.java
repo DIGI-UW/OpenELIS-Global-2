@@ -24,6 +24,7 @@ import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.address.valueholder.OrganizationAddress;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.IAccessionNumberValidator;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.SampleAddService;
@@ -46,6 +47,9 @@ import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
+import org.openelisglobal.program.service.PathologySampleService;
+import org.openelisglobal.program.service.ProgramSampleService;
 import org.openelisglobal.program.service.ProgramService;
 import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.program.valueholder.ProgramSample;
@@ -56,6 +60,7 @@ import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.openelisglobal.sample.bean.SampleOrderItem;
+import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -92,6 +97,10 @@ public class SamplePatientUpdateData {
     private OrganizationService orgService = SpringContext.getBean(OrganizationService.class);
     private ElectronicOrderService electronicOrderService = SpringContext.getBean(ElectronicOrderService.class);
     private ProgramService programService = SpringContext.getBean(ProgramService.class);
+    private ProgramSampleService programSampleService = SpringContext.getBean(ProgramSampleService.class);
+    private PathologySampleService pathologySampleService = SpringContext.getBean(PathologySampleService.class);
+    private ImmunohistochemistrySampleService immunohistochemistrySampleService = SpringContext
+            .getBean(ImmunohistochemistrySampleService.class);
 
     private List<ObservationHistory> observations = new ArrayList<>();
     private List<OrganizationAddress> orgAddressExtra = new ArrayList<>();
@@ -276,24 +285,31 @@ public class SamplePatientUpdateData {
     }
 
     public void validateSample(Errors errors) {
-        // assure accession number
+        validateSample(errors, true);
+    }
 
-        // TODO
-        IAccessionNumberValidator.ValidationResults result = AccessionNumberUtil
-                .checkAccessionNumberValidity(accessionNumber, null, null, null);
+    public void validateSample(Errors errors, boolean requireSampleItems) {
+        // assure accession number - skip validation for updates (sample already exists)
+        // When updating, the accession number is already in the database for this
+        // sample,
+        // so checkAccessionNumberValidity would incorrectly return USED_FAIL
+        if (sample == null || sample.getId() == null) {
+            IAccessionNumberValidator.ValidationResults result = AccessionNumberUtil
+                    .checkAccessionNumberValidity(accessionNumber, null, null, null);
 
-        if (result != IAccessionNumberValidator.ValidationResults.SUCCESS) {
-            String message = AccessionNumberUtil.getInvalidMessage(result);
-            errors.reject(message);
+            if (result != IAccessionNumberValidator.ValidationResults.SUCCESS) {
+                String message = AccessionNumberUtil.getInvalidMessage(result);
+                errors.reject(message);
+            }
         }
 
-        // assure that there is at least 1 sample
-        if (sampleItemsTests.isEmpty()) {
+        // assure that there is at least 1 sample (skip for order-entry-only mode)
+        if (requireSampleItems && sampleItemsTests.isEmpty()) {
             errors.reject("errors.no.sample");
         }
 
-        // assure that all samples have tests
-        if (!allSamplesHaveTests()) {
+        // assure that all samples have tests (skip for order-entry-only mode)
+        if (requireSampleItems && !allSamplesHaveTests()) {
             errors.reject("errors.samples.with.no.tests");
         }
 
@@ -315,6 +331,24 @@ public class SamplePatientUpdateData {
     }
 
     public void createPopulatedSample(String receivedDate, SampleOrderItem sampleOrder) {
+        // Check if editing an existing sample
+        if (!GenericValidator.isBlankOrNull(sampleOrder.getSampleId())) {
+            // Load existing sample for update
+            sample = SpringContext.getBean(SampleService.class).get(sampleOrder.getSampleId());
+            if (sample != null) {
+                sample.setSysUserId(currentUserId);
+                // Update fields that can change during edit
+                sample.setReceivedTimestamp(DateUtil.convertStringDateToTimestamp(receivedDate));
+                sample.setReferringId(sampleOrder.getRequesterSampleID());
+                if (useReceiveDateForCollectionDate) {
+                    sample.setCollectionDateForDisplay(collectionDateFromReceiveDate);
+                }
+                setElectronicOrderIfNeeded(sampleOrder);
+                return;
+            }
+        }
+
+        // Create new sample
         sample = new Sample();
         sample.setSysUserId(currentUserId);
         sample.setAccessionNumber(accessionNumber);
@@ -393,7 +427,9 @@ public class SamplePatientUpdateData {
         sampleHuman.setSysUserId(currentUserId);
         sampleHuman.setSampleId(sample.getId());
         sampleHuman.setPatientId(patientId);
-        if (provider != null) {
+        // Only link provider if it's a real provider, not the "unknown provider"
+        // placeholder
+        if (provider != null && Boolean.TRUE.equals(provider.getActive())) {
             sampleHuman.setProviderId(provider.getId());
         }
     }
@@ -521,29 +557,60 @@ public class SamplePatientUpdateData {
 
     public void initSampleData(String sampleXML, String receivedDate, boolean trackPayments,
             SampleOrderItem sampleOrder) {
+        LogEvent.logInfo(this.getClass().getName(), "initSampleData",
+                "DEBUG: sampleOrder.getSampleId(): " + sampleOrder.getSampleId());
         createPopulatedSample(receivedDate, sampleOrder);
+        LogEvent.logInfo(this.getClass().getName(), "initSampleData",
+                "DEBUG: After createPopulatedSample - sample.getId(): " + (sample != null ? sample.getId() : "null"));
 
         addObservations(sampleOrder, trackPayments);
 
         SampleAddService sampleAddService = new SampleAddService(sampleXML, currentUserId, getSample(), receivedDate);
-        setSampleItemsTests(sampleAddService.createSampleTestCollection());
+        List<SampleTestCollection> sampleItems = sampleAddService.createSampleTestCollection();
+        LogEvent.logInfo(this.getClass().getName(), "initSampleData",
+                "DEBUG: Created " + sampleItems.size() + " sample items from XML");
+        for (SampleTestCollection stc : sampleItems) {
+            LogEvent.logInfo(this.getClass().getName(), "initSampleData",
+                    "DEBUG: SampleTestCollection - item.sample.id: "
+                            + (stc.item != null && stc.item.getSample() != null ? stc.item.getSample().getId() : "null")
+                            + ", tests count: " + (stc.tests != null ? stc.tests.size() : 0));
+        }
+        setSampleItemsTests(sampleItems);
         setSampleAddService(sampleAddService);
     }
 
     public void initProgramQuestions(String programId, QuestionnaireResponse additionalQuestions) {
         Program program = programService.get(programId);
         setProgramQuestionnaireResponse(additionalQuestions);
-        if (program.getProgramName().toLowerCase().contains("pathology")) {
-            setProgramSample(new PathologySample());
-        } else if (program.getProgramName().toLowerCase().contains("immunohistochemistry")) {
-            setProgramSample(new ImmunohistochemistrySample());
-        } else if (program.getProgramName().toLowerCase().contains("cytology")) {
-            setProgramSample(new CytologySample());
-        } else {
-            setProgramSample(new ProgramSample());
+
+        // For updates (sample already exists), try to load existing ProgramSample
+        ProgramSample existingProgramSample = null;
+        if (sample != null && sample.getId() != null) {
+            existingProgramSample = programSampleService.getProgrammeSampleBySample(Integer.valueOf(sample.getId()),
+                    program.getProgramName());
+            LogEvent.logInfo(this.getClass().getName(), "initProgramQuestions",
+                    "DEBUG: Existing ProgramSample for sampleId " + sample.getId() + ": "
+                            + (existingProgramSample != null ? existingProgramSample.getId() : "null"));
         }
-        getProgramSample().setProgram(program);
-        getProgramSample().setSysUserId(currentUserId);
+
+        if (existingProgramSample != null) {
+            // Update existing ProgramSample
+            setProgramSample(existingProgramSample);
+            getProgramSample().setSysUserId(currentUserId);
+        } else {
+            // Create new ProgramSample
+            if (program.getProgramName().toLowerCase().contains("pathology")) {
+                setProgramSample(new PathologySample());
+            } else if (program.getProgramName().toLowerCase().contains("immunohistochemistry")) {
+                setProgramSample(new ImmunohistochemistrySample());
+            } else if (program.getProgramName().toLowerCase().contains("cytology")) {
+                setProgramSample(new CytologySample());
+            } else {
+                setProgramSample(new ProgramSample());
+            }
+            getProgramSample().setProgram(program);
+            getProgramSample().setSysUserId(currentUserId);
+        }
     }
 
     private void addObservations(SampleOrderItem sampleOrder, boolean trackPayments) {

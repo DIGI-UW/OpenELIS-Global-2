@@ -63,6 +63,7 @@ import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
@@ -130,6 +131,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     @Override
     public void persistData(SamplePatientUpdateData updateData, PatientManagementUpdate patientUpdate,
             PatientManagementInfo patientInfo, SamplePatientEntryForm form, HttpServletRequest request) {
+
         boolean useInitialSampleCondition = FormFields.getInstance().useField(Field.InitialSampleCondition);
         boolean useSampleNature = FormFields.getInstance().useField(Field.SampleNature);
 
@@ -143,28 +145,44 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
         persistProviderData(updateData);
         persistSampleData(updateData);
-        if (updateData.isEqaSample()) {
-            persistSampleEQAData(updateData);
-        }
-        persistRequesterData(updateData);
-        if (useInitialSampleCondition) {
-            persistInitialSampleConditions(updateData);
-        }
-        if (useSampleNature) {
-            persistSampleNature(updateData);
-        }
 
-        persistObservations(updateData);
+        // Only persist requester data and observations if sample was successfully
+        // created
+        if (updateData.getSample() != null && updateData.getSample().getId() != null) {
+            if (updateData.isEqaSample()) {
+                persistSampleEQAData(updateData);
+            }
+            persistRequesterData(updateData);
+
+            if (useInitialSampleCondition) {
+                persistInitialSampleConditions(updateData);
+            }
+            if (useSampleNature) {
+                persistSampleNature(updateData);
+            }
+
+            persistObservations(updateData);
+        }
 
         request.getSession().setAttribute("lastAccessionNumber", updateData.getAccessionNumber());
         request.getSession().setAttribute("lastPatientId", updateData.getPatientId());
     }
 
     private void persistObservations(SamplePatientUpdateData updateData) {
+        String patientId = updateData.getPatientId();
+        String sampleId = updateData.getSample() != null ? updateData.getSample().getId() : null;
+
+        if (GenericValidator.isBlankOrNull(patientId) || GenericValidator.isBlankOrNull(sampleId)) {
+            return;
+        }
+
+        if (updateData.getObservations() == null || updateData.getObservations().isEmpty()) {
+            return;
+        }
 
         for (ObservationHistory observation : updateData.getObservations()) {
-            observation.setSampleId(updateData.getSample().getId());
-            observation.setPatientId(updateData.getPatientId());
+            observation.setSampleId(sampleId);
+            observation.setPatientId(patientId);
             observationHistoryService.insert(observation);
         }
     }
@@ -222,41 +240,51 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private void persistSampleData(SamplePatientUpdateData updateData) {
         String analysisRevision = ConfigurationProperties.getInstance().getPropertyValue("analysis.default.revision");
 
+        if (updateData.getSample() == null) {
+            return;
+        }
+
+        // Set GPS data from first sample test collection if available
         if (updateData.getSampleItemsTests() != null && !updateData.getSampleItemsTests().isEmpty()) {
             SampleTestCollection firstSampleTest = updateData.getSampleItemsTests().getFirst();
-            if (firstSampleTest.gpsLatitude != null && !firstSampleTest.gpsLatitude.trim().isEmpty()) {
+            if (!GenericValidator.isBlankOrNull(firstSampleTest.gpsLatitude)) {
                 try {
                     updateData.getSample().setGpsLatitude(Double.valueOf(firstSampleTest.gpsLatitude));
                 } catch (NumberFormatException e) {
-                    LogEvent.logWarn(this.getClass().getSimpleName(), "persistSampleData",
-                            "Invalid GPS latitude value: " + firstSampleTest.gpsLatitude);
+                    // ignore invalid GPS data
                 }
             }
-            if (firstSampleTest.gpsLongitude != null && !firstSampleTest.gpsLongitude.trim().isEmpty()) {
+            if (!GenericValidator.isBlankOrNull(firstSampleTest.gpsLongitude)) {
                 try {
                     updateData.getSample().setGpsLongitude(Double.valueOf(firstSampleTest.gpsLongitude));
                 } catch (NumberFormatException e) {
-                    LogEvent.logWarn(this.getClass().getSimpleName(), "persistSampleData",
-                            "Invalid GPS longitude value: " + firstSampleTest.gpsLongitude);
+                    // ignore invalid GPS data
                 }
             }
-            if (firstSampleTest.gpsAccuracy != null && !firstSampleTest.gpsAccuracy.trim().isEmpty()) {
+            if (!GenericValidator.isBlankOrNull(firstSampleTest.gpsAccuracy)) {
                 try {
                     updateData.getSample().setGpsAccuracyMeters(Integer.valueOf(firstSampleTest.gpsAccuracy));
                 } catch (NumberFormatException e) {
-                    LogEvent.logWarn(this.getClass().getSimpleName(), "persistSampleData",
-                            "Invalid GPS accuracy value: " + firstSampleTest.gpsAccuracy);
+                    // ignore invalid GPS data
                 }
             }
-            if (firstSampleTest.gpsCaptureMethod != null && !firstSampleTest.gpsCaptureMethod.trim().isEmpty()) {
+            if (!GenericValidator.isBlankOrNull(firstSampleTest.gpsCaptureMethod)) {
                 updateData.getSample().setGpsCaptureMethod(firstSampleTest.gpsCaptureMethod);
                 updateData.getSample().setGpsCaptureTimestamp(new java.sql.Timestamp(System.currentTimeMillis()));
             }
         }
 
-        updateData.getSample().setFhirUuid(UUID.randomUUID());
-        sampleService.insertDataWithAccessionNumber(updateData.getSample());
-        updateData.getSample().setPriority(updateData.getPriority());
+        // Check if this is an existing sample (edit) or new sample (insert)
+        if (updateData.getSample().getId() != null) {
+            // Update existing sample
+            updateData.getSample().setPriority(updateData.getPriority());
+            sampleService.update(updateData.getSample());
+        } else {
+            // Insert new sample - set priority BEFORE insert so it gets persisted
+            updateData.getSample().setFhirUuid(UUID.randomUUID());
+            updateData.getSample().setPriority(updateData.getPriority());
+            sampleService.insertDataWithAccessionNumber(updateData.getSample());
+        }
 
         for (SampleAdditionalField field : updateData.getSampleFields()) {
             field.setSample(updateData.getSample());
@@ -264,7 +292,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
 
         if (updateData.getProgramSample() != null) {
-            if (updateData.getProgramQuestionnaireResponse() != null) {
+            // Only set new UUID if this is a new ProgramSample (no existing UUID)
+            if (updateData.getProgramQuestionnaireResponse() != null
+                    && updateData.getProgramSample().getQuestionnaireResponseUuid() == null) {
                 updateData.getProgramSample().setQuestionnaireResponseUuid(UUID.randomUUID());
             }
             updateData.getProgramSample().setSample(updateData.getSample());
@@ -278,18 +308,49 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             }
         }
 
+        // Process sample items and tests (may be empty in decoupled workflow)
         Map<SampleItem, Integer> specimenLabelQuantities = new LinkedHashMap<>();
         Integer orderLabelQuantity = null;
         for (SampleTestCollection sampleTestCollection : updateData.getSampleItemsTests()) {
-            if (GenericValidator.isBlankOrNull(sampleTestCollection.item.getFhirUuidAsString())) {
-                sampleTestCollection.item.setFhirUuid(UUID.randomUUID());
+            SampleItem savedItem = null;
+            String sampleItemId = null;
+
+            // For updates, use the existingSampleItemId from the XML to find the correct
+            // sample_item
+            if (!GenericValidator.isBlankOrNull(sampleTestCollection.existingSampleItemId)) {
+                savedItem = sampleItemService.get(sampleTestCollection.existingSampleItemId);
+                if (savedItem != null) {
+                    sampleItemId = savedItem.getId();
+                    LogEvent.logInfo(this.getClass().getName(), "persistSampleData",
+                            "DEBUG: Found existing SampleItem by ID: " + sampleItemId);
+                    // Update existing sample item
+                    savedItem.setSysUserId(sampleTestCollection.item.getSysUserId());
+                    sampleItemService.update(savedItem);
+                }
             }
-            String sampleId = sampleItemService.insert(sampleTestCollection.item);
-            SampleItem savedItem = sampleItemService.get(sampleId);
+
+            // If no existing sample item, create new one
+            if (savedItem == null) {
+                if (GenericValidator.isBlankOrNull(sampleTestCollection.item.getFhirUuidAsString())) {
+                    sampleTestCollection.item.setFhirUuid(UUID.randomUUID());
+                }
+                sampleItemId = sampleItemService.insert(sampleTestCollection.item);
+                LogEvent.logInfo(this.getClass().getName(), "persistSampleData",
+                        "DEBUG: Inserted new SampleItem with id: " + sampleItemId);
+                savedItem = sampleItemService.get(sampleItemId);
+            }
+
+            // Track label quantities
             specimenLabelQuantities.put(savedItem, sampleTestCollection.numSpecimenLabels);
             if (orderLabelQuantity == null) {
                 orderLabelQuantity = sampleTestCollection.numOrderLabels;
             }
+
+            // IMPORTANT: Update the sampleTestCollection.item reference to the managed
+            // entity
+            // This prevents "transient instance" errors when creating Analysis objects
+            sampleTestCollection.item = savedItem;
+
             if (savedItem.isRejected()) {
                 String rejectReasonId = savedItem.getRejectReasonId();
                 String currentUserId = savedItem.getSysUserId();
@@ -306,6 +367,17 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             for (Test test : sampleTestCollection.tests) {
                 test = testService.get(test.getId());
 
+                // Check if analysis already exists for this sample item + test (for updates)
+                Analysis existingAnalysis = analysisService.getAnalysisBySampleItemAndTest(savedItem.getId(),
+                        test.getId());
+                if (existingAnalysis != null) {
+                    LogEvent.logInfo(this.getClass().getName(), "persistSampleData",
+                            "DEBUG: Analysis already exists for sampleItem " + savedItem.getId() + " and test "
+                                    + test.getId() + ", skipping insert");
+                    sampleTestCollection.analysises.add(existingAnalysis);
+                    continue;
+                }
+
                 Analysis analysis = populateAnalysis(analysisRevision, sampleTestCollection, test,
                         sampleTestCollection.testIdToUserSectionMap.get(test.getId()),
                         sampleTestCollection.testIdToUserSampleTypeMap.get(test.getId()), updateData);
@@ -321,7 +393,21 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         persistOrderSpecimenBarcodeCounts(updateData.getSample(), orderLabelQuantity, specimenLabelQuantities);
         updateData.buildSampleHuman();
 
-        sampleHumanService.insert(updateData.getSampleHuman());
+        // Check if SampleHuman already exists for this sample (edit case)
+        SampleHuman lookupSampleHuman = new SampleHuman();
+        lookupSampleHuman.setSampleId(updateData.getSample().getId());
+        SampleHuman existingSampleHuman = sampleHumanService.getDataBySample(lookupSampleHuman);
+
+        if (existingSampleHuman != null && existingSampleHuman.getId() != null) {
+            // Update existing SampleHuman
+            existingSampleHuman.setPatientId(updateData.getSampleHuman().getPatientId());
+            existingSampleHuman.setProviderId(updateData.getSampleHuman().getProviderId());
+            existingSampleHuman.setSysUserId(updateData.getSampleHuman().getSysUserId());
+            sampleHumanService.update(existingSampleHuman);
+        } else {
+            // Insert new SampleHuman
+            sampleHumanService.insert(updateData.getSampleHuman());
+        }
 
         if (updateData.getElectronicOrder() != null) {
             electronicOrderService.update(updateData.getElectronicOrder());
@@ -484,6 +570,11 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     }
 
     private void persistInitialSampleConditions(SamplePatientUpdateData updateData) {
+        String patientId = updateData.getPatientId();
+
+        if (GenericValidator.isBlankOrNull(patientId)) {
+            return;
+        }
 
         for (SampleTestCollection sampleTestCollection : updateData.getSampleItemsTests()) {
             List<ObservationHistory> initialConditions = sampleTestCollection.initialSampleConditionIdList;
@@ -492,7 +583,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 for (ObservationHistory observation : initialConditions) {
                     observation.setSampleId(sampleTestCollection.item.getSample().getId());
                     observation.setSampleItemId(sampleTestCollection.item.getId());
-                    observation.setPatientId(updateData.getPatientId());
+                    observation.setPatientId(patientId);
                     observation.setSysUserId(updateData.getCurrentUserId());
                     observationHistoryService.insert(observation);
                 }
@@ -501,6 +592,11 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     }
 
     private void persistSampleNature(SamplePatientUpdateData updateData) {
+        String patientId = updateData.getPatientId();
+
+        if (GenericValidator.isBlankOrNull(patientId)) {
+            return;
+        }
 
         for (SampleTestCollection sampleTestCollection : updateData.getSampleItemsTests()) {
             ObservationHistory sampleNature = sampleTestCollection.sampleNature;
@@ -508,7 +604,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             if (sampleNature != null) {
                 sampleNature.setSampleId(sampleTestCollection.item.getSample().getId());
                 sampleNature.setSampleItemId(sampleTestCollection.item.getId());
-                sampleNature.setPatientId(updateData.getPatientId());
+                sampleNature.setPatientId(patientId);
                 sampleNature.setSysUserId(updateData.getCurrentUserId());
                 observationHistoryService.insert(sampleNature);
             }
