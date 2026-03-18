@@ -1,8 +1,6 @@
 name: Analyzer E2E (Harness)
 
 on:
-  pull_request:
-    branches: [develop]
   workflow_dispatch:
 
 jobs:
