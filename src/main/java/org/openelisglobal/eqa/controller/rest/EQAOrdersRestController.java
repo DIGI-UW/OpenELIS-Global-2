@@ -11,6 +11,10 @@ import java.util.stream.Collectors;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
+import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +29,12 @@ public class EQAOrdersRestController extends ControllerUtills {
 
     @Autowired
     private SampleEQAService sampleEQAService;
+
+    @Autowired
+    private SampleService sampleService;
+
+    @Autowired
+    private OrganizationService organizationService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Map<String, Object>>> listOrders(@RequestParam(required = false) String status,
@@ -114,9 +124,16 @@ public class EQAOrdersRestController extends ControllerUtills {
         Map<String, Object> dto = new HashMap<>();
         dto.put("id", sample.getId());
         dto.put("sampleId", sample.getSampleId());
-        dto.put("labNumber", sample.getEqaProviderSampleId());
+        if (sample.getSampleId() != null) {
+            Sample order = sampleService.get(String.valueOf(sample.getSampleId()));
+            dto.put("labNumber", order != null ? order.getAccessionNumber() : null);
+        }
+
         dto.put("programName", sample.getEqaProgram() != null ? sample.getEqaProgram().getName() : null);
-        dto.put("providerName", sample.getEqaProgram() != null ? sample.getEqaProgram().getProviderName() : null);
+        if (sample.getEqaProviderOrganizationId() != null) {
+            Organization provider = organizationService.get(String.valueOf(sample.getEqaProviderOrganizationId()));
+            dto.put("providerName", provider != null ? provider.getOrganizationName() : null);
+        }
         dto.put("status", deriveStatus(sample));
         dto.put("deadline", sample.getEqaDeadline());
         dto.put("priority", sample.getEqaPriority() != null ? sample.getEqaPriority().name() : null);

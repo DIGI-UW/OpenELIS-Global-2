@@ -63,7 +63,7 @@ public class EQADistribution extends BaseObject<Long> {
     @Column(name = "target_value", precision = 15, scale = 5)
     private BigDecimal targetValue;
 
-    @Column(name = "sys_user_id", length = 36, nullable = false)
+    @Column(name = "sys_user_id", nullable = false)
     private String sysUserId;
 
     @Override

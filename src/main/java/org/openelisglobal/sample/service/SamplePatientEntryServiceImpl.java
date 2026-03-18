@@ -27,8 +27,10 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
+import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQAPriority;
+import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
@@ -119,6 +121,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private ProgramSampleService programSampleService;
     @Autowired
     private SampleEQAService sampleEQAService;
+    @Autowired
+    private EQAProgramService eqaProgramService;
+    @Autowired
     private BarcodeInfoService barcodeInfoService;
 
     @Transactional
@@ -329,6 +334,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         sampleEQA.setIsEqaSample(true);
         sampleEQA.setSysUserId(updateData.getCurrentUserId());
 
+        if (!GenericValidator.isBlankOrNull(updateData.getEqaProgramId())) {
+            EQAProgram eqaProgram = eqaProgramService.get(Long.parseLong(updateData.getEqaProgramId()));
+            sampleEQA.setEqaProgram(eqaProgram);
+        }
         if (!GenericValidator.isBlankOrNull(updateData.getEqaProviderOrganizationId())) {
             sampleEQA.setEqaProviderOrganizationId(Long.parseLong(updateData.getEqaProviderOrganizationId()));
         }
@@ -336,7 +345,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         sampleEQA.setEqaParticipantId(updateData.getEqaParticipantId());
 
         if (!GenericValidator.isBlankOrNull(updateData.getEqaDeadline())) {
-            sampleEQA.setEqaDeadline(Timestamp.valueOf(updateData.getEqaDeadline() + " 23:59:59"));
+            java.sql.Date deadlineDate = DateUtil.convertStringDateToSqlDate(updateData.getEqaDeadline());
+            if (deadlineDate != null) {
+                sampleEQA.setEqaDeadline(new Timestamp(deadlineDate.getTime()));
+            }
         }
         if (!GenericValidator.isBlankOrNull(updateData.getEqaPriority())) {
             sampleEQA.setEqaPriority(EQAPriority.valueOf(updateData.getEqaPriority()));
@@ -344,6 +356,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
         sampleEQAService.insert(sampleEQA);
     }
+
     void persistOrderSpecimenBarcodeCounts(org.openelisglobal.sample.valueholder.Sample sample, Integer numOrderLabels,
             Map<SampleItem, Integer> specimenLabelQuantities) {
         if (sample == null) {

@@ -38,7 +38,7 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
   const [panels, setPanels] = useState([]);
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/eqa/providers", (data) => {
+    getFromOpenElisServer("/rest/eqa/my-programs/providers", (data) => {
       if (data) {
         setProviders(data.map((p) => ({ id: p, text: p })));
       }
@@ -137,10 +137,15 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
             titleText={intl.formatMessage({ id: "eqa.enrollment.provider" })}
             items={providers}
             itemToString={(item) => (item ? item.text : "")}
-            onChange={(e) =>
-              setProvider(e.selectedItem ? e.selectedItem.text : "")
+            onChange={(e) => {
+              if (e.selectedItem) {
+                setProvider(e.selectedItem.text);
+              }
+            }}
+            selectedItem={
+              providers.find((p) => p.text === provider) ||
+              (provider ? { id: provider, text: provider } : null)
             }
-            selectedItem={providers.find((p) => p.text === provider) || null}
             allowCustomValue
             onInputChange={(text) => setProvider(text)}
           />

@@ -1,17 +1,19 @@
 package org.openelisglobal.eqa.valueholder;
 
+import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
@@ -19,6 +21,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 @Getter
 @Setter
 @Entity
+@AttributeOverride(name = "lastupdated", column = @Column(name = "lastupdated"))
 @Table(name = "eqa_lab_program_enrollment", schema = "clinlims")
 public class EQALabProgramEnrollment extends BaseObject<Long> {
 
@@ -49,11 +52,11 @@ public class EQALabProgramEnrollment extends BaseObject<Long> {
     @Column(name = "last_modified")
     private Date lastModified;
 
-    @OneToMany(mappedBy = "enrollment", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<EQALabEnrollmentLabUnit> labUnits = new ArrayList<>();
+    @OneToMany(mappedBy = "enrollment", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private Set<EQALabEnrollmentLabUnit> labUnits = new HashSet<>();
 
-    @OneToMany(mappedBy = "enrollment", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<EQALabEnrollmentTestMap> testMaps = new ArrayList<>();
+    @OneToMany(mappedBy = "enrollment", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private Set<EQALabEnrollmentTestMap> testMaps = new HashSet<>();
 
     @Column(name = "sys_user_id", nullable = false)
     private String sysUserId;

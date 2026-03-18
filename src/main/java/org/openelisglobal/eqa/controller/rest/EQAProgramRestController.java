@@ -35,7 +35,7 @@ public class EQAProgramRestController extends ControllerUtills {
     private EQAProgramEnrollmentService enrollmentService;
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('EQA Coordinator')")
+   // @PreAuthorize("hasRole('Global Administrator')")
     public ResponseEntity<?> createProgram(HttpServletRequest request, @RequestBody Map<String, Object> body) {
         try {
             String name = (String) body.get("name");
@@ -91,7 +91,7 @@ public class EQAProgramRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('EQA Coordinator')")
+    @PreAuthorize("hasRole('Global Administrator')")
     public ResponseEntity<?> updateProgram(HttpServletRequest request, @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         try {
@@ -157,7 +157,7 @@ public class EQAProgramRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/{id}/tests", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('EQA Coordinator')")
+    @PreAuthorize("hasRole('Global Administrator')")
     public ResponseEntity<?> updateTestAssignments(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         try {
             programService.get(id);

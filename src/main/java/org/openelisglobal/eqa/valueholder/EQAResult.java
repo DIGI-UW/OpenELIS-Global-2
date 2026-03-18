@@ -95,7 +95,7 @@ public class EQAResult extends BaseObject<Long> {
     @Column(name = "modified_by_user_id")
     private Long modifiedByUserId;
 
-    @Column(name = "sys_user_id", length = 36, nullable = false)
+    @Column(name = "sys_user_id", nullable = false)
     private String sysUserId;
 
     @Override

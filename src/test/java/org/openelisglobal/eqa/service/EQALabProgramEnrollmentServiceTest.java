@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
@@ -144,8 +145,8 @@ public class EQALabProgramEnrollmentServiceTest {
         existing.setProvider("Old Provider");
         existing.setIsActive(true);
         existing.setSysUserId("1");
-        existing.setLabUnits(new ArrayList<>());
-        existing.setTestMaps(new ArrayList<>());
+        existing.setLabUnits(new HashSet<>());
+        existing.setTestMaps(new HashSet<>());
 
         when(enrollmentDAO.get(1L)).thenReturn(Optional.of(existing));
         when(enrollmentDAO.update(any(EQALabProgramEnrollment.class))).thenReturn(existing);

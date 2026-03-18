@@ -770,6 +770,11 @@ function CreatePatientForm(props) {
                 formAction={formAction}
               />
             )}
+            {/* fieldset[disabled] propagates to all descendant HTML form controls */}
+            <fieldset
+              disabled={!!props.disabled}
+              style={{ border: "none", padding: 0, margin: 0 }}
+            >
             <Grid>
               <Column lg={16} md={8} sm={4}>
                 <FormLabel>
@@ -793,6 +798,7 @@ function CreatePatientForm(props) {
                   value={values.photo}
                   onChange={(photo) => handlePhotoChange(photo, setFieldValue)}
                   required={false}
+                  disabled={!!props.disabled}
                 />
               </Column>
               <Column lg={8} md={4} sm={4}>
@@ -1541,6 +1547,7 @@ function CreatePatientForm(props) {
                 </>
               )}
             </Grid>
+            </fieldset>
           </Form>
         )}
       </Formik>

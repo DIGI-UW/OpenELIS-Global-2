@@ -1,123 +1,134 @@
-import React, { useEffect, useRef, useState } from "react";
-import {
-  Checkbox,
-  Select,
-  SelectItem,
-  TextInput,
-  DatePicker,
-  DatePickerInput,
-  RadioButtonGroup,
-  RadioButton,
-  Column,
-  Grid,
-  InlineNotification,
-} from "@carbon/react";
-import { FormattedMessage, useIntl } from "react-intl";
+import React from "react";
+import { Checkbox, Column, Grid } from "@carbon/react";
+import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 
-const EQASampleEntry = ({
-  orderFormValues,
-  setOrderFormValues,
-  onMyProgramSelected,
-}) => {
+const EQA_PLACEHOLDER = "NULL";
+
+const eqaPatientDefaults = {
+  patientUpdateStatus: "ADD",
+  nationalId: EQA_PLACEHOLDER,
+  subjectNumber: EQA_PLACEHOLDER,
+  lastName: EQA_PLACEHOLDER,
+  firstName: EQA_PLACEHOLDER,
+  streetAddress: "",
+  city: "",
+  primaryPhone: "",
+  gender: "M",
+  birthDateForDisplay: "01/01/1900",
+  commune: "",
+  education: "",
+  maritialStatus: "",
+  nationality: "",
+  healthDistrict: "",
+  healthRegion: "",
+  otherNationality: "",
+  photo: "",
+  patientContact: {
+    person: { firstName: "", lastName: "", primaryPhone: "", email: "" },
+  },
+};
+
+const blankPatientDefaults = {
+  patientUpdateStatus: "ADD",
+  nationalId: "",
+  subjectNumber: "",
+  lastName: "",
+  firstName: "",
+  streetAddress: "",
+  city: "",
+  primaryPhone: "",
+  gender: "",
+  birthDateForDisplay: "",
+  commune: "",
+  education: "",
+  maritialStatus: "",
+  nationality: "",
+  healthDistrict: "",
+  healthRegion: "",
+  otherNationality: "",
+  patientContact: {
+    person: { firstName: "", lastName: "", primaryPhone: "", email: "" },
+  },
+  readOnly: false,
+};
+
+const EQASampleEntry = ({ orderFormValues, setOrderFormValues }) => {
   const intl = useIntl();
-  const componentMounted = useRef(false);
-  const [eqaPrograms, setEqaPrograms] = useState([]);
-  const [myProgramEnrollments, setMyProgramEnrollments] = useState([]);
-  const [providerOrganizations, setProviderOrganizations] = useState([]);
-  const [prePopulatedInfo, setPrePopulatedInfo] = useState(null);
 
   const isEQA = orderFormValues?.sampleOrderItems?.isEQASample || false;
 
-  useEffect(() => {
-    componentMounted.current = true;
-    if (isEQA) {
-      getFromOpenElisServer("/rest/eqa/programs", (data) => {
-        if (componentMounted.current && Array.isArray(data)) {
-          setEqaPrograms(data);
-        }
-      });
-      getFromOpenElisServer("/rest/eqa/my-programs", (data) => {
-        if (componentMounted.current && Array.isArray(data)) {
-          setMyProgramEnrollments(data.filter((e) => e.isActive));
-        }
-      });
-      getFromOpenElisServer("/rest/organizations", (data) => {
-        if (componentMounted.current && Array.isArray(data)) {
-          setProviderOrganizations(data);
-        }
-      });
-    }
-    return () => {
-      componentMounted.current = false;
-    };
-  }, [isEQA]);
-
   const handleEQAToggle = (checked) => {
-    setPrePopulatedInfo(null);
-    setOrderFormValues({
-      ...orderFormValues,
-      sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
-        isEQASample: checked,
-        ...(checked
-          ? {}
-          : {
-              eqaProgramId: "",
-              eqaMyProgramEnrollmentId: "",
-              eqaProviderOrganizationId: "",
-              eqaProviderSampleId: "",
-              eqaParticipantId: "",
-              eqaDeadline: "",
-              eqaPriority: "STANDARD",
-            }),
-      },
-    });
-  };
+    if (checked) {
+      // Search for an existing NULL placeholder patient to reuse
+      const searchUrl =
+        "/rest/patient-search-results?" +
+        "lastName=" +
+        EQA_PLACEHOLDER +
+        "&firstName=" +
+        EQA_PLACEHOLDER +
+        "&STNumber=&subjectNumber=&nationalID=" +
+        encodeURIComponent(EQA_PLACEHOLDER) +
+        "&labNumber=&guid=&dateOfBirth=&gender=&suppressExternalSearch=true";
 
-  const handleFieldChange = (field, value) => {
-    setOrderFormValues({
-      ...orderFormValues,
-      sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
-        [field]: value,
-      },
-    });
-  };
+      getFromOpenElisServer(searchUrl, (res) => {
+        const results = res?.patientSearchResults || [];
+        const existingPatient = results.find(
+          (p) =>
+            p.lastName === EQA_PLACEHOLDER &&
+            p.firstName === EQA_PLACEHOLDER,
+        );
 
-  const handleMyProgramChange = (enrollmentId) => {
-    handleFieldChange("eqaMyProgramEnrollmentId", enrollmentId);
-    setPrePopulatedInfo(null);
-
-    if (enrollmentId) {
-      getFromOpenElisServer(`/rest/eqa/my-programs/${enrollmentId}`, (data) => {
-        if (componentMounted.current && data) {
-          const testIds = (data.tests || []).map((t) => t.id);
-          const panelIds = (data.panels || []).map((p) => p.id);
-          const labUnitIds = (data.labUnits || []).map((lu) => lu.id);
-
-          setPrePopulatedInfo({
-            programName: data.programName,
-            testCount: testIds.length,
-            panelCount: panelIds.length,
-            labUnitCount: labUnitIds.length,
+        if (existingPatient) {
+          // Reuse existing NULL patient
+          getFromOpenElisServer(
+            "/rest/patient-details?patientID=" + existingPatient.patientID,
+            (patientDetails) => {
+              setOrderFormValues({
+                ...orderFormValues,
+                sampleOrderItems: {
+                  ...orderFormValues.sampleOrderItems,
+                  isEQASample: true,
+                },
+                patientUpdateStatus: "UPDATE",
+                patientProperties: {
+                  ...patientDetails,
+                  patientUpdateStatus: "UPDATE",
+                  readOnly: true,
+                },
+              });
+            },
+          );
+        } else {
+          // No existing NULL patient — create a new one
+          setOrderFormValues({
+            ...orderFormValues,
+            sampleOrderItems: {
+              ...orderFormValues.sampleOrderItems,
+              isEQASample: true,
+            },
+            patientProperties: {
+              ...eqaPatientDefaults,
+              patientUpdateStatus: "ADD",
+            },
           });
-
-          if (onMyProgramSelected) {
-            onMyProgramSelected({
-              enrollmentId: data.id,
-              programName: data.programName,
-              testIds,
-              panelIds,
-              labUnitIds,
-            });
-          }
         }
       });
     } else {
-      if (onMyProgramSelected) {
-        onMyProgramSelected(null);
-      }
+      setOrderFormValues({
+        ...orderFormValues,
+        sampleOrderItems: {
+          ...orderFormValues.sampleOrderItems,
+          isEQASample: false,
+          eqaProgramId: "",
+          eqaProviderOrganizationId: "",
+          eqaProviderSampleId: "",
+          eqaParticipantId: "",
+          eqaDeadline: "",
+          eqaPriority: "STANDARD",
+        },
+        patientProperties: blankPatientDefaults,
+      });
     }
   };
 
@@ -132,191 +143,6 @@ const EQASampleEntry = ({
           data-testid="eqa-sample-checkbox"
         />
       </Column>
-
-      {isEQA && (
-        <>
-          <Column lg={16} md={8} sm={4}>
-            <h4>
-              <FormattedMessage id="eqa.section.title" />
-            </h4>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="eqa-program-select"
-              labelText={intl.formatMessage({ id: "eqa.program.label" })}
-              value={orderFormValues.sampleOrderItems.eqaProgramId}
-              onChange={(e) =>
-                handleFieldChange("eqaProgramId", e.target.value)
-              }
-              data-testid="eqa-program-select"
-            >
-              <SelectItem
-                value=""
-                text={intl.formatMessage({ id: "eqa.program.select" })}
-              />
-              {eqaPrograms.map((program) => (
-                <SelectItem
-                  key={program.id}
-                  value={String(program.id)}
-                  text={program.name}
-                />
-              ))}
-            </Select>
-          </Column>
-
-          {myProgramEnrollments.length > 0 && (
-            <Column lg={8} md={4} sm={4}>
-              <Select
-                id="eqa-my-program-select"
-                labelText={intl.formatMessage({
-                  id: "eqa.myProgram.label",
-                })}
-                value={
-                  orderFormValues.sampleOrderItems.eqaMyProgramEnrollmentId ||
-                  ""
-                }
-                onChange={(e) => handleMyProgramChange(e.target.value)}
-                data-testid="eqa-my-program-select"
-                helperText={intl.formatMessage({
-                  id: "eqa.myProgram.helperText",
-                })}
-              >
-                <SelectItem
-                  value=""
-                  text={intl.formatMessage({ id: "eqa.myProgram.select" })}
-                />
-                {myProgramEnrollments.map((enrollment) => (
-                  <SelectItem
-                    key={enrollment.id}
-                    value={String(enrollment.id)}
-                    text={`${enrollment.programName} (${enrollment.provider})`}
-                  />
-                ))}
-              </Select>
-            </Column>
-          )}
-
-          {prePopulatedInfo && (
-            <Column lg={16} md={8} sm={4}>
-              <InlineNotification
-                kind="info"
-                lowContrast
-                hideCloseButton
-                title={intl.formatMessage({
-                  id: "eqa.myProgram.prePopulated.title",
-                })}
-                subtitle={intl.formatMessage(
-                  { id: "eqa.myProgram.prePopulated.subtitle" },
-                  {
-                    tests: prePopulatedInfo.testCount,
-                    panels: prePopulatedInfo.panelCount,
-                  },
-                )}
-              />
-            </Column>
-          )}
-
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="eqa-provider-select"
-              labelText={intl.formatMessage({ id: "eqa.provider.label" })}
-              value={orderFormValues.sampleOrderItems.eqaProviderOrganizationId}
-              onChange={(e) =>
-                handleFieldChange("eqaProviderOrganizationId", e.target.value)
-              }
-              data-testid="eqa-provider-select"
-            >
-              <SelectItem
-                value=""
-                text={intl.formatMessage({ id: "eqa.provider.select" })}
-              />
-              {providerOrganizations.map((org) => (
-                <SelectItem
-                  key={org.id}
-                  value={String(org.id)}
-                  text={org.value || org.organizationName || org.name}
-                />
-              ))}
-            </Select>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="eqa-provider-sample-id"
-              labelText={intl.formatMessage({ id: "eqa.provider.sampleId" })}
-              value={orderFormValues.sampleOrderItems.eqaProviderSampleId}
-              onChange={(e) =>
-                handleFieldChange("eqaProviderSampleId", e.target.value)
-              }
-              data-testid="eqa-provider-sample-id"
-            />
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="eqa-participant-id"
-              labelText={intl.formatMessage({ id: "eqa.participant.id" })}
-              value={orderFormValues.sampleOrderItems.eqaParticipantId}
-              onChange={(e) =>
-                handleFieldChange("eqaParticipantId", e.target.value)
-              }
-              data-testid="eqa-participant-id"
-            />
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <DatePicker
-              datePickerType="single"
-              onChange={([date]) => {
-                if (date) {
-                  const formatted = date.toLocaleDateString("en-CA");
-                  handleFieldChange("eqaDeadline", formatted);
-                }
-              }}
-              value={orderFormValues.sampleOrderItems.eqaDeadline}
-            >
-              <DatePickerInput
-                id="eqa-deadline"
-                labelText={intl.formatMessage({ id: "eqa.deadline.label" })}
-                placeholder="yyyy-mm-dd"
-                data-testid="eqa-deadline"
-              />
-            </DatePicker>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <RadioButtonGroup
-              legendText={intl.formatMessage({ id: "eqa.priority.label" })}
-              name="eqa-priority"
-              valueSelected={
-                orderFormValues.sampleOrderItems.eqaPriority || "STANDARD"
-              }
-              onChange={(value) => handleFieldChange("eqaPriority", value)}
-            >
-              <RadioButton
-                id="eqa-priority-standard"
-                labelText={intl.formatMessage({
-                  id: "eqa.priority.standard",
-                })}
-                value="STANDARD"
-              />
-              <RadioButton
-                id="eqa-priority-urgent"
-                labelText={intl.formatMessage({ id: "eqa.priority.urgent" })}
-                value="URGENT"
-              />
-              <RadioButton
-                id="eqa-priority-critical"
-                labelText={intl.formatMessage({
-                  id: "eqa.priority.critical",
-                })}
-                value="CRITICAL"
-              />
-            </RadioButtonGroup>
-          </Column>
-        </>
-      )}
     </Grid>
   );
 };

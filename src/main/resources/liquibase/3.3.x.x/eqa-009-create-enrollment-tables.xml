@@ -64,7 +64,7 @@
       <column name="status_changed_date" type="TIMESTAMP"/>
       <column name="status_changed_by" type="numeric(10,0)"/>
       <column name="withdrawal_reason" type="TEXT"/>
-      <column name="sys_user_id" type="numeric(10,0)">
+      <column name="sys_user_id" type="VARCHAR(20)">
         <constraints nullable="false"/>
       </column>
       <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()"/>
@@ -121,7 +121,7 @@
       </column>
       <column name="created_by" type="numeric(10,0)"/>
       <column name="last_modified" type="TIMESTAMP"/>
-      <column name="sys_user_id" type="numeric(10,0)">
+      <column name="sys_user_id" type="VARCHAR(20)">
         <constraints nullable="false"/>
       </column>
       <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()"/>
@@ -155,7 +155,7 @@
                      foreignKeyName="fk_lab_unit_section"
                      references="clinlims.test_section(id)"/>
       </column>
-      <column name="sys_user_id" type="numeric(10,0)">
+      <column name="sys_user_id" type="VARCHAR(20)">
         <constraints nullable="false"/>
       </column>
       <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()"/>
@@ -196,7 +196,7 @@
         <constraints foreignKeyName="fk_test_map_panel"
                      references="clinlims.panel(id)"/>
       </column>
-      <column name="sys_user_id" type="numeric(10,0)">
+      <column name="sys_user_id" type="VARCHAR(20)">
         <constraints nullable="false"/>
       </column>
       <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()"/>

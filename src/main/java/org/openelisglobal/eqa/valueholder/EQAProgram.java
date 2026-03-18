@@ -46,7 +46,7 @@ public class EQAProgram extends BaseObject<Long> {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
-    @Column(name = "sys_user_id", length = 36, nullable = false)
+    @Column(name = "sys_user_id", nullable = false)
     private String sysUserId;
 
     @Override

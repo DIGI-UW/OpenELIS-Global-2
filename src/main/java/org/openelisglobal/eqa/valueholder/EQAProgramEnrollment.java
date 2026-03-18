@@ -1,5 +1,6 @@
 package org.openelisglobal.eqa.valueholder;
 
+import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -18,6 +19,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 @Getter
 @Setter
 @Entity
+@AttributeOverride(name = "lastupdated", column = @Column(name = "lastupdated"))
 @Table(name = "eqa_program_enrollment", schema = "clinlims")
 public class EQAProgramEnrollment extends BaseObject<Long> {
 

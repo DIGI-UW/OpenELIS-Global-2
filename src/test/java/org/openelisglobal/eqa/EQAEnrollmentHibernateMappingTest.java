@@ -139,7 +139,7 @@ public class EQAEnrollmentHibernateMappingTest {
 
         assertEquals(1, enrollment.getLabUnits().size());
         assertEquals(1, enrollment.getTestMaps().size());
-        assertEquals(enrollment, enrollment.getLabUnits().get(0).getEnrollment());
-        assertEquals(enrollment, enrollment.getTestMaps().get(0).getEnrollment());
+        assertEquals(enrollment, enrollment.getLabUnits().iterator().next().getEnrollment());
+        assertEquals(enrollment, enrollment.getTestMaps().iterator().next().getEnrollment());
     }
 }

@@ -39,7 +39,7 @@ public class SampleEQA extends BaseObject<Long> {
     @Column(name = "is_eqa_sample", nullable = false)
     private Boolean isEqaSample = false;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "eqa_program_id")
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private EQAProgram eqaProgram;
@@ -65,7 +65,7 @@ public class SampleEQA extends BaseObject<Long> {
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private EQADistribution eqaDistribution;
 
-    @Column(name = "sys_user_id", length = 36, nullable = false)
+    @Column(name = "sys_user_id", nullable = false)
     private String sysUserId;
 
     @Override
