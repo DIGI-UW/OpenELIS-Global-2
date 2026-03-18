@@ -169,7 +169,7 @@ jobs:
           retention-days: 14
 
   playwright-e2e-gate:
-    name: 03 - Checkpoint - Playwright
+    name: 03 - Checkpoint
     if: always()
     needs: [playwright-tests, merge-reports, analyzer-harness-e2e]
     runs-on: ubuntu-latest

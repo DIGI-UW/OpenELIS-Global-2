@@ -85,19 +85,18 @@ still use
 - Analyzer harness can be intentionally skipped on a PR by adding label
   `skip-analyzer-e2e`; the analyzer job is then marked `skipped`.
 - Upload blob report, merge to HTML in a fan-in job.
-- `03 - Checkpoint - Playwright` fails if core tests, report merge, **or** the
-  analyzer harness reusable workflow fails (single blocking gate for PRs).
-  Analyzer `skipped` is treated as intentional pass.
+- `03 - Checkpoint` fails if core tests, report merge, **or** the analyzer
+  harness reusable workflow fails (single blocking gate for PRs). Analyzer
+  `skipped` is treated as intentional pass.
 
 ## CI naming map
 
-- `01 - Checkpoint - Backend` from `.github/workflows/backend.yml`
-- `Image`, `Static`, and `02 - Checkpoint - Frontend` from
-  `.github/workflows/frontend.yml`
-- `Core`, `Core Report`, `Analyzer Harness`, and `03 - Checkpoint - Playwright`
-  from `.github/workflows/e2e-playwright.yml`
-- `Core|Storage|Admin|Independent` and `04 - Checkpoint - Cypress Deprecated`
-  from `.github/workflows/e2e-cypress-deprecated.yml`
+- `01 - Checkpoint` from `.github/workflows/backend.yml`
+- `Image`, `Static`, and `02 - Checkpoint` from `.github/workflows/frontend.yml`
+- `Core`, `Core Report`, `Analyzer Harness`, and `03 - Checkpoint` from
+  `.github/workflows/e2e-playwright.yml`
+- `Core|Storage|Admin|Independent` and `04 - Checkpoint` from
+  `.github/workflows/e2e-cypress-deprecated.yml`
 - `Automation / Merge Conflicts`, `Validation / i18n`, `Validation / SpecKit`,
   `Projects / Catalyst / Gateway|Agents|MCP` for ancillary PR checks
 
@@ -129,10 +128,10 @@ CLEANUP=false TEST_USER=admin TEST_PASS='<password>' npm run pw:test:video
 CI enforcement is split into two layers:
 
 - **Ruleset-managed CI status checks (required):**
-  - `01 - Checkpoint - Backend`
-  - `02 - Checkpoint - Frontend`
-  - `04 - Checkpoint - Cypress Deprecated`
-  - `03 - Checkpoint - Playwright`
+  - `01 - Checkpoint`
+  - `02 - Checkpoint`
+  - `04 - Checkpoint`
+  - `03 - Checkpoint`
 - **Classic branch protection (non-CI settings only):**
   - required PR reviews
   - code owner review requirements
