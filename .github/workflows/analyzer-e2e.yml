@@ -1,6 +1,6 @@
 # Standalone analyzer harness (manual). PRs to develop run this via playwright-e2e.yml
 # so the harness always runs with the workflow that already exists on the base branch.
-name: E2E / Playwright / Analyzer (Manual)
+name: E2E / Playwright / Analyzer Harness (Manual)
 
 on:
   workflow_dispatch:

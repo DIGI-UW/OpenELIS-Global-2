@@ -1,4 +1,4 @@
-name: CI / Frontend & Legacy E2E
+name: Frontend + E2E / Cypress (Deprecated)
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ env:
 
 jobs:
   build-prod-frontend-image:
-    name: CI / Frontend / Image
+    name: Frontend / Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -40,7 +40,7 @@ jobs:
           push: false
 
   static-checks:
-    name: CI / Frontend / Static
+    name: Frontend / Static
     runs-on: ubuntu-latest
     steps:
       - name: Checkout OpenELIS-Global2
@@ -68,7 +68,7 @@ jobs:
           CI: true
 
   e2e-cypress:
-    name: E2E / Cypress (Legacy) / ${{ matrix.shard_name }}
+    name: E2E / Cypress (Deprecated) / ${{ matrix.shard_name }}
     needs: static-checks
     runs-on: ubuntu-latest
     strategy:
@@ -256,7 +256,7 @@ jobs:
 
   # Fan-in job: name must match the ruleset-required check.
   build-and-run-qa-tests:
-    name: E2E / Cypress (Legacy) / Required
+    name: E2E / Cypress (Deprecated) / Required
     if: always()
     needs: [static-checks, build-prod-frontend-image, e2e-cypress]
     runs-on: ubuntu-latest

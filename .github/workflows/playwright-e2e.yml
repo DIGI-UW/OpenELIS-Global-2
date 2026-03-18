@@ -9,7 +9,7 @@ jobs:
   # Analyzer harness must run inside this workflow on PRs: develop’s analyzer-e2e.yml
   # only had workflow_dispatch, so pull_request never scheduled a separate harness run.
   analyzer-harness-e2e:
-    name: E2E / Playwright / Analyzer
+    name: E2E / Playwright / Analyzer Harness
     # Optional PR opt-out: apply label `skip-analyzer-e2e`.
     if: ${{ github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'skip-analyzer-e2e') }}
     uses: ./.github/workflows/analyzer-e2e-reusable.yml

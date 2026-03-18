@@ -1,4 +1,4 @@
-name: CI / Backend
+name: Backend
 on:
   push:
     branches: [develop]
@@ -7,7 +7,7 @@ on:
 
 jobs:
   checkFormat-build-unitTest-and-run:
-    name: CI / Backend / Required
+    name: Backend / Required
     runs-on: ubuntu-latest
     steps:
       - name: Set up JDK 21

@@ -52,7 +52,7 @@ still use
 ### Analyzer harness (reusable + manual entry)
 
 - Implemented in `analyzer-e2e-reusable.yml`; PR path: job
-  `E2E / Playwright / Analyzer` in `playwright-e2e.yml`.
+  `E2E / Playwright / Analyzer Harness` in `playwright-e2e.yml`.
 - Build once in `build-once`:
   - Maven artifacts and plugin jars are built once.
   - Docker images are built once using Buildx with GHA cache scope
@@ -71,11 +71,11 @@ still use
 - Enforce in `analyzer-e2e-gate`:
   - Required gate fails if shard or merge jobs fail.
 - UI naming for nested reusable jobs:
-  - `E2E / Playwright / Analyzer / Build Once`
-  - `E2E / Playwright / Analyzer / Shard 1/2`
-  - `E2E / Playwright / Analyzer / Shard 2/2`
-  - `E2E / Playwright / Analyzer / Report Merge`
-  - `E2E / Playwright / Analyzer / Required`
+  - `E2E / Playwright / Analyzer Harness / Build Once`
+  - `E2E / Playwright / Analyzer Harness / Shard 1/2`
+  - `E2E / Playwright / Analyzer Harness / Shard 2/2`
+  - `E2E / Playwright / Analyzer Harness / Report Merge`
+  - `E2E / Playwright / Analyzer Harness / Required`
 
 ### Core Playwright workflow
 
@@ -90,13 +90,14 @@ still use
 
 ## CI naming map
 
-- `CI / Backend / Required` from `.github/workflows/ci.yml`
-- `CI / Frontend / Image` and `CI / Frontend / Static` from
+- `Backend / Required` from `.github/workflows/ci.yml`
+- `Frontend / Image` and `Frontend / Static` from
   `.github/workflows/frontend-qa.yml`
 - `E2E / Playwright / Core`, `E2E / Playwright / Core Report`,
   `E2E / Playwright / Required` from `.github/workflows/playwright-e2e.yml`
-- `E2E / Cypress (Legacy) / Core|Storage|Admin|Independent` and
-  `E2E / Cypress (Legacy) / Required` from `.github/workflows/frontend-qa.yml`
+- `E2E / Cypress (Deprecated) / Core|Storage|Admin|Independent` and
+  `E2E / Cypress (Deprecated) / Required` from
+  `.github/workflows/frontend-qa.yml`
 - `Automation / Merge Conflicts`, `Validation / i18n`, `Validation / SpecKit`,
   `Projects / Catalyst / Gateway|Agents|MCP` for ancillary PR checks
 
@@ -128,9 +129,9 @@ CLEANUP=false TEST_USER=admin TEST_PASS='<password>' npm run pw:test:video
 CI enforcement is split into two layers:
 
 - **Ruleset-managed CI status checks (required):**
-  - `CI / Backend / Required`
-  - `CI / Frontend / Image`
-  - `E2E / Cypress (Legacy) / Required`
+  - `Backend / Required`
+  - `Frontend / Image`
+  - `E2E / Cypress (Deprecated) / Required`
   - `E2E / Playwright / Required`
 - **Classic branch protection (non-CI settings only):**
   - required PR reviews

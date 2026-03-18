@@ -1,5 +1,5 @@
 # Invoked by playwright-e2e.yml (every PR to develop) and analyzer-e2e.yml (workflow_dispatch).
-name: E2E / Playwright / Analyzer (Reusable)
+name: E2E / Playwright / Analyzer Harness (Reusable)
 
 on:
   workflow_call:
