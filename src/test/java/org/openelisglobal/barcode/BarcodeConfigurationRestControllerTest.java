@@ -81,7 +81,7 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
         BarcodeConfigurationForm initialForm = new BarcodeConfigurationForm();
         initialForm.setNumMaxOrderLabels(100);
         initialForm.setNumMaxSpecimenLabels(200);
-        initialForm.setPrePrintAltAccessionPrefix("INITIAL");
+        initialForm.setPrePrintAltAccessionPrefix("INIT");
         initialForm.setPrePrintDontUseAltAccession(true);
         applyValidDimensions(initialForm);
 
@@ -92,7 +92,7 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
         BarcodeConfigurationForm updateForm = new BarcodeConfigurationForm();
         updateForm.setNumMaxOrderLabels(150);
         updateForm.setNumMaxSpecimenLabels(200);
-        updateForm.setPrePrintAltAccessionPrefix("INITIAL");
+        updateForm.setPrePrintAltAccessionPrefix("INIT");
         updateForm.setPrePrintDontUseAltAccession(true);
         applyValidDimensions(updateForm);
 
@@ -108,7 +108,7 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
 
         assertEquals(150, retrievedForm.getNumMaxOrderLabels());
         assertEquals(200, retrievedForm.getNumMaxSpecimenLabels());
-        assertEquals("INITIAL", retrievedForm.getPrePrintAltAccessionPrefix());
+        assertEquals("INIT", retrievedForm.getPrePrintAltAccessionPrefix());
     }
 
     @Test
@@ -162,7 +162,7 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
     public void saveBarcodeConfiguration_ShouldRejectEmptyAltAccessionWhenRequired() throws Exception {
         BarcodeConfigurationForm form = new BarcodeConfigurationForm();
         form.setPrePrintDontUseAltAccession(false);
-        form.setPrePrintAltAccessionPrefix("");
+        form.setPrePrintAltAccessionPrefix(null);
 
         mockMvc.perform(post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON)
                 .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isOk()) // this is now correct
