@@ -246,8 +246,13 @@ For localization files (for example `frontend/src/languages/en.json` and
   our branch must still exist after rebase unless explicitly approved for
   removal).
 - If keys are intentionally removed, record those keys in chat and pass them to
-  the no-loss audit as explicit allow-list entries.
+  the no-loss audit as explicit allow-list entries. For example, if you
+  intentionally remove `my.removed.key` from `frontend/src/languages/en.json`,
+  run the audit with:
 
+  ```bash
+  ./scripts/i18n-no-loss-audit \
+    --allow-missing-key frontend/src/languages/en.json:my.removed.key
 This prevents silent regressions where a rebase "looks clean" but large key
 groups disappear from translations.
 
