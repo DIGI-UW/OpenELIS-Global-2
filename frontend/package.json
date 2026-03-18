@@ -71,6 +71,8 @@
     "cy:debug": "ELECTRON_ENABLE_LOGGING=1 cypress run --browser electron --config video=false,defaultCommandTimeout=10000",
     "pw:install": "playwright install chromium",
     "pw:test": "playwright test",
+    "pw:test:harness": "playwright test --project=harness",
+    "pw:test:demo": "playwright test --project=demo",
     "pw:test:ui": "playwright test --ui",
     "pw:test:headed": "playwright test --headed",
     "pw:test:video": "PLAYWRIGHT_VIDEO=on PLAYWRIGHT_SLOWMO=500 playwright test --project=demo-video"

@@ -4,11 +4,14 @@ name: E2E / Playwright / Analyzer Harness (Reusable)
 on:
   workflow_call:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-once:
     name: Build Once
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     environment: e2e
 
     steps:
@@ -74,24 +77,36 @@ jobs:
             *.cache-from=type=gha,scope=analyzer-e2e
             *.cache-to=type=gha,scope=analyzer-e2e,mode=max
 
-      - name: Package compose images for shard jobs
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push compose images to GHCR
         run: |
+          TAG="pr-${{ github.event.pull_request.number || github.sha }}"
           docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/analyzer-images.txt
-          IMAGES=()
+          : > /tmp/analyzer-image-map.txt
           while IFS= read -r image; do
             [ -z "$image" ] && continue
             if docker image inspect "$image" >/dev/null 2>&1; then
-              IMAGES+=("$image")
+              image_repo="$(echo "$image" | tr '[:upper:]' '[:lower:]' | sed 's|[^a-z0-9._/-]|-|g')"
+              ghcr_image="ghcr.io/${{ github.repository_owner }}/openelis-global-2/analyzer-cache/${image_repo}:${TAG}"
+              docker tag "$image" "$ghcr_image"
+              docker push "$ghcr_image"
+              printf "%s|%s\n" "$image" "$ghcr_image" >> /tmp/analyzer-image-map.txt
             else
               echo "WARN: skipping $image (not built locally)"
             fi
           done < /tmp/analyzer-images.txt
-          if [ "${#IMAGES[@]}" -eq 0 ]; then
-            echo "No locally available images found to export."
+          if [ ! -s /tmp/analyzer-image-map.txt ]; then
+            echo "No locally available images were pushed to GHCR."
             exit 1
           fi
-          echo "Images to export: ${IMAGES[*]}"
-          docker save "${IMAGES[@]}" -o /tmp/analyzer-images.tar
+          echo "Pushed image mappings:"
+          cat /tmp/analyzer-image-map.txt
 
       - name: Upload plugin jars artifact
         uses: actions/upload-artifact@v4
@@ -101,11 +116,11 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      - name: Upload Docker images artifact
+      - name: Upload Docker image map artifact
         uses: actions/upload-artifact@v4
         with:
-          name: analyzer-compose-images
-          path: /tmp/analyzer-images.tar
+          name: analyzer-image-map
+          path: /tmp/analyzer-image-map.txt
           if-no-files-found: error
           retention-days: 1
 
@@ -113,7 +128,6 @@ jobs:
     name: Shard ${{ matrix.shard_index }}/${{ matrix.shard_total }}
     needs: build-once
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     environment: e2e
     strategy:
       fail-fast: false
@@ -154,11 +168,11 @@ jobs:
           name: analyzer-plugin-jars
           path: /tmp/analyzer-plugin-jars
 
-      - name: Download Docker images artifact
+      - name: Download Docker image map artifact
         uses: actions/download-artifact@v4
         with:
-          name: analyzer-compose-images
-          path: /tmp/analyzer-compose-images
+          name: analyzer-image-map
+          path: /tmp/analyzer-image-map
 
       - name: Restore plugin jars for runtime loading
         run: |
@@ -167,8 +181,20 @@ jobs:
           cp /tmp/analyzer-plugin-jars/*.jar volume/plugins/
           ls -lah volume/plugins
 
-      - name: Load prebuilt compose images
-        run: docker load -i /tmp/analyzer-compose-images/analyzer-images.tar
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and retag prebuilt compose images
+        run: |
+          while IFS='|' read -r source_image ghcr_image; do
+            [ -z "$source_image" ] && continue
+            docker pull "$ghcr_image"
+            docker tag "$ghcr_image" "$source_image"
+          done < /tmp/analyzer-image-map/analyzer-image-map.txt
 
       - name: Create analyzer import bind mount directories
         run: mkdir -p projects/analyzer-harness/volume/analyzer-imports
@@ -235,12 +261,19 @@ jobs:
         with:
           tail: "200"
 
-  demo:
-    name: Demo
+  demo-shards:
+    name: Demo ${{ matrix.shard_index }}/${{ matrix.shard_total }}
     needs: build-once
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     environment: e2e
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_index: 1
+            shard_total: 2
+          - shard_index: 2
+            shard_total: 2
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -271,11 +304,11 @@ jobs:
           name: analyzer-plugin-jars
           path: /tmp/analyzer-plugin-jars
 
-      - name: Download Docker images artifact
+      - name: Download Docker image map artifact
         uses: actions/download-artifact@v4
         with:
-          name: analyzer-compose-images
-          path: /tmp/analyzer-compose-images
+          name: analyzer-image-map
+          path: /tmp/analyzer-image-map
 
       - name: Restore plugin jars for runtime loading
         run: |
@@ -284,8 +317,20 @@ jobs:
           cp /tmp/analyzer-plugin-jars/*.jar volume/plugins/
           ls -lah volume/plugins
 
-      - name: Load prebuilt compose images
-        run: docker load -i /tmp/analyzer-compose-images/analyzer-images.tar
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and retag prebuilt compose images
+        run: |
+          while IFS='|' read -r source_image ghcr_image; do
+            [ -z "$source_image" ] && continue
+            docker pull "$ghcr_image"
+            docker tag "$ghcr_image" "$source_image"
+          done < /tmp/analyzer-image-map/analyzer-image-map.txt
 
       - name: Create analyzer import bind mount directories
         run: mkdir -p projects/analyzer-harness/volume/analyzer-imports
@@ -310,7 +355,7 @@ jobs:
           TEST_PASS: ${{ secrets.TEST_PASS }}
 
       - name: Run analyzer Playwright demo workflow
-        run: npm run pw:test -- --project=demo
+        run: npm run pw:test -- --project=demo --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
         working-directory: frontend
         env:
           CI: true
@@ -319,11 +364,20 @@ jobs:
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS }}
 
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-blob-report-demo-${{ matrix.shard_index }}
+          path: frontend/blob-report
+          if-no-files-found: ignore
+          retention-days: 1
+
       - name: Upload failure screenshots
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: analyzer-playwright-screenshots-demo
+          name: analyzer-playwright-screenshots-demo-${{ matrix.shard_index }}
           path: frontend/test-results/**/test-failed-*.png
           retention-days: 7
           if-no-files-found: ignore
@@ -332,7 +386,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: analyzer-playwright-traces-demo
+          name: analyzer-playwright-traces-demo-${{ matrix.shard_index }}
           path: frontend/test-results/**/trace.zip
           retention-days: 7
           if-no-files-found: ignore
@@ -346,7 +400,7 @@ jobs:
   merge-reports:
     name: Report Merge
     if: ${{ always() && !cancelled() }}
-    needs: test-shards
+    needs: [test-shards, demo-shards]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -392,7 +446,7 @@ jobs:
   analyzer-e2e-gate:
     name: Required
     if: always()
-    needs: [test-shards, demo, merge-reports]
+    needs: [test-shards, demo-shards, merge-reports]
     runs-on: ubuntu-latest
     steps:
       - name: Enforce shard, demo, and merge success
@@ -401,8 +455,8 @@ jobs:
             echo "Analyzer shard jobs failed: ${{ needs.test-shards.result }}"
             exit 1
           fi
-          if [[ "${{ needs.demo.result }}" != "success" ]]; then
-            echo "Analyzer demo job failed: ${{ needs.demo.result }}"
+          if [[ "${{ needs.demo-shards.result }}" != "success" ]]; then
+            echo "Analyzer demo shard jobs failed: ${{ needs.demo-shards.result }}"
             exit 1
           fi
           if [[ "${{ needs.merge-reports.result }}" != "success" ]]; then

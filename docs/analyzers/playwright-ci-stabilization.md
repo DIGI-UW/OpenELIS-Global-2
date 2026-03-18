@@ -58,16 +58,23 @@ still use
   - Maven artifacts and plugin jars are built once.
   - Docker images are built once using Buildx with GHA cache scope
     `analyzer-e2e`.
-  - Plugin jars and Docker images are uploaded as short-lived artifacts.
+  - Plugin jars are uploaded as short-lived artifacts.
+  - Docker images are pushed to GHCR with PR-scoped tags and mapped for shard
+    pull/retag.
 - Test shards in `test-shards`:
-  - Download prebuilt artifacts.
-  - Restore plugin jars and load Docker images.
+  - Download plugin jars + image-map artifacts.
+  - Restore plugin jars and pull/retag Docker images from GHCR.
   - Start compose stack with `--no-build`.
   - Load fixtures and seed analyzers.
-  - Run harness shards; run `demo` on shard 1 only.
+  - Run harness shards.
+  - Upload `blob-report` per shard.
+- Demo shards in `demo-shards`:
+  - Use the same prebuilt artifacts and GHCR image mapping as harness shards.
+  - Run `demo` in 2 shards (`Demo 1/2`, `Demo 2/2`) for better wall-clock
+    balance.
   - Upload `blob-report` per shard.
 - Merge in `merge-reports`:
-  - Download all shard blob reports.
+  - Download all harness + demo shard blob reports.
   - Merge to a single HTML report with `playwright merge-reports`.
 - Enforce in `analyzer-e2e-gate`:
   - Required gate fails if shard or merge jobs fail.
@@ -75,6 +82,8 @@ still use
   - `03 - Playwright / Analyzer Harness / Build Once`
   - `03 - Playwright / Analyzer Harness / Shard ...` (raw matrix expression may
     appear when skipped due to upstream failure)
+  - `03 - Playwright / Analyzer Harness / Demo 1/2`
+  - `03 - Playwright / Analyzer Harness / Demo 2/2`
   - `03 - Playwright / Analyzer Harness / Report Merge`
   - `03 - Playwright / Analyzer Harness / Required`
 

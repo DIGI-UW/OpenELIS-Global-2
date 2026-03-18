@@ -23,10 +23,10 @@ npm run pw:test:ui
 npm run pw:test:headed
 
 # Run specific file
-npx playwright test sidenav.spec.ts
+npm run pw:test -- sidenav.spec.ts
 
 # Run specific test
-npx playwright test -g "home page has collapsed nav"
+npm run pw:test -- -g "home page has collapsed nav"
 ```
 
 ## Command-First Entry Points
@@ -462,7 +462,7 @@ test("can select sample", async ({ page }) => {
 ### 3. Run
 
 ```bash
-npx playwright test storage.spec.ts
+npm run pw:test -- storage.spec.ts
 ```
 
 ### 4. Validate Project Registration

@@ -79,6 +79,10 @@ npm run pw:test -- --project=core-app
 npm run pw:test -- --project=harness
 npm run pw:test -- --project=demo
 
+# Convenience aliases for common analyzer runs
+npm run pw:test:harness
+npm run pw:test:demo
+
 # Run specific test file
 npm run pw:test -- playwright/tests/file-import-ui.spec.ts
 
@@ -99,7 +103,7 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
 
 ```bash
 cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness
 ```
 
 ## Video Recording

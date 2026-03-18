@@ -791,8 +791,8 @@ implementation details.
 
 - **Playwright** (RECOMMENDED for new tests): Modern async/await patterns,
   auto-waiting, better debugging, parallel execution
-- **Cypress** (EXISTING tests): Existing test suite continues to use Cypress;
-  migration is optional
+- **Cypress** (EXISTING tests only): Do not create new Cypress tests. Existing
+  test suite continues to use Cypress and will be migrated over time
 - **Selection Guidance**: Consult Testing Roadmap
   (`.specify/guides/testing-roadmap.md`) Section "When to Use Playwright vs
   Cypress" for framework selection criteria
@@ -802,7 +802,7 @@ implementation details.
 1. **During Development (Fast Iteration):**
 
    - Run tests individually or in small chunks (5-10 tests)
-   - Playwright: `npx playwright test {spec}.spec.ts`
+   - Playwright: `npm run pw:test -- {spec}.spec.ts`
    - Cypress: `npm run cy:spec "cypress/e2e/{feature}.cy.js"`
    - Purpose: Fast feedback loop while coding
    - **Rationale**: Running tests individually provides faster feedback, easier
@@ -812,7 +812,7 @@ implementation details.
 
    - MUST validate full suite locally with fail-fast enabled
    - Cypress: `npm run cy:failfast`
-   - Playwright: `npx playwright test`
+   - Playwright: `npm run pw:test`
    - Purpose: Catch integration issues BEFORE pushing to CI
    - **Rationale**: CI is expensive (60+ minutes per failure). Validating
      locally before pushing saves time, money, and catches issues faster.
@@ -842,14 +842,14 @@ This wastes 60+ minutes of CI time and delays feedback when issues are found.
 ```bash
 # 1. Development (fast iteration)
 # Playwright (recommended for new tests)
-npx playwright test sidenav.spec.ts    # Individual file
+npm run pw:test -- sidenav.spec.ts     # Individual file
 
 # Cypress (existing tests)
 npm run cy:spec "cypress/e2e/storageAssignment.cy.js"  # Individual file
 
 # 2. Pre-push validation (MANDATORY before pushing)
 npm run cy:failfast                     # Cypress full suite with fail-fast
-npx playwright test                     # Playwright full suite
+npm run pw:test                         # Playwright full suite
 
 # 3. Test specific feature area
 npm run cy:failfast:spec "cypress/e2e/AdminE2E/*.cy.js"

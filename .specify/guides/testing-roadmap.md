@@ -2139,7 +2139,7 @@ npm run pw:test
 npm run pw:test:ui
 
 # Run specific test file
-npx playwright test sidenav.spec.ts
+npm run pw:test -- sidenav.spec.ts
 ```
 
 #### Key Patterns
@@ -2511,7 +2511,7 @@ npm run pw:install          # First time: install browsers
 npm run pw:test             # Run all tests
 npm run pw:test:ui          # Interactive UI debugger
 npm run pw:test:headed      # See browser window
-npx playwright test file.spec.ts  # Run specific file
+npm run pw:test -- file.spec.ts  # Run specific file
 ```
 
 ### Test Template Locations

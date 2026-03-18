@@ -1410,8 +1410,9 @@ public class SampleServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
 ### E2E Tests (Cypress) — DEPRECATED
 
-> **Cypress is deprecated.** All new E2E tests should use Playwright. Existing
-> Cypress tests will be migrated to Playwright over time. See the
+> **STOP: Do NOT create new Cypress tests.** Cypress is deprecated in this
+> repository. All new E2E tests MUST use Playwright. The Cypress docs below are
+> retained only for maintaining existing tests during migration. See the
 > [Playwright section below](#e2e-tests-playwright--recommended) for the
 > recommended approach.
 
@@ -1544,6 +1545,14 @@ describe("User Story P1: Sample Storage Assignment", () => {
 > **Playwright is the recommended E2E framework** for all new tests. It provides
 > project-based organization, built-in video recording, and faster execution
 > than Cypress.
+>
+> **Execution Contract:**
+>
+> - Always use `npm run pw:test` scripts (never raw `npx playwright test`)
+> - `harness`, `demo`, and `demo-video` require analyzer harness stack preflight
+>   (see `/restart-analyzer-harness`)
+> - `TEST_USER` and `TEST_PASS` are required
+> - Do not create new Cypress tests
 
 **Location:** `frontend/playwright/tests/{feature}.spec.ts` **Config:**
 `frontend/playwright.config.ts` **Helpers:** `frontend/playwright/helpers/`

@@ -5,13 +5,82 @@ on:
   workflow_dispatch:
   workflow_call:
 
+permissions:
+  contents: read
+  packages: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  build-once:
+    name: Build Once
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v4
+        with:
+          repository: ${{github.repository}}
+          submodules: recursive
+
+      - name: Prepare .env from template
+        run: cp .env.example .env
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build OpenELIS images (cached)
+        uses: docker/bake-action@v5
+        with:
+          files: build.docker-compose.yml
+          load: true
+          set: |
+            *.cache-from=type=gha,scope=cypress-e2e
+            *.cache-to=type=gha,scope=cypress-e2e,mode=max
+
+      - name: Tag and push compose images to GHCR
+        run: |
+          TAG="pr-${{ github.event.pull_request.number || github.sha }}"
+          docker compose -f build.docker-compose.yml config --images | sort -u > /tmp/cypress-images.txt
+          : > /tmp/cypress-image-map.txt
+          while IFS= read -r image; do
+            [ -z "$image" ] && continue
+            if docker image inspect "$image" >/dev/null 2>&1; then
+              image_repo="$(echo "$image" | tr '[:upper:]' '[:lower:]' | sed 's|[^a-z0-9._/-]|-|g')"
+              ghcr_image="ghcr.io/${{ github.repository_owner }}/openelis-global-2/cypress-cache/${image_repo}:${TAG}"
+              docker tag "$image" "$ghcr_image"
+              docker push "$ghcr_image"
+              printf "%s|%s\n" "$image" "$ghcr_image" >> /tmp/cypress-image-map.txt
+            else
+              echo "WARN: skipping $image (not built locally)"
+            fi
+          done < /tmp/cypress-images.txt
+          if [ ! -s /tmp/cypress-image-map.txt ]; then
+            echo "No locally available images were pushed to GHCR."
+            exit 1
+          fi
+          echo "Pushed image mappings:"
+          cat /tmp/cypress-image-map.txt
+
+      - name: Upload Docker image map artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-image-map
+          path: /tmp/cypress-image-map.txt
+          if-no-files-found: error
+          retention-days: 1
+
   e2e-cypress:
     name: ${{ matrix.shard_name }}
+    needs: [build-once]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -93,29 +162,29 @@ jobs:
       - name: Prepare .env from template
         run: cp .env.example .env
 
-      - name: Free disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo docker image prune --all --force
-          df -h
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build OpenELIS images (cached)
-        uses: docker/bake-action@v5
+      - name: Download Docker image map artifact
+        uses: actions/download-artifact@v4
         with:
-          files: build.docker-compose.yml
-          load: true
-          set: |
-            *.cache-from=type=gha
-            *.cache-to=type=gha,mode=max
+          name: cypress-image-map
+          path: /tmp/cypress-image-map
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and retag prebuilt compose images
+        run: |
+          while IFS='|' read -r source_image ghcr_image; do
+            [ -z "$source_image" ] && continue
+            docker pull "$ghcr_image"
+            docker tag "$ghcr_image" "$source_image"
+          done < /tmp/cypress-image-map/cypress-image-map.txt
 
       - name: Start containers
-        run: docker compose -f build.docker-compose.yml up -d --wait --wait-timeout 600
+        run: docker compose -f build.docker-compose.yml up -d --no-build --wait --wait-timeout 600
 
       - name: Load test fixtures into database
         run: |
@@ -199,11 +268,15 @@ jobs:
   cypress-gate:
     name: 04 Checkpoint - Cypress
     if: always()
-    needs: [e2e-cypress]
+    needs: [build-once, e2e-cypress]
     runs-on: ubuntu-latest
     steps:
       - name: Check sub-job results
         run: |
+          if [[ "${{ needs.build-once.result }}" != "success" ]]; then
+            echo "Cypress build-once job failed: ${{ needs.build-once.result }}"
+            exit 1
+          fi
           if [[ "${{ needs.e2e-cypress.result }}" != "success" ]]; then
             echo "Cypress job failed: ${{ needs.e2e-cypress.result }}"
             exit 1

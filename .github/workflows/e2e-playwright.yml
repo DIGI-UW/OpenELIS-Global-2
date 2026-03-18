@@ -22,7 +22,6 @@ jobs:
   playwright-tests:
     name: Core
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     environment: e2e
 
     steps:
