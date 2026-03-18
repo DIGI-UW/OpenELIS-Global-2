@@ -46,7 +46,7 @@ jobs:
           mvn clean install -DskipTests -Dmaven.test.skip=true
           cd ..
           # Align root artifact patch version with plugins submodule dependency.
-          mvn clean install -DskipTests -Dmaven.test.skip=true -Dspotless.check.skip=true -Dfix.version=3
+          mvn clean install -DskipTests -Dspotless.check.skip=true -Dfix.version=3
 
       - name: Build plugins
         run: mvn clean install -DskipTests -Dmaven.test.skip=true
