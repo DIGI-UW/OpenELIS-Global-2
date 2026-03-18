@@ -294,6 +294,30 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("I", notes.get(0).getNoteType());
     }
 
+    @Test
+    public void getTestNotesInDateRangeByType_shouldReturnMatchingNotesForValidRange() throws Exception {
+        java.sql.Date lowDate = java.sql.Date.valueOf("2024-02-01");
+        java.sql.Date highDate = java.sql.Date.valueOf("2024-02-28");
+        NoteServiceImpl.NoteType noteType = NoteServiceImpl.NoteType.INTERNAL;
+
+        List<Note> notes = noteService.getTestNotesInDateRangeByType(lowDate, highDate, noteType);
+
+        assertNotNull("Returned notes list should not be null", notes);
+        assertTrue(
+                "Should return empty list since dataset notes are bound to a sample table, not an analysis table",
+                notes.isEmpty());
+    }
+
+    @Test
+    public void createSavableNote_shouldReturnNullWhenTextIsBlank() throws Exception {
+        Note note = noteService.createSavableNote(
+                createTestNoteObject(REF_ID, REF_TABLE_ID),
+                NoteServiceImpl.NoteType.INTERNAL,
+                "", "Test Subject", "1");
+
+        assertNull("createSavableNote should return null when note text is blank", note);
+    }
+
     private NoteObject createTestNoteObject(String refId, String tableId) {
         return new NoteObject() {
             @Override
