@@ -8,7 +8,7 @@ on:
 
 jobs:
   backend-required:
-    name: Required (Backend)
+    name: Required Checkpoint (Backend)
     runs-on: ubuntu-latest
     steps:
       - name: Set up JDK 21

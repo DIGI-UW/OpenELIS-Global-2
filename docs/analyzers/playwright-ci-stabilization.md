@@ -85,18 +85,19 @@ still use
 - Analyzer harness can be intentionally skipped on a PR by adding label
   `skip-analyzer-e2e`; the analyzer job is then marked `skipped`.
 - Upload blob report, merge to HTML in a fan-in job.
-- `Required (Playwright)` fails if core tests, report merge, **or** the analyzer
-  harness reusable workflow fails (single blocking gate for PRs). Analyzer
-  `skipped` is treated as intentional pass.
+- `Required Checkpoint (Playwright)` fails if core tests, report merge, **or**
+  the analyzer harness reusable workflow fails (single blocking gate for PRs).
+  Analyzer `skipped` is treated as intentional pass.
 
 ## CI naming map
 
-- `Required (Backend)` from `.github/workflows/backend.yml`
-- `Image`, `Static`, and `Required (Frontend)` from
+- `Required Checkpoint (Backend)` from `.github/workflows/backend.yml`
+- `Image`, `Static`, and `Required Checkpoint (Frontend)` from
   `.github/workflows/frontend.yml`
-- `Core`, `Core Report`, `Analyzer Harness`, and `Required (Playwright)` from
-  `.github/workflows/e2e-playwright.yml`
-- `Core|Storage|Admin|Independent` and `Required (Cypress Deprecated)` from
+- `Core`, `Core Report`, `Analyzer Harness`, and
+  `Required Checkpoint (Playwright)` from `.github/workflows/e2e-playwright.yml`
+- `Core|Storage|Admin|Independent` and
+  `Required Checkpoint (Cypress Deprecated)` from
   `.github/workflows/e2e-cypress-deprecated.yml`
 - `Automation / Merge Conflicts`, `Validation / i18n`, `Validation / SpecKit`,
   `Projects / Catalyst / Gateway|Agents|MCP` for ancillary PR checks
@@ -129,10 +130,10 @@ CLEANUP=false TEST_USER=admin TEST_PASS='<password>' npm run pw:test:video
 CI enforcement is split into two layers:
 
 - **Ruleset-managed CI status checks (required):**
-  - `Required (Backend)`
-  - `Required (Frontend)`
-  - `Required (Cypress Deprecated)`
-  - `Required (Playwright)`
+  - `Required Checkpoint (Backend)`
+  - `Required Checkpoint (Frontend)`
+  - `Required Checkpoint (Cypress Deprecated)`
+  - `Required Checkpoint (Playwright)`
 - **Classic branch protection (non-CI settings only):**
   - required PR reviews
   - code owner review requirements

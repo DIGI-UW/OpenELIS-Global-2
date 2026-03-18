@@ -193,7 +193,7 @@ jobs:
           tail: "100"
 
   cypress-gate:
-    name: Required (Cypress Deprecated)
+    name: Required Checkpoint (Cypress Deprecated)
     if: always()
     needs: [e2e-cypress]
     runs-on: ubuntu-latest
