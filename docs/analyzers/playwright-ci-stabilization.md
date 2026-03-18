@@ -91,7 +91,7 @@ still use
 
 ## CI naming map
 
-- `01 - Checkpoint` from `.github/workflows/backend.yml`
+- `Build + Test` and `01 - Checkpoint` from `.github/workflows/backend.yml`
 - `Image`, `Static`, and `02 - Checkpoint` from `.github/workflows/frontend.yml`
 - `Core`, `Core Report`, `Analyzer Harness`, and `03 - Checkpoint` from
   `.github/workflows/e2e-playwright.yml`

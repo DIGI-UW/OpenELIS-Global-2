@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  backend-required:
-    name: 01 - Checkpoint
+  backend-verify:
+    name: Build + Test
     runs-on: ubuntu-latest
     steps:
       - name: Set up JDK 21
@@ -66,3 +66,17 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: target/html/
+
+  backend-checkpoint:
+    name: 01 - Checkpoint
+    if: always()
+    needs: [backend-verify]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check backend result
+        run: |
+          if [[ "${{ needs.backend-verify.result }}" != "success" ]]; then
+            echo "Backend verification failed: ${{ needs.backend-verify.result }}"
+            exit 1
+          fi
+          echo "Backend checkpoint passed."
