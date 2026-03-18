@@ -30,8 +30,8 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
   if (!username || !password) {
     throw new Error(
       "TEST_USER and TEST_PASS environment variables must be set.\n" +
-        "  export TEST_USER=admin TEST_PASS='adminADMIN!'\n" +
-        "  Note: use single quotes to prevent zsh history expansion of !",
+        "  Source .env from repo root: set -a; . .env; set +a\n" +
+        "  Or use ANSI-C quoting: export TEST_PASS=$'adminADMIN!'",
     );
   }
 
@@ -76,7 +76,7 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
         `  Credentials: ${username} / ***\n` +
         "  Possible causes:\n" +
         "    - Wrong password (check TEST_PASS env var)\n" +
-        '    - zsh ! escaping: use double quotes: TEST_PASS="adminADMIN!"\n' +
+        "    - Credentials: source .env from repo root (set -a; . .env; set +a)\n" +
         "    - Account locked (check login_user.account_locked in DB)\n" +
         "    - Fixtures not loaded (run load-test-fixtures.sh to reset admin password)",
     );
