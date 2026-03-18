@@ -68,7 +68,7 @@ jobs:
           folder: target/html/
 
   backend-checkpoint:
-    name: 01 - Checkpoint
+    name: 01 - Checkpoint - Backend
     if: always()
     needs: [backend-verify]
     runs-on: ubuntu-latest
