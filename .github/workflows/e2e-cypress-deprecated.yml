@@ -1,75 +1,13 @@
-name: Frontend + E2E / Cypress (Deprecated)
+name: E2E / Cypress (Deprecated)
 
 on:
   pull_request:
   workflow_dispatch:
   workflow_call:
 
-env:
-  DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-frontend
-
 jobs:
-  build-prod-frontend-image:
-    name: Frontend / Image
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKER_NAME }}
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile.prod
-          push: false
-
-  static-checks:
-    name: Frontend / Static
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: frontend
-
-      - name: Check Format
-        run: npx prettier ./ --check
-        working-directory: frontend
-
-      - name: Run Frontend Unit Tests (Jest)
-        run: npm test -- --watchAll=false --coverage=false
-        working-directory: frontend
-        env:
-          CI: true
-
   e2e-cypress:
-    name: E2E / Cypress (Deprecated) / ${{ matrix.shard_name }}
-    needs: static-checks
+    name: ${{ matrix.shard_name }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -186,7 +124,7 @@ jobs:
         run: |
           # Extract specs assigned to other shards from the workflow YAML.
           # Uses grep/sed instead of PyYAML to avoid non-stdlib dependency.
-          ASSIGNED=$(grep -E '^\s+cypress/e2e/' ../.github/workflows/frontend-qa.yml \
+          ASSIGNED=$(grep -E '^\s+cypress/e2e/' ../.github/workflows/e2e-cypress-deprecated.yml \
             | sed 's/^[[:space:]]*//' | sed 's/,$//' | sort -u)
           # Find all spec files on disk
           ALL=$(find cypress/e2e -name '*.cy.js' -type f | sort)
@@ -254,22 +192,16 @@ jobs:
         # Only show last 100 lines of each
           tail: "100"
 
-  # Fan-in job: name must match the ruleset-required check.
-  build-and-run-qa-tests:
-    name: E2E / Cypress (Deprecated) / Required
+  cypress-gate:
+    name: Required (Cypress Deprecated)
     if: always()
-    needs: [static-checks, build-prod-frontend-image, e2e-cypress]
+    needs: [e2e-cypress]
     runs-on: ubuntu-latest
     steps:
       - name: Check sub-job results
         run: |
-          if [[ "${{ needs.static-checks.result }}" != "success" ]] ||
-             [[ "${{ needs.build-prod-frontend-image.result }}" != "success" ]] ||
-             [[ "${{ needs.e2e-cypress.result }}" != "success" ]]; then
-            echo "One or more sub-jobs failed:"
-            echo "  static-checks: ${{ needs.static-checks.result }}"
-            echo "  build-prod-frontend-image: ${{ needs.build-prod-frontend-image.result }}"
-            echo "  e2e-cypress: ${{ needs.e2e-cypress.result }}"
+          if [[ "${{ needs.e2e-cypress.result }}" != "success" ]]; then
+            echo "Cypress job failed: ${{ needs.e2e-cypress.result }}"
             exit 1
           fi
-          echo "All sub-jobs passed."
+          echo "Cypress E2E sub-jobs passed."

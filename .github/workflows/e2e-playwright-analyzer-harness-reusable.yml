@@ -1,4 +1,4 @@
-# Invoked by playwright-e2e.yml (every PR to develop) and analyzer-e2e.yml (workflow_dispatch).
+# Invoked by e2e-playwright.yml (every PR to develop) and e2e-playwright-analyzer-harness-manual.yml (workflow_dispatch).
 name: E2E / Playwright / Analyzer Harness (Reusable)
 
 on:

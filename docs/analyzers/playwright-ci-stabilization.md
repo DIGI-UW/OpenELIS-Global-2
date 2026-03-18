@@ -9,13 +9,13 @@ harness end-to-end behavior.
 ## Baseline before remediation
 
 - Analyzer workflow:
-  `[.github/workflows/analyzer-e2e.yml](../../.github/workflows/analyzer-e2e.yml)`
+  `[.github/workflows/e2e-playwright-analyzer-harness-manual.yml](../../.github/workflows/e2e-playwright-analyzer-harness-manual.yml)`
   - 2 shards, each performing full Maven + plugin + Docker build.
   - 30 minute job timeout per shard.
   - Docker cache aggressively pruned before every run.
   - Blob reporter enabled, but no merged HTML report fan-in.
 - Core workflow:
-  `[.github/workflows/playwright-e2e.yml](../../.github/workflows/playwright-e2e.yml)`
+  `[.github/workflows/e2e-playwright.yml](../../.github/workflows/e2e-playwright.yml)`
   - Single Playwright job with Docker rebuild in the test job.
   - 30 minute job timeout.
   - Docker cache aggressively pruned before every run.
@@ -38,21 +38,22 @@ flowchart LR
 ```
 
 **Why the harness runs inside Playwright on PRs:** On `develop`,
-`analyzer-e2e.yml` historically only defined `workflow_dispatch`, so GitHub
-never scheduled a separate **Analyzer E2E (Harness)** run for pull requests.
-`playwright-e2e.yml` already had `pull_request` → develop. The reusable workflow
-[`.github/workflows/analyzer-e2e-reusable.yml`](../../.github/workflows/analyzer-e2e-reusable.yml)
+`e2e-playwright-analyzer-harness-manual.yml` historically only defined
+`workflow_dispatch`, so GitHub never scheduled a separate **Analyzer E2E
+(Harness)** run for pull requests. `e2e-playwright.yml` already had
+`pull_request` → develop. The reusable workflow
+[`.github/workflows/e2e-playwright-analyzer-harness-reusable.yml`](../../.github/workflows/e2e-playwright-analyzer-harness-reusable.yml)
 is invoked from Playwright so every PR runs core + analyzer harness. Manual runs
 still use
-[`.github/workflows/analyzer-e2e.yml`](../../.github/workflows/analyzer-e2e.yml)
+[`.github/workflows/e2e-playwright-analyzer-harness-manual.yml`](../../.github/workflows/e2e-playwright-analyzer-harness-manual.yml)
 (`workflow_dispatch`).
 
 ## Workflow contracts
 
 ### Analyzer harness (reusable + manual entry)
 
-- Implemented in `analyzer-e2e-reusable.yml`; PR path: job
-  `E2E / Playwright / Analyzer Harness` in `playwright-e2e.yml`.
+- Implemented in `e2e-playwright-analyzer-harness-reusable.yml`; PR path: job
+  `E2E / Playwright / Analyzer Harness` in `e2e-playwright.yml`.
 - Build once in `build-once`:
   - Maven artifacts and plugin jars are built once.
   - Docker images are built once using Buildx with GHA cache scope
@@ -84,20 +85,19 @@ still use
 - Analyzer harness can be intentionally skipped on a PR by adding label
   `skip-analyzer-e2e`; the analyzer job is then marked `skipped`.
 - Upload blob report, merge to HTML in a fan-in job.
-- `E2E / Playwright / Required` fails if core tests, report merge, **or** the
-  analyzer harness reusable workflow fails (single blocking gate for PRs).
-  Analyzer `skipped` is treated as intentional pass.
+- `Required (Playwright)` fails if core tests, report merge, **or** the analyzer
+  harness reusable workflow fails (single blocking gate for PRs). Analyzer
+  `skipped` is treated as intentional pass.
 
 ## CI naming map
 
-- `Backend / Required` from `.github/workflows/ci.yml`
-- `Frontend / Image` and `Frontend / Static` from
-  `.github/workflows/frontend-qa.yml`
-- `E2E / Playwright / Core`, `E2E / Playwright / Core Report`,
-  `E2E / Playwright / Required` from `.github/workflows/playwright-e2e.yml`
-- `E2E / Cypress (Deprecated) / Core|Storage|Admin|Independent` and
-  `E2E / Cypress (Deprecated) / Required` from
-  `.github/workflows/frontend-qa.yml`
+- `Required (Backend)` from `.github/workflows/backend.yml`
+- `Image`, `Static`, and `Required (Frontend)` from
+  `.github/workflows/frontend.yml`
+- `Core`, `Core Report`, `Analyzer Harness`, and `Required (Playwright)` from
+  `.github/workflows/e2e-playwright.yml`
+- `Core|Storage|Admin|Independent` and `Required (Cypress Deprecated)` from
+  `.github/workflows/e2e-cypress-deprecated.yml`
 - `Automation / Merge Conflicts`, `Validation / i18n`, `Validation / SpecKit`,
   `Projects / Catalyst / Gateway|Agents|MCP` for ancillary PR checks
 
@@ -129,10 +129,10 @@ CLEANUP=false TEST_USER=admin TEST_PASS='<password>' npm run pw:test:video
 CI enforcement is split into two layers:
 
 - **Ruleset-managed CI status checks (required):**
-  - `Backend / Required`
-  - `Frontend / Image`
-  - `E2E / Cypress (Deprecated) / Required`
-  - `E2E / Playwright / Required`
+  - `Required (Backend)`
+  - `Required (Frontend)`
+  - `Required (Cypress Deprecated)`
+  - `Required (Playwright)`
 - **Classic branch protection (non-CI settings only):**
   - required PR reviews
   - code owner review requirements

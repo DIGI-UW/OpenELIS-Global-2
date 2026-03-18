@@ -39,15 +39,15 @@ call `scripts/download-ci-logs.sh` with the appropriate options.
 
 ## Options (pass-through)
 
-| Option              | Description                                  |
-| ------------------- | -------------------------------------------- |
-| `--pr <number>`     | PR number to get logs for                    |
-| `--branch <name>`   | Branch name to get logs for                  |
-| `--run-id <id>`     | Download a specific run by ID                |
-| `--workflow <name>` | Filter to specific workflow (e.g., `ci.yml`) |
-| `--failed`          | Only download failed runs                    |
-| `--list`            | List available runs without downloading      |
-| `--limit <n>`       | Max runs to check (default: 10)              |
+| Option              | Description                                                                             |
+| ------------------- | --------------------------------------------------------------------------------------- |
+| `--pr <number>`     | PR number to get logs for                                                               |
+| `--branch <name>`   | Branch name to get logs for                                                             |
+| `--run-id <id>`     | Download a specific run by ID                                                           |
+| `--workflow <name>` | Filter to specific workflow (e.g., `backend.yml`, `frontend.yml`, `e2e-playwright.yml`) |
+| `--failed`          | Only download failed runs                                                               |
+| `--list`            | List available runs without downloading                                                 |
+| `--limit <n>`       | Max runs to check (default: 10)                                                         |
 
 ## Output
 

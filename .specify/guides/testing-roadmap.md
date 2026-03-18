@@ -675,8 +675,8 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
 **Use when**: E2E tests (Cypress) need to load DBUnit XML fixtures **without
 Java/Maven dependencies**.
 
-**Problem**: E2E CI (`frontend-qa.yml`) doesn't have Maven/Java, but needs same
-fixtures as backend tests.
+**Problem**: E2E CI (`e2e-cypress-deprecated.yml`) does not have Maven/Java, but
+needs same fixtures as backend tests.
 
 **Solution**: Generate SQL on-demand from authoritative DBUnit XML:
 

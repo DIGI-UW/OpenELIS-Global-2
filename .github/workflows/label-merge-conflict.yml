@@ -12,7 +12,7 @@ on:
 
 jobs:
   auto-label:
-    name: Automation / Merge Conflicts
+    name: Run
     if: github.repository == 'DIGI-UW/OpenELIS-Global-2'
     runs-on: ubuntu-latest
     steps:

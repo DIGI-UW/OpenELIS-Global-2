@@ -30,20 +30,19 @@ Tests are organized into 4 projects via allowlist-based `testMatch` in
 
 | Project      | Purpose                                           | CI Workflow          | Infra Required |
 | ------------ | ------------------------------------------------- | -------------------- | -------------- |
-| `core-app`   | Core UI tests (no plugins/bridge)                 | `playwright-e2e.yml` | Build stack    |
-| `harness`    | Analyzer infra tests (bridge, simulator, plugins) | `analyzer-e2e.yml`   | Full harness   |
-| `demo`       | Workflow demos at normal speed                    | `analyzer-e2e.yml`   | Full harness   |
+| `core-app`   | Core UI tests (no plugins/bridge)                 | `e2e-playwright.yml` | Build stack    |
+| `harness`    | Analyzer infra tests (bridge, simulator, plugins) | `e2e-playwright.yml`   | Full harness   |
+| `demo`       | Workflow demos at normal speed                    | `e2e-playwright.yml`   | Full harness   |
 | `demo-video` | Same demos with slowMo + video                    | Local only           | Harness        |
 
 ## CI Workflows
 
 | Workflow             | Compose Files                                          | Projects           | Fixtures                                           |
 | -------------------- | ------------------------------------------------------ | ------------------ | -------------------------------------------------- |
-| `playwright-e2e.yml` | `build.docker-compose.yml`                             | `core-app`         | `file-import-e2e.sql`                              |
-| `playwright-e2e.yml` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+| `e2e-playwright.yml` | `build.docker-compose.yml`                             | `core-app`         | `file-import-e2e.sql`                              |
+| `e2e-playwright.yml` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
 
-`analyzer-e2e.yml` is manual (`workflow_dispatch`) and delegates to the same
-reusable analyzer harness workflow used by `playwright-e2e.yml`.
+`e2e-playwright-analyzer-harness-manual.yml` remains available for manual (`workflow_dispatch`) harness-only runs and delegates to the same reusable analyzer harness workflow used by `e2e-playwright.yml`.
 
 ## Fixtures
 

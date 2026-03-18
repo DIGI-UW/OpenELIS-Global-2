@@ -20,7 +20,7 @@ on:
 
 jobs:
   validate-speckit-commands:
-    name: Validation / SpecKit
+    name: Run
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

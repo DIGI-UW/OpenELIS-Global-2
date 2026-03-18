@@ -15,7 +15,7 @@ on:
 
 jobs:
   test-catalyst:
-    name: Projects / Catalyst / ${{ matrix.display }}
+    name: ${{ matrix.display }}
     runs-on: ubuntu-latest
     strategy:
       matrix:

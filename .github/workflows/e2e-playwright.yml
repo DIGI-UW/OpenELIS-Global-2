@@ -6,17 +6,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Analyzer harness must run inside this workflow on PRs: develop’s analyzer-e2e.yml
-  # only had workflow_dispatch, so pull_request never scheduled a separate harness run.
+  # Analyzer harness must run in this workflow on PRs.
+  # The standalone analyzer harness workflow remains manual-only.
   analyzer-harness-e2e:
-    name: E2E / Playwright / Analyzer Harness
+    name: Analyzer Harness
     # Optional PR opt-out: apply label `skip-analyzer-e2e`.
     if: ${{ github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'skip-analyzer-e2e') }}
-    uses: ./.github/workflows/analyzer-e2e-reusable.yml
+    uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
     secrets: inherit
 
   playwright-tests:
-    name: E2E / Playwright / Core
+    name: Core
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: e2e
@@ -124,7 +124,7 @@ jobs:
           tail: '100'
 
   merge-reports:
-    name: E2E / Playwright / Core Report
+    name: Core Report
     if: ${{ always() && !cancelled() }}
     needs: playwright-tests
     runs-on: ubuntu-latest
@@ -169,7 +169,7 @@ jobs:
           retention-days: 14
 
   playwright-e2e-gate:
-    name: E2E / Playwright / Required
+    name: Required (Playwright)
     if: always()
     needs: [playwright-tests, merge-reports, analyzer-harness-e2e]
     runs-on: ubuntu-latest

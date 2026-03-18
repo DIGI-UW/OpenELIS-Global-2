@@ -1333,9 +1333,10 @@ naming conventions and milestone workflow.
 
 **CI/CD Pipeline** (GitHub Actions):
 
-- **`ci.yml`**: Maven build + JaCoCo coverage report
+- **`backend.yml`**: Maven build + JaCoCo coverage report
 - **`publish-and-test.yml`**: Docker image build + integration tests
-- **`frontend-qa.yml`**: Cypress E2E tests
+- **`frontend.yml`**: Frontend static/unit/image quality gate
+- **`e2e-cypress-deprecated.yml`**: Cypress E2E tests (deprecated track)
 - **`build-installer.yml`**: Offline installer packaging
 
 All checks MUST pass before merge.

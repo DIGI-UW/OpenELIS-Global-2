@@ -1,4 +1,5 @@
 name: Backend
+
 on:
   push:
     branches: [develop]
@@ -6,8 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  checkFormat-build-unitTest-and-run:
-    name: Backend / Required
+  backend-required:
+    name: Required (Backend)
     runs-on: ubuntu-latest
     steps:
       - name: Set up JDK 21
