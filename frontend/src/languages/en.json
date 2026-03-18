@@ -3208,5 +3208,12 @@
   "workplan.title": "Workplan",
   "workplan.unit.title": "Workplan By Unit",
   "workplan.unit.types": "Unit Type",
-  "yes.option": "Yes"
+  "yes.option": "Yes",
+  "barcode.labels.section.title": "Label quantities",
+  "barcode.labels.order.row": "Order labels",
+  "barcode.labels.sample.row": "Specimen labels sample {sampleNumber}",
+  "barcode.labels.running.total": "Running total",
+  "errorBoundary.title": "Something went wrong",
+  "errorBoundary.message": "Reload the page to try again.",
+  "errorBoundary.reload": "Reload"
 }

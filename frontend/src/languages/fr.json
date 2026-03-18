@@ -3129,5 +3129,12 @@
   "workplan.title": "Plan de Travail",
   "workplan.unit.title": "Plan de travail par unité",
   "workplan.unit.types": "Unité",
-  "yes.option": "Oui"
+  "yes.option": "Oui",
+  "barcode.labels.section.title": "Quantités d'étiquettes",
+  "barcode.labels.order.row": "Étiquettes de commande",
+  "barcode.labels.sample.row": "Étiquettes d'échantillon {sampleNumber}",
+  "barcode.labels.running.total": "Total cumulé",
+  "errorBoundary.title": "Une erreur est survenue",
+  "errorBoundary.message": "Rechargez la page pour réessayer.",
+  "errorBoundary.reload": "Recharger"
 }
