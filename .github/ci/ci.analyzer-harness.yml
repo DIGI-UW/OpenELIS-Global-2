@@ -62,6 +62,7 @@ services:
     volumes:
       - ./projects/analyzer-profiles:/data/analyzer-profiles:ro
       - ./projects/analyzer-harness/config-templates:/var/lib/openelis-global/configuration/backend:ro
+      - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
     networks:
       - default
       - analyzer-net

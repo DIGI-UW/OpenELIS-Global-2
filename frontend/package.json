@@ -73,7 +73,7 @@
     "pw:test": "playwright test",
     "pw:test:ui": "playwright test --ui",
     "pw:test:headed": "playwright test --headed",
-    "pw:test:video": "playwright test --config=playwright.video.config.ts"
+    "pw:test:video": "PLAYWRIGHT_VIDEO=on PLAYWRIGHT_SLOWMO=500 playwright test --project=demo-video"
   },
   "jest": {
     "transformIgnorePatterns": [
