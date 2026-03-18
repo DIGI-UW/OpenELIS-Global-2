@@ -143,8 +143,10 @@ This wastes 60+ minutes of CI time.
 ### Playwright E2E Test Execution — RECOMMENDED
 
 > **Playwright is the recommended E2E framework.** All new E2E tests should use
-> Playwright. See [AGENTS.md](AGENTS.md) § "E2E Tests (Playwright)" for full
-> details on projects, CI workflows, fixtures, and command entrypoints.
+> Playwright. Use
+> [.specify/guides/playwright-best-practices.md](.specify/guides/playwright-best-practices.md)
+> as the canonical guide. See [AGENTS.md](AGENTS.md) § "E2E Tests (Playwright)"
+> for repository-specific operational context.
 
 **Available Scripts:**
 

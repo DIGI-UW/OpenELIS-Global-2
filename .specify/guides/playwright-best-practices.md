@@ -2,6 +2,10 @@
 
 > **Purpose:** Guide for writing efficient, maintainable Playwright E2E tests
 > for OpenELIS Global 2's React + Carbon Design System frontend.
+>
+> **Single source of truth:** This file is the canonical Playwright guidance for
+> both human and AI contributors. Other docs should reference this file rather
+> than duplicating rules.
 
 ## Quick Reference
 

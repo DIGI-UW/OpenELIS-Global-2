@@ -1547,7 +1547,9 @@ describe("User Story P1: Sample Storage Assignment", () => {
 
 **Location:** `frontend/playwright/tests/{feature}.spec.ts` **Config:**
 `frontend/playwright.config.ts` **Helpers:** `frontend/playwright/helpers/`
-**Full Guide:** `frontend/playwright/README.md`
+**Canonical Guide (single source of truth):**
+`.specify/guides/playwright-best-practices.md` **Operational Reference:**
+`frontend/playwright/README.md`
 
 **Command-first workflow:** Use `/plan-record-playwright` to scope flows and
 project targets, `/write-playwright-test` to author tests, `/audit-playwright`
@@ -1655,8 +1657,11 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=demo-video
 
 **Comprehensive Guides**:
 
-- **Playwright README**: `frontend/playwright/README.md` — Project matrix, CI
-  workflows, fixture loading, and local execution guide
+- **Playwright Best Practices (canonical)**:
+  `.specify/guides/playwright-best-practices.md` — Authoritative Playwright
+  testing guidance for humans and agents
+- **Playwright README (operational details)**: `frontend/playwright/README.md` —
+  Project matrix, CI workflows, fixture loading, and local execution guide
 - **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Comprehensive
   testing guide for all test types (backend and frontend)
 - **Backend Testing Best Practices**:

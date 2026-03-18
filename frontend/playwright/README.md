@@ -3,6 +3,11 @@
 > **Playwright is the recommended E2E framework** for OpenELIS Global 2. All new
 > E2E tests should use Playwright. Cypress is deprecated and will be migrated.
 
+> **Canonical best-practices guide:**  
+> `.specify/guides/playwright-best-practices.md` (single source of truth).  
+> This README focuses on repo-specific operational details (projects, CI mapping,
+> fixtures, and local execution).
+
 **Config:** `frontend/playwright.config.ts`
 **Tests:** `frontend/playwright/tests/`
 **Helpers:** `frontend/playwright/helpers/`
@@ -35,7 +40,10 @@ Tests are organized into 4 projects via allowlist-based `testMatch` in
 | Workflow             | Compose Files                                          | Projects           | Fixtures                                           |
 | -------------------- | ------------------------------------------------------ | ------------------ | -------------------------------------------------- |
 | `playwright-e2e.yml` | `build.docker-compose.yml`                             | `core-app`         | `file-import-e2e.sql`                              |
-| `analyzer-e2e.yml`   | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+| `playwright-e2e.yml` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+
+`analyzer-e2e.yml` is manual (`workflow_dispatch`) and delegates to the same
+reusable analyzer harness workflow used by `playwright-e2e.yml`.
 
 ## Fixtures
 
