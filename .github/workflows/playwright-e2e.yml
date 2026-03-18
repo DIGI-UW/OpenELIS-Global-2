@@ -6,6 +6,15 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Analyzer harness must run inside this workflow on PRs: develop’s analyzer-e2e.yml
+  # only had workflow_dispatch, so pull_request never scheduled a separate harness run.
+  analyzer-harness-e2e:
+    name: Analyzer E2E (Harness)
+    # Optional PR opt-out: apply label `skip-analyzer-e2e`.
+    if: ${{ github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'skip-analyzer-e2e') }}
+    uses: ./.github/workflows/analyzer-e2e-reusable.yml
+    secrets: inherit
+
   playwright-tests:
     name: Run Playwright E2E Tests
     runs-on: ubuntu-latest
@@ -162,10 +171,10 @@ jobs:
   playwright-e2e-gate:
     name: Playwright E2E Required Gate
     if: always()
-    needs: [playwright-tests, merge-reports]
+    needs: [playwright-tests, merge-reports, analyzer-harness-e2e]
     runs-on: ubuntu-latest
     steps:
-      - name: Enforce test and merge success
+      - name: Enforce core Playwright, analyzer harness, and merge success
         run: |
           if [[ "${{ needs.playwright-tests.result }}" != "success" ]]; then
             echo "Playwright tests job failed: ${{ needs.playwright-tests.result }}"
@@ -175,4 +184,8 @@ jobs:
             echo "Report merge job failed: ${{ needs.merge-reports.result }}"
             exit 1
           fi
-          echo "Playwright E2E required gate passed."
+          if [[ "${{ needs.analyzer-harness-e2e.result }}" != "success" && "${{ needs.analyzer-harness-e2e.result }}" != "skipped" ]]; then
+            echo "Analyzer E2E harness failed: ${{ needs.analyzer-harness-e2e.result }}"
+            exit 1
+          fi
+          echo "Playwright E2E required gate passed (core + analyzer harness)."

@@ -27,20 +27,32 @@ harness end-to-end behavior.
 ## New CI topology
 
 ```mermaid
-flowchart TD
-  analyzerBuild[analyzer_build_once] --> shardA[analyzer_test_shard_1]
-  analyzerBuild --> shardB[analyzer_test_shard_2]
-  shardA --> analyzerMerge[analyzer_merge_reports]
-  shardB --> analyzerMerge
-  analyzerMerge --> analyzerGate[analyzer_required_gate]
-  coreTest[core_playwright_tests] --> coreMerge[core_merge_reports]
-  coreMerge --> coreGate[core_required_gate]
+flowchart LR
+  subgraph pr["Playwright E2E Tests (PR → develop)"]
+    H[Analyzer harness reusable<br/>build → shards → merge → gate]
+    C[Core Playwright<br/>tests → merge reports]
+    G[Playwright E2E Required Gate]
+    H --> G
+    C --> G
+  end
 ```
+
+**Why the harness runs inside Playwright on PRs:** On `develop`,
+`analyzer-e2e.yml` historically only defined `workflow_dispatch`, so GitHub
+never scheduled a separate **Analyzer E2E (Harness)** run for pull requests.
+`playwright-e2e.yml` already had `pull_request` → develop. The reusable workflow
+[`.github/workflows/analyzer-e2e-reusable.yml`](../../.github/workflows/analyzer-e2e-reusable.yml)
+is invoked from Playwright so every PR runs core + analyzer harness. Manual runs
+still use
+[`.github/workflows/analyzer-e2e.yml`](../../.github/workflows/analyzer-e2e.yml)
+(`workflow_dispatch`).
 
 ## Workflow contracts
 
-### Analyzer harness workflow
+### Analyzer harness (reusable + manual entry)
 
+- Implemented in `analyzer-e2e-reusable.yml`; PR path: job
+  `analyzer-harness-e2e` in `playwright-e2e.yml`.
 - Build once in `build-once`:
   - Maven artifacts and plugin jars are built once.
   - Docker images are built once using Buildx with GHA cache scope
@@ -61,11 +73,14 @@ flowchart TD
 
 ### Core Playwright workflow
 
-- Build images with Buildx cache scope `playwright-core`.
-- Start compose stack with `--no-build`.
-- Run `core-app` Playwright project.
+- In parallel with analyzer harness: build images with Buildx cache scope
+  `playwright-core`, start compose, run `core-app`.
+- Analyzer harness can be intentionally skipped on a PR by adding label
+  `skip-analyzer-e2e`; the analyzer job is then marked `skipped`.
 - Upload blob report, merge to HTML in a fan-in job.
-- Enforce success through `playwright-e2e-gate`.
+- `playwright-e2e-gate` fails if core tests, report merge, **or** the analyzer
+  harness reusable workflow fails (single blocking gate for PRs). Analyzer
+  `skipped` is treated as intentional pass.
 
 ## Video and demo test policy
 
@@ -92,10 +107,9 @@ CLEANUP=false TEST_USER=admin TEST_PASS='<password>' npm run pw:test:video
 
 ## Branch protection guidance
 
-To keep Playwright required without relying on matrix shard internals, require
-these stable checks in branch protection:
-
-- `Analyzer E2E Required Gate`
-- `Playwright E2E Required Gate`
-
-These checks are designed to fail if upstream shard/test/merge jobs fail.
+- **`Playwright E2E Required Gate`** — required for PRs; it now enforces core
+  Playwright, merged HTML report, and analyzer harness success (or intentional
+  analyzer skip via `skip-analyzer-e2e` label).
+- **`Analyzer E2E Required Gate`** — still emitted by the reusable workflow (may
+  appear as a nested check name in the UI); optional as a second required check
+  if you want an explicit harness-only signal.

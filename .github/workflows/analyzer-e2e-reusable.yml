@@ -1,0 +1,304 @@
+# Invoked by playwright-e2e.yml (every PR to develop) and analyzer-e2e.yml (workflow_dispatch).
+name: Analyzer E2E (Harness) Reusable
+
+on:
+  workflow_call:
+
+jobs:
+  build-once:
+    name: Analyzer E2E Build Once
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: e2e
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Prepare .env
+        run: cp .env.example .env
+
+      - name: Build OpenELIS artifacts for plugin compilation
+        run: |
+          cd dataexport/dataexport-core
+          mvn clean install -DskipTests -Dmaven.test.skip=true
+          cd ..
+          mvn clean install -DskipTests -Dmaven.test.skip=true
+          cd ..
+          # Align root artifact patch version with plugins submodule dependency.
+          mvn clean install -DskipTests -Dspotless.check.skip=true -Dfix.version=3
+
+      - name: Build plugins
+        run: mvn clean install -DskipTests -Dmaven.test.skip=true
+        working-directory: plugins
+
+      - name: Stage plugin jars for runtime loading
+        run: |
+          rm -rf volume/plugins/*
+          find plugins/analyzers -type f -path "*/target/*.jar" \
+            ! -name "*sources.jar" ! -name "*javadoc.jar" \
+            -exec cp {} volume/plugins/ \;
+          ls -lah volume/plugins
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build analyzer harness images (cached)
+        uses: docker/bake-action@v5
+        with:
+          files: |
+            build.docker-compose.yml
+            .github/ci/ci.analyzer-harness.yml
+          load: true
+          set: |
+            *.cache-from=type=gha,scope=analyzer-e2e
+            *.cache-to=type=gha,scope=analyzer-e2e,mode=max
+
+      - name: Package compose images for shard jobs
+        run: |
+          docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/analyzer-images.txt
+          IMAGES="$(tr '\n' ' ' < /tmp/analyzer-images.txt)"
+          echo "Images to export: $IMAGES"
+          for image in $IMAGES; do
+            docker image inspect "$image" >/dev/null 2>&1 || docker pull "$image"
+          done
+          docker save $IMAGES -o /tmp/analyzer-images.tar
+
+      - name: Upload plugin jars artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-plugin-jars
+          path: volume/plugins/*.jar
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Docker images artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-compose-images
+          path: /tmp/analyzer-images.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  test-shards:
+    name: Analyzer E2E (shard ${{ matrix.shard_index }}/${{ matrix.shard_total }})
+    needs: build-once
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: e2e
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_index: 1
+            shard_total: 2
+            run_demo: true
+          - shard_index: 2
+            shard_total: 2
+            run_demo: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+        working-directory: frontend
+
+      - name: Prepare .env
+        run: cp .env.example .env
+
+      - name: Download plugin jars artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: analyzer-plugin-jars
+          path: /tmp/analyzer-plugin-jars
+
+      - name: Download Docker images artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: analyzer-compose-images
+          path: /tmp/analyzer-compose-images
+
+      - name: Restore plugin jars for runtime loading
+        run: |
+          mkdir -p volume/plugins
+          rm -rf volume/plugins/*
+          cp /tmp/analyzer-plugin-jars/*.jar volume/plugins/
+          ls -lah volume/plugins
+
+      - name: Load prebuilt compose images
+        run: docker load -i /tmp/analyzer-compose-images/analyzer-images.tar
+
+      - name: Create analyzer import bind mount directories
+        run: mkdir -p projects/analyzer-harness/volume/analyzer-imports
+
+      - name: Start analyzer harness stack (no rebuild)
+        run: docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml up -d --no-build --wait --wait-timeout 900
+
+      - name: Wait for OpenELIS, bridge, and simulator readiness
+        run: |
+          timeout 120 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done'
+          timeout 120 bash -c 'until curl -s -f http://localhost:8442/actuator/health > /dev/null; do sleep 2; done'
+          timeout 120 bash -c 'until curl -s -f http://localhost:8085/health > /dev/null; do sleep 2; done'
+
+      - name: "Load test fixtures (parity with local: foundational + analyzer types + cleanup + storage)"
+        run: ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
+
+      - name: Seed analyzers via REST API (profile-based test mappings + bridge registration)
+        run: bash projects/analyzer-harness/seed-analyzers.sh
+        env:
+          BASE_URL: https://localhost
+          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ secrets.TEST_PASS }}
+
+      - name: Run analyzer Playwright harness shard
+        run: npm run pw:test -- --project=harness --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
+        working-directory: frontend
+        env:
+          CI: true
+          ANALYZER_HARNESS: "true"
+          BASE_URL: https://localhost
+          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ secrets.TEST_PASS }}
+
+      - name: Run analyzer Playwright demo workflow
+        if: matrix.run_demo
+        run: npm run pw:test -- --project=demo
+        working-directory: frontend
+        env:
+          CI: true
+          ANALYZER_HARNESS: "true"
+          BASE_URL: https://localhost
+          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ secrets.TEST_PASS }}
+
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-blob-report-${{ matrix.shard_index }}
+          path: frontend/blob-report
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-playwright-screenshots-shard-${{ matrix.shard_index }}
+          path: frontend/test-results/**/test-failed-*.png
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload test traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-playwright-traces-shard-${{ matrix.shard_index }}
+          path: frontend/test-results/**/trace.zip
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Dump docker logs on failure
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2
+        with:
+          tail: "200"
+
+  merge-reports:
+    name: Merge Analyzer Playwright Reports
+    if: ${{ always() && !cancelled() }}
+    needs: test-shards
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Download blob reports from shard jobs
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          path: frontend/all-blob-reports
+          pattern: analyzer-blob-report-*
+          merge-multiple: true
+
+      - name: Merge blob reports into HTML report when artifacts exist
+        run: |
+          if [ -d ./all-blob-reports ] && [ -n "$(ls -A ./all-blob-reports 2>/dev/null)" ]; then
+            npx playwright merge-reports --reporter html ./all-blob-reports
+          else
+            echo "No blob reports available; skipping merge."
+          fi
+        working-directory: frontend
+
+      - name: Upload merged HTML report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-playwright-report-html-attempt-${{ github.run_attempt }}
+          path: frontend/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  analyzer-e2e-gate:
+    name: Analyzer E2E Required Gate
+    if: always()
+    needs: [test-shards, merge-reports]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce shard and merge success
+        run: |
+          if [[ "${{ needs.test-shards.result }}" != "success" ]]; then
+            echo "Analyzer shard jobs failed: ${{ needs.test-shards.result }}"
+            exit 1
+          fi
+          if [[ "${{ needs.merge-reports.result }}" != "success" ]]; then
+            echo "Merge reports job failed: ${{ needs.merge-reports.result }}"
+            exit 1
+          fi
+          echo "Analyzer E2E required gate passed."
