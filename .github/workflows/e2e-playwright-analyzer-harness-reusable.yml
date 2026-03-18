@@ -46,7 +46,7 @@ jobs:
           mvn clean install -DskipTests -Dmaven.test.skip=true
           cd ..
           # Align root artifact patch version with plugins submodule dependency.
-          mvn clean install -DskipTests -Dspotless.check.skip=true -Dfix.version=3
+          mvn clean install -DskipTests -Dmaven.test.skip=true -Dspotless.check.skip=true -Dfix.version=3
 
       - name: Build plugins
         run: mvn clean install -DskipTests -Dmaven.test.skip=true
@@ -77,12 +77,21 @@ jobs:
       - name: Package compose images for shard jobs
         run: |
           docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/analyzer-images.txt
-          IMAGES="$(tr '\n' ' ' < /tmp/analyzer-images.txt)"
-          echo "Images to export: $IMAGES"
-          for image in $IMAGES; do
-            docker image inspect "$image" >/dev/null 2>&1 || docker pull "$image"
-          done
-          docker save $IMAGES -o /tmp/analyzer-images.tar
+          IMAGES=()
+          while IFS= read -r image; do
+            [ -z "$image" ] && continue
+            if docker image inspect "$image" >/dev/null 2>&1; then
+              IMAGES+=("$image")
+            else
+              echo "WARN: skipping $image (not built locally)"
+            fi
+          done < /tmp/analyzer-images.txt
+          if [ "${#IMAGES[@]}" -eq 0 ]; then
+            echo "No locally available images found to export."
+            exit 1
+          fi
+          echo "Images to export: ${IMAGES[*]}"
+          docker save "${IMAGES[@]}" -o /tmp/analyzer-images.tar
 
       - name: Upload plugin jars artifact
         uses: actions/upload-artifact@v4

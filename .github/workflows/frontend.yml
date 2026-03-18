@@ -1,4 +1,4 @@
-name: Frontend
+name: 02 - Frontend
 
 on:
   pull_request:
@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -68,7 +68,7 @@ jobs:
           CI: true
 
   frontend-gate:
-    name: 02 - Checkpoint - Frontend
+    name: 02 Checkpoint
     if: always()
     needs: [static-checks, build-prod-frontend-image]
     runs-on: ubuntu-latest

@@ -1336,6 +1336,7 @@ naming conventions and milestone workflow.
 - **`backend.yml`**: Maven build + JaCoCo coverage report
 - **`publish-and-test.yml`**: Docker image build + integration tests
 - **`frontend.yml`**: Frontend static/unit/image quality gate
+- **`e2e-playwright.yml`**: Playwright E2E (core + analyzer harness)
 - **`e2e-cypress-deprecated.yml`**: Cypress E2E tests (deprecated track)
 - **`build-installer.yml`**: Offline installer packaging
 

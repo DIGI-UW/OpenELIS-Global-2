@@ -5,6 +5,7 @@ services:
     build:
       context: ./tools/analyzer-mock-server
       dockerfile: Dockerfile
+    image: openelis-astm-simulator.ci
     container_name: openelis-astm-simulator
     ports:
       - "5000:9600"

@@ -1,4 +1,4 @@
-name: E2E / Cypress (Deprecated)
+name: 04 - Cypress
 
 on:
   pull_request:
@@ -193,7 +193,7 @@ jobs:
           tail: "100"
 
   cypress-gate:
-    name: 04 - Checkpoint - E2E Cypress (Deprecated)
+    name: 04 Checkpoint
     if: always()
     needs: [e2e-cypress]
     runs-on: ubuntu-latest

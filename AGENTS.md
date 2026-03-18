@@ -2004,13 +2004,14 @@ Before creating PR, verify ALL items:
 
 **GitHub Actions workflows (MUST pass):**
 
-- `backend.yml` — Maven build + Spotless format check + unit tests (PR + push)
-- `e2e-playwright.yml` — Playwright E2E (core + analyzer harness) with required
-  Playwright gate (PR)
-- `frontend.yml` — Frontend static/unit/image checks + required frontend gate
-  (PR)
-- `e2e-cypress-deprecated.yml` — Cypress E2E shards + required deprecated
-  Cypress gate (PR)
+- `backend.yml` (`01 - Backend`) — Maven build + Spotless format check + unit
+  tests (PR + push)
+- `e2e-playwright.yml` (`03 - Playwright`) — Playwright E2E (core + analyzer
+  harness) with required Playwright gate (PR)
+- `frontend.yml` (`02 - Frontend`) — Frontend static/unit/image checks +
+  required frontend gate (PR)
+- `e2e-cypress-deprecated.yml` (`04 - Cypress`) — Cypress E2E shards + required
+  deprecated Cypress gate (PR)
 - `publish-and-test.yml` — Docker publish + E2E tests (push to `develop` +
   releases only)
 
