@@ -31,8 +31,8 @@ Tests are organized into 4 projects via allowlist-based `testMatch` in
 | Project      | Purpose                                           | CI Workflow          | Infra Required |
 | ------------ | ------------------------------------------------- | -------------------- | -------------- |
 | `core-app`   | Core UI tests (no plugins/bridge)                 | `e2e-playwright.yml` | Build stack    |
-| `harness`    | Analyzer infra tests (bridge, simulator, plugins) | `e2e-playwright.yml`   | Full harness   |
-| `demo`       | Workflow demos at normal speed                    | `e2e-playwright.yml`   | Full harness   |
+| `harness`    | Analyzer infra tests (bridge, simulator, plugins) | `e2e-playwright.yml` | Full harness   |
+| `demo`       | Workflow demos at normal speed                    | `e2e-playwright.yml` | Full harness   |
 | `demo-video` | Same demos with slowMo + video                    | Local only           | Harness        |
 
 ## CI Workflows
