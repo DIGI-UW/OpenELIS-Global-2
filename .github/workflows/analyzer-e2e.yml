@@ -80,6 +80,9 @@ jobs:
           docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/analyzer-images.txt
           IMAGES="$(tr '\n' ' ' < /tmp/analyzer-images.txt)"
           echo "Images to export: $IMAGES"
+          for image in $IMAGES; do
+            docker image inspect "$image" >/dev/null 2>&1 || docker pull "$image"
+          done
           docker save $IMAGES -o /tmp/analyzer-images.tar
 
       - name: Upload plugin jars artifact
@@ -239,7 +242,7 @@ jobs:
 
   merge-reports:
     name: Merge Analyzer Playwright Reports
-    if: ${{ !cancelled() }}
+    if: ${{ always() && !cancelled() }}
     needs: test-shards
     runs-on: ubuntu-latest
     steps:
@@ -258,21 +261,29 @@ jobs:
         working-directory: frontend
 
       - name: Download blob reports from shard jobs
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           path: frontend/all-blob-reports
           pattern: analyzer-blob-report-*
           merge-multiple: true
 
-      - name: Merge blob reports into HTML report
-        run: npx playwright merge-reports --reporter html ./all-blob-reports
+      - name: Merge blob reports into HTML report when artifacts exist
+        run: |
+          if [ -d ./all-blob-reports ] && [ -n "$(ls -A ./all-blob-reports 2>/dev/null)" ]; then
+            npx playwright merge-reports --reporter html ./all-blob-reports
+          else
+            echo "No blob reports available; skipping merge."
+          fi
         working-directory: frontend
 
       - name: Upload merged HTML report
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: analyzer-playwright-report-html-attempt-${{ github.run_attempt }}
           path: frontend/playwright-report/
+          if-no-files-found: ignore
           retention-days: 14
 
   analyzer-e2e-gate:

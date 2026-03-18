@@ -116,7 +116,7 @@ jobs:
 
   merge-reports:
     name: Merge Playwright E2E Reports
-    if: ${{ !cancelled() }}
+    if: ${{ always() && !cancelled() }}
     needs: playwright-tests
     runs-on: ubuntu-latest
     steps:
@@ -135,20 +135,28 @@ jobs:
         working-directory: frontend
 
       - name: Download blob report
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: playwright-blob-report
           path: frontend/all-blob-reports
 
-      - name: Merge into HTML report
-        run: npx playwright merge-reports --reporter html ./all-blob-reports
+      - name: Merge into HTML report when blob reports exist
+        run: |
+          if [ -d ./all-blob-reports ] && [ -n "$(ls -A ./all-blob-reports 2>/dev/null)" ]; then
+            npx playwright merge-reports --reporter html ./all-blob-reports
+          else
+            echo "No blob reports available; skipping merge."
+          fi
         working-directory: frontend
 
       - name: Upload merged HTML report
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-html-attempt-${{ github.run_attempt }}
           path: frontend/playwright-report/
+          if-no-files-found: ignore
           retention-days: 14
 
   playwright-e2e-gate:

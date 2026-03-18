@@ -75,12 +75,13 @@ flowchart TD
 
 ```bash
 cd frontend
-CLEANUP=false TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:video
+CLEANUP=false TEST_USER=admin TEST_PASS='<password>' npm run pw:test:video
 ```
 
 - Current script implementation:
   - `pw:test:video` runs `demo-video` with `PLAYWRIGHT_VIDEO=on` and
     `PLAYWRIGHT_SLOWMO=500`.
+  - The command targets Linux/macOS shells; on Windows, run it in WSL.
 
 ## Test tiers and intent
 
