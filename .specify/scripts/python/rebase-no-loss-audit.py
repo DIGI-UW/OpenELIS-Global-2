@@ -117,7 +117,10 @@ def main() -> int:
 
     i18n_files = args.i18n_file if args.i18n_file else DEFAULT_I18N_FILES
     allowed_dropped_files = set(args.allow_dropped_file)
-    allowed_missing_keys = parse_allow_missing_key(args.allow_missing_key)
+    try:
+        allowed_missing_keys = parse_allow_missing_key(args.allow_missing_key)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     before_delta = delta_files(args.base, args.before)
     after_delta = delta_files(args.base, args.after)
