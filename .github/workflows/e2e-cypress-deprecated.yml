@@ -197,7 +197,7 @@ jobs:
           tail: "100"
 
   cypress-gate:
-    name: 04 Checkpoint
+    name: 04 Checkpoint - Cypress
     if: always()
     needs: [e2e-cypress]
     runs-on: ubuntu-latest
