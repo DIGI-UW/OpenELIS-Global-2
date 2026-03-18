@@ -68,6 +68,24 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<Analyzer> findActiveByPort(Integer port) {
+        if (port == null || port < 1) {
+            return Optional.empty();
+        }
+        try {
+            String hql = "FROM Analyzer a WHERE a.port = :port AND a.status = :status";
+            Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
+            query.setParameter("port", port);
+            query.setParameter("status", Analyzer.AnalyzerStatus.ACTIVE);
+            Analyzer result = query.uniqueResult();
+            return Optional.ofNullable(result);
+        } catch (org.hibernate.NonUniqueResultException e) {
+            throw new LIMSRuntimeException("Multiple active analyzers found for port: " + port, e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analyzer> findGenericAnalyzersWithPatterns() {
         String hql = "SELECT a FROM Analyzer a " + "JOIN FETCH a.analyzerType at " + "WHERE at.genericPlugin = true "
                 + "AND a.identifierPattern IS NOT NULL";
@@ -91,5 +109,23 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
         query.setParameter("id", Integer.valueOf(id));
         Analyzer result = query.uniqueResult();
         return Optional.ofNullable(result);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByIpAddressAndPort(String ipAddress, Integer port) {
+        if (ipAddress == null || ipAddress.trim().isEmpty() || port == null || port < 1) {
+            return Optional.empty();
+        }
+        try {
+            String hql = "FROM Analyzer a WHERE a.ipAddress = :ipAddress AND a.port = :port";
+            Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
+            query.setParameter("ipAddress", ipAddress.trim());
+            query.setParameter("port", port);
+            Analyzer result = query.uniqueResult();
+            return Optional.ofNullable(result);
+        } catch (org.hibernate.NonUniqueResultException e) {
+            throw new LIMSRuntimeException("Multiple Analyzers found for IP " + ipAddress + " and port " + port, e);
+        }
     }
 }

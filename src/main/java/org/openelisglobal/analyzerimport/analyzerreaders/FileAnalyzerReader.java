@@ -1,10 +1,12 @@
 package org.openelisglobal.analyzerimport.analyzerreaders;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -14,6 +16,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.openelisglobal.analyzer.service.FileImportService;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
@@ -59,16 +62,35 @@ public class FileAnalyzerReader extends AnalyzerReader {
         }
 
         try {
-            CSVFormat csvFormat = CSVFormat.DEFAULT
-                    .withDelimiter(configuration.getDelimiter() != null && !configuration.getDelimiter().isEmpty()
-                            ? configuration.getDelimiter().charAt(0)
-                            : ',');
+            byte[] bytes = stream.readAllBytes();
+            List<String> rawLines = Arrays.asList(new String(bytes, StandardCharsets.UTF_8).split("\\r?\\n"));
+
+            InputStream parseStream;
+            char delimiterChar = configuration.getDelimiter() != null && !configuration.getDelimiter().isEmpty()
+                    ? configuration.getDelimiter().charAt(0)
+                    : ',';
+
+            if (PlateGridNormalizer.isPlateGridFormat(rawLines)) {
+                List<String> normalized = PlateGridNormalizer.normalizeToWellPerRow(rawLines,
+                        String.valueOf(delimiterChar));
+                if (normalized.isEmpty()) {
+                    error = "Plate grid format detected but normalization failed";
+                    return false;
+                }
+                String normalizedContent = String.join("\n", normalized);
+                parseStream = new ByteArrayInputStream(normalizedContent.getBytes(StandardCharsets.UTF_8));
+                delimiterChar = '\t';
+            } else {
+                parseStream = new ByteArrayInputStream(bytes);
+            }
+
+            CSVFormat csvFormat = CSVFormat.DEFAULT.withDelimiter(delimiterChar);
 
             if (configuration.getHasHeader() != null && configuration.getHasHeader()) {
                 csvFormat = csvFormat.withFirstRecordAsHeader();
             }
 
-            try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
+            try (InputStreamReader reader = new InputStreamReader(parseStream, StandardCharsets.UTF_8);
                     CSVParser parser = csvFormat.parse(reader)) {
 
                 Map<String, String> columnMappings = configuration.getColumnMappings();
@@ -141,8 +163,12 @@ public class FileAnalyzerReader extends AnalyzerReader {
         if (configuration != null && configuration.getAnalyzerId() != null) {
             AnalyzerImporterPlugin configuredPlugin = pluginService
                     .getPluginByAnalyzerId(configuration.getAnalyzerId().toString());
+            if (configuredPlugin == null) {
+                configuredPlugin = findPluginByConfiguredAnalyzerType();
+            }
             if (configuredPlugin != null) {
                 inserter = configuredPlugin.getAnalyzerLineInserter();
+                inserter.setContextAnalyzerId(String.valueOf(configuration.getAnalyzerId()));
                 return;
             }
         }
@@ -150,6 +176,9 @@ public class FileAnalyzerReader extends AnalyzerReader {
             try {
                 if (plugin.isTargetAnalyzer(lines)) {
                     inserter = plugin.getAnalyzerLineInserter();
+                    if (configuration != null && configuration.getAnalyzerId() != null) {
+                        inserter.setContextAnalyzerId(String.valueOf(configuration.getAnalyzerId()));
+                    }
                     return;
                 }
             } catch (RuntimeException e) {
@@ -159,6 +188,34 @@ public class FileAnalyzerReader extends AnalyzerReader {
 
         // No matching plugin — report error to caller
         error = "No matching analyzer plugin found for file format";
+    }
+
+    private AnalyzerImporterPlugin findPluginByConfiguredAnalyzerType() {
+        try {
+            org.openelisglobal.analyzer.service.AnalyzerService analyzerService = SpringContext
+                    .getBean(org.openelisglobal.analyzer.service.AnalyzerService.class);
+            if (analyzerService == null || configuration == null || configuration.getAnalyzerId() == null) {
+                return null;
+            }
+
+            Analyzer analyzer = analyzerService.getWithType(String.valueOf(configuration.getAnalyzerId())).orElse(null);
+            if (analyzer == null || analyzer.getAnalyzerType() == null
+                    || analyzer.getAnalyzerType().getPluginClassName() == null) {
+                return null;
+            }
+
+            String pluginClassName = analyzer.getAnalyzerType().getPluginClassName();
+            PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
+            for (AnalyzerImporterPlugin plugin : pluginService.getAnalyzerPlugins()) {
+                if (plugin.getClass().getName().equals(pluginClassName)) {
+                    return plugin;
+                }
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "findPluginByConfiguredAnalyzerType",
+                    "Unable to resolve plugin by analyzer type: " + e.getMessage());
+        }
+        return null;
     }
 
     private void buildLineFromRecord(CSVRecord record, Map<String, String> columnMappings, StringBuilder lineBuilder) {
@@ -283,6 +340,16 @@ public class FileAnalyzerReader extends AnalyzerReader {
     @Override
     public String getError() {
         return error;
+    }
+
+    @Override
+    public List<Map<String, String>> getParsedRecords() {
+        return parsedRecords == null ? List.of() : new ArrayList<>(parsedRecords);
+    }
+
+    @Override
+    public List<String> getLines() {
+        return lines == null ? List.of() : new ArrayList<>(lines);
     }
 
     public void setConfiguration(FileImportConfiguration configuration) {

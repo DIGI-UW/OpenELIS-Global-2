@@ -1,0 +1,46 @@
+{
+  "profileMeta": {
+    "id": "dtprime",
+    "version": "1.0.0",
+    "displayName": "DNA Technology DT-Prime",
+    "manufacturer": "DNA Technology"
+  },
+  "protocol": {
+    "name": "FILE",
+    "format": "XML"
+  },
+  "supported_extensions": [
+    ".xml"
+  ],
+  "column_mapping": {
+    "SampleID": "sampleId",
+    "WellPosition": "position",
+    "Result": "result",
+    "Interpretation": "interpretation"
+  },
+  "xml_schema": {
+    "encoding": "windows-1251",
+    "root": "package",
+    "xpath": {
+      "plate": "/package/data/plate",
+      "cell": "cell",
+      "cell_name": "@name",
+      "cell_x": "@x",
+      "cell_y": "@y",
+      "cell_state": "@state",
+      "test_value": "test/@value",
+      "result_value": "test/result/@value"
+    },
+    "result_values": {
+      "+": "Detected",
+      "-": "Not Detected"
+    },
+    "qc_patterns": {
+      "negative_control": "C-",
+      "positive_control": "C+"
+    }
+  },
+  "configDefaults": {
+    "fileFormat": "XML"
+  }
+}
