@@ -1,78 +1,26 @@
-name: OpenELIS Frontend QA framework workflow
+# Cypress E2E — DEPRECATED (will be removed after full Playwright migration).
+# Called by e2e-playwright.yml as a reusable workflow under the E2E umbrella.
+# Images come from the shared-build job via e2e-image-map artifact.
+name: E2E / Cypress (Deprecated)
 
 on:
-  pull_request:
   workflow_dispatch:
   workflow_call:
 
-env:
-  DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-frontend
+permissions:
+  contents: read
+  packages: read
 
 jobs:
-  build-prod-frontend-image:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKER_NAME }}
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile.prod
-          push: false
-
-  static-checks:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: frontend
-
-      - name: Check Format
-        run: npx prettier ./ --check
-        working-directory: frontend
-
-      - name: Run Frontend Unit Tests (Jest)
-        run: npm test -- --watchAll=false --coverage=false
-        working-directory: frontend
-        env:
-          CI: true
-
   e2e-cypress:
-    needs: static-checks
+    name: ${{ matrix.shard_name }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
           - shard: core
+            shard_name: Core
             specs: >-
               cypress/e2e/login.cy.js,
               cypress/e2e/home.cy.js,
@@ -90,6 +38,7 @@ jobs:
               cypress/e2e/report.cy.js,
               cypress/e2e/AdminE2E/barcode.cy.js
           - shard: storage
+            shard_name: Storage
             specs: >-
               cypress/e2e/storageAssignment.cy.js,
               cypress/e2e/storageBoxCRUD.cy.js,
@@ -106,6 +55,7 @@ jobs:
               cypress/e2e/storageSearch.cy.js,
               cypress/e2e/storageViewStorage.cy.js
           - shard: admin
+            shard_name: Admin
             specs: >-
               cypress/e2e/AdminE2E/userManagement.cy.js,
               cypress/e2e/siteBranding.cy.js,
@@ -115,8 +65,8 @@ jobs:
               cypress/e2e/AdminE2E/dictionaryMenu.cy.js,
               cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js,
               cypress/e2e/AdminE2E/batchTestReassignmentandCancelation.cy.js
-          # Catch-all: specs computed dynamically (see "Compute catch-all specs" step)
           - shard: independent
+            shard_name: Independent
             specs: ""
     steps:
       - name: Checkout OpenELIS-Global2
@@ -144,29 +94,29 @@ jobs:
       - name: Prepare .env from template
         run: cp .env.example .env
 
-      - name: Free disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo docker image prune --all --force
-          df -h
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build OpenELIS images (cached)
-        uses: docker/bake-action@v5
+      - name: Download Docker image map artifact
+        uses: actions/download-artifact@v4
         with:
-          files: build.docker-compose.yml
-          load: true
-          set: |
-            *.cache-from=type=gha
-            *.cache-to=type=gha,mode=max
+          name: e2e-image-map
+          path: /tmp/e2e-image-map
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and retag prebuilt compose images
+        run: |
+          while IFS='|' read -r source_image ghcr_image; do
+            [ -z "$source_image" ] && continue
+            docker pull "$ghcr_image"
+            docker tag "$ghcr_image" "$source_image"
+          done < /tmp/e2e-image-map/e2e-image-map.txt
 
       - name: Start containers
-        run: docker compose -f build.docker-compose.yml up -d --wait --wait-timeout 600
+        run: docker compose -f build.docker-compose.yml up -d --no-build --wait --wait-timeout 600
 
       - name: Load test fixtures into database
         run: |
@@ -177,19 +127,14 @@ jobs:
         id: catchall
         working-directory: frontend
         run: |
-          # Extract specs assigned to other shards from the workflow YAML.
-          # Uses grep/sed instead of PyYAML to avoid non-stdlib dependency.
-          ASSIGNED=$(grep -E '^\s+cypress/e2e/' ../.github/workflows/frontend-qa.yml \
+          ASSIGNED=$(grep -E '^\s+cypress/e2e/' ../.github/workflows/e2e-cypress-deprecated.yml \
             | sed 's/^[[:space:]]*//' | sed 's/,$//' | sort -u)
-          # Find all spec files on disk
           ALL=$(find cypress/e2e -name '*.cy.js' -type f | sort)
-          # Compute remaining = ALL - ASSIGNED
           REMAINING=""
           while IFS= read -r spec; do
             echo "$ASSIGNED" | grep -qxF "$spec" || REMAINING="${REMAINING:+$REMAINING,}$spec"
           done <<< "$ALL"
           echo "specs=$REMAINING" >> "$GITHUB_OUTPUT"
-          # Log for debugging
           TOTAL=$(echo "$ALL" | wc -l)
           ASSIGNED_COUNT=$(echo "$ASSIGNED" | wc -l)
           REMAINING_COUNT=$(echo "$REMAINING" | tr ',' '\n' | wc -l)
@@ -223,14 +168,6 @@ jobs:
           path: frontend/cypress/screenshots/**/*.png
           if-no-files-found: ignore
 
-      # In case of failure, uncomment this action and turn video: false to true in cypress.config.js
-      # - name: Upload Cypress videos on failure
-      #   if: failure()
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: cypress-videos-${{ matrix.shard }}
-      #     path: frontend/cypress/videos/**/*.mp4
-
       - name: Dump backend logs (${{ matrix.shard }})
         if: always()
         run: |
@@ -244,24 +181,4 @@ jobs:
         if: failure()
         uses: jwalton/gh-docker-logs@v2
         with:
-        # Only show last 100 lines of each
           tail: "100"
-
-  # Fan-in job: name must match the branch-protection required check.
-  build-and-run-qa-tests:
-    if: always()
-    needs: [static-checks, build-prod-frontend-image, e2e-cypress]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check sub-job results
-        run: |
-          if [[ "${{ needs.static-checks.result }}" != "success" ]] ||
-             [[ "${{ needs.build-prod-frontend-image.result }}" != "success" ]] ||
-             [[ "${{ needs.e2e-cypress.result }}" != "success" ]]; then
-            echo "One or more sub-jobs failed:"
-            echo "  static-checks: ${{ needs.static-checks.result }}"
-            echo "  build-prod-frontend-image: ${{ needs.build-prod-frontend-image.result }}"
-            echo "  e2e-cypress: ${{ needs.e2e-cypress.result }}"
-            exit 1
-          fi
-          echo "All sub-jobs passed."
