@@ -70,9 +70,9 @@ const PatientInfo = (props) => {
       setSelectedPatient({
         id: orderFormValues.patientProperties.patientPK || "",
         healthRegion: [],
-        firstName: orderFormValues.patientProperties.firstName || "EQA",
-        lastName: orderFormValues.patientProperties.lastName || "EQA",
-        nationalId: orderFormValues.patientProperties.nationalId || "EQA",
+        firstName: orderFormValues.patientProperties.firstName || "NULL",
+        lastName: orderFormValues.patientProperties.lastName || "NULL",
+        nationalId: orderFormValues.patientProperties.nationalId || "NULL",
         gender: orderFormValues.patientProperties.gender || "M",
         birthDateForDisplay:
           orderFormValues.patientProperties.birthDateForDisplay || "01/01/1900",

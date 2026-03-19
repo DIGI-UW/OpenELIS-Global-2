@@ -63,9 +63,7 @@ const EQADistributionDashboard = () => {
         setShipments(distributions);
 
         // Compute summary from distributions
-        const draft = distributions.filter(
-          (d) => d.status === "DRAFT",
-        ).length;
+        const draft = distributions.filter((d) => d.status === "DRAFT").length;
         const shipped = distributions.filter(
           (d) => d.status === "SHIPPED",
         ).length;
