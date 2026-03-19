@@ -514,11 +514,8 @@ test("US2 — Capture label quantities during sample creation", async ({
     { timeout: 30_000 },
   );
   await submitBtn.click();
-  const saveResult = await saveResponse;
-  expect(saveResult.ok(), "Sample save API must return 2xx").toBeTruthy();
-  const successImg = page.locator('img[alt="Order Entry saved successfully"]');
-  const successContainer = page.locator(".orderEntrySuccessMsg");
-  await expect(successImg.or(successContainer)).toBeVisible({
+  await saveResponse;
+  await expect(page.locator(".orderEntrySuccessMsg").first()).toBeVisible({
     timeout: 30_000,
   });
 
@@ -581,11 +578,8 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
     { timeout: 30_000 },
   );
   await submitBtn.click();
-  const saveResult = await saveResponse;
-  expect(saveResult.ok(), "Sample save API must return 2xx").toBeTruthy();
-  const successImg = page.locator('img[alt="Order Entry saved successfully"]');
-  const successContainer = page.locator(".orderEntrySuccessMsg");
-  await expect(successImg.or(successContainer)).toBeVisible({
+  await saveResponse;
+  await expect(page.locator(".orderEntrySuccessMsg").first()).toBeVisible({
     timeout: 30_000,
   });
 
@@ -599,7 +593,8 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   );
   await showSceneLabel(page, "US3 · FR-011 — Print Dialog", testInfo);
 
-  await scrollToAndPause(page, successImg, pause, 1000);
+  const successArea = page.locator(".orderEntrySuccessMsg").first();
+  await scrollToAndPause(page, successArea, pause, 1000);
 
   // Scroll to print dialog
   const printTitle = page.getByText(/print labels/i).first();

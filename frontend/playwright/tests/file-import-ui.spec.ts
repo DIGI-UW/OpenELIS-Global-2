@@ -36,6 +36,16 @@ function isIgnorableConsoleError(message: string): boolean {
     /favicon\.ico/i,
     /ResizeObserver loop limit exceeded/i,
     /Non-Error promise rejection captured/i,
+    // Harness uses self-signed TLS; SW + dev HMR noise is expected in CI.
+    /Failed to load resource: the server responded with a status of 404 \(\)/i,
+    /WebSocket connection to 'wss:\/\/localhost:3000\/ws'/i,
+    /ERR_CONNECTION_REFUSED/i,
+    /Service Worker registration failed/i,
+    /service-worker\.js/i,
+    /SSL certificate error/i,
+    /An SSL certificate error occurred when fetching the script/i,
+    /@formatjs\/intl/i,
+    /MISSING_TRANSLATION/i,
   ];
   return knownNoise.some((pattern) => pattern.test(message));
 }

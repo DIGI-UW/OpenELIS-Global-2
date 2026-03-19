@@ -114,7 +114,7 @@ async function pushAstmAndWaitForResults(
 
   // Poll until results appear in the staging table
   let resultCount = 0;
-  for (let attempt = 1; attempt <= 8; attempt++) {
+  for (let attempt = 1; attempt <= 16; attempt++) {
     const resp = await page.request.get(
       `/api/OpenELIS-Global/rest/AnalyzerResults?type=${encodeURIComponent(analyzerName)}`,
     );
@@ -161,13 +161,27 @@ async function verifyResults(
   const resultsTable = page.locator("table, .orderLegendBody");
   await expect(resultsTable.first()).toBeVisible({ timeout: LONG_TIMEOUT });
 
-  await expect(
-    page
-      .locator('[data-testid="LabNo"]', {
-        hasText: EXPECTED_RESULTS[0].sampleId,
-      })
-      .first(),
-  ).toBeVisible({ timeout: UI_TIMEOUT });
+  const sampleId = EXPECTED_RESULTS[0].sampleId;
+  // Staging table can lag behind the JSON API; LabNo may render without data-testid on all paths.
+  await expect
+    .poll(
+      async () => {
+        const byTestId = page
+          .locator('[data-testid="LabNo"]')
+          .filter({ hasText: sampleId })
+          .first();
+        if (await byTestId.isVisible().catch(() => false)) return "labno";
+        const loose = page.getByText(sampleId, { exact: true }).first();
+        if (await loose.isVisible().catch(() => false)) return "text";
+        return "";
+      },
+      {
+        timeout: UI_TIMEOUT,
+        intervals: [500, 1_000, 2_000, 3_000],
+        message: `Waiting for sample ${sampleId} on AnalyzerResults`,
+      },
+    )
+    .not.toEqual("");
 
   for (const expected of EXPECTED_RESULTS) {
     const inputCount = await page
