@@ -1,4 +1,5 @@
-name: OpenELIS-Global-2 CI Build
+name: 01 - Backend
+
 on:
   push:
     branches: [develop]
@@ -6,13 +7,15 @@ on:
   workflow_dispatch:
 
 jobs:
-  checkFormat-build-unitTest-and-run:
+  backend-verify:
+    name: Build + Test
     runs-on: ubuntu-latest
     steps:
       - name: Set up JDK 21
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v4
         with:
-          java-version: 21
+          distribution: temurin
+          java-version: "21"
       - name: Cache local Maven repository
         uses: actions/cache@v4
         with:
@@ -22,7 +25,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: ${{github.repository}}
           submodules: recursive
@@ -64,3 +67,17 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: target/html/
+
+  backend-checkpoint:
+    name: 01 Checkpoint - Backend
+    if: always()
+    needs: [backend-verify]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check backend result
+        run: |
+          if [[ "${{ needs.backend-verify.result }}" != "success" ]]; then
+            echo "Backend verification failed: ${{ needs.backend-verify.result }}"
+            exit 1
+          fi
+          echo "Backend checkpoint passed."
