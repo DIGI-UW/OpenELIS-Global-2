@@ -47,7 +47,77 @@ describe("EQASampleEntry", () => {
     expect(screen.getByText("EQA Sample")).toBeTruthy();
   });
 
-  test("EQA fields are hidden when checkbox is unchecked", () => {
+  test("checkbox is unchecked by default", () => {
+    renderWithIntl(
+      <EQASampleEntry
+        orderFormValues={defaultOrderFormValues}
+        setOrderFormValues={mockSetOrderFormValues}
+      />,
+    );
+    const checkbox = screen.getByRole("checkbox");
+    expect(checkbox.checked).toBe(false);
+  });
+
+  test("checkbox reflects isEQASample state", () => {
+    const eqaOrderFormValues = {
+      sampleOrderItems: {
+        ...defaultOrderFormValues.sampleOrderItems,
+        isEQASample: true,
+      },
+    };
+    renderWithIntl(
+      <EQASampleEntry
+        orderFormValues={eqaOrderFormValues}
+        setOrderFormValues={mockSetOrderFormValues}
+      />,
+    );
+    const checkbox = screen.getByRole("checkbox");
+    expect(checkbox.checked).toBe(true);
+  });
+
+  test("clicking checkbox triggers patient search for NULL placeholder", () => {
+    const { getFromOpenElisServer } = require("../../utils/Utils");
+    renderWithIntl(
+      <EQASampleEntry
+        orderFormValues={defaultOrderFormValues}
+        setOrderFormValues={mockSetOrderFormValues}
+      />,
+    );
+    const checkbox = screen.getByRole("checkbox");
+    fireEvent.click(checkbox);
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      expect.stringContaining("patient-search-results"),
+      expect.any(Function),
+    );
+  });
+
+  test("unchecking checkbox resets EQA fields and patient properties", () => {
+    const eqaOrderFormValues = {
+      sampleOrderItems: {
+        ...defaultOrderFormValues.sampleOrderItems,
+        isEQASample: true,
+      },
+    };
+    renderWithIntl(
+      <EQASampleEntry
+        orderFormValues={eqaOrderFormValues}
+        setOrderFormValues={mockSetOrderFormValues}
+      />,
+    );
+    const checkbox = screen.getByRole("checkbox");
+    fireEvent.click(checkbox);
+    expect(mockSetOrderFormValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sampleOrderItems: expect.objectContaining({
+          isEQASample: false,
+          eqaProgramId: "",
+          eqaPriority: "STANDARD",
+        }),
+      }),
+    );
+  });
+
+  test("only renders checkbox, no additional form fields", () => {
     renderWithIntl(
       <EQASampleEntry
         orderFormValues={defaultOrderFormValues}
@@ -55,76 +125,7 @@ describe("EQASampleEntry", () => {
       />,
     );
     expect(screen.queryByText("EQA Sample Details")).toBeNull();
-  });
-
-  test("EQA fields appear when checkbox is checked", () => {
-    const eqaOrderFormValues = {
-      sampleOrderItems: {
-        ...defaultOrderFormValues.sampleOrderItems,
-        isEQASample: true,
-      },
-    };
-    renderWithIntl(
-      <EQASampleEntry
-        orderFormValues={eqaOrderFormValues}
-        setOrderFormValues={mockSetOrderFormValues}
-      />,
-    );
-    expect(screen.getByText("EQA Sample Details")).toBeTruthy();
-    expect(screen.getByText("EQA Program")).toBeTruthy();
-    expect(screen.getByText("EQA Provider Organization")).toBeTruthy();
-    expect(screen.getByText("Testing Deadline")).toBeTruthy();
-    expect(screen.getByText("Priority")).toBeTruthy();
-  });
-
-  test("clicking checkbox calls setOrderFormValues with isEQASample toggled", () => {
-    renderWithIntl(
-      <EQASampleEntry
-        orderFormValues={defaultOrderFormValues}
-        setOrderFormValues={mockSetOrderFormValues}
-      />,
-    );
-    const checkbox =
-      screen.getByLabelText("EQA Sample") ||
-      screen.getByText("EQA Sample").closest("label")?.querySelector("input");
-    if (checkbox) {
-      fireEvent.click(checkbox);
-      expect(mockSetOrderFormValues).toHaveBeenCalled();
-    }
-  });
-
-  test("priority selection shows all three options", () => {
-    const eqaOrderFormValues = {
-      sampleOrderItems: {
-        ...defaultOrderFormValues.sampleOrderItems,
-        isEQASample: true,
-      },
-    };
-    renderWithIntl(
-      <EQASampleEntry
-        orderFormValues={eqaOrderFormValues}
-        setOrderFormValues={mockSetOrderFormValues}
-      />,
-    );
-    expect(screen.getByText("Standard")).toBeTruthy();
-    expect(screen.getByText("Urgent")).toBeTruthy();
-    expect(screen.getByText("Critical")).toBeTruthy();
-  });
-
-  test("provider sample ID and participant ID fields render when EQA active", () => {
-    const eqaOrderFormValues = {
-      sampleOrderItems: {
-        ...defaultOrderFormValues.sampleOrderItems,
-        isEQASample: true,
-      },
-    };
-    renderWithIntl(
-      <EQASampleEntry
-        orderFormValues={eqaOrderFormValues}
-        setOrderFormValues={mockSetOrderFormValues}
-      />,
-    );
-    expect(screen.getByText("Provider Sample ID")).toBeTruthy();
-    expect(screen.getByText("Participant ID")).toBeTruthy();
+    expect(screen.queryByText("Priority")).toBeNull();
+    expect(screen.queryByText("Provider Sample ID")).toBeNull();
   });
 });
