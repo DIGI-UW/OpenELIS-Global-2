@@ -279,7 +279,7 @@ jobs:
 
   # ─── Gate ──────────────────────────────────────────────────────────────────
   e2e-gate:
-    name: Required
+    name: 03 Checkpoint - E2E
     if: always()
     needs: [playwright-core, analyzer-harness, cypress]
     runs-on: ubuntu-latest
