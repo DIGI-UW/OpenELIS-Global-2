@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
 import { IntlProvider } from "react-intl";
 import { confirmAlert } from "react-confirm-alert";
 import Layout from "./components/layout/Layout";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 import Home from "./components/Home";
 import StorageDashboard from "./components/storage/StorageDashboard";
 import Login from "./components/Login";
@@ -271,488 +272,490 @@ export default function App() {
         <>
           <Router>
             <Layout onChangeLanguage={onChangeLanguage}>
-              <Switch>
-                <Route path="/login" exact component={() => <Login />} />
-                <Route
-                  path="/ChangePasswordLogin"
-                  exact
-                  component={() => <ChangePassword />}
-                />
-                <Route
-                  path="/landing"
-                  exact
-                  component={() => <LandingPage />}
-                />
-                <SecureRoute
-                  path="/"
-                  exact
-                  component={() => <Home />}
-                  role=""
-                />
-                <SecureRoute
-                  path="/Dashboard"
-                  exact
-                  component={() => <Home />}
-                  role=""
-                />
-                <SecureRoute
-                  path="/admin"
-                  exact
-                  component={() => <Admin />}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/MasterListsPage"
-                  component={() => <Admin />}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/PathologyDashboard"
-                  exact
-                  component={() => <PathologyDashboard />}
-                  role=""
-                  labUnitRole={{ Pathology: [Roles.RESULTS] }}
-                />
-                <SecureRoute
-                  path="/PathologyCaseView/:pathologySampleId"
-                  exact
-                  component={() => <PathologyCaseView />}
-                  role=""
-                  labUnitRole={{ Pathology: [Roles.RESULTS] }}
-                />
-                <SecureRoute
-                  path="/ImmunohistochemistryDashboard"
-                  exact
-                  component={() => <ImmunohistochemistryDashboard />}
-                  role=""
-                  labUnitRole={{ Immunohistochemistry: [Roles.RESULTS] }}
-                />
-                <SecureRoute
-                  path="/ImmunohistochemistryCaseView/:immunohistochemistrySampleId"
-                  exact
-                  component={() => <ImmunohistochemistryCaseView />}
-                  role=""
-                  labUnitRole={{ Immunohistochemistry: [Roles.RESULTS] }}
-                />
-                <SecureRoute
-                  path="/CytologyDashboard"
-                  exact
-                  component={() => <CytologyDashboard />}
-                  role=""
-                />
-                <SecureRoute
-                  path="/genericProgram"
-                  exact
-                  component={() => <ProgramDashboard />}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
-                  path="/programView/:programSampleId"
-                  exact
-                  component={() => <ProgramCaseView />}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
-                  path="/NoteBookDashboard"
-                  exact
-                  component={() => <NoteBookDashBoard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
-                />
-                <SecureRoute
-                  path="/NoteBookEntryForm/:notebookid"
-                  exact
-                  component={() => <NoteBookEntryForm />}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/NoteBookEntryForm"
-                  exact
-                  component={() => <NoteBookEntryForm />}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/NoteBookInstanceEntryForm/:notebookid"
-                  exact
-                  component={() => <NoteBookInstanceEntryForm />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/NoteBookInstanceEditForm/:notebookentryid"
-                  exact
-                  component={() => <NoteBookInstanceEntryForm />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/NotebookSampleOrder/:notebookId/:notebookEntryId"
-                  exact
-                  component={() => <NotebookSampleOrder />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/NotebookSampleOrder/:notebookId"
-                  exact
-                  component={() => <NotebookSampleOrder />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/CytologyCaseView/:cytologySampleId"
-                  exact
-                  component={() => <CytologyCaseView />}
-                  role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
-                />
-                <SecureRoute
-                  path="/GenericSample/Order"
-                  exact
-                  component={() => {
-                    const GenericSampleOrder =
-                      require("./components/genericSample/GenericSampleOrder").default;
-                    return <GenericSampleOrder />;
-                  }}
-                  role=""
-                />
-                <SecureRoute
-                  path="/GenericSample/Edit"
-                  exact
-                  component={() => {
-                    const GenericSampleOrderEdit =
-                      require("./components/genericSample/GenericSampleOrderEdit").default;
-                    return <GenericSampleOrderEdit />;
-                  }}
-                  role=""
-                />
-                <SecureRoute
-                  path="/GenericSample/Import"
-                  exact
-                  component={() => {
-                    const GenericSampleOrderImport =
-                      require("./components/genericSample/GenericSampleOrderImport").default;
-                    return <GenericSampleOrderImport />;
-                  }}
-                  role=""
-                />
-                <SecureRoute
-                  path="/FreezerMonitoring"
-                  exact
-                  component={() => <FreezerMonitoringDashboard />}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
-                  path="/SamplePatientEntry"
-                  exact
-                  component={() => <AddOrder />}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
-                  path="/ModifyOrder"
-                  exact
-                  component={() => <ModifyOrder />}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
-                  path="/SampleEdit"
-                  exact
-                  component={() => <FindOrder />}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
-                  path="/ReportNonConformingEvent"
-                  exact
-                  component={() => (
-                    <NonConformIndex form="ReportNonConformingEvent" />
-                  )}
-                  role={[Roles.RECEPTION, Roles.VALIDATION]}
-                />
-                <SecureRoute
-                  path="/ViewNonConformingEvent"
-                  exact
-                  component={() => (
-                    <NonConformIndex form="ViewNonConformingEvent" />
-                  )}
-                  role={[Roles.RECEPTION, Roles.VALIDATION]}
-                />
+              <ErrorBoundary>
+                <Switch>
+                  <Route path="/login" exact component={() => <Login />} />
+                  <Route
+                    path="/ChangePasswordLogin"
+                    exact
+                    component={() => <ChangePassword />}
+                  />
+                  <Route
+                    path="/landing"
+                    exact
+                    component={() => <LandingPage />}
+                  />
+                  <SecureRoute
+                    path="/"
+                    exact
+                    component={() => <Home />}
+                    role=""
+                  />
+                  <SecureRoute
+                    path="/Dashboard"
+                    exact
+                    component={() => <Home />}
+                    role=""
+                  />
+                  <SecureRoute
+                    path="/admin"
+                    exact
+                    component={() => <Admin />}
+                    role={Roles.GLOBAL_ADMIN}
+                  />
+                  <SecureRoute
+                    path="/MasterListsPage"
+                    component={() => <Admin />}
+                    role={Roles.GLOBAL_ADMIN}
+                  />
+                  <SecureRoute
+                    path="/PathologyDashboard"
+                    exact
+                    component={() => <PathologyDashboard />}
+                    role=""
+                    labUnitRole={{ Pathology: [Roles.RESULTS] }}
+                  />
+                  <SecureRoute
+                    path="/PathologyCaseView/:pathologySampleId"
+                    exact
+                    component={() => <PathologyCaseView />}
+                    role=""
+                    labUnitRole={{ Pathology: [Roles.RESULTS] }}
+                  />
+                  <SecureRoute
+                    path="/ImmunohistochemistryDashboard"
+                    exact
+                    component={() => <ImmunohistochemistryDashboard />}
+                    role=""
+                    labUnitRole={{ Immunohistochemistry: [Roles.RESULTS] }}
+                  />
+                  <SecureRoute
+                    path="/ImmunohistochemistryCaseView/:immunohistochemistrySampleId"
+                    exact
+                    component={() => <ImmunohistochemistryCaseView />}
+                    role=""
+                    labUnitRole={{ Immunohistochemistry: [Roles.RESULTS] }}
+                  />
+                  <SecureRoute
+                    path="/CytologyDashboard"
+                    exact
+                    component={() => <CytologyDashboard />}
+                    role=""
+                  />
+                  <SecureRoute
+                    path="/genericProgram"
+                    exact
+                    component={() => <ProgramDashboard />}
+                    role={Roles.RECEPTION}
+                  />
+                  <SecureRoute
+                    path="/programView/:programSampleId"
+                    exact
+                    component={() => <ProgramCaseView />}
+                    role={Roles.RECEPTION}
+                  />
+                  <SecureRoute
+                    path="/NoteBookDashboard"
+                    exact
+                    component={() => <NoteBookDashBoard />}
+                    role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
+                  />
+                  <SecureRoute
+                    path="/NoteBookEntryForm/:notebookid"
+                    exact
+                    component={() => <NoteBookEntryForm />}
+                    role={Roles.GLOBAL_ADMIN}
+                  />
+                  <SecureRoute
+                    path="/NoteBookEntryForm"
+                    exact
+                    component={() => <NoteBookEntryForm />}
+                    role={Roles.GLOBAL_ADMIN}
+                  />
+                  <SecureRoute
+                    path="/NoteBookInstanceEntryForm/:notebookid"
+                    exact
+                    component={() => <NoteBookInstanceEntryForm />}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/NoteBookInstanceEditForm/:notebookentryid"
+                    exact
+                    component={() => <NoteBookInstanceEntryForm />}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/NotebookSampleOrder/:notebookId/:notebookEntryId"
+                    exact
+                    component={() => <NotebookSampleOrder />}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/NotebookSampleOrder/:notebookId"
+                    exact
+                    component={() => <NotebookSampleOrder />}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/CytologyCaseView/:cytologySampleId"
+                    exact
+                    component={() => <CytologyCaseView />}
+                    role=""
+                    labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                  />
+                  <SecureRoute
+                    path="/GenericSample/Order"
+                    exact
+                    component={() => {
+                      const GenericSampleOrder =
+                        require("./components/genericSample/GenericSampleOrder").default;
+                      return <GenericSampleOrder />;
+                    }}
+                    role=""
+                  />
+                  <SecureRoute
+                    path="/GenericSample/Edit"
+                    exact
+                    component={() => {
+                      const GenericSampleOrderEdit =
+                        require("./components/genericSample/GenericSampleOrderEdit").default;
+                      return <GenericSampleOrderEdit />;
+                    }}
+                    role=""
+                  />
+                  <SecureRoute
+                    path="/GenericSample/Import"
+                    exact
+                    component={() => {
+                      const GenericSampleOrderImport =
+                        require("./components/genericSample/GenericSampleOrderImport").default;
+                      return <GenericSampleOrderImport />;
+                    }}
+                    role=""
+                  />
+                  <SecureRoute
+                    path="/FreezerMonitoring"
+                    exact
+                    component={() => <FreezerMonitoringDashboard />}
+                    role={Roles.RECEPTION}
+                  />
+                  <SecureRoute
+                    path="/SamplePatientEntry"
+                    exact
+                    component={() => <AddOrder />}
+                    role={Roles.RECEPTION}
+                  />
+                  <SecureRoute
+                    path="/ModifyOrder"
+                    exact
+                    component={() => <ModifyOrder />}
+                    role={Roles.RECEPTION}
+                  />
+                  <SecureRoute
+                    path="/SampleEdit"
+                    exact
+                    component={() => <FindOrder />}
+                    role={Roles.RECEPTION}
+                  />
+                  <SecureRoute
+                    path="/ReportNonConformingEvent"
+                    exact
+                    component={() => (
+                      <NonConformIndex form="ReportNonConformingEvent" />
+                    )}
+                    role={[Roles.RECEPTION, Roles.VALIDATION]}
+                  />
+                  <SecureRoute
+                    path="/ViewNonConformingEvent"
+                    exact
+                    component={() => (
+                      <NonConformIndex form="ViewNonConformingEvent" />
+                    )}
+                    role={[Roles.RECEPTION, Roles.VALIDATION]}
+                  />
 
-                <SecureRoute
-                  path="/NCECorrectiveAction"
-                  exact
-                  component={() => (
-                    <NonConformIndex form="NCECorrectiveAction" />
-                  )}
-                  role={[Roles.RECEPTION, Roles.VALIDATION]}
-                />
+                  <SecureRoute
+                    path="/NCECorrectiveAction"
+                    exact
+                    component={() => (
+                      <NonConformIndex form="NCECorrectiveAction" />
+                    )}
+                    role={[Roles.RECEPTION, Roles.VALIDATION]}
+                  />
 
-                <SecureRoute
-                  path="/SampleBatchEntrySetup"
-                  exact
-                  component={() => <SampleBatchEntrySetup />}
-                  role={Roles.RECEPTION}
-                />
+                  <SecureRoute
+                    path="/SampleBatchEntrySetup"
+                    exact
+                    component={() => <SampleBatchEntrySetup />}
+                    role={Roles.RECEPTION}
+                  />
 
-                <SecureRoute
-                  path="/ElectronicOrders"
-                  exact
-                  component={() => <EOrderPage />}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
-                  path="/PrintBarcode"
-                  exact
-                  component={() => <PrintBarcode />}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
-                  path="/PatientManagement"
-                  exact
-                  component={() => <PatientManagement />}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
-                  path="/Storage"
-                  exact
-                  component={() => <StorageDashboard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/Storage/:tab"
-                  component={() => <StorageDashboard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/inventory"
-                  exact
-                  component={() => <InventoryManagement />}
-                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/SampleManagement"
-                  exact
-                  component={() => <SampleManagement />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
-                />
-                <SecureRoute
-                  path="/analyzers"
-                  exact
-                  component={() => <AnalyzersPage />}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/analyzers/:id/mappings"
-                  exact
-                  component={FieldMapping}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/analyzers/errors"
-                  exact
-                  component={() => <ErrorDashboardPage />}
-                  role={Roles.LAB_SUPERVISOR}
-                />
-                <SecureRoute
-                  path="/analyzers/custom-field-types"
-                  exact
-                  component={() => <CustomFieldTypeManagementPage />}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/analyzers/types"
-                  exact
-                  component={() => <AnalyzerTypesPage />}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/analyzers/qc"
-                  exact
-                  component={() => <QCDashboardPlaceholder />}
-                  role={Roles.LAB_SUPERVISOR}
-                />
-                <SecureRoute
-                  path="/analyzers/qc/alerts"
-                  exact
-                  component={() => <QCAlertsPlaceholder />}
-                  role={Roles.LAB_SUPERVISOR}
-                />
-                <SecureRoute
-                  path="/analyzers/qc/corrective-actions"
-                  exact
-                  component={() => <CorrectiveActionsPlaceholder />}
-                  role={Roles.LAB_SUPERVISOR}
-                />
-                <SecureRoute
-                  path="/PatientHistory"
-                  exact
-                  component={() => <PatientHistory />}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
-                  path="/PatientMerge"
-                  exact
-                  component={() => <PatientMerge />}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/GenericSample/Results"
-                  exact
-                  component={() => {
-                    const GenericSampleResults =
-                      require("./components/genericSample/GenericSampleResults").default;
-                    return <GenericSampleResults />;
-                  }}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/Aliquot"
-                  exact
-                  component={() => <Aliquot />}
-                  role={Roles.RECEPTION}
-                />
+                  <SecureRoute
+                    path="/ElectronicOrders"
+                    exact
+                    component={() => <EOrderPage />}
+                    role={Roles.RECEPTION}
+                  />
+                  <SecureRoute
+                    path="/PrintBarcode"
+                    exact
+                    component={() => <PrintBarcode />}
+                    role={Roles.RECEPTION}
+                  />
+                  <SecureRoute
+                    path="/PatientManagement"
+                    exact
+                    component={() => <PatientManagement />}
+                    role={Roles.RECEPTION}
+                  />
+                  <SecureRoute
+                    path="/Storage"
+                    exact
+                    component={() => <StorageDashboard />}
+                    role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  />
+                  <SecureRoute
+                    path="/Storage/:tab"
+                    component={() => <StorageDashboard />}
+                    role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  />
+                  <SecureRoute
+                    path="/inventory"
+                    exact
+                    component={() => <InventoryManagement />}
+                    role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  />
+                  <SecureRoute
+                    path="/SampleManagement"
+                    exact
+                    component={() => <SampleManagement />}
+                    role={[Roles.RECEPTION, Roles.RESULTS]}
+                  />
+                  <SecureRoute
+                    path="/analyzers"
+                    exact
+                    component={() => <AnalyzersPage />}
+                    role={Roles.GLOBAL_ADMIN}
+                  />
+                  <SecureRoute
+                    path="/analyzers/:id/mappings"
+                    exact
+                    component={FieldMapping}
+                    role={Roles.GLOBAL_ADMIN}
+                  />
+                  <SecureRoute
+                    path="/analyzers/errors"
+                    exact
+                    component={() => <ErrorDashboardPage />}
+                    role={Roles.LAB_SUPERVISOR}
+                  />
+                  <SecureRoute
+                    path="/analyzers/custom-field-types"
+                    exact
+                    component={() => <CustomFieldTypeManagementPage />}
+                    role={Roles.GLOBAL_ADMIN}
+                  />
+                  <SecureRoute
+                    path="/analyzers/types"
+                    exact
+                    component={() => <AnalyzerTypesPage />}
+                    role={Roles.GLOBAL_ADMIN}
+                  />
+                  <SecureRoute
+                    path="/analyzers/qc"
+                    exact
+                    component={() => <QCDashboardPlaceholder />}
+                    role={Roles.LAB_SUPERVISOR}
+                  />
+                  <SecureRoute
+                    path="/analyzers/qc/alerts"
+                    exact
+                    component={() => <QCAlertsPlaceholder />}
+                    role={Roles.LAB_SUPERVISOR}
+                  />
+                  <SecureRoute
+                    path="/analyzers/qc/corrective-actions"
+                    exact
+                    component={() => <CorrectiveActionsPlaceholder />}
+                    role={Roles.LAB_SUPERVISOR}
+                  />
+                  <SecureRoute
+                    path="/PatientHistory"
+                    exact
+                    component={() => <PatientHistory />}
+                    role={Roles.RECEPTION}
+                  />
+                  <SecureRoute
+                    path="/PatientMerge"
+                    exact
+                    component={() => <PatientMerge />}
+                    role={Roles.GLOBAL_ADMIN}
+                  />
+                  <SecureRoute
+                    path="/GenericSample/Results"
+                    exact
+                    component={() => {
+                      const GenericSampleResults =
+                        require("./components/genericSample/GenericSampleResults").default;
+                      return <GenericSampleResults />;
+                    }}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/Aliquot"
+                    exact
+                    component={() => <Aliquot />}
+                    role={Roles.RECEPTION}
+                  />
 
-                <SecureRoute
-                  path="/PatientResults/:patientId"
-                  exact
-                  component={() => <RoutedResultsViewer />}
-                  role={Roles.RECEPTION}
-                />
+                  <SecureRoute
+                    path="/PatientResults/:patientId"
+                    exact
+                    component={() => <RoutedResultsViewer />}
+                    role={Roles.RECEPTION}
+                  />
 
-                <SecureRoute
-                  path="/WorkPlanByTestSection"
-                  exact
-                  component={() => <Workplan type="unit" />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/WorkplanByTest"
-                  exact
-                  component={() => <Workplan type="test" />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/WorkplanByPanel"
-                  exact
-                  component={() => <Workplan type="panel" />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/WorkplanByPriority"
-                  exact
-                  component={() => <Workplan type="priority" />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/result"
-                  exact
-                  component={() => <ResultSearch />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/LogbookResults"
-                  exact
-                  component={() => <ResultSearch />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/PatientResults"
-                  exact
-                  component={() => <ResultSearch />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/AccessionResults"
-                  exact
-                  component={() => <ResultSearch />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/StatusResults"
-                  exact
-                  component={() => <ResultSearch />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/RangeResults"
-                  exact
-                  component={() => <ResultSearch />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/ReferredOutTests"
-                  exact
-                  component={() => <ReferredOutTests />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/RoutineReports"
-                  exact
-                  component={() => <RoutineReports />}
-                  role={Roles.REPORTS}
-                />
-                <SecureRoute
-                  path="/RoutineReport"
-                  exact
-                  component={() => <RoutineIndex />}
-                  role={Roles.REPORTS}
-                />
-                <SecureRoute
-                  path="/StudyReports"
-                  exact
-                  component={() => <StudyReports />}
-                  role={Roles.REPORTS}
-                />
-                <SecureRoute
-                  path="/StudyReport"
-                  exact
-                  component={() => <StudyIndex />}
-                  role={Roles.REPORTS}
-                />
-                <SecureRoute
-                  path="/Report"
-                  exact
-                  component={() => <ReportIndex />}
-                  role={Roles.REPORTS}
-                />
-                <SecureRoute
-                  path="/AuditTrailReport"
-                  exact
-                  component={() => <AuditTrailReportIndex />}
-                  role={Roles.REPORTS}
-                />
-                <SecureRoute
-                  path="/validation"
-                  exact
-                  component={() => <StudyValidation />}
-                  role={Roles.VALIDATION}
-                />
-                <SecureRoute
-                  path="/ResultValidation"
-                  exact
-                  component={() => <StudyValidation />}
-                  role={Roles.VALIDATION}
-                />
-                <SecureRoute
-                  path="/AccessionValidation"
-                  exact
-                  component={() => <StudyValidation />}
-                  role={Roles.VALIDATION}
-                />
-                <SecureRoute
-                  path="/AccessionValidationRange"
-                  exact
-                  component={() => <StudyValidation />}
-                  role={Roles.VALIDATION}
-                />
-                <SecureRoute
-                  path="/ResultValidationByTestDate"
-                  exact
-                  component={() => <StudyValidation />}
-                  role={Roles.VALIDATION}
-                />
-                <SecureRoute
-                  path="/AnalyzerResults"
-                  exact
-                  component={() => <AnalyserResultIndex />}
-                  role={Roles.ANALYSER_IMPORT}
-                />
-                <Route path="*" component={() => <RedirectOldUI />} />
-              </Switch>
+                  <SecureRoute
+                    path="/WorkPlanByTestSection"
+                    exact
+                    component={() => <Workplan type="unit" />}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/WorkplanByTest"
+                    exact
+                    component={() => <Workplan type="test" />}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/WorkplanByPanel"
+                    exact
+                    component={() => <Workplan type="panel" />}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/WorkplanByPriority"
+                    exact
+                    component={() => <Workplan type="priority" />}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/result"
+                    exact
+                    component={() => <ResultSearch />}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/LogbookResults"
+                    exact
+                    component={() => <ResultSearch />}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/PatientResults"
+                    exact
+                    component={() => <ResultSearch />}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/AccessionResults"
+                    exact
+                    component={() => <ResultSearch />}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/StatusResults"
+                    exact
+                    component={() => <ResultSearch />}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/RangeResults"
+                    exact
+                    component={() => <ResultSearch />}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/ReferredOutTests"
+                    exact
+                    component={() => <ReferredOutTests />}
+                    role={Roles.RESULTS}
+                  />
+                  <SecureRoute
+                    path="/RoutineReports"
+                    exact
+                    component={() => <RoutineReports />}
+                    role={Roles.REPORTS}
+                  />
+                  <SecureRoute
+                    path="/RoutineReport"
+                    exact
+                    component={() => <RoutineIndex />}
+                    role={Roles.REPORTS}
+                  />
+                  <SecureRoute
+                    path="/StudyReports"
+                    exact
+                    component={() => <StudyReports />}
+                    role={Roles.REPORTS}
+                  />
+                  <SecureRoute
+                    path="/StudyReport"
+                    exact
+                    component={() => <StudyIndex />}
+                    role={Roles.REPORTS}
+                  />
+                  <SecureRoute
+                    path="/Report"
+                    exact
+                    component={() => <ReportIndex />}
+                    role={Roles.REPORTS}
+                  />
+                  <SecureRoute
+                    path="/AuditTrailReport"
+                    exact
+                    component={() => <AuditTrailReportIndex />}
+                    role={Roles.REPORTS}
+                  />
+                  <SecureRoute
+                    path="/validation"
+                    exact
+                    component={() => <StudyValidation />}
+                    role={Roles.VALIDATION}
+                  />
+                  <SecureRoute
+                    path="/ResultValidation"
+                    exact
+                    component={() => <StudyValidation />}
+                    role={Roles.VALIDATION}
+                  />
+                  <SecureRoute
+                    path="/AccessionValidation"
+                    exact
+                    component={() => <StudyValidation />}
+                    role={Roles.VALIDATION}
+                  />
+                  <SecureRoute
+                    path="/AccessionValidationRange"
+                    exact
+                    component={() => <StudyValidation />}
+                    role={Roles.VALIDATION}
+                  />
+                  <SecureRoute
+                    path="/ResultValidationByTestDate"
+                    exact
+                    component={() => <StudyValidation />}
+                    role={Roles.VALIDATION}
+                  />
+                  <SecureRoute
+                    path="/AnalyzerResults"
+                    exact
+                    component={() => <AnalyserResultIndex />}
+                    role={Roles.ANALYSER_IMPORT}
+                  />
+                  <Route path="*" component={() => <RedirectOldUI />} />
+                </Switch>
+              </ErrorBoundary>
             </Layout>
           </Router>
         </>
