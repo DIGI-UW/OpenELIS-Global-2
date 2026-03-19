@@ -29,6 +29,10 @@ import { LONG_TIMEOUT, UI_TIMEOUT } from "../helpers/timeouts";
  * Produces demo videos with title/transition screens when run with:
  *   CLEANUP=false PLAYWRIGHT_VIDEO=on TEST_USER=admin TEST_PASS='adminADMIN!' \
  *     npx playwright test file-import-results --project=demo-video
+ *
+ * Env (optional; align with server file.import.poll.interval):
+ *   FILE_IMPORT_POLL_MS — backend watcher period (default 60000; CI harness uses 5000)
+ *   FILE_IMPORT_DROP_BUFFER_MS — extra ms for parse/DB/archive after a poll (default 45000)
  */
 
 const CLEANUP = process.env.CLEANUP !== "false";
@@ -38,6 +42,36 @@ const HOST_IMPORTS_BASE = path.join(
   REPO_ROOT,
   "projects/analyzer-harness/volume/analyzer-imports",
 );
+
+/**
+ * Must stay aligned with server `file.import.poll.interval` (see application.properties
+ * and harness CATALINA_OPTS). Max wait ≈ 2× poll + buffer (missed tick + Excel/DB/archive).
+ */
+function parsePositiveIntEnv(name: string, fallback: number): number {
+  const n = parseInt(process.env[name] || "", 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+const DEFAULT_FILE_IMPORT_POLL_MS = 60_000;
+const DEFAULT_FILE_IMPORT_DROP_BUFFER_MS = 45_000;
+
+/** GET staging AnalyzerResults; true when JSON has non-empty resultList */
+async function restStagingResultsReady(
+  page: Page,
+  baseURL: string,
+  analyzerName: string,
+): Promise<boolean> {
+  const root = baseURL.replace(/\/$/, "");
+  const url = `${root}/api/OpenELIS-Global/rest/AnalyzerResults?type=${encodeURIComponent(analyzerName)}`;
+  const res = await page.request.get(url);
+  if (!res.ok()) {
+    return false;
+  }
+  const data = (await res.json().catch(() => null)) as {
+    resultList?: unknown[];
+  } | null;
+  return Array.isArray(data?.resultList) && data.resultList.length > 0;
+}
 
 /** Analyzer configurations for parameterized tests */
 const ANALYZERS = [
@@ -128,7 +162,36 @@ const ANALYZERS = [
 
 // ── Shared helpers ─────────────────────────────────────────────────────
 
-/** Drop a fixture file into the import directory and wait for processing */
+/**
+ * Bind-mounted analyzer-imports may be owned by the CI user while Tomcat in the
+ * webapp container runs as a different uid. Without o+w on parent dirs, Java
+ * cannot create archive/ and the file never leaves incoming — dropFileAndWait
+ * would time out.
+ */
+function chmodSharedImportPathChain(dir: string) {
+  const base = path.resolve(HOST_IMPORTS_BASE);
+  let d = path.resolve(dir);
+  while (d.startsWith(base) && d !== base) {
+    try {
+      if (fs.existsSync(d)) {
+        fs.chmodSync(d, 0o777);
+      }
+    } catch {
+      // non-fatal (e.g. Windows dev without harness mount)
+    }
+    d = path.dirname(d);
+  }
+}
+
+type DropFileWaitOptions = {
+  baseURL?: string;
+  analyzerName?: string;
+};
+
+/**
+ * Drop a fixture into the host import dir and wait until the file leaves `incoming`
+ * or staging results appear via REST (whichever first).
+ */
 async function dropFileAndWait(
   page: Page,
   fixtureFile: string,
@@ -136,11 +199,13 @@ async function dropFileAndWait(
   filePrefix: string,
   fileExtension: string,
   testInfo: TestInfo,
+  waitOpts?: DropFileWaitOptions,
 ) {
   // Ensure host directory exists
   if (!fs.existsSync(hostImportDir)) {
     fs.mkdirSync(hostImportDir, { recursive: true });
   }
+  chmodSharedImportPathChain(hostImportDir);
 
   const timestamp = Date.now();
   const destFilename = `${filePrefix}${timestamp}${fileExtension}`;
@@ -151,14 +216,54 @@ async function dropFileAndWait(
   expect(fs.existsSync(destPath)).toBeTruthy();
   await videoPause(page, 2_000, testInfo);
 
-  // Wait for FileImportWatchService to process (file moved from incoming dir).
+  const backendPollMs = parsePositiveIntEnv(
+    "FILE_IMPORT_POLL_MS",
+    DEFAULT_FILE_IMPORT_POLL_MS,
+  );
+  const bufferMs = parsePositiveIntEnv(
+    "FILE_IMPORT_DROP_BUFFER_MS",
+    DEFAULT_FILE_IMPORT_DROP_BUFFER_MS,
+  );
+  const maxWaitMs = 2 * backendPollMs + bufferMs;
+  const useApi = Boolean(waitOpts?.baseURL && waitOpts?.analyzerName);
+  console.log(
+    `Waiting for file import (max ${maxWaitMs}ms; FILE_IMPORT_POLL_MS=${backendPollMs}; staging API early-exit: ${useApi ? "on" : "off"})...`,
+  );
+
   await expect
-    .poll(() => !fs.existsSync(destPath), {
-      timeout: 120_000,
-      intervals: [2_000, 5_000, 10_000],
-      message: `Waiting for ${destFilename} to be processed by watch service`,
-    })
-    .toBeTruthy();
+    .poll(
+      async () => {
+        if (!fs.existsSync(destPath)) {
+          return "file";
+        }
+        if (
+          waitOpts?.baseURL &&
+          waitOpts?.analyzerName &&
+          (await restStagingResultsReady(
+            page,
+            waitOpts.baseURL,
+            waitOpts.analyzerName,
+          ))
+        ) {
+          return "api";
+        }
+        return "";
+      },
+      {
+        timeout: maxWaitMs,
+        intervals: [1_000, 2_000, 2_000, 5_000],
+        message: `Waiting for ${destFilename} to be processed by watch service`,
+      },
+    )
+    .not.toEqual("");
+
+  if (!fs.existsSync(destPath)) {
+    console.log("Incoming file cleared (processed/archived)");
+  } else {
+    console.log(
+      "Staging results visible via API; continuing (file may still be in incoming until archive completes)",
+    );
+  }
 
   await videoPause(page, 2_000, testInfo);
   return destPath;
@@ -247,6 +352,7 @@ for (const analyzer of ANALYZERS) {
 
     test(`pre-loaded: drop file → verify results (${fileExtension})`, async ({
       page,
+      baseURL,
     }, testInfo) => {
       test.skip(
         !fs.existsSync(HOST_IMPORTS_BASE),
@@ -298,6 +404,10 @@ for (const analyzer of ANALYZERS) {
         analyzer.filePrefix,
         fileExtension,
         testInfo,
+        {
+          baseURL: baseURL ?? process.env.BASE_URL,
+          analyzerName: analyzer.name,
+        },
       );
 
       // ── Step 4: Verify results ───────────────────────────────────
@@ -336,6 +446,7 @@ for (const analyzer of ANALYZERS) {
 
     test(`create → configure → import → results (${fileExtension})`, async ({
       page,
+      baseURL,
     }, testInfo) => {
       test.skip(
         !fs.existsSync(HOST_IMPORTS_BASE),
@@ -577,6 +688,10 @@ for (const analyzer of ANALYZERS) {
         analyzer.filePrefix,
         fileExtension,
         testInfo,
+        {
+          baseURL: baseURL ?? process.env.BASE_URL,
+          analyzerName: createdAnalyzerName,
+        },
       );
 
       // ── Step 6: Verify results ───────────────────────────────────

@@ -97,7 +97,9 @@ jobs:
           ' _ {} < /tmp/e2e-image-map/e2e-image-map.txt
 
       - name: Create analyzer import bind mount directories
-        run: mkdir -p projects/analyzer-harness/volume/analyzer-imports
+        run: |
+          mkdir -p projects/analyzer-harness/volume/analyzer-imports
+          chmod -R a+rwx projects/analyzer-harness/volume/analyzer-imports
 
       - name: Start analyzer harness stack (no rebuild)
         run: docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml up -d --no-build --wait --wait-timeout 900
@@ -107,9 +109,6 @@ jobs:
           timeout 120 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done'
           timeout 120 bash -c 'until curl -s -f http://localhost:8442/actuator/health > /dev/null; do sleep 2; done'
           timeout 120 bash -c 'until curl -s -f http://localhost:8085/health > /dev/null; do sleep 2; done'
-
-      - name: Verify harness env (FILE_IMPORT_POLL_INTERVAL, ANALYZER_BRIDGE_URL)
-        run: docker exec openelisglobal-webapp env | grep -E 'FILE_IMPORT|ANALYZER_BRIDGE' || echo "(no matches)"
 
       - name: "Load test fixtures (parity with local: foundational + analyzer types + cleanup + storage)"
         run: ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
@@ -130,6 +129,9 @@ jobs:
           BASE_URL: https://localhost
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS }}
+          # Must match -Dfile.import.poll.interval on oe.openelis.org (ci.analyzer-harness.yml)
+          FILE_IMPORT_POLL_MS: "5000"
+          FILE_IMPORT_DROP_BUFFER_MS: "45000"
 
       - name: Upload blob report
         if: ${{ !cancelled() }}
@@ -249,7 +251,9 @@ jobs:
           ' _ {} < /tmp/e2e-image-map/e2e-image-map.txt
 
       - name: Create analyzer import bind mount directories
-        run: mkdir -p projects/analyzer-harness/volume/analyzer-imports
+        run: |
+          mkdir -p projects/analyzer-harness/volume/analyzer-imports
+          chmod -R a+rwx projects/analyzer-harness/volume/analyzer-imports
 
       - name: Start analyzer harness stack (no rebuild)
         run: docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml up -d --no-build --wait --wait-timeout 900
@@ -259,9 +263,6 @@ jobs:
           timeout 120 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done'
           timeout 120 bash -c 'until curl -s -f http://localhost:8442/actuator/health > /dev/null; do sleep 2; done'
           timeout 120 bash -c 'until curl -s -f http://localhost:8085/health > /dev/null; do sleep 2; done'
-
-      - name: Verify harness env (FILE_IMPORT_POLL_INTERVAL, ANALYZER_BRIDGE_URL)
-        run: docker exec openelisglobal-webapp env | grep -E 'FILE_IMPORT|ANALYZER_BRIDGE' || echo "(no matches)"
 
       - name: "Load test fixtures (parity with local: foundational + analyzer types + cleanup + storage)"
         run: ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
@@ -282,6 +283,9 @@ jobs:
           BASE_URL: https://localhost
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS }}
+          # Must match -Dfile.import.poll.interval on oe.openelis.org (ci.analyzer-harness.yml)
+          FILE_IMPORT_POLL_MS: "5000"
+          FILE_IMPORT_DROP_BUFFER_MS: "45000"
 
       - name: Upload blob report
         if: ${{ !cancelled() }}

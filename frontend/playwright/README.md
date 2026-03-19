@@ -59,6 +59,17 @@ Analyzer rows used by harness tests are created via REST API seeding:
   `Cepheid GeneXpert (ASTM Mode)`, `QuantStudio 5`, `QuantStudio 7`, and
   `FluoroCycler XT` using profile-based `defaultConfigId`
 
+### File import wait tuning (`file-import-results.spec.ts`)
+
+CI sets **`FILE_IMPORT_POLL_MS=5000`** and **`FILE_IMPORT_DROP_BUFFER_MS=45000`** on
+Playwright jobs (see
+[`e2e-playwright-analyzer-harness-reusable.yml`](../../.github/workflows/e2e-playwright-analyzer-harness-reusable.yml))
+to match the harness webapp (`-Dfile.import.poll.interval=5000` in
+[`.github/ci/ci.analyzer-harness.yml`](../../.github/ci/ci.analyzer-harness.yml)).
+Locally, defaults assume the server's **`file.import.poll.interval=60000`** in
+`application.properties` unless you override JVM properties or the same env vars
+when running tests.
+
 ## Local Execution
 
 ### Prerequisites
