@@ -42,6 +42,21 @@ controller/DAO/integration tests.
 - **Clean State**: Tests must be isolated and use builders/factories for data
 - **Checkpoint Validation**: Tests must pass at each SDD phase checkpoint
 
+### CI Enforcement And Migration Guardrails
+
+- **Playwright-first E2E direction**: New end-to-end coverage should be authored
+  in Playwright unless there is a clear blocker.
+- **Cypress is legacy/deprecating**: Existing Cypress coverage is maintained for
+  risk control, but avoid expanding long-term Cypress scope.
+- **Stable required gates only**: Protect `develop` using stable gate checks,
+  not shard-level checks.
+- **Ruleset-managed CI checks**: CI required status checks are managed by
+  repository rulesets; classic branch protection should retain non-CI controls
+  (reviews, conversation resolution, etc.).
+- **Rename safety rule**: Any workflow/job rename that changes required check
+  names must be paired with explicit ruleset/branch-protection update steps in
+  the same change window.
+
 ### Test Type Contracts (What each test MUST prove)
 
 This project uses “E2E” to mean **real browser + real backend + real database**.
@@ -660,8 +675,8 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
 **Use when**: E2E tests (Cypress) need to load DBUnit XML fixtures **without
 Java/Maven dependencies**.
 
-**Problem**: E2E CI (`frontend-qa.yml`) doesn't have Maven/Java, but needs same
-fixtures as backend tests.
+**Problem**: E2E CI (`e2e-cypress-deprecated.yml`) does not have Maven/Java, but
+needs same fixtures as backend tests.
 
 **Solution**: Generate SQL on-demand from authoritative DBUnit XML:
 
@@ -1624,6 +1639,10 @@ test("testBoundaryValue", () => {
 
 ### Cypress E2E Testing
 
+> **Lifecycle status:** Cypress E2E is now a **legacy/deprecation track** in
+> this repository. Keep existing coverage healthy; prioritize new E2E work in
+> Playwright unless a Cypress-only gap is justified.
+
 **Reference**:
 [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
 for functional requirements.
@@ -2092,15 +2111,15 @@ for comprehensive patterns and examples.
 - `/debug-playwright` for evidence-first debugging
 - `/audit-playwright` for selector and anti-pattern audits
 
-Playwright is the recommended E2E testing framework for new test development. It
-offers modern async/await patterns, auto-waiting, and better debugging tools.
+Playwright is the primary E2E framework for new test development. It offers
+modern async/await patterns, auto-waiting, and better debugging tools.
 
 #### When to Use Playwright vs Cypress
 
 | Scenario                 | Recommended    | Reason                         |
 | ------------------------ | -------------- | ------------------------------ |
 | New E2E tests            | **Playwright** | Modern API, better debugging   |
-| Existing Cypress tests   | Cypress        | Don't migrate unnecessarily    |
+| Existing Cypress tests   | Cypress        | Maintain while deprecating     |
 | Complex multi-tab/window | **Playwright** | Native support                 |
 | Visual regression        | **Playwright** | Built-in screenshot comparison |
 | API testing alongside UI | **Playwright** | First-class request API        |
@@ -2120,7 +2139,7 @@ npm run pw:test
 npm run pw:test:ui
 
 # Run specific test file
-npx playwright test sidenav.spec.ts
+npm run pw:test -- sidenav.spec.ts
 ```
 
 #### Key Patterns
@@ -2481,18 +2500,18 @@ npm test                    # Run all
 npm test -- --watch         # Watch mode
 npm test -- --coverage      # With coverage report
 
-# Cypress E2E (development: individual files)
+# Cypress E2E legacy (development: individual files)
 npm run cy:run -- --spec "cypress/e2e/feature.cy.js"
 
-# Cypress E2E (CI only: full suite)
+# Cypress E2E legacy (CI only: full suite)
 npm run cy:run
 
-# Playwright E2E (recommended for new tests)
+# Playwright E2E (primary for new tests)
 npm run pw:install          # First time: install browsers
 npm run pw:test             # Run all tests
 npm run pw:test:ui          # Interactive UI debugger
 npm run pw:test:headed      # See browser window
-npx playwright test file.spec.ts  # Run specific file
+npm run pw:test -- file.spec.ts  # Run specific file
 ```
 
 ### Test Template Locations

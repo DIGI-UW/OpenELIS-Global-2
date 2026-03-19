@@ -3,7 +3,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Run E2E Tests and Publish Docker Images 
+name: Publishing / Release / E2E + Images
 
 on:
   push:
@@ -218,13 +218,18 @@ jobs:
   #       with:
   #         # Only show last 100 lines of each
   #         tail: "100"
-  frontend-qa:
+  frontend:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    uses: DIGI-UW/OpenELIS-Global-2/.github/workflows/frontend-qa.yml@develop
+    uses: DIGI-UW/OpenELIS-Global-2/.github/workflows/frontend.yml@develop
+
+  e2e-cypress-deprecated:
+    if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+    needs: [frontend]
+    uses: DIGI-UW/OpenELIS-Global-2/.github/workflows/e2e-cypress-deprecated.yml@develop
 
   build-and-push-image-backend:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    needs: [frontend-qa]
+    needs: [frontend, e2e-cypress-deprecated]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -270,7 +275,7 @@ jobs:
 
   build-and-push-image-frontend:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    needs: [frontend-qa]
+    needs: [frontend, e2e-cypress-deprecated]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -314,7 +319,7 @@ jobs:
 
   build-and-push-image-proxy:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    needs: [frontend-qa]
+    needs: [frontend, e2e-cypress-deprecated]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -357,7 +362,7 @@ jobs:
 
   build-and-push-image-fhir:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    needs: [frontend-qa]
+    needs: [frontend, e2e-cypress-deprecated]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -401,7 +406,7 @@ jobs:
 
   build-and-push-image-database:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    needs: [frontend-qa]
+    needs: [frontend, e2e-cypress-deprecated]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -445,6 +450,6 @@ jobs:
 
   # build-installer-and-upload-installer:
   #   if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' && github.event_name == 'release' && github.event.action == 'published' }}
-  #   needs: [frontend-qa]
+  #   needs: [frontend, e2e-cypress-deprecated]
   #   uses : DIGI-UW/OpenELIS-Global-2/.github/workflows/build-installer.yml@develop
            
