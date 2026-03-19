@@ -132,12 +132,20 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  # ─── Playwright Core ────────────────────────────────────────────────────────
+  # ─── Playwright Core (sharded) ──────────────────────────────────────────────
   playwright-core:
-    name: Playwright Core
+    name: Playwright Core ${{ matrix.shard_index }}/${{ matrix.shard_total }}
     needs: shared-build
     runs-on: ubuntu-latest
     environment: e2e
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_index: 1
+            shard_total: 2
+          - shard_index: 2
+            shard_total: 2
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -206,7 +214,7 @@ jobs:
             /data/analyzer-imports/e2e-fluorocycler/incoming
 
       - name: Run Playwright tests
-        run: npm run pw:test -- --project=core-app
+        run: npm run pw:test -- --project=core-app --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
         working-directory: frontend
         env:
           CI: true
@@ -218,7 +226,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-blob-report
+          name: playwright-core-blob-report-${{ matrix.shard_index }}
           path: frontend/blob-report
           if-no-files-found: ignore
           retention-days: 1
@@ -227,7 +235,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-screenshots
+          name: playwright-core-screenshots-${{ matrix.shard_index }}
           path: frontend/test-results/**/test-failed-*.png
           retention-days: 7
           if-no-files-found: ignore
@@ -236,7 +244,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-traces
+          name: playwright-core-traces-${{ matrix.shard_index }}
           path: frontend/test-results/**/trace.zip
           retention-days: 7
           if-no-files-found: ignore
@@ -262,67 +270,17 @@ jobs:
     uses: ./.github/workflows/e2e-cypress-deprecated.yml
     secrets: inherit
 
-  # ─── Reports ───────────────────────────────────────────────────────────────
-  playwright-core-report:
-    name: Playwright Core Report
-    if: ${{ always() && !cancelled() }}
-    needs: playwright-core
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: frontend
-
-      - name: Download blob report
-        continue-on-error: true
-        uses: actions/download-artifact@v4
-        with:
-          name: playwright-blob-report
-          path: frontend/all-blob-reports
-
-      - name: Merge into HTML report when blob reports exist
-        run: |
-          if [ -d ./all-blob-reports ] && [ -n "$(ls -A ./all-blob-reports 2>/dev/null)" ]; then
-            npx playwright merge-reports --reporter html ./all-blob-reports
-          else
-            echo "No blob reports available; skipping merge."
-          fi
-        working-directory: frontend
-
-      - name: Upload merged HTML report
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report-html-attempt-${{ github.run_attempt }}
-          path: frontend/playwright-report/
-          if-no-files-found: ignore
-          retention-days: 14
-
   # ─── Gate ──────────────────────────────────────────────────────────────────
   e2e-gate:
-    name: 03 Checkpoint - E2E
+    name: Required
     if: always()
-    needs: [playwright-core, playwright-core-report, analyzer-harness, cypress]
+    needs: [playwright-core, analyzer-harness, cypress]
     runs-on: ubuntu-latest
     steps:
       - name: Enforce all E2E results
         run: |
           if [[ "${{ needs.playwright-core.result }}" != "success" ]]; then
             echo "Playwright Core failed: ${{ needs.playwright-core.result }}"
-            exit 1
-          fi
-          if [[ "${{ needs.playwright-core-report.result }}" != "success" ]]; then
-            echo "Playwright Core Report failed: ${{ needs.playwright-core-report.result }}"
             exit 1
           fi
           if [[ "${{ needs.analyzer-harness.result }}" != "success" && "${{ needs.analyzer-harness.result }}" != "skipped" ]]; then
