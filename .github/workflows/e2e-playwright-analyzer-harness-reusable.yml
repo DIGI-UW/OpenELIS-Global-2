@@ -86,7 +86,7 @@ jobs:
 
       - name: Tag and push compose images to GHCR
         run: |
-          TAG="pr-${{ github.event.pull_request.number || github.sha }}"
+          TAG="sha-${GITHUB_SHA}"
           OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
           docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/analyzer-images.txt
           : > /tmp/analyzer-image-map.txt
