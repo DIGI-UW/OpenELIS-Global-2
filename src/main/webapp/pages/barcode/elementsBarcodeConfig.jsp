@@ -27,13 +27,13 @@
 		<table style="margin:auto;border-spacing:15px 2px;">
 			<tr>
 				<td><ul>
-					<li><spring:message code="barcode.label.info.labnumber"/></li>
-					<li><spring:message code="barcode.label.info.patientid"/></li>
+					<li><spring:message code="barcode.label.info.labNumber"/></li>
+					<li><spring:message code="barcode.label.info.patientId"/></li>
 					<li>Site ID</li>
 				</ul></td>
 				<td><ul>
-					<li><spring:message code="barcode.label.info.patientname"/></li>
-					<li><spring:message code="barcode.label.info.patientdobfull"/></li>
+					<li><spring:message code="barcode.label.info.patientName"/></li>
+					<li><spring:message code="barcode.label.info.patientDobFull"/></li>
 				</ul></td>
 			</tr>
 		</table>
@@ -42,12 +42,12 @@
 		<table style="margin:auto;border-spacing:15px 2px;">
 			<tr>
 				<td><ul>
-					<li><spring:message code="barcode.label.info.labnumber"/></li>
-					<li><spring:message code="barcode.label.info.patientid"/></li>
+					<li><spring:message code="barcode.label.info.labNumber"/></li>
+					<li><spring:message code="barcode.label.info.patientId"/></li>
 				</ul></td>
 				<td><ul>
-					<li><spring:message code="barcode.label.info.patientname"/></li>
-					<li><spring:message code="barcode.label.info.patientdobfull"/></li>
+					<li><spring:message code="barcode.label.info.patientName"/></li>
+					<li><spring:message code="barcode.label.info.patientDobFull"/></li>
 				</ul></td>
 			</tr>
 		</table>
@@ -72,15 +72,15 @@
 		<table style="margin:auto;border-spacing:15px 2px;">
 			<tr>
 				<td>
-					<form:checkbox path="collectionDateCheck"
+					<form:checkbox path="specimenCollectionDateCheck"
 						value="true"
 						onchange="enableSave();"/>
-					<spring:message code="barcode.label.info.collectiondatetime"/>
+					<spring:message code="barcode.label.info.collectionDateTime"/>
 				</td>
 			</tr>
 			<tr>
 				<td>
-					<form:checkbox path="collectedByCheck"
+					<form:checkbox path="specimenCollectedByCheck"
 						value="true"
 						onchange="enableSave();"/>
 					<spring:message code="barcode.label.info.collectedBy"/>
@@ -88,7 +88,7 @@
 			</tr>
 			<tr>
 				<td>
-					<form:checkbox path="testsCheck"
+					<form:checkbox path="specimenTestsCheck"
 						value="true"
 						onchange="enableSave();"/>
 					<spring:message code="barcode.label.info.tests"/>
@@ -96,10 +96,10 @@
 			</tr>
 			<tr>
 				<td>
-					<form:checkbox path="patientSexCheck"
+					<form:checkbox path="specimenPatientSexCheck"
 						value="true"
 						onchange="enableSave();"/>
-					<spring:message code="barcode.label.info.patientsexfull"/>
+					<spring:message code="barcode.label.info.patientSexFull"/>
 				</td>
 			</tr>
 		</table>

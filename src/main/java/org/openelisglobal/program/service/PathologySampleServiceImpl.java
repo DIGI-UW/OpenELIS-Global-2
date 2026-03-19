@@ -5,12 +5,18 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.barcode.form.LabelRowForm;
+import org.openelisglobal.barcode.form.LabelsSectionForm;
+import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
+import org.openelisglobal.barcode.service.BarcodeInfoService;
+import org.openelisglobal.barcode.service.BarcodeWorkflowPrintService;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
@@ -90,6 +96,12 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     @Autowired
     private TestSectionService testSectionService;
+
+    @Autowired
+    private BarcodeInfoService barcodeInfoService;
+
+    @Autowired
+    private BarcodeWorkflowPrintService barcodeWorkflowPrintService;
 
     PathologySampleServiceImpl() {
         super(PathologySample.class);
@@ -201,10 +213,66 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         }
         try {
             update(pathologySample);
+            persistPathologyBarcodeCountsIfSupplied(pathologySample, form);
+            populatePathologyWorkflowPrintModels(pathologySample, form);
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw e;
         }
+    }
+
+    private void populatePathologyWorkflowPrintModels(PathologySample pathologySample, PathologySampleForm form) {
+        int orderLabels = normalizePathologyLabelQuantity(form.getNumOrderLabels());
+        int specimenLabels = normalizePathologyLabelQuantity(form.getNumSpecimenLabels());
+        int blockLabels = normalizePathologyLabelQuantity(form.getNumBlockLabels());
+        int slideLabels = normalizePathologyLabelQuantity(form.getNumSlideLabels());
+        int freezerLabels = normalizePathologyLabelQuantity(form.getNumFreezerLabels());
+
+        LabelsSectionForm labelsSection = barcodeWorkflowPrintService.buildLabelsSection(orderLabels,
+                List.of(specimenLabels));
+        java.util.Map<String, Integer> orderQuantities = new LinkedHashMap<>();
+        if (labelsSection.getOrderRow() != null && labelsSection.getOrderRow().getQuantities() != null) {
+            orderQuantities.putAll(labelsSection.getOrderRow().getQuantities());
+        }
+        orderQuantities.put("block", blockLabels);
+        orderQuantities.put("slide", slideLabels);
+        orderQuantities.put("freezer", freezerLabels);
+        labelsSection.getOrderRow().setQuantities(orderQuantities);
+        labelsSection.getOrderRow().setRowTotal(sumQuantities(orderQuantities));
+        int sampleRowTotal = labelsSection.getSampleRows() == null ? 0
+                : labelsSection.getSampleRows().stream().mapToInt(LabelRowForm::getRowTotal).sum();
+        labelsSection.setRunningTotal(labelsSection.getOrderRow().getRowTotal() + sampleRowTotal);
+
+        String accessionNumber = pathologySample.getSample() == null ? null
+                : pathologySample.getSample().getAccessionNumber();
+        PostSavePrintDialogForm postSavePrintDialog = barcodeWorkflowPrintService
+                .buildPostSavePrintDialog(accessionNumber, labelsSection);
+
+        form.setLabelsSection(labelsSection);
+        form.setPostSavePrintDialog(postSavePrintDialog);
+    }
+
+    private int sumQuantities(java.util.Map<String, Integer> quantities) {
+        return quantities.values().stream().mapToInt(quantity -> quantity == null ? 0 : quantity).sum();
+    }
+
+    private int normalizePathologyLabelQuantity(Integer quantity) {
+        return quantity != null && quantity > 0 ? quantity : 1;
+    }
+
+    private void persistPathologyBarcodeCountsIfSupplied(PathologySample pathologySample, PathologySampleForm form) {
+        if (form.getNumOrderLabels() == null || form.getNumSpecimenLabels() == null || form.getNumBlockLabels() == null
+                || form.getNumSlideLabels() == null || form.getNumFreezerLabels() == null) {
+            return;
+        }
+        if (form.getNumOrderLabels() < 1 || form.getNumSpecimenLabels() < 1 || form.getNumBlockLabels() < 1
+                || form.getNumSlideLabels() < 1 || form.getNumFreezerLabels() < 1) {
+            return;
+        }
+
+        barcodeInfoService.saveBarcodeInfoForSampleAndSampleItemsPathology(pathologySample.getSample(),
+                form.getNumOrderLabels(), form.getNumSpecimenLabels(), form.getNumBlockLabels(),
+                form.getNumSlideLabels(), form.getNumFreezerLabels());
     }
 
     private void validatePathologySample(PathologySample pathologySample, PathologySampleForm form) {

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { captureDebugContext } from "../helpers/debug-context";
 import { videoPause } from "../helpers/video-pause";
 
 /**
@@ -24,6 +25,10 @@ import { videoPause } from "../helpers/video-pause";
  */
 
 const CLEANUP = process.env.CLEANUP !== "false";
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 test.describe("QuantStudio 7 MVP Workflow", () => {
   test.setTimeout(120_000);
@@ -80,20 +85,13 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     await pluginTypeDropdown.click();
     await videoPause(page, 500, testInfo);
 
-    const fileOption = page
-      .locator('[role="option"]')
-      .filter({ hasText: /FILE/i });
-    const firstOption = page.locator('[role="option"]').first();
-
-    if (
-      await fileOption
-        .first()
-        .isVisible({ timeout: 2_000 })
-        .catch(() => false)
-    ) {
-      await fileOption.first().click();
+    const dropdownOptions = page.locator('[role="option"]');
+    const fileOption = dropdownOptions.filter({ hasText: /FILE/i }).first();
+    if (await fileOption.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await fileOption.click();
     } else {
-      await firstOption.click();
+      await expect(dropdownOptions.first()).toBeVisible({ timeout: 2_000 });
+      await dropdownOptions.first().click();
     }
     await videoPause(page, 500, testInfo);
 
@@ -104,18 +102,16 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     await typeDropdown.click();
     await videoPause(page, 500, testInfo);
 
-    const molecularOption = page
-      .locator('[role="option"]')
-      .filter({ hasText: /Molecular/i });
+    const molecularOption = dropdownOptions
+      .filter({ hasText: /Molecular/i })
+      .first();
     if (
-      await molecularOption
-        .first()
-        .isVisible({ timeout: 2_000 })
-        .catch(() => false)
+      await molecularOption.isVisible({ timeout: 2_000 }).catch(() => false)
     ) {
-      await molecularOption.first().click();
+      await molecularOption.click();
     } else {
-      await page.locator('[role="option"]').first().click();
+      await expect(dropdownOptions.first()).toBeVisible({ timeout: 2_000 });
+      await dropdownOptions.first().click();
     }
     await videoPause(page, 1_500, testInfo);
 
@@ -135,16 +131,14 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     await videoPause(page, 1_500, testInfo);
 
     const qsRow = page.locator("tbody tr", {
-      hasText: new RegExp(
-        createdAnalyzerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "i",
-      ),
+      hasText: new RegExp(escapeRegExp(createdAnalyzerName), "i"),
     });
-    await expect(qsRow.first()).toBeVisible({ timeout: 10_000 });
+    const analyzerRow = qsRow.first();
+    await expect(analyzerRow).toBeVisible({ timeout: 10_000 });
     await videoPause(page, 1_000, testInfo);
 
     // ── Step 6: Configure File Import ────────────────────────────
-    const overflowMenu = qsRow.first().locator(".cds--overflow-menu").first();
+    const overflowMenu = analyzerRow.locator(".cds--overflow-menu").first();
     await overflowMenu.click();
     await videoPause(page, 500, testInfo);
 
@@ -162,13 +156,10 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     try {
       await expect(fileImportForm).toBeVisible({ timeout: 10_000 });
     } catch (e) {
-      console.log("Console errors captured:", consoleErrors);
-      console.log("Current URL:", page.url());
-      const bodyText = await page
-        .locator("body")
-        .textContent({ timeout: 2_000 })
-        .catch(() => "(empty)");
-      console.log("Page body text:", bodyText?.substring(0, 500));
+      const context = await captureDebugContext(page, consoleErrors);
+      console.log("Console errors captured:", context.consoleErrors);
+      console.log("Current URL:", context.url);
+      console.log("Page body text:", context.bodyPreview);
       throw e;
     }
     await videoPause(page, 1_000, testInfo);
@@ -180,16 +171,12 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     await formatDropdown.click();
     await videoPause(page, 500, testInfo);
 
-    const excelOption = page
-      .locator('[role="option"]')
-      .filter({ hasText: /Excel/i });
-    if (
-      await excelOption
-        .first()
-        .isVisible({ timeout: 2_000 })
-        .catch(() => false)
-    ) {
-      await excelOption.first().click();
+    const excelOption = dropdownOptions.filter({ hasText: /Excel/i }).first();
+    if (await excelOption.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await excelOption.click();
+    } else {
+      await expect(dropdownOptions.first()).toBeVisible({ timeout: 2_000 });
+      await dropdownOptions.first().click();
     }
     await videoPause(page, 500, testInfo);
 
@@ -231,8 +218,8 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     await videoPause(page, 1_500, testInfo);
 
     // ── Step 7: Test Connection ──────────────────────────────────
-    await expect(qsRow.first()).toBeVisible({ timeout: 10_000 });
-    const overflowMenu2 = qsRow.first().locator(".cds--overflow-menu").first();
+    await expect(analyzerRow).toBeVisible({ timeout: 10_000 });
+    const overflowMenu2 = analyzerRow.locator(".cds--overflow-menu").first();
     await overflowMenu2.click();
     await videoPause(page, 500, testInfo);
 
@@ -291,42 +278,26 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
       await page.goto("analyzers", { waitUntil: "domcontentloaded" });
       const searchInput = page.locator('[data-testid="analyzer-search-input"]');
       await searchInput.fill(createdAnalyzerName);
-      await page.waitForTimeout(1_000); // Cleanup stability
 
       const qsRow = page.locator("tbody tr", {
-        hasText: new RegExp(
-          createdAnalyzerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-          "i",
-        ),
+        hasText: new RegExp(escapeRegExp(createdAnalyzerName), "i"),
       });
-      if (
-        await qsRow
-          .first()
-          .isVisible({ timeout: 3_000 })
-          .catch(() => false)
-      ) {
-        const overflow = qsRow.first().locator(".cds--overflow-menu").first();
+      const analyzerRow = qsRow.first();
+      if (await analyzerRow.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        const overflow = analyzerRow.locator(".cds--overflow-menu").first();
         await overflow.click();
-        await page.waitForTimeout(500); // Cleanup stability
-
-        const deleteAction = page
+        const deleteAction = analyzerRow
           .locator('[data-testid*="analyzer-action-delete"]')
           .first();
-        if (
-          await deleteAction.isVisible({ timeout: 2_000 }).catch(() => false)
-        ) {
-          await deleteAction.click();
-          // Confirm deletion in the modal
-          const confirmButton = page
-            .getByRole("button", { name: /delete|confirm/i })
-            .last();
-          if (
-            await confirmButton.isVisible({ timeout: 3_000 }).catch(() => false)
-          ) {
-            await confirmButton.click();
-            await page.waitForTimeout(1_000); // Cleanup stability
-          }
-        }
+        await expect(deleteAction).toBeVisible({ timeout: 3_000 });
+
+        await deleteAction.click();
+        // Confirm deletion in the modal
+        const confirmButton = page
+          .getByRole("button", { name: /delete|confirm/i })
+          .last();
+        await expect(confirmButton).toBeVisible({ timeout: 3_000 });
+        await confirmButton.click();
       }
     } catch {
       // Cleanup failure is not a test failure

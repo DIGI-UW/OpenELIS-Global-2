@@ -534,31 +534,35 @@ every stage.
 
 **Setup (Required for AI Agents):**
 
-Before using SpecKit commands, install them to your AI agent's command
-directory. This is the **single entry point** for SpecKit setup:
+Before using SpecKit commands or packaged skills, install agent command assets:
 
-**Cross-platform (Python 3.7+):**
+**Cross-platform (Python 3.9+):**
 
 ```bash
-# Install commands for all supported AI agents (Cursor + Claude Code)
-python scripts/install-speckit-commands.py
+# Install legacy + packaged command assets for all supported AI agents
+python3 scripts/install-agent-skills.py
 
 # Or install for specific agent only
-python scripts/install-speckit-commands.py cursor   # Cursor IDE
-python scripts/install-speckit-commands.py claude   # Claude Code CLI
+python3 scripts/install-agent-skills.py cursor   # Cursor IDE
+python3 scripts/install-agent-skills.py claude   # Claude Code CLI
 
 # Skip confirmation prompt (for automation/CI)
-python scripts/install-speckit-commands.py -y all
+python3 scripts/install-agent-skills.py -y all
+
+# Legacy compatibility (SpecKit-only install path)
+python3 scripts/install-speckit-commands.py -y all
 ```
 
 > **Note:** A `.python-version` file is provided for version managers (pyenv,
 > asdf, uv). If you use one, it will automatically select Python 3.11.
 
-This compiles command definitions from `.specify/core/commands/` (upstream
-SpecKit) and `.specify/oe/commands/` (OpenELIS extensions) into agent-specific
-directories (`.cursor/commands/`, `.claude/commands/`).
+This compiles command definitions from legacy SpecKit sources
+(`.specify/core/commands/` + `.specify/oe/commands/`) and packaged skills in
+`.ai/skills/` into agent-specific directories (`.cursor/commands/`,
+`.claude/commands/`, plus packaged skill mirrors under `.cursor/skills/` and
+`.claude/skills/`).
 
-**CI Validation:** The CI pipeline automatically validates that all 9 SpecKit
+**CI Validation:** The CI pipeline validates that required legacy and packaged
 commands compile correctly and contain valid paths.
 
 **Available Commands:**
@@ -574,6 +578,13 @@ commands compile correctly and contain valid paths.
 - `/speckit.constitution` - Create/update project constitution
 - `/speckit.checklist` - Generate custom quality validation checklist
 - `/speckit.taskstoissues` - Convert tasks.md into GitHub issues
+- `/plan-record-playwright` - Plan feature/PR E2E flows and orchestrate
+  write/audit/record lifecycle with correct project usage
+- `/write-playwright-test` - Playwright test authoring from requirements with
+  project registration and narrow-scope validation
+- `/debug-playwright` - Playwright failure diagnosis using source/runtime
+  evidence
+- `/audit-playwright` - Playwright test quality audit and selector hardening
 
 **Standard Workflow:**
 
@@ -1399,8 +1410,9 @@ public class SampleServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
 ### E2E Tests (Cypress) — DEPRECATED
 
-> **Cypress is deprecated.** All new E2E tests should use Playwright. Existing
-> Cypress tests will be migrated to Playwright over time. See the
+> **STOP: Do NOT create new Cypress tests.** Cypress is deprecated in this
+> repository. All new E2E tests MUST use Playwright. The Cypress docs below are
+> retained only for maintaining existing tests during migration. See the
 > [Playwright section below](#e2e-tests-playwright--recommended) for the
 > recommended approach.
 
@@ -1533,10 +1545,24 @@ describe("User Story P1: Sample Storage Assignment", () => {
 > **Playwright is the recommended E2E framework** for all new tests. It provides
 > project-based organization, built-in video recording, and faster execution
 > than Cypress.
+>
+> **Execution Contract:**
+>
+> - Always use `npm run pw:test` scripts (never raw `npx playwright test`)
+> - `harness`, `demo`, and `demo-video` require analyzer harness stack preflight
+>   (see `/restart-analyzer-harness`)
+> - `TEST_USER` and `TEST_PASS` are required
+> - Do not create new Cypress tests
 
 **Location:** `frontend/playwright/tests/{feature}.spec.ts` **Config:**
 `frontend/playwright.config.ts` **Helpers:** `frontend/playwright/helpers/`
-**Full Guide:** `frontend/playwright/README.md`
+**Canonical Guide (single source of truth):**
+`.specify/guides/playwright-best-practices.md` **Operational Reference:**
+`frontend/playwright/README.md`
+
+**Command-first workflow:** Use `/plan-record-playwright` to scope flows and
+project targets, `/write-playwright-test` to author tests, `/audit-playwright`
+to review selectors/quality, and `/debug-playwright` for runtime failures.
 
 #### Playwright Projects
 
@@ -1546,17 +1572,17 @@ allowlist in `playwright.config.ts`.
 
 | Project      | Purpose                                           | CI Workflow          | Infra Required   |
 | ------------ | ------------------------------------------------- | -------------------- | ---------------- |
-| `core-app`   | Core UI tests (no plugins/bridge)                 | `playwright-e2e.yml` | Build stack only |
-| `harness`    | Analyzer infra tests (bridge, simulator, plugins) | `analyzer-e2e.yml`   | Full harness     |
-| `demo`       | Workflow demos at normal speed (CI validation)    | `analyzer-e2e.yml`   | Full harness     |
+| `core-app`   | Core UI tests (no plugins/bridge)                 | `e2e-playwright.yml` | Build stack only |
+| `harness`    | Analyzer infra tests (bridge, simulator, plugins) | `e2e-playwright.yml` | Full harness     |
+| `demo`       | Workflow demos at normal speed (CI validation)    | `e2e-playwright.yml` | Full harness     |
 | `demo-video` | Same demos with `slowMo` + video recording        | Local only           | Harness          |
 
 #### CI Workflows
 
 | Workflow             | Compose Files                                          | Projects Run       | Fixtures Loaded                                    |
 | -------------------- | ------------------------------------------------------ | ------------------ | -------------------------------------------------- |
-| `playwright-e2e.yml` | `build.docker-compose.yml`                             | `core-app`         | `file-import-e2e.sql`                              |
-| `analyzer-e2e.yml`   | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+| `e2e-playwright.yml` | `build.docker-compose.yml`                             | `core-app`         | `file-import-e2e.sql`                              |
+| `e2e-playwright.yml` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
 
 #### Key Patterns
 
@@ -1640,8 +1666,11 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=demo-video
 
 **Comprehensive Guides**:
 
-- **Playwright README**: `frontend/playwright/README.md` — Project matrix, CI
-  workflows, fixture loading, and local execution guide
+- **Playwright Best Practices (canonical)**:
+  `.specify/guides/playwright-best-practices.md` — Authoritative Playwright
+  testing guidance for humans and agents
+- **Playwright README (operational details)**: `frontend/playwright/README.md` —
+  Project matrix, CI workflows, fixture loading, and local execution guide
 - **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Comprehensive
   testing guide for all test types (backend and frontend)
 - **Backend Testing Best Practices**:
@@ -1984,11 +2013,14 @@ Before creating PR, verify ALL items:
 
 **GitHub Actions workflows (MUST pass):**
 
-- `ci.yml` — Maven build + Spotless format check + unit tests (PR + push)
-- `playwright-e2e.yml` — Build stack + Playwright E2E: `core-app` project (PR)
-- `analyzer-e2e.yml` — Full analyzer harness + Playwright E2E: `harness` +
-  `demo` projects (PR)
-- `frontend-qa.yml` — Frontend Docker image build + QA checks (PR)
+- `backend.yml` (`01 - Backend`) — Maven build + Spotless format check + unit
+  tests (PR + push)
+- `e2e-playwright.yml` (`03 - Playwright`) — Playwright E2E (core + analyzer
+  harness) with required Playwright gate (PR)
+- `frontend.yml` (`02 - Frontend`) — Frontend static/unit/image checks +
+  required frontend gate (PR)
+- `e2e-cypress-deprecated.yml` (`04 - Cypress`) — Cypress E2E shards + required
+  deprecated Cypress gate (PR)
 - `publish-and-test.yml` — Docker publish + E2E tests (push to `develop` +
   releases only)
 
