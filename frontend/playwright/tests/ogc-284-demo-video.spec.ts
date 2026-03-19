@@ -74,8 +74,42 @@ async function selectPatient(
   const firstRadio = page.locator('[data-cy="radioButton"]').first();
   await expect(firstRadio).toBeVisible({ timeout: 5000 });
   await scrollToAndPause(page, firstRadio, pause, 800);
-  await firstRadio.click();
+  // Carbon overlays the visible label on top of the radio input, which can
+  // intercept pointer events in CI; forcing a radio check matches Cypress.
+  await firstRadio.check({ force: true });
+  await expect(firstRadio).toBeChecked({ timeout: 5000 });
   await pause(1500); // wait for tab switch + form population
+
+  // Search results can omit fields that the Add Order validation schema still
+  // requires (national ID, gender, DOB). Backfill them before advancing.
+  const nationalIdInput = page.locator("input#nationalId");
+  if (await nationalIdInput.isVisible({ timeout: 5000 }).catch(() => false)) {
+    if (!(await nationalIdInput.inputValue()).trim()) {
+      await nationalIdInput.fill(`DEMO-${Date.now()}`);
+      await nationalIdInput.press("Tab");
+      await pause(300);
+    }
+
+    const genderMale = page.locator("input#radio-1");
+    const genderFemale = page.locator("input#radio-2");
+    const hasGender =
+      (await genderMale.isChecked().catch(() => false)) ||
+      (await genderFemale.isChecked().catch(() => false));
+    if (!hasGender && (await genderMale.isVisible().catch(() => false))) {
+      await genderMale.check({ force: true });
+      await pause(300);
+    }
+
+    const birthDateInput = page.locator("input#date-picker-default-id");
+    if (
+      (await birthDateInput.isVisible().catch(() => false)) &&
+      !(await birthDateInput.inputValue()).trim()
+    ) {
+      await birthDateInput.fill("13/03/1990");
+      await birthDateInput.press("Tab");
+      await pause(300);
+    }
+  }
 }
 
 /**
