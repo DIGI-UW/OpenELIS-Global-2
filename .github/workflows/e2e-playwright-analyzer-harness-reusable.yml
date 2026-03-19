@@ -166,11 +166,9 @@ jobs:
       matrix:
         include:
           - shard_index: 1
-            shard_total: 3
+            shard_total: 2
           - shard_index: 2
-            shard_total: 3
-          - shard_index: 3
-            shard_total: 3
+            shard_total: 2
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

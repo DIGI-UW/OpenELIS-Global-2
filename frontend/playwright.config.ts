@@ -31,6 +31,7 @@ export default defineConfig({
   // Parallelization
   fullyParallel: true,
   workers: process.env.CI ? 1 : undefined,
+  shardingMode: "round-robin",
 
   // CI safeguards
   forbidOnly: !!process.env.CI,
