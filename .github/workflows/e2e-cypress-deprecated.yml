@@ -11,10 +11,6 @@ permissions:
   contents: read
   packages: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   e2e-cypress:
     name: ${{ matrix.shard_name }}
