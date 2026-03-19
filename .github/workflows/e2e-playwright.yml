@@ -3,11 +3,18 @@ name: 03 - E2E
 on:
   pull_request:
     branches: [develop]
+  push:
+    branches: [develop]
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
+
+env:
+  DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -292,3 +299,85 @@ jobs:
             exit 1
           fi
           echo "E2E gate passed."
+
+  publish-images:
+    name: Publish ${{ matrix.dockerhub_suffix || 'backend' }}
+    if: >-
+      ${{
+        always() &&
+        needs.e2e-gate.result == 'success' &&
+        github.repository == 'DIGI-UW/OpenELIS-Global-2' &&
+        (github.event_name == 'push' || github.event_name == 'release')
+      }}
+    needs: [shared-build, e2e-gate]
+    runs-on: ubuntu-latest
+    environment: e2e
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compose_image: openelisglobal-webapp.build
+            dockerhub_suffix: backend
+            dockerhub_image: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2
+          - compose_image: frontend
+            dockerhub_suffix: frontend
+            dockerhub_image: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2-frontend
+          - compose_image: openelisglobal-proxy.build
+            dockerhub_suffix: proxy
+            dockerhub_image: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2-proxy
+          - compose_image: external-fhir-api.build
+            dockerhub_suffix: fhir
+            dockerhub_image: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2-fhir
+          - compose_image: openelisglobal-databse.build
+            dockerhub_suffix: database
+            dockerhub_image: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2-database
+    steps:
+      - name: Download Docker image map artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-image-map
+          path: /tmp/e2e-image-map
+
+      - name: Resolve GHCR source image for matrix target
+        id: source
+        run: |
+          SOURCE_GHCR_IMAGE="$(awk -F'|' -v src='${{ matrix.compose_image }}' '$1 == src {print $2; exit}' /tmp/e2e-image-map/e2e-image-map.txt)"
+          if [ -z "$SOURCE_GHCR_IMAGE" ]; then
+            echo "No GHCR mapping found for compose image: ${{ matrix.compose_image }}"
+            echo "Available mappings:"
+            cat /tmp/e2e-image-map/e2e-image-map.txt
+            exit 1
+          fi
+          echo "ghcr_source=$SOURCE_GHCR_IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ matrix.dockerhub_image }}
+
+      - name: Pull tested image from GHCR
+        run: docker pull "${{ steps.source.outputs.ghcr_source }}"
+
+      - name: Retag and publish tested image to DockerHub
+        run: |
+          while IFS= read -r target_tag; do
+            [ -z "$target_tag" ] && continue
+            echo "Publishing $target_tag from ${{ steps.source.outputs.ghcr_source }}"
+            docker tag "${{ steps.source.outputs.ghcr_source }}" "$target_tag"
+            docker push "$target_tag"
+          done <<< "${{ steps.meta.outputs.tags }}"
