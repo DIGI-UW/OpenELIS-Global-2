@@ -30,7 +30,7 @@ import {
   postToOpenElisServer,
   postToOpenElisServerJsonResponse,
   getFromOpenElisServer,
-  postToOpenElisServerFormDataJsonResponse,
+  postToOpenElisServerFormDataJson,
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
@@ -344,7 +344,7 @@ export const VirologyLabGelElectrophoresesPage = ({
       const formData = new FormData();
       formData.append("file", file);
 
-      postToOpenElisServerFormDataJsonResponse(
+      postToOpenElisServerFormDataJson(
         `/rest/notebook/bulk/page/${pageData.id}/samples/upload-gel-image`,
         formData,
         (response) => {

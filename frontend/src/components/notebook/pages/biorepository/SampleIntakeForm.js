@@ -5,8 +5,6 @@ import {
   TextInput,
   TextArea,
   Dropdown,
-  DatePicker,
-  DatePickerInput,
   TimePicker,
   Button,
   InlineNotification,
@@ -21,11 +19,14 @@ import {
 import { Add, Upload, Renew } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
+import { format, parse } from "date-fns";
 import {
   postToOpenElisServerJsonResponse,
   getFromOpenElisServer,
 } from "../../../utils/Utils";
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
+import { ConfigurationContext } from "../../../layout/Layout";
+import CustomDatePicker from "../../../common/CustomDatePicker";
 
 /**
  * SampleIntakeForm - Form for registering samples
@@ -59,9 +60,16 @@ function SampleIntakeForm({
 }) {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { configurationProperties } = useContext(ConfigurationContext);
 
   // Mode: 0 = single entry, 1 = bulk import
   const [mode, setMode] = useState(0);
+
+  // Helper: locale-aware date-fns parse pattern (matches CustomDatePicker output)
+  const getDateParsePattern = () =>
+    configurationProperties.DEFAULT_DATE_LOCALE === "fr-FR"
+      ? "dd/MM/yyyy"
+      : "MM/dd/yyyy";
 
   // Helper function to get current time in HH:MM format (24-hour)
   const getCurrentTime = () => {
@@ -77,7 +85,7 @@ function SampleIntakeForm({
     originLab: shipment?.senderOrganization || "", // Originating laboratory/source
     barcode: "", // Sample ID (unique barcode)
     sampleTypeId: null, // Sample type and category
-    receiptDate: new Date().toISOString().split("T")[0], // Date of receipt (default to today)
+    receiptDate: format(new Date(), "MM/dd/yyyy"), // Date of receipt (default to today, locale-formatted)
     receiptTime: getCurrentTime(), // Time of receipt (default to now in 24-hour format)
     storageTemperature: "AMBIENT", // Storage temperature requirement
     requiredTempMin: null, // Min temp for custom range
@@ -327,13 +335,30 @@ function SampleIntakeForm({
         tempRange = getTemperatureRange(formData.storageTemperature);
       }
 
-      // Combine receipt date and time
-      const receiptDateTime =
-        formData.receiptDate && formData.receiptTime
-          ? new Date(
-              `${formData.receiptDate}T${formData.receiptTime}:00`,
-            ).toISOString()
-          : new Date().toISOString();
+      // Parse locale-formatted date and combine with time for backend (yyyy-MM-dd HH:mm:ss)
+      const parsePattern = getDateParsePattern();
+      let receiptDateTime;
+      if (formData.receiptDate && formData.receiptTime) {
+        const parsedDate = parse(
+          formData.receiptDate,
+          parsePattern,
+          new Date(),
+        );
+        receiptDateTime = `${format(parsedDate, "yyyy-MM-dd")} ${formData.receiptTime}:00`;
+      } else {
+        receiptDateTime = format(new Date(), "yyyy-MM-dd HH:mm:ss");
+      }
+
+      // Parse collection date if provided
+      let collectionDateFormatted = null;
+      if (formData.collectionDate) {
+        const parsedCollDate = parse(
+          formData.collectionDate,
+          parsePattern,
+          new Date(),
+        );
+        collectionDateFormatted = `${format(parsedCollDate, "yyyy-MM-dd")} 00:00:00`;
+      }
 
       const sampleData = {
         barcode: formData.barcode.trim(),
@@ -341,7 +366,7 @@ function SampleIntakeForm({
         originLab: formData.originLab.trim(),
         sampleTypeId: formData.sampleTypeId,
         receiptDate: receiptDateTime,
-        collectionDate: formData.collectionDate,
+        collectionDate: collectionDateFormatted,
         requiredTempMin: tempRange.min,
         requiredTempMax: tempRange.max,
         projectId: formData.projectId,
@@ -577,29 +602,19 @@ function SampleIntakeForm({
             {/* Receipt Date */}
             <Column lg={4} md={2} sm={2}>
               <FormGroup legendText="">
-                <DatePicker
-                  datePickerType="single"
+                <CustomDatePicker
+                  id="receiptDate"
+                  labelText={intl.formatMessage({
+                    id: "biorepository.sample.field.receiptDate",
+                    defaultMessage: "Receipt Date *",
+                  })}
                   value={formData.receiptDate}
-                  onChange={([date]) => {
-                    if (date) {
-                      handleInputChange(
-                        "receiptDate",
-                        date.toISOString().split("T")[0],
-                      );
-                    }
-                  }}
-                >
-                  <DatePickerInput
-                    id="receiptDate"
-                    labelText={intl.formatMessage({
-                      id: "biorepository.sample.field.receiptDate",
-                      defaultMessage: "Receipt Date *",
-                    })}
-                    placeholder="mm/dd/yyyy"
-                    invalid={!!errors.receiptDate}
-                    invalidText={errors.receiptDate}
-                  />
-                </DatePicker>
+                  onChange={(date) => handleInputChange("receiptDate", date)}
+                  disallowFutureDate={true}
+                  updateStateValue={true}
+                  invalid={!!errors.receiptDate}
+                  invalidText={errors.receiptDate}
+                />
               </FormGroup>
             </Column>
 
@@ -754,21 +769,19 @@ function SampleIntakeForm({
             {/* Collection Date (original) */}
             <Column lg={8} md={4} sm={4}>
               <FormGroup legendText="">
-                <DatePicker
-                  datePickerType="single"
-                  onChange={([date]) =>
-                    handleInputChange("collectionDate", date?.toISOString())
+                <CustomDatePicker
+                  id="collectionDate"
+                  labelText={intl.formatMessage({
+                    id: "biorepository.sample.field.collectionDate",
+                    defaultMessage: "Original Collection Date",
+                  })}
+                  value={formData.collectionDate || ""}
+                  onChange={(date) =>
+                    handleInputChange("collectionDate", date || null)
                   }
-                >
-                  <DatePickerInput
-                    id="collectionDate"
-                    labelText={intl.formatMessage({
-                      id: "biorepository.sample.field.collectionDate",
-                      defaultMessage: "Original Collection Date",
-                    })}
-                    placeholder="mm/dd/yyyy"
-                  />
-                </DatePicker>
+                  disallowFutureDate={true}
+                  updateStateValue={true}
+                />
               </FormGroup>
             </Column>
 
