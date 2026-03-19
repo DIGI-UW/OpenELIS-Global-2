@@ -357,7 +357,7 @@ jobs:
           retention-days: 14
 
   analyzer-e2e-gate:
-    name: Required
+    name: Checkpoint
     if: always()
     needs: [test-shards, demo-shards, merge-reports]
     runs-on: ubuntu-latest
