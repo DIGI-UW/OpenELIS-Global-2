@@ -13,6 +13,19 @@ import { videoPause } from "../helpers/video-pause";
  */
 type PauseFn = (ms: number) => Promise<void>;
 
+async function setNumericInput(locator: Locator, preferredValue: string) {
+  await locator.click({ clickCount: 3 });
+  const currentValue = (await locator.inputValue()).trim();
+  let nextValue = preferredValue;
+  if (currentValue === preferredValue) {
+    const numericValue = Number(preferredValue);
+    nextValue = Number.isNaN(numericValue)
+      ? `${preferredValue}-1`
+      : `${numericValue + 1}`;
+  }
+  await locator.fill(nextValue);
+}
+
 /**
  * Scroll the element into view AND scroll the window so it's in the
  * upper-third of the viewport — making it clearly visible on video.
@@ -68,17 +81,74 @@ async function selectPatient(
   const searchBtn = page.locator(
     '[data-cy="searchPatientButton"], button#local_search',
   );
+  const searchResponse = page.waitForResponse(
+    (res) =>
+      res.url().includes("/rest/patient-search-results") &&
+      res.request().method() === "GET",
+    { timeout: 15_000 },
+  );
   await searchBtn.click();
-  await pause(3000);
+  await searchResponse;
 
-  const firstRadio = page.locator('[data-cy="radioButton"]').first();
+  await expect(page.locator('[data-cy="radioButton"]').first()).toBeVisible({
+    timeout: 10_000,
+  });
+
+  const namedRow = page
+    .locator("tbody tr")
+    .filter({
+      hasText: new RegExp(
+        `${lastName}.*${firstName}|${firstName}.*${lastName}`,
+        "i",
+      ),
+    })
+    .filter({ has: page.locator('[data-cy="radioButton"]') })
+    .first();
+  const firstRadio =
+    (await namedRow.count()) > 0
+      ? namedRow.locator('[data-cy="radioButton"]').first()
+      : page.locator('[data-cy="radioButton"]').first();
   await expect(firstRadio).toBeVisible({ timeout: 5000 });
   await scrollToAndPause(page, firstRadio, pause, 800);
+  const selectedPatientId = await firstRadio.getAttribute("id");
+  const patientDetailsResponse = page.waitForResponse(
+    (res) => {
+      if (
+        !res.url().includes("/rest/patient-details") ||
+        res.request().method() !== "GET"
+      ) {
+        return false;
+      }
+      return selectedPatientId
+        ? res.url().includes(`patientID=${selectedPatientId}`)
+        : true;
+    },
+    { timeout: 15_000 },
+  );
   // Carbon overlays the visible label on top of the radio input, which can
   // intercept pointer events in CI; forcing a radio check matches Cypress.
   await firstRadio.check({ force: true });
-  await expect(firstRadio).toBeChecked({ timeout: 5000 });
-  await pause(1500); // wait for tab switch + form population
+  await patientDetailsResponse;
+
+  // Wait for patient form hydration before moving to the next wizard step.
+  await expect(page.locator('[data-cy="patientSelectionReady"]')).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.locator("input#lastName")).toHaveValue(
+    new RegExp(lastName, "i"),
+    {
+      timeout: 10_000,
+    },
+  );
+  await expect(page.locator("input#firstName")).toHaveValue(
+    new RegExp(firstName, "i"),
+    {
+      timeout: 10_000,
+    },
+  );
+  await expect(page.locator("input#primaryPhone")).toBeVisible({
+    timeout: 10_000,
+  });
 
   // Search results can omit fields that the Add Order validation schema still
   // requires (national ID, gender, DOB). Backfill them before advancing.
@@ -266,13 +336,11 @@ test("US1 — Admin configures barcode label quantities", async ({
 
   const defaultOrderInput = page.locator("#order").first();
   await scrollToAndPause(page, defaultOrderInput, pause, 1200);
-  await defaultOrderInput.click({ clickCount: 3 });
-  await defaultOrderInput.fill("2");
+  await setNumericInput(defaultOrderInput, "2");
   await pause(600);
 
   const defaultSpecimenInput = page.locator("#specimen").first();
-  await defaultSpecimenInput.click({ clickCount: 3 });
-  await defaultSpecimenInput.fill("1");
+  await setNumericInput(defaultSpecimenInput, "1");
   await pause(800);
 
   // ── Maximum quantities ──────────────────────────────────────────
@@ -287,13 +355,11 @@ test("US1 — Admin configures barcode label quantities", async ({
 
   const maxOrderInput = page.locator("#maxOrder");
   await scrollToAndPause(page, maxOrderInput, pause, 1200);
-  await maxOrderInput.click({ clickCount: 3 });
-  await maxOrderInput.fill("10");
+  await setNumericInput(maxOrderInput, "10");
   await pause(500);
 
   const maxSpecimenInput = page.locator("#maxSpecimen");
-  await maxSpecimenInput.click({ clickCount: 3 });
-  await maxSpecimenInput.fill("10");
+  await setNumericInput(maxSpecimenInput, "10");
   await pause(800);
 
   // ── Optional element toggles ────────────────────────────────────
@@ -322,6 +388,7 @@ test("US1 — Admin configures barcode label quantities", async ({
   await showSceneLabel(page, "US1 · FR-003 — Save + Reload", testInfo);
 
   const saveButton = page.getByRole("button", { name: "Save" });
+  await expect(saveButton).toBeEnabled({ timeout: 10_000 });
   await scrollToAndPause(page, saveButton, pause, 800);
   await saveButton.click();
   await pause(2500); // wait for success notification
@@ -402,18 +469,14 @@ test("US2 — Capture label quantities during sample creation", async ({
   // Edit order labels
   const orderInput = labelsSection.locator("#labels-order");
   await scrollToAndPause(page, orderInput, pause, 800);
-  await orderInput.click();
-  await page.keyboard.press("Control+A");
-  await orderInput.type("3");
+  await orderInput.fill("3");
   await pause(1000);
 
   // Edit specimen labels
   const specimenInput = labelsSection.locator("#sample-row-1");
   if (await specimenInput.isVisible().catch(() => false)) {
     await scrollToAndPause(page, specimenInput, pause, 600);
-    await specimenInput.click();
-    await page.keyboard.press("Control+A");
-    await specimenInput.type("2");
+    await specimenInput.fill("2");
     await pause(800);
   }
 
@@ -440,21 +503,19 @@ test("US2 — Capture label quantities during sample creation", async ({
     { timeout: 30_000 },
   );
   await submitBtn.click();
-  await saveResponse.catch(() => {});
-  await pause(4000);
+  await saveResponse;
+  const successImg = page.locator('img[alt="Order Entry saved successfully"]');
+  await expect(successImg).toBeVisible({ timeout: 15_000 });
 
   // ── Success: confirm quantities saved ───────────────────────────
-  const successImg = page.locator('img[alt="Order Entry saved successfully"]');
-  if (await successImg.isVisible({ timeout: 6000 }).catch(() => false)) {
-    await pause(1000);
-    await showTitleCard(
-      page,
-      "✓ Label Quantities Saved",
-      "Order labels = 3, Specimen labels = 2 persisted with the sample record — FR-007, FR-008 satisfied.",
-      3000,
-      testInfo,
-    );
-  }
+  await pause(1000);
+  await showTitleCard(
+    page,
+    "✓ Label Quantities Saved",
+    "Order labels = 3, Specimen labels = 2 persisted with the sample record — FR-007, FR-008 satisfied.",
+    3000,
+    testInfo,
+  );
 });
 
 // ─── User Story 3: Post-save print dialog + reprint ──────────────────────────
@@ -507,8 +568,9 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
     { timeout: 30_000 },
   );
   await submitBtn.click();
-  await saveResponse.catch(() => {});
-  await pause(4000);
+  await saveResponse;
+  const successImg = page.locator('img[alt="Order Entry saved successfully"]');
+  await expect(successImg).toBeVisible({ timeout: 15_000 });
 
   // ── Post-save print dialog ──────────────────────────────────────
   await showTitleCard(
@@ -520,37 +582,34 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   );
   await showSceneLabel(page, "US3 · FR-011 — Print Dialog", testInfo);
 
-  const successImg = page.locator('img[alt="Order Entry saved successfully"]');
-  if (await successImg.isVisible({ timeout: 8000 }).catch(() => false)) {
-    await scrollToAndPause(page, successImg, pause, 1000);
+  await scrollToAndPause(page, successImg, pause, 1000);
 
-    // Scroll to print dialog
-    const printTitle = page.getByText(/print labels/i).first();
-    if (await printTitle.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await scrollToAndPause(page, printTitle, pause, 1500);
-    }
+  // Scroll to print dialog
+  const printTitle = page.getByText(/print labels/i).first();
+  if (await printTitle.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await scrollToAndPause(page, printTitle, pause, 1500);
+  }
 
-    // Highlight Print buttons
-    const printButtons = page.getByRole("button", { name: "Print" });
-    const count = await printButtons.count();
-    if (count > 0) {
-      await scrollToAndPause(page, printButtons.first(), pause, 2000);
-    }
+  // Highlight Print buttons
+  const printButtons = page.getByRole("button", { name: "Print" });
+  const count = await printButtons.count();
+  if (count > 0) {
+    await scrollToAndPause(page, printButtons.first(), pause, 2000);
+  }
 
-    // Show Done button — deferred printing
-    await showTitleCard(
-      page,
-      "Done — Deferred Printing",
-      "Done closes the dialog without printing. The accession is preserved; reprinting is available from Order View — FR-013.",
-      2500,
-      testInfo,
-    );
-    await showSceneLabel(page, "US3 · FR-013 — Done / Defer", testInfo);
+  // Show Done button — deferred printing
+  await showTitleCard(
+    page,
+    "Done — Deferred Printing",
+    "Done closes the dialog without printing. The accession is preserved; reprinting is available from Order View — FR-013.",
+    2500,
+    testInfo,
+  );
+  await showSceneLabel(page, "US3 · FR-013 — Done / Defer", testInfo);
 
-    const doneButton = page.getByRole("button", { name: /^(done|skip)$/i });
-    if (await doneButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await scrollToAndPause(page, doneButton, pause, 2000);
-    }
+  const doneButton = page.getByRole("button", { name: /^(done|skip)$/i });
+  if (await doneButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await scrollToAndPause(page, doneButton, pause, 2000);
   }
 
   // ── Reprint from Print Barcode page ────────────────────────────

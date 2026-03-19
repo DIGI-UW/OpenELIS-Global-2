@@ -117,14 +117,22 @@ const PatientInfo = (props) => {
             </Column>
             <Column lg={16} md={8} sm={4}>
               {newPatientTab.active && (
-                <CreatePatientForm
-                  showActionsButton={false}
-                  selectedPatient={selectedPatient}
-                  orderFormValues={orderFormValues}
-                  setOrderFormValues={setOrderFormValues}
-                  error={error}
-                  setPhoneValidation={setPhoneValidation}
-                />
+                <div
+                  data-cy={
+                    selectedPatient.patientPK
+                      ? "patientSelectionReady"
+                      : "patientSelectionPending"
+                  }
+                >
+                  <CreatePatientForm
+                    showActionsButton={false}
+                    selectedPatient={selectedPatient}
+                    orderFormValues={orderFormValues}
+                    setOrderFormValues={setOrderFormValues}
+                    error={error}
+                    setPhoneValidation={setPhoneValidation}
+                  />
+                </div>
               )}
             </Column>
           </Grid>
