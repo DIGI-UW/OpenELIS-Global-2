@@ -51,13 +51,7 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install chromium --with-deps
-        working-directory: frontend
-
-      - name: Verify Playwright browsers from cache
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install chromium
         working-directory: frontend
 
       - name: Prepare .env
@@ -91,7 +85,7 @@ jobs:
 
       - name: Pull and retag prebuilt compose images
         run: |
-          xargs -I{} -P4 bash -lc '
+          xargs -r -I{} -P4 bash -lc '
             IFS="|" read -r source_image ghcr_image <<< "$1"
             [ -z "$source_image" ] && exit 0
             docker pull "$ghcr_image" >/dev/null
@@ -204,13 +198,7 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install chromium --with-deps
-        working-directory: frontend
-
-      - name: Verify Playwright browsers from cache
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install chromium
         working-directory: frontend
 
       - name: Prepare .env
@@ -244,7 +232,7 @@ jobs:
 
       - name: Pull and retag prebuilt compose images
         run: |
-          xargs -I{} -P4 bash -lc '
+          xargs -r -I{} -P4 bash -lc '
             IFS="|" read -r source_image ghcr_image <<< "$1"
             [ -z "$source_image" ] && exit 0
             docker pull "$ghcr_image" >/dev/null
@@ -338,10 +326,18 @@ jobs:
           pattern: analyzer-blob-report-*
           merge-multiple: true
 
+      - name: Resolve Playwright version for report merge
+        id: playwright-version
+        working-directory: frontend
+        run: |
+          VERSION=$(node -e "const lock=require('./package-lock.json'); const pkg=require('./package.json'); const clean=(s)=>s?String(s).replace(/^[~^]/,''):''; const v=(lock.packages?.['node_modules/playwright']?.version)||(lock.packages?.['node_modules/@playwright/test']?.version)||clean(pkg.devDependencies?.['@playwright/test'])||clean(pkg.dependencies?.playwright); if(!v){console.error('Unable to resolve Playwright version for report merge'); process.exit(1);} process.stdout.write(v);")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Using Playwright version: $VERSION"
+
       - name: Merge blob reports into HTML report when artifacts exist
         run: |
           if [ -d ./all-blob-reports ] && [ -n "$(ls -A ./all-blob-reports 2>/dev/null)" ]; then
-            npx --yes playwright@1.58.2 merge-reports --reporter html ./all-blob-reports
+            npx --yes playwright@${{ steps.playwright-version.outputs.version }} merge-reports --reporter html ./all-blob-reports
           else
             echo "No blob reports available; skipping merge."
           fi

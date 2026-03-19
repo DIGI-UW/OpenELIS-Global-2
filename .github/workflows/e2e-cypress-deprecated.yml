@@ -109,7 +109,7 @@ jobs:
 
       - name: Pull and retag prebuilt compose images
         run: |
-          xargs -I{} -P4 bash -lc '
+          xargs -r -I{} -P4 bash -lc '
             IFS="|" read -r source_image ghcr_image <<< "$1"
             [ -z "$source_image" ] && exit 0
             docker pull "$ghcr_image" >/dev/null
