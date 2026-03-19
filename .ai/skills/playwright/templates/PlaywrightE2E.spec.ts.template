@@ -36,14 +36,15 @@ test.describe("Feature Name", () => {
     //   throw e;
     // }
 
-    // Optional demo pacing (no-op outside demo-video)
+    // Optional demo pacing (no-op outside core-demo-video / harness-demo-video)
     await videoPause(page, 750, testInfo);
   });
 });
 
 /**
  * Post-write checklist:
- * [ ] Added spec to frontend/playwright.config.ts testMatch (or DEMO_TESTS)
+ * [ ] Added spec to frontend/playwright.config.ts testMatch (or CORE_DEMO_TESTS /
+ *     HARNESS_DEMO_TESTS)
  * [ ] Validation passed:
  *     python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/<spec>.spec.ts
  * [ ] Ran narrow scope:

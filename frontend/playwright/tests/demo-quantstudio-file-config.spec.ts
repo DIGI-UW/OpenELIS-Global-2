@@ -15,8 +15,8 @@ import { createDemoPresentation } from "../helpers/demo-presentation";
  *   5. Re-open the visible file-import form and review the defaults
  *
  * Run with:
- *   Normal:  npx playwright test demo-quantstudio --project=demo
- *   Video:   npx playwright test demo-quantstudio --project=demo-video
+ *   Normal:  npx playwright test demo-quantstudio --project=harness-demo
+ *   Video:   npx playwright test demo-quantstudio --project=harness-demo-video
  */
 
 test.describe("Demo: QuantStudio 7 Generic File Config", () => {

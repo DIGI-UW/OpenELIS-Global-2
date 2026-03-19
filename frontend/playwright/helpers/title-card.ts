@@ -6,7 +6,7 @@ import { isVideoProject } from "./video-pause";
  * Since Playwright records the viewport, these appear as title/transition
  * screens in the video with no post-processing needed.
  *
- * No-op when not recording video (i.e., outside demo-video project).
+ * No-op when not recording video (i.e., outside *-demo-video projects).
  * Uses Carbon Design System dark theme colors and IBM Plex Sans.
  * Presentation only: do not use title cards to gate readiness or assertions.
  */

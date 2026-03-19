@@ -19,7 +19,7 @@ Choose target project before writing:
 - `core-app`: core UI behavior that does not need analyzer harness infra
 - `harness`: analyzer integrations requiring bridge/simulator/plugins
 - `demo`: workflow demo tests validated in CI
-- `demo-video`: local recording mode using same demo tests
+- `core-demo-video` / `harness-demo-video`: local recording (same globs as demos)
 
 ## 3) Source-First Selector Design
 
@@ -41,7 +41,7 @@ Choose target project before writing:
 After creating the spec:
 
 1. Register it in `frontend/playwright.config.ts` `testMatch`.
-2. If demo flow, include it in `DEMO_TESTS`.
+2. If demo flow, include it in `CORE_DEMO_TESTS` or `HARNESS_DEMO_TESTS`.
 3. Validate registration:
    `python3 .ai/skills/playwright/scripts/validate-playwright-project.py <spec>`
 4. Run narrow scope:

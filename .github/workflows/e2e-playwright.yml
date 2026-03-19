@@ -239,6 +239,15 @@ jobs:
           timeout 60 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done' || exit 1
           echo "Application is ready"
 
+      - name: Load E2E foundational + demo patient data (order entry / OGC-284)
+        run: |
+          docker exec -i openelisglobal-database \
+            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
+            < src/test/resources/e2e-foundational-data.sql
+          docker exec -i openelisglobal-database \
+            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
+            < src/test/resources/analyzer-harness-e2e.sql
+
       - name: Load FILE analyzer E2E fixtures (deactivate legacy types)
         run: |
           docker exec -i openelisglobal-database \
@@ -253,7 +262,7 @@ jobs:
             /data/analyzer-imports/e2e-fluorocycler/incoming
 
       - name: Run Playwright tests
-        run: npm run pw:test -- --project=core-app --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
+        run: npm run pw:test -- --project=core-app --project=core-demo --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
         working-directory: frontend
         env:
           CI: true

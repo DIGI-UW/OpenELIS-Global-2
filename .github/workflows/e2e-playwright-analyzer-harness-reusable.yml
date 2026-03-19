@@ -275,7 +275,7 @@ jobs:
           TEST_PASS: ${{ secrets.TEST_PASS }}
 
       - name: Run analyzer Playwright demo workflow
-        run: npm run pw:test -- --project=demo --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
+        run: npm run pw:test -- --project=harness-demo --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
         working-directory: frontend
         env:
           CI: true
@@ -381,7 +381,7 @@ jobs:
             exit 1
           fi
           if [[ "${{ needs.demo-shards.result }}" != "success" ]]; then
-            echo "Analyzer demo shard jobs failed: ${{ needs.demo-shards.result }}"
+            echo "Harness demo shard jobs failed: ${{ needs.demo-shards.result }}"
             exit 1
           fi
           if [[ "${{ needs.merge-reports.result }}" != "success" ]]; then

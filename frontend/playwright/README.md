@@ -25,22 +25,24 @@ Packaged source for these commands lives in `.ai/skills/playwright/`.
 
 ## Projects
 
-Tests are organized into 4 projects via allowlist-based `testMatch` in
+Tests are organized into projects via allowlist-based `testMatch` in
 `playwright.config.ts`. New test files must be explicitly added to a project.
 
-| Project      | Purpose                                          | CI Workflow          | Infra Required |
-| ------------ | ------------------------------------------------ | -------------------- | -------------- |
-| `core-app`   | Core UI tests (no plugins/bridge)                | `e2e-playwright.yml` | Build stack    |
-| `harness`    | Analyzer infrastructure proof and backend checks | `e2e-playwright.yml` | Full harness   |
-| `demo`       | UI-only workflow story proof at normal speed     | `e2e-playwright.yml` | Full harness   |
-| `demo-video` | Same UI-only stories with pacing and overlays    | Local only           | Harness        |
+| Project               | Purpose                                              | CI Workflow                       | Infra Required |
+| --------------------- | ---------------------------------------------------- | --------------------------------- | -------------- |
+| `core-app`            | Core UI tests (no plugins/bridge)                    | `e2e-playwright.yml`              | Build stack    |
+| `core-demo`           | UI workflow demos on build stack + SQL fixtures      | `e2e-playwright.yml`              | Build stack    |
+| `core-demo-video`     | `core-demo` + slowMo + video                         | Local only                        | Build stack    |
+| `harness`             | Analyzer infra tests (bridge, simulator, plugins)    | `e2e-playwright-analyzer-harness` | Full harness   |
+| `harness-demo`        | UI demos requiring bridge/import dirs/seeded plugins | `e2e-playwright-analyzer-harness` | Full harness   |
+| `harness-demo-video`  | `harness-demo` + slowMo + video                      | Local only                        | Full harness   |
 
 ## CI Workflows
 
-| Workflow             | Compose Files                                          | Projects           | Fixtures                                           |
-| -------------------- | ------------------------------------------------------ | ------------------ | -------------------------------------------------- |
-| `e2e-playwright.yml` | `build.docker-compose.yml`                             | `core-app`         | `file-import-e2e.sql`                              |
-| `e2e-playwright.yml` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+| Workflow                                | Compose Files                                          | Projects                     | Fixtures                                           |
+| --------------------------------------- | ------------------------------------------------------ | ---------------------------- | -------------------------------------------------- |
+| `e2e-playwright.yml` (`playwright-core`) | `build.docker-compose.yml`                             | `core-app` + `core-demo`     | `file-import-e2e.sql`                              |
+| `e2e-playwright-analyzer-harness`       | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo`   | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
 
 `e2e-playwright-analyzer-harness-manual.yml` remains available for manual (`workflow_dispatch`) harness-only runs and delegates to the same reusable analyzer harness workflow used by `e2e-playwright.yml`.
 
@@ -61,8 +63,9 @@ Analyzer rows used by harness tests are created via REST API seeding:
 
 ## Demo Contract
 
-`demo` and `demo-video` exist to prove user stories through visible UI evidence.
-They are not the place for backend or infrastructure assertions.
+`core-demo`, `core-demo-video`, `harness-demo`, and `harness-demo-video` exist
+to prove user stories through visible UI evidence. They are not the place for
+backend or infrastructure assertions.
 
 Allowed in demo stories:
 
@@ -79,9 +82,9 @@ Banned in demo specs and demo-facing helpers:
 - `waitForResponse()` or `expect.poll()` used as proof
 - Filesystem or server-state polling to decide success
 
-If a behavior needs backend consistency checks, config persistence checks, file watcher
-proof, or bridge/simulator proof, put it in `harness` instead.
-
+If a behavior needs backend consistency checks, config persistence checks,
+file watcher proof, or bridge/simulator proof, put that test in `harness`
+instead.
 ### File import wait tuning (`file-import-results.spec.ts`)
 
 CI sets **`FILE_IMPORT_POLL_MS=5000`** and **`FILE_IMPORT_DROP_BUFFER_MS=45000`** on
@@ -111,12 +114,15 @@ npm run pw:test
 
 # Run specific project
 npm run pw:test -- --project=core-app
+npm run pw:test -- --project=core-demo
 npm run pw:test -- --project=harness
-npm run pw:test -- --project=demo
+npm run pw:test -- --project=harness-demo
 
-# Convenience aliases for common analyzer runs
+# Convenience aliases
 npm run pw:test:harness
-npm run pw:test:demo
+npm run pw:test:core-demo
+npm run pw:test:harness-demo
+npm run pw:test:demo # alias → harness-demo (analyzer story tests)
 
 # Run specific test file
 npm run pw:test -- playwright/tests/file-import-ui.spec.ts
@@ -141,10 +147,24 @@ cd frontend
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness
 ```
 
+**Core demos** (barcode workflow — build stack only):
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:core-demo
+```
+
+**Harness demos** (file import / ASTM stories — full harness):
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-demo
+```
+
 ### Analyzer Harness Remediation Loop
 
-When remediating `harness` or `demo` failures, do not use CI as the first
-repro. Follow this local loop after every substantive spec/helper change:
+When remediating `harness` or `harness-demo` failures, do not use CI as the
+first repro. Follow this local loop after every substantive spec/helper change:
 
 1. Restart the analyzer harness from the repo root:
 
@@ -163,7 +183,7 @@ npm run pw:guard
 
 ```bash
 cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=demo playwright/tests/<failing-spec>.spec.ts
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo playwright/tests/<failing-spec>.spec.ts
 ```
 
 4. Run full analyzer parity locally before pushing:
@@ -171,27 +191,30 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=demo playwr
 ```bash
 cd frontend
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=demo --shard=1/2
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=demo --shard=2/2
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo --shard=1/2
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo --shard=2/2
 ```
 
 5. During remediation, keep local validation running before or alongside every
    push so CI confirms parity instead of discovering failures first. Push only
-   after the targeted local run and at least one full local `demo` pass complete.
+   after the targeted local run and at least one full local `harness-demo` pass
+   completes.
 
 ## Video Recording
 
-The `demo-video` project runs the same `DEMO_TESTS` as `demo` but with
-`slowMo: 500` and `video: "on"`. It must keep the same business flow and
-assertions as `demo`; only pacing and presentation may differ.
+`*-demo-video` projects mirror `core-demo` / `harness-demo` with `slowMo: 500` and
+`video: "on"` for stakeholder recordings.
 
 ```bash
 cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=demo-video
+# Core stack (e.g. OGC-284 barcode stories)
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:core-demo-video
+# Full harness (QuantStudio / file import / GeneXpert demos)
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-demo-video
 # Videos saved to frontend/test-results/<test-name>/video.webm
 ```
 
-Customize slowMo speed: `PLAYWRIGHT_SLOWMO=300 npm run pw:test -- --project=demo-video`
+Customize slowMo: `PLAYWRIGHT_SLOWMO=300 npm run pw:test:harness-demo-video`
 
 ### `videoPause` Pattern
 
@@ -203,25 +226,27 @@ import { videoPause } from "../helpers/video-pause";
 
 test("my demo test", async ({ page }, testInfo) => {
   await page.click("#submit");
-  await videoPause(page, 1000, testInfo); // No-op except in demo-video
+  await videoPause(page, 1000, testInfo); // No-op except in *-demo-video
 });
 ```
 
-- `videoPause(page, ms, testInfo)` — pauses only in `demo-video` project
+- `videoPause(page, ms, testInfo)` — pauses only in `core-demo-video` /
+  `harness-demo-video`
 - `showTitleCard(page, title, subtitle, durationMs, testInfo)` — DOM overlay,
   skips in non-video projects
 - `showStepCard(page, stepNumber, description, durationMs, testInfo)` — step
   banner overlay, skips in non-video projects
 - `createDemoPresentation(page, testInfo)` — shared presentation wrapper so a
-  single UI-only scenario can run in both `demo` and `demo-video`
+  single UI-only scenario can run in both its normal and `*-demo-video` modes
 
 ## Adding New Tests
 
 1. Create `frontend/playwright/tests/{feature}.spec.ts`
 2. Add the glob pattern to the appropriate project's `testMatch` in
    `playwright.config.ts`
-3. For demo workflow tests, add to the `DEMO_TESTS` constant (shared between
-   `demo` and `demo-video`)
+3. For demo workflow tests, add the glob to `CORE_DEMO_TESTS` (build stack) or
+   `HARNESS_DEMO_TESTS` (full analyzer harness); the `*-demo-video` project uses
+   the same glob list
 4. Use `videoPause()` for any video pacing (not `page.waitForTimeout()`)
 5. Validate project registration with:
    `python .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/{feature}.spec.ts`
@@ -236,6 +261,6 @@ test("my demo test", async ({ page }, testInfo) => {
 | `BASE_URL`          | `https://localhost` | App URL                                                     |
 | `TEST_USER`         | —                   | Login username (required)                                   |
 | `TEST_PASS`         | —                   | Login password (required)                                   |
-| `PLAYWRIGHT_SLOWMO` | `500`               | Milliseconds of slowMo for `demo-video`                     |
-| `PLAYWRIGHT_VIDEO`  | `off`               | Global video override (prefer `demo-video` project instead) |
+| `PLAYWRIGHT_SLOWMO` | `500`               | Milliseconds of slowMo for `*-demo-video` projects         |
+| `PLAYWRIGHT_VIDEO`  | `off`               | Global video override (prefer `*-demo-video` projects)      |
 | `CI`                | —                   | Set by GitHub Actions; enables single worker + retries      |

@@ -120,26 +120,29 @@ still use
 
 ## Video and demo test policy
 
-- CI must run `demo` for validation speed and stability.
-- `demo-video` is local-only and intentionally slower.
-- Canonical local command:
+- CI runs `core-demo` on the build stack (`e2e-playwright.yml`) and
+  `harness-demo` on the full analyzer harness reusable workflow.
+- `core-demo-video` / `harness-demo-video` are local-only (slowMo + video).
+- Canonical local commands:
 
 ```bash
 cd frontend
-CLEANUP=false TEST_USER=admin TEST_PASS='<password>' npm run pw:test:video
+CLEANUP=false TEST_USER=admin TEST_PASS='<password>' npm run pw:test:core-demo-video
+# or harness story recordings:
+CLEANUP=false TEST_USER=admin TEST_PASS='<password>' npm run pw:test:harness-demo-video
 ```
 
-- Current script implementation:
-  - `pw:test:video` runs `demo-video` with `PLAYWRIGHT_VIDEO=on` and
-    `PLAYWRIGHT_SLOWMO=500`.
-  - The command targets Linux/macOS shells; on Windows, run it in WSL.
+- Script implementation:
+  - `pw:test:video` delegates to `pw:test:harness-demo-video` (harness stories).
+  - `PLAYWRIGHT_VIDEO=on` and `PLAYWRIGHT_SLOWMO=500` are set by the `*-demo-video` npm scripts.
 
 ## Test tiers and intent
 
 - `core-app`: fast smoke checks on shared app behaviors.
+- `core-demo`: UI workflow demos provable without analyzer harness.
 - `harness`: analyzer bridge/simulator/plugin integration checks.
-- `demo`: end-to-end feature workflow validation in CI.
-- `demo-video`: local demonstration capture only.
+- `harness-demo`: end-to-end analyzer story validation in CI.
+- `*-demo-video`: local demonstration capture only.
 
 ## Develop enforcement model
 

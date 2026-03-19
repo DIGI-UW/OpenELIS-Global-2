@@ -3,15 +3,43 @@ import { showSceneLabel, showTitleCard } from "../helpers/title-card";
 import { videoPause } from "../helpers/video-pause";
 
 /**
- * OGC-284 Demo Video — Barcode Label Quantity Management
+ * OGC-284 — Barcode label quantity workflow (user stories)
  *
- * Three separate tests, one per User Story, each producing its own video.
+ * Three separate tests, one per User Story. Use core-demo-video locally for
+ * slowMo + title cards; core-demo for normal-speed CI on the build stack.
  *
  * Run with:
  *   cd frontend && TEST_USER=admin TEST_PASS='adminADMIN!' \
- *     npx playwright test ogc-284-demo-video --project=demo-video
+ *     npx playwright test ogc-284-barcode-workflow --project=core-demo-video
  */
 type PauseFn = (ms: number) => Promise<void>;
+
+/** Site/requester lookup: prefer autosuggest, but fall back to tabbing out. */
+async function pickFirstAutosuggestOptional(page: Page, pause: PauseFn) {
+  try {
+    await expect
+      .poll(
+        async () => page.locator('[data-cy="auto-suggestion"]').count(),
+        {
+          timeout: 12_000,
+          intervals: [400, 800, 1500],
+        },
+      )
+      .toBeGreaterThan(0);
+    await page.locator('[data-cy="auto-suggestion"]').first().click();
+    await pause(500);
+  } catch {
+    await page.keyboard.press("Tab");
+    await pause(200);
+  }
+}
+
+/** Visible success panel after SamplePatientEntry save (class from OrderSuccessMessage). */
+async function expectOrderEntrySaveSuccess(page: Page) {
+  await expect(page.locator(".orderEntrySuccessMsg")).toBeVisible({
+    timeout: 20_000,
+  });
+}
 
 async function setNumericInput(locator: Locator, preferredValue: string) {
   await locator.click({ clickCount: 3 });
@@ -208,7 +236,7 @@ async function fillSampleStep(page: Page) {
 /**
  * Fill the Order Details step (Step 3) — lab number, dates, site, requester.
  */
-async function fillOrderDetails(page: Page) {
+async function fillOrderDetails(page: Page, pause: PauseFn) {
   await waitForOrderDetailsStep(page);
 
   const labNoInput = page.locator("input#labNo");
@@ -234,15 +262,17 @@ async function fillOrderDetails(page: Page) {
   const siteInput = page.locator("input#siteName");
   if (await siteInput.isVisible().catch(() => false)) {
     await siteInput.clear();
-    await siteInput.fill("CAMES");
-    const siteSuggestion = await waitForAutoSuggestion(
-      page,
-      /CAMES MAN/i,
-    ).catch(() => null);
-    if (siteSuggestion) {
-      await siteSuggestion.click();
-    }
-    await expect(siteInput).not.toHaveValue("", { timeout: 5_000 });
+    await siteInput.fill("CAMES MAN");
+    await pause(1200);
+    await pickFirstAutosuggestOptional(page, pause);
+  }
+
+  const requesterLookup = page.locator("input#requesterId");
+  if (await requesterLookup.isVisible().catch(() => false)) {
+    await requesterLookup.clear();
+    await requesterLookup.fill("Prime");
+    await pause(800);
+    await pickFirstAutosuggestOptional(page, pause);
   }
 
   const requesterFirst = page.locator("input#requesterFirstName");
@@ -258,7 +288,6 @@ async function fillOrderDetails(page: Page) {
     await expect(requesterLast).toHaveValue("Prime");
   }
 
-  const requesterLookup = page.locator("input#requesterId");
   if (await requesterLookup.isVisible().catch(() => false)) {
     if (!(await requesterLookup.inputValue()).trim()) {
       await requesterLookup.fill("Prime, Optimus");
@@ -440,7 +469,7 @@ test("US2 — Capture label quantities during sample creation", async ({
 
   // ── Step 0: Patient search & select ─────────────────────────────
   await showSceneLabel(page, "US2 · Step 0: Patient", testInfo);
-  await selectPatient(page, "Smith", "John", pause);
+  await selectPatient(page, "TEST-Smith", "John", pause);
 
   // ── Next → Step 1 (Program selection) ───────────────────────────
   await clickNext(page);
@@ -499,15 +528,13 @@ test("US2 — Capture label quantities during sample creation", async ({
   // ── Step 3: Order details ───────────────────────────────────────
   await clickNext(page);
   await showSceneLabel(page, "US2 · Step 3: Order Details", testInfo);
-  await fillOrderDetails(page);
+  await fillOrderDetails(page, pause);
 
   // Submit
   const submitBtn = page.getByRole("button", { name: "Submit" });
   await scrollToAndPause(page, submitBtn, pause, 1000);
   await submitBtn.click();
-  await expect(page.locator(".orderEntrySuccessMsg").first()).toBeVisible({
-    timeout: 30_000,
-  });
+  await expectOrderEntrySaveSuccess(page);
 
   // ── Success: confirm quantities saved ───────────────────────────
   await showTitleCard(
@@ -537,7 +564,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   // Quickly reach the success page by submitting an order
   await gotoSamplePatientEntry(page);
 
-  await selectPatient(page, "Smith", "John", pause);
+  await selectPatient(page, "TEST-Smith", "John", pause);
   await clickNext(page);
 
   const next2 = page.getByRole("button", { name: "Next", exact: true });
@@ -557,14 +584,12 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
 
   await clickNext(page);
   await showSceneLabel(page, "US3 · Completing Order...", testInfo);
-  await fillOrderDetails(page);
+  await fillOrderDetails(page, pause);
 
   const submitBtn = page.getByRole("button", { name: "Submit" });
   await scrollToAndPause(page, submitBtn, pause, 800);
   await submitBtn.click();
-  await expect(page.locator(".orderEntrySuccessMsg").first()).toBeVisible({
-    timeout: 30_000,
-  });
+  await expectOrderEntrySaveSuccess(page);
 
   // ── Post-save print dialog ──────────────────────────────────────
   await showTitleCard(

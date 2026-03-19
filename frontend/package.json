@@ -76,10 +76,14 @@
     "pw:guard:no-timeout": "node scripts/pw-no-timeout-guard.mjs",
     "pw:guard:demo-ui-only": "node scripts/pw-demo-ui-only-guard.mjs",
     "pw:test:harness": "playwright test --project=harness",
-    "pw:test:demo": "playwright test --project=demo",
+    "pw:test:core-demo": "playwright test --project=core-demo",
+    "pw:test:harness-demo": "playwright test --project=harness-demo",
+    "pw:test:demo": "playwright test --project=harness-demo",
+    "pw:test:core-demo-video": "PLAYWRIGHT_VIDEO=on PLAYWRIGHT_SLOWMO=500 playwright test --project=core-demo-video",
+    "pw:test:harness-demo-video": "PLAYWRIGHT_VIDEO=on PLAYWRIGHT_SLOWMO=500 playwright test --project=harness-demo-video",
     "pw:test:ui": "playwright test --ui",
     "pw:test:headed": "playwright test --headed",
-    "pw:test:video": "PLAYWRIGHT_VIDEO=on PLAYWRIGHT_SLOWMO=500 playwright test --project=demo-video"
+    "pw:test:video": "npm run pw:test:harness-demo-video"
   },
   "jest": {
     "transformIgnorePatterns": [

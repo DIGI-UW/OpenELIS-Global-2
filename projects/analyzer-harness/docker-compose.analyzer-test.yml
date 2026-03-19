@@ -60,6 +60,7 @@ services:
       - ../../volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
     environment:
       - SPRING_PROFILES_ACTIVE=dev
+      - BRIDGE_AUTH_PASSWORD=changeme   # Dev profile allows default; set explicitly for clarity
       - LOGGING_LEVEL_ORG_ITECH=INFO
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe:8443/api/OpenELIS-Global/analyzer
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_INSECURE_TLS=true

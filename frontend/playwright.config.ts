@@ -5,12 +5,12 @@ import { defineConfig, devices } from "@playwright/test";
  *
  * Projects are organized by environment requirement:
  *
- *   core-app            — CI build stack core UI tests
- *   core-demo           — Build stack UI-only demos
- *   core-demo-video     — Same core demos with slowMo + video (local only)
+ *   core-app            — CI build stack (no plugins, bridge, or import dirs)
+ *   core-demo           — UI workflow demos provable on build stack + fixtures
+ *   core-demo-video     — core-demo with slowMo + video (local recording)
  *   harness             — Analyzer harness infra tests (bridge, simulator, plugins)
- *   harness-demo        — Harness-backed UI-only demos
- *   harness-demo-video  — Same harness demos with slowMo + video (local only)
+ *   harness-demo        — UI demos that require full analyzer harness
+ *   harness-demo-video  — harness-demo with slowMo + video (local recording)
  *
  * New test files must be explicitly added to a project's testMatch.
  * Unmatched files won't run — this is intentional (allowlist, not blocklist).
@@ -18,10 +18,10 @@ import { defineConfig, devices } from "@playwright/test";
  * @see https://playwright.dev/docs/test-configuration
  */
 
-// Core demos prove non-analyzer user stories on the build stack.
-const CORE_DEMO_TESTS = ["**/ogc-284-demo-video.spec.ts"];
+// Demos that must run on the minimal build stack only (see e2e-playwright.yml)
+const CORE_DEMO_TESTS = ["**/ogc-284-barcode-workflow.spec.ts"];
 
-// Harness demos prove analyzer/file-import stories that require harness infra.
+// Demos that require analyzer harness overlay + seeded analyzers
 const HARNESS_DEMO_TESTS = [
   "**/demo-quantstudio*.spec.ts",
   "**/file-import-ui.spec.ts",
@@ -126,7 +126,7 @@ export default defineConfig({
       dependencies: ["setup"],
     },
 
-    // Harness demo — same UI-only story proof, but only for analyzer-backed flows
+    // Analyzer harness demos (CI: reusable harness workflow only)
     {
       name: "harness-demo",
       testMatch: HARNESS_DEMO_TESTS,
@@ -136,8 +136,6 @@ export default defineConfig({
       },
       dependencies: ["setup"],
     },
-
-    // Harness demo video — same harness demos with slowMo and overlays (local only)
     {
       name: "harness-demo-video",
       testMatch: HARNESS_DEMO_TESTS,
