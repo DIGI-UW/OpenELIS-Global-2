@@ -37,17 +37,37 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Prepare compose images (reuse analyzer cache first)
+      - name: Compute cache metadata
+        id: cache-meta
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          if [ -n "$PR_NUMBER" ]; then
+            CACHE_KEY="pr-${PR_NUMBER}"
+            IMAGE_TAG="pr-${PR_NUMBER}"
+          elif [ -n "$GITHUB_REF_NAME" ]; then
+            SAFE_REF_NAME="$(echo "$GITHUB_REF_NAME" | tr '[:upper:]' '[:lower:]' | sed 's|[^a-z0-9._-]|-|g')"
+            CACHE_KEY="ref-${SAFE_REF_NAME}"
+            IMAGE_TAG="sha-${GITHUB_SHA}"
+          else
+            CACHE_KEY="sha-${GITHUB_SHA}"
+            IMAGE_TAG="sha-${GITHUB_SHA}"
+          fi
+          echo "owner_lower=${OWNER_LOWER}" >> "$GITHUB_OUTPUT"
+          echo "cache_key=${CACHE_KEY}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare compose images (reuse analyzer cache when available)
         id: prepare-images
         run: |
-          TAG="pr-${{ github.event.pull_request.number || github.sha }}"
-          OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          TAG="${{ steps.cache-meta.outputs.image_tag }}"
+          OWNER_LOWER="${{ steps.cache-meta.outputs.owner_lower }}"
           docker compose -f build.docker-compose.yml config --images | sort -u > /tmp/cypress-images.txt
           : > /tmp/cypress-image-map.txt
-          MISSING=0
 
-          # Prefer pulling analyzer-built images to avoid duplicate builds.
-          for attempt in {1..20}; do
+          # Short fallback: try analyzer-built images for this run tag first.
+          for attempt in {1..4}; do
             MISSING=0
             : > /tmp/cypress-image-map.txt
             while IFS= read -r image; do
@@ -68,8 +88,8 @@ jobs:
               break
             fi
 
-            echo "Analyzer images not ready yet (attempt ${attempt}/20); waiting 30s..."
-            sleep 30
+            echo "Analyzer images not ready yet (attempt ${attempt}/4); waiting 20s..."
+            sleep 20
           done
 
           if [ "$MISSING" -eq 0 ] && [ -s /tmp/cypress-image-map.txt ]; then
@@ -91,13 +111,15 @@ jobs:
           load: true
           set: |
             *.cache-from=type=gha,scope=cypress-e2e
+            *.cache-from=type=registry,ref=ghcr.io/${{ steps.cache-meta.outputs.owner_lower }}/openelis-global-2/cypress-buildcache:${{ steps.cache-meta.outputs.cache_key }}
             *.cache-to=type=gha,scope=cypress-e2e,mode=max
+            *.cache-to=type=registry,ref=ghcr.io/${{ steps.cache-meta.outputs.owner_lower }}/openelis-global-2/cypress-buildcache:${{ steps.cache-meta.outputs.cache_key }},mode=max
 
       - name: Tag and push fallback images to GHCR
         if: ${{ steps.prepare-images.outputs.needs_build == 'true' }}
         run: |
-          TAG="pr-${{ github.event.pull_request.number || github.sha }}"
-          OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          TAG="${{ steps.cache-meta.outputs.image_tag }}"
+          OWNER_LOWER="${{ steps.cache-meta.outputs.owner_lower }}"
           : > /tmp/cypress-image-map.txt
           while IFS= read -r image; do
             [ -z "$image" ] && continue

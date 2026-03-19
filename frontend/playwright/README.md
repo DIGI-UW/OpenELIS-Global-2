@@ -63,8 +63,9 @@ Analyzer rows used by harness tests are created via REST API seeding:
 
 ### Prerequisites
 
-1. App running at `https://localhost` (or set `BASE_URL`)
-2. Auth env vars: `TEST_USER` and `TEST_PASS`
+1. **Dependencies:** from `frontend/`, run **`npm run ci:deps`** (then **`npm run pw:install`**). Plain **`npm ci`** often prints almost nothing for several minutes while Cypress unpacks — it is not stuck; **`ci:deps`** forces progress + `loglevel=info` so you see steady output. `.npmrc` also sets `progress=true` for normal installs.
+2. App running at `https://localhost` (or set `BASE_URL`)
+3. Auth env vars: `TEST_USER` and `TEST_PASS`
 
 ### Commands
 
