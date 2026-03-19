@@ -53,8 +53,8 @@ For AI-assisted development, prefer this sequence:
   Always use `npm run pw:test` and related scripts (`pw:test:ui`,
   `pw:test:headed`, `pw:test:video`, `pw:test:harness`, `pw:test:core-demo`,
   `pw:test:harness-demo`, `pw:test:demo` alias).
-- For `harness`, `harness-demo`, and `harness-demo-video`, verify analyzer harness
-  stack preflight before execution (see `/restart-analyzer-harness`).
+- For `harness`, `harness-demo`, and `harness-demo-video`, verify analyzer
+  harness stack preflight before execution (see `/restart-analyzer-harness`).
 - `TEST_USER` and `TEST_PASS` must be set for all Playwright projects.
 - Utility exceptions are allowed: `npx playwright show-trace` and
   `npx playwright install`.

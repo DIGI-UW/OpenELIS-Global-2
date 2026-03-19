@@ -134,7 +134,8 @@ CLEANUP=false TEST_USER=admin TEST_PASS='<password>' npm run pw:test:harness-dem
 
 - Script implementation:
   - `pw:test:video` delegates to `pw:test:harness-demo-video` (harness stories).
-  - `PLAYWRIGHT_VIDEO=on` and `PLAYWRIGHT_SLOWMO=500` are set by the `*-demo-video` npm scripts.
+  - `PLAYWRIGHT_VIDEO=on` and `PLAYWRIGHT_SLOWMO=500` are set by the
+    `*-demo-video` npm scripts.
 
 ## Test tiers and intent
 

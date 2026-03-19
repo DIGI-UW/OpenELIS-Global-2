@@ -1571,21 +1571,21 @@ Tests are organized into projects by infrastructure requirement. New test files
 must be explicitly added to a project's `testMatch` allowlist in
 `playwright.config.ts`.
 
-| Project              | Purpose                                             | CI Workflow                       | Infra Required   |
-| -------------------- | --------------------------------------------------- | --------------------------------- | ---------------- |
-| `core-app`           | Core UI tests (no plugins/bridge)                   | `e2e-playwright.yml`              | Build stack only |
-| `core-demo`          | UI demos on build stack + SQL fixtures              | `e2e-playwright.yml`              | Build stack only |
-| `core-demo-video`    | `core-demo` + `slowMo` + video                      | Local only                        | Build stack only |
+| Project              | Purpose                                           | CI Workflow                        | Infra Required   |
+| -------------------- | ------------------------------------------------- | ---------------------------------- | ---------------- |
+| `core-app`           | Core UI tests (no plugins/bridge)                 | `e2e-playwright.yml`               | Build stack only |
+| `core-demo`          | UI demos on build stack + SQL fixtures            | `e2e-playwright.yml`               | Build stack only |
+| `core-demo-video`    | `core-demo` + `slowMo` + video                    | Local only                         | Build stack only |
 | `harness`            | Analyzer infra tests (bridge, simulator, plugins) | Analyzer harness reusable workflow | Full harness     |
-| `harness-demo`       | UI demos requiring full analyzer harness            | Analyzer harness reusable workflow | Full harness     |
-| `harness-demo-video` | `harness-demo` + `slowMo` + video                   | Local only                        | Full harness     |
+| `harness-demo`       | UI demos requiring full analyzer harness          | Analyzer harness reusable workflow | Full harness     |
+| `harness-demo-video` | `harness-demo` + `slowMo` + video                 | Local only                         | Full harness     |
 
 #### CI Workflows
 
-| Workflow                                   | Compose Files                                          | Projects Run                 | Fixtures Loaded                                    |
-| ------------------------------------------ | ------------------------------------------------------ | ---------------------------- | -------------------------------------------------- |
-| `e2e-playwright.yml` (`playwright-core`)   | `build.docker-compose.yml`                             | `core-app` + `core-demo`     | `file-import-e2e.sql`                              |
-| `e2e-playwright-analyzer-harness-reusable` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo`   | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+| Workflow                                   | Compose Files                                          | Projects Run               | Fixtures Loaded                                    |
+| ------------------------------------------ | ------------------------------------------------------ | -------------------------- | -------------------------------------------------- |
+| `e2e-playwright.yml` (`playwright-core`)   | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `file-import-e2e.sql`                              |
+| `e2e-playwright-analyzer-harness-reusable` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
 
 #### Key Patterns
 

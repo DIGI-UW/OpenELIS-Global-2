@@ -18,13 +18,10 @@ type PauseFn = (ms: number) => Promise<void>;
 async function pickFirstAutosuggestOptional(page: Page, pause: PauseFn) {
   try {
     await expect
-      .poll(
-        async () => page.locator('[data-cy="auto-suggestion"]').count(),
-        {
-          timeout: 12_000,
-          intervals: [400, 800, 1500],
-        },
-      )
+      .poll(async () => page.locator('[data-cy="auto-suggestion"]').count(), {
+        timeout: 12_000,
+        intervals: [400, 800, 1500],
+      })
       .toBeGreaterThan(0);
     await page.locator('[data-cy="auto-suggestion"]').first().click();
     await pause(500);

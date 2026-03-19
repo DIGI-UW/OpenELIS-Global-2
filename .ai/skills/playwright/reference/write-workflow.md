@@ -19,7 +19,8 @@ Choose target project before writing:
 - `core-app`: core UI behavior that does not need analyzer harness infra
 - `harness`: analyzer integrations requiring bridge/simulator/plugins
 - `demo`: workflow demo tests validated in CI
-- `core-demo-video` / `harness-demo-video`: local recording (same globs as demos)
+- `core-demo-video` / `harness-demo-video`: local recording (same globs as
+  demos)
 
 ## 3) Source-First Selector Design
 

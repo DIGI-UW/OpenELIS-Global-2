@@ -28,21 +28,21 @@ Packaged source for these commands lives in `.ai/skills/playwright/`.
 Tests are organized into projects via allowlist-based `testMatch` in
 `playwright.config.ts`. New test files must be explicitly added to a project.
 
-| Project               | Purpose                                              | CI Workflow                       | Infra Required |
-| --------------------- | ---------------------------------------------------- | --------------------------------- | -------------- |
-| `core-app`            | Core UI tests (no plugins/bridge)                    | `e2e-playwright.yml`              | Build stack    |
-| `core-demo`           | UI workflow demos on build stack + SQL fixtures      | `e2e-playwright.yml`              | Build stack    |
-| `core-demo-video`     | `core-demo` + slowMo + video                         | Local only                        | Build stack    |
-| `harness`             | Analyzer infra tests (bridge, simulator, plugins)    | `e2e-playwright-analyzer-harness` | Full harness   |
-| `harness-demo`        | UI demos requiring bridge/import dirs/seeded plugins | `e2e-playwright-analyzer-harness` | Full harness   |
-| `harness-demo-video`  | `harness-demo` + slowMo + video                      | Local only                        | Full harness   |
+| Project              | Purpose                                              | CI Workflow                       | Infra Required |
+| -------------------- | ---------------------------------------------------- | --------------------------------- | -------------- |
+| `core-app`           | Core UI tests (no plugins/bridge)                    | `e2e-playwright.yml`              | Build stack    |
+| `core-demo`          | UI workflow demos on build stack + SQL fixtures      | `e2e-playwright.yml`              | Build stack    |
+| `core-demo-video`    | `core-demo` + slowMo + video                         | Local only                        | Build stack    |
+| `harness`            | Analyzer infra tests (bridge, simulator, plugins)    | `e2e-playwright-analyzer-harness` | Full harness   |
+| `harness-demo`       | UI demos requiring bridge/import dirs/seeded plugins | `e2e-playwright-analyzer-harness` | Full harness   |
+| `harness-demo-video` | `harness-demo` + slowMo + video                      | Local only                        | Full harness   |
 
 ## CI Workflows
 
-| Workflow                                | Compose Files                                          | Projects                     | Fixtures                                           |
-| --------------------------------------- | ------------------------------------------------------ | ---------------------------- | -------------------------------------------------- |
-| `e2e-playwright.yml` (`playwright-core`) | `build.docker-compose.yml`                             | `core-app` + `core-demo`     | `file-import-e2e.sql`                              |
-| `e2e-playwright-analyzer-harness`       | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo`   | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+| Workflow                                 | Compose Files                                          | Projects                   | Fixtures                                           |
+| ---------------------------------------- | ------------------------------------------------------ | -------------------------- | -------------------------------------------------- |
+| `e2e-playwright.yml` (`playwright-core`) | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `file-import-e2e.sql`                              |
+| `e2e-playwright-analyzer-harness`        | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
 
 `e2e-playwright-analyzer-harness-manual.yml` remains available for manual (`workflow_dispatch`) harness-only runs and delegates to the same reusable analyzer harness workflow used by `e2e-playwright.yml`.
 
@@ -85,6 +85,7 @@ Banned in demo specs and demo-facing helpers:
 If a behavior needs backend consistency checks, config persistence checks,
 file watcher proof, or bridge/simulator proof, put that test in `harness`
 instead.
+
 ### File import wait tuning (`file-import-results.spec.ts`)
 
 CI sets **`FILE_IMPORT_POLL_MS=5000`** and **`FILE_IMPORT_DROP_BUFFER_MS=45000`** on
@@ -256,11 +257,11 @@ test("my demo test", async ({ page }, testInfo) => {
 
 ## Environment Variables
 
-| Variable            | Default             | Description                                                 |
-| ------------------- | ------------------- | ----------------------------------------------------------- |
-| `BASE_URL`          | `https://localhost` | App URL                                                     |
-| `TEST_USER`         | —                   | Login username (required)                                   |
-| `TEST_PASS`         | —                   | Login password (required)                                   |
-| `PLAYWRIGHT_SLOWMO` | `500`               | Milliseconds of slowMo for `*-demo-video` projects         |
-| `PLAYWRIGHT_VIDEO`  | `off`               | Global video override (prefer `*-demo-video` projects)      |
-| `CI`                | —                   | Set by GitHub Actions; enables single worker + retries      |
+| Variable            | Default             | Description                                            |
+| ------------------- | ------------------- | ------------------------------------------------------ |
+| `BASE_URL`          | `https://localhost` | App URL                                                |
+| `TEST_USER`         | —                   | Login username (required)                              |
+| `TEST_PASS`         | —                   | Login password (required)                              |
+| `PLAYWRIGHT_SLOWMO` | `500`               | Milliseconds of slowMo for `*-demo-video` projects     |
+| `PLAYWRIGHT_VIDEO`  | `off`               | Global video override (prefer `*-demo-video` projects) |
+| `CI`                | —                   | Set by GitHub Actions; enables single worker + retries |
