@@ -222,14 +222,12 @@ jobs:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
     uses: DIGI-UW/OpenELIS-Global-2/.github/workflows/frontend.yml@develop
 
-  e2e-cypress-deprecated:
-    if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    needs: [frontend]
-    uses: DIGI-UW/OpenELIS-Global-2/.github/workflows/e2e-cypress-deprecated.yml@develop
+  # Stage-1 remediation: PR E2E coverage remains owned by `03 - E2E`
+  # (`e2e-playwright.yml`) until the parity follow-up refactor lands.
 
   build-and-push-image-backend:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    needs: [frontend, e2e-cypress-deprecated]
+    needs: [frontend]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -275,7 +273,7 @@ jobs:
 
   build-and-push-image-frontend:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    needs: [frontend, e2e-cypress-deprecated]
+    needs: [frontend]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -319,7 +317,7 @@ jobs:
 
   build-and-push-image-proxy:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    needs: [frontend, e2e-cypress-deprecated]
+    needs: [frontend]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -362,7 +360,7 @@ jobs:
 
   build-and-push-image-fhir:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    needs: [frontend, e2e-cypress-deprecated]
+    needs: [frontend]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -406,7 +404,7 @@ jobs:
 
   build-and-push-image-database:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    needs: [frontend, e2e-cypress-deprecated]
+    needs: [frontend]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -450,6 +448,6 @@ jobs:
 
   # build-installer-and-upload-installer:
   #   if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' && github.event_name == 'release' && github.event.action == 'published' }}
-  #   needs: [frontend, e2e-cypress-deprecated]
+  #   needs: [frontend]
   #   uses : DIGI-UW/OpenELIS-Global-2/.github/workflows/build-installer.yml@develop
            
