@@ -11,6 +11,7 @@ export function isVideoProject(testInfo: TestInfo): boolean {
 /**
  * Pause only during video recording. No-op in demo/harness/core-app projects.
  * Use this instead of page.waitForTimeout() for video pacing between actions.
+ * This helper is presentation-only and must not be used as a readiness signal.
  */
 export async function videoPause(
   page: Page,

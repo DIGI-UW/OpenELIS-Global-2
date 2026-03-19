@@ -10,13 +10,7 @@ export async function goToAnalyzerDashboard(
   page: Page,
   testInfo?: TestInfo,
 ): Promise<void> {
-  const apiPromise = page.waitForResponse(
-    (resp) =>
-      resp.url().includes("/rest/analyzer/analyzers") && resp.status() === 200,
-    { timeout: LONG_TIMEOUT },
-  );
   await page.goto("analyzers", { waitUntil: "domcontentloaded" });
-  await apiPromise;
   await expect(page.locator('[data-testid="analyzers-list"]')).toBeVisible({
     timeout: LONG_TIMEOUT,
   });

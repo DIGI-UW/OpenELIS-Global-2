@@ -28,12 +28,12 @@ Packaged source for these commands lives in `.ai/skills/playwright/`.
 Tests are organized into 4 projects via allowlist-based `testMatch` in
 `playwright.config.ts`. New test files must be explicitly added to a project.
 
-| Project      | Purpose                                           | CI Workflow          | Infra Required |
-| ------------ | ------------------------------------------------- | -------------------- | -------------- |
-| `core-app`   | Core UI tests (no plugins/bridge)                 | `e2e-playwright.yml` | Build stack    |
-| `harness`    | Analyzer infra tests (bridge, simulator, plugins) | `e2e-playwright.yml` | Full harness   |
-| `demo`       | Workflow demos at normal speed                    | `e2e-playwright.yml` | Full harness   |
-| `demo-video` | Same demos with slowMo + video                    | Local only           | Harness        |
+| Project      | Purpose                                          | CI Workflow          | Infra Required |
+| ------------ | ------------------------------------------------ | -------------------- | -------------- |
+| `core-app`   | Core UI tests (no plugins/bridge)                | `e2e-playwright.yml` | Build stack    |
+| `harness`    | Analyzer infrastructure proof and backend checks | `e2e-playwright.yml` | Full harness   |
+| `demo`       | UI-only workflow story proof at normal speed     | `e2e-playwright.yml` | Full harness   |
+| `demo-video` | Same UI-only stories with pacing and overlays    | Local only           | Harness        |
 
 ## CI Workflows
 
@@ -58,6 +58,29 @@ Analyzer rows used by harness tests are created via REST API seeding:
 - **`projects/analyzer-harness/seed-analyzers.sh`** — Creates
   `Cepheid GeneXpert (ASTM Mode)`, `QuantStudio 5`, `QuantStudio 7`, and
   `FluoroCycler XT` using profile-based `defaultConfigId`
+
+## Demo Contract
+
+`demo` and `demo-video` exist to prove user stories through visible UI evidence.
+They are not the place for backend or infrastructure assertions.
+
+Allowed in demo stories:
+
+- User-triggered UI actions
+- Visible page transitions and durable DOM evidence
+- Presentation helpers such as `videoPause()`, `showTitleCard()`, and `showStepCard()`
+- Non-UI setup inputs only when unavoidable, such as simulator triggers or watched-folder drops
+
+Banned in demo specs and demo-facing helpers:
+
+- `page.on("console")` or `page.on("pageerror")`
+- `captureDebugContext`
+- `page.request.get()`, `page.request.put()`, `page.request.delete()`
+- `waitForResponse()` or `expect.poll()` used as proof
+- Filesystem or server-state polling to decide success
+
+If a behavior needs backend consistency checks, config persistence checks, file watcher
+proof, or bridge/simulator proof, put it in `harness` instead.
 
 ### File import wait tuning (`file-import-results.spec.ts`)
 
@@ -118,11 +141,49 @@ cd frontend
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness
 ```
 
+### Analyzer Harness Remediation Loop
+
+When remediating `harness` or `demo` failures, do not use CI as the first
+repro. Follow this local loop after every substantive spec/helper change:
+
+1. Restart the analyzer harness from the repo root:
+
+```bash
+/restart-analyzer-harness --full-restart
+```
+
+2. Wait for harness readiness, then run the frontend guardrails:
+
+```bash
+cd frontend
+npm run pw:guard
+```
+
+3. If you are fixing a specific failing spec, run that file first:
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=demo playwright/tests/<failing-spec>.spec.ts
+```
+
+4. Run full analyzer parity locally before pushing:
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=demo --shard=1/2
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=demo --shard=2/2
+```
+
+5. During remediation, keep local validation running before or alongside every
+   push so CI confirms parity instead of discovering failures first. Push only
+   after the targeted local run and at least one full local `demo` pass complete.
+
 ## Video Recording
 
 The `demo-video` project runs the same `DEMO_TESTS` as `demo` but with
-`slowMo: 500` and `video: "on"`. This produces watchable recordings for
-stakeholder demos.
+`slowMo: 500` and `video: "on"`. It must keep the same business flow and
+assertions as `demo`; only pacing and presentation may differ.
 
 ```bash
 cd frontend
@@ -151,6 +212,8 @@ test("my demo test", async ({ page }, testInfo) => {
   skips in non-video projects
 - `showStepCard(page, stepNumber, description, durationMs, testInfo)` — step
   banner overlay, skips in non-video projects
+- `createDemoPresentation(page, testInfo)` — shared presentation wrapper so a
+  single UI-only scenario can run in both `demo` and `demo-video`
 
 ## Adding New Tests
 

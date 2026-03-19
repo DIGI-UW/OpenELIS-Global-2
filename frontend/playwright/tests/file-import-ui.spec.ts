@@ -1,5 +1,4 @@
 import { test, expect } from "@playwright/test";
-import { captureDebugContext } from "../helpers/debug-context";
 import { videoPause } from "../helpers/video-pause";
 import { cleanupAnalyzerByName } from "../helpers/cleanup-analyzer";
 
@@ -31,25 +30,6 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function isIgnorableConsoleError(message: string): boolean {
-  const knownNoise = [
-    /favicon\.ico/i,
-    /ResizeObserver loop limit exceeded/i,
-    /Non-Error promise rejection captured/i,
-    // Harness uses self-signed TLS; SW + dev HMR noise is expected in CI.
-    /Failed to load resource: the server responded with a status of 404 \(\)/i,
-    /WebSocket connection to 'wss:\/\/localhost:3000\/ws'/i,
-    /ERR_CONNECTION_REFUSED/i,
-    /Service Worker registration failed/i,
-    /service-worker\.js/i,
-    /SSL certificate error/i,
-    /An SSL certificate error occurred when fetching the script/i,
-    /@formatjs\/intl/i,
-    /MISSING_TRANSLATION/i,
-  ];
-  return knownNoise.some((pattern) => pattern.test(message));
-}
-
 test.describe("QuantStudio 7 MVP Workflow", () => {
   test.setTimeout(120_000);
 
@@ -58,17 +38,6 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
   test("create analyzer, configure file import, test connection", async ({
     page,
   }, testInfo) => {
-    // Capture browser console errors for debugging
-    const consoleErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
-    page.on("pageerror", (err) => {
-      consoleErrors.push(`PAGE ERROR: ${err.message}`);
-    });
-
     // Use a unique name to avoid collisions with existing data
     createdAnalyzerName = `QuantStudio 7 Pro E2E ${Date.now()}`;
 
@@ -175,17 +144,7 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     const fileImportForm = page.locator(
       '[data-testid="file-import-configuration-form"]',
     );
-
-    // Debug: dump console errors if modal doesn't appear
-    try {
-      await expect(fileImportForm).toBeVisible({ timeout: 10_000 });
-    } catch (e) {
-      const context = await captureDebugContext(page, consoleErrors);
-      console.log("Console errors captured:", context.consoleErrors);
-      console.log("Current URL:", context.url);
-      console.log("Page body text:", context.bodyPreview);
-      throw e;
-    }
+    await expect(fileImportForm).toBeVisible({ timeout: 10_000 });
     await videoPause(page, 1_000, testInfo);
 
     // Select file format — EXCEL for QuantStudio
@@ -268,22 +227,10 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     await expect(testButton).toBeVisible({ timeout: 5_000 });
     await testButton.click();
 
-    // Wait for result
-    await videoPause(page, 3_000, testInfo);
-
     // Verify success
     const successTag = page.locator('[data-testid="test-connection-success"]');
-    const errorTag = page.locator('[data-testid="test-connection-error"]');
-    await expect(successTag.or(errorTag)).toBeVisible({ timeout: 10_000 });
-
-    // Expand logs for video
-    const logsAccordion = page.locator('[data-testid="test-connection-logs"]');
-    if (await logsAccordion.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await logsAccordion.click();
-      await videoPause(page, 1_500, testInfo);
-    }
-
-    await videoPause(page, 2_000, testInfo);
+    await expect(successTag).toBeVisible({ timeout: 10_000 });
+    await videoPause(page, 1_500, testInfo);
 
     // Close
     const closeButton = page.locator(
@@ -294,13 +241,6 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     // ── Step 8: Verify back at list ──────────────────────────────
     await expect(analyzerList).toBeVisible({ timeout: 10_000 });
     await videoPause(page, 1_500, testInfo);
-    const unexpectedConsoleErrors = consoleErrors.filter(
-      (msg) => !isIgnorableConsoleError(msg),
-    );
-    expect(
-      unexpectedConsoleErrors,
-      `Browser console errors during file-import-ui test: ${unexpectedConsoleErrors.join("\n")}`,
-    ).toHaveLength(0);
   });
 
   test.afterEach(async ({ page }) => {

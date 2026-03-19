@@ -88,6 +88,29 @@ await expect(element).toBeVisible();
 await expect(element).toBeVisible(); // Retries until visible or timeout
 ```
 
+### 4. Keep Demo Specs UI-Only
+
+`demo` and `demo-video` should prove the user story through visible DOM
+evidence. They should not prove backend behavior directly.
+
+Use `demo` and `demo-video` for:
+
+- user-triggered actions
+- visible page transitions
+- stable, user-visible success evidence
+- video-only pacing and overlays
+
+Do not put these in demo specs or demo-facing helpers:
+
+- `page.on("console")` or `page.on("pageerror")`
+- `captureDebugContext`
+- `waitForResponse()` or `expect.poll()` as proof
+- `page.request.get()`, `page.request.put()`, or `page.request.delete()`
+- filesystem or server-state polling to decide pass/fail
+
+If a test needs backend persistence checks, bridge/simulator proof, seeded-data
+validation, or file-processing contracts, move that test to `harness`.
+
 ---
 
 ## Project Structure

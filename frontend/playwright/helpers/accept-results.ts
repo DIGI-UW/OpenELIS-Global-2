@@ -1,6 +1,6 @@
-import { Page, TestInfo, expect } from "@playwright/test";
-import { showStepCard } from "./title-card";
-import { isVideoProject, videoPause } from "./video-pause";
+import { Page, expect } from "@playwright/test";
+import type { DemoPresentation } from "./demo-presentation";
+import { openAccessionResultsAndWaitForText } from "./results-ui";
 
 /**
  * Accept all analyzer results on the staging page, verify they were saved,
@@ -30,128 +30,43 @@ import { isVideoProject, videoPause } from "./video-pause";
  */
 export async function acceptAndVerifyResults(
   page: Page,
-  testInfo: TestInfo,
+  presentation: DemoPresentation,
   stepOffset: number,
   accessionNumber?: string,
 ) {
   // ── Accept All ──────────────────────────────────────────────────
-  await showStepCard(
-    page,
-    stepOffset + 1,
-    "Accept All Results",
-    2000,
-    testInfo,
-  );
+  await presentation.step(stepOffset + 1, "Accept All Results", 2000);
 
   // Carbon Checkbox renders a hidden <input> + visible <label>.
   // Click the label text, not the hidden input.
   const acceptAllLabel = page.getByText("Save All Results");
   await expect(acceptAllLabel).toBeVisible({ timeout: 5_000 });
   await acceptAllLabel.click();
-  await videoPause(page, 1_500, testInfo);
+  await presentation.pause(1_500);
 
   // ── Save ────────────────────────────────────────────────────────
-  await showStepCard(
-    page,
-    stepOffset + 2,
-    "Save Accepted Results",
-    2000,
-    testInfo,
-  );
+  await presentation.step(stepOffset + 2, "Save Accepted Results", 2000);
 
   const saveButton = page.locator('[data-testid="Save-btn"]');
   await expect(saveButton).toBeVisible({ timeout: 5_000 });
-
-  // Save POSTs to /rest/AnalyzerResults, then reloads the page (line 134).
-  // Wait for the POST response (not URL change, since we're already on AnalyzerResults).
-  const saveResponsePromise = page.waitForResponse(
-    (resp) =>
-      resp.url().includes("/rest/AnalyzerResults") &&
-      resp.request().method() === "POST",
-    { timeout: 30_000 },
-  );
   await saveButton.click();
-  await saveResponsePromise;
-  // Wait for page reload after POST
-  await page.waitForLoadState("domcontentloaded");
-  await videoPause(page, 2_000, testInfo);
+  await presentation.pause(2_000);
 
   // ── Verify post-save state ───────────────────────────────────────
-  // Staging is usually empty after save, but in some CI runs stale rows can remain
-  // visible briefly even though save succeeded.
   const noResults = page.getByText("There are no records to display");
-  const sampleRows = page.locator('[data-testid="LabNo"]');
-  await expect
-    .poll(
-      async () => {
-        const empty = await noResults
-          .isVisible({ timeout: 500 })
-          .catch(() => false);
-        if (empty) return "empty";
-        const rowCount = await sampleRows.count();
-        if (rowCount > 0) return "rows";
-        return "";
-      },
-      { timeout: 15_000, intervals: [1_000, 2_000, 5_000] },
-    )
-    .not.toEqual("");
-
-  if (isVideoProject(testInfo)) {
-    await page.screenshot({
-      path: `test-results/${testInfo.title.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 40)}-after-accept.png`,
-      fullPage: true,
-    });
-  }
-  await videoPause(page, 2_000, testInfo);
+  await expect(noResults).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('[data-testid="LabNo"]')).toHaveCount(0, {
+    timeout: 15_000,
+  });
+  await presentation.pause(2_000);
 
   // ── Navigate to AccessionResults (if accession number provided) ──
   if (accessionNumber) {
-    await showStepCard(
-      page,
-      stepOffset + 3,
-      "View Accepted Results",
-      2000,
-      testInfo,
-    );
-
-    // AccessionResults auto-searches when accessionNumber is in the URL
-    const logbookPromise = page.waitForResponse(
-      (resp) => resp.url().includes("/rest/LogbookResults"),
-      { timeout: 30_000 },
-    );
-    await page.goto(`AccessionResults?accessionNumber=${accessionNumber}`, {
-      waitUntil: "domcontentloaded",
+    await presentation.step(stepOffset + 3, "View Accepted Results", 2000);
+    await openAccessionResultsAndWaitForText(page, accessionNumber);
+    await expect(page.getByText(accessionNumber).first()).toBeVisible({
+      timeout: 15_000,
     });
-    await logbookPromise;
-
-    // In CI, accepted results may lag in LogbookResults indexing.
-    // Accept either accession visibility or explicit empty-state message.
-    await expect
-      .poll(
-        async () => {
-          const hasAccession = await page
-            .getByText(accessionNumber)
-            .first()
-            .isVisible({ timeout: 500 })
-            .catch(() => false);
-          if (hasAccession) return "accession";
-          const empty = await page
-            .getByText("There are no records to display")
-            .isVisible({ timeout: 500 })
-            .catch(() => false);
-          if (empty) return "empty";
-          return "";
-        },
-        { timeout: 15_000, intervals: [1_000, 2_000, 5_000] },
-      )
-      .not.toEqual("");
-    if (isVideoProject(testInfo)) {
-      await page.screenshot({
-        path: `test-results/${testInfo.title.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 40)}-accession-results.png`,
-        fullPage: true,
-      });
-    }
-
-    await videoPause(page, 3_000, testInfo);
+    await presentation.pause(3_000);
   }
 }
