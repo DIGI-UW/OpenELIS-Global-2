@@ -1,7 +1,6 @@
 name: 04 - Cypress
 
 on:
-  pull_request:
   workflow_dispatch:
   workflow_call:
 

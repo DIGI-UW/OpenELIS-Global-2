@@ -1,4 +1,4 @@
-name: 03 - Playwright
+name: 03 - E2E
 
 on:
   pull_request:
@@ -10,6 +10,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Cypress runs via reusable workflow under the same E2E umbrella run.
+  cypress-e2e:
+    name: Cypress
+    uses: ./.github/workflows/e2e-cypress-deprecated.yml
+    secrets: inherit
+
   # Analyzer harness must run in this workflow on PRs.
   # The standalone analyzer harness workflow remains manual-only.
   analyzer-harness-e2e:
@@ -172,12 +178,12 @@ jobs:
           retention-days: 14
 
   playwright-e2e-gate:
-    name: 03 Checkpoint - Playwright
+    name: 03 Checkpoint - E2E
     if: always()
-    needs: [playwright-tests, merge-reports, analyzer-harness-e2e]
+    needs: [playwright-tests, merge-reports, analyzer-harness-e2e, cypress-e2e]
     runs-on: ubuntu-latest
     steps:
-      - name: Enforce core Playwright, analyzer harness, and merge success
+      - name: Enforce Playwright, analyzer harness, Cypress, and merge success
         run: |
           if [[ "${{ needs.playwright-tests.result }}" != "success" ]]; then
             echo "Playwright tests job failed: ${{ needs.playwright-tests.result }}"
@@ -191,4 +197,8 @@ jobs:
             echo "Analyzer E2E harness failed: ${{ needs.analyzer-harness-e2e.result }}"
             exit 1
           fi
-          echo "Playwright E2E required gate passed (core + analyzer harness)."
+          if [[ "${{ needs.cypress-e2e.result }}" != "success" ]]; then
+            echo "Cypress E2E workflow failed: ${{ needs.cypress-e2e.result }}"
+            exit 1
+          fi
+          echo "E2E required gate passed (Playwright core + analyzer + Cypress)."
