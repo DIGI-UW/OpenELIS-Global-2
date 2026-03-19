@@ -526,51 +526,45 @@ export default function App() {
                   role={Roles.RECEPTION}
                 />
                 {/* Decoupled Sample Collection Workflow - NAV-2 */}
-                <SecureRoute
+                {/* Use Route with render to wrap all /order/* paths in shared OrderProvider */}
+                <Route
                   path="/order"
-                  exact
-                  component={() => <OrderDashboard />}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
-                  path="/order/enter"
-                  exact
-                  component={() => (
+                  render={({ match }) => (
                     <OrderProvider>
-                      <OrderEnter />
+                      <Switch>
+                        <SecureRoute
+                          path={`${match.path}`}
+                          exact
+                          component={() => <OrderDashboard />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/enter`}
+                          exact
+                          component={() => <OrderEnter />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/collect`}
+                          exact
+                          component={() => <OrderCollect />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/label`}
+                          exact
+                          component={() => <OrderLabel />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/qa`}
+                          exact
+                          component={() => <OrderQA />}
+                          role={Roles.RECEPTION}
+                        />
+                      </Switch>
                     </OrderProvider>
                   )}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
-                  path="/order/collect"
-                  exact
-                  component={() => (
-                    <OrderProvider>
-                      <OrderCollect />
-                    </OrderProvider>
-                  )}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
-                  path="/order/label"
-                  exact
-                  component={() => (
-                    <OrderProvider>
-                      <OrderLabel />
-                    </OrderProvider>
-                  )}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
-                  path="/order/qa"
-                  exact
-                  component={() => (
-                    <OrderProvider>
-                      <OrderQA />
-                    </OrderProvider>
-                  )}
-                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/ModifyOrder"

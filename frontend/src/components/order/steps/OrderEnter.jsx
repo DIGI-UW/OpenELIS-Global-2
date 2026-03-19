@@ -81,6 +81,14 @@ const OrderEnter = () => {
     contactPhone: { body: "", status: true },
   });
 
+  // Sync local lab number when context changes (e.g., order loaded from dashboard)
+  useEffect(() => {
+    const contextLabNo = labNumber || orderData?.sampleOrderItems?.labNo;
+    if (contextLabNo && contextLabNo !== localLabNumber) {
+      setLocalLabNumber(contextLabNo);
+    }
+  }, [labNumber, orderData?.sampleOrderItems?.labNo]);
+
   // Fetch lab unit configuration
   useEffect(() => {
     componentMounted.current = true;

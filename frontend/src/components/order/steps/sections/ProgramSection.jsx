@@ -128,7 +128,6 @@ const ProgramSection = ({ orderData, setOrderData, isReadOnly }) => {
           if (!preserveResponses) {
             const convertedResponse = convertQuestionnaireToResponse(response);
             setQuestionnaireResponse(convertedResponse);
-            // Use functional update to avoid stale closure issues
             setOrderData((prev) => ({
               ...prev,
               sampleOrderItems: {
@@ -164,7 +163,6 @@ const ProgramSection = ({ orderData, setOrderData, isReadOnly }) => {
     if (selectedItem) {
       // Track this as user-initiated change so useEffect doesn't override
       lastInitializedProgramIdRef.current = selectedItem.id;
-      // Use functional update to avoid stale closure issues
       setOrderData((prev) => ({
         ...prev,
         sampleOrderItems: {
@@ -308,7 +306,6 @@ const ProgramSection = ({ orderData, setOrderData, isReadOnly }) => {
     }
 
     setQuestionnaireResponse(updatedQuestionnaireResponse);
-    // Use functional update to avoid stale closure issues
     setOrderData((prev) => ({
       ...prev,
       sampleOrderItems: {
@@ -326,7 +323,6 @@ const ProgramSection = ({ orderData, setOrderData, isReadOnly }) => {
   const handleVLFieldChange = (field, value) => {
     const updatedVlFields = { ...vlFields, [field]: value };
     setVlFields(updatedVlFields);
-    // Use functional update to avoid stale closure issues
     setOrderData((prev) => ({
       ...prev,
       sampleOrderItems: {

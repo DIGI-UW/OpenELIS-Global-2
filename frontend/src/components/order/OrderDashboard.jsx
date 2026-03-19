@@ -30,7 +30,7 @@ import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { getFromOpenElisServer } from "../utils/Utils";
 import BarcodeScannerBar from "./BarcodeScannerBar";
-import { OrderProvider, useOrderContext } from "./OrderContext";
+import { useOrderContext } from "./OrderContext";
 import "./order-workflow.scss";
 
 /**
@@ -136,10 +136,27 @@ const OrderDashboardContent = () => {
     history.push("/order/enter");
   };
 
-  const handleContinueOrder = (order) => {
-    // Navigate to the appropriate step based on order progress
-    const nextStep = getNextStep(order);
-    history.push(`/order/${nextStep}?labNumber=${order.labNumber}`);
+  const handleContinueOrder = async (order) => {
+    // Load the order into context, then navigate to the appropriate step
+    try {
+      console.log("handleContinueOrder: Loading order", order.labNumber);
+      const result = await loadOrder(order.labNumber, false); // false = editable
+      console.log("handleContinueOrder: loadOrder result", result);
+      const nextStep = getNextStep(order);
+      console.log("handleContinueOrder: navigating to", `/order/${nextStep}`);
+      history.push(`/order/${nextStep}`);
+    } catch (error) {
+      console.error("handleContinueOrder: Error loading order", error);
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "order.load.error",
+          defaultMessage: "Failed to load order",
+        }),
+      });
+      setNotificationVisible(true);
+    }
   };
 
   const handleAcceptExternal = async (order) => {
@@ -159,10 +176,23 @@ const OrderDashboardContent = () => {
     }
   };
 
-  const handleFixIssue = (order) => {
-    // Navigate to the step that needs fixing
-    const returnedStep = order.returnedToStep || "enter";
-    history.push(`/order/${returnedStep}?labNumber=${order.labNumber}`);
+  const handleFixIssue = async (order) => {
+    // Load the order into context, then navigate to the step that needs fixing
+    try {
+      await loadOrder(order.labNumber, false); // false = editable
+      const returnedStep = order.returnedToStep || "enter";
+      history.push(`/order/${returnedStep}`);
+    } catch (error) {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "order.load.error",
+          defaultMessage: "Failed to load order",
+        }),
+      });
+      setNotificationVisible(true);
+    }
   };
 
   const handleBarcodeOrderLoaded = (order) => {
@@ -537,10 +567,8 @@ const OrderDashboardContent = () => {
   );
 };
 
-const OrderDashboard = () => (
-  <OrderProvider>
-    <OrderDashboardContent />
-  </OrderProvider>
-);
+// OrderDashboard uses the shared OrderProvider from App.js
+// Do NOT wrap in OrderProvider here - it would create a separate context
+const OrderDashboard = () => <OrderDashboardContent />;
 
 export default OrderDashboard;

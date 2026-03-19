@@ -52,7 +52,6 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
   // Handle diagnosis change (free text)
   const handleDiagnosisChange = (e) => {
     const value = e.target.value;
-    // Use functional update to avoid stale closure issues
     setOrderData((prev) => ({
       ...prev,
       sampleOrderItems: {
@@ -65,7 +64,6 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
   // Handle payment status change
   const handlePaymentStatusChange = (e) => {
     const value = e.target.value;
-    // Use functional update to avoid stale closure issues
     setOrderData((prev) => ({
       ...prev,
       sampleOrderItems: {

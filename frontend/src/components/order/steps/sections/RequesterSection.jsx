@@ -147,7 +147,6 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
     setSelectedSite(site);
     setSiteResults([]);
 
-    // Use functional update to avoid stale closure issues
     setOrderData((prev) => ({
       ...prev,
       sampleOrderItems: {
@@ -164,7 +163,6 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
     setSelectedSite(null);
     setSiteSearchTerm("");
 
-    // Use functional update to avoid stale closure issues
     setOrderData((prev) => ({
       ...prev,
       sampleOrderItems: {
@@ -179,7 +177,6 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
   // Priority change
   const handlePriorityChange = (e) => {
     const value = e.target.value;
-    // Use functional update to avoid stale closure issues
     setOrderData((prev) => ({
       ...prev,
       sampleOrderItems: {

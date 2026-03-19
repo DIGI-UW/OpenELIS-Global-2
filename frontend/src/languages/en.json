@@ -3230,6 +3230,7 @@
   "sidenav.label.notebook": "NoteBook",
   "sidenav.label.order": "Order",
   "sidenav.label.order.collect": "Collect Sample",
+  "sidenav.label.order.dashboard": "Dashboard",
   "sidenav.label.order.enter": "Enter Order",
   "sidenav.label.order.label": "Label & Store",
   "sidenav.label.order.qa": "QA Review",

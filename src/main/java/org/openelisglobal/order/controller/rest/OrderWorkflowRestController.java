@@ -187,37 +187,6 @@ public class OrderWorkflowRestController extends BaseRestController {
     }
 
     /**
-     * Get departments/wards for a site (ORD-8).
-     *
-     * @param siteId the parent organization/site ID
-     * @return List of child organizations (departments/wards)
-     */
-    @GetMapping(value = "/organization/{siteId}/departments", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Map<String, Object>>> getDepartments(@PathVariable String siteId) {
-
-        try {
-            List<Organization> departments = organizationService.getOrganizationsByParentId(siteId);
-
-            List<Map<String, Object>> results = new ArrayList<>();
-            for (Organization dept : departments) {
-                Map<String, Object> deptData = new HashMap<>();
-                deptData.put("id", dept.getId());
-                deptData.put("name", dept.getOrganizationName());
-                deptData.put("shortName", dept.getShortName());
-                deptData.put("isActive", "Y".equals(dept.getIsActive()));
-                results.add(deptData);
-            }
-
-            return ResponseEntity.ok(results);
-
-        } catch (Exception e) {
-            LogEvent.logError(this.getClass().getName(), "getDepartments",
-                    "Error fetching departments: " + e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
      * Search providers/practitioners (ORD-8a).
      *
      * <p>
@@ -325,67 +294,6 @@ public class OrderWorkflowRestController extends BaseRestController {
     }
 
     /**
-     * Get program configuration with dynamic fields (ORD-10).
-     *
-     * <p>
-     * Returns the program definition including any additional fields that should be
-     * displayed when this program is selected.
-     *
-     * @param programId the program ID
-     * @return Program configuration with dynamic fields
-     */
-    @GetMapping(value = "/program/{programId}/fields", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> getProgramFields(@PathVariable String programId) {
-
-        try {
-            Program program = programService.get(programId);
-
-            if (program == null) {
-                return ResponseEntity.notFound().build();
-            }
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("id", program.getId());
-            response.put("code", program.getCode());
-            response.put("name", program.getProgramName());
-            response.put("isActive", true); // Programs don't have active flag, assume active
-
-            // Define dynamic fields based on program
-            // This is configurable per program - VL program has specific fields
-            List<Map<String, Object>> fields = new ArrayList<>();
-
-            String programCode = program.getCode();
-            if ("VL".equalsIgnoreCase(programCode) || "Viral Load".equalsIgnoreCase(program.getProgramName())) {
-                // VL Program specific fields
-                fields.add(createField("arvRegimen", "order.vl.arvRegimen", "select", true, getArvRegimenOptions()));
-                fields.add(createField("arvDuration", "order.vl.arvDuration", "number", false, null));
-                fields.add(
-                        createField("vlIndication", "order.vl.indication", "select", true, getVlIndicationOptions()));
-                fields.add(createField("pregnancyStatus", "order.vl.pregnancyStatus", "select", false,
-                        getPregnancyStatusOptions()));
-                fields.add(createField("lastVlDate", "order.vl.lastVlDate", "date", false, null));
-                fields.add(createField("lastVlResult", "order.vl.lastVlResult", "text", false, null));
-            } else if ("EID".equalsIgnoreCase(programCode)) {
-                // Early Infant Diagnosis fields
-                fields.add(createField("infantAge", "order.eid.infantAge", "number", true, null));
-                fields.add(createField("feedingStatus", "order.eid.feedingStatus", "select", true,
-                        getFeedingStatusOptions()));
-                fields.add(createField("motherArvStatus", "order.eid.motherArvStatus", "select", false, null));
-            }
-            // Add more program-specific fields as needed
-
-            response.put("fields", fields);
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            LogEvent.logError(this.getClass().getName(), "getProgramFields",
-                    "Error fetching program fields: " + e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
      * Get lab unit configuration.
      *
      * <p>
@@ -400,15 +308,9 @@ public class OrderWorkflowRestController extends BaseRestController {
         try {
             Map<String, Object> config = new HashMap<>();
 
-            // Get workflow type from configuration
-            String workflowType = ConfigurationProperties.getInstance()
-                    .getPropertyValue(Property.ACCESSION_NUMBER_PREFIX);
-
-            // Default to "Both" if not configured
-            if (GenericValidator.isBlankOrNull(workflowType)) {
-                workflowType = "Both";
-            }
-
+            // Workflow type: "PrePrinted", "OnDemand", or "Both"
+            // TODO: Add proper configuration property for workflow type
+            String workflowType = "Both";
             config.put("workflowType", workflowType);
 
             // Get other relevant configuration
@@ -423,68 +325,6 @@ public class OrderWorkflowRestController extends BaseRestController {
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getName(), "getLabUnitConfig",
                     "Error fetching lab unit config: " + e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * Search ICD-10 diagnosis codes (ORD-6).
-     *
-     * <p>
-     * Returns matching ICD-10 codes for the search query. This is a placeholder
-     * implementation - should be connected to actual ICD-10 data source.
-     *
-     * @param search search query for ICD-10 code or description
-     * @param limit  maximum results to return (default: 20)
-     * @return List of matching ICD-10 codes
-     */
-    @GetMapping(value = "/icd10/search", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Map<String, Object>>> searchIcd10(@RequestParam String search,
-            @RequestParam(defaultValue = "20") int limit) {
-
-        try {
-            LogEvent.logInfo(this.getClass().getName(), "searchIcd10", "Searching ICD-10 codes with query: " + search);
-
-            // TODO: Connect to actual ICD-10 data source
-            // For now, return sample data for demonstration
-            List<Map<String, Object>> results = new ArrayList<>();
-
-            // Sample ICD-10 codes for demonstration
-            String searchLower = search.toLowerCase();
-            List<String[]> sampleCodes = List.of(new String[] { "B20", "Human immunodeficiency virus [HIV] disease" },
-                    new String[] { "B20.0", "HIV disease resulting in mycobacterial infection" },
-                    new String[] { "B20.1", "HIV disease resulting in other bacterial infections" },
-                    new String[] { "B20.2", "HIV disease resulting in cytomegaloviral disease" },
-                    new String[] { "B20.3", "HIV disease resulting in other viral infections" },
-                    new String[] { "B24", "Unspecified human immunodeficiency virus [HIV] disease" },
-                    new String[] { "A15", "Respiratory tuberculosis" },
-                    new String[] { "A15.0", "Tuberculosis of lung" },
-                    new String[] { "A15.3", "Tuberculosis of intrathoracic lymph nodes" },
-                    new String[] { "J18.9", "Pneumonia, unspecified organism" },
-                    new String[] { "D50.9", "Iron deficiency anaemia, unspecified" },
-                    new String[] { "E11.9", "Type 2 diabetes mellitus without complications" },
-                    new String[] { "I10", "Essential (primary) hypertension" },
-                    new String[] { "Z21", "Asymptomatic human immunodeficiency virus [HIV] infection status" });
-
-            for (String[] code : sampleCodes) {
-                if (code[0].toLowerCase().contains(searchLower) || code[1].toLowerCase().contains(searchLower)) {
-                    Map<String, Object> icdData = new HashMap<>();
-                    icdData.put("code", code[0]);
-                    icdData.put("description", code[1]);
-                    icdData.put("displayName", code[0] + " - " + code[1]);
-                    results.add(icdData);
-
-                    if (results.size() >= limit) {
-                        break;
-                    }
-                }
-            }
-
-            return ResponseEntity.ok(results);
-
-        } catch (Exception e) {
-            LogEvent.logError(this.getClass().getName(), "searchIcd10",
-                    "Error searching ICD-10 codes: " + e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -561,59 +401,5 @@ public class OrderWorkflowRestController extends BaseRestController {
                 "Filtered from " + organizations.size() + " to " + filtered.size() + " organizations with valid types");
 
         return filtered;
-    }
-
-    private Map<String, Object> createField(String name, String labelKey, String type, boolean required,
-            List<Map<String, String>> options) {
-        Map<String, Object> field = new HashMap<>();
-        field.put("name", name);
-        field.put("labelKey", labelKey);
-        field.put("type", type);
-        field.put("required", required);
-        if (options != null) {
-            field.put("options", options);
-        }
-        return field;
-    }
-
-    private List<Map<String, String>> getArvRegimenOptions() {
-        List<Map<String, String>> options = new ArrayList<>();
-        options.add(Map.of("value", "TDF/3TC/DTG", "label", "TDF/3TC/DTG"));
-        options.add(Map.of("value", "TDF/3TC/EFV", "label", "TDF/3TC/EFV"));
-        options.add(Map.of("value", "AZT/3TC/NVP", "label", "AZT/3TC/NVP"));
-        options.add(Map.of("value", "AZT/3TC/EFV", "label", "AZT/3TC/EFV"));
-        options.add(Map.of("value", "ABC/3TC/DTG", "label", "ABC/3TC/DTG"));
-        options.add(Map.of("value", "other", "label", "Other"));
-        return options;
-    }
-
-    private List<Map<String, String>> getVlIndicationOptions() {
-        List<Map<String, String>> options = new ArrayList<>();
-        options.add(Map.of("value", "routine", "label", "Routine Monitoring"));
-        options.add(Map.of("value", "suspected_failure", "label", "Suspected Treatment Failure"));
-        options.add(Map.of("value", "confirm_failure", "label", "Confirm Treatment Failure"));
-        options.add(Map.of("value", "baseline", "label", "Baseline"));
-        options.add(Map.of("value", "pregnancy", "label", "Pregnancy"));
-        options.add(Map.of("value", "breastfeeding", "label", "Breastfeeding"));
-        return options;
-    }
-
-    private List<Map<String, String>> getPregnancyStatusOptions() {
-        List<Map<String, String>> options = new ArrayList<>();
-        options.add(Map.of("value", "not_pregnant", "label", "Not Pregnant"));
-        options.add(Map.of("value", "pregnant", "label", "Pregnant"));
-        options.add(Map.of("value", "breastfeeding", "label", "Breastfeeding"));
-        options.add(Map.of("value", "unknown", "label", "Unknown"));
-        options.add(Map.of("value", "not_applicable", "label", "Not Applicable"));
-        return options;
-    }
-
-    private List<Map<String, String>> getFeedingStatusOptions() {
-        List<Map<String, String>> options = new ArrayList<>();
-        options.add(Map.of("value", "exclusive_breastfeeding", "label", "Exclusive Breastfeeding"));
-        options.add(Map.of("value", "mixed_feeding", "label", "Mixed Feeding"));
-        options.add(Map.of("value", "formula_feeding", "label", "Formula Feeding"));
-        options.add(Map.of("value", "weaned", "label", "Weaned"));
-        return options;
     }
 }

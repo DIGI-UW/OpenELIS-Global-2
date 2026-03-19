@@ -194,7 +194,6 @@ const PatientSearchSection = ({
         if (componentMounted.current && response) {
           setSelectedPatient(response);
           // IMPORTANT: patientUpdateStatus must be INSIDE patientProperties for backend to recognize it
-          // Use functional update to avoid stale closure issues
           setOrderData((prev) => ({
             ...prev,
             patientUpdateStatus: "UPDATE",
@@ -211,7 +210,6 @@ const PatientSearchSection = ({
   // Clear selection
   const handleClearSelection = () => {
     setSelectedPatient(null);
-    // Use functional update to avoid stale closure issues
     setOrderData((prev) => ({
       ...prev,
       patientUpdateStatus: "",

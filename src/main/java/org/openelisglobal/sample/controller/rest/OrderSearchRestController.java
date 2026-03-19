@@ -166,8 +166,8 @@ public class OrderSearchRestController extends BaseRestController {
             Map<String, Object> response = new HashMap<>();
             List<Map<String, Object>> ordersList = new ArrayList<>();
 
-            // Get recent samples (simplified query - in production, use proper pagination)
-            int startingRecNo = (page - 1) * pageSize;
+            // Get recent samples - getPageOfSamples expects 1-based startingRecNo
+            int startingRecNo = ((page - 1) * pageSize) + 1;
             List<Sample> samples = sampleService.getPageOfSamples(startingRecNo);
 
             for (Sample sample : samples) {
