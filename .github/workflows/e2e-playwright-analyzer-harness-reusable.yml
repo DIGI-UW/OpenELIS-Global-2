@@ -1,4 +1,6 @@
-# Invoked by e2e-playwright.yml (every PR to develop) and e2e-playwright-analyzer-harness-manual.yml (workflow_dispatch).
+# Invoked by e2e-playwright.yml (every PR) and e2e-playwright-analyzer-harness-manual.yml (workflow_dispatch).
+# When called from e2e-playwright.yml, shared-build has already run and published
+# e2e-image-map + e2e-plugin-jars artifacts. This workflow consumes those.
 name: E2E / Playwright / Analyzer Harness (Reusable)
 
 on:
@@ -6,128 +8,11 @@ on:
 
 permissions:
   contents: read
-  packages: write
+  packages: read
 
 jobs:
-  build-once:
-    name: Build Once
-    runs-on: ubuntu-latest
-    environment: e2e
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Set up Java 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        run: npm ci
-        working-directory: frontend
-
-      - name: Prepare .env
-        run: cp .env.example .env
-
-      - name: Build OpenELIS artifacts for plugin compilation
-        run: |
-          cd dataexport/dataexport-core
-          mvn clean install -DskipTests -Dmaven.test.skip=true
-          cd ..
-          mvn clean install -DskipTests -Dmaven.test.skip=true
-          cd ..
-          # Align root artifact patch version with plugins submodule dependency.
-          mvn clean install -DskipTests -Dspotless.check.skip=true -Dfix.version=3
-
-      - name: Build plugins
-        run: mvn clean install -DskipTests -Dmaven.test.skip=true
-        working-directory: plugins
-
-      - name: Stage plugin jars for runtime loading
-        run: |
-          rm -rf volume/plugins/*
-          find plugins/analyzers -type f -path "*/target/*.jar" \
-            ! -name "*sources.jar" ! -name "*javadoc.jar" \
-            -exec cp {} volume/plugins/ \;
-          ls -lah volume/plugins
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build analyzer harness images (cached)
-        uses: docker/bake-action@v5
-        with:
-          files: |
-            build.docker-compose.yml
-            .github/ci/ci.analyzer-harness.yml
-          load: true
-          set: |
-            *.cache-from=type=gha,scope=analyzer-e2e
-            *.cache-to=type=gha,scope=analyzer-e2e,mode=max
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Tag and push compose images to GHCR
-        run: |
-          TAG="sha-${GITHUB_SHA}"
-          OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
-          docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/analyzer-images.txt
-          : > /tmp/analyzer-image-map.txt
-          while IFS= read -r image; do
-            [ -z "$image" ] && continue
-            if docker image inspect "$image" >/dev/null 2>&1; then
-              image_repo="$(echo "$image" | tr '[:upper:]' '[:lower:]' | sed 's|[^a-z0-9._/-]|-|g')"
-              ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/analyzer-cache/${image_repo}:${TAG}"
-              docker tag "$image" "$ghcr_image"
-              docker push "$ghcr_image"
-              printf "%s|%s\n" "$image" "$ghcr_image" >> /tmp/analyzer-image-map.txt
-            else
-              echo "WARN: skipping $image (not built locally)"
-            fi
-          done < /tmp/analyzer-images.txt
-          if [ ! -s /tmp/analyzer-image-map.txt ]; then
-            echo "No locally available images were pushed to GHCR."
-            exit 1
-          fi
-          echo "Pushed image mappings:"
-          cat /tmp/analyzer-image-map.txt
-
-      - name: Upload plugin jars artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: analyzer-plugin-jars
-          path: volume/plugins/*.jar
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Upload Docker image map artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: analyzer-image-map
-          path: /tmp/analyzer-image-map.txt
-          if-no-files-found: error
-          retention-days: 1
-
   test-shards:
     name: Shard ${{ matrix.shard_index }}/${{ matrix.shard_total }}
-    needs: build-once
     runs-on: ubuntu-latest
     environment: e2e
     strategy:
@@ -166,20 +51,20 @@ jobs:
       - name: Download plugin jars artifact
         uses: actions/download-artifact@v4
         with:
-          name: analyzer-plugin-jars
-          path: /tmp/analyzer-plugin-jars
+          name: e2e-plugin-jars
+          path: /tmp/e2e-plugin-jars
 
       - name: Download Docker image map artifact
         uses: actions/download-artifact@v4
         with:
-          name: analyzer-image-map
-          path: /tmp/analyzer-image-map
+          name: e2e-image-map
+          path: /tmp/e2e-image-map
 
       - name: Restore plugin jars for runtime loading
         run: |
           mkdir -p volume/plugins
           rm -rf volume/plugins/*
-          cp /tmp/analyzer-plugin-jars/*.jar volume/plugins/
+          cp /tmp/e2e-plugin-jars/*.jar volume/plugins/
           ls -lah volume/plugins
 
       - name: Login to GHCR
@@ -195,7 +80,7 @@ jobs:
             [ -z "$source_image" ] && continue
             docker pull "$ghcr_image"
             docker tag "$ghcr_image" "$source_image"
-          done < /tmp/analyzer-image-map/analyzer-image-map.txt
+          done < /tmp/e2e-image-map/e2e-image-map.txt
 
       - name: Create analyzer import bind mount directories
         run: mkdir -p projects/analyzer-harness/volume/analyzer-imports
@@ -264,7 +149,6 @@ jobs:
 
   demo-shards:
     name: Demo ${{ matrix.shard_index }}/${{ matrix.shard_total }}
-    needs: build-once
     runs-on: ubuntu-latest
     environment: e2e
     strategy:
@@ -302,20 +186,20 @@ jobs:
       - name: Download plugin jars artifact
         uses: actions/download-artifact@v4
         with:
-          name: analyzer-plugin-jars
-          path: /tmp/analyzer-plugin-jars
+          name: e2e-plugin-jars
+          path: /tmp/e2e-plugin-jars
 
       - name: Download Docker image map artifact
         uses: actions/download-artifact@v4
         with:
-          name: analyzer-image-map
-          path: /tmp/analyzer-image-map
+          name: e2e-image-map
+          path: /tmp/e2e-image-map
 
       - name: Restore plugin jars for runtime loading
         run: |
           mkdir -p volume/plugins
           rm -rf volume/plugins/*
-          cp /tmp/analyzer-plugin-jars/*.jar volume/plugins/
+          cp /tmp/e2e-plugin-jars/*.jar volume/plugins/
           ls -lah volume/plugins
 
       - name: Login to GHCR
@@ -331,7 +215,7 @@ jobs:
             [ -z "$source_image" ] && continue
             docker pull "$ghcr_image"
             docker tag "$ghcr_image" "$source_image"
-          done < /tmp/analyzer-image-map/analyzer-image-map.txt
+          done < /tmp/e2e-image-map/e2e-image-map.txt
 
       - name: Create analyzer import bind mount directories
         run: mkdir -p projects/analyzer-harness/volume/analyzer-imports

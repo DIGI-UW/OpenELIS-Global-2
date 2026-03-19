@@ -1,4 +1,7 @@
-name: 04 - Cypress
+# Cypress E2E — DEPRECATED (will be removed after full Playwright migration).
+# Called by e2e-playwright.yml as a reusable workflow under the E2E umbrella.
+# Images come from the shared-build job via e2e-image-map artifact.
+name: E2E / Cypress (Deprecated)
 
 on:
   workflow_dispatch:
@@ -13,83 +16,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-once:
-    name: Build Once
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v4
-        with:
-          repository: ${{github.repository}}
-          submodules: recursive
-
-      - name: Prepare .env from template
-        run: cp .env.example .env
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Compute analyzer image metadata
-        id: image-meta
-        run: |
-          OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
-          IMAGE_TAG="sha-${GITHUB_SHA}"
-          echo "owner_lower=${OWNER_LOWER}" >> "$GITHUB_OUTPUT"
-          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
-
-      - name: Resolve analyzer-built compose images for this SHA
-        run: |
-          TAG="${{ steps.image-meta.outputs.image_tag }}"
-          OWNER_LOWER="${{ steps.image-meta.outputs.owner_lower }}"
-          docker compose -f build.docker-compose.yml config --images | sort -u > /tmp/cypress-images.txt
-
-          for attempt in {1..60}; do
-            MISSING=0
-            : > /tmp/cypress-image-map.txt
-
-            while IFS= read -r image; do
-              [ -z "$image" ] && continue
-              image_repo="$(echo "$image" | tr '[:upper:]' '[:lower:]' | sed 's|[^a-z0-9._/-]|-|g')"
-              ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/analyzer-cache/${image_repo}:${TAG}"
-
-              if docker manifest inspect "$ghcr_image" >/dev/null 2>&1; then
-                printf "%s|%s\n" "$image" "$ghcr_image" >> /tmp/cypress-image-map.txt
-              else
-                MISSING=1
-                break
-              fi
-            done < /tmp/cypress-images.txt
-
-            if [ "$MISSING" -eq 0 ] && [ -s /tmp/cypress-image-map.txt ]; then
-              echo "Resolved analyzer images for ${TAG}."
-              cat /tmp/cypress-image-map.txt
-              break
-            fi
-
-            echo "Analyzer images for ${TAG} not fully available yet (attempt ${attempt}/60); waiting 10s..."
-            sleep 10
-          done
-
-          if [ "$MISSING" -ne 0 ] || [ ! -s /tmp/cypress-image-map.txt ]; then
-            echo "Required analyzer images for ${TAG} were not published in time."
-            exit 1
-          fi
-
-      - name: Upload Docker image map artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: cypress-image-map
-          path: /tmp/cypress-image-map.txt
-          if-no-files-found: error
-          retention-days: 1
-
   e2e-cypress:
     name: ${{ matrix.shard_name }}
-    needs: [build-once]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -141,7 +69,6 @@ jobs:
               cypress/e2e/AdminE2E/dictionaryMenu.cy.js,
               cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js,
               cypress/e2e/AdminE2E/batchTestReassignmentandCancelation.cy.js
-          # Catch-all: specs computed dynamically (see "Compute catch-all specs" step)
           - shard: independent
             shard_name: Independent
             specs: ""
@@ -174,8 +101,8 @@ jobs:
       - name: Download Docker image map artifact
         uses: actions/download-artifact@v4
         with:
-          name: cypress-image-map
-          path: /tmp/cypress-image-map
+          name: e2e-image-map
+          path: /tmp/e2e-image-map
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -190,7 +117,7 @@ jobs:
             [ -z "$source_image" ] && continue
             docker pull "$ghcr_image"
             docker tag "$ghcr_image" "$source_image"
-          done < /tmp/cypress-image-map/cypress-image-map.txt
+          done < /tmp/e2e-image-map/e2e-image-map.txt
 
       - name: Start containers
         run: docker compose -f build.docker-compose.yml up -d --no-build --wait --wait-timeout 600
@@ -204,19 +131,14 @@ jobs:
         id: catchall
         working-directory: frontend
         run: |
-          # Extract specs assigned to other shards from the workflow YAML.
-          # Uses grep/sed instead of PyYAML to avoid non-stdlib dependency.
           ASSIGNED=$(grep -E '^\s+cypress/e2e/' ../.github/workflows/e2e-cypress-deprecated.yml \
             | sed 's/^[[:space:]]*//' | sed 's/,$//' | sort -u)
-          # Find all spec files on disk
           ALL=$(find cypress/e2e -name '*.cy.js' -type f | sort)
-          # Compute remaining = ALL - ASSIGNED
           REMAINING=""
           while IFS= read -r spec; do
             echo "$ASSIGNED" | grep -qxF "$spec" || REMAINING="${REMAINING:+$REMAINING,}$spec"
           done <<< "$ALL"
           echo "specs=$REMAINING" >> "$GITHUB_OUTPUT"
-          # Log for debugging
           TOTAL=$(echo "$ALL" | wc -l)
           ASSIGNED_COUNT=$(echo "$ASSIGNED" | wc -l)
           REMAINING_COUNT=$(echo "$REMAINING" | tr ',' '\n' | wc -l)
@@ -250,14 +172,6 @@ jobs:
           path: frontend/cypress/screenshots/**/*.png
           if-no-files-found: ignore
 
-      # In case of failure, uncomment this action and turn video: false to true in cypress.config.js
-      # - name: Upload Cypress videos on failure
-      #   if: failure()
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: cypress-videos-${{ matrix.shard }}
-      #     path: frontend/cypress/videos/**/*.mp4
-
       - name: Dump backend logs (${{ matrix.shard }})
         if: always()
         run: |
@@ -271,23 +185,4 @@ jobs:
         if: failure()
         uses: jwalton/gh-docker-logs@v2
         with:
-        # Only show last 100 lines of each
           tail: "100"
-
-  cypress-gate:
-    name: 04 Checkpoint - Cypress
-    if: always()
-    needs: [build-once, e2e-cypress]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check sub-job results
-        run: |
-          if [[ "${{ needs.build-once.result }}" != "success" ]]; then
-            echo "Cypress build-once job failed: ${{ needs.build-once.result }}"
-            exit 1
-          fi
-          if [[ "${{ needs.e2e-cypress.result }}" != "success" ]]; then
-            echo "Cypress job failed: ${{ needs.e2e-cypress.result }}"
-            exit 1
-          fi
-          echo "Cypress E2E sub-jobs passed."

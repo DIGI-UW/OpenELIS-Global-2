@@ -5,31 +5,139 @@ on:
     branches: [develop]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # Cypress runs via reusable workflow under the same E2E umbrella run.
-  cypress-e2e:
-    name: Cypress
-    uses: ./.github/workflows/e2e-cypress-deprecated.yml
-    secrets: inherit
-
-  # Analyzer harness must run in this workflow on PRs.
-  # The standalone analyzer harness workflow remains manual-only.
-  analyzer-harness-e2e:
-    name: Analyzer Harness
-    # Optional PR opt-out: apply label `skip-analyzer-e2e`.
-    if: ${{ github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'skip-analyzer-e2e') }}
-    uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
-    secrets: inherit
-
-  playwright-tests:
-    name: Core
+  # ─── Shared Build ───────────────────────────────────────────────────────────
+  # Single image producer for the entire E2E run. All downstream jobs
+  # (Playwright core, analyzer harness shards, Cypress shards) pull from
+  # the image-map artifact this job publishes.
+  shared-build:
+    name: Shared Build
     runs-on: ubuntu-latest
     environment: e2e
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Prepare .env
+        run: cp .env.example .env
+
+      - name: Build OpenELIS artifacts for plugin compilation
+        run: |
+          cd dataexport/dataexport-core
+          mvn clean install -DskipTests -Dmaven.test.skip=true
+          cd ..
+          mvn clean install -DskipTests -Dmaven.test.skip=true
+          cd ..
+          mvn clean install -DskipTests -Dspotless.check.skip=true -Dfix.version=3
+
+      - name: Build plugins
+        run: mvn clean install -DskipTests -Dmaven.test.skip=true
+        working-directory: plugins
+
+      - name: Stage plugin jars for runtime loading
+        run: |
+          rm -rf volume/plugins/*
+          find plugins/analyzers -type f -path "*/target/*.jar" \
+            ! -name "*sources.jar" ! -name "*javadoc.jar" \
+            -exec cp {} volume/plugins/ \;
+          ls -lah volume/plugins
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build all compose images (cached)
+        uses: docker/bake-action@v5
+        with:
+          files: |
+            build.docker-compose.yml
+            .github/ci/ci.analyzer-harness.yml
+          load: true
+          set: |
+            *.cache-from=type=gha,scope=e2e-shared
+            *.cache-to=type=gha,scope=e2e-shared,mode=max
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push compose images to GHCR
+        run: |
+          TAG="sha-${GITHUB_SHA}"
+          OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/e2e-images.txt
+          : > /tmp/e2e-image-map.txt
+          while IFS= read -r image; do
+            [ -z "$image" ] && continue
+            if docker image inspect "$image" >/dev/null 2>&1; then
+              image_repo="$(echo "$image" | tr '[:upper:]' '[:lower:]' | sed 's|[^a-z0-9._/-]|-|g')"
+              ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/${image_repo}:${TAG}"
+              docker tag "$image" "$ghcr_image"
+              docker push "$ghcr_image"
+              printf "%s|%s\n" "$image" "$ghcr_image" >> /tmp/e2e-image-map.txt
+            else
+              echo "WARN: skipping $image (not built locally)"
+            fi
+          done < /tmp/e2e-images.txt
+          if [ ! -s /tmp/e2e-image-map.txt ]; then
+            echo "No locally available images were pushed to GHCR."
+            exit 1
+          fi
+          echo "Pushed image mappings:"
+          cat /tmp/e2e-image-map.txt
+
+      - name: Upload plugin jars artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-plugin-jars
+          path: volume/plugins/*.jar
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Docker image map artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-image-map
+          path: /tmp/e2e-image-map.txt
+          if-no-files-found: error
+          retention-days: 1
+
+  # ─── Playwright Core ────────────────────────────────────────────────────────
+  playwright-core:
+    name: Playwright Core
+    needs: shared-build
+    runs-on: ubuntu-latest
+    environment: e2e
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -39,8 +147,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
@@ -51,22 +159,29 @@ jobs:
         run: npx playwright install chromium --with-deps
         working-directory: frontend
 
-      # Use .env.example as single source of truth: copy to .env so Docker Compose
-      # loads it for ${VAR} substitution (OE_DB_PASSWORD, SSL_*, etc.).
       - name: Prepare .env from template
         run: cp .env.example .env
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build OpenELIS images (cached)
-        uses: docker/bake-action@v5
+      - name: Download Docker image map artifact
+        uses: actions/download-artifact@v4
         with:
-          files: build.docker-compose.yml
-          load: true
-          set: |
-            *.cache-from=type=gha,scope=playwright-core
-            *.cache-to=type=gha,scope=playwright-core,mode=max
+          name: e2e-image-map
+          path: /tmp/e2e-image-map
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and retag prebuilt compose images
+        run: |
+          while IFS='|' read -r source_image ghcr_image; do
+            [ -z "$source_image" ] && continue
+            docker pull "$ghcr_image"
+            docker tag "$ghcr_image" "$source_image"
+          done < /tmp/e2e-image-map/e2e-image-map.txt
 
       - name: Start OpenELIS containers (no rebuild)
         run: docker compose -f build.docker-compose.yml up -d --no-build --wait --wait-timeout 600
@@ -130,12 +245,28 @@ jobs:
         if: failure()
         uses: jwalton/gh-docker-logs@v2
         with:
-          tail: '100'
+          tail: "100"
 
-  merge-reports:
-    name: Core Report
+  # ─── Analyzer Harness ──────────────────────────────────────────────────────
+  analyzer-harness:
+    name: Analyzer Harness
+    if: ${{ github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'skip-analyzer-e2e') }}
+    needs: shared-build
+    uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
+    secrets: inherit
+
+  # ─── Cypress (Deprecated) ──────────────────────────────────────────────────
+  cypress:
+    name: Cypress
+    needs: shared-build
+    uses: ./.github/workflows/e2e-cypress-deprecated.yml
+    secrets: inherit
+
+  # ─── Reports ───────────────────────────────────────────────────────────────
+  playwright-core-report:
+    name: Playwright Core Report
     if: ${{ always() && !cancelled() }}
-    needs: playwright-tests
+    needs: playwright-core
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -144,8 +275,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
@@ -177,28 +308,29 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  playwright-e2e-gate:
+  # ─── Gate ──────────────────────────────────────────────────────────────────
+  e2e-gate:
     name: 03 Checkpoint - E2E
     if: always()
-    needs: [playwright-tests, merge-reports, analyzer-harness-e2e, cypress-e2e]
+    needs: [playwright-core, playwright-core-report, analyzer-harness, cypress]
     runs-on: ubuntu-latest
     steps:
-      - name: Enforce Playwright, analyzer harness, Cypress, and merge success
+      - name: Enforce all E2E results
         run: |
-          if [[ "${{ needs.playwright-tests.result }}" != "success" ]]; then
-            echo "Playwright tests job failed: ${{ needs.playwright-tests.result }}"
+          if [[ "${{ needs.playwright-core.result }}" != "success" ]]; then
+            echo "Playwright Core failed: ${{ needs.playwright-core.result }}"
             exit 1
           fi
-          if [[ "${{ needs.merge-reports.result }}" != "success" ]]; then
-            echo "Report merge job failed: ${{ needs.merge-reports.result }}"
+          if [[ "${{ needs.playwright-core-report.result }}" != "success" ]]; then
+            echo "Playwright Core Report failed: ${{ needs.playwright-core-report.result }}"
             exit 1
           fi
-          if [[ "${{ needs.analyzer-harness-e2e.result }}" != "success" && "${{ needs.analyzer-harness-e2e.result }}" != "skipped" ]]; then
-            echo "Analyzer E2E harness failed: ${{ needs.analyzer-harness-e2e.result }}"
+          if [[ "${{ needs.analyzer-harness.result }}" != "success" && "${{ needs.analyzer-harness.result }}" != "skipped" ]]; then
+            echo "Analyzer Harness failed: ${{ needs.analyzer-harness.result }}"
             exit 1
           fi
-          if [[ "${{ needs.cypress-e2e.result }}" != "success" ]]; then
-            echo "Cypress E2E workflow failed: ${{ needs.cypress-e2e.result }}"
+          if [[ "${{ needs.cypress.result }}" != "success" ]]; then
+            echo "Cypress failed: ${{ needs.cypress.result }}"
             exit 1
           fi
-          echo "E2E required gate passed (Playwright core + analyzer + Cypress)."
+          echo "E2E gate passed."
