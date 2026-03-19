@@ -138,15 +138,9 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
       getAnalyzerTypes({ active: true }, (data) => {
         setLoadingPluginTypes(false);
         if (Array.isArray(data) && data.length > 0) {
-          // In create mode, prefer showing only loaded types.
-          // In edit mode, show all types so the current type is always available,
-          // even if its plugin JAR is not currently loaded.
-          let typesToUse = data;
-          if (!analyzer) {
-            const loadedTypes = data.filter((t) => t.pluginLoaded !== false);
-            typesToUse = loadedTypes.length > 0 ? loadedTypes : data;
-          }
-          setPluginTypes(typesToUse);
+          // Show all active types — pluginLoaded is informational only.
+          // Admins may configure analyzers before plugin JARs are deployed.
+          setPluginTypes(data);
         } else {
           // No plugin types loaded — plugin system may not be initialized yet
           setPluginTypes([]);

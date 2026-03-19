@@ -26,8 +26,8 @@ When working on this project, follow this documentation order:
 
 This project uses **GitHub SpecKit** for Specification-Driven Development (SDD).
 
-**Setup:** Run `python scripts/install-speckit-commands.py` to install slash
-commands.
+**Setup:** Run `python3 scripts/install-agent-skills.py` to install slash
+commands and packaged skills.
 
 **Full documentation:** See [AGENTS.md](AGENTS.md) § "GitHub SpecKit
 Integration" for:
@@ -96,46 +96,17 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 2. **Green:** Write minimal code to make test pass
 3. **Refactor:** Improve code quality while keeping tests green
 
-### Cypress E2E Test Execution (CRITICAL for Claude Code Environment)
+### Cypress E2E — DEPRECATED
 
-**IMPORTANT:** In Claude Code CLI environment, `ELECTRON_RUN_AS_NODE=1` is set,
-which breaks Cypress. All `npm run cy:*` scripts include
-`unset ELECTRON_RUN_AS_NODE` to work around this. **ALWAYS use the npm scripts,
-NOT direct `npx cypress` commands.**
+> **Do not create new Cypress tests.** See [AGENTS.md](AGENTS.md) "E2E Tests
+> (Cypress) — DEPRECATED" for existing test maintenance scripts and execution
+> constraints.
 
-**Available Scripts (use these, not direct cypress commands):**
+### Playwright E2E — RECOMMENDED
 
-```bash
-# Run specific test file
-npm run cy:spec "cypress/e2e/home.cy.js"
-
-# Run all admin tests
-npm run cy:admin
-
-# Run all analyzer tests
-npm run cy:analyzer
-
-# Run full suite (development)
-npm run cy:run
-
-# Run full suite with fail-fast (stops on first failure)
-npm run cy:failfast
-
-# Run specific test with fail-fast
-npm run cy:failfast:spec "cypress/e2e/AdminE2E/organizationManagement.cy.js"
-
-# Open Cypress UI (interactive mode)
-npm run cy:open
-```
-
-**Three-Phase Workflow (Constitution V.5):**
-
-1. **During Development:** Run individual tests (`npm run cy:spec "..."`)
-2. **Before Pushing (MANDATORY):** Run full suite (`npm run cy:failfast`)
-3. **In CI/CD:** Automatic via GitHub Actions
-
-**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
-This wastes 60+ minutes of CI time.
+> See [AGENTS.md](AGENTS.md) "E2E Tests (Playwright)" for the full execution
+> contract, scripts, and project descriptions. Key invariant: always use
+> `npm run pw:test` scripts, never raw `npx playwright test`.
 
 ---
 

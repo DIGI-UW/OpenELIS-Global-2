@@ -7,16 +7,21 @@ const AUTH_FILE = "playwright/.auth/user.json";
  *
  * Flow:
  *   1. Verify backend health (API responds, not just HTML shell)
- *   2. Login via in-page fetch (same ValidateLogin endpoint the React form uses)
- *   3. Navigate to verify authenticated state and capture cookies
- *   4. Save storage state for downstream tests
+ *   2. Login via Playwright request API (ValidateLogin endpoint)
+ *   3. Inject the authenticated JSESSIONID into the browser context
+ *   4. Navigate to verify authenticated state
+ *   5. Save storage state for downstream tests
  *
- * Note: The login uses page.evaluate() to call ValidateLogin directly rather
- * than clicking the UI form. OE's React login fires doLogin() twice with an
- * async GET /LoginPage in between, which creates navigation timing issues
- * with Playwright's waitForURL. The direct fetch approach is deterministic.
+ * Why request API + cookie injection:
+ *   - The React login page creates an anonymous JSESSIONID on mount.
+ *     Spring Security's session fixation protection rejects credentials
+ *     when a prior session exists → UI form login fails from Playwright.
+ *   - The request API avoids this, but its JSESSIONID has path=/api/...
+ *     which doesn't cover frontend routes.
+ *   - Solution: authenticate via request API, extract the JSESSIONID,
+ *     and add it to the browser context with path=/ so all routes work.
  */
-setup("authenticate", async ({ page, request }, testInfo) => {
+setup("authenticate", async ({ page, request, context }, testInfo) => {
   testInfo.setTimeout(60_000);
 
   const username = process.env.TEST_USER;
@@ -25,8 +30,8 @@ setup("authenticate", async ({ page, request }, testInfo) => {
   if (!username || !password) {
     throw new Error(
       "TEST_USER and TEST_PASS environment variables must be set.\n" +
-        "  export TEST_USER=admin TEST_PASS='adminADMIN!'\n" +
-        "  Note: use single quotes to prevent zsh history expansion of !",
+        "  Source .env from repo root: set -a; . .env; set +a\n" +
+        "  Or use ANSI-C quoting: export TEST_PASS=$'adminADMIN!'",
     );
   }
 
@@ -56,51 +61,78 @@ setup("authenticate", async ({ page, request }, testInfo) => {
     );
   }
 
-  // ── Step 2: Login ─────────────────────────────────────────────
-  // Navigate to login page to establish browser session cookie,
-  // then call ValidateLogin via fetch from the page context.
-  await page.goto("login", { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(1_000);
-
-  const loginResult = await page.evaluate(
-    async ({ user, pass }) => {
-      await fetch("/api/OpenELIS-Global/LoginPage", {
-        credentials: "include",
-      });
-      const res = await fetch(
-        "/api/OpenELIS-Global/ValidateLogin?apiCall=true",
-        {
-          credentials: "include",
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `loginName=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`,
-        },
-      );
-      const data = await res.json().catch(() => null);
-      return { status: res.status, data };
+  // ── Step 2: Login via request API ───────────────────────────────
+  const loginResponse = await request.post(
+    "/api/OpenELIS-Global/ValidateLogin?apiCall=true",
+    {
+      form: { loginName: username, password: password },
     },
-    { user: username, pass: password },
   );
+  const loginData = await loginResponse.json().catch(() => null);
 
-  if (loginResult.status !== 200 || !loginResult.data?.success) {
+  if (loginResponse.status() !== 200 || !loginData?.success) {
     throw new Error(
-      `Login API returned ${loginResult.status}: ${JSON.stringify(loginResult.data)}\n` +
+      `Login API returned ${loginResponse.status()}: ${JSON.stringify(loginData)}\n` +
         `  Credentials: ${username} / ***\n` +
         "  Possible causes:\n" +
         "    - Wrong password (check TEST_PASS env var)\n" +
-        '    - zsh ! escaping: use double quotes: TEST_PASS="adminADMIN!"\n' +
-        "    - Account locked (check login_user.account_locked in DB)",
+        "    - Credentials: source .env from repo root (set -a; . .env; set +a)\n" +
+        "    - Account locked (check login_user.account_locked in DB)\n" +
+        "    - Fixtures not loaded (run load-test-fixtures.sh to reset admin password)",
     );
   }
 
-  // Navigate to propagate cookies and verify auth
-  await page.goto("/", { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(1_000);
+  // ── Step 3: Inject JSESSIONID into browser context ──────────────
+  // The request API's JSESSIONID has path=/api/OpenELIS-Global — too
+  // narrow for frontend routes. Extract it and re-add with path=/.
+  const setCookieHeaders = loginResponse
+    .headersArray()
+    .filter((h) => h.name.toLowerCase() === "set-cookie");
 
-  // ── Step 3: Verify authenticated state ────────────────────────
+  let jsessionId: string | null = null;
+  for (const header of setCookieHeaders) {
+    const match = header.value.match(/JSESSIONID=([^;]+)/);
+    if (match) {
+      jsessionId = match[1];
+      break;
+    }
+  }
+
+  if (!jsessionId) {
+    // Fallback: try to get from the request context's stored cookies
+    const storageState = await request.storageState();
+    const sessionCookie = storageState.cookies.find(
+      (c) => c.name === "JSESSIONID",
+    );
+    if (sessionCookie) {
+      jsessionId = sessionCookie.value;
+    }
+  }
+
+  if (!jsessionId) {
+    throw new Error(
+      "Login succeeded but no JSESSIONID cookie found in response.\n" +
+        "  This is unexpected — check proxy/backend cookie configuration.",
+    );
+  }
+
+  // Add the cookie to the browser context with root path
+  await context.addCookies([
+    {
+      name: "JSESSIONID",
+      value: jsessionId,
+      domain: "localhost",
+      path: "/",
+      httpOnly: true,
+      secure: true,
+      sameSite: "Lax",
+    },
+  ]);
+
+  // ── Step 4: Verify authenticated state ────────────────────────
   await page.goto("analyzers", { waitUntil: "domcontentloaded" });
   await expect(page).not.toHaveURL(/\/login(?:\?|$)/, { timeout: 15_000 });
 
-  // ── Step 4: Save session ──────────────────────────────────────
+  // ── Step 5: Save session ──────────────────────────────────────
   await page.context().storageState({ path: AUTH_FILE });
 });

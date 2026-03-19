@@ -10,11 +10,17 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
+import org.dom4j.Document;
+import org.dom4j.DocumentException;
+import org.dom4j.DocumentHelper;
 import org.hibernate.StaleObjectStateException;
 import org.hl7.fhir.r4.model.Enumerations.ResourceType;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Task;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.barcode.form.LabelsSectionForm;
+import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
+import org.openelisglobal.barcode.service.BarcodeWorkflowPrintService;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
@@ -171,6 +177,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
     private SystemUserService systemUserService;
     @Autowired
     private SampleService sampleService;
+    @Autowired
+    private BarcodeWorkflowPrintService barcodeWorkflowPrintService;
 
     @Autowired
     private ApplicationEventPublisher eventPublisher;
@@ -281,6 +289,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         try {
             samplePatientService.persistData(updateData, patientUpdate, patientInfo, form, request);
+            populateWorkflowPrintModels(form, sampleOrder.getLabNo());
             try {
                 SamplePatientUpdateDataCreatedEvent event = new SamplePatientUpdateDataCreatedEvent(this, updateData,
                         patientInfo, form);
@@ -369,6 +378,57 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         }
 
         return (form);
+    }
+
+    void populateWorkflowPrintModels(SamplePatientEntryForm form, String accessionNumber) {
+        ParsedLabelQuantities labelQuantities = extractLabelQuantities(form.getSampleXML());
+        LabelsSectionForm labelsSection = barcodeWorkflowPrintService.buildLabelsSection(labelQuantities.orderQuantity,
+                labelQuantities.specimenQuantities);
+        PostSavePrintDialogForm postSavePrintDialog = barcodeWorkflowPrintService
+                .buildPostSavePrintDialog(accessionNumber, labelsSection);
+        form.setLabelsSection(labelsSection);
+        form.setPostSavePrintDialog(postSavePrintDialog);
+    }
+
+    ParsedLabelQuantities extractLabelQuantities(String sampleXml) {
+        ParsedLabelQuantities quantities = new ParsedLabelQuantities();
+        if (GenericValidator.isBlankOrNull(sampleXml)) {
+            return quantities;
+        }
+        try {
+            Document sampleDocument = DocumentHelper.parseText(sampleXml);
+            List<org.dom4j.Element> sampleElements = sampleDocument.getRootElement().elements("sample");
+            if (sampleElements != null && !sampleElements.isEmpty()) {
+                org.dom4j.Element firstSample = sampleElements.get(0);
+                quantities.orderQuantity = parseLabelQuantity(firstSample.attributeValue("numOrderLabels"));
+                quantities.specimenQuantities.clear();
+                for (org.dom4j.Element sampleElement : sampleElements) {
+                    quantities.specimenQuantities
+                            .add(parseLabelQuantity(sampleElement.attributeValue("numSpecimenLabels")));
+                }
+            }
+        } catch (DocumentException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "extractLabelQuantities",
+                    "Unable to parse sample XML for label quantities");
+        }
+        return quantities;
+    }
+
+    static class ParsedLabelQuantities {
+        int orderQuantity = 1;
+        List<Integer> specimenQuantities = new java.util.ArrayList<>(List.of(1));
+    }
+
+    private int parseLabelQuantity(String value) {
+        if (GenericValidator.isBlankOrNull(value)) {
+            return 1;
+        }
+        try {
+            int parsed = Integer.parseInt(value);
+            return parsed > 0 ? parsed : 1;
+        } catch (NumberFormatException e) {
+            return 1;
+        }
     }
 
     private void setupForm(SamplePatientEntryForm form, HttpServletRequest request, String externalOrderNumber)

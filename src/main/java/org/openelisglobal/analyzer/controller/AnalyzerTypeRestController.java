@@ -77,6 +77,11 @@ public class AnalyzerTypeRestController extends BaseRestController {
             // LazyInitializationException in analyzerTypeToMap() (which calls
             // getInstances().size())
             types = analyzerTypeService.getAllWithInitializedInstances();
+            if (active != null) {
+                final boolean activeFilter = active;
+                types = types.stream().filter(t -> t.isActive() == activeFilter)
+                        .collect(java.util.stream.Collectors.toList());
+            }
             if (Boolean.TRUE.equals(genericOnly)) {
                 types = types.stream().filter(AnalyzerType::isGenericPlugin)
                         .collect(java.util.stream.Collectors.toList());
