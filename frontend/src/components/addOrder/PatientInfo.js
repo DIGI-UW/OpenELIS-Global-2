@@ -33,6 +33,9 @@ const PatientInfo = (props) => {
     }
     handleNewPatientTab();
   };
+  const [changed, setChanged] = useState({
+    "patientProperties.nationalId": false,
+  });
 
   const handleSearchPatientTab = () => {
     setSearchPatientTab({ kind: "primary", active: true });
@@ -80,7 +83,7 @@ const PatientInfo = (props) => {
         }
       });
     }
-  }, [orderFormValues.patientProperties.guid]);
+  }, [changed, orderFormValues.patientProperties.guid]);
 
   return (
     <>
@@ -123,6 +126,8 @@ const PatientInfo = (props) => {
                   orderFormValues={orderFormValues}
                   setOrderFormValues={setOrderFormValues}
                   error={error}
+                  changed={changed}
+                  setChanged={setChanged}
                   setPhoneValidation={setPhoneValidation}
                 />
               )}

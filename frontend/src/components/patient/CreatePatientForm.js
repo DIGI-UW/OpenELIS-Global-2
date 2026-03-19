@@ -735,6 +735,12 @@ function CreatePatientForm(props) {
       });
     }
   };
+  function handleChange(path) {
+    props.setChanged({
+      ...props.changed,
+      [path]: true,
+    });
+  }
 
   return (
     <>
@@ -840,16 +846,22 @@ function CreatePatientForm(props) {
                       }
                       id={field.name}
                       invalid={
-                        props.error
-                          ? props.error("patientProperties.nationalId")
-                            ? true
-                            : false
+                        // props.error
+                        //   ? props.error("patientProperties.nationalId")
+                        //     ? true
+                        //     : false
+                        props.changed["patientProperties.nationalId"] &&
+                        props.error("patientProperties.nationalId")
+                          ? true
                           : false
                       }
                       invalidText={
                         props.error
                           ? props.error("patientProperties.nationalId")
                           : ""
+                      }
+                      onClick={() =>
+                        handleChange("patientProperties.nationalId")
                       }
                       onMouseOut={() => {
                         handleSubjectNoValidation(
