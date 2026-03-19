@@ -3,6 +3,11 @@
 > **Playwright is the recommended E2E framework** for OpenELIS Global 2. All new
 > E2E tests should use Playwright. Cypress is deprecated and will be migrated.
 
+> **Canonical best-practices guide:**  
+> `.specify/guides/playwright-best-practices.md` (single source of truth).  
+> This README focuses on repo-specific operational details (projects, CI mapping,
+> fixtures, and local execution).
+
 **Config:** `frontend/playwright.config.ts`
 **Tests:** `frontend/playwright/tests/`
 **Helpers:** `frontend/playwright/helpers/`
@@ -25,17 +30,19 @@ Tests are organized into 4 projects via allowlist-based `testMatch` in
 
 | Project      | Purpose                                           | CI Workflow          | Infra Required |
 | ------------ | ------------------------------------------------- | -------------------- | -------------- |
-| `core-app`   | Core UI tests (no plugins/bridge)                 | `playwright-e2e.yml` | Build stack    |
-| `harness`    | Analyzer infra tests (bridge, simulator, plugins) | `analyzer-e2e.yml`   | Full harness   |
-| `demo`       | Workflow demos at normal speed                    | `analyzer-e2e.yml`   | Full harness   |
+| `core-app`   | Core UI tests (no plugins/bridge)                 | `e2e-playwright.yml` | Build stack    |
+| `harness`    | Analyzer infra tests (bridge, simulator, plugins) | `e2e-playwright.yml` | Full harness   |
+| `demo`       | Workflow demos at normal speed                    | `e2e-playwright.yml` | Full harness   |
 | `demo-video` | Same demos with slowMo + video                    | Local only           | Harness        |
 
 ## CI Workflows
 
 | Workflow             | Compose Files                                          | Projects           | Fixtures                                           |
 | -------------------- | ------------------------------------------------------ | ------------------ | -------------------------------------------------- |
-| `playwright-e2e.yml` | `build.docker-compose.yml`                             | `core-app`         | `file-import-e2e.sql`                              |
-| `analyzer-e2e.yml`   | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+| `e2e-playwright.yml` | `build.docker-compose.yml`                             | `core-app`         | `file-import-e2e.sql`                              |
+| `e2e-playwright.yml` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+
+`e2e-playwright-analyzer-harness-manual.yml` remains available for manual (`workflow_dispatch`) harness-only runs and delegates to the same reusable analyzer harness workflow used by `e2e-playwright.yml`.
 
 ## Fixtures
 
@@ -56,8 +63,9 @@ Analyzer rows used by harness tests are created via REST API seeding:
 
 ### Prerequisites
 
-1. App running at `https://localhost` (or set `BASE_URL`)
-2. Auth env vars: `TEST_USER` and `TEST_PASS`
+1. **Dependencies:** from `frontend/`, run **`npm run ci:deps`** (then **`npm run pw:install`**). Plain **`npm ci`** often prints almost nothing for several minutes while Cypress unpacks — it is not stuck; **`ci:deps`** forces progress + `loglevel=info` so you see steady output. `.npmrc` also sets `progress=true` for normal installs.
+2. App running at `https://localhost` (or set `BASE_URL`)
+3. Auth env vars: `TEST_USER` and `TEST_PASS`
 
 ### Commands
 
@@ -71,6 +79,10 @@ npm run pw:test
 npm run pw:test -- --project=core-app
 npm run pw:test -- --project=harness
 npm run pw:test -- --project=demo
+
+# Convenience aliases for common analyzer runs
+npm run pw:test:harness
+npm run pw:test:demo
 
 # Run specific test file
 npm run pw:test -- playwright/tests/file-import-ui.spec.ts
@@ -92,7 +104,7 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
 
 ```bash
 cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness
 ```
 
 ## Video Recording
