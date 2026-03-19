@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Checkbox, Column, Grid } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -57,6 +57,15 @@ const EQASampleEntry = ({ orderFormValues, setOrderFormValues }) => {
   const intl = useIntl();
 
   const isEQA = orderFormValues?.sampleOrderItems?.isEQASample || false;
+  const initializedRef = useRef(false);
+
+  // Auto-trigger toggle logic when isEQA is set externally (e.g. ?isEQA=true URL param)
+  useEffect(() => {
+    if (isEQA && !initializedRef.current) {
+      initializedRef.current = true;
+      handleEQAToggle(true);
+    }
+  }, [isEQA]);
 
   const handleEQAToggle = (checked) => {
     if (checked) {
@@ -75,8 +84,7 @@ const EQASampleEntry = ({ orderFormValues, setOrderFormValues }) => {
         const results = res?.patientSearchResults || [];
         const existingPatient = results.find(
           (p) =>
-            p.lastName === EQA_PLACEHOLDER &&
-            p.firstName === EQA_PLACEHOLDER,
+            p.lastName === EQA_PLACEHOLDER && p.firstName === EQA_PLACEHOLDER,
         );
 
         if (existingPatient) {

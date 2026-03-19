@@ -1033,9 +1033,7 @@ export function SearchResults(props) {
                 : row.accessionNumber) +
                 "-" +
                 row.sequenceNumber}
-              {row.isEqaSample && (
-                <EQABadge priority={row.eqaPriority} />
-              )}
+              {row.isEqaSample && <EQABadge priority={row.eqaPriority} />}
               <br></br>
               {row.patientName} <br></br>
               {row.patientInfo}

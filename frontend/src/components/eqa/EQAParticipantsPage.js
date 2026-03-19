@@ -15,7 +15,6 @@ import {
   TableCell,
   Button,
   Tag,
-  Search,
   InlineNotification,
 } from "@carbon/react";
 import {
@@ -33,7 +32,6 @@ import {
   putToOpenElisServer,
 } from "../utils/Utils";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import EnrollOrgModal from "./EnrollOrgModal";
 import WithdrawModal from "./WithdrawModal";
 
 const breadcrumbs = [
@@ -53,9 +51,9 @@ const EQAParticipantsPage = () => {
   const [programs, setPrograms] = useState([]);
   const [selectedProgramId, setSelectedProgramId] = useState("");
   const [enrollments, setEnrollments] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
+  const [selectedOrgId, setSelectedOrgId] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [searchText, setSearchText] = useState("");
-  const [enrollModalOpen, setEnrollModalOpen] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
   const [notification, setNotification] = useState(null);
@@ -66,6 +64,14 @@ const EQAParticipantsPage = () => {
         setPrograms(data.filter((p) => p.isActive));
       }
     });
+    getFromOpenElisServer(
+      "/rest/displayList/REFERRAL_ORGANIZATIONS",
+      (data) => {
+        if (data && Array.isArray(data)) {
+          setOrganizations(data);
+        }
+      },
+    );
   }, []);
 
   const fetchEnrollments = useCallback(() => {
@@ -89,23 +95,28 @@ const EQAParticipantsPage = () => {
     fetchEnrollments();
   }, [fetchEnrollments]);
 
-  const handleEnrollSubmit = (orgIds) => {
-    if (orgIds.length === 0 || !selectedProgramId) return;
+  const handleEnrollOrg = () => {
+    if (!selectedOrgId || !selectedProgramId) return;
     postToOpenElisServerJsonResponse(
       `/rest/eqa/programs/${selectedProgramId}/enrollments`,
-      JSON.stringify({ organizationIds: orgIds }),
+      JSON.stringify({ organizationIds: [Number(selectedOrgId)] }),
       (response) => {
-        if (response) {
-          setEnrollModalOpen(false);
+        if (response && !response.error) {
+          setSelectedOrgId("");
           setNotification({
             kind: "success",
             message: intl.formatMessage(
               { id: "eqa.enrollment.success" },
-              { count: orgIds.length },
+              { count: 1 },
             ),
           });
-          fetchEnrollments();
+        } else {
+          setNotification({
+            kind: "error",
+            message: response?.error || "Failed to enroll organization",
+          });
         }
+        fetchEnrollments();
       },
     );
   };
@@ -125,16 +136,7 @@ const EQAParticipantsPage = () => {
   };
 
   const filtered = enrollments.filter((e) => {
-    const matchesStatus = !statusFilter || e.status === statusFilter;
-    const matchesSearch =
-      !searchText ||
-      (e.organizationName || "")
-        .toLowerCase()
-        .includes(searchText.toLowerCase()) ||
-      (e.organizationCode || "")
-        .toLowerCase()
-        .includes(searchText.toLowerCase());
-    return matchesStatus && matchesSearch;
+    return !statusFilter || e.status === statusFilter;
   });
 
   const headers = [
@@ -261,18 +263,6 @@ const EQAParticipantsPage = () => {
         <>
           {/* Filters and Enroll Button */}
           <Grid condensed style={{ marginBottom: "1rem" }}>
-            <Column lg={5} md={4} sm={4}>
-              <Search
-                id="enrollment-search"
-                labelText=""
-                placeholder={intl.formatMessage({
-                  id: "eqa.enrollment.searchPlaceholder",
-                })}
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                data-testid="enrollment-search"
-              />
-            </Column>
             <Column lg={4} md={4} sm={4}>
               <Select
                 id="enrollment-status-filter"
@@ -307,18 +297,49 @@ const EQAParticipantsPage = () => {
                 />
               </Select>
             </Column>
-            <Column lg={7} md={4} sm={4}>
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <Button
-                  renderIcon={Add}
-                  onClick={() => setEnrollModalOpen(true)}
-                  data-testid="enroll-button"
-                >
-                  {intl.formatMessage({
-                    id: "eqa.enrollment.enrollParticipant",
+            <Column lg={5} md={4} sm={4}>
+              <Select
+                id="enroll-org-select"
+                labelText=""
+                value={selectedOrgId}
+                onChange={(e) => setSelectedOrgId(e.target.value)}
+              >
+                <SelectItem
+                  value=""
+                  text={intl.formatMessage({
+                    id: "eqa.enrollment.selectOrg",
                   })}
-                </Button>
-              </div>
+                />
+                {organizations
+                  .filter(
+                    (o) =>
+                      !enrollments.some(
+                        (e) =>
+                          e.status === "Active" &&
+                          String(e.organizationId) === String(o.id),
+                      ),
+                  )
+                  .map((o) => (
+                    <SelectItem
+                      key={o.id}
+                      value={String(o.id)}
+                      text={o.value}
+                    />
+                  ))}
+              </Select>
+            </Column>
+            <Column lg={3} md={2} sm={4}>
+              <Button
+                renderIcon={Add}
+                onClick={handleEnrollOrg}
+                disabled={!selectedOrgId}
+                data-testid="enroll-button"
+                size="md"
+              >
+                {intl.formatMessage({
+                  id: "eqa.enrollment.enroll",
+                })}
+              </Button>
             </Column>
           </Grid>
 
@@ -487,13 +508,6 @@ const EQAParticipantsPage = () => {
           )}
         </>
       )}
-
-      <EnrollOrgModal
-        open={enrollModalOpen}
-        programId={selectedProgramId}
-        onClose={() => setEnrollModalOpen(false)}
-        onSubmit={handleEnrollSubmit}
-      />
 
       <WithdrawModal
         open={withdrawModalOpen}

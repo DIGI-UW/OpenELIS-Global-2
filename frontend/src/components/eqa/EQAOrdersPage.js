@@ -157,7 +157,7 @@ const EQAOrdersPage = () => {
   }));
 
   const handleEnterNewTest = () => {
-    history.push("/SampleAdd?isEQA=true");
+    history.push("/SamplePatientEntry?isEQA=true");
   };
 
   if (loading) {

@@ -68,11 +68,7 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
               >
                 <SelectItem value="" text="" />
                 {siteNames.map((site) => (
-                  <SelectItem
-                    key={site.id}
-                    value={site.id}
-                    text={site.value}
-                  />
+                  <SelectItem key={site.id} value={site.id} text={site.value} />
                 ))}
               </Select>
             </Column>

@@ -23,6 +23,7 @@ import org.openelisglobal.eqa.dao.EQALabProgramEnrollmentDAO;
 import org.openelisglobal.eqa.dao.EQAProgramDAO;
 import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
+import org.openelisglobal.organization.valueholder.Organization;
 
 @RunWith(MockitoJUnitRunner.class)
 public class EQALabProgramEnrollmentServiceTest {
@@ -37,12 +38,17 @@ public class EQALabProgramEnrollmentServiceTest {
     private EQALabProgramEnrollmentServiceImpl service;
 
     private EQALabProgramEnrollment enrollment;
+    private EQAProgram chemistryProgram;
 
     @Before
     public void setUp() {
+        chemistryProgram = new EQAProgram();
+        chemistryProgram.setId(1L);
+        chemistryProgram.setName("Chemistry PT");
+
         enrollment = new EQALabProgramEnrollment();
         enrollment.setId(1L);
-        enrollment.setProgramName("Chemistry PT");
+        enrollment.setEqaProgram(chemistryProgram);
         enrollment.setProvider("WHO");
         enrollment.setDescription("Chemistry proficiency testing");
         enrollment.setIsActive(true);
@@ -56,7 +62,7 @@ public class EQALabProgramEnrollmentServiceTest {
         List<EQALabProgramEnrollment> result = service.findAll();
 
         assertEquals(1, result.size());
-        assertEquals("Chemistry PT", result.get(0).getProgramName());
+        assertEquals("Chemistry PT", result.get(0).getEqaProgram().getName());
     }
 
     @Test
@@ -79,14 +85,14 @@ public class EQALabProgramEnrollmentServiceTest {
         when(enrollmentDAO.get(1L)).thenReturn(Optional.of(enrollment));
 
         EQALabProgramEnrollment input = new EQALabProgramEnrollment();
-        input.setProgramName("Chemistry PT");
+        input.setEqaProgram(chemistryProgram);
         input.setProvider("WHO");
         input.setSysUserId("1");
 
         EQALabProgramEnrollment result = service.createEnrollment(input, labUnitIds, testIds, panelIds);
 
         assertNotNull(result);
-        assertEquals("Chemistry PT", result.getProgramName());
+        assertEquals("Chemistry PT", result.getEqaProgram().getName());
 
         ArgumentCaptor<EQALabProgramEnrollment> captor = ArgumentCaptor.forClass(EQALabProgramEnrollment.class);
         verify(enrollmentDAO).insert(captor.capture());
@@ -102,8 +108,11 @@ public class EQALabProgramEnrollmentServiceTest {
         when(enrollmentDAO.insert(any(EQALabProgramEnrollment.class))).thenReturn(1L);
         when(enrollmentDAO.get(1L)).thenReturn(Optional.of(enrollment));
 
+        EQAProgram hemaProgram = new EQAProgram();
+        hemaProgram.setName("Hematology PT");
+
         EQALabProgramEnrollment input = new EQALabProgramEnrollment();
-        input.setProgramName("Hematology PT");
+        input.setEqaProgram(hemaProgram);
         input.setProvider("CDC");
         input.setSysUserId("1");
 
@@ -124,7 +133,7 @@ public class EQALabProgramEnrollmentServiceTest {
         when(enrollmentDAO.get(1L)).thenReturn(Optional.of(enrollment));
 
         EQALabProgramEnrollment input = new EQALabProgramEnrollment();
-        input.setProgramName("Test");
+        input.setEqaProgram(chemistryProgram);
         input.setProvider("Provider");
         input.setIsActive(null);
         input.setSysUserId("1");
@@ -139,9 +148,14 @@ public class EQALabProgramEnrollmentServiceTest {
 
     @Test
     public void testUpdateEnrollment_Success() {
+        EQAProgram oldProgram = new EQAProgram();
+        oldProgram.setName("Old Name");
+        EQAProgram newProgram = new EQAProgram();
+        newProgram.setName("New Name");
+
         EQALabProgramEnrollment existing = new EQALabProgramEnrollment();
         existing.setId(1L);
-        existing.setProgramName("Old Name");
+        existing.setEqaProgram(oldProgram);
         existing.setProvider("Old Provider");
         existing.setIsActive(true);
         existing.setSysUserId("1");
@@ -152,7 +166,7 @@ public class EQALabProgramEnrollmentServiceTest {
         when(enrollmentDAO.update(any(EQALabProgramEnrollment.class))).thenReturn(existing);
 
         EQALabProgramEnrollment updated = new EQALabProgramEnrollment();
-        updated.setProgramName("New Name");
+        updated.setEqaProgram(newProgram);
         updated.setProvider("New Provider");
         updated.setDescription("Updated description");
         updated.setIsActive(true);
@@ -161,7 +175,7 @@ public class EQALabProgramEnrollmentServiceTest {
         EQALabProgramEnrollment result = service.updateEnrollment(1L, updated, List.of(30L), List.of(300L), null);
 
         assertNotNull(result);
-        assertEquals("New Name", result.getProgramName());
+        assertEquals("New Name", result.getEqaProgram().getName());
         assertEquals("New Provider", result.getProvider());
         assertNotNull(result.getLastModified());
     }
@@ -171,7 +185,7 @@ public class EQALabProgramEnrollmentServiceTest {
         when(enrollmentDAO.get(999L)).thenReturn(Optional.empty());
 
         EQALabProgramEnrollment updated = new EQALabProgramEnrollment();
-        updated.setProgramName("Whatever");
+        updated.setEqaProgram(chemistryProgram);
         updated.setProvider("Whatever");
         updated.setSysUserId("1");
 
@@ -206,10 +220,15 @@ public class EQALabProgramEnrollmentServiceTest {
     public void testGetDistinctProviders_UnionQuery() {
         when(enrollmentDAO.findDistinctProviders()).thenReturn(List.of("WHO", "CDC"));
 
+        Organization whoOrg = new Organization();
+        whoOrg.setOrganizationName("WHO");
+        Organization pepfarOrg = new Organization();
+        pepfarOrg.setOrganizationName("PEPFAR");
+
         EQAProgram prog1 = new EQAProgram();
-        prog1.setProviderName("WHO");
+        prog1.setOrganization(whoOrg);
         EQAProgram prog2 = new EQAProgram();
-        prog2.setProviderName("PEPFAR");
+        prog2.setOrganization(pepfarOrg);
 
         when(eqaProgramDAO.findByIsActive(true)).thenReturn(List.of(prog1, prog2));
 
@@ -225,10 +244,13 @@ public class EQALabProgramEnrollmentServiceTest {
     public void testGetDistinctProviders_NullAndBlankFiltered() {
         when(enrollmentDAO.findDistinctProviders()).thenReturn(List.of("WHO"));
 
+        Organization blankOrg = new Organization();
+        blankOrg.setOrganizationName("  ");
+
         EQAProgram prog1 = new EQAProgram();
-        prog1.setProviderName(null);
+        prog1.setOrganization(null);
         EQAProgram prog2 = new EQAProgram();
-        prog2.setProviderName("  ");
+        prog2.setOrganization(blankOrg);
 
         when(eqaProgramDAO.findByIsActive(true)).thenReturn(List.of(prog1, prog2));
 

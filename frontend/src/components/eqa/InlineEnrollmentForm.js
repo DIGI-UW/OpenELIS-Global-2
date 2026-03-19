@@ -8,6 +8,8 @@ import {
   Button,
   FilterableMultiSelect,
   ComboBox,
+  Select,
+  SelectItem,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -16,8 +18,8 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
   const intl = useIntl();
   const isEdit = !!enrollment;
 
-  const [programName, setProgramName] = useState(
-    enrollment ? enrollment.programName : "",
+  const [eqaProgramId, setEqaProgramId] = useState(
+    enrollment ? String(enrollment.eqaProgramId || "") : "",
   );
   const [provider, setProvider] = useState(
     enrollment ? enrollment.provider : "",
@@ -32,12 +34,18 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
   const [selectedTests, setSelectedTests] = useState([]);
   const [selectedPanels, setSelectedPanels] = useState([]);
 
+  const [eqaPrograms, setEqaPrograms] = useState([]);
   const [providers, setProviders] = useState([]);
   const [labUnits, setLabUnits] = useState([]);
   const [tests, setTests] = useState([]);
   const [panels, setPanels] = useState([]);
 
   useEffect(() => {
+    getFromOpenElisServer("/rest/eqa/programs?activeOnly=true", (data) => {
+      if (data) {
+        setEqaPrograms(data);
+      }
+    });
     getFromOpenElisServer("/rest/eqa/my-programs/providers", (data) => {
       if (data) {
         setProviders(data.map((p) => ({ id: p, text: p })));
@@ -89,7 +97,7 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
 
   const handleSave = () => {
     const payload = {
-      programName,
+      eqaProgramId: eqaProgramId ? Number(eqaProgramId) : null,
       provider,
       description,
       isActive,
@@ -100,7 +108,7 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
     onSave(payload);
   };
 
-  const isValid = programName.trim() !== "" && provider.trim() !== "";
+  const isValid = eqaProgramId !== "" && provider.trim() !== "";
 
   return (
     <div
@@ -121,15 +129,23 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
 
       <Grid condensed>
         <Column lg={5} md={4} sm={4}>
-          <TextInput
+          <Select
             id="enrollment-program-name"
             labelText={intl.formatMessage({
               id: "eqa.enrollment.programName",
             })}
-            value={programName}
-            onChange={(e) => setProgramName(e.target.value)}
-            required
-          />
+            value={eqaProgramId}
+            onChange={(e) => setEqaProgramId(e.target.value)}
+          >
+            <SelectItem value="" text="" />
+            {eqaPrograms.map((prog) => (
+              <SelectItem
+                key={prog.id}
+                value={String(prog.id)}
+                text={prog.name}
+              />
+            ))}
+          </Select>
         </Column>
         <Column lg={5} md={4} sm={4}>
           <ComboBox

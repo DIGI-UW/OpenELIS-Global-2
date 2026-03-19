@@ -261,7 +261,7 @@ const EQAManagementDashboard = () => {
         </div>
         <Button
           renderIcon={Add}
-          onClick={() => history.push("/SampleAdd?isEQA=true")}
+          onClick={() => history.push("/SamplePatientEntry?isEQA=true")}
         >
           {intl.formatMessage({ id: "eqa.tests.enterNew" })}
         </Button>

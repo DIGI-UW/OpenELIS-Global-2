@@ -5,22 +5,28 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- Add provider_name, category, and frequency columns to eqa_program -->
+    <!-- Add provider (organization FK), category (test_section FK), and frequency columns to eqa_program -->
     <changeSet id="eqa-008-add-program-admin-columns" author="eqa-module-feature">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="eqa_program"/>
             <not>
-                <columnExists tableName="eqa_program" columnName="provider_name"/>
+                <columnExists tableName="eqa_program" columnName="organization_id"/>
             </not>
         </preConditions>
         <addColumn tableName="eqa_program">
-            <column name="provider_name" type="VARCHAR(255)"/>
-            <column name="category" type="VARCHAR(100)"/>
+            <column name="organization_id" type="numeric(10,0)">
+                <constraints foreignKeyName="fk_eqa_program_organization"
+                             references="clinlims.organization(id)"/>
+            </column>
+            <column name="test_section_id" type="numeric(10,0)">
+                <constraints foreignKeyName="fk_eqa_program_test_section"
+                             references="clinlims.test_section(id)"/>
+            </column>
             <column name="frequency" type="VARCHAR(50)"/>
         </addColumn>
         <rollback>
-            <dropColumn tableName="eqa_program" columnName="provider_name"/>
-            <dropColumn tableName="eqa_program" columnName="category"/>
+            <dropColumn tableName="eqa_program" columnName="organization_id"/>
+            <dropColumn tableName="eqa_program" columnName="test_section_id"/>
             <dropColumn tableName="eqa_program" columnName="frequency"/>
         </rollback>
     </changeSet>

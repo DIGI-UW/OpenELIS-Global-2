@@ -11,15 +11,18 @@ import {
   FilterableMultiSelect,
   Grid,
   Column,
+  InlineNotification,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { useHistory } from "react-router-dom";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 
-const CreateDistribution = ({ onCreate }) => {
+const CreateDistribution = () => {
   const intl = useIntl();
+  const history = useHistory();
   const [currentStep, setCurrentStep] = useState(0);
   const [name, setName] = useState("");
   const [programId, setProgramId] = useState("");
@@ -27,6 +30,8 @@ const CreateDistribution = ({ onCreate }) => {
   const [selectedOrgs, setSelectedOrgs] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [organizations, setOrganizations] = useState([]);
+  const [created, setCreated] = useState(false);
+  const [notification, setNotification] = useState(null);
 
   useEffect(() => {
     getFromOpenElisServer("/rest/eqa/programs", (data) => {
@@ -34,11 +39,16 @@ const CreateDistribution = ({ onCreate }) => {
         setPrograms(data);
       }
     });
-    getFromOpenElisServer("/rest/organizations", (data) => {
-      if (data && Array.isArray(data)) {
-        setOrganizations(data);
-      }
-    });
+    getFromOpenElisServer(
+      "/rest/displayList/REFERRAL_ORGANIZATIONS",
+      (data) => {
+        if (data && Array.isArray(data)) {
+          setOrganizations(
+            data.map((o) => ({ id: String(o.id), name: o.value })),
+          );
+        }
+      },
+    );
   }, []);
 
   const handleSubmit = () => {
@@ -54,7 +64,20 @@ const CreateDistribution = ({ onCreate }) => {
       payload,
       (response) => {
         if (response && !response.error) {
-          if (onCreate) onCreate(response);
+          setCreated(true);
+          setNotification({
+            kind: "success",
+            message: intl.formatMessage({
+              id: "eqa.distribution.createSuccess",
+            }),
+          });
+        } else {
+          setNotification({
+            kind: "error",
+            message:
+              response?.error ||
+              intl.formatMessage({ id: "eqa.distribution.createError" }),
+          });
         }
       },
     );
@@ -64,7 +87,16 @@ const CreateDistribution = ({ onCreate }) => {
   const canAdvanceFromStep1 = selectedOrgs.length >= 2;
 
   return (
-    <div className="create-distribution">
+    <div className="create-distribution" style={{ padding: "1rem" }}>
+      {notification && (
+        <InlineNotification
+          kind={notification.kind}
+          title={notification.message}
+          onCloseButtonClick={() => setNotification(null)}
+          style={{ marginBottom: "1rem" }}
+        />
+      )}
+
       <ProgressIndicator currentIndex={currentStep} spaceEqually>
         <ProgressStep
           label={intl.formatMessage({ id: "eqa.distribution.step.details" })}
@@ -92,6 +124,7 @@ const CreateDistribution = ({ onCreate }) => {
               })}
               value={name}
               onChange={(e) => setName(e.target.value)}
+              disabled={created}
             />
           </Column>
           <Column lg={8} md={8} sm={4}>
@@ -100,6 +133,7 @@ const CreateDistribution = ({ onCreate }) => {
               labelText={intl.formatMessage({ id: "eqa.distribution.program" })}
               value={programId}
               onChange={(e) => setProgramId(e.target.value)}
+              disabled={created}
             >
               <SelectItem
                 value=""
@@ -123,6 +157,7 @@ const CreateDistribution = ({ onCreate }) => {
                   setDeadline(`${y}-${m}-${d}`);
                 }
               }}
+              disabled={created}
             >
               <DatePickerInput
                 id="distribution-deadline"
@@ -130,12 +165,13 @@ const CreateDistribution = ({ onCreate }) => {
                   id: "eqa.distribution.deadline",
                 })}
                 placeholder="mm/dd/yyyy"
+                disabled={created}
               />
             </DatePicker>
           </Column>
           <Column lg={16} md={8} sm={4} style={{ marginTop: "1rem" }}>
             <Button
-              disabled={!canAdvanceFromStep0}
+              disabled={!canAdvanceFromStep0 || created}
               onClick={() => setCurrentStep(1)}
             >
               {intl.formatMessage({ id: "eqa.distribution.step.participants" })}
@@ -159,6 +195,7 @@ const CreateDistribution = ({ onCreate }) => {
               itemToString={(item) => (item ? item.name || item.id : "")}
               onChange={({ selectedItems }) => setSelectedOrgs(selectedItems)}
               selectionFeedback="top-after-reopen"
+              disabled={created}
             />
             {selectedOrgs.length > 0 && selectedOrgs.length < 2 && (
               <p style={{ color: "#da1e28", marginTop: "0.5rem" }}>
@@ -173,7 +210,7 @@ const CreateDistribution = ({ onCreate }) => {
               Back
             </Button>
             <Button
-              disabled={!canAdvanceFromStep1}
+              disabled={!canAdvanceFromStep1 || created}
               onClick={() => setCurrentStep(2)}
               style={{ marginLeft: "0.5rem" }}
             >
@@ -211,12 +248,26 @@ const CreateDistribution = ({ onCreate }) => {
             </p>
           </Column>
           <Column lg={16} md={8} sm={4} style={{ marginTop: "1rem" }}>
-            <Button kind="secondary" onClick={() => setCurrentStep(1)}>
-              Back
-            </Button>
-            <Button onClick={handleSubmit} style={{ marginLeft: "0.5rem" }}>
-              {intl.formatMessage({ id: "eqa.distribution.create" })}
-            </Button>
+            {!created && (
+              <Button
+                kind="secondary"
+                onClick={() => setCurrentStep(1)}
+                style={{ marginRight: "0.5rem" }}
+              >
+                Back
+              </Button>
+            )}
+            {!created ? (
+              <Button onClick={handleSubmit}>
+                {intl.formatMessage({ id: "eqa.distribution.create" })}
+              </Button>
+            ) : (
+              <Button onClick={() => history.push("/EQADistribution")}>
+                {intl.formatMessage({
+                  id: "eqa.distribution.backToDashboard",
+                })}
+              </Button>
+            )}
           </Column>
         </Grid>
       )}

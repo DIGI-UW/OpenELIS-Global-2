@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   TextInput,
@@ -11,20 +11,10 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import {
+  getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
 } from "../../utils/Utils";
-
-const PROVIDERS = ["WHO", "CDC", "CAP", "UKNEQAS", "EQAS", "RIQAS"];
-
-const CATEGORIES = [
-  "Microbiology",
-  "Serology",
-  "Chemistry",
-  "Hematology",
-  "Immunology",
-  "Parasitology",
-];
 
 const FREQUENCIES = ["Monthly", "Quarterly", "Biannual", "Annual"];
 
@@ -34,11 +24,34 @@ const ProgramForm = ({ program, onClose }) => {
 
   const [name, setName] = useState(program?.name || "");
   const [description, setDescription] = useState(program?.description || "");
-  const [providerName, setProviderName] = useState(program?.providerName || "");
-  const [category, setCategory] = useState(program?.category || "");
+  const [organizationId, setOrganizationId] = useState(
+    program?.organizationId ? String(program.organizationId) : "",
+  );
+  const [testSectionId, setTestSectionId] = useState(
+    program?.testSectionId ? String(program.testSectionId) : "",
+  );
   const [frequency, setFrequency] = useState(program?.frequency || "");
   const [isActive, setIsActive] = useState(program?.isActive !== false);
   const [nameError, setNameError] = useState("");
+
+  const [organizations, setOrganizations] = useState([]);
+  const [testSections, setTestSections] = useState([]);
+
+  useEffect(() => {
+    getFromOpenElisServer(
+      "/rest/displayList/REFERRAL_ORGANIZATIONS",
+      (data) => {
+        if (data) {
+          setOrganizations(data);
+        }
+      },
+    );
+    getFromOpenElisServer("/rest/test-sections", (data) => {
+      if (data) {
+        setTestSections(data);
+      }
+    });
+  }, []);
 
   const handleSubmit = () => {
     if (!name.trim()) {
@@ -46,7 +59,13 @@ const ProgramForm = ({ program, onClose }) => {
       return;
     }
 
-    const payload = { name, description, providerName, category, frequency };
+    const payload = {
+      name,
+      description,
+      organizationId: organizationId ? Number(organizationId) : null,
+      testSectionId: testSectionId ? Number(testSectionId) : null,
+      frequency,
+    };
 
     if (isEditing) {
       putToOpenElisServer(
@@ -106,8 +125,8 @@ const ProgramForm = ({ program, onClose }) => {
             <Select
               id="program-provider"
               labelText={intl.formatMessage({ id: "eqa.admin.col.provider" })}
-              value={providerName}
-              onChange={(e) => setProviderName(e.target.value)}
+              value={organizationId}
+              onChange={(e) => setOrganizationId(e.target.value)}
             >
               <SelectItem
                 value=""
@@ -115,8 +134,12 @@ const ProgramForm = ({ program, onClose }) => {
                   id: "eqa.admin.form.provider.placeholder",
                 })}
               />
-              {PROVIDERS.map((p) => (
-                <SelectItem key={p} value={p} text={p} />
+              {organizations.map((org) => (
+                <SelectItem
+                  key={org.id}
+                  value={String(org.id)}
+                  text={org.value}
+                />
               ))}
             </Select>
           </Column>
@@ -124,8 +147,8 @@ const ProgramForm = ({ program, onClose }) => {
             <Select
               id="program-category"
               labelText={intl.formatMessage({ id: "eqa.admin.col.category" })}
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              value={testSectionId}
+              onChange={(e) => setTestSectionId(e.target.value)}
             >
               <SelectItem
                 value=""
@@ -133,8 +156,8 @@ const ProgramForm = ({ program, onClose }) => {
                   id: "eqa.admin.form.category.placeholder",
                 })}
               />
-              {CATEGORIES.map((cat) => (
-                <SelectItem key={cat} value={cat} text={cat} />
+              {testSections.map((ts) => (
+                <SelectItem key={ts.id} value={String(ts.id)} text={ts.value} />
               ))}
             </Select>
           </Column>

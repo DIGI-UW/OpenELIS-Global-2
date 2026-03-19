@@ -37,7 +37,7 @@ public class EQADistribution extends BaseObject<Long> {
     @Column(name = "fhir_uuid", nullable = false, unique = true)
     private UUID fhirUuid;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "eqa_program_id", nullable = false)
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private EQAProgram eqaProgram;
@@ -55,7 +55,7 @@ public class EQADistribution extends BaseObject<Long> {
     @Column(name = "status", nullable = false, length = 20)
     private EQADistributionStatus status = EQADistributionStatus.DRAFT;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "created_by", nullable = false)
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private SystemUser createdBy;

@@ -51,7 +51,20 @@ const Index = () => {
     "sampleOrderItems.labNo": false,
   });
   const [page, setPage] = useState(firstPageNumber);
-  const [orderFormValues, setOrderFormValues] = useState(SampleOrderFormValues);
+  const isEQAFromUrl =
+    new URLSearchParams(window.location.search).get("isEQA") === "true";
+  const [orderFormValues, setOrderFormValues] = useState(() => {
+    if (isEQAFromUrl) {
+      return {
+        ...SampleOrderFormValues,
+        sampleOrderItems: {
+          ...SampleOrderFormValues.sampleOrderItems,
+          isEQASample: true,
+        },
+      };
+    }
+    return SampleOrderFormValues;
+  });
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -79,13 +92,13 @@ const Index = () => {
       const externalId = urlParams.get("ID");
       checkOrderReferral(externalId);
     } else {
-      setOrderFormValues({
-        ...orderFormValues,
+      setOrderFormValues((prev) => ({
+        ...prev,
         sampleOrderItems: {
-          ...orderFormValues.sampleOrderItems,
+          ...prev.sampleOrderItems,
           externalOrderNumber: "",
         },
-      });
+      }));
     }
   }, [configurationProperties.ACCEPT_EXTERNAL_ORDERS]);
 
@@ -792,7 +805,8 @@ const Index = () => {
 
             {page === patientInfoPageNumber && (
               <>
-                {configurationProperties.EQA_ENABLED === "true" && (
+                {(configurationProperties.EQA_ENABLED === "true" ||
+                  orderFormValues?.sampleOrderItems?.isEQASample) && (
                   <EQASampleEntry
                     orderFormValues={orderFormValues}
                     setOrderFormValues={setOrderFormValues}

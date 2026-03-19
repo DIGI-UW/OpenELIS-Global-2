@@ -23,8 +23,7 @@ const PatientInfo = (props) => {
     healthRegion: [],
   });
 
-  const isEQASample =
-    orderFormValues?.sampleOrderItems?.isEQASample || false;
+  const isEQASample = orderFormValues?.sampleOrderItems?.isEQASample || false;
 
   const getSelectedPatient = (patient) => {
     setSelectedPatient(patient);
@@ -153,7 +152,9 @@ const PatientInfo = (props) => {
                 </Column>
                 <Column lg={16} md={8} sm={4}>
                   {searchPatientTab.active && (
-                    <SearchPatientForm getSelectedPatient={getSelectedPatient} />
+                    <SearchPatientForm
+                      getSelectedPatient={getSelectedPatient}
+                    />
                   )}
                 </Column>
               </>

@@ -1,40 +1,68 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Modal, FilterableMultiSelect } from "@carbon/react";
+import { Modal, Tag, ComboBox } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 const EnrollOrgModal = ({ open, programId, onClose, onSubmit }) => {
   const intl = useIntl();
   const [organizations, setOrganizations] = useState([]);
+  const [enrolledOrgIds, setEnrolledOrgIds] = useState(new Set());
   const [selectedOrgs, setSelectedOrgs] = useState([]);
 
-  const fetchOrganizations = useCallback(() => {
-    if (!programId || !open) return;
+  const fetchData = useCallback(() => {
+    if (!open) return;
+
     getFromOpenElisServer(
-      `/rest/eqa/eligible-organizations?programId=${programId}`,
-      (data) => {
-        if (data && Array.isArray(data)) {
-          setOrganizations(data);
+      "/rest/displayList/REFERRAL_ORGANIZATIONS",
+      (orgs) => {
+        if (orgs && Array.isArray(orgs)) {
+          setOrganizations(orgs);
         }
       },
     );
+
+    if (programId) {
+      getFromOpenElisServer(
+        `/rest/eqa/programs/${programId}/enrollments`,
+        (enrollments) => {
+          if (enrollments && Array.isArray(enrollments)) {
+            setEnrolledOrgIds(
+              new Set(
+                enrollments
+                  .filter((e) => e.status === "Active")
+                  .map((e) => String(e.organizationId)),
+              ),
+            );
+          }
+        },
+      );
+    }
   }, [programId, open]);
 
   useEffect(() => {
     if (open) {
-      fetchOrganizations();
+      fetchData();
       setSelectedOrgs([]);
     }
-  }, [open, fetchOrganizations]);
+  }, [open, fetchData]);
 
-  const availableOrgs = organizations
-    .filter((o) => !o.alreadyEnrolled)
-    .map((o) => ({
-      id: String(o.id),
-      text: o.organizationName || "",
-    }));
+  const availableItems = organizations
+    .filter((o) => !enrolledOrgIds.has(String(o.id)))
+    .filter((o) => !selectedOrgs.find((s) => String(s.id) === String(o.id)))
+    .map((o) => ({ id: String(o.id), text: o.value }));
 
-  const enrolledOrgs = organizations.filter((o) => o.alreadyEnrolled);
+  const handleOrgSelect = (e) => {
+    if (e.selectedItem) {
+      setSelectedOrgs([
+        ...selectedOrgs,
+        { id: e.selectedItem.id, name: e.selectedItem.text },
+      ]);
+    }
+  };
+
+  const handleRemoveOrg = (orgId) => {
+    setSelectedOrgs(selectedOrgs.filter((o) => String(o.id) !== String(orgId)));
+  };
 
   const handleSubmit = () => {
     if (selectedOrgs.length > 0) {
@@ -53,7 +81,10 @@ const EnrollOrgModal = ({ open, programId, onClose, onSubmit }) => {
         { count: selectedOrgs.length },
       )}
       secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
-      onRequestClose={onClose}
+      onRequestClose={() => {
+        onClose();
+        setSelectedOrgs([]);
+      }}
       onRequestSubmit={handleSubmit}
       primaryButtonDisabled={selectedOrgs.length === 0}
       size="lg"
@@ -61,44 +92,49 @@ const EnrollOrgModal = ({ open, programId, onClose, onSubmit }) => {
       <p style={{ marginBottom: "1rem", color: "#525252" }}>
         {intl.formatMessage({ id: "eqa.enrollment.selectOrgsPrompt" })}
       </p>
-      <FilterableMultiSelect
-        id="org-multiselect"
+      <ComboBox
+        id="enroll-org-combobox"
         titleText={intl.formatMessage({
           id: "eqa.enrollment.organizationName",
         })}
-        items={availableOrgs}
+        items={availableItems}
         itemToString={(item) => (item ? item.text : "")}
-        onChange={(e) => setSelectedOrgs(e.selectedItems)}
+        onChange={handleOrgSelect}
         placeholder={intl.formatMessage({
           id: "eqa.enrollment.searchOrgs",
         })}
+        selectedItem={null}
+        shouldFilterItem={({ item, inputValue }) =>
+          !inputValue ||
+          item.text.toLowerCase().includes(inputValue.toLowerCase())
+        }
       />
       {selectedOrgs.length > 0 && (
-        <p
-          style={{
-            marginTop: "0.5rem",
-            fontSize: "0.875rem",
-            color: "#0043ce",
-            fontWeight: 500,
-          }}
-        >
-          {selectedOrgs.length}{" "}
-          {intl.formatMessage({ id: "eqa.enrollment.selected" })}
-        </p>
-      )}
-      {enrolledOrgs.length > 0 && (
-        <p
-          style={{
-            marginTop: "1rem",
-            fontSize: "0.75rem",
-            color: "#525252",
-          }}
-        >
-          {intl.formatMessage(
-            { id: "eqa.enrollment.alreadyEnrolledCount" },
-            { count: enrolledOrgs.length },
-          )}
-        </p>
+        <div style={{ marginTop: "1rem" }}>
+          <p
+            style={{
+              fontSize: "0.875rem",
+              color: "#0043ce",
+              fontWeight: 500,
+              marginBottom: "0.5rem",
+            }}
+          >
+            {selectedOrgs.length}{" "}
+            {intl.formatMessage({ id: "eqa.enrollment.selected" })}
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
+            {selectedOrgs.map((org) => (
+              <Tag
+                key={org.id}
+                type="blue"
+                filter
+                onClose={() => handleRemoveOrg(org.id)}
+              >
+                {org.name}
+              </Tag>
+            ))}
+          </div>
+        </div>
       )}
     </Modal>
   );

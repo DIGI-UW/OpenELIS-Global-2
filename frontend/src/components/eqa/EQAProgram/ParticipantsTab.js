@@ -75,7 +75,7 @@ const ParticipantsTab = ({ programs }) => {
 
   const fetchOrganizations = useCallback(() => {
     getFromOpenElisServer(
-      "/rest/displaylist/referral-organizations",
+      "/rest/displayList/REFERRAL_ORGANIZATIONS",
       (data) => {
         if (data && Array.isArray(data)) {
           setOrganizations(data);

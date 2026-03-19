@@ -106,8 +106,10 @@
       <column name="id" type="numeric(10,0)">
         <constraints primaryKey="true" nullable="false"/>
       </column>
-      <column name="program_name" type="VARCHAR(255)">
-        <constraints nullable="false"/>
+      <column name="eqa_program_id" type="numeric(10,0)">
+        <constraints nullable="false"
+                     foreignKeyName="fk_lab_enroll_eqa_program"
+                     references="clinlims.eqa_program(id)"/>
       </column>
       <column name="provider" type="VARCHAR(255)">
         <constraints nullable="false"/>

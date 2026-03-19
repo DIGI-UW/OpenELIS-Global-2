@@ -68,7 +68,7 @@ public class EQALabProgramEnrollmentServiceImpl extends BaseObjectServiceImpl<EQ
         EQALabProgramEnrollment existing = enrollmentDAO.get(id)
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found: " + id));
 
-        existing.setProgramName(updated.getProgramName());
+        existing.setEqaProgram(updated.getEqaProgram());
         existing.setProvider(updated.getProvider());
         existing.setDescription(updated.getDescription());
         existing.setIsActive(updated.getIsActive() != null ? updated.getIsActive() : existing.getIsActive());
@@ -95,7 +95,8 @@ public class EQALabProgramEnrollmentServiceImpl extends BaseObjectServiceImpl<EQ
     @Transactional(readOnly = true)
     public List<String> getDistinctProviders() {
         List<String> labProviders = enrollmentDAO.findDistinctProviders();
-        List<String> programProviders = eqaProgramDAO.findByIsActive(true).stream().map(p -> p.getProviderName())
+        List<String> programProviders = eqaProgramDAO.findByIsActive(true).stream()
+                .map(p -> p.getOrganization() != null ? p.getOrganization().getOrganizationName() : null)
                 .filter(name -> name != null && !name.isBlank()).distinct().collect(Collectors.toList());
 
         return Stream.concat(labProviders.stream(), programProviders.stream()).distinct().sorted()

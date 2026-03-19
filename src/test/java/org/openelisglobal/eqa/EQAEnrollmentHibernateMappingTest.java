@@ -10,6 +10,7 @@ import org.junit.Test;
 import org.openelisglobal.eqa.valueholder.EQALabEnrollmentLabUnit;
 import org.openelisglobal.eqa.valueholder.EQALabEnrollmentTestMap;
 import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
+import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramEnrollment;
 
 /**
@@ -57,15 +58,19 @@ public class EQAEnrollmentHibernateMappingTest {
 
     @Test
     public void testEQALabProgramEnrollmentFieldsCanBeSet() {
+        EQAProgram program = new EQAProgram();
+        program.setName("WHO EQA Program");
+
         EQALabProgramEnrollment enrollment = new EQALabProgramEnrollment();
-        enrollment.setProgramName("WHO EQA Program");
+        enrollment.setEqaProgram(program);
         enrollment.setProvider("WHO");
         enrollment.setDescription("Test description");
         enrollment.setIsActive(true);
         enrollment.setCreatedDate(new Date());
         enrollment.setSysUserId("1");
 
-        assertEquals("WHO EQA Program", enrollment.getProgramName());
+        assertEquals(program, enrollment.getEqaProgram());
+        assertEquals("WHO EQA Program", enrollment.getEqaProgram().getName());
         assertEquals("WHO", enrollment.getProvider());
         assertEquals("Test description", enrollment.getDescription());
         assertTrue(enrollment.getIsActive());
@@ -120,8 +125,11 @@ public class EQAEnrollmentHibernateMappingTest {
 
     @Test
     public void testEQALabProgramEnrollmentChildCollections() {
+        EQAProgram program = new EQAProgram();
+        program.setName("Test");
+
         EQALabProgramEnrollment enrollment = new EQALabProgramEnrollment();
-        enrollment.setProgramName("Test");
+        enrollment.setEqaProgram(program);
         enrollment.setProvider("Provider");
         enrollment.setSysUserId("1");
 

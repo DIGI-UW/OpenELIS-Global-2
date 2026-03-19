@@ -5,22 +5,29 @@ import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.hibernate.ObjectNotFoundException;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.eqa.service.EQADistributionService;
 import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQADistribution;
 import org.openelisglobal.eqa.valueholder.EQADistributionStatus;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
+import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -33,8 +40,31 @@ public class EQADistributionRestControllerTest {
     @Mock
     private EQAProgramService programService;
 
+    @Mock
+    private SystemUserService systemUserService;
+
+    @Mock
+    private HttpServletRequest request;
+
+    @Mock
+    private HttpSession session;
+
     @InjectMocks
     private EQADistributionRestController controller;
+
+    private SystemUser currentUser;
+
+    @Before
+    public void setUp() {
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        when(request.getSession()).thenReturn(session);
+        when(session.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(usd);
+
+        currentUser = new SystemUser();
+        currentUser.setId("1");
+        when(systemUserService.get("1")).thenReturn(currentUser);
+    }
 
     @Test
     public void testCreateDistribution_ValidData_ReturnsOk() {
@@ -50,7 +80,7 @@ public class EQADistributionRestControllerTest {
         body.put("deadline", "2026-06-30");
         body.put("participantOrganizationIds", Arrays.asList(10L, 20L, 30L));
 
-        ResponseEntity<?> response = controller.createDistribution(body);
+        ResponseEntity<?> response = controller.createDistribution(request, body);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         Map<?, ?> result = (Map<?, ?>) response.getBody();
@@ -64,7 +94,7 @@ public class EQADistributionRestControllerTest {
         Map<String, Object> body = new HashMap<>();
         body.put("distributionName", "Round 1");
 
-        ResponseEntity<?> response = controller.createDistribution(body);
+        ResponseEntity<?> response = controller.createDistribution(request, body);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
@@ -77,7 +107,7 @@ public class EQADistributionRestControllerTest {
         body.put("deadline", "2026-06-30");
         body.put("participantOrganizationIds", Collections.singletonList(10L));
 
-        ResponseEntity<?> response = controller.createDistribution(body);
+        ResponseEntity<?> response = controller.createDistribution(request, body);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }

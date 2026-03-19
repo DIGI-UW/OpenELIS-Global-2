@@ -53,16 +53,31 @@ const EQADistributionDashboard = () => {
   });
 
   const fetchData = useCallback(() => {
-    let url = "/rest/eqa/distributions/dashboard";
+    let url = "/rest/eqa/distributions";
     if (statusFilter) {
       url += `?status=${statusFilter}`;
     }
     getFromOpenElisServer(url, (data) => {
       if (data) {
-        setShipments(data.shipments || data.distributions || []);
-        if (data.summary) setSummary(data.summary);
-        if (data.participantNetwork)
-          setParticipantNetwork(data.participantNetwork);
+        const distributions = data.distributions || [];
+        setShipments(distributions);
+
+        // Compute summary from distributions
+        const draft = distributions.filter(
+          (d) => d.status === "DRAFT",
+        ).length;
+        const shipped = distributions.filter(
+          (d) => d.status === "SHIPPED",
+        ).length;
+        const completed = distributions.filter(
+          (d) => d.status === "COMPLETED",
+        ).length;
+        setSummary({
+          draft,
+          shipped,
+          completed,
+          participants: data.totalCount || distributions.length,
+        });
       }
     });
   }, [statusFilter]);
