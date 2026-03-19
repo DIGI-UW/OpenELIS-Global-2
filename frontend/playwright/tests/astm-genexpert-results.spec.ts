@@ -1,7 +1,13 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page, TestInfo, Locator } from "@playwright/test";
 import { showTitleCard, showStepCard } from "../helpers/title-card";
 import { isVideoProject, videoPause } from "../helpers/video-pause";
 import { acceptAndVerifyResults } from "../helpers/accept-results";
+import {
+  findAnalyzerRow,
+  goToAnalyzerDashboard,
+} from "../helpers/analyzer-dashboard";
+import { cleanupAnalyzerByName } from "../helpers/cleanup-analyzer";
+import { LONG_TIMEOUT, UI_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * GeneXpert ASTM Push → Results E2E Tests
@@ -40,37 +46,16 @@ const EXPECTED_RESULTS = [
 
 // ── Shared helpers ─────────────────────────────────────────────────────
 
-/** Navigate to analyzer dashboard and wait for API load */
-async function goToAnalyzerDashboard(page: any) {
-  const apiPromise = page.waitForResponse(
-    (resp: any) =>
-      resp.url().includes("/rest/analyzer/analyzers") && resp.status() === 200,
-    { timeout: 30_000 },
-  );
-  await page.goto("analyzers", { waitUntil: "domcontentloaded" });
-  await apiPromise;
-  await expect(page.locator('[data-testid="analyzers-list"]')).toBeVisible({
-    timeout: 30_000,
-  });
-}
-
-/** Find an analyzer row by name in the dashboard table */
-async function findAnalyzerRow(page: any, name: string, testInfo: any) {
-  const searchInput = page.locator('[data-testid="analyzer-search-input"]');
-  await searchInput.fill(name);
-  await videoPause(page, 1_500, testInfo);
-
-  const row = page.locator("tbody tr", {
-    hasText: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
-  });
-  await expect(row.first()).toBeVisible({ timeout: 10_000 });
-  console.log(`Found analyzer: ${name}`);
-  return row;
-}
-
 /** Open overflow menu → Test Connection → verify success → close modal */
-async function testConnection(page: any, analyzerRow: any, testInfo: any) {
-  const overflow = analyzerRow.first().locator(".cds--overflow-menu").first();
+async function testConnection(
+  page: Page,
+  analyzerRow: Locator,
+  testInfo: TestInfo,
+) {
+  const overflow = analyzerRow
+    .first()
+    .locator('[data-testid^="analyzer-row-overflow-"]')
+    .first();
   await overflow.click();
   await videoPause(page, 500, testInfo);
 
@@ -111,9 +96,9 @@ async function testConnection(page: any, analyzerRow: any, testInfo: any) {
 
 /** Trigger ASTM push via simulator and poll until results arrive */
 async function pushAstmAndWaitForResults(
-  page: any,
+  page: Page,
   analyzerName: string,
-  testInfo: any,
+  testInfo: TestInfo,
 ) {
   const simulatorRes = await page.request.post(
     `${SIMULATOR_URL}/simulate/astm/genexpert_astm`,
@@ -136,20 +121,22 @@ async function pushAstmAndWaitForResults(
     const data = await resp.json().catch(() => null);
     resultCount = data?.resultList?.length ?? 0;
     if (resultCount > 0) break;
-    await page.waitForTimeout(3_000);
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
   }
   console.log(`Results available after polling: ${resultCount}`);
   await videoPause(page, 1_000, testInfo);
 }
 
 /** Navigate to AnalyzerResults page and verify all expected values */
-async function verifyResults(page: any, analyzerName: string, testInfo: any) {
-  const apiResponsePromise = page
-    .waitForResponse(
-      (resp: any) => resp.url().includes("/rest/AnalyzerResults"),
-      { timeout: 30_000 },
-    )
-    .catch(() => null);
+async function verifyResults(
+  page: Page,
+  analyzerName: string,
+  testInfo: TestInfo,
+) {
+  const apiResponsePromise = page.waitForResponse(
+    (resp) => resp.url().includes("/rest/AnalyzerResults"),
+    { timeout: LONG_TIMEOUT },
+  );
 
   await page.goto(`AnalyzerResults?type=${encodeURIComponent(analyzerName)}`, {
     waitUntil: "domcontentloaded",
@@ -172,7 +159,7 @@ async function verifyResults(page: any, analyzerName: string, testInfo: any) {
   await videoPause(page, 3_000, testInfo);
 
   const resultsTable = page.locator("table, .orderLegendBody");
-  await expect(resultsTable.first()).toBeVisible({ timeout: 15_000 });
+  await expect(resultsTable.first()).toBeVisible({ timeout: LONG_TIMEOUT });
 
   await expect(
     page
@@ -180,7 +167,7 @@ async function verifyResults(page: any, analyzerName: string, testInfo: any) {
         hasText: EXPECTED_RESULTS[0].sampleId,
       })
       .first(),
-  ).toBeVisible({ timeout: 10_000 });
+  ).toBeVisible({ timeout: UI_TIMEOUT });
 
   for (const expected of EXPECTED_RESULTS) {
     const inputCount = await page
@@ -190,11 +177,11 @@ async function verifyResults(page: any, analyzerName: string, testInfo: any) {
     if (inputCount > 0) {
       await expect(
         page.locator(`input[value*="${expected.result}"]`).first(),
-      ).toBeVisible({ timeout: 5_000 });
+      ).toBeVisible({ timeout: UI_TIMEOUT });
     } else {
       await expect(
         page.getByText(expected.result, { exact: false }).first(),
-      ).toBeVisible({ timeout: 5_000 });
+      ).toBeVisible({ timeout: UI_TIMEOUT });
     }
 
     console.log(
@@ -510,47 +497,9 @@ test.describe("GeneXpert ASTM — Full Create Flow", () => {
     if (!CLEANUP || !createdAnalyzerName) return;
 
     try {
-      await page.goto("analyzers", { waitUntil: "domcontentloaded" });
-      const searchInput = page.locator('[data-testid="analyzer-search-input"]');
-      await searchInput.fill(createdAnalyzerName);
-      await page.waitForTimeout(1_000);
-
-      const row = page.locator("tbody tr", {
-        hasText: new RegExp(
-          createdAnalyzerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-          "i",
-        ),
-      });
-      if (
-        await row
-          .first()
-          .isVisible({ timeout: 3_000 })
-          .catch(() => false)
-      ) {
-        const overflow = row.first().locator(".cds--overflow-menu").first();
-        await overflow.click();
-        await page.waitForTimeout(500);
-
-        const deleteAction = page
-          .locator('[data-testid*="analyzer-action-delete"]')
-          .first();
-        if (
-          await deleteAction.isVisible({ timeout: 2_000 }).catch(() => false)
-        ) {
-          await deleteAction.click();
-          const confirmButton = page
-            .getByRole("button", { name: /delete|confirm/i })
-            .last();
-          if (
-            await confirmButton.isVisible({ timeout: 3_000 }).catch(() => false)
-          ) {
-            await confirmButton.click();
-            await page.waitForTimeout(1_000);
-          }
-        }
-      }
-    } catch {
-      // Cleanup failure is not a test failure
+      await cleanupAnalyzerByName(page, createdAnalyzerName);
+    } catch (error) {
+      console.warn("Cleanup failure for created analyzer:", error);
     }
   });
 });

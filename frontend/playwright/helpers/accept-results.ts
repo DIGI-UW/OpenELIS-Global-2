@@ -80,7 +80,7 @@ export async function acceptAndVerifyResults(
   // After save, the page reloads and should show no results
   // (all were accepted → promoted to result table)
   const noResults = page.getByText("There are no records to display");
-  await noResults.isVisible({ timeout: 5_000 }).catch(() => false);
+  await expect(noResults).toBeVisible({ timeout: 10_000 });
 
   if (isVideoProject(testInfo)) {
     await page.screenshot({
@@ -111,12 +111,9 @@ export async function acceptAndVerifyResults(
     await logbookPromise;
 
     // Verify the accession number appears in the results table.
-    // Auto-created samples may not appear immediately — check but don't block.
-    await page
-      .getByText(accessionNumber)
-      .first()
-      .isVisible({ timeout: 10_000 })
-      .catch(() => false);
+    await expect(page.getByText(accessionNumber).first()).toBeVisible({
+      timeout: 15_000,
+    });
     if (isVideoProject(testInfo)) {
       await page.screenshot({
         path: `test-results/${testInfo.title.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 40)}-accession-results.png`,

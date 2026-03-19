@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { captureDebugContext } from "../helpers/debug-context";
 import { videoPause } from "../helpers/video-pause";
+import { cleanupAnalyzerByName } from "../helpers/cleanup-analyzer";
 
 /**
  * QuantStudio 7 MVP Workflow E2E
@@ -85,7 +86,9 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     await pluginTypeDropdown.click();
     await videoPause(page, 500, testInfo);
 
-    const dropdownOptions = page.locator('[role="option"]');
+    const dropdownOptions = page.locator(
+      '[role="listbox"]:visible [role="option"]',
+    );
     const fileOption = dropdownOptions.filter({ hasText: /FILE/i }).first();
     if (await fileOption.isVisible({ timeout: 2_000 }).catch(() => false)) {
       await fileOption.click();
@@ -138,7 +141,9 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     await videoPause(page, 1_000, testInfo);
 
     // ── Step 6: Configure File Import ────────────────────────────
-    const overflowMenu = analyzerRow.locator(".cds--overflow-menu").first();
+    const overflowMenu = analyzerRow
+      .locator('[data-testid^="analyzer-row-overflow-"]')
+      .first();
     await overflowMenu.click();
     await videoPause(page, 500, testInfo);
 
@@ -219,7 +224,9 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
 
     // ── Step 7: Test Connection ──────────────────────────────────
     await expect(analyzerRow).toBeVisible({ timeout: 10_000 });
-    const overflowMenu2 = analyzerRow.locator(".cds--overflow-menu").first();
+    const overflowMenu2 = analyzerRow
+      .locator('[data-testid^="analyzer-row-overflow-"]')
+      .first();
     await overflowMenu2.click();
     await videoPause(page, 500, testInfo);
 
@@ -268,6 +275,10 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     // ── Step 8: Verify back at list ──────────────────────────────
     await expect(analyzerList).toBeVisible({ timeout: 10_000 });
     await videoPause(page, 1_500, testInfo);
+    expect(
+      consoleErrors,
+      `Browser console errors during file-import-ui test: ${consoleErrors.join("\n")}`,
+    ).toHaveLength(0);
   });
 
   test.afterEach(async ({ page }) => {
@@ -275,32 +286,9 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
 
     // Clean up: delete the created analyzer via overflow menu
     try {
-      await page.goto("analyzers", { waitUntil: "domcontentloaded" });
-      const searchInput = page.locator('[data-testid="analyzer-search-input"]');
-      await searchInput.fill(createdAnalyzerName);
-
-      const qsRow = page.locator("tbody tr", {
-        hasText: new RegExp(escapeRegExp(createdAnalyzerName), "i"),
-      });
-      const analyzerRow = qsRow.first();
-      if (await analyzerRow.isVisible({ timeout: 3_000 }).catch(() => false)) {
-        const overflow = analyzerRow.locator(".cds--overflow-menu").first();
-        await overflow.click();
-        const deleteAction = analyzerRow
-          .locator('[data-testid*="analyzer-action-delete"]')
-          .first();
-        await expect(deleteAction).toBeVisible({ timeout: 3_000 });
-
-        await deleteAction.click();
-        // Confirm deletion in the modal
-        const confirmButton = page
-          .getByRole("button", { name: /delete|confirm/i })
-          .last();
-        await expect(confirmButton).toBeVisible({ timeout: 3_000 });
-        await confirmButton.click();
-      }
-    } catch {
-      // Cleanup failure is not a test failure
+      await cleanupAnalyzerByName(page, createdAnalyzerName);
+    } catch (error) {
+      console.warn("Cleanup failure for created analyzer:", error);
     }
   });
 });

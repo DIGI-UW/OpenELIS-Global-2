@@ -235,18 +235,9 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
     await siteInput.clear();
     await siteInput.fill("CAMES MAN");
     await pause(1200);
-    // Try each autocomplete suggestion selector
-    for (const sel of [
-      ".suggestion-active",
-      ".react-autosuggest__suggestion--highlighted",
-      ".react-autosuggest__suggestions-list li:first-child",
-    ]) {
-      const s = page.locator(sel).first();
-      if (await s.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await s.click();
-        break;
-      }
-    }
+    const siteSuggestion = page.locator('[data-cy="auto-suggestion"]').first();
+    await expect(siteSuggestion).toBeVisible({ timeout: 5_000 });
+    await siteSuggestion.click();
     await pause(600);
   }
 
@@ -256,17 +247,11 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
     await requesterLookup.clear();
     await requesterLookup.fill("Prime, Optimus");
     await pause(800);
-    for (const sel of [
-      ".suggestion-active",
-      ".react-autosuggest__suggestion--highlighted",
-      ".react-autosuggest__suggestions-list li:first-child",
-    ]) {
-      const s = page.locator(sel).first();
-      if (await s.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await s.click();
-        break;
-      }
-    }
+    const requesterSuggestion = page
+      .locator('[data-cy="auto-suggestion"]')
+      .first();
+    await expect(requesterSuggestion).toBeVisible({ timeout: 5_000 });
+    await requesterSuggestion.click();
     await pause(400);
   }
 
@@ -304,6 +289,34 @@ async function selectPanelOrTest(page: Page, pause: PauseFn) {
   await pause(400);
 }
 
+async function gotoBarcodeConfig(page: Page, pause: PauseFn) {
+  await page.goto("/MasterListsPage/barcodeConfiguration", {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(page.getByRole("button", { name: "Save" })).toBeVisible({
+    timeout: 15_000,
+  });
+  await pause(1_000);
+}
+
+async function gotoSamplePatientEntry(page: Page, pause: PauseFn) {
+  await page.goto("/SamplePatientEntry", { waitUntil: "domcontentloaded" });
+  await expect(page.locator('[data-cy="searchPatientTabButton"]')).toBeVisible({
+    timeout: 15_000,
+  });
+  await pause(1_000);
+}
+
+async function gotoPrintBarcode(page: Page, pause: PauseFn) {
+  await page.goto("/PrintBarcode", { waitUntil: "domcontentloaded" });
+  await expect(
+    page.getByRole("heading", { name: /print bar code labels/i }),
+  ).toBeVisible({
+    timeout: 15_000,
+  });
+  await pause(1_000);
+}
+
 // ─── User Story 1: Admin configures barcode label quantities ─────────────────
 
 test("US1 — Admin configures barcode label quantities", async ({
@@ -320,9 +333,7 @@ test("US1 — Admin configures barcode label quantities", async ({
     testInfo,
   );
 
-  await page.goto("/MasterListsPage/barcodeConfiguration");
-  await page.waitForLoadState("networkidle");
-  await pause(1500);
+  await gotoBarcodeConfig(page, pause);
 
   // ── Default quantities ──────────────────────────────────────────
   await showTitleCard(
@@ -393,9 +404,11 @@ test("US1 — Admin configures barcode label quantities", async ({
   await saveButton.click();
   await pause(2500); // wait for success notification
 
-  await page.reload();
-  await page.waitForLoadState("networkidle");
-  await pause(1500);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("button", { name: "Save" })).toBeVisible({
+    timeout: 15_000,
+  });
+  await pause(1_000);
 
   await scrollToAndPause(page, defaultOrderInput, pause, 2000);
 
@@ -425,9 +438,7 @@ test("US2 — Capture label quantities during sample creation", async ({
   );
   await showSceneLabel(page, "US2 · Add Order", testInfo);
 
-  await page.goto("/SamplePatientEntry");
-  await page.waitForLoadState("networkidle");
-  await pause(1500);
+  await gotoSamplePatientEntry(page, pause);
 
   // ── Step 0: Patient search & select ─────────────────────────────
   await showSceneLabel(page, "US2 · Step 0: Patient", testInfo);
@@ -534,9 +545,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   await showSceneLabel(page, "US3 · Post-Save Printing", testInfo);
 
   // Quickly reach the success page by submitting an order
-  await page.goto("/SamplePatientEntry");
-  await page.waitForLoadState("networkidle");
-  await pause(1000);
+  await gotoSamplePatientEntry(page, pause);
 
   await selectPatient(page, "Smith", "John", pause);
   await clickNext(page, pause);
@@ -622,9 +631,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   );
   await showSceneLabel(page, "US3 · FR-013 — Reprint Entry", testInfo);
 
-  await page.goto("/PrintBarcode");
-  await page.waitForLoadState("networkidle");
-  await pause(1500);
+  await gotoPrintBarcode(page, pause);
 
   const printBarcodeHeading = page.getByRole("heading", {
     name: /print bar code labels/i,

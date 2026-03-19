@@ -1,9 +1,15 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page, TestInfo, Locator } from "@playwright/test";
 import * as fs from "fs";
 import * as path from "path";
 import { showTitleCard, showStepCard } from "../helpers/title-card";
 import { isVideoProject, videoPause } from "../helpers/video-pause";
 import { acceptAndVerifyResults } from "../helpers/accept-results";
+import {
+  findAnalyzerRow,
+  goToAnalyzerDashboard,
+} from "../helpers/analyzer-dashboard";
+import { cleanupAnalyzerByName } from "../helpers/cleanup-analyzer";
+import { LONG_TIMEOUT, UI_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * FILE Import → Results E2E Tests (Parameterized)
@@ -122,43 +128,14 @@ const ANALYZERS = [
 
 // ── Shared helpers ─────────────────────────────────────────────────────
 
-/** Navigate to analyzer dashboard and wait for API load */
-async function goToAnalyzerDashboard(page: any, testInfo: any) {
-  const apiPromise = page.waitForResponse(
-    (resp: any) =>
-      resp.url().includes("/rest/analyzer/analyzers") && resp.status() === 200,
-    { timeout: 30_000 },
-  );
-  await page.goto("analyzers", { waitUntil: "domcontentloaded" });
-  await apiPromise;
-  await expect(page.locator('[data-testid="analyzers-list"]')).toBeVisible({
-    timeout: 30_000,
-  });
-  await videoPause(page, 1_500, testInfo);
-}
-
-/** Find an analyzer row by name in the dashboard table */
-async function findAnalyzerRow(page: any, name: string, testInfo: any) {
-  const searchInput = page.locator('[data-testid="analyzer-search-input"]');
-  await searchInput.fill(name);
-  await videoPause(page, 1_500, testInfo);
-
-  const row = page.locator("tbody tr", {
-    hasText: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
-  });
-  await expect(row.first()).toBeVisible({ timeout: 10_000 });
-  console.log(`Found analyzer: ${name}`);
-  return row;
-}
-
 /** Drop a fixture file into the import directory and wait for processing */
 async function dropFileAndWait(
-  page: any,
+  page: Page,
   fixtureFile: string,
   hostImportDir: string,
   filePrefix: string,
   fileExtension: string,
-  testInfo: any,
+  testInfo: TestInfo,
 ) {
   // Ensure host directory exists
   if (!fs.existsSync(hostImportDir)) {
@@ -174,33 +151,14 @@ async function dropFileAndWait(
   expect(fs.existsSync(destPath)).toBeTruthy();
   await videoPause(page, 2_000, testInfo);
 
-  // Wait for FileImportWatchService to process (polls every 60s)
-  let fileProcessed = false;
-  const maxWaitMs = 120_000;
-  const pollIntervalMs = 5_000;
-  let elapsed = 0;
-
-  console.log("Waiting for FileImportWatchService to process file...");
-
-  while (elapsed < maxWaitMs) {
-    if (!fs.existsSync(destPath)) {
-      console.log(`File processed after ${elapsed / 1000}s`);
-      fileProcessed = true;
-      break;
-    }
-    await page.waitForTimeout(pollIntervalMs);
-    elapsed += pollIntervalMs;
-
-    if (elapsed % 15_000 === 0) {
-      console.log(`  Still waiting... (${elapsed / 1000}s elapsed)`);
-    }
-  }
-
-  if (!fileProcessed) {
-    console.log(
-      "File not moved after timeout — checking API for results anyway",
-    );
-  }
+  // Wait for FileImportWatchService to process (file moved from incoming dir).
+  await expect
+    .poll(() => !fs.existsSync(destPath), {
+      timeout: 120_000,
+      intervals: [2_000, 5_000, 10_000],
+      message: `Waiting for ${destFilename} to be processed by watch service`,
+    })
+    .toBeTruthy();
 
   await videoPause(page, 2_000, testInfo);
   return destPath;
@@ -208,18 +166,16 @@ async function dropFileAndWait(
 
 /** Navigate to AnalyzerResults page and verify expected values */
 async function verifyFileResults(
-  page: any,
+  page: Page,
   analyzerName: string,
   expectedResults: Array<{ sampleId: string; result: string }>,
   headerMarker: string,
-  testInfo: any,
+  testInfo: TestInfo,
 ) {
-  const apiResponsePromise = page
-    .waitForResponse(
-      (resp: any) => resp.url().includes("/rest/AnalyzerResults"),
-      { timeout: 30_000 },
-    )
-    .catch(() => null);
+  const apiResponsePromise = page.waitForResponse(
+    (resp) => resp.url().includes("/rest/AnalyzerResults"),
+    { timeout: LONG_TIMEOUT },
+  );
 
   await page.goto(`AnalyzerResults?type=${encodeURIComponent(analyzerName)}`, {
     waitUntil: "domcontentloaded",
@@ -242,7 +198,7 @@ async function verifyFileResults(
   await videoPause(page, 3_000, testInfo);
 
   const resultsTable = page.locator("table, .orderLegendBody");
-  await expect(resultsTable.first()).toBeVisible({ timeout: 15_000 });
+  await expect(resultsTable.first()).toBeVisible({ timeout: LONG_TIMEOUT });
 
   // Regression check: header row should NOT be imported as data
   const headerMarkerLocator = page
@@ -255,10 +211,10 @@ async function verifyFileResults(
 
   for (const expected of expectedResults) {
     const sampleText = page.getByText(expected.sampleId);
-    await expect(sampleText.first()).toBeVisible({ timeout: 15_000 });
+    await expect(sampleText.first()).toBeVisible({ timeout: LONG_TIMEOUT });
 
     const resultText = page.getByText(expected.result, { exact: false });
-    await expect(resultText.first()).toBeVisible({ timeout: 5_000 });
+    await expect(resultText.first()).toBeVisible({ timeout: UI_TIMEOUT });
 
     console.log(`  ✓ ${expected.sampleId} → ${expected.result}`);
   }
@@ -525,7 +481,7 @@ for (const analyzer of ANALYZERS) {
 
       const overflowMenu = analyzerRow
         .first()
-        .locator(".cds--overflow-menu")
+        .locator('[data-testid^="analyzer-row-overflow-"]')
         .first();
       await overflowMenu.click();
       await videoPause(page, 500, testInfo);
@@ -665,51 +621,9 @@ for (const analyzer of ANALYZERS) {
       if (!CLEANUP || !createdAnalyzerName) return;
 
       try {
-        await page.goto("analyzers", { waitUntil: "domcontentloaded" });
-        const searchInput = page.locator(
-          '[data-testid="analyzer-search-input"]',
-        );
-        await searchInput.fill(createdAnalyzerName);
-        await page.waitForTimeout(1_000);
-
-        const row = page.locator("tbody tr", {
-          hasText: new RegExp(
-            createdAnalyzerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-            "i",
-          ),
-        });
-        if (
-          await row
-            .first()
-            .isVisible({ timeout: 3_000 })
-            .catch(() => false)
-        ) {
-          const overflow = row.first().locator(".cds--overflow-menu").first();
-          await overflow.click();
-          await page.waitForTimeout(500);
-
-          const deleteAction = page
-            .locator('[data-testid*="analyzer-action-delete"]')
-            .first();
-          if (
-            await deleteAction.isVisible({ timeout: 2_000 }).catch(() => false)
-          ) {
-            await deleteAction.click();
-            const confirmButton = page
-              .getByRole("button", { name: /delete|confirm/i })
-              .last();
-            if (
-              await confirmButton
-                .isVisible({ timeout: 3_000 })
-                .catch(() => false)
-            ) {
-              await confirmButton.click();
-              await page.waitForTimeout(1_000);
-            }
-          }
-        }
-      } catch {
-        // Cleanup failure is not a test failure
+        await cleanupAnalyzerByName(page, createdAnalyzerName);
+      } catch (error) {
+        console.warn("Cleanup failure for created analyzer:", error);
       }
     });
   });

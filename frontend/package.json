@@ -72,6 +72,7 @@
     "ci:deps": "node -e \"console.log('npm ci (~2–8 min): Cypress postinstall is large; use this script for progress + logs.\\n')\" && npm ci --progress=true --loglevel=info",
     "pw:install": "playwright install chromium",
     "pw:test": "playwright test",
+    "pw:guard:no-timeout": "node scripts/pw-no-timeout-guard.mjs",
     "pw:test:harness": "playwright test --project=harness",
     "pw:test:demo": "playwright test --project=demo",
     "pw:test:ui": "playwright test --ui",

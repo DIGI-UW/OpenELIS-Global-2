@@ -30,7 +30,7 @@ export default defineConfig({
 
   // Parallelization
   fullyParallel: true,
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 2 : undefined,
   shardingMode: "round-robin",
 
   // CI safeguards
@@ -50,7 +50,7 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
 
     // Evidence collection
-    trace: "on-first-retry",
+    trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: process.env.PLAYWRIGHT_VIDEO === "on" ? "on" : "off",
   },
