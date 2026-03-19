@@ -806,6 +806,7 @@ function CreatePatientForm(props) {
                           id: "patient.subject.number",
                         })}
                         id={field.name}
+                        maxLength={255}
                         invalid={errors.subjectNumber && touched.subjectNumber}
                         invalidText={errors.subjectNumber}
                         onMouseOut={() => {
@@ -839,6 +840,7 @@ function CreatePatientForm(props) {
                         </>
                       }
                       id={field.name}
+                      maxLength={255}
                       invalid={
                         props.error
                           ? props.error("patientProperties.nationalId")
@@ -883,6 +885,7 @@ function CreatePatientForm(props) {
                         id: "patient.last.name",
                       })}
                       id={field.name}
+                      maxLength={255}
                       invalid={errors.lastName && touched.lastName}
                       invalidText={errors.lastName}
                       placeholder={intl.formatMessage({
@@ -903,6 +906,7 @@ function CreatePatientForm(props) {
                         id: "patient.first.name",
                       })}
                       id={field.name}
+                      maxLength={255}
                       invalid={errors.firstName && touched.firstName}
                       invalidText={errors.firstName}
                       placeholder={intl.formatMessage({
@@ -1087,6 +1091,7 @@ function CreatePatientForm(props) {
                                 id: "patientcontact.person.lastname",
                               })}
                               id={field.name}
+                              maxLength={255}
                               onChange={(e) => handleLastContactNameChange(e)}
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.lastname",
@@ -1107,6 +1112,7 @@ function CreatePatientForm(props) {
                                 id: "patientcontact.person.firstname",
                               })}
                               id={field.name}
+                              maxLength={255}
                               onChange={(e) => handleFirstContactNameChange(e)}
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.firstname",
