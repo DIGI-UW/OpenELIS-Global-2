@@ -104,6 +104,9 @@ jobs:
           timeout 120 bash -c 'until curl -s -f http://localhost:8442/actuator/health > /dev/null; do sleep 2; done'
           timeout 120 bash -c 'until curl -s -f http://localhost:8085/health > /dev/null; do sleep 2; done'
 
+      - name: Verify harness env (FILE_IMPORT_POLL_INTERVAL, ANALYZER_BRIDGE_URL)
+        run: docker exec openelisglobal-webapp env | grep -E 'FILE_IMPORT|ANALYZER_BRIDGE' || echo "(no matches)"
+
       - name: "Load test fixtures (parity with local: foundational + analyzer types + cleanup + storage)"
         run: ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
 
@@ -248,6 +251,9 @@ jobs:
           timeout 120 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done'
           timeout 120 bash -c 'until curl -s -f http://localhost:8442/actuator/health > /dev/null; do sleep 2; done'
           timeout 120 bash -c 'until curl -s -f http://localhost:8085/health > /dev/null; do sleep 2; done'
+
+      - name: Verify harness env (FILE_IMPORT_POLL_INTERVAL, ANALYZER_BRIDGE_URL)
+        run: docker exec openelisglobal-webapp env | grep -E 'FILE_IMPORT|ANALYZER_BRIDGE' || echo "(no matches)"
 
       - name: "Load test fixtures (parity with local: foundational + analyzer types + cleanup + storage)"
         run: ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
