@@ -3,7 +3,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Publish Dev Docker Images - Backend
+name: Publishing / Dev Images / Backend
 
 on:
   push:

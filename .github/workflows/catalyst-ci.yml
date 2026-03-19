@@ -1,4 +1,4 @@
-name: Catalyst CI Tests
+name: Projects / Catalyst
 
 on:
   push:
@@ -15,13 +15,17 @@ on:
 
 jobs:
   test-catalyst:
+    name: ${{ matrix.display }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        project:
-          - catalyst-gateway
-          - catalyst-agents
-          - catalyst-mcp
+        include:
+          - project: catalyst-gateway
+            display: Gateway
+          - project: catalyst-agents
+            display: Agents
+          - project: catalyst-mcp
+            display: MCP
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
