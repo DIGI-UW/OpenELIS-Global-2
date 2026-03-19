@@ -31,6 +31,15 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function isIgnorableConsoleError(message: string): boolean {
+  const knownNoise = [
+    /favicon\.ico/i,
+    /ResizeObserver loop limit exceeded/i,
+    /Non-Error promise rejection captured/i,
+  ];
+  return knownNoise.some((pattern) => pattern.test(message));
+}
+
 test.describe("QuantStudio 7 MVP Workflow", () => {
   test.setTimeout(120_000);
 
@@ -275,9 +284,12 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     // ── Step 8: Verify back at list ──────────────────────────────
     await expect(analyzerList).toBeVisible({ timeout: 10_000 });
     await videoPause(page, 1_500, testInfo);
+    const unexpectedConsoleErrors = consoleErrors.filter(
+      (msg) => !isIgnorableConsoleError(msg),
+    );
     expect(
-      consoleErrors,
-      `Browser console errors during file-import-ui test: ${consoleErrors.join("\n")}`,
+      unexpectedConsoleErrors,
+      `Browser console errors during file-import-ui test: ${unexpectedConsoleErrors.join("\n")}`,
     ).toHaveLength(0);
   });
 

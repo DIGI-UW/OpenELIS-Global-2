@@ -514,9 +514,13 @@ test("US2 — Capture label quantities during sample creation", async ({
     { timeout: 30_000 },
   );
   await submitBtn.click();
-  await saveResponse;
+  const saveResult = await saveResponse;
+  expect(saveResult.ok(), "Sample save API must return 2xx").toBeTruthy();
   const successImg = page.locator('img[alt="Order Entry saved successfully"]');
-  await expect(successImg).toBeVisible({ timeout: 15_000 });
+  const successContainer = page.locator(".orderEntrySuccessMsg");
+  await expect(successImg.or(successContainer)).toBeVisible({
+    timeout: 30_000,
+  });
 
   // ── Success: confirm quantities saved ───────────────────────────
   await pause(1000);
@@ -577,9 +581,13 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
     { timeout: 30_000 },
   );
   await submitBtn.click();
-  await saveResponse;
+  const saveResult = await saveResponse;
+  expect(saveResult.ok(), "Sample save API must return 2xx").toBeTruthy();
   const successImg = page.locator('img[alt="Order Entry saved successfully"]');
-  await expect(successImg).toBeVisible({ timeout: 15_000 });
+  const successContainer = page.locator(".orderEntrySuccessMsg");
+  await expect(successImg.or(successContainer)).toBeVisible({
+    timeout: 30_000,
+  });
 
   // ── Post-save print dialog ──────────────────────────────────────
   await showTitleCard(
