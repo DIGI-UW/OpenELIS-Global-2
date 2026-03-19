@@ -441,7 +441,7 @@ complete.
 ### Additional M3 Work (Completed 2026-01-27)
 
 - [x] T099 [M3] Add Playwright CI workflow:
-      `.github/workflows/playwright-e2e.yml`
+      `.github/workflows/e2e-playwright.yml`
 - [x] T100 [M3] Add storage subnav structure (FR-014): Liquibase migration +
       translations
 - [x] T101 [M3] Add Playwright best practices documentation
