@@ -102,22 +102,31 @@ jobs:
         run: |
           TAG="sha-${GITHUB_SHA}"
           OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
-          docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/e2e-images.txt
-          : > /tmp/e2e-image-map.txt
-          while IFS= read -r image; do
-            [ -z "$image" ] && continue
+          docker compose -f build.docker-compose.yml config --images | sort -u > /tmp/e2e-images-base.txt
+          docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/e2e-images-full.txt
+          xargs -I{} -P4 bash -lc '
+            image="$1"
+            [ -z "$image" ] && exit 0
             if docker image inspect "$image" >/dev/null 2>&1; then
-              image_repo="$(echo "$image" | tr '[:upper:]' '[:lower:]' | sed 's|[^a-z0-9._/-]|-|g')"
-              ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/${image_repo}:${TAG}"
+              image_repo="$(echo "$image" | tr "[:upper:]" "[:lower:]" | sed "s|[^a-z0-9._/-]|-|g")"
+              ghcr_image="ghcr.io/'"${OWNER_LOWER}"'/openelis-global-2/e2e-cache/${image_repo}:'"${TAG}"'"
               docker tag "$image" "$ghcr_image"
-              docker push "$ghcr_image"
-              printf "%s|%s\n" "$image" "$ghcr_image" >> /tmp/e2e-image-map.txt
+              docker push "$ghcr_image" >/dev/null
+              printf "%s|%s\n" "$image" "$ghcr_image"
             else
-              echo "WARN: skipping $image (not built locally)"
+              echo "WARN: skipping $image (not built locally)" >&2
             fi
-          done < /tmp/e2e-images.txt
+          ' _ {} < /tmp/e2e-images-full.txt | sort -u > /tmp/e2e-image-map.txt
+
+          awk -F'|' 'NR==FNR {base[$1]=1; next} ($1 in base) {print}' \
+            /tmp/e2e-images-base.txt /tmp/e2e-image-map.txt > /tmp/e2e-image-map-base.txt
+
           if [ ! -s /tmp/e2e-image-map.txt ]; then
             echo "No locally available images were pushed to GHCR."
+            exit 1
+          fi
+          if [ ! -s /tmp/e2e-image-map-base.txt ]; then
+            echo "No base compose images were mapped for shard jobs."
             exit 1
           fi
           echo "Pushed image mappings:"
@@ -136,6 +145,14 @@ jobs:
         with:
           name: e2e-image-map
           path: /tmp/e2e-image-map.txt
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload base Docker image map artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-image-map-base
+          path: /tmp/e2e-image-map-base.txt
           if-no-files-found: error
           retention-days: 1
 
@@ -170,8 +187,23 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      - name: Restore Playwright browser cache
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install chromium --with-deps
+        working-directory: frontend
+
+      - name: Verify Playwright browsers from cache
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install chromium
         working-directory: frontend
 
       - name: Prepare .env from template
@@ -180,7 +212,7 @@ jobs:
       - name: Download Docker image map artifact
         uses: actions/download-artifact@v4
         with:
-          name: e2e-image-map
+          name: e2e-image-map-base
           path: /tmp/e2e-image-map
 
       - name: Login to GHCR
@@ -192,11 +224,12 @@ jobs:
 
       - name: Pull and retag prebuilt compose images
         run: |
-          while IFS='|' read -r source_image ghcr_image; do
-            [ -z "$source_image" ] && continue
-            docker pull "$ghcr_image"
+          xargs -I{} -P4 bash -lc '
+            IFS="|" read -r source_image ghcr_image <<< "$1"
+            [ -z "$source_image" ] && exit 0
+            docker pull "$ghcr_image" >/dev/null
             docker tag "$ghcr_image" "$source_image"
-          done < /tmp/e2e-image-map/e2e-image-map.txt
+          ' _ {} < /tmp/e2e-image-map/e2e-image-map-base.txt
 
       - name: Start OpenELIS containers (no rebuild)
         run: docker compose -f build.docker-compose.yml up -d --no-build --wait --wait-timeout 600

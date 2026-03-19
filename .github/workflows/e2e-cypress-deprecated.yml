@@ -97,7 +97,7 @@ jobs:
       - name: Download Docker image map artifact
         uses: actions/download-artifact@v4
         with:
-          name: e2e-image-map
+          name: e2e-image-map-base
           path: /tmp/e2e-image-map
 
       - name: Login to GHCR
@@ -109,11 +109,12 @@ jobs:
 
       - name: Pull and retag prebuilt compose images
         run: |
-          while IFS='|' read -r source_image ghcr_image; do
-            [ -z "$source_image" ] && continue
-            docker pull "$ghcr_image"
+          xargs -I{} -P4 bash -lc '
+            IFS="|" read -r source_image ghcr_image <<< "$1"
+            [ -z "$source_image" ] && exit 0
+            docker pull "$ghcr_image" >/dev/null
             docker tag "$ghcr_image" "$source_image"
-          done < /tmp/e2e-image-map/e2e-image-map.txt
+          ' _ {} < /tmp/e2e-image-map/e2e-image-map-base.txt
 
       - name: Start containers
         run: docker compose -f build.docker-compose.yml up -d --no-build --wait --wait-timeout 600

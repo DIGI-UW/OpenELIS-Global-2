@@ -41,8 +41,23 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      - name: Restore Playwright browser cache
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install chromium --with-deps
+        working-directory: frontend
+
+      - name: Verify Playwright browsers from cache
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install chromium
         working-directory: frontend
 
       - name: Prepare .env
@@ -76,11 +91,12 @@ jobs:
 
       - name: Pull and retag prebuilt compose images
         run: |
-          while IFS='|' read -r source_image ghcr_image; do
-            [ -z "$source_image" ] && continue
-            docker pull "$ghcr_image"
+          xargs -I{} -P4 bash -lc '
+            IFS="|" read -r source_image ghcr_image <<< "$1"
+            [ -z "$source_image" ] && exit 0
+            docker pull "$ghcr_image" >/dev/null
             docker tag "$ghcr_image" "$source_image"
-          done < /tmp/e2e-image-map/e2e-image-map.txt
+          ' _ {} < /tmp/e2e-image-map/e2e-image-map.txt
 
       - name: Create analyzer import bind mount directories
         run: mkdir -p projects/analyzer-harness/volume/analyzer-imports
@@ -156,9 +172,11 @@ jobs:
       matrix:
         include:
           - shard_index: 1
-            shard_total: 2
+            shard_total: 3
           - shard_index: 2
-            shard_total: 2
+            shard_total: 3
+          - shard_index: 3
+            shard_total: 3
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -176,8 +194,23 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      - name: Restore Playwright browser cache
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install chromium --with-deps
+        working-directory: frontend
+
+      - name: Verify Playwright browsers from cache
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install chromium
         working-directory: frontend
 
       - name: Prepare .env
@@ -211,11 +244,12 @@ jobs:
 
       - name: Pull and retag prebuilt compose images
         run: |
-          while IFS='|' read -r source_image ghcr_image; do
-            [ -z "$source_image" ] && continue
-            docker pull "$ghcr_image"
+          xargs -I{} -P4 bash -lc '
+            IFS="|" read -r source_image ghcr_image <<< "$1"
+            [ -z "$source_image" ] && exit 0
+            docker pull "$ghcr_image" >/dev/null
             docker tag "$ghcr_image" "$source_image"
-          done < /tmp/e2e-image-map/e2e-image-map.txt
+          ' _ {} < /tmp/e2e-image-map/e2e-image-map.txt
 
       - name: Create analyzer import bind mount directories
         run: mkdir -p projects/analyzer-harness/volume/analyzer-imports
@@ -295,12 +329,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        run: npm ci
-        working-directory: frontend
 
       - name: Download blob reports from shard jobs
         continue-on-error: true
@@ -313,7 +341,7 @@ jobs:
       - name: Merge blob reports into HTML report when artifacts exist
         run: |
           if [ -d ./all-blob-reports ] && [ -n "$(ls -A ./all-blob-reports 2>/dev/null)" ]; then
-            npx playwright merge-reports --reporter html ./all-blob-reports
+            npx --yes playwright@1.58.2 merge-reports --reporter html ./all-blob-reports
           else
             echo "No blob reports available; skipping merge."
           fi
