@@ -222,8 +222,10 @@ jobs:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
     uses: DIGI-UW/OpenELIS-Global-2/.github/workflows/frontend.yml@develop
 
-  # Stage-1 remediation: PR E2E coverage remains owned by `03 - E2E`
-  # (`e2e-playwright.yml`) until the parity follow-up refactor lands.
+  # Stage-1 remediation: this publish workflow is intentionally not E2E-gated.
+  # Current E2E gating runs in `03 - E2E` (`e2e-playwright.yml`) on pull requests.
+  # Risk accepted short-term: publish jobs here may proceed even if E2E would fail.
+  # Follow-up parity + gate restoration is tracked in issue #3101.
 
   build-and-push-image-backend:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
