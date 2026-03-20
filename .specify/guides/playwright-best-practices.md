@@ -2,6 +2,10 @@
 
 > **Purpose:** Guide for writing efficient, maintainable Playwright E2E tests
 > for OpenELIS Global 2's React + Carbon Design System frontend.
+>
+> **Single source of truth:** This file is the canonical Playwright guidance for
+> both human and AI contributors. Other docs should reference this file rather
+> than duplicating rules.
 
 ## Quick Reference
 
@@ -19,10 +23,10 @@ npm run pw:test:ui
 npm run pw:test:headed
 
 # Run specific file
-npx playwright test sidenav.spec.ts
+npm run pw:test -- sidenav.spec.ts
 
 # Run specific test
-npx playwright test -g "home page has collapsed nav"
+npm run pw:test -- -g "home page has collapsed nav"
 ```
 
 ## Command-First Entry Points
@@ -458,7 +462,7 @@ test("can select sample", async ({ page }) => {
 ### 3. Run
 
 ```bash
-npx playwright test storage.spec.ts
+npm run pw:test -- storage.spec.ts
 ```
 
 ### 4. Validate Project Registration

@@ -40,6 +40,7 @@ import CompactFileInput from "./fileUpload/FileInput";
 import StorageLocationSelector from "../storage/StorageLocationSelector";
 import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
+import EQABadge from "../eqa/EQABadge";
 
 function ResultSearchPage() {
   const [originalResultForm, setOriginalResultForm] = useState({
@@ -1032,6 +1033,7 @@ export function SearchResults(props) {
                 : row.accessionNumber) +
                 "-" +
                 row.sequenceNumber}
+              {row.isEqaSample && <EQABadge priority={row.eqaPriority} />}
               <br></br>
               {row.patientName} <br></br>
               {row.patientInfo}
