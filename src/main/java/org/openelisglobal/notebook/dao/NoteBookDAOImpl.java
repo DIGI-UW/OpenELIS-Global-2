@@ -167,7 +167,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
     public long countByAnalyzerId(String analyzerId) {
         String hql = "SELECT COUNT(n) FROM NoteBook n JOIN n.analysers a WHERE a.id = :analyzerId";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
-        query.setParameter("analyzerId", Integer.parseInt(analyzerId));
+        query.setParameter("analyzerId", analyzerId);
         Long count = query.uniqueResult();
         return count != null ? count : 0L;
     }
