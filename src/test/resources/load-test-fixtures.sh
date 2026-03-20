@@ -7,8 +7,8 @@
 # Usage: ./load-test-fixtures.sh [--reset] [--no-verify] [--analyzers=MODE]
 #
 # Analyzer modes (--analyzers=MODE):
-#   full     - All Madagascar analyzers + cleanup + type linking (default)
-#   minimal  - analyzer-minimal.sql only (4 analyzers, no cleanup)
+#   full     - Analyzer type safety net + cleanup + type linking (default)
+#   minimal  - analyzer-minimal.sql only (3 generic types, no cleanup)
 #   none     - Skip all analyzer fixtures (storage/patient only)
 #
 # Files loaded (in order):
@@ -241,12 +241,12 @@ load_analyzer_fixtures() {
             echo ""
             ;;
         minimal)
-            # 4 Madagascar analyzers: GeneXpert, QS5, QS7, FluoroCycler
-            load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (4 Madagascar analyzers)" "fatal"
+            # 3 generic analyzer types (ASTM, HL7, File) — safety net for plugin loader
+            load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (3 generic types)" "fatal"
             ;;
         full)
-            # 4 Madagascar analyzers + configs + test mappings
-            load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (4 Madagascar analyzers)" "fatal"
+            # 3 generic analyzer types + cleanup + deactivation of non-generic types
+            load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (3 generic types)" "fatal"
 
             # Clean up stale E2E/legacy analyzers + deactivate non-generic types
             if [ -f "$FILE_IMPORT_E2E_SQL" ]; then

@@ -193,6 +193,10 @@ function SearchPatientForm(props) {
 
   const fetchPatientResults = (res) => {
     let patientsResults = res.patientSearchResults;
+    // Filter out the EQA placeholder patient (NULL/NULL)
+    patientsResults = patientsResults.filter(
+      (p) => !(p.lastName === "NULL" && p.firstName === "NULL"),
+    );
     if (patientsResults.length > 0) {
       patientsResults.forEach((item) => (item.id = item.patientID));
       setPatientSearchResults(patientsResults);
