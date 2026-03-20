@@ -21,7 +21,8 @@ Interpret input best-effort:
 
    - Confirm target user story / acceptance criteria.
    - Identify feature route and expected user-visible behavior.
-   - Decide project target: `core-app`, `harness`, `demo`, `demo-video`.
+   - Decide project target: `core-app`, `core-demo`, `harness`, `harness-demo`,
+     or the matching `*-demo-video` for recording.
 
 2. **Read source before writing selectors**
 
@@ -41,7 +42,7 @@ Interpret input best-effort:
 
    - Add new spec to the correct `testMatch` project list in
      `frontend/playwright.config.ts`.
-   - For demo workflow tests, update `DEMO_TESTS`.
+   - For demo workflow tests, update `CORE_DEMO_TESTS` or `HARNESS_DEMO_TESTS`.
 
 5. **Validate and run narrow scope**
 
