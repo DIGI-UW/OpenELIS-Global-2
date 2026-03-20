@@ -22,12 +22,11 @@ import org.springframework.beans.factory.annotation.Autowired;
  * ClassicQueryTranslatorFactory. These test the three behavioral changes in the
  * criteria-building logic:
  *
- * 1. Integer type guard: only convert String->Integer when the entity property's
- *    Java type is Integer/int (not for LIMSStringNumberUserType String fields)
- * 2. Enum auto-conversion: convert String values to enum when the entity
- *    property is an enum type
- * 3. Enum LIKE: use .as(String.class) cast for LIKE comparisons on enum
- *    properties
+ * 1. Integer type guard: only convert String->Integer when the entity
+ * property's Java type is Integer/int (not for LIMSStringNumberUserType String
+ * fields) 2. Enum auto-conversion: convert String values to enum when the
+ * entity property is an enum type 3. Enum LIKE: use .as(String.class) cast for
+ * LIKE comparisons on enum properties
  *
  * Uses CytologySample (enum-typed 'status' field) and Analysis
  * (LIMSStringNumberUserType-mapped 'statusId' field) as concrete test subjects.
@@ -51,9 +50,12 @@ public class BaseDAOImplIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     // --- Integer type guard tests ---
-    // Analysis.statusId is String in Java (via LIMSStringNumberUserType), NUMERIC in DB.
-    // The old code would convert "1" -> Integer(1) because the property name ends in "Id",
-    // which caused a type mismatch. The new code checks pathToProperty.getJavaType() and
+    // Analysis.statusId is String in Java (via LIMSStringNumberUserType), NUMERIC
+    // in DB.
+    // The old code would convert "1" -> Integer(1) because the property name ends
+    // in "Id",
+    // which caused a type mismatch. The new code checks
+    // pathToProperty.getJavaType() and
     // only converts when the Java type is Integer/int.
 
     @Test
@@ -102,8 +104,7 @@ public class BaseDAOImplIntegrationTest extends BaseWebContextSensitiveTest {
     @Test
     public void addWhere_EQ_enumProperty_differentValue() throws Exception {
         executeDataSetWithStateManagement("testdata/cytology.xml");
-        List<CytologySample> results = cytologySampleService.getAllMatching("status",
-                "READY_FOR_CYTOPATHOLOGIST");
+        List<CytologySample> results = cytologySampleService.getAllMatching("status", "READY_FOR_CYTOPATHOLOGIST");
         assertNotNull(results);
         assertEquals(1, results.size());
         assertEquals(1, results.get(0).getId().intValue());
@@ -112,15 +113,15 @@ public class BaseDAOImplIntegrationTest extends BaseWebContextSensitiveTest {
     @Test
     public void addWhere_EQ_enumProperty_actualEnumValue_shouldWork() throws Exception {
         executeDataSetWithStateManagement("testdata/cytology.xml");
-        List<CytologySample> results = cytologySampleService.getAllMatching("status",
-                CytologyStatus.COMPLETED);
+        List<CytologySample> results = cytologySampleService.getAllMatching("status", CytologyStatus.COMPLETED);
         assertNotNull(results);
         assertEquals(1, results.size());
         assertEquals(2, results.get(0).getId().intValue());
     }
 
     // --- Enum LIKE tests ---
-    // For LIKE on enum properties, addWhere uses pathToProperty.as(String.class) to cast
+    // For LIKE on enum properties, addWhere uses pathToProperty.as(String.class) to
+    // cast
     // the enum column to a string before applying the LIKE pattern.
 
     @Test
