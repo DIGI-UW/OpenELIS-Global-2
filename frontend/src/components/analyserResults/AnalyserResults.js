@@ -362,6 +362,15 @@ const AnalyserResults = (props) => {
 
   return (
     <>
+      {props.results?.resultList?.length === 0 && (
+        <div
+          className="orderLegendBody"
+          data-testid="analyzer-results-empty"
+          style={{ marginTop: "20px" }}
+        >
+          <FormattedMessage id="validation.no.records.display" />
+        </div>
+      )}
       {props.results?.resultList?.length > 0 && (
         <Grid style={{ marginTop: "20px" }} className="gridBoundary">
           <Column lg={7} md={8} sm={2}>
@@ -510,6 +519,9 @@ const AnalyserResults = (props) => {
             >
               <FormattedMessage id="label.button.save" />
             </Button>
+            {isSubmitting && (
+              <span data-testid="analyzer-results-save-in-progress" />
+            )}
           </Form>
         )}
       </Formik>

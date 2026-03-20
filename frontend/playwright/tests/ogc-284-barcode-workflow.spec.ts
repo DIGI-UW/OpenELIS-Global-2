@@ -3,15 +3,53 @@ import { showSceneLabel, showTitleCard } from "../helpers/title-card";
 import { videoPause } from "../helpers/video-pause";
 
 /**
- * OGC-284 Demo Video — Barcode Label Quantity Management
+ * OGC-284 — Barcode label quantity workflow (user stories)
  *
- * Three separate tests, one per User Story, each producing its own video.
+ * Three separate tests, one per User Story. Use core-demo-video locally for
+ * slowMo + title cards; core-demo for normal-speed CI on the build stack.
  *
  * Run with:
  *   cd frontend && TEST_USER=admin TEST_PASS='adminADMIN!' \
- *     npx playwright test ogc-284-demo-video --project=demo-video
+ *     npx playwright test ogc-284-barcode-workflow --project=core-demo-video
  */
 type PauseFn = (ms: number) => Promise<void>;
+
+/** Site/requester lookup: prefer autosuggest, but fall back to tabbing out. */
+async function pickFirstAutosuggestOptional(page: Page, pause: PauseFn) {
+  try {
+    await expect
+      .poll(async () => page.locator('[data-cy="auto-suggestion"]').count(), {
+        timeout: 12_000,
+        intervals: [400, 800, 1500],
+      })
+      .toBeGreaterThan(0);
+    await page.locator('[data-cy="auto-suggestion"]').first().click();
+    await pause(500);
+  } catch {
+    await page.keyboard.press("Tab");
+    await pause(200);
+  }
+}
+
+/** Visible success panel after SamplePatientEntry save (class from OrderSuccessMessage). */
+async function expectOrderEntrySaveSuccess(page: Page) {
+  await expect(page.locator(".orderEntrySuccessMsg")).toBeVisible({
+    timeout: 20_000,
+  });
+}
+
+async function setNumericInput(locator: Locator, preferredValue: string) {
+  await locator.click({ clickCount: 3 });
+  const currentValue = (await locator.inputValue()).trim();
+  let nextValue = preferredValue;
+  if (currentValue === preferredValue) {
+    const numericValue = Number(preferredValue);
+    nextValue = Number.isNaN(numericValue)
+      ? `${preferredValue}-1`
+      : `${numericValue + 1}`;
+  }
+  await locator.fill(nextValue);
+}
 
 /**
  * Scroll the element into view AND scroll the window so it's in the
@@ -36,6 +74,39 @@ async function scrollToAndPause(
   await pause(pauseMs);
 }
 
+async function waitForAutoSuggestion(page: Page, pattern?: RegExp) {
+  if (pattern) {
+    const matchingSuggestion = page
+      .locator('[data-cy="auto-suggestion"]')
+      .filter({ hasText: pattern })
+      .first();
+    if (
+      await matchingSuggestion.isVisible({ timeout: 2_000 }).catch(() => false)
+    ) {
+      return matchingSuggestion;
+    }
+  }
+
+  const suggestion = page.locator('[data-cy="auto-suggestion"]').first();
+  await expect(suggestion).toBeVisible({ timeout: 5_000 });
+  return suggestion;
+}
+
+async function waitForSampleStep(page: Page) {
+  const sampleSelect = page.locator("select#sampleId_0");
+  await expect(sampleSelect).toBeVisible({ timeout: 15_000 });
+  await expect(
+    sampleSelect.locator("option:not(:first-child)"),
+  ).not.toHaveCount(0, { timeout: 15_000 });
+}
+
+async function waitForOrderDetailsStep(page: Page) {
+  await expect(page.locator("input#labNo")).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator("input#order_requestDate")).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
 /**
  * Search for and select a patient by last/first name.
  * Results are Carbon RadioButtons (data-cy="radioButton"), not table rows.
@@ -52,33 +123,64 @@ async function selectPatient(
   const searchTabBtn = page.locator('[data-cy="searchPatientTabButton"]');
   if (await searchTabBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
     await searchTabBtn.click();
-    await pause(500);
   }
 
   const lastNameInput = page.locator("input#lastName");
   await expect(lastNameInput).toBeVisible({ timeout: 8000 });
   await lastNameInput.fill(lastName);
-  await pause(400);
 
   const firstNameInput = page.locator("input#firstName");
   await firstNameInput.fill(firstName);
-  await pause(400);
 
   // Click Search
   const searchBtn = page.locator(
     '[data-cy="searchPatientButton"], button#local_search',
   );
   await searchBtn.click();
-  await pause(3000);
 
-  const firstRadio = page.locator('[data-cy="radioButton"]').first();
+  await expect(page.locator('[data-cy="radioButton"]').first()).toBeVisible({
+    timeout: 10_000,
+  });
+
+  const namedRow = page
+    .locator("tbody tr")
+    .filter({
+      hasText: new RegExp(
+        `${lastName}.*${firstName}|${firstName}.*${lastName}`,
+        "i",
+      ),
+    })
+    .filter({ has: page.locator('[data-cy="radioButton"]') })
+    .first();
+  const firstRadio =
+    (await namedRow.count()) > 0
+      ? namedRow.locator('[data-cy="radioButton"]').first()
+      : page.locator('[data-cy="radioButton"]').first();
   await expect(firstRadio).toBeVisible({ timeout: 5000 });
   await scrollToAndPause(page, firstRadio, pause, 800);
   // Carbon overlays the visible label on top of the radio input, which can
   // intercept pointer events in CI; forcing a radio check matches Cypress.
   await firstRadio.check({ force: true });
-  await expect(firstRadio).toBeChecked({ timeout: 5000 });
-  await pause(1500); // wait for tab switch + form population
+
+  // Wait for patient form hydration before moving to the next wizard step.
+  await expect(page.locator('[data-cy="patientSelectionReady"]')).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.locator("input#lastName")).toHaveValue(
+    new RegExp(lastName, "i"),
+    {
+      timeout: 10_000,
+    },
+  );
+  await expect(page.locator("input#firstName")).toHaveValue(
+    new RegExp(firstName, "i"),
+    {
+      timeout: 10_000,
+    },
+  );
+  await expect(page.locator("input#primaryPhone")).toBeVisible({
+    timeout: 10_000,
+  });
 
   // Search results can omit fields that the Add Order validation schema still
   // requires (national ID, gender, DOB). Backfill them before advancing.
@@ -87,7 +189,6 @@ async function selectPatient(
     if (!(await nationalIdInput.inputValue()).trim()) {
       await nationalIdInput.fill(`DEMO-${Date.now()}`);
       await nationalIdInput.press("Tab");
-      await pause(300);
     }
 
     const genderMale = page.locator("input#radio-1");
@@ -97,7 +198,6 @@ async function selectPatient(
       (await genderFemale.isChecked().catch(() => false));
     if (!hasGender && (await genderMale.isVisible().catch(() => false))) {
       await genderMale.check({ force: true });
-      await pause(300);
     }
 
     const birthDateInput = page.locator("input#date-picker-default-id");
@@ -107,7 +207,6 @@ async function selectPatient(
     ) {
       await birthDateInput.fill("13/03/1990");
       await birthDateInput.press("Tab");
-      await pause(300);
     }
   }
 }
@@ -116,14 +215,9 @@ async function selectPatient(
  * Fill the Add Sample step: select sample type, set collection date,
  * and select at least one panel/test so sampleXML gets populated.
  */
-async function fillSampleStep(page: Page, pause: PauseFn) {
+async function fillSampleStep(page: Page) {
   const sampleSelect = page.locator("select#sampleId_0");
-  await expect(sampleSelect).toBeVisible({ timeout: 8000 });
-
-  // Wait for real options to load (not just "Select sample type")
-  await expect(
-    sampleSelect.locator("option:not(:first-child)"),
-  ).not.toHaveCount(0, { timeout: 8000 });
+  await waitForSampleStep(page);
 
   const options = await sampleSelect.locator("option").allTextContents();
   const serum = options.find((o) => o.toLowerCase().includes("serum"));
@@ -132,32 +226,61 @@ async function fillSampleStep(page: Page, pause: PauseFn) {
   } else {
     await sampleSelect.selectOption({ index: 1 });
   }
-  await pause(800);
 
-  await selectPanelOrTest(page, pause);
+  const collectionDate = page.locator("input#collectionDate_0");
+  if (await collectionDate.isVisible().catch(() => false)) {
+    await collectionDate.fill("13/03/2026");
+    await collectionDate.press("Tab");
+  }
+
+  const collectionTime = page.locator("input#collectionTime_0");
+  if (await collectionTime.isVisible().catch(() => false)) {
+    await collectionTime.fill("07:15");
+    await collectionTime.press("Tab");
+  }
+
+  const collector = page.locator("input#collector_0");
+  if (await collector.isVisible().catch(() => false)) {
+    await collector.fill("E2E Collector");
+  }
+
+  const quantity = page.locator("input#quantity");
+  if (await quantity.isVisible().catch(() => false)) {
+    await quantity.fill("1");
+  }
+
+  const uomSelect = page.locator("select#uomId_0");
+  if (await uomSelect.isVisible().catch(() => false)) {
+    await uomSelect.selectOption({ index: 1 });
+  }
+
+  await selectPanelOrTest(page);
 }
 
 /**
  * Fill the Order Details step (Step 3) — lab number, dates, site, requester.
  */
 async function fillOrderDetails(page: Page, pause: PauseFn) {
+  await waitForOrderDetailsStep(page);
+
+  const labNoInput = page.locator("input#labNo");
   const generateBtn = page.locator("[data-cy='generate-labNumber']");
   if (await generateBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
     await generateBtn.click();
-    await pause(1500);
+    await expect(labNoInput).not.toHaveValue("", { timeout: 10_000 });
   }
 
   const requestDate = page.locator("input#order_requestDate");
   if (await requestDate.isVisible().catch(() => false)) {
     await requestDate.fill("13/03/2026");
     await page.keyboard.press("Tab");
-    await pause(300);
+    await expect(requestDate).toHaveValue("13/03/2026");
   }
   const receivedDate = page.locator("input#order_receivedDate");
   if (await receivedDate.isVisible().catch(() => false)) {
     await receivedDate.fill("13/03/2026");
     await page.keyboard.press("Tab");
-    await pause(300);
+    await expect(receivedDate).toHaveValue("13/03/2026");
   }
 
   const siteInput = page.locator("input#siteName");
@@ -165,73 +288,105 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
     await siteInput.clear();
     await siteInput.fill("CAMES MAN");
     await pause(1200);
-    // Try each autocomplete suggestion selector
-    for (const sel of [
-      ".suggestion-active",
-      ".react-autosuggest__suggestion--highlighted",
-      ".react-autosuggest__suggestions-list li:first-child",
-    ]) {
-      const s = page.locator(sel).first();
-      if (await s.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await s.click();
-        break;
-      }
-    }
-    await pause(600);
+    await pickFirstAutosuggestOptional(page, pause);
   }
 
-  // Select requester from autosuggest first; this is required in Add Order.
   const requesterLookup = page.locator("input#requesterId");
   if (await requesterLookup.isVisible().catch(() => false)) {
     await requesterLookup.clear();
-    await requesterLookup.fill("Prime, Optimus");
+    await requesterLookup.fill("Prime");
     await pause(800);
-    for (const sel of [
-      ".suggestion-active",
-      ".react-autosuggest__suggestion--highlighted",
-      ".react-autosuggest__suggestions-list li:first-child",
-    ]) {
-      const s = page.locator(sel).first();
-      if (await s.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await s.click();
-        break;
-      }
-    }
-    await pause(400);
+    await pickFirstAutosuggestOptional(page, pause);
   }
 
   const requesterFirst = page.locator("input#requesterFirstName");
   if (await requesterFirst.isVisible().catch(() => false)) {
     await requesterFirst.clear();
     await requesterFirst.fill("Optimus");
-    await pause(200);
+    await expect(requesterFirst).toHaveValue("Optimus");
   }
   const requesterLast = page.locator("input#requesterLastName");
   if (await requesterLast.isVisible().catch(() => false)) {
     await requesterLast.clear();
     await requesterLast.fill("Prime");
-    await pause(200);
+    await expect(requesterLast).toHaveValue("Prime");
+  }
+
+  if (await requesterLookup.isVisible().catch(() => false)) {
+    if (!(await requesterLookup.inputValue()).trim()) {
+      await requesterLookup.fill("Prime, Optimus");
+    }
+    await expect(requesterLookup).not.toHaveValue("", { timeout: 5_000 });
+  }
+
+  // Newer order-entry validation requires explicit selections here.
+  const paymentStatus = page.getByRole("combobox", {
+    name: "Patient payment status:",
+  });
+  if (await paymentStatus.isVisible().catch(() => false)) {
+    const current = await paymentStatus.inputValue();
+    if (!current) {
+      await paymentStatus.selectOption({ index: 1 });
+    }
+  }
+
+  const samplingPoint = page.getByRole("combobox", {
+    name: "Sampling performed for analysis:",
+  });
+  if (await samplingPoint.isVisible().catch(() => false)) {
+    const current = await samplingPoint.inputValue();
+    if (!current) {
+      await samplingPoint.selectOption({ index: 1 });
+    }
   }
 }
 
 /** Click Next and wait for the next page to load. */
-async function clickNext(page: Page, pause: PauseFn) {
+async function clickNext(page: Page) {
   const btn = page.getByRole("button", { name: "Next", exact: true });
   await expect(btn).toBeVisible({ timeout: 5000 });
+  await expect(btn).toBeEnabled({ timeout: 5_000 });
   await btn.click();
-  await pause(1500);
 }
 
 /**
  * Select at least one panel or test on the Add Sample step.
  * Tries known panel names first, falls back to the first available checkbox.
  */
-async function selectPanelOrTest(page: Page, pause: PauseFn) {
+async function selectPanelOrTest(page: Page) {
   // Carbon checkbox: the <input> is visually hidden; click the <label> instead.
   const label = page.locator('label:has-text("Bilan Biochimique")');
+  await expect(label).toBeVisible({ timeout: 10_000 });
   await label.scrollIntoViewIfNeeded();
   await label.click({ timeout: 5000 });
-  await pause(400);
+  await expect(
+    page.getByRole("button", { name: "Next", exact: true }),
+  ).toBeEnabled({ timeout: 10_000 });
+}
+
+async function gotoBarcodeConfig(page: Page) {
+  await page.goto("/MasterListsPage/barcodeConfiguration", {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(page.getByRole("button", { name: "Save" })).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
+async function gotoSamplePatientEntry(page: Page) {
+  await page.goto("/SamplePatientEntry", { waitUntil: "domcontentloaded" });
+  await expect(page.locator('[data-cy="searchPatientTabButton"]')).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
+async function gotoPrintBarcode(page: Page) {
+  await page.goto("/PrintBarcode", { waitUntil: "domcontentloaded" });
+  await expect(
+    page.getByRole("heading", { name: /print bar code labels/i }),
+  ).toBeVisible({
+    timeout: 15_000,
+  });
 }
 
 // ─── User Story 1: Admin configures barcode label quantities ─────────────────
@@ -250,9 +405,7 @@ test("US1 — Admin configures barcode label quantities", async ({
     testInfo,
   );
 
-  await page.goto("/MasterListsPage/barcodeConfiguration");
-  await page.waitForLoadState("networkidle");
-  await pause(1500);
+  await gotoBarcodeConfig(page);
 
   // ── Default quantities ──────────────────────────────────────────
   await showTitleCard(
@@ -266,13 +419,11 @@ test("US1 — Admin configures barcode label quantities", async ({
 
   const defaultOrderInput = page.locator("#order").first();
   await scrollToAndPause(page, defaultOrderInput, pause, 1200);
-  await defaultOrderInput.click({ clickCount: 3 });
-  await defaultOrderInput.fill("2");
+  await setNumericInput(defaultOrderInput, "2");
   await pause(600);
 
   const defaultSpecimenInput = page.locator("#specimen").first();
-  await defaultSpecimenInput.click({ clickCount: 3 });
-  await defaultSpecimenInput.fill("1");
+  await setNumericInput(defaultSpecimenInput, "1");
   await pause(800);
 
   // ── Maximum quantities ──────────────────────────────────────────
@@ -287,13 +438,11 @@ test("US1 — Admin configures barcode label quantities", async ({
 
   const maxOrderInput = page.locator("#maxOrder");
   await scrollToAndPause(page, maxOrderInput, pause, 1200);
-  await maxOrderInput.click({ clickCount: 3 });
-  await maxOrderInput.fill("10");
+  await setNumericInput(maxOrderInput, "10");
   await pause(500);
 
   const maxSpecimenInput = page.locator("#maxSpecimen");
-  await maxSpecimenInput.click({ clickCount: 3 });
-  await maxSpecimenInput.fill("10");
+  await setNumericInput(maxSpecimenInput, "10");
   await pause(800);
 
   // ── Optional element toggles ────────────────────────────────────
@@ -322,14 +471,17 @@ test("US1 — Admin configures barcode label quantities", async ({
   await showSceneLabel(page, "US1 · FR-003 — Save + Reload", testInfo);
 
   const saveButton = page.getByRole("button", { name: "Save" });
+  await expect(saveButton).toBeEnabled({ timeout: 10_000 });
   await scrollToAndPause(page, saveButton, pause, 800);
   await saveButton.click();
-  await pause(2500); // wait for success notification
+  await expect(
+    page.getByText(/bar.?code configurations has been saved/i).first(),
+  ).toBeVisible({ timeout: 10_000 });
 
-  await page.reload();
-  await page.waitForLoadState("networkidle");
-  await pause(1500);
-
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("button", { name: "Save" })).toBeVisible({
+    timeout: 15_000,
+  });
   await scrollToAndPause(page, defaultOrderInput, pause, 2000);
 
   await showTitleCard(
@@ -358,28 +510,27 @@ test("US2 — Capture label quantities during sample creation", async ({
   );
   await showSceneLabel(page, "US2 · Add Order", testInfo);
 
-  await page.goto("/SamplePatientEntry");
-  await page.waitForLoadState("networkidle");
-  await pause(1500);
+  await gotoSamplePatientEntry(page);
 
   // ── Step 0: Patient search & select ─────────────────────────────
   await showSceneLabel(page, "US2 · Step 0: Patient", testInfo);
-  await selectPatient(page, "Smith", "John", pause);
+  await selectPatient(page, "TEST-Smith", "John", pause);
 
   // ── Next → Step 1 (Program selection) ───────────────────────────
-  await clickNext(page, pause);
+  await clickNext(page);
 
   // Step 1: program selection — skip through (no required input)
   const next2 = page.getByRole("button", { name: "Next", exact: true });
   if (await next2.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await expect(next2).toBeEnabled({ timeout: 5_000 });
     await next2.click();
-    await pause(1500);
+    await waitForSampleStep(page);
   }
 
   // ── Step 2: Sample type ─────────────────────────────────────────
   await showSceneLabel(page, "US2 · Step 2: Sample Type", testInfo);
 
-  await fillSampleStep(page, pause);
+  await fillSampleStep(page);
 
   // ── ★ KEY: Labels Section ───────────────────────────────────────
   await showTitleCard(
@@ -402,18 +553,14 @@ test("US2 — Capture label quantities during sample creation", async ({
   // Edit order labels
   const orderInput = labelsSection.locator("#labels-order");
   await scrollToAndPause(page, orderInput, pause, 800);
-  await orderInput.click();
-  await page.keyboard.press("Control+A");
-  await orderInput.type("3");
+  await orderInput.fill("3");
   await pause(1000);
 
   // Edit specimen labels
   const specimenInput = labelsSection.locator("#sample-row-1");
   if (await specimenInput.isVisible().catch(() => false)) {
     await scrollToAndPause(page, specimenInput, pause, 600);
-    await specimenInput.click();
-    await page.keyboard.press("Control+A");
-    await specimenInput.type("2");
+    await specimenInput.fill("2");
     await pause(800);
   }
 
@@ -424,37 +571,25 @@ test("US2 — Capture label quantities during sample creation", async ({
   }
 
   // ── Step 3: Order details ───────────────────────────────────────
-  await clickNext(page, pause);
+  await clickNext(page);
   await showSceneLabel(page, "US2 · Step 3: Order Details", testInfo);
   await fillOrderDetails(page, pause);
-  await pause(800);
 
   // Submit
   const submitBtn = page.getByRole("button", { name: "Submit" });
   await scrollToAndPause(page, submitBtn, pause, 1000);
-
-  const saveResponse = page.waitForResponse(
-    (res) =>
-      res.url().includes("/rest/SamplePatientEntry") &&
-      res.request().method() === "POST",
-    { timeout: 30_000 },
-  );
+  await expect(submitBtn).toBeEnabled({ timeout: 10_000 });
   await submitBtn.click();
-  await saveResponse.catch(() => {});
-  await pause(4000);
+  await expectOrderEntrySaveSuccess(page);
 
   // ── Success: confirm quantities saved ───────────────────────────
-  const successImg = page.locator('img[alt="Order Entry saved successfully"]');
-  if (await successImg.isVisible({ timeout: 6000 }).catch(() => false)) {
-    await pause(1000);
-    await showTitleCard(
-      page,
-      "✓ Label Quantities Saved",
-      "Order labels = 3, Specimen labels = 2 persisted with the sample record — FR-007, FR-008 satisfied.",
-      3000,
-      testInfo,
-    );
-  }
+  await showTitleCard(
+    page,
+    "✓ Label Quantities Saved",
+    "Order labels = 3, Specimen labels = 2 persisted with the sample record — FR-007, FR-008 satisfied.",
+    3000,
+    testInfo,
+  );
 });
 
 // ─── User Story 3: Post-save print dialog + reprint ──────────────────────────
@@ -473,20 +608,19 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   await showSceneLabel(page, "US3 · Post-Save Printing", testInfo);
 
   // Quickly reach the success page by submitting an order
-  await page.goto("/SamplePatientEntry");
-  await page.waitForLoadState("networkidle");
-  await pause(1000);
+  await gotoSamplePatientEntry(page);
 
-  await selectPatient(page, "Smith", "John", pause);
-  await clickNext(page, pause);
+  await selectPatient(page, "TEST-Smith", "John", pause);
+  await clickNext(page);
 
   const next2 = page.getByRole("button", { name: "Next", exact: true });
   if (await next2.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await expect(next2).toBeEnabled({ timeout: 5_000 });
     await next2.click();
-    await pause(1200);
+    await waitForSampleStep(page);
   }
 
-  await fillSampleStep(page, pause);
+  await fillSampleStep(page);
 
   // Show labels section briefly before moving on
   const labelsSection = page.getByTestId("labels-section-root");
@@ -494,21 +628,15 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
     await scrollToAndPause(page, labelsSection, pause, 1500);
   }
 
-  await clickNext(page, pause);
+  await clickNext(page);
   await showSceneLabel(page, "US3 · Completing Order...", testInfo);
   await fillOrderDetails(page, pause);
 
   const submitBtn = page.getByRole("button", { name: "Submit" });
   await scrollToAndPause(page, submitBtn, pause, 800);
-  const saveResponse = page.waitForResponse(
-    (res) =>
-      res.url().includes("/rest/SamplePatientEntry") &&
-      res.request().method() === "POST",
-    { timeout: 30_000 },
-  );
+  await expect(submitBtn).toBeEnabled({ timeout: 10_000 });
   await submitBtn.click();
-  await saveResponse.catch(() => {});
-  await pause(4000);
+  await expectOrderEntrySaveSuccess(page);
 
   // ── Post-save print dialog ──────────────────────────────────────
   await showTitleCard(
@@ -520,37 +648,35 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   );
   await showSceneLabel(page, "US3 · FR-011 — Print Dialog", testInfo);
 
-  const successImg = page.locator('img[alt="Order Entry saved successfully"]');
-  if (await successImg.isVisible({ timeout: 8000 }).catch(() => false)) {
-    await scrollToAndPause(page, successImg, pause, 1000);
+  const successArea = page.locator(".orderEntrySuccessMsg").first();
+  await scrollToAndPause(page, successArea, pause, 1000);
 
-    // Scroll to print dialog
-    const printTitle = page.getByText(/print labels/i).first();
-    if (await printTitle.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await scrollToAndPause(page, printTitle, pause, 1500);
-    }
+  // Scroll to print dialog
+  const printTitle = page.getByText(/print labels/i).first();
+  if (await printTitle.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await scrollToAndPause(page, printTitle, pause, 1500);
+  }
 
-    // Highlight Print buttons
-    const printButtons = page.getByRole("button", { name: "Print" });
-    const count = await printButtons.count();
-    if (count > 0) {
-      await scrollToAndPause(page, printButtons.first(), pause, 2000);
-    }
+  // Highlight Print buttons
+  const printButtons = page.getByRole("button", { name: "Print" });
+  const count = await printButtons.count();
+  if (count > 0) {
+    await scrollToAndPause(page, printButtons.first(), pause, 2000);
+  }
 
-    // Show Done button — deferred printing
-    await showTitleCard(
-      page,
-      "Done — Deferred Printing",
-      "Done closes the dialog without printing. The accession is preserved; reprinting is available from Order View — FR-013.",
-      2500,
-      testInfo,
-    );
-    await showSceneLabel(page, "US3 · FR-013 — Done / Defer", testInfo);
+  // Show Done button — deferred printing
+  await showTitleCard(
+    page,
+    "Done — Deferred Printing",
+    "Done closes the dialog without printing. The accession is preserved; reprinting is available from Order View — FR-013.",
+    2500,
+    testInfo,
+  );
+  await showSceneLabel(page, "US3 · FR-013 — Done / Defer", testInfo);
 
-    const doneButton = page.getByRole("button", { name: /^(done|skip)$/i });
-    if (await doneButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await scrollToAndPause(page, doneButton, pause, 2000);
-    }
+  const doneButton = page.getByRole("button", { name: /^(done|skip)$/i });
+  if (await doneButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await scrollToAndPause(page, doneButton, pause, 2000);
   }
 
   // ── Reprint from Print Barcode page ────────────────────────────
@@ -563,9 +689,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   );
   await showSceneLabel(page, "US3 · FR-013 — Reprint Entry", testInfo);
 
-  await page.goto("/PrintBarcode");
-  await page.waitForLoadState("networkidle");
-  await pause(1500);
+  await gotoPrintBarcode(page);
 
   const printBarcodeHeading = page.getByRole("heading", {
     name: /print bar code labels/i,
