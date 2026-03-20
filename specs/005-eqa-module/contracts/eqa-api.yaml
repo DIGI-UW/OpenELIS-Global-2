@@ -1,0 +1,1391 @@
+openapi: 3.0.3
+info:
+  title: OpenELIS Global - EQA Module API
+  description: |
+    REST API contracts for the External Quality Assurance (EQA) module.
+    All endpoints require authentication via session cookie.
+    Base path: /api/OpenELIS-Global/rest
+  version: 1.0.0
+
+servers:
+  - url: https://localhost/api/OpenELIS-Global/rest
+    description: Development server
+
+tags:
+  - name: EQA Programs
+    description: EQA program management (admin)
+  - name: EQA Samples
+    description: EQA sample registration and querying
+  - name: EQA Distribution
+    description: EQA distribution creation and management
+  - name: EQA Results
+    description: Result collection, analysis, and reporting
+  - name: Alerts
+    description: Comprehensive alerts dashboard (extends existing)
+
+paths:
+  # ──────────────────────────────────────────────
+  # EQA Programs (M7)
+  # ──────────────────────────────────────────────
+  /eqa/programs:
+    get:
+      tags: [EQA Programs]
+      summary: List all EQA programs
+      description: Returns all EQA programs. Optionally filter by active status.
+      parameters:
+        - name: active
+          in: query
+          schema:
+            type: boolean
+          description: Filter by active/inactive status
+      responses:
+        "200":
+          description: List of EQA programs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EQAProgram"
+    post:
+      tags: [EQA Programs]
+      summary: Create a new EQA program
+      description: Requires administrator role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EQAProgramCreate"
+      responses:
+        "201":
+          description: Program created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQAProgram"
+        "400":
+          description: Validation error
+
+  /eqa/programs/{id}:
+    get:
+      tags: [EQA Programs]
+      summary: Get EQA program by ID
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: EQA program details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQAProgram"
+        "404":
+          description: Program not found
+    put:
+      tags: [EQA Programs]
+      summary: Update EQA program
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EQAProgramUpdate"
+      responses:
+        "200":
+          description: Program updated
+        "404":
+          description: Program not found
+
+  /eqa/programs/{id}/tests:
+    get:
+      tags: [EQA Programs]
+      summary: Get tests assigned to an EQA program
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: List of assigned tests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EQAProgramTest"
+    put:
+      tags: [EQA Programs]
+      summary: Update test assignments for an EQA program
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                testIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: Test assignments updated
+
+  # ──────────────────────────────────────────────
+  # EQA Samples (M1/M2)
+  # ──────────────────────────────────────────────
+  /eqa/samples:
+    get:
+      tags: [EQA Samples]
+      summary: List EQA samples
+      description: Query EQA samples with filtering and pagination.
+      parameters:
+        - name: programId
+          in: query
+          schema:
+            type: string
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [STANDARD, URGENT, CRITICAL]
+        - name: deadlineBefore
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 25
+            enum: [25, 50, 100, 200]
+      responses:
+        "200":
+          description: Paginated list of EQA samples
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQASamplePage"
+
+  /eqa/samples/{sampleId}:
+    get:
+      tags: [EQA Samples]
+      summary: Get EQA details for a specific sample
+      parameters:
+        - name: sampleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: EQA sample details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SampleEQA"
+        "404":
+          description: Sample not found or not an EQA sample
+
+  # ──────────────────────────────────────────────
+  # EQA Distribution (M5)
+  # ──────────────────────────────────────────────
+  /eqa/distributions:
+    get:
+      tags: [EQA Distribution]
+      summary: List EQA distributions
+      parameters:
+        - name: programId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, PREPARED, SHIPPED, COMPLETED]
+      responses:
+        "200":
+          description: List of distributions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EQADistribution"
+    post:
+      tags: [EQA Distribution]
+      summary: Create a new EQA distribution
+      description: |
+        Creates a distribution with samples for each participating organization.
+        Requires EQA coordinator role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EQADistributionCreate"
+      responses:
+        "201":
+          description: Distribution created with samples
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQADistribution"
+        "400":
+          description: |
+            Validation error (e.g., fewer than 2 participants)
+
+  /eqa/distributions/{id}:
+    get:
+      tags: [EQA Distribution]
+      summary: Get distribution details
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Distribution with participant details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQADistributionDetail"
+
+  /eqa/distributions/{id}/status:
+    put:
+      tags: [EQA Distribution]
+      summary: Update distribution status
+      description: Transition status (DRAFT → PREPARED → SHIPPED → COMPLETED)
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [PREPARED, SHIPPED, COMPLETED]
+      responses:
+        "200":
+          description: Status updated
+
+  /eqa/distributions/{id}/barcodes:
+    post:
+      tags: [EQA Distribution]
+      summary: Generate barcodes for distribution samples
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Barcodes generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  generatedCount:
+                    type: integer
+                  barcodes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        sampleId:
+                          type: string
+                        barcode:
+                          type: string
+                        organizationName:
+                          type: string
+
+  # ──────────────────────────────────────────────
+  # EQA Results (M6)
+  # ──────────────────────────────────────────────
+  /eqa/distributions/{id}/results:
+    get:
+      tags: [EQA Results]
+      summary: Get results for a distribution
+      description: Returns all submitted results with statistics if available.
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Results with statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQAResultsWithStatistics"
+    post:
+      tags: [EQA Results]
+      summary: Submit result for a distribution (manual entry)
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EQAResultSubmit"
+      responses:
+        "201":
+          description: Result submitted
+        "400":
+          description: Validation error (out of range, past deadline)
+        "409":
+          description: Duplicate submission (returns existing + new for audit)
+
+  /eqa/distributions/{id}/results/import:
+    post:
+      tags: [EQA Results]
+      summary: Batch import results from CSV/Excel
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Import results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  imported:
+                    type: integer
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        row:
+                          type: integer
+                        message:
+                          type: string
+
+  /eqa/distributions/{id}/statistics:
+    get:
+      tags: [EQA Results]
+      summary: Get statistical analysis for a distribution
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Statistical analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQAStatistics"
+
+  /eqa/distributions/{id}/report:
+    get:
+      tags: [EQA Results]
+      summary: Download performance report as PDF
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: PDF report
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  # ──────────────────────────────────────────────
+  # Alerts Dashboard (M3/M4 - extends existing)
+  # ──────────────────────────────────────────────
+  /alerts/dashboard:
+    get:
+      tags: [Alerts]
+      summary: Get alerts dashboard data
+      description: |
+        Returns summary counts and paginated alerts.
+        Extends existing /rest/alerts with dashboard-specific data.
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum:
+              - EQA_DEADLINE
+              - SAMPLE_EXPIRATION
+              - STAT_UPCOMING
+              - STAT_OVERDUE
+              - CRITICAL_UNACKNOWLEDGED
+              - FREEZER_TEMPERATURE
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        - name: labSectionId
+          in: query
+          schema:
+            type: string
+        - name: myAlerts
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by lab number, alert type, or assignment
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 25
+            enum: [25, 50, 100, 200]
+      responses:
+        "200":
+          description: Dashboard data with summary and paginated alerts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertsDashboard"
+
+  # ──────────────────────────────────────────────
+  # EQA Result Submission to External Providers (M7)
+  # ──────────────────────────────────────────────
+  /eqa/samples/{sampleId}/submit:
+    post:
+      tags: [EQA Results]
+      summary: Submit EQA results to external provider
+      description: |
+        Submits completed EQA sample results to the external provider.
+        If FHIR integration is configured for the program, sends via FHIR R4
+        DiagnosticReport bundle. Otherwise returns a pre-filled form for manual
+        submission. Late submissions require supervisor approval (FR-032).
+      parameters:
+        - name: sampleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EQASubmissionRequest"
+      responses:
+        "200":
+          description: Submission successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQASubmissionResponse"
+        "400":
+          description: Validation error
+        "403":
+          description: |
+            Late submission requires supervisor approval.
+            Returns supervisorApprovalRequired=true.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQALateSubmissionResponse"
+
+  /eqa/samples/{sampleId}/submit/approve-late:
+    post:
+      tags: [EQA Results]
+      summary: Supervisor approval for late EQA submission
+      description: |
+        Requires supervisor role. Approves a late result submission
+        with mandatory justification comment (FR-032).
+      parameters:
+        - name: sampleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [justification]
+              properties:
+                justification:
+                  type: string
+                  minLength: 10
+      responses:
+        "200":
+          description: Late submission approved and sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EQASubmissionResponse"
+
+  # ──────────────────────────────────────────────
+  # QC / Internal Control (M8)
+  # ──────────────────────────────────────────────
+  /qc/instruments/{instrumentId}/frequency:
+    get:
+      tags: [QC Configuration]
+      summary: Get QC frequency configuration for an instrument
+      description: Returns QC frequency rules for all tests on this instrument (FR-029n).
+      parameters:
+        - name: instrumentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: QC frequency configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QCFrequencyConfig"
+    put:
+      tags: [QC Configuration]
+      summary: Update QC frequency configuration for an instrument
+      parameters:
+        - name: instrumentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QCFrequencyConfigUpdate"
+      responses:
+        "200":
+          description: Configuration updated
+
+  /qc/instruments/{instrumentId}/compliance:
+    get:
+      tags: [QC Configuration]
+      summary: Get QC compliance metrics for an instrument
+      description: |
+        Returns percentage of required QC runs completed on schedule
+        per instrument (FR-029r).
+      parameters:
+        - name: instrumentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Compliance metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QCComplianceMetrics"
+
+  /qc/westgard-rules:
+    get:
+      tags: [QC Configuration]
+      summary: List available Westgard rules
+      description: Returns all 6 core Westgard rules with current enable/disable state (FR-029c/d).
+      parameters:
+        - name: testTypeId
+          in: query
+          schema:
+            type: string
+          description: Filter rules by test type configuration
+      responses:
+        "200":
+          description: Westgard rules list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WestgardRule"
+
+  /qc/westgard-rules/config/{testTypeId}:
+    get:
+      tags: [QC Configuration]
+      summary: Get Westgard rule configuration for a test type
+      parameters:
+        - name: testTypeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Rule configuration for test type
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WestgardRuleConfig"
+    put:
+      tags: [QC Configuration]
+      summary: Update Westgard rule configuration for a test type
+      parameters:
+        - name: testTypeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/WestgardRuleConfig"
+      responses:
+        "200":
+          description: Configuration updated
+
+  /qc/controls/{controlMaterialId}/results:
+    get:
+      tags: [QC Results]
+      summary: Get QC results for a control material
+      description: |
+        Returns IC measurement results for Levey-Jennings chart rendering
+        (FR-029a/b). Includes control limits, data points, and comments.
+      parameters:
+        - name: controlMaterialId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: testId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: QC results with chart data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QCChartData"
+    post:
+      tags: [QC Results]
+      summary: Record a QC measurement result
+      parameters:
+        - name: controlMaterialId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QCResultEntry"
+      responses:
+        "201":
+          description: QC result recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QCResultWithEvaluation"
+
+  /qc/controls/{controlMaterialId}/comments:
+    get:
+      tags: [QC Results]
+      summary: Search QC comment history for a control material
+      description: Searchable comment history across all measurements (FR-029m).
+      parameters:
+        - name: controlMaterialId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Comment history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QCComment"
+
+  /qc/reports/{reportId}/sign:
+    post:
+      tags: [QC Reports]
+      summary: Electronically sign a QC report
+      description: |
+        Records electronic signature without password re-entry (FR-029f/g/h).
+        Captures user ID, timestamp, IP address, and optional comment.
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment:
+                  type: string
+                  description: Optional reviewer comment
+      responses:
+        "200":
+          description: Report signed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QCSignature"
+
+  /qc/reports/{reportId}/signatures:
+    get:
+      tags: [QC Reports]
+      summary: Get signatures for a QC report
+      description: Returns all electronic signatures for display (FR-029i).
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Report signatures
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QCSignature"
+
+  /alerts/dashboard/summary:
+    get:
+      tags: [Alerts]
+      summary: Get alert summary counts only
+      description: Lightweight endpoint for badge/tile updates.
+      responses:
+        "200":
+          description: Summary counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertSummary"
+
+components:
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+
+  schemas:
+    # ── EQA Program ──
+    EQAProgram:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        isActive:
+          type: boolean
+        testCount:
+          type: integer
+        lastupdated:
+          type: string
+          format: date-time
+
+    EQAProgramCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        isActive:
+          type: boolean
+          default: true
+
+    EQAProgramUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        isActive:
+          type: boolean
+
+    EQAProgramTest:
+      type: object
+      properties:
+        id:
+          type: string
+        testId:
+          type: string
+        testName:
+          type: string
+        isActive:
+          type: boolean
+
+    # ── EQA Sample ──
+    SampleEQA:
+      type: object
+      properties:
+        id:
+          type: string
+        sampleId:
+          type: string
+        accessionNumber:
+          type: string
+        isEqaSample:
+          type: boolean
+        eqaProgramId:
+          type: string
+        eqaProgramName:
+          type: string
+        eqaProviderOrganizationId:
+          type: string
+        eqaProviderOrganizationName:
+          type: string
+        eqaProviderSampleId:
+          type: string
+        eqaParticipantId:
+          type: string
+        eqaDeadline:
+          type: string
+          format: date-time
+        eqaPriority:
+          type: string
+          enum: [STANDARD, URGENT, CRITICAL]
+        eqaDistributionId:
+          type: string
+
+    EQASamplePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SampleEQA"
+        totalCount:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+
+    # ── EQA Distribution ──
+    EQADistribution:
+      type: object
+      properties:
+        id:
+          type: string
+        eqaProgramId:
+          type: string
+        eqaProgramName:
+          type: string
+        distributionName:
+          type: string
+        distributionDate:
+          type: string
+          format: date-time
+        deadline:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [DRAFT, PREPARED, SHIPPED, COMPLETED]
+        participantCount:
+          type: integer
+        resultCount:
+          type: integer
+        createdBy:
+          type: string
+
+    EQADistributionCreate:
+      type: object
+      required: [eqaProgramId, distributionName, deadline, participantOrganizationIds]
+      properties:
+        eqaProgramId:
+          type: string
+        distributionName:
+          type: string
+        deadline:
+          type: string
+          format: date-time
+        targetValue:
+          type: number
+        participantOrganizationIds:
+          type: array
+          items:
+            type: string
+          minItems: 2
+
+    EQADistributionDetail:
+      allOf:
+        - $ref: "#/components/schemas/EQADistribution"
+        - type: object
+          properties:
+            participants:
+              type: array
+              items:
+                type: object
+                properties:
+                  organizationId:
+                    type: string
+                  organizationName:
+                    type: string
+                  sampleId:
+                    type: string
+                  accessionNumber:
+                    type: string
+                  resultSubmitted:
+                    type: boolean
+
+    # ── EQA Results ──
+    EQAResultSubmit:
+      type: object
+      required: [participantOrganizationId, testId, resultValue]
+      properties:
+        participantOrganizationId:
+          type: string
+        testId:
+          type: string
+        resultValue:
+          type: number
+        submissionMethod:
+          type: string
+          enum: [FHIR, MANUAL, FILE_UPLOAD]
+          default: MANUAL
+
+    EQAResultsWithStatistics:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              participantOrganizationName:
+                type: string
+              testName:
+                type: string
+              resultValue:
+                type: number
+              zScore:
+                type: number
+              performanceStatus:
+                type: string
+                enum: [ACCEPTABLE, QUESTIONABLE, UNACCEPTABLE]
+              submissionMethod:
+                type: string
+              submissionDate:
+                type: string
+                format: date-time
+              isLateSubmission:
+                type: boolean
+        statistics:
+          $ref: "#/components/schemas/EQAStatistics"
+
+    EQAStatistics:
+      type: object
+      properties:
+        participantCount:
+          type: integer
+        mean:
+          type: number
+        standardDeviation:
+          type: number
+        targetValue:
+          type: number
+        acceptableCount:
+          type: integer
+        questionableCount:
+          type: integer
+        unacceptableCount:
+          type: integer
+        isStatisticallyValid:
+          type: boolean
+          description: "true if participantCount >= 5"
+        warningMessage:
+          type: string
+          description: "Set if participantCount < 5"
+
+    # ── EQA Submission (M7) ──
+    EQASubmissionRequest:
+      type: object
+      properties:
+        submissionMethod:
+          type: string
+          enum: [FHIR, MANUAL]
+          description: FHIR for electronic, MANUAL for web form
+        fhirEndpoint:
+          type: string
+          description: Override FHIR endpoint (optional, uses program default)
+
+    EQASubmissionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        submissionId:
+          type: string
+        method:
+          type: string
+          enum: [FHIR, MANUAL]
+        timestamp:
+          type: string
+          format: date-time
+        acknowledgment:
+          type: string
+          description: Provider acknowledgment reference
+
+    EQALateSubmissionResponse:
+      type: object
+      properties:
+        supervisorApprovalRequired:
+          type: boolean
+          default: true
+        deadline:
+          type: string
+          format: date-time
+        currentTime:
+          type: string
+          format: date-time
+        hoursOverdue:
+          type: number
+
+    # ── QC / Internal Control (M8) ──
+    QCFrequencyConfig:
+      type: object
+      properties:
+        instrumentId:
+          type: string
+        instrumentName:
+          type: string
+        frequencyType:
+          type: string
+          enum:
+            - DAILY_STARTUP
+            - PER_SHIFT
+            - EVERY_N_SAMPLES
+            - EVERY_N_HOURS
+            - MANUAL_TRIGGER_ONLY
+        frequencyValue:
+          type: integer
+          description: N value for EVERY_N_SAMPLES or EVERY_N_HOURS
+        lastQCRunDate:
+          type: string
+          format: date-time
+        nextQCDueDate:
+          type: string
+          format: date-time
+
+    QCFrequencyConfigUpdate:
+      type: object
+      required: [frequencyType]
+      properties:
+        frequencyType:
+          type: string
+          enum:
+            - DAILY_STARTUP
+            - PER_SHIFT
+            - EVERY_N_SAMPLES
+            - EVERY_N_HOURS
+            - MANUAL_TRIGGER_ONLY
+        frequencyValue:
+          type: integer
+
+    QCComplianceMetrics:
+      type: object
+      properties:
+        instrumentId:
+          type: string
+        instrumentName:
+          type: string
+        totalRequired:
+          type: integer
+        totalCompleted:
+          type: integer
+        compliancePercentage:
+          type: number
+        missedRuns:
+          type: array
+          items:
+            type: object
+            properties:
+              dueDate:
+                type: string
+                format: date-time
+              reason:
+                type: string
+
+    WestgardRule:
+      type: object
+      properties:
+        ruleCode:
+          type: string
+          enum: [RULE_12S, RULE_13S, RULE_22S, RULE_R4S, RULE_41S, RULE_10X]
+        ruleName:
+          type: string
+          description: "e.g., '1-2s (warning)'"
+        ruleDescription:
+          type: string
+        ruleType:
+          type: string
+          enum: [WARNING, REJECTION]
+
+    WestgardRuleConfig:
+      type: object
+      properties:
+        ruleCode:
+          type: string
+          enum: [RULE_12S, RULE_13S, RULE_22S, RULE_R4S, RULE_41S, RULE_10X]
+        enabled:
+          type: boolean
+
+    QCChartData:
+      type: object
+      properties:
+        controlMaterialId:
+          type: string
+        controlMaterialName:
+          type: string
+        testId:
+          type: string
+        testName:
+          type: string
+        mean:
+          type: number
+        standardDeviation:
+          type: number
+        controlLimits:
+          type: object
+          properties:
+            plus2SD:
+              type: number
+            minus2SD:
+              type: number
+            plus3SD:
+              type: number
+            minus3SD:
+              type: number
+        dataPoints:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              date:
+                type: string
+                format: date-time
+              value:
+                type: number
+              comment:
+                type: string
+                description: QC comment if attached (FR-029l)
+              westgardViolations:
+                type: array
+                items:
+                  type: string
+                  description: Rule codes violated at this point
+
+    QCResultEntry:
+      type: object
+      required: [testId, value]
+      properties:
+        testId:
+          type: string
+        value:
+          type: number
+        controlLevel:
+          type: string
+          description: "e.g., 'Level 1', 'Level 2'"
+        comment:
+          type: string
+          description: Optional result-level QC comment (FR-029j)
+
+    QCResultWithEvaluation:
+      type: object
+      properties:
+        id:
+          type: string
+        value:
+          type: number
+        zScore:
+          type: number
+        westgardViolations:
+          type: array
+          items:
+            type: object
+            properties:
+              ruleCode:
+                type: string
+              ruleName:
+                type: string
+              action:
+                type: string
+                description: Recommended action (FR-029e)
+        alertsGenerated:
+          type: boolean
+
+    QCComment:
+      type: object
+      properties:
+        id:
+          type: string
+        measurementId:
+          type: string
+        comment:
+          type: string
+        userId:
+          type: string
+        userName:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    QCSignature:
+      type: object
+      properties:
+        id:
+          type: string
+        reportId:
+          type: string
+        userId:
+          type: string
+        userName:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        ipAddress:
+          type: string
+        comment:
+          type: string
+
+    # ── Alerts Dashboard ──
+    AlertsDashboard:
+      type: object
+      properties:
+        summary:
+          $ref: "#/components/schemas/AlertSummary"
+        alerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlertItem"
+        totalCount:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+
+    AlertSummary:
+      type: object
+      properties:
+        criticalAlerts:
+          type: integer
+        eqaDeadlinesToday:
+          type: integer
+        overdueStatOrders:
+          type: integer
+        samplesExpiring:
+          type: integer
+
+    AlertItem:
+      type: object
+      properties:
+        id:
+          type: string
+        alertType:
+          type: string
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        message:
+          type: string
+        labSectionName:
+          type: string
+        dueDate:
+          type: string
+          format: date-time
+        labNumber:
+          type: string
+        assignedTo:
+          type: string
+        status:
+          type: string
+          enum: [OPEN, ACKNOWLEDGED, RESOLVED]
+        createdDate:
+          type: string
+          format: date-time
+        acknowledgedBy:
+          type: string
+        acknowledgedDate:
+          type: string
+          format: date-time
+        resolutionComment:
+          type: string
