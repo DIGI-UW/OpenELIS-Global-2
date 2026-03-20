@@ -77,4 +77,26 @@
         </rollback>
     </changeSet>
 
+
+    <!-- Prevent duplicate active queue entries for the same accession number.
+         A partial unique index on (accession_number) WHERE status IN ('PENDING','IN_PROGRESS')
+         acts as a DB-level safety net on top of the application-level idempotency
+         check in OdooSyncQueueService.enqueue(). FAILED and COMPLETED rows are
+         excluded so a new attempt can be enqueued after permanent failure or
+         after a successful completion. -->
+    <changeSet id="odoo-sync-queue-002-unique-active-accession" author="odoo-sync-queue">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_osq_unique_active_accession"/>
+            </not>
+        </preConditions>
+        <sql>
+            CREATE UNIQUE INDEX idx_osq_unique_active_accession
+            ON odoo_sync_queue (accession_number)
+            WHERE status IN ('PENDING', 'IN_PROGRESS');
+        </sql>
+        <rollback>
+            DROP INDEX IF EXISTS idx_osq_unique_active_accession;
+        </rollback>
+    </changeSet>
 </databaseChangeLog>

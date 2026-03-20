@@ -260,6 +260,61 @@ public class OdooSyncQueueServiceTest {
         assertTrue(item.hasExceededMaxRetries());
     }
 
+
+    // ─── enqueue idempotency ──────────────────────────────────────────────────
+
+    @Test
+    public void enqueue_whenPendingItemExists_returnsExistingItemWithoutInserting() {
+        OdooSyncQueue existing = buildPendingItem();
+        when(odooSyncQueueDAO.getActiveItemByAccessionNumber(ACCESSION_NUMBER)).thenReturn(existing);
+
+        OdooSyncQueue result = odooSyncQueueService.enqueue(ACCESSION_NUMBER);
+
+        assertSame(existing, result);
+        verify(odooSyncQueueDAO, never()).insert(any());
+    }
+
+    @Test
+    public void enqueue_whenInProgressItemExists_returnsExistingItemWithoutInserting() {
+        OdooSyncQueue existing = buildPendingItem();
+        existing.setStatus(SyncStatus.IN_PROGRESS);
+        when(odooSyncQueueDAO.getActiveItemByAccessionNumber(ACCESSION_NUMBER)).thenReturn(existing);
+
+        OdooSyncQueue result = odooSyncQueueService.enqueue(ACCESSION_NUMBER);
+
+        assertSame(existing, result);
+        verify(odooSyncQueueDAO, never()).insert(any());
+    }
+
+    @Test
+    public void enqueue_whenNoActiveItemExists_insertsNewItem() {
+        when(odooSyncQueueDAO.getActiveItemByAccessionNumber(ACCESSION_NUMBER)).thenReturn(null);
+
+        odooSyncQueueService.enqueue(ACCESSION_NUMBER);
+
+        verify(odooSyncQueueDAO, times(1)).insert(any(OdooSyncQueue.class));
+    }
+
+    @Test
+    public void enqueue_whenPreviousItemIsFailed_insertsNewItem() {
+        // FAILED items do not block a fresh enqueue
+        when(odooSyncQueueDAO.getActiveItemByAccessionNumber(ACCESSION_NUMBER)).thenReturn(null);
+
+        odooSyncQueueService.enqueue(ACCESSION_NUMBER);
+
+        verify(odooSyncQueueDAO, times(1)).insert(any(OdooSyncQueue.class));
+    }
+
+    @Test
+    public void enqueue_whenPreviousItemIsCompleted_insertsNewItem() {
+        // COMPLETED items do not block a fresh enqueue
+        when(odooSyncQueueDAO.getActiveItemByAccessionNumber(ACCESSION_NUMBER)).thenReturn(null);
+
+        odooSyncQueueService.enqueue(ACCESSION_NUMBER);
+
+        verify(odooSyncQueueDAO, times(1)).insert(any(OdooSyncQueue.class));
+    }
+
     // ─── helpers ──────────────────────────────────────────────────────────────
 
     private OdooSyncQueue buildPendingItem() {

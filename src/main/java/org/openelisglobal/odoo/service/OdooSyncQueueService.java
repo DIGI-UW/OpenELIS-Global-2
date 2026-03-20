@@ -24,6 +24,13 @@ public class OdooSyncQueueService {
     private OdooSyncQueueDAO odooSyncQueueDAO;
 
     public OdooSyncQueue enqueue(String accessionNumber) {
+        OdooSyncQueue existing = odooSyncQueueDAO.getActiveItemByAccessionNumber(accessionNumber);
+        if (existing != null) {
+            log.info("Odoo sync for accession {} is already queued (id={}, status={}). Skipping duplicate enqueue.",
+                    accessionNumber, existing.getId(), existing.getStatus());
+            return existing;
+        }
+
         OdooSyncQueue item = new OdooSyncQueue();
         item.setAccessionNumber(accessionNumber);
         item.setStatus(SyncStatus.PENDING);

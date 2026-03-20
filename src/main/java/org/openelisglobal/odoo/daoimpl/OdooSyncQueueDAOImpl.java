@@ -48,4 +48,18 @@ public class OdooSyncQueueDAOImpl extends BaseDAOImpl<OdooSyncQueue, Long> imple
         List<OdooSyncQueue> results = query.getResultList();
         return results.isEmpty() ? null : results.get(0);
     }
+
+    @Override
+    public OdooSyncQueue getActiveItemByAccessionNumber(String accessionNumber) {
+        String hql = "FROM OdooSyncQueue q WHERE q.accessionNumber = :accessionNumber "
+                + "AND q.status IN (:pendingStatus, :inProgressStatus) "
+                + "ORDER BY q.createdAt DESC";
+        TypedQuery<OdooSyncQueue> query = entityManager.createQuery(hql, OdooSyncQueue.class);
+        query.setParameter("accessionNumber", accessionNumber);
+        query.setParameter("pendingStatus", SyncStatus.PENDING);
+        query.setParameter("inProgressStatus", SyncStatus.IN_PROGRESS);
+        query.setMaxResults(1);
+        List<OdooSyncQueue> results = query.getResultList();
+        return results.isEmpty() ? null : results.get(0);
+    }
 }
