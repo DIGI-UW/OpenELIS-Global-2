@@ -53,15 +53,19 @@ export async function acceptAndVerifyResults(
   // "/AnalyzerResults?type=..." URL (AnalyserResults.js), so waitForURL does
   // not observe a change. Wait for the save POST (200), then assert the empty
   // state (retries until the reload paints).
+  // Do not require r.status() === 200 inside the predicate: Playwright may
+  // evaluate before the status is available, and any non-200 would never
+  // match—causing a full timeout with no POST "seen". Filter URL + method,
+  // then assert HTTP 200 explicitly.
   const saveResponse = page.waitForResponse(
     (r) =>
       r.request().method() === "POST" &&
-      /\/rest\/AnalyzerResults(?:\?|\/|$)/.test(r.url()) &&
-      r.status() === 200,
+      /\/rest\/AnalyzerResults(?:\?|\/|$)/.test(r.url()),
     { timeout: 60_000 },
   );
   await saveButton.click();
-  await saveResponse;
+  const response = await saveResponse;
+  expect(response.status()).toBe(200);
   // Full reload follows in the UI thread; avoid waitForLoadState here (same
   // URL as before can satisfy "load" on the wrong lifecycle). The expect
   // below retries against the live DOM until the refreshed empty state shows.
