@@ -28,7 +28,7 @@ public class SampleEQADAOImpl extends BaseDAOImpl<SampleEQA, Long> implements Sa
     @Transactional(readOnly = true)
     public Optional<SampleEQA> findBySampleId(Long sampleId) {
         try {
-            String hql = "FROM SampleEQA s WHERE s.sampleId = :sampleId";
+            String hql = "SELECT s FROM org.openelisglobal.eqa.valueholder.SampleEQA s WHERE s.sampleId = :sampleId";
             Query<SampleEQA> query = entityManager.unwrap(Session.class).createQuery(hql, SampleEQA.class);
             query.setParameter("sampleId", sampleId);
             return query.uniqueResultOptional();
