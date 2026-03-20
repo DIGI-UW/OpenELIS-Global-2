@@ -1,0 +1,6 @@
+testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure,localization:en,localization:fr
+Xpert MTB/RIF,Molecular Biology,Sputum,23826-1,Y,Y,1,,Xpert MTB/RIF,Xpert MTB/RIF
+Xpert RIF Resistance,Molecular Biology,Sputum,46244-0,Y,Y,2,,Xpert RIF Resistance,Résistance RIF Xpert
+HIV Viral Load,Molecular Biology,Plasma|Serum,20447-9,Y,Y,3,copies/mL,HIV Viral Load,Charge Virale VIH
+COVID-19 PCR,Molecular Biology,Respiratory Swab,94500-6,Y,Y,4,,COVID-19 PCR,PCR COVID-19
+Internal Control DNA,Molecular Biology,,89578-3,Y,N,5,,Internal Control DNA,Contrôle Interne ADN
