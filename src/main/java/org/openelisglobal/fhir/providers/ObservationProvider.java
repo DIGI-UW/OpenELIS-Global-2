@@ -161,95 +161,11 @@ public class ObservationProvider implements IResourceProvider {
 
             TestResultItem item = fhirTransformService.createResultFromObservation(observation);
 
-            if (item == null) {
-                throw new UnprocessableEntityException("Failed to transform Observation into TestResultItem");
-            }
-
-            if (item.getSampleItemId() == null) {
-                throw new UnprocessableEntityException("SampleItemId is null in TestResultItem");
-            }
-
-            Sample sample = sampleItemService.get(item.getSampleItemId()).getSample();
-
-            if (sample == null) {
-                throw new UnprocessableEntityException("SampleItem not found: " + item.getSampleItemId());
-            }
-
-            SampleHuman sampleHuman = sampleHumanService.getMatch("sampleId", sample.getId()).orElse(null);
-
-            if (sampleHuman == null) {
-                throw new UnprocessableEntityException("Failed to get SampleHuman for sample: " + sample.getId());
-            }
-
-            if (observation.hasPerformer()) {
-
-                String practitionerUUID = observation.getPerformerFirstRep().getReferenceElement().getIdPart();
-
-                Provider provider = fhirTransformService.getItemByFhirId(practitionerUUID, providerService);
-
-                if (provider == null) {
-                    throw new UnprocessableEntityException("Provider not found: " + practitionerUUID);
-                }
-
-                sampleHuman.setProviderId(provider.getId());
-                sampleHumanService.save(sampleHuman);
-            }
-
-            item.setIsModified(true);
-
-            LogEvent.logInfo(getClass().getSimpleName(), method, "Transformed Observation to TestResultItem");
-
-            List<TestResultItem> items = new ArrayList<>();
-            items.add(item);
+            ResultsUpdateDataSet actionDataSet = handleObservationPersistence(item, observation, null, request, method);
 
             List<IResultUpdate> updaters = ResultUpdateRegister.getRegisteredUpdaters();
 
             String sysUserId = FhirProviderUtils.getSysUserId(request);
-
-            ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(sysUserId);
-
-            actionDataSet.filterModifiedItems(items);
-
-            if (actionDataSet.getModifiedItems().isEmpty()) {
-
-                LogEvent.logWarn(getClass().getSimpleName(), method, "No modified items after filtering");
-
-                throw new UnprocessableEntityException("No valid results found to process");
-            }
-
-            Errors errors = actionDataSet.validateModifiedItems();
-
-            if (errors != null && errors.hasErrors()) {
-
-                OperationOutcome outcome = new OperationOutcome();
-
-                for (ObjectError error : errors.getAllErrors()) {
-
-                    LogEvent.logError("FHIR_VALIDATION", "ERROR",
-                            "code=" + error.getCode() + ", message=" + error.getDefaultMessage());
-
-                    outcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
-                            .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getDefaultMessage());
-                }
-
-                throw new UnprocessableEntityException(outcome);
-            }
-
-            boolean useTechnicianName = ConfigurationProperties.getInstance()
-                    .isPropertyValueEqual(Property.resultTechnicianName, "true");
-
-            boolean alwaysValidate = ConfigurationProperties.getInstance()
-                    .isPropertyValueEqual(Property.ALWAYS_VALIDATE_RESULTS, "true");
-
-            boolean supportReferrals = FormFields.getInstance().useField(Field.ResultsReferral);
-
-            String statusRuleSet = ConfigurationProperties.getInstance()
-                    .getPropertyValueUpperCase(Property.StatusRules);
-
-            ResultUtil.createResultsFromItems(actionDataSet, supportReferrals, alwaysValidate, useTechnicianName,
-                    statusRuleSet, request);
-
-            ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
 
             logbookResultsPersistService.persistDataSet(actionDataSet, updaters, sysUserId);
 
@@ -280,8 +196,6 @@ public class ObservationProvider implements IResourceProvider {
 
         } catch (Exception e) {
 
-            e.printStackTrace();
-
             LogEvent.logError(e);
 
             OperationOutcome outcome = new OperationOutcome();
@@ -289,7 +203,7 @@ public class ObservationProvider implements IResourceProvider {
             outcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
                     .setCode(OperationOutcome.IssueType.EXCEPTION).setDiagnostics(e.getMessage());
 
-            throw new InternalErrorException(outcome.toString());
+            throw new InternalErrorException("Unexpected server error while creating Observation", e);
         }
     }
 
@@ -331,119 +245,12 @@ public class ObservationProvider implements IResourceProvider {
 
             TestResultItem item = fhirTransformService.createResultFromObservation(fhirObservation);
 
-            if (item == null) {
-                LogEvent.logError(getClass().getSimpleName(), method, "createResultFromObservation returned NULL");
-                throw new InternalErrorException("Failed to transform Observation to TestResultItem");
-            }
-
-            if (item.getSampleItemId() == null) {
-                throw new UnprocessableEntityException("SampleItemId is null in TestResultItem");
-            }
-
-            Sample sample = sampleItemService.get(item.getSampleItemId()).getSample();
-
-            if (sample == null) {
-                throw new UnprocessableEntityException("SampleItem not found: " + item.getSampleItemId());
-            }
-
-            SampleHuman sampleHuman = sampleHumanService.getMatch("sampleId", sample.getId()).orElse(null);
-
-            if (sampleHuman == null) {
-                throw new UnprocessableEntityException("Failed to get SampleHuman for sample: " + sample.getId());
-            }
-
-            if (fhirObservation.hasPerformer()) {
-
-                String practitionerUUID = fhirObservation.getPerformerFirstRep().getReferenceElement().getIdPart();
-
-                Provider provider = fhirTransformService.getItemByFhirId(practitionerUUID, providerService);
-
-                if (provider == null) {
-                    throw new UnprocessableEntityException("Provider not found: " + practitionerUUID);
-                }
-
-                sampleHuman.setProviderId(provider.getId());
-                sampleHumanService.save(sampleHuman);
-            }
-
-            Result transformedResult = item.getResult();
-
-            if (transformedResult == null) {
-                LogEvent.logWarn(getClass().getSimpleName(), method,
-                        "Transformed Result was null, creating new Result instance");
-                transformedResult = new Result();
-                item.setResult(transformedResult);
-            }
-
-            transformedResult.setId(existingResult.getId());
-            item.setResultId(existingResult.getId());
-            item.setIsModified(true);
-
-            LogEvent.logInfo(getClass().getSimpleName(), method,
-                    "Prepared TestResultItem for Result ID=" + existingResult.getId());
-
-            List<TestResultItem> items = new ArrayList<>();
-            items.add(item);
-
-            String sysUserId = FhirProviderUtils.getSysUserId(request);
-
-            LogEvent.logInfo(getClass().getSimpleName(), method,
-                    "Creating ResultsUpdateDataSet with systemUserId=" + sysUserId);
-
-            ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(sysUserId);
-
-            actionDataSet.filterModifiedItems(items);
-
-            LogEvent.logInfo(getClass().getSimpleName(), method,
-                    "Filtered modified items count=" + actionDataSet.getModifiedItems().size());
-
-            if (actionDataSet.getModifiedItems().isEmpty()) {
-                LogEvent.logWarn(getClass().getSimpleName(), method, "No modified items after filtering");
-                throw new UnprocessableEntityException("No valid results found to process");
-            }
-
-            Errors errors = actionDataSet.validateModifiedItems();
-
-            if (errors != null && errors.hasErrors()) {
-
-                LogEvent.logError(getClass().getSimpleName(), method,
-                        "Validation errors detected: count=" + errors.getErrorCount());
-
-                OperationOutcome outcome = new OperationOutcome();
-
-                for (ObjectError error : errors.getAllErrors()) {
-
-                    LogEvent.logError("FHIR_VALIDATION", "ERROR",
-                            "code=" + error.getCode() + ", message=" + error.getDefaultMessage());
-
-                    outcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
-                            .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getDefaultMessage());
-                }
-
-                throw new UnprocessableEntityException(outcome);
-            }
-
-            boolean useTechnicianName = ConfigurationProperties.getInstance()
-                    .isPropertyValueEqual(Property.resultTechnicianName, "true");
-
-            boolean alwaysValidate = ConfigurationProperties.getInstance()
-                    .isPropertyValueEqual(Property.ALWAYS_VALIDATE_RESULTS, "true");
-
-            boolean supportReferrals = FormFields.getInstance().useField(Field.ResultsReferral);
-
-            String statusRuleSet = ConfigurationProperties.getInstance()
-                    .getPropertyValueUpperCase(Property.StatusRules);
-
-            LogEvent.logInfo(getClass().getSimpleName(), method, "Running ResultUtil.createResultsFromItems");
-
-            ResultUtil.createResultsFromItems(actionDataSet, supportReferrals, alwaysValidate, useTechnicianName,
-                    statusRuleSet, request);
-
-            LogEvent.logInfo(getClass().getSimpleName(), method, "Running ResultUtil.createAnalysisOnlyUpdates");
-
-            ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
+            ResultsUpdateDataSet actionDataSet = handleObservationPersistence(item, fhirObservation, existingResult,
+                    request, method);
 
             List<IResultUpdate> updaters = ResultUpdateRegister.getRegisteredUpdaters();
+
+            String sysUserId = FhirProviderUtils.getSysUserId(request);
 
             LogEvent.logInfo(getClass().getSimpleName(), method,
                     "Persisting dataset with updaters count=" + updaters.size());
@@ -486,8 +293,6 @@ public class ObservationProvider implements IResourceProvider {
 
         } catch (Exception e) {
 
-            e.printStackTrace();
-
             LogEvent.logError(getClass().getSimpleName(), method, "Unexpected error during Observation update");
 
             OperationOutcome outcome = new OperationOutcome();
@@ -495,7 +300,7 @@ public class ObservationProvider implements IResourceProvider {
             outcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
                     .setCode(OperationOutcome.IssueType.EXCEPTION).setDiagnostics(e.getMessage());
 
-            throw new InternalErrorException(outcome.toString());
+            throw new InternalErrorException("Unexpected server error while update Observation", e);
         }
     }
 
@@ -530,7 +335,7 @@ public class ObservationProvider implements IResourceProvider {
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error deleting observation: " + e.getMessage());
-            throw new InternalErrorException("Unexpected server error deleting Observation");
+            throw new InternalErrorException("Unexpected server error deleting Observation", e);
         }
     }
 
@@ -586,5 +391,146 @@ public class ObservationProvider implements IResourceProvider {
                     "Error searching Observations: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error searching Observations");
         }
+    }
+
+    private ResultsUpdateDataSet handleObservationPersistence(TestResultItem item, Observation observation,
+            Result existingResult, HttpServletRequest request, String method) {
+
+        if (item == null) {
+            if (existingResult == null) {
+                throw new UnprocessableEntityException("Failed to transform Observation into TestResultItem");
+            } else {
+                LogEvent.logError(getClass().getSimpleName(), method, "createResultFromObservation returned NULL");
+                throw new InternalErrorException("Failed to transform Observation to TestResultItem");
+            }
+        }
+
+        if (item.getSampleItemId() == null) {
+            throw new UnprocessableEntityException("SampleItemId is null in TestResultItem");
+        }
+
+        Sample sample = sampleItemService.get(item.getSampleItemId()).getSample();
+
+        if (sample == null) {
+            throw new UnprocessableEntityException("SampleItem not found: " + item.getSampleItemId());
+        }
+
+        SampleHuman sampleHuman = sampleHumanService.getMatch("sampleId", sample.getId()).orElse(null);
+
+        if (sampleHuman == null) {
+            throw new UnprocessableEntityException("Failed to get SampleHuman for sample: " + sample.getId());
+        }
+
+        if (observation.hasPerformer()) {
+
+            String practitionerUUID = observation.getPerformerFirstRep().getReferenceElement().getIdPart();
+
+            Provider provider = fhirTransformService.getItemByFhirId(practitionerUUID, providerService);
+
+            if (provider == null) {
+                throw new UnprocessableEntityException("Provider not found: " + practitionerUUID);
+            }
+
+            sampleHuman.setProviderId(provider.getId());
+            sampleHumanService.save(sampleHuman);
+        }
+
+        if (existingResult != null) {
+
+            Result transformedResult = item.getResult();
+
+            if (transformedResult == null) {
+                LogEvent.logWarn(getClass().getSimpleName(), method,
+                        "Transformed Result was null, creating new Result instance");
+                transformedResult = new Result();
+                item.setResult(transformedResult);
+            }
+
+            transformedResult.setId(existingResult.getId());
+            item.setResultId(existingResult.getId());
+            item.setIsModified(true);
+
+            LogEvent.logInfo(getClass().getSimpleName(), method,
+                    "Prepared TestResultItem for Result ID=" + existingResult.getId());
+
+        } else {
+            item.setIsModified(true);
+
+            LogEvent.logInfo(getClass().getSimpleName(), method, "Transformed Observation to TestResultItem");
+        }
+
+        List<TestResultItem> items = new ArrayList<>();
+        items.add(item);
+
+        String sysUserId = FhirProviderUtils.getSysUserId(request);
+
+        if (existingResult != null) {
+            LogEvent.logInfo(getClass().getSimpleName(), method,
+                    "Creating ResultsUpdateDataSet with systemUserId=" + sysUserId);
+        }
+
+        ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(sysUserId);
+
+        actionDataSet.filterModifiedItems(items);
+
+        if (existingResult != null) {
+            LogEvent.logInfo(getClass().getSimpleName(), method,
+                    "Filtered modified items count=" + actionDataSet.getModifiedItems().size());
+        }
+
+        if (actionDataSet.getModifiedItems().isEmpty()) {
+
+            LogEvent.logWarn(getClass().getSimpleName(), method, "No modified items after filtering");
+
+            throw new UnprocessableEntityException("No valid results found to process");
+        }
+
+        Errors errors = actionDataSet.validateModifiedItems();
+
+        if (errors != null && errors.hasErrors()) {
+
+            if (existingResult != null) {
+                LogEvent.logError(getClass().getSimpleName(), method,
+                        "Validation errors detected: count=" + errors.getErrorCount());
+            }
+
+            OperationOutcome outcome = new OperationOutcome();
+
+            for (ObjectError error : errors.getAllErrors()) {
+
+                LogEvent.logError("FHIR_VALIDATION", "ERROR",
+                        "code=" + error.getCode() + ", message=" + error.getDefaultMessage());
+
+                outcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
+                        .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getDefaultMessage());
+            }
+
+            throw new InternalErrorException("Unexpected Error during validation");
+        }
+
+        boolean useTechnicianName = ConfigurationProperties.getInstance()
+                .isPropertyValueEqual(Property.resultTechnicianName, "true");
+
+        boolean alwaysValidate = ConfigurationProperties.getInstance()
+                .isPropertyValueEqual(Property.ALWAYS_VALIDATE_RESULTS, "true");
+
+        boolean supportReferrals = FormFields.getInstance().useField(Field.ResultsReferral);
+
+        String statusRuleSet = ConfigurationProperties.getInstance().getPropertyValueUpperCase(Property.StatusRules);
+
+        if (existingResult != null) {
+            LogEvent.logInfo(getClass().getSimpleName(), method, "Running ResultUtil.createResultsFromItems");
+        }
+
+        ResultUtil.createResultsFromItems(actionDataSet, supportReferrals, alwaysValidate, useTechnicianName,
+                statusRuleSet, request);
+
+        if (existingResult != null) {
+            LogEvent.logInfo(getClass().getSimpleName(), method, "Running ResultUtil.createAnalysisOnlyUpdates");
+        }
+
+        ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
+
+        return actionDataSet;
     }
 }

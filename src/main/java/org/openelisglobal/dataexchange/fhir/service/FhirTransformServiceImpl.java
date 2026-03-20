@@ -1322,10 +1322,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
             Analysis analysis = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUUID)).get(0);
 
-            if (analysis == null) {
-                throw new UnprocessableEntityException("Analysis not found: " + analysisUUID);
-            }
-
             java.util.Date utilDate = observation.hasEffectiveDateTimeType()
                     ? observation.getEffectiveDateTimeType().getValue()
                     : new java.util.Date();
@@ -1335,12 +1331,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
             bean.setAnalysisId(analysis.getId());
             bean.setTestId(test.getId());
-
-            if (analysis.getStartedDate() == null) {
-                analysis.setStartedDate(effectiveDate);
-            } else {
-                analysis.setReleasedDate(effectiveDate);
-            }
         }
         if (observation.hasSubject()) {
             String patientUUID = observation.getSubject().getReferenceElement().getIdPart();
@@ -1370,8 +1360,12 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         if (observation.hasStatus()) {
             String status = observation.getStatusElement().getValue().toString();
-            if (statusService.matches(status, AnalysisStatus.Finalized)) {
+            if (status.equals(org.hl7.fhir.r4.model.Observation.ObservationStatus.FINAL.toString())) {
                 bean.setAnalysisStatusId(statusService.getStatusID(AnalysisStatus.Finalized));
+            } else if (status.equals(org.hl7.fhir.r4.model.Observation.ObservationStatus.CANCELLED.toString())) {
+                bean.setAnalysisStatusId(statusService.getStatusID(AnalysisStatus.Canceled));
+            } else if (status.equals(org.hl7.fhir.r4.model.Observation.ObservationStatus.REGISTERED.toString())) {
+                bean.setAnalysisStatusId(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
             }
         }
 
@@ -1394,9 +1388,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
             for (Coding code : observation.getValueCodeableConcept().getCoding()) {
 
-                LogEvent.logInfo("FHIR_OBSERVATION_TRANSFORM", "DICT_DEBUG", "Observation coding: system="
-                        + code.getSystem() + ", code=" + code.getCode() + ", display=" + code.getDisplay());
-
                 if (code.getSystem().equals(fhirConfig.getOeFhirSystem() + "/dictionary_entry")) {
 
                     List<Dictionary> dictionaries = dictionaryService.getAllMatching("dictEntry", code.getCode());
@@ -1416,26 +1407,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
                             result.setTestResult(testResult);
 
-                            LogEvent.logInfo("FHIR_OBSERVATION_TRANSFORM", "TEST_RESULT_DEBUG",
-                                    "TestResult found: id=" + testResult.getId() + ", value=" + testResult.getValue()
-                                            + ", testResultType=" + testResult.getTestResultType());
-
-                        } else {
-
-                            LogEvent.logError("FHIR_OBSERVATION_TRANSFORM", "TEST_RESULT_DEBUG",
-                                    "No TestResult found for dictionaryId=" + dictionary.getId() + " and testId="
-                                            + bean.getTestId());
                         }
 
-                        LogEvent.logInfo("FHIR_OBSERVATION_TRANSFORM", "DICT_RESULT",
-                                "Dictionary entry processed: code=" + code.getCode() + ", dictionaryId="
-                                        + dictionary.getId() + ", testId=" + bean.getTestId() + ", patientId="
-                                        + bean.getPatientId());
-
-                    } else {
-
-                        LogEvent.logError(getClass().getSimpleName(), "createResultFromObservation",
-                                "Dictionary entry not found for: " + code.getCode());
                     }
                 }
             }
@@ -1457,11 +1430,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
 
         bean.setHasQualifiedResult(false);
-
-        LogEvent.logInfo("FHIR_OBSERVATION_TRANSFORM", "RESULT_ITEM",
-                "analysisId=" + bean.getAnalysisId() + ", sampleItemId=" + bean.getSampleItemId() + ", testId="
-                        + bean.getTestId() + ", patientId=" + bean.getPatientId() + ", resultValue="
-                        + bean.getResultValue() + ", resultType=" + bean.getResultType());
 
         if (bean.getAnalysisId() == null || bean.getTestId() == null || bean.getSampleItemId() == null) {
             throw new UnprocessableEntityException("Missing required fields for result creation");
