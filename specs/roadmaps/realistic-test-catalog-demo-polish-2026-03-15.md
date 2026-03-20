@@ -208,9 +208,14 @@ export async function acceptAndVerifyResults(
 
 ### Update test specs to pass accession numbers
 
-- `astm-genexpert-results.spec.ts`: `"SPECIMEN-GX-001"`
-- `file-import-results.spec.ts`: first sample ID from each analyzer (e.g.,
-  `"E2E001"`, `"E2E-FC001"`)
+Canonical ids live in
+[`projects/analyzer-harness/LANE-IDENTIFIERS.md`](../../projects/analyzer-harness/LANE-IDENTIFIERS.md).
+
+- `astm-genexpert-results.spec.ts`: `"HARN-GX-2026-00001"` (matches ASTM
+  template `tools/analyzer-mock-server/templates/genexpert_astm.json`)
+- `file-import-results.spec.ts`: QuantStudio `Sample Name` values such as
+  `"HARN-QS7-2026-00001"`, … (see
+  `frontend/playwright/fixtures/quantstudio-e2e-results.xlsx`)
 
 ## Fix 5: Address PR review comments
 

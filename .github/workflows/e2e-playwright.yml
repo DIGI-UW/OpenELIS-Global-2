@@ -251,7 +251,7 @@ jobs:
       - name: Load FILE analyzer E2E fixtures (deactivate legacy types)
         run: |
           docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims \
+            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
             < src/test/resources/fixtures/file-import-e2e.sql
 
       - name: Create analyzer import directories in container

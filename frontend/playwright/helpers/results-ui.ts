@@ -1,6 +1,72 @@
 import { expect, Locator, Page } from "@playwright/test";
 import { LONG_TIMEOUT, UI_TIMEOUT } from "./timeouts";
 
+/**
+ * Mirrors {@link frontend/src/components/utils/Utils.js} `convertAlphaNumLabNumForDisplay`.
+ * When site AccessionFormat is ALPHANUM, AnalyzerResults / AccessionResults show this form
+ * (e.g. E2E001 → E2-E001). Plain `getByText('E2E001')` then fails in CI while it may pass
+ * locally with SiteYearNum formatting.
+ */
+export function convertAlphaNumLabNumForDisplay(labNumber: string): string {
+  if (!labNumber) {
+    return labNumber;
+  }
+  if (labNumber.length > 15) {
+    return labNumber;
+  }
+  const labNumberParts = labNumber.split("-");
+  const isAnalysisLabNumber = labNumberParts.length > 1;
+  let labNumberForDisplay = labNumberParts[0];
+  if (labNumberParts[0].length < 8) {
+    labNumberForDisplay = labNumberParts[0].slice(0, 2);
+    if (labNumberParts[0].length > 2) {
+      labNumberForDisplay =
+        labNumberForDisplay + "-" + labNumberParts[0].slice(2);
+    }
+  } else {
+    labNumberForDisplay = labNumberParts[0].slice(0, 2) + "-";
+    if (labNumberParts[0].length > 8) {
+      labNumberForDisplay =
+        labNumberForDisplay +
+        labNumberParts[0].slice(2, labNumberParts[0].length - 6) +
+        "-";
+    }
+    labNumberForDisplay =
+      labNumberForDisplay +
+      labNumberParts[0].slice(
+        labNumberParts[0].length - 6,
+        labNumberParts[0].length - 3,
+      ) +
+      "-";
+    labNumberForDisplay =
+      labNumberForDisplay +
+      labNumberParts[0].slice(labNumberParts[0].length - 3);
+  }
+  if (isAnalysisLabNumber) {
+    labNumberForDisplay = labNumberForDisplay + "-" + labNumberParts[1];
+  }
+  return labNumberForDisplay.toUpperCase();
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Regex matching raw lab number and ALPHANUM display variant (for scoped table locators). */
+export function accessionTextRegExp(accession: string): RegExp {
+  const raw = accession.trim();
+  const alphanum = convertAlphaNumLabNumForDisplay(raw);
+  const variants = Array.from(new Set([raw, alphanum].filter(Boolean)));
+  return new RegExp(variants.map(escapeRegExp).join("|"));
+}
+
+/**
+ * Locator for lab/accession text as rendered under either SiteYearNum or ALPHANUM accession format.
+ */
+export function locatorForAccessionNumber(page: Page, accession: string): Locator {
+  return page.getByText(accessionTextRegExp(accession)).first();
+}
+
 type NavigateUntilVisibleOptions = {
   timeoutMs?: number;
   perAttemptTimeoutMs?: number;
@@ -53,7 +119,7 @@ export async function openAnalyzerResultsAndWaitForText(
   await navigateUntilVisible(
     page,
     analyzerResultsUrl(analyzerName),
-    () => page.getByText(visibleText, { exact: false }).first(),
+    () => locatorForAccessionNumber(page, visibleText),
     options,
   );
 }
@@ -67,7 +133,7 @@ export async function openAccessionResultsAndWaitForText(
   await navigateUntilVisible(
     page,
     accessionResultsUrl(accessionNumber),
-    () => page.getByText(visibleText, { exact: false }).first(),
+    () => locatorForAccessionNumber(page, visibleText),
     options,
   );
 }

@@ -1,6 +1,9 @@
 import { Page, expect } from "@playwright/test";
 import type { DemoPresentation } from "./demo-presentation";
-import { openAccessionResultsAndWaitForText } from "./results-ui";
+import {
+  locatorForAccessionNumber,
+  openAccessionResultsAndWaitForText,
+} from "./results-ui";
 
 /**
  * Accept all analyzer results on the staging page, verify they were saved,
@@ -91,7 +94,7 @@ export async function acceptAndVerifyResults(
       perAttemptTimeoutMs: 15_000,
     },
   );
-  await expect(page.getByText(stagedAccession).first()).toBeVisible({
+  await expect(locatorForAccessionNumber(page, stagedAccession)).toBeVisible({
     timeout: 15_000,
   });
   await presentation.pause(3_000);

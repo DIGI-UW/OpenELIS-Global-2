@@ -16,6 +16,7 @@
 #   2. Analyzer fixtures (depends on --analyzers= mode)
 #   3. storage-e2e.xml (DBUnit XML) - Storage hierarchy + E2E test data
 #      Converted to SQL on-demand (*.generated.sql files never committed)
+#   4. fixtures/analyzer-harness-lane-data.sql - Only when --analyzers=full (HARN-* demo accessions)
 
 set -e
 
@@ -24,6 +25,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
 ANALYZER_MINIMAL_SQL_FILE="$SCRIPT_DIR/analyzer-minimal.sql"
 FILE_IMPORT_E2E_SQL="$SCRIPT_DIR/fixtures/file-import-e2e.sql"
+ANALYZER_HARNESS_LANE_SQL_FILE="$SCRIPT_DIR/fixtures/analyzer-harness-lane-data.sql"
 RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
 
 RESET=false
@@ -212,9 +214,9 @@ load_sql_file() {
 
     echo "Loading $label..."
     if [ "$USE_DOCKER" = true ]; then
-        docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims < "$sql_file"
+        docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 < "$sql_file"
     else
-        psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -f "$sql_file"
+        psql -v ON_ERROR_STOP=1 -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -f "$sql_file"
     fi
 
     if [ $? -eq 0 ]; then
@@ -444,6 +446,12 @@ load_analyzer_fixtures
 
 # 3. Load storage hierarchy + E2E test data via generated SQL
 load_sql_file "$STORAGE_SQL" "storage fixtures (generated SQL)" "fatal"
+
+# 4. Isolated analyzer harness demo accessions (HARN-*) — requires storage patients/types
+if [ "$ANALYZER_MODE" = "full" ]; then
+    load_sql_file "$ANALYZER_HARNESS_LANE_SQL_FILE" "analyzer harness lane fixtures (HARN-* accessions)" "fatal"
+fi
+
 normalize_sequences
 
 echo "======================================"

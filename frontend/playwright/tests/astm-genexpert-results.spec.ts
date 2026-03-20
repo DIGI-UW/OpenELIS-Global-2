@@ -7,7 +7,10 @@ import {
   goToAnalyzerDashboard,
 } from "../helpers/analyzer-dashboard";
 import { cleanupAnalyzersMatching } from "../helpers/cleanup-analyzer";
-import { openAnalyzerResultsAndWaitForText } from "../helpers/results-ui";
+import {
+  accessionTextRegExp,
+  openAnalyzerResultsAndWaitForText,
+} from "../helpers/results-ui";
 import { UI_TIMEOUT } from "../helpers/timeouts";
 
 const SIMULATOR_URL = "http://localhost:8085";
@@ -15,10 +18,11 @@ const BRIDGE_DESTINATION = "tcp://openelis-analyzer-bridge:12001";
 const PRELOADED_NAME = "Cepheid GeneXpert (ASTM Mode)";
 const RESULTS_TIMEOUT = 90_000;
 
+/** Matches ASTM O-segment specimen id seeded in tools/analyzer-mock-server/templates/genexpert_astm.json */
 const EXPECTED_RESULTS = [
-  { sampleId: "E2E001", result: "NEGATIVE" },
-  { sampleId: "E2E001", result: "Sensitive" },
-  { sampleId: "E2E001", result: "1250" },
+  { sampleId: "HARN-GX-2026-00001", result: "NEGATIVE" },
+  { sampleId: "HARN-GX-2026-00001", result: "Sensitive" },
+  { sampleId: "HARN-GX-2026-00001", result: "1250" },
 ];
 
 async function testConnection(
@@ -81,7 +85,7 @@ async function verifyResults(
 
   for (const expected of EXPECTED_RESULTS) {
     await expect(
-      resultsRegion.getByText(expected.sampleId, { exact: false }).first(),
+      resultsRegion.getByText(accessionTextRegExp(expected.sampleId)).first(),
     ).toBeVisible({ timeout: UI_TIMEOUT });
 
     const inputResult = resultsRegion

@@ -41,7 +41,7 @@ Tests are organized into projects via allowlist-based `testMatch` in
 | Workflow                                 | Compose Files                                          | Projects                 | Fixtures                                           |
 | ---------------------------------------- | ------------------------------------------------------ | ------------------------ | -------------------------------------------------- |
 | `e2e-playwright.yml` (`playwright-core`) | `build.docker-compose.yml`                             | `core-app` + `core-demo` | `file-import-e2e.sql`                              |
-| `e2e-playwright-analyzer-harness`        | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness-demo`           | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+| `e2e-playwright-analyzer-harness`        | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness-demo`           | `load-test-fixtures.sh --analyzers=full` (see below) |
 
 `e2e-playwright-analyzer-harness-manual.yml` remains available for manual (`workflow_dispatch`) harness-only runs and delegates to the same reusable analyzer harness workflow used by `e2e-playwright.yml`.
 
@@ -49,10 +49,14 @@ Tests are organized into projects via allowlist-based `testMatch` in
 
 SQL fixtures are loaded via `docker exec psql` in CI workflows:
 
-- **`src/test/resources/analyzer-harness-e2e.sql`** — Analyzer type safety-net
-  and cleanup-only fixture (does not preload analyzer rows)
-- **`src/test/resources/fixtures/file-import-e2e.sql`** — Cleanup +
-  deactivation fixture for a clean dashboard baseline
+- **`src/test/resources/load-test-fixtures.sh --analyzers=full`** (analyzer
+  harness job) — foundational data, `file-import-e2e.sql` cleanup, storage
+  E2E fixtures, then **`src/test/resources/fixtures/analyzer-harness-lane-data.sql`**
+  (isolated `HARN-*` accessions; see **`projects/analyzer-harness/LANE-IDENTIFIERS.md`**)
+- **`src/test/resources/analyzer-harness-e2e.sql`** — Used by core Playwright
+  workflow only (analyzer types + demo patient); not the full harness loader
+- **`src/test/resources/fixtures/file-import-e2e.sql`** — Stale analyzer cleanup,
+  **lane residue reset** for `HARN-*`, and dashboard type deactivation baseline
 
 Analyzer rows used by harness tests are created via REST API seeding:
 

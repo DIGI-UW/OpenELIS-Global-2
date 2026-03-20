@@ -8,7 +8,10 @@ import {
   findAnalyzerRow,
   goToAnalyzerDashboard,
 } from "../helpers/analyzer-dashboard";
-import { openAnalyzerResultsAndWaitForText } from "../helpers/results-ui";
+import {
+  accessionTextRegExp,
+  openAnalyzerResultsAndWaitForText,
+} from "../helpers/results-ui";
 import { UI_TIMEOUT } from "../helpers/timeouts";
 
 const REPO_ROOT = path.resolve(__dirname, "../../..");
@@ -26,10 +29,11 @@ const QUANTSTUDIO = {
   safeName: "quantstudio-7",
   fixture: "quantstudio-e2e-results.xlsx",
   filePrefix: "qs7-results-",
+  /** Sample Name column values in frontend/playwright/fixtures/quantstudio-e2e-results.xlsx */
   expectedResults: [
-    { sampleId: "E2E001", result: "1520.5" },
-    { sampleId: "E2E002", result: "45200" },
-    { sampleId: "E2E005", result: "3200.8" },
+    { sampleId: "HARN-QS7-2026-00001", result: "1520.5" },
+    { sampleId: "HARN-QS7-2026-00002", result: "45200" },
+    { sampleId: "HARN-QS7-2026-00005", result: "3200.8" },
   ],
 };
 
@@ -107,7 +111,7 @@ async function verifyImportedResults(
 
   for (const expected of QUANTSTUDIO.expectedResults) {
     await expect(
-      resultsRegion.getByText(expected.sampleId, { exact: false }).first(),
+      resultsRegion.getByText(accessionTextRegExp(expected.sampleId)).first(),
     ).toBeVisible({ timeout: UI_TIMEOUT });
     await expect(
       resultsRegion.getByText(expected.result, { exact: false }).first(),

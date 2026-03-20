@@ -37,7 +37,7 @@ export default defineConfig({
   // Parallelization
   fullyParallel: true,
   workers: process.env.CI ? 2 : undefined,
-  shardingMode: "round-robin",
+  // Shard tests in CI via CLI: --shard=current/total (see e.g. analyzer-e2e workflow)
 
   // CI safeguards
   forbidOnly: !!process.env.CI,
