@@ -160,11 +160,24 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+      - name: Extract application and Tomcat logs from container
+        if: failure()
+        run: |
+          mkdir -p /tmp/oe-logs /tmp/tomcat-logs
+          docker cp openelisglobal-webapp:/var/lib/openelis-global/logs/. /tmp/oe-logs/ 2>/dev/null || true
+          docker cp openelisglobal-webapp:/usr/local/tomcat/logs/. /tmp/tomcat-logs/ 2>/dev/null || true
+          echo "=== Extracted files ==="
+          ls -la /tmp/oe-logs/ /tmp/tomcat-logs/ 2>/dev/null || true
+          echo "=== OpenELIS App Errors ==="
+          find /tmp/oe-logs -name '*.log' -exec grep -E 'ERROR|WARN|Exception|Caused by' {} + 2>/dev/null | tail -200 || echo "(none)"
+          echo "=== Tomcat Errors ==="
+          find /tmp/tomcat-logs -name 'catalina*' -exec grep -iE 'ERROR|SEVERE|Exception|Caused by|at org\.' {} + 2>/dev/null | tail -200 || echo "(none)"
+
       - name: Dump docker logs on failure
         if: failure()
         uses: jwalton/gh-docker-logs@v2
         with:
-          tail: "200"
+          tail: "2000"
 
   merge-reports:
     name: Report Merge
