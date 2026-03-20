@@ -44,10 +44,6 @@ export function accessionResultsUrl(accessionNumber: string): string {
   return `AccessionResults?accessionNumber=${encodeURIComponent(accessionNumber)}`;
 }
 
-export function legacyAccessionResultsUrl(accessionNumber: string): string {
-  return `/api/OpenELIS-Global/AccessionResults?accessionNumber=${encodeURIComponent(accessionNumber)}`;
-}
-
 export async function openAnalyzerResultsAndWaitForText(
   page: Page,
   analyzerName: string,
@@ -70,7 +66,7 @@ export async function openAccessionResultsAndWaitForText(
 ) {
   await navigateUntilVisible(
     page,
-    legacyAccessionResultsUrl(accessionNumber),
+    accessionResultsUrl(accessionNumber),
     () => page.getByText(visibleText, { exact: false }).first(),
     options,
   );
