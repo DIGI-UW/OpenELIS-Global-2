@@ -54,6 +54,17 @@ public class OdooIntegrationService {
      * @param updateData The sample data containing order information
      * @throws OdooOperationException if there's an error creating the invoice
      */
+    /**
+     * Creates an invoice in Odoo directly from a Sample (used by retry job).
+     * Builds a minimal SamplePatientUpdateData wrapper around the sample.
+     */
+    public void createInvoiceForSample(org.openelisglobal.sample.valueholder.Sample sample) {
+        org.openelisglobal.sample.action.util.SamplePatientUpdateData updateData =
+                new org.openelisglobal.sample.action.util.SamplePatientUpdateData(null);
+        updateData.setSample(sample);
+        createInvoice(updateData);
+    }
+
     public void createInvoice(SamplePatientUpdateData updateData) {
         if (!odooConnection.isAvailable()) {
             throw new org.openelisglobal.odoo.exception.OdooUnavailableException(

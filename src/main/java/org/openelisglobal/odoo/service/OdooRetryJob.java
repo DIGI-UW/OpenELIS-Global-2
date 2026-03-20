@@ -4,7 +4,6 @@ import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.openelisglobal.odoo.valueholder.OdooSyncQueue;
-import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,7 +42,12 @@ public class OdooRetryJob {
         log.info("Odoo retry job: processing {} item(s)", items.size());
 
         for (OdooSyncQueue item : items) {
-            processItem(item);
+            try {
+                processItem(item);
+            } catch (Exception e) {
+                log.error("Unexpected error processing Odoo queue item for accession {}: {}",
+                        item.getAccessionNumber(), e.getMessage(), e);
+            }
         }
     }
 
@@ -57,10 +61,7 @@ public class OdooRetryJob {
                 return;
             }
 
-            SamplePatientUpdateData updateData = new SamplePatientUpdateData(null);
-            updateData.setSample(sample);
-
-            odooIntegrationService.createInvoice(updateData);
+            odooIntegrationService.createInvoiceForSample(sample);
             odooSyncQueueService.markCompleted(item);
 
         } catch (Exception e) {
