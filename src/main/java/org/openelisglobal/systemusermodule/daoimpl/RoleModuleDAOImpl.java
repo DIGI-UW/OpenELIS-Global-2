@@ -83,7 +83,7 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
         try {
             String sql = "from RoleModule s where s.role.id = :param";
             Query<RoleModule> query = entityManager.unwrap(Session.class).createQuery(sql, RoleModule.class);
-            query.setParameter("param", systemUserId);
+            query.setParameter("param", String.valueOf(systemUserId));
             list = query.list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
