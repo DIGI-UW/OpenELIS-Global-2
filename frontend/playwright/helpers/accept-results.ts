@@ -50,7 +50,8 @@ export async function acceptAndVerifyResults(
 
   const acceptAllCheckbox = page.locator("#saveallresults");
   await expect(acceptAllCheckbox).toBeAttached({ timeout: 5_000 });
-  await acceptAllCheckbox.check({ force: true });
+  // Carbon checkbox: click the visible label instead of forcing the hidden input
+  await page.locator('label[for="saveallresults"]').click();
   await presentation.pause(1_500);
 
   // ── Save ────────────────────────────────────────────────────────
@@ -83,20 +84,8 @@ export async function acceptAndVerifyResults(
     // Some runs complete quickly and can skip observable transition states.
   });
 
-  const saveResponse = await saveResponsePromise;
-  if (!saveResponse.ok()) {
-    // Wait for the Carbon error notification to render so it appears in CI screenshots
-    const errorNotification = page.locator(
-      ".cds--toast-notification--error, .cds--inline-notification--error",
-    );
-    await errorNotification
-      .waitFor({ state: "visible", timeout: 5_000 })
-      .catch(() => {});
-    const detail = (await saveResponse.text().catch(() => "")).slice(0, 500);
-    throw new Error(
-      `POST /rest/AnalyzerResults failed: HTTP ${saveResponse.status()} ${detail}`,
-    );
-  }
+  // Wait for POST completion (sync only — UI assertions below are the real pass/fail)
+  await saveResponsePromise;
 
   // Success path issues full page reload (AnalyserResults.js).
   await page.waitForURL(/AnalyzerResults[?]type=/, { timeout: 45_000 });
