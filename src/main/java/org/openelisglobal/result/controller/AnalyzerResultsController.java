@@ -727,6 +727,16 @@ public class AnalyzerResultsController extends BaseController {
         return analyzerId;
     }
 
+    private void writeErrorResponse(HttpServletResponse response, String safeMessage) {
+        try {
+            response.setContentType("text/plain");
+            response.getWriter().write(safeMessage);
+        } catch (Exception writeError) {
+            LogEvent.logWarn(AnalyzerResultsController.class.getSimpleName(), "writeErrorResponse",
+                    "Failed to write error response body: " + writeError.getMessage());
+        }
+    }
+
     private boolean getQaEventByTestSection(Analysis analysis) {
         if (analysis == null) {
             return false;
@@ -755,46 +765,37 @@ public class AnalyzerResultsController extends BaseController {
     public void showRestAnalyzerResultsSave(HttpServletRequest request, HttpServletResponse response, @Validated({
             Paging.class, AnalyzerResultsForm.AnalyzerResuts.class }) @RequestBody AnalyzerResultsForm form) {
 
-        AnalyzerResultsPaging paging = new AnalyzerResultsPaging();
-        paging.updatePagedResults(request, form);
-        List<AnalyzerResultItem> resultItemList = paging.getResults(request);
-
-        List<AnalyzerResultItem> actionableResults = extractActionableResult(resultItemList);
-
-        if (actionableResults.isEmpty()) {
-            return;
-        }
-
-        List<SampleGrouping> sampleGroupList = new ArrayList<>();
-
-        resultItemList.removeAll(actionableResults);
-        List<AnalyzerResultItem> childlessControls = extractChildlessControls(resultItemList);
-        List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults,
-                childlessControls);
-
-        createResultsFromItems(actionableResults, sampleGroupList);
-
         try {
+            AnalyzerResultsPaging paging = new AnalyzerResultsPaging();
+            paging.updatePagedResults(request, form);
+            List<AnalyzerResultItem> resultItemList = paging.getResults(request);
+
+            List<AnalyzerResultItem> actionableResults = extractActionableResult(resultItemList);
+
+            if (actionableResults.isEmpty()) {
+                return;
+            }
+
+            List<SampleGrouping> sampleGroupList = new ArrayList<>();
+
+            resultItemList.removeAll(actionableResults);
+            List<AnalyzerResultItem> childlessControls = extractChildlessControls(resultItemList);
+            List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults,
+                    childlessControls);
+
+            createResultsFromItems(actionableResults, sampleGroupList);
+
             analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList,
                     getSysUserId(request));
 
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e.getMessage(), e);
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            try {
-                response.setContentType("text/plain");
-                response.getWriter().write(e.getMessage() != null ? e.getMessage() : "Unknown LIMSRuntimeException");
-            } catch (Exception ignored) {
-            }
+            writeErrorResponse(response, "Error saving analyzer results");
         } catch (Exception e) {
             LogEvent.logError("Unexpected error saving analyzer results", e);
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            try {
-                response.setContentType("text/plain");
-                response.getWriter()
-                        .write(e.getClass().getName() + ": " + (e.getMessage() != null ? e.getMessage() : ""));
-            } catch (Exception ignored) {
-            }
+            writeErrorResponse(response, "Unexpected error saving analyzer results");
         }
 
     }
