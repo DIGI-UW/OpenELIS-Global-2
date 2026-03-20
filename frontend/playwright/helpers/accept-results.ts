@@ -11,22 +11,21 @@ import { openAccessionResultsAndWaitForText } from "./results-ui";
  * Flow:
  *   1. Click "Save All Results" label (Carbon Checkbox — hidden input + visible label)
  *   2. Click Save button (data-testid="Save-btn")
- *   3. Wait for empty staging UI signal (data-testid="analyzer-results-empty")
- *   4. Verify staging page is now empty (results promoted to official result table)
- *   5. (Optional) Navigate to AccessionResults to verify accepted results appear
+ *   3. Navigate to AccessionResults for the staged accession
+ *   4. Verify the accepted results appear in the OE results view
  *
  * DOM references (from AnalyserResults.js):
  *   - Accept All checkbox label: text "Save All Results" (line 385)
  *   - Save button: data-testid="Save-btn" (line 505)
+ *   - Staged accession number: data-testid="LabNo"
  *   - POST to /rest/AnalyzerResults, reloads same page on success (line 134)
- *   - Empty state: data-testid="analyzer-results-empty"
  *
  * Note: OE auto-creates Sample/SampleItem/Analysis/Result records on accept,
  * even when no pre-existing order exists. So AccessionResults will show results
  * for any accession number — pre-existing orders are NOT required.
  *
- * @param accessionNumber If provided, navigates to AccessionResults after
- *   acceptance to verify the results appear with proper test names.
+ * @param accessionNumber Optional explicit accession. If omitted, the helper
+ *   captures the first staged accession from the current page before saving.
  */
 export async function acceptAndVerifyResults(
   page: Page,
@@ -34,6 +33,14 @@ export async function acceptAndVerifyResults(
   stepOffset: number,
   accessionNumber?: string,
 ) {
+  const stagedAccession =
+    accessionNumber ??
+    (await page.locator('[data-testid="LabNo"]').first().textContent())?.trim();
+
+  if (!stagedAccession) {
+    throw new Error("Could not determine staged accession number before save.");
+  }
+
   // ── Accept All ──────────────────────────────────────────────────
   await presentation.step(stepOffset + 1, "Accept All Results", 2000);
 
@@ -52,21 +59,11 @@ export async function acceptAndVerifyResults(
   await expect(saveButton).toBeEnabled({ timeout: 5_000 });
   await saveButton.click();
 
-  // ── Verify post-save state ───────────────────────────────────────
-  const emptyState = page.locator('[data-testid="analyzer-results-empty"]');
-  await expect(emptyState).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator('[data-testid="LabNo"]')).toHaveCount(0, {
+  // ── Verify in OE results view, not on the staging page ───────────
+  await presentation.step(stepOffset + 3, "View Accepted Results", 2000);
+  await openAccessionResultsAndWaitForText(page, stagedAccession);
+  await expect(page.getByText(stagedAccession).first()).toBeVisible({
     timeout: 15_000,
   });
-  await presentation.pause(2_000);
-
-  // ── Navigate to AccessionResults (if accession number provided) ──
-  if (accessionNumber) {
-    await presentation.step(stepOffset + 3, "View Accepted Results", 2000);
-    await openAccessionResultsAndWaitForText(page, accessionNumber);
-    await expect(page.getByText(accessionNumber).first()).toBeVisible({
-      timeout: 15_000,
-    });
-    await presentation.pause(3_000);
-  }
+  await presentation.pause(3_000);
 }
