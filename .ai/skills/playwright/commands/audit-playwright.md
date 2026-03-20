@@ -30,7 +30,8 @@ Interpret input best-effort:
 3. **Project integration**
 
    - Verify new specs are included in `playwright.config.ts` `testMatch`.
-   - For demo tests, verify they are included in shared `DEMO_TESTS`.
+   - For demo tests, verify they are included in `CORE_DEMO_TESTS` or
+     `HARNESS_DEMO_TESTS`.
 
 4. **Debuggability**
 
