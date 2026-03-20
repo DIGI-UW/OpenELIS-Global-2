@@ -20,4 +20,7 @@
   <include relativeToChangelogFile="true" file="012-add-organization-type-hierarchy-level.xml"/>
   <!-- 013 moved to 3.4.14.x for 014-hjra-file-stream-alignment isolation -->
   <include relativeToChangelogFile="true" file="014-sample-collection-workflow-menus.xml"/>
+  <include relativeToChangelogFile="true" file="015-add-sample-collection-uoms.xml"/>
+  <include relativeToChangelogFile="true" file="016-add-collection-conditions-column.xml"/>
+  <include relativeToChangelogFile="true" file="017-add-received-date-to-sample-item.xml"/>
 </databaseChangeLog>

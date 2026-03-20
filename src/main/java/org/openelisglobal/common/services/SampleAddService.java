@@ -151,6 +151,19 @@ public class SampleAddService {
                     item.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
                 }
                 item.setCollector(sampleItem.attributeValue("collector"));
+                item.setCollectionConditions(sampleItem.attributeValue("collectionConditions"));
+
+                String receivedDateStr = sampleItem.attributeValue("receivedDate");
+                String receivedTimeStr = sampleItem.attributeValue("receivedTime");
+                if (!GenericValidator.isBlankOrNull(receivedDateStr)) {
+                    String receivedDateTime = receivedDateStr;
+                    if (!GenericValidator.isBlankOrNull(receivedTimeStr)) {
+                        receivedDateTime += " " + receivedTimeStr;
+                    } else {
+                        receivedDateTime += " 00:00";
+                    }
+                    item.setReceivedDate(DateUtil.convertStringDateToTimestamp(receivedDateTime));
+                }
 
                 String quantityStr = sampleItem.attributeValue("quantity");
                 if (quantityStr != null && !quantityStr.trim().isEmpty()) {

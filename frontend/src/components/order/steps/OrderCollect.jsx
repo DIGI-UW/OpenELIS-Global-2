@@ -1,7 +1,7 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { useHistory } from "react-router-dom";
-import { useIntl } from "react-intl";
-import AddSample from "../../addOrder/AddSample";
+import { useIntl, FormattedMessage } from "react-intl";
+import { Stack, InlineNotification } from "@carbon/react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
 import { useOrderContext } from "../OrderContext";
 import { NotificationContext } from "../../layout/Layout";
@@ -9,37 +9,84 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
+import { getFromOpenElisServer } from "../../utils/Utils";
+import RequestedTestsSection from "./sections/RequestedTestsSection";
+import SamplesCollectionSection from "./sections/SamplesCollectionSection";
+import "../order-workflow.scss";
 
 /**
  * OrderCollect - Step 2: Collect Sample
  *
- * Wraps existing AddSample component.
- * Handles sample collection and test selection.
+ * Full implementation based on FRS and UI mockups.
+ *
+ * Sections:
+ * 1. Requested Tests - Shows ordered tests with sample type assignment
+ * 2. Samples - Collection details for each sample
  */
 
 const OrderCollect = () => {
   const intl = useIntl();
   const history = useHistory();
-  const { orderData, samples, setSamples, saveOrder, setCurrentStep } =
-    useOrderContext();
+  const componentMounted = useRef(true);
+
+  const {
+    orderData,
+    samples,
+    setSamples,
+    saveOrder,
+    markStepComplete,
+    isReadOnly,
+    isEditMode,
+    testSampleAssignments,
+    assignTestToSample,
+    removeTestFromSample,
+    updateSampleCollectionDetails,
+  } = useOrderContext();
+
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const [errors, setErrors] = useState([]);
+  // Sample types from API
+  const [sampleTypes, setSampleTypes] = useState([]);
+  const [isLoadingSampleTypes, setIsLoadingSampleTypes] = useState(true);
 
-  const elementError = (path) => {
-    if (errors?.errors?.length > 0) {
-      const error = errors.inner?.find((e) => e.path === path);
-      return error ? error.message : null;
-    }
-    return null;
-  };
+  // Units of measure for sample collection
+  const [unitOfMeasures, setUnitOfMeasures] = useState([]);
 
-  // Validate that at least one sample with tests is selected
+  // Fetch sample types and UOMs on mount
+  useEffect(() => {
+    componentMounted.current = true;
+    setIsLoadingSampleTypes(true);
+
+    getFromOpenElisServer("/rest/user-sample-types", (response) => {
+      if (componentMounted.current && response) {
+        setSampleTypes(response);
+        setIsLoadingSampleTypes(false);
+      }
+    });
+
+    // Fetch sample collection UOMs (type=SAMPLE_COLLECTION)
+    getFromOpenElisServer("/rest/uom?type=SAMPLE_COLLECTION", (response) => {
+      if (componentMounted.current && response) {
+        setUnitOfMeasures(response);
+      }
+    });
+
+    return () => {
+      componentMounted.current = false;
+    };
+  }, []);
+
+  // Validate that at least one sample with a sample type is present
   const canProceed =
     samples &&
     samples.length > 0 &&
-    samples.some((sample) => sample.tests && sample.tests.length > 0);
+    samples.some((sample) => sample.sampleTypeId);
+
+  // Check if we have any tests ordered
+  const hasOrderedTests = samples.some(
+    (s) => (s.tests && s.tests.length > 0) || (s.panels && s.panels.length > 0),
+  );
 
   const handleSave = async () => {
     try {
@@ -63,7 +110,7 @@ const OrderCollect = () => {
   const handleSaveAndNext = async () => {
     try {
       await saveOrder();
-      setCurrentStep(2);
+      markStepComplete("collect");
       history.push("/order/label");
     } catch (error) {
       addNotification({
@@ -85,11 +132,46 @@ const OrderCollect = () => {
     >
       {notificationVisible && <AlertDialog />}
 
-      <AddSample
-        error={elementError}
-        setSamples={setSamples}
-        samples={samples}
-      />
+      <Stack gap={7}>
+        {/* Warning if no tests ordered */}
+        {!hasOrderedTests && (
+          <InlineNotification
+            kind="warning"
+            title={intl.formatMessage({
+              id: "collect.noTestsWarning.title",
+              defaultMessage: "No tests ordered",
+            })}
+            subtitle={intl.formatMessage({
+              id: "collect.noTestsWarning.subtitle",
+              defaultMessage:
+                "Go back to Step 1 (Enter Order) to add tests and panels before collecting samples.",
+            })}
+            hideCloseButton
+            lowContrast
+          />
+        )}
+
+        {/* Section 1: Requested Tests */}
+        <RequestedTestsSection
+          samples={samples}
+          setSamples={setSamples}
+          testSampleAssignments={testSampleAssignments}
+          assignTestToSample={assignTestToSample}
+          removeTestFromSample={removeTestFromSample}
+          sampleTypes={sampleTypes}
+          isReadOnly={isReadOnly && !isEditMode}
+        />
+
+        {/* Section 2: Samples Collection */}
+        <SamplesCollectionSection
+          samples={samples}
+          setSamples={setSamples}
+          sampleTypes={sampleTypes}
+          unitOfMeasures={unitOfMeasures}
+          updateSampleCollectionDetails={updateSampleCollectionDetails}
+          isReadOnly={isReadOnly && !isEditMode}
+        />
+      </Stack>
     </OrderWorkflowLayout>
   );
 };

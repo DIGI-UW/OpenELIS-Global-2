@@ -111,6 +111,12 @@ public class UnitOfMeasureServiceImpl extends AuditableBaseObjectServiceImpl<Uni
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<UnitOfMeasure> getUnitOfMeasuresByType(String uomType) {
+        return getBaseObjectDAO().getUnitOfMeasuresByType(uomType);
+    }
+
+    @Override
     public String insert(UnitOfMeasure unitOfMeasure) {
         if (getBaseObjectDAO().duplicateUnitOfMeasureExists(unitOfMeasure)) {
             throw new LIMSDuplicateRecordException(

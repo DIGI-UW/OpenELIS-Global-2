@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.unitofmeasure.dao;
 
+import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
@@ -47,6 +48,6 @@ public interface UnitOfMeasureDAO extends BaseDAO<UnitOfMeasure, String> {
 
     boolean duplicateUnitOfMeasureExists(UnitOfMeasure unitOfMeasure) throws LIMSRuntimeException;
 
-    // public List<UnitOfMeasure> getAllActiveUnitOfMeasures();
+    List<UnitOfMeasure> getUnitOfMeasuresByType(String uomType) throws LIMSRuntimeException;
 
 }

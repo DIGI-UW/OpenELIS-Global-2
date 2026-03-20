@@ -192,11 +192,24 @@ public class OrderSearchRestController extends BaseRestController {
                 // Facility (simplified - could get from organization)
                 orderData.put("facilityName", "---");
 
-                // Step progress (simplified - could track actual step completion)
+                // Step progress - determine based on actual data
                 Map<String, Boolean> stepProgress = new HashMap<>();
-                String sampleStatus = sample.getStatus();
                 stepProgress.put("enter", true); // If sample exists, enter is complete
-                stepProgress.put("collect", sampleStatus != null);
+
+                // Collect is complete if all sample items with tests have collection dates
+                List<SampleItem> sampleItemsForProgress = sampleItemService.getSampleItemsBySampleId(sample.getId());
+                boolean collectComplete = false;
+                if (!sampleItemsForProgress.isEmpty()) {
+                    List<SampleItem> itemsWithTests = sampleItemsForProgress.stream()
+                            .filter(si -> !analysisService.getAnalysesBySampleItem(si).isEmpty())
+                            .collect(java.util.stream.Collectors.toList());
+
+                    if (!itemsWithTests.isEmpty()) {
+                        collectComplete = itemsWithTests.stream().allMatch(si -> si.getCollectionDate() != null);
+                    }
+                }
+                stepProgress.put("collect", collectComplete);
+
                 stepProgress.put("label", false);
                 stepProgress.put("qa", false);
                 orderData.put("stepProgress", stepProgress);
@@ -298,11 +311,38 @@ public class OrderSearchRestController extends BaseRestController {
                     }
                 }
 
-                // Collection info
+                String collectionDateDisplay = "";
+                String collectionTimeDisplay = "";
+                if (sampleItem.getCollectionDate() != null) {
+                    collectionDateDisplay = DateUtil.convertTimestampToStringDate(sampleItem.getCollectionDate());
+                    collectionTimeDisplay = DateUtil.convertTimestampToStringTime(sampleItem.getCollectionDate());
+                }
+
+                sampleItemData.put("collectionDate", collectionDateDisplay);
+                sampleItemData.put("collectionTime", collectionTimeDisplay);
+                sampleItemData.put("quantity", sampleItem.getQuantity() != null ? sampleItem.getQuantity() : "");
+                sampleItemData.put("quantityUnit",
+                        sampleItem.getUnitOfMeasure() != null ? sampleItem.getUnitOfMeasure().getId() : "");
+                sampleItemData.put("collectorId", sampleItem.getCollector() != null ? sampleItem.getCollector() : "");
+                sampleItemData.put("collectionConditions",
+                        sampleItem.getCollectionConditions() != null ? sampleItem.getCollectionConditions() : "");
+
+                String receivedDateDisplay = "";
+                String receivedTimeDisplay = "";
+                if (sampleItem.getReceivedDate() != null) {
+                    receivedDateDisplay = DateUtil.convertTimestampToStringDate(sampleItem.getReceivedDate());
+                    receivedTimeDisplay = DateUtil.convertTimestampToStringTime(sampleItem.getReceivedDate());
+                }
+                sampleItemData.put("receivedDate", receivedDateDisplay);
+                sampleItemData.put("receivedTime", receivedTimeDisplay);
+
                 Map<String, Object> sampleXML = new HashMap<>();
-                sampleXML.put("collectionDate",
-                        sampleItem.getCollectionDate() != null ? sampleItem.getCollectionDate().toString() : "");
+                sampleXML.put("collectionDate", collectionDateDisplay);
+                sampleXML.put("collectionTime", collectionTimeDisplay);
                 sampleXML.put("quantity", sampleItem.getQuantity());
+                sampleXML.put("uom",
+                        sampleItem.getUnitOfMeasure() != null ? sampleItem.getUnitOfMeasure().getId() : "");
+                sampleXML.put("collector", sampleItem.getCollector());
                 sampleItemData.put("sampleXML", sampleXML);
 
                 // Get tests from analysis records for this sample item
@@ -351,10 +391,28 @@ public class OrderSearchRestController extends BaseRestController {
             Map<String, Object> sampleOrderItems = buildSampleOrderItems(sample);
             response.put("sampleOrderItems", sampleOrderItems);
 
-            // Step progress
+            // Step progress - determine based on actual data
             Map<String, Boolean> stepProgress = new HashMap<>();
-            stepProgress.put("enter", true);
-            stepProgress.put("collect", sample.getStatus() != null);
+            stepProgress.put("enter", true); // If sample exists, enter is complete
+
+            // Collect is complete if:
+            // 1. There are sample items with tests (analyses)
+            // 2. ALL sample items that have tests also have collection dates set
+            boolean collectComplete = false;
+            if (!sampleItems.isEmpty()) {
+                // Get all sample items that have tests assigned (via Analysis)
+                List<SampleItem> sampleItemsWithTests = sampleItems.stream()
+                        .filter(si -> !analysisService.getAnalysesBySampleItem(si).isEmpty())
+                        .collect(java.util.stream.Collectors.toList());
+
+                if (!sampleItemsWithTests.isEmpty()) {
+                    // All sample items with tests must have collection date set
+                    collectComplete = sampleItemsWithTests.stream().allMatch(si -> si.getCollectionDate() != null);
+                }
+            }
+            stepProgress.put("collect", collectComplete);
+
+            // TODO: Label and QA progress tracking
             stepProgress.put("label", false);
             stepProgress.put("qa", false);
             response.put("stepProgress", stepProgress);

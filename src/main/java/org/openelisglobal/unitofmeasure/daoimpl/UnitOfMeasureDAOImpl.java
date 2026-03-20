@@ -80,4 +80,18 @@ public class UnitOfMeasureDAOImpl extends BaseDAOImpl<UnitOfMeasure, String> imp
             throw new LIMSRuntimeException("Error in duplicateUnitOfMeasureExists()", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UnitOfMeasure> getUnitOfMeasuresByType(String uomType) throws LIMSRuntimeException {
+        String sql = "from UnitOfMeasure uom where uom.uomType = :uomType order by uom.unitOfMeasureName";
+        try {
+            Query<UnitOfMeasure> query = entityManager.unwrap(Session.class).createQuery(sql, UnitOfMeasure.class);
+            query.setParameter("uomType", uomType);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getUnitOfMeasuresByType");
+        }
+        return List.of();
+    }
 }

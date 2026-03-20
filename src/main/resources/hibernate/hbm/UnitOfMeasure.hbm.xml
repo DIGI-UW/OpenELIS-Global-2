@@ -24,6 +24,9 @@
         <property name="description" type="java.lang.String">
             <column name="DESCRIPTION" length="60" />
         </property>
+        <property name="uomType" type="java.lang.String">
+            <column name="UOM_TYPE" length="20" />
+        </property>
         <!-- <set name="inventoryItems" inverse="true"> <key> <column name="UOM_ID"
             precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.inventoryitem.valueholder.InventoryItem"
             /> </set> <set name="tests" inverse="true"> <key> <column name="UOM_ID" precision="10"

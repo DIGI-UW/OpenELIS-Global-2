@@ -75,6 +75,9 @@ export const OrderContext = createContext({
     qa: false,
   },
 
+  // Test-to-sample assignments (Step 2: Collect)
+  testSampleAssignments: {},
+
   // Actions
   loadOrder: () => {},
   saveOrder: () => {},
@@ -84,19 +87,35 @@ export const OrderContext = createContext({
   resetOrder: () => {},
   enableEditMode: () => {},
   markStepComplete: () => {},
+  // Test assignment actions (Step 2)
+  assignTestToSample: () => {},
+  removeTestFromSample: () => {},
+  updateSampleCollectionDetails: () => {},
 });
 
 export const sampleObject = {
   index: 0,
-  sampleItemId: "", // ID of existing sample_item (for updates)
+  sampleItemId: "",
   sampleRejected: false,
   rejectionReason: "",
   sampleTypeId: "",
+  sampleTypeName: "",
   sampleXML: null,
   panels: [],
   tests: [],
   requestReferralEnabled: false,
   referralItems: [],
+  quantity: "",
+  quantityUnit: "",
+  collectionConditions: "",
+  collectionDate: "",
+  collectionTime: "",
+  collectorId: "",
+  receivedDate: "",
+  receivedTime: "",
+  receivedBy: "",
+  hasNCE: false,
+  nceId: "",
 };
 
 /**
@@ -107,6 +126,21 @@ const getCurrentTime = () => {
   const hours = String(now.getHours()).padStart(2, "0");
   const minutes = String(now.getMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
+};
+
+/**
+ * Convert ISO date (YYYY-MM-DD) to backend format (MM/dd/yyyy)
+ */
+const convertIsoToBackendDate = (isoDate) => {
+  if (!isoDate) return "";
+  // Check if already in MM/dd/yyyy format
+  if (isoDate.includes("/")) return isoDate;
+  // Convert from YYYY-MM-DD to MM/dd/yyyy
+  const parts = isoDate.split("-");
+  if (parts.length === 3) {
+    return `${parts[1]}/${parts[2]}/${parts[0]}`;
+  }
+  return isoDate;
 };
 
 /**
@@ -149,6 +183,10 @@ export const OrderProvider = ({ children }) => {
     label: false,
     qa: false,
   });
+
+  // Test-to-sample assignments for Step 2
+  // Structure: { [testId]: { testId, testName, isPanel, assignedToSamples: [sampleIndex, ...] } }
+  const [testSampleAssignments, setTestSampleAssignments] = useState({});
 
   const autoSaveTimerRef = useRef(null);
   const lastSavedDataRef = useRef(null);
@@ -246,9 +284,9 @@ export const OrderProvider = ({ children }) => {
       return "";
     }
 
-    // Check if any sample has tests
-    const hasTests = samplesArray.some((s) => s.tests && s.tests.length > 0);
-    if (!hasTests) {
+    // Check if any sample has a sample type (required for saving)
+    const hasSampleType = samplesArray.some((s) => s.sampleTypeId);
+    if (!hasSampleType) {
       return "";
     }
 
@@ -256,22 +294,41 @@ export const OrderProvider = ({ children }) => {
     sampleXmlString += "<samples>";
 
     samplesArray.forEach((sampleItem) => {
-      if (sampleItem.tests && sampleItem.tests.length > 0) {
-        const tests = sampleItem.tests.map((t) => t.id).join(",");
+      // Include sample if it has a sample type (tests are optional for collection step)
+      if (sampleItem.sampleTypeId) {
+        const tests =
+          sampleItem.tests && sampleItem.tests.length > 0
+            ? sampleItem.tests.map((t) => t.id).join(",")
+            : "";
         const panels =
           sampleItem.panels && sampleItem.panels.length > 0
             ? sampleItem.panels.map((p) => p.id).join(",")
             : "";
 
-        // Get sample XML data or defaults
+        // Get collection data - check both top-level fields (new) and sampleXML (legacy)
         const sampleXMLData = sampleItem.sampleXML || {};
-        const collectionDate = sampleXMLData.collectionDate || "";
-        const collectionTime = sampleXMLData.collectionTime || "";
-        const collector = sampleXMLData.collector || "";
-        const quantity = sampleXMLData.quantity || "";
-        const uom = sampleXMLData.uom || "";
+        // Convert ISO date (YYYY-MM-DD) to backend format (MM/dd/yyyy)
+        const collectionDate = convertIsoToBackendDate(
+          sampleItem.collectionDate || sampleXMLData.collectionDate || "",
+        );
+        const collectionTime =
+          sampleItem.collectionTime || sampleXMLData.collectionTime || "";
+        const collector =
+          sampleItem.collectorId || sampleXMLData.collector || "";
+        const collectionConditions =
+          sampleItem.collectionConditions ||
+          sampleXMLData.collectionConditions ||
+          "";
+        const quantity = sampleItem.quantity || sampleXMLData.quantity || "";
+        const uom = sampleItem.quantityUnit || sampleXMLData.uom || "";
         const rejected = sampleItem.sampleRejected ? "true" : "false";
         const rejectReasonId = sampleItem.rejectionReason || "";
+
+        const receivedDate = convertIsoToBackendDate(
+          sampleItem.receivedDate || sampleXMLData.receivedDate || "",
+        );
+        const receivedTime =
+          sampleItem.receivedTime || sampleXMLData.receivedTime || "";
 
         // Storage location data
         const storageLocation = sampleXMLData.storageLocation || {};
@@ -289,7 +346,7 @@ export const OrderProvider = ({ children }) => {
         // Include sampleItemId for updates - this identifies which existing sample_item to update
         const sampleItemId = sampleItem.sampleItemId || "";
 
-        sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' quantity='${quantity}' uom='${uom}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}'/>`;
+        sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}'/>`;
       }
     });
 
@@ -462,6 +519,117 @@ export const OrderProvider = ({ children }) => {
   }, []);
 
   /**
+   * Assign a test to a sample (Step 2: Collect)
+   * @param {string} testId - The test ID to assign
+   * @param {string} testName - The test name
+   * @param {boolean} isPanel - Whether this is a panel
+   * @param {number} sampleIndex - The sample index to assign to
+   */
+  const assignTestToSample = useCallback(
+    (testId, testName, isPanel, sampleIndex) => {
+      // Update test assignments
+      setTestSampleAssignments((prev) => {
+        const existing = prev[testId] || {
+          testId,
+          testName,
+          isPanel,
+          assignedToSamples: [],
+        };
+        const assignedToSamples = existing.assignedToSamples.includes(
+          sampleIndex,
+        )
+          ? existing.assignedToSamples
+          : [...existing.assignedToSamples, sampleIndex];
+        return {
+          ...prev,
+          [testId]: { ...existing, assignedToSamples },
+        };
+      });
+
+      // Also add the test to the sample's tests array
+      setSamplesState((prevSamples) => {
+        const updated = [...prevSamples];
+        const sample = updated[sampleIndex];
+        if (sample) {
+          const existingTests = sample.tests || [];
+          if (!existingTests.some((t) => t.id === testId)) {
+            updated[sampleIndex] = {
+              ...sample,
+              tests: [...existingTests, { id: testId, name: testName }],
+            };
+          }
+        }
+        return updated;
+      });
+
+      setIsDirty(true);
+      setSaveStatus(SaveStatus.UNSAVED);
+    },
+    [],
+  );
+
+  /**
+   * Remove a test from a sample (Step 2: Collect)
+   * @param {string} testId - The test ID to remove
+   * @param {number} sampleIndex - The sample index to remove from
+   */
+  const removeTestFromSample = useCallback((testId, sampleIndex) => {
+    // Update test assignments
+    setTestSampleAssignments((prev) => {
+      const existing = prev[testId];
+      if (!existing) return prev;
+      const assignedToSamples = existing.assignedToSamples.filter(
+        (idx) => idx !== sampleIndex,
+      );
+      if (assignedToSamples.length === 0) {
+        const { [testId]: removed, ...rest } = prev;
+        return rest;
+      }
+      return {
+        ...prev,
+        [testId]: { ...existing, assignedToSamples },
+      };
+    });
+
+    // Also remove the test from the sample's tests array
+    setSamplesState((prevSamples) => {
+      const updated = [...prevSamples];
+      const sample = updated[sampleIndex];
+      if (sample && sample.tests) {
+        updated[sampleIndex] = {
+          ...sample,
+          tests: sample.tests.filter((t) => t.id !== testId),
+        };
+      }
+      return updated;
+    });
+
+    setIsDirty(true);
+    setSaveStatus(SaveStatus.UNSAVED);
+  }, []);
+
+  /**
+   * Update collection details for a sample (Step 2: Collect)
+   * @param {number} sampleIndex - The sample index to update
+   * @param {object} details - The collection details to update
+   */
+  const updateSampleCollectionDetails = useCallback((sampleIndex, details) => {
+    setSamplesState((prevSamples) => {
+      const updated = [...prevSamples];
+      if (updated[sampleIndex]) {
+        updated[sampleIndex] = {
+          ...updated[sampleIndex],
+          ...details,
+        };
+      }
+      return updated;
+    });
+
+    setIsDirty(true);
+    setSaveStatus(SaveStatus.UNSAVED);
+  }, []);
+
+  /**
    * Reset the order context to initial state.
    * Used when starting a new order.
    */
@@ -616,6 +784,7 @@ export const OrderProvider = ({ children }) => {
     isDirty,
     error,
     stepProgress,
+    testSampleAssignments,
 
     // Actions
     loadOrder,
@@ -626,6 +795,10 @@ export const OrderProvider = ({ children }) => {
     resetOrder,
     enableEditMode,
     markStepComplete,
+    // Test assignment actions (Step 2)
+    assignTestToSample,
+    removeTestFromSample,
+    updateSampleCollectionDetails,
   };
 
   return (

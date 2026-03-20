@@ -10,10 +10,9 @@ import {
   Checkbox,
   Tag,
   Search,
-  InlineNotification,
   Link,
 } from "@carbon/react";
-import { Add, Close } from "@carbon/icons-react";
+import { Add } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 
 /**
@@ -312,20 +311,6 @@ const SampleTestSection = ({
       <h4 className="section-title">
         <FormattedMessage id="label.button.sample" defaultMessage="Sample" />
       </h4>
-
-      {/* Info notification */}
-      <InlineNotification
-        kind="info"
-        title=""
-        subtitle={intl.formatMessage({
-          id: "sample.optional.info",
-          defaultMessage:
-            "Sample and test selection is optional at this step. Tests and sample type can be specified later during collection.",
-        })}
-        hideCloseButton
-        lowContrast
-        className="sample-info-notification"
-      />
 
       {/* Sample Cards */}
       {samples.map((sample, sampleIndex) => (

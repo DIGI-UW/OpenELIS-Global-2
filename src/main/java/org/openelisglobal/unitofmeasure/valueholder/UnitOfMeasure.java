@@ -25,6 +25,8 @@ public class UnitOfMeasure extends EnumValueItemImpl {
 
     private String description;
 
+    private String uomType;
+
     private ValueHolderInterface localization;
 
     public UnitOfMeasure() {
@@ -55,6 +57,14 @@ public class UnitOfMeasure extends EnumValueItemImpl {
 
     public String getDescription() {
         return description;
+    }
+
+    public String getUomType() {
+        return uomType;
+    }
+
+    public void setUomType(String uomType) {
+        this.uomType = uomType;
     }
 
     @Override

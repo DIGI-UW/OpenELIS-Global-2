@@ -183,7 +183,19 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         for (ObservationHistory observation : updateData.getObservations()) {
             observation.setSampleId(sampleId);
             observation.setPatientId(patientId);
-            observationHistoryService.insert(observation);
+
+            // For updates, check if observation already exists for this sample/type
+            // If so, update it instead of inserting a duplicate
+            ObservationHistory existing = observationHistoryService.getObservationHistoriesBySampleIdAndType(sampleId,
+                    observation.getObservationHistoryTypeId());
+
+            if (existing != null) {
+                existing.setValue(observation.getValue());
+                existing.setSysUserId(observation.getSysUserId());
+                observationHistoryService.update(existing);
+            } else {
+                observationHistoryService.insert(observation);
+            }
         }
     }
 
@@ -323,8 +335,30 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     sampleItemId = savedItem.getId();
                     LogEvent.logInfo(this.getClass().getName(), "persistSampleData",
                             "DEBUG: Found existing SampleItem by ID: " + sampleItemId);
-                    // Update existing sample item
+                    // Update existing sample item with new collection data
                     savedItem.setSysUserId(sampleTestCollection.item.getSysUserId());
+                    // Copy collection details from the incoming item
+                    if (sampleTestCollection.item.getCollectionDate() != null) {
+                        savedItem.setCollectionDate(sampleTestCollection.item.getCollectionDate());
+                    }
+                    if (sampleTestCollection.item.getCollector() != null) {
+                        savedItem.setCollector(sampleTestCollection.item.getCollector());
+                    }
+                    if (sampleTestCollection.item.getQuantity() != null) {
+                        savedItem.setQuantity(sampleTestCollection.item.getQuantity());
+                    }
+                    if (sampleTestCollection.item.getUnitOfMeasure() != null) {
+                        savedItem.setUnitOfMeasure(sampleTestCollection.item.getUnitOfMeasure());
+                    }
+                    if (sampleTestCollection.item.getTypeOfSample() != null) {
+                        savedItem.setTypeOfSample(sampleTestCollection.item.getTypeOfSample());
+                    }
+                    if (sampleTestCollection.item.getCollectionConditions() != null) {
+                        savedItem.setCollectionConditions(sampleTestCollection.item.getCollectionConditions());
+                    }
+                    if (sampleTestCollection.item.getReceivedDate() != null) {
+                        savedItem.setReceivedDate(sampleTestCollection.item.getReceivedDate());
+                    }
                     sampleItemService.update(savedItem);
                 }
             }

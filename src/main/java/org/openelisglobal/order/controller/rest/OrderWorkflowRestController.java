@@ -13,6 +13,10 @@
  */
 package org.openelisglobal.order.controller.rest;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,11 +37,18 @@ import org.openelisglobal.program.service.ProgramService;
 import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
+import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
+import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -72,6 +83,18 @@ public class OrderWorkflowRestController extends BaseRestController {
 
     @Autowired
     private ProgramService programService;
+
+    @Autowired
+    private TestService testService;
+
+    @Autowired
+    private TypeOfSampleService typeOfSampleService;
+
+    @Autowired
+    private TypeOfSampleTestService typeOfSampleTestService;
+
+    @Autowired
+    private UnitOfMeasureService unitOfMeasureService;
 
     /**
      * Search organizations/sites by name or code (ORD-8).
@@ -329,6 +352,116 @@ public class OrderWorkflowRestController extends BaseRestController {
         }
     }
 
+    /**
+     * Get compatible sample types for given test IDs.
+     *
+     * <p>
+     * Returns which sample types can be used for each test. This is used in Step 2
+     * (Collect Sample) to show which sample types are compatible with ordered
+     * tests.
+     *
+     * @param testIds comma-separated list of test IDs
+     * @return List of tests with their compatible sample types
+     */
+    @GetMapping(value = "/test-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getTestSampleTypes(@RequestParam String testIds) {
+
+        try {
+            List<Map<String, Object>> testsResult = new ArrayList<>();
+
+            if (GenericValidator.isBlankOrNull(testIds)) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("tests", testsResult);
+                return ResponseEntity.ok(response);
+            }
+
+            String[] ids = testIds.split(",");
+            for (String testId : ids) {
+                String trimmedId = testId.trim();
+                if (trimmedId.isEmpty()) {
+                    continue;
+                }
+
+                Test test = testService.get(trimmedId);
+                if (test == null) {
+                    continue;
+                }
+
+                Map<String, Object> testData = new HashMap<>();
+                testData.put("testId", test.getId());
+                testData.put("testName",
+                        test.getLocalizedTestName() != null ? test.getLocalizedTestName().getLocalizedValue()
+                                : test.getName());
+
+                // Get compatible sample types for this test
+                List<TypeOfSampleTest> sampleTests = typeOfSampleTestService.getTypeOfSampleTestsForTest(trimmedId);
+                List<Map<String, Object>> compatibleTypes = new ArrayList<>();
+
+                for (TypeOfSampleTest sampleTest : sampleTests) {
+                    TypeOfSample sampleType = typeOfSampleService.get(sampleTest.getTypeOfSampleId());
+                    if (sampleType != null && "Y".equals(sampleType.getIsActive())) {
+                        Map<String, Object> typeData = new HashMap<>();
+                        typeData.put("id", sampleType.getId());
+                        typeData.put("name", sampleType.getLocalizedName() != null ? sampleType.getLocalizedName()
+                                : sampleType.getDescription());
+                        typeData.put("code", "all"); // Default code
+                        compatibleTypes.add(typeData);
+                    }
+                }
+
+                testData.put("compatibleSampleTypes", compatibleTypes);
+                testsResult.add(testData);
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("tests", testsResult);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "getTestSampleTypes",
+                    "Error getting test sample types: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Get current server time.
+     *
+     * <p>
+     * Returns the current date and time from the server. Used for auto-populating
+     * "Received at Lab" fields in Step 2 (Collect Sample).
+     *
+     * @return Current server date, time, and timezone
+     */
+    @GetMapping(value = "/server-time", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getServerTime() {
+
+        try {
+            Map<String, Object> response = new HashMap<>();
+
+            ZoneId zoneId = ZoneId.systemDefault();
+            LocalDate now = LocalDate.now(zoneId);
+            LocalTime time = LocalTime.now(zoneId);
+
+            // Format date as YYYY-MM-DD (ISO format)
+            response.put("date", now.format(DateTimeFormatter.ISO_LOCAL_DATE));
+
+            // Format time as HH:mm
+            response.put("time", time.format(DateTimeFormatter.ofPattern("HH:mm")));
+
+            // Include timezone for reference
+            response.put("timezone", zoneId.getId());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "getServerTime",
+                    "Error getting server time: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     // Helper methods
 
     private List<Organization> filterByType(List<Organization> organizations, String typeName) {
@@ -401,5 +534,43 @@ public class OrderWorkflowRestController extends BaseRestController {
                 "Filtered from " + organizations.size() + " to " + filtered.size() + " organizations with valid types");
 
         return filtered;
+    }
+
+    /**
+     * Get units of measure by type.
+     *
+     * <p>
+     * Returns list of UOMs filtered by type. Used for sample collection (type =
+     * SAMPLE_COLLECTION) or test results (type = RESULT).
+     *
+     * @param type the UOM type (SAMPLE_COLLECTION, RESULT, or omit for all)
+     * @return List of UOMs with id and value (name)
+     */
+    @GetMapping(value = "/uom", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<Map<String, String>>> getUnitOfMeasuresByType(
+            @RequestParam(required = false) String type) {
+        try {
+            List<UnitOfMeasure> uoms;
+
+            if (type != null && !type.trim().isEmpty()) {
+                uoms = unitOfMeasureService.getUnitOfMeasuresByType(type);
+            } else {
+                uoms = unitOfMeasureService.getAll();
+            }
+
+            List<Map<String, String>> result = new ArrayList<>();
+            for (UnitOfMeasure uom : uoms) {
+                Map<String, String> uomData = new HashMap<>();
+                uomData.put("id", uom.getId());
+                uomData.put("value", uom.getUnitOfMeasureName());
+                result.add(uomData);
+            }
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "getUnitOfMeasuresByType",
+                    "Error fetching UOMs: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }
