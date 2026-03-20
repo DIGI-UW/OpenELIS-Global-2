@@ -19,10 +19,9 @@ const PRELOADED_NAME = "Cepheid GeneXpert (ASTM Mode)";
 const RESULTS_TIMEOUT = 90_000;
 
 /** Matches ASTM O-segment specimen id seeded in tools/analyzer-mock-server/templates/genexpert_astm.json */
+/** Harness ASTM template (e2e-fixtures/genexpert_astm.json) emits COVID-only for DB parity. */
 const EXPECTED_RESULTS = [
   { sampleId: "HARN-GX-2026-00001", result: "NEGATIVE" },
-  { sampleId: "HARN-GX-2026-00001", result: "Sensitive" },
-  { sampleId: "HARN-GX-2026-00001", result: "1250" },
 ];
 
 async function testConnection(

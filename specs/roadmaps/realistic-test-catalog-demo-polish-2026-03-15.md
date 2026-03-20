@@ -211,8 +211,9 @@ export async function acceptAndVerifyResults(
 Canonical ids live in
 [`projects/analyzer-harness/LANE-IDENTIFIERS.md`](../../projects/analyzer-harness/LANE-IDENTIFIERS.md).
 
-- `astm-genexpert-results.spec.ts`: `"HARN-GX-2026-00001"` (matches ASTM
-  template `tools/analyzer-mock-server/templates/genexpert_astm.json`)
+- `astm-genexpert-results.spec.ts`: `"HARN-GX-2026-00001"` (matches harness ASTM
+  overlay `projects/analyzer-harness/e2e-fixtures/genexpert_astm.json`,
+  COVID-only + QC off for CI DB parity)
 - `file-import-results.spec.ts`: QuantStudio `Sample Name` values such as
   `"HARN-QS7-2026-00001"`, … (see
   `frontend/playwright/fixtures/quantstudio-e2e-results.xlsx`)

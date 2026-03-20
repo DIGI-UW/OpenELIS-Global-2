@@ -66,9 +66,9 @@ ON CONFLICT (id) DO UPDATE SET
   patient_id = EXCLUDED.patient_id,
   lastupdated = EXCLUDED.lastupdated;
 
--- Analyses: QuantStudio / file-import only (LOINC 94500-6). GeneXpert ASTM staging
--- resolves tests via analyzer profile + DB mappings; minimal dev DBs may not ship
--- MTB/RIF/HIV-VL rows, so we do not pre-insert analyses for the GX lane.
+-- Analyses: GeneXpert ASTM harness path and QuantStudio file-import (LOINC 94500-6).
+-- GX demo uses COVID-only ASTM from e2e-fixtures/genexpert_astm.json so one analysis
+-- row is sufficient for accept → results in AccessionResults.
 DO $$
 DECLARE
   not_started_id NUMERIC;
@@ -100,6 +100,8 @@ BEGIN
   INSERT INTO analysis (id, sampitem_id, test_id, test_sect_id, status_id, status, analysis_type,
                         entry_date, started_date, completed_date, is_reportable, lastupdated)
   VALUES
+    (21110, 10600, test_covid_id, test_sect_id, not_started_id, '1', 'MANUAL',
+     CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),
     (21111, 10601, test_covid_id, test_sect_id, not_started_id, '1', 'MANUAL',
      CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),
     (21112, 10602, test_covid_id, test_sect_id, not_started_id, '1', 'MANUAL',

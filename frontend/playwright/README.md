@@ -38,9 +38,9 @@ Tests are organized into projects via allowlist-based `testMatch` in
 
 ## CI Workflows
 
-| Workflow                                 | Compose Files                                          | Projects                 | Fixtures                                           |
-| ---------------------------------------- | ------------------------------------------------------ | ------------------------ | -------------------------------------------------- |
-| `e2e-playwright.yml` (`playwright-core`) | `build.docker-compose.yml`                             | `core-app` + `core-demo` | `file-import-e2e.sql`                              |
+| Workflow                                 | Compose Files                                          | Projects                 | Fixtures                                             |
+| ---------------------------------------- | ------------------------------------------------------ | ------------------------ | ---------------------------------------------------- |
+| `e2e-playwright.yml` (`playwright-core`) | `build.docker-compose.yml`                             | `core-app` + `core-demo` | `file-import-e2e.sql`                                |
 | `e2e-playwright-analyzer-harness`        | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness-demo`           | `load-test-fixtures.sh --analyzers=full` (see below) |
 
 `e2e-playwright-analyzer-harness-manual.yml` remains available for manual (`workflow_dispatch`) harness-only runs and delegates to the same reusable analyzer harness workflow used by `e2e-playwright.yml`.

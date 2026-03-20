@@ -19,41 +19,10 @@
     "receiver_id": "LIS",
     "specimen_descriptor": "ORH",
     "enable_isid": false,
-    "enable_qc": true,
+    "enable_qc": false,
     "proactive_enq": true
   },
   "fields": [
-    {
-      "code": "MTB-RIF",
-      "name": "Xpert MTB/RIF",
-      "loinc": "23826-1",
-      "type": "QUALITATIVE",
-      "possibleValues": ["POSITIVE", "NEGATIVE", "INDETERMINATE", "ERROR"],
-      "seedQualitative": "NEGATIVE",
-      "version": "2.1"
-    },
-    {
-      "code": "RIF",
-      "name": "Xpert MTB/RIF Rif Resistance",
-      "loinc": "46244-0",
-      "type": "QUALITATIVE",
-      "possibleValues": ["Resistant", "Sensitive", "Indeterminate", "N/A"],
-      "seedQualitative": "Sensitive",
-      "version": "2.1"
-    },
-    {
-      "code": "HIV-VL",
-      "name": "Xpert HIV-1 Viral Load",
-      "loinc": "20447-9",
-      "type": "NUMERIC",
-      "unit": "copies/mL",
-      "normalRange": "20-10000000",
-      "seedValue": 1250,
-      "version": "1.0",
-      "complementaryResults": [
-        { "name": "Conc/LOG", "unit": "log(copies/mL)", "seedValue": 3.1 }
-      ]
-    },
     {
       "code": "COVID19",
       "name": "Xpert Xpress SARS-CoV-2",
@@ -64,11 +33,6 @@
       "version": "1.0"
     }
   ],
-  "qcSample": {
-    "id": "QC-MTB-CTRL-001",
-    "actionCode": "Q",
-    "fields": [{ "code": "MTB-RIF", "seedQualitative": "NEGATIVE" }]
-  },
   "testPatient": {
     "id": "PAT-GX-001",
     "name": "Rakoto^Jean^A",

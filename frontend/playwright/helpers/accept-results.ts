@@ -1,6 +1,7 @@
 import { Page, expect } from "@playwright/test";
 import type { DemoPresentation } from "./demo-presentation";
 import {
+  accessionTextRegExp,
   locatorForAccessionNumber,
   openAccessionResultsAndWaitForText,
 } from "./results-ui";
@@ -56,7 +57,10 @@ export async function acceptAndVerifyResults(
   await presentation.step(stepOffset + 2, "Save Accepted Results", 2000);
 
   const saveButton = page.locator('[data-testid="Save-btn"]');
-  const stagedRows = page.locator('[data-testid="LabNo"]');
+  // Scope to this accession: other lanes/QC rows can share the AnalyzerResults page.
+  const stagedRows = page
+    .locator('[data-testid="LabNo"]')
+    .filter({ hasText: accessionTextRegExp(stagedAccession.trim()) });
   const stagedCountBeforeSave = await stagedRows.count();
   await expect(saveButton).toBeVisible({ timeout: 5_000 });
   await expect(saveButton).toBeEnabled({ timeout: 5_000 });

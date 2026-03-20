@@ -63,7 +63,10 @@ export function accessionTextRegExp(accession: string): RegExp {
 /**
  * Locator for lab/accession text as rendered under either SiteYearNum or ALPHANUM accession format.
  */
-export function locatorForAccessionNumber(page: Page, accession: string): Locator {
+export function locatorForAccessionNumber(
+  page: Page,
+  accession: string,
+): Locator {
   return page.getByText(accessionTextRegExp(accession)).first();
 }
 
