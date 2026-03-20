@@ -55,4 +55,7 @@
   <include relativeToChangelogFile="true" file="029-add-gps-coordinates-to-sample.xml"/>
   <!-- Address Hierarchy Configuration -->
   <include relativeToChangelogFile="true" file="030-add-address-hierarchy-config.xml"/>
+
+  <!-- Odoo Sync Queue for retry mechanism -->
+  <include relativeToChangelogFile="true" file="031-create-odoo-sync-queue.xml"/>
 </databaseChangeLog>

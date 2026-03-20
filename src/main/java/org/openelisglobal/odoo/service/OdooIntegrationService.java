@@ -55,11 +55,9 @@ public class OdooIntegrationService {
      * @throws OdooOperationException if there's an error creating the invoice
      */
     public void createInvoice(SamplePatientUpdateData updateData) {
-        // Check if Odoo connection is available
         if (!odooConnection.isAvailable()) {
-            log.info("Odoo connection is not available. Skipping invoice creation for sample: {}",
-                    updateData.getAccessionNumber());
-            return;
+            throw new org.openelisglobal.odoo.exception.OdooUnavailableException(
+                    "Odoo connection is not available for sample: " + updateData.getAccessionNumber());
         }
 
         try {

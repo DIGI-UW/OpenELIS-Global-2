@@ -92,6 +92,9 @@
         <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
 
+        <!-- Odoo Sync Queue for retry mechanism -->
+        <class>org.openelisglobal.odoo.valueholder.OdooSyncQueue</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />

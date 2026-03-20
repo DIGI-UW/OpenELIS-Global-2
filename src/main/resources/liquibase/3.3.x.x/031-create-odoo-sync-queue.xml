@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="odoo-sync-queue-001-create-table" author="odoo-sync-queue">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="odoo_sync_queue"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="odoo_sync_queue">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="accession_number" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="retry_count" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="max_retries" type="INT" defaultValueNumeric="3">
+                <constraints nullable="false"/>
+            </column>
+            <column name="next_retry_time" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_error" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="payload" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="completed_at" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sys_user_id" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="odoo_sync_queue" indexName="idx_osq_status">
+            <column name="status"/>
+        </createIndex>
+
+        <createIndex tableName="odoo_sync_queue" indexName="idx_osq_next_retry_time">
+            <column name="next_retry_time"/>
+        </createIndex>
+
+        <createIndex tableName="odoo_sync_queue" indexName="idx_osq_accession_number">
+            <column name="accession_number"/>
+        </createIndex>
+
+        <createIndex tableName="odoo_sync_queue" indexName="idx_osq_status_next_retry">
+            <column name="status"/>
+            <column name="next_retry_time"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="odoo_sync_queue" indexName="idx_osq_status_next_retry"/>
+            <dropIndex tableName="odoo_sync_queue" indexName="idx_osq_accession_number"/>
+            <dropIndex tableName="odoo_sync_queue" indexName="idx_osq_next_retry_time"/>
+            <dropIndex tableName="odoo_sync_queue" indexName="idx_osq_status"/>
+            <dropTable tableName="odoo_sync_queue" cascadeConstraints="true"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
