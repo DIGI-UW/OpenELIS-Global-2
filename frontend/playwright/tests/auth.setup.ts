@@ -36,25 +36,27 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
   }
 
   // ── Step 1: Backend health check ──────────────────────────────
-  let backendReady = false;
-  for (let attempt = 1; attempt <= 12; attempt++) {
-    try {
-      const health = await request.get("/health", { timeout: 5_000 });
-      if (health.ok()) {
-        backendReady = true;
-        break;
-      }
-    } catch {
-      // connection refused or timeout
-    }
-    if (attempt % 4 === 0) {
-      console.log(
-        `  auth-setup: waiting for backend... (${attempt * 5}s elapsed)`,
-      );
-    }
-    await page.waitForTimeout(5_000);
-  }
-  if (!backendReady) {
+  const healthCheckResult = await expect
+    .poll(
+      async () => {
+        try {
+          const health = await request.get("/health", { timeout: 5_000 });
+          return health.ok();
+        } catch {
+          return false;
+        }
+      },
+      {
+        timeout: 60_000,
+        intervals: [1_000, 2_000, 5_000],
+        message: "Waiting for backend /health endpoint to become ready",
+      },
+    )
+    .toBeTruthy()
+    .then(() => true)
+    .catch(() => false);
+
+  if (!healthCheckResult) {
     throw new Error(
       "Backend health check failed after 60s.\n" +
         "  Ensure the OE container is running and accessible at the baseURL.",
@@ -117,11 +119,12 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
   }
 
   // Add the cookie to the browser context with root path
+  const host = new URL(process.env.BASE_URL || "https://localhost").hostname;
   await context.addCookies([
     {
       name: "JSESSIONID",
       value: jsessionId,
-      domain: "localhost",
+      domain: host,
       path: "/",
       httpOnly: true,
       secure: true,

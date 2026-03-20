@@ -1,6 +1,7 @@
 package org.openelisglobal.result.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Date;
@@ -751,8 +752,8 @@ public class AnalyzerResultsController extends BaseController {
 
     @RequestMapping(value = "/rest/AnalyzerResults", method = RequestMethod.POST)
     @ResponseBody
-    public void showRestAnalyzerResultsSave(HttpServletRequest request, @Validated({ Paging.class,
-            AnalyzerResultsForm.AnalyzerResuts.class }) @RequestBody AnalyzerResultsForm form) {
+    public void showRestAnalyzerResultsSave(HttpServletRequest request, HttpServletResponse response, @Validated({
+            Paging.class, AnalyzerResultsForm.AnalyzerResuts.class }) @RequestBody AnalyzerResultsForm form) {
 
         AnalyzerResultsPaging paging = new AnalyzerResultsPaging();
         paging.updatePagedResults(request, form);
@@ -779,7 +780,9 @@ public class AnalyzerResultsController extends BaseController {
 
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e.getMessage(), e);
-
+            // Align with MVC save path: failures must not return 200 — React only redirects
+            // on 200.
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
 
     }
@@ -1298,8 +1301,14 @@ public class AnalyzerResultsController extends BaseController {
                 result = resultList.get(resultList.size() - 1);
                 // this should be refactored -- it's very close to createNewResult
                 String resultValue = resultItem.getIsRejected() ? REJECT_VALUE : resultItem.getResult();
-                result.setValue(resultValue);
-                result.setTestResult(getTestResultForResult(resultItem));
+                TestResult resolvedTestResult = getTestResultForResult(resultItem);
+                result.setTestResult(resolvedTestResult);
+                if ("D".equals(resultItem.getTestResultType()) && resolvedTestResult != null
+                        && !resultItem.getIsRejected()) {
+                    result.setValue(resolvedTestResult.getValue());
+                } else {
+                    result.setValue(resultValue);
+                }
                 result.setSysUserId(getSysUserId(request));
 
                 setAnalyte(result);
@@ -1323,9 +1332,14 @@ public class AnalyzerResultsController extends BaseController {
 
     private Result createNewResult(AnalyzerResultItem resultItem, Patient patient) {
         Result result = new Result();
-        String resultValue = resultItem.getIsRejected() ? REJECT_VALUE : resultItem.getResult();
-        result.setValue(resultValue);
-        result.setTestResult(getTestResultForResult(resultItem));
+        String rawValue = resultItem.getIsRejected() ? REJECT_VALUE : resultItem.getResult();
+        TestResult resolvedTestResult = getTestResultForResult(resultItem);
+        result.setTestResult(resolvedTestResult);
+        if ("D".equals(resultItem.getTestResultType()) && resolvedTestResult != null && !resultItem.getIsRejected()) {
+            result.setValue(resolvedTestResult.getValue());
+        } else {
+            result.setValue(rawValue);
+        }
         result.setResultType(resultItem.getTestResultType());
         // the results table is not autmatically updated with the significant digits
         // from TestResult so we must do this
@@ -1360,9 +1374,29 @@ public class AnalyzerResultsController extends BaseController {
 
     private TestResult getTestResultForResult(AnalyzerResultItem resultItem) {
         if ("D".equals(resultItem.getTestResultType())) {
-            TestResult testResult;
-            testResult = testResultService.getTestResultsByTestAndDictonaryResult(resultItem.getTestId(),
+            TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(resultItem.getTestId(),
                     resultItem.getResult());
+            // ASTM/file imports often store display text (e.g. "NEGATIVE") while
+            // getTestResultsByTestAndDictonaryResult only matches numeric dictionary IDs.
+            // Resolve against this test's dictionary options so we pick the correct entry
+            // when multiple "NEGATIVE" rows exist for different categories.
+            if (testResult == null && !StringUtil.isInteger(resultItem.getResult())) {
+                String desired = resultItem.getResult().trim();
+                List<TestResult> candidates = testResultService.getActiveTestResultsByTest(resultItem.getTestId());
+                if (candidates != null) {
+                    for (TestResult candidate : candidates) {
+                        if (!"D".equals(candidate.getTestResultType())) {
+                            continue;
+                        }
+                        Dictionary dict = dictionaryService.get(candidate.getValue());
+                        if (dict != null && dict.getDictEntry() != null
+                                && desired.equalsIgnoreCase(dict.getDictEntry().trim())) {
+                            testResult = candidate;
+                            break;
+                        }
+                    }
+                }
+            }
             return testResult;
         } else {
             List<TestResult> testResultList = testResultService.getActiveTestResultsByTest(resultItem.getTestId());
