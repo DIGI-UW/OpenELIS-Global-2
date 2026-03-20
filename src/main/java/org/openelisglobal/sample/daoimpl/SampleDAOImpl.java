@@ -304,9 +304,7 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
         try {
             String sql = "from Sample s where s.status in (:param1) and s.domain = :param2";
             Query<Sample> query = entityManager.unwrap(Session.class).createQuery(sql, Sample.class);
-            // Sample.status is mapped with LIMSStringNumberUserType but the DB column
-            // is actually VARCHAR, so we must bind as strings to avoid type mismatch
-            query.setParameterList("param1", statuses, org.hibernate.type.StringType.INSTANCE);
+            query.setParameterList("param1", statuses);
             query.setParameter("param2", domain);
             list = query.list();
         } catch (RuntimeException e) {

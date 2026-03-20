@@ -53,9 +53,8 @@
         <property name="clientReference" type="java.lang.String">
             <column name="CLIENT_REFERENCE" length="20" />
         </property>
-        <property name="status"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="STATUS" length="3" />
+        <property name="status" type="java.lang.String">
+            <column name="STATUS" length="1" />
         </property>
         <property name="releasedDate" type="java.sql.Date">
             <column name="RELEASED_DATE" length="7" />
