@@ -18,7 +18,7 @@ public class OdooSyncQueueService {
 
     private static final Logger log = LogManager.getLogger(OdooSyncQueueService.class);
 
-    private static final int[] RETRY_DELAYS_MINUTES = {1, 5, 15};
+    private static final int[] RETRY_DELAYS_MINUTES = { 1, 5, 15 };
 
     @Autowired
     private OdooSyncQueueDAO odooSyncQueueDAO;

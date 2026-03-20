@@ -36,9 +36,7 @@ public class OdooEventListenerTest {
     public void setUp() {
         ReflectionTestUtils.setField(listener, "odooEnabled", true);
         ReflectionTestUtils.setField(listener, "queueEnabled", true);
-        when(odooSyncQueueService.enqueue(anyString())).thenReturn(
-            new OdooSyncQueue()
-        );
+        when(odooSyncQueueService.enqueue(anyString())).thenReturn(new OdooSyncQueue());
     }
 
     // ─── odooEnabled = false ───────────────────────────────────────────────────
@@ -47,9 +45,7 @@ public class OdooEventListenerTest {
     public void handleEvent_whenOdooDisabled_doesNothing() {
         ReflectionTestUtils.setField(listener, "odooEnabled", false);
 
-        listener.handleSamplePatientUpdateDataCreatedEvent(
-            buildEvent(ACCESSION_NUMBER)
-        );
+        listener.handleSamplePatientUpdateDataCreatedEvent(buildEvent(ACCESSION_NUMBER));
 
         verify(odooIntegrationService, never()).createInvoice(any());
         verify(odooSyncQueueService, never()).enqueue(anyString());
@@ -61,9 +57,7 @@ public class OdooEventListenerTest {
     public void handleEvent_whenInvoiceSucceeds_doesNotEnqueue() {
         doNothing().when(odooIntegrationService).createInvoice(any());
 
-        listener.handleSamplePatientUpdateDataCreatedEvent(
-            buildEvent(ACCESSION_NUMBER)
-        );
+        listener.handleSamplePatientUpdateDataCreatedEvent(buildEvent(ACCESSION_NUMBER));
 
         verify(odooIntegrationService, times(1)).createInvoice(any());
         verify(odooSyncQueueService, never()).enqueue(anyString());
@@ -73,26 +67,18 @@ public class OdooEventListenerTest {
 
     @Test
     public void handleEvent_whenOdooUnavailable_enqueuesToRetryQueue() {
-        doThrow(new OdooUnavailableException("Odoo is down"))
-            .when(odooIntegrationService)
-            .createInvoice(any());
+        doThrow(new OdooUnavailableException("Odoo is down")).when(odooIntegrationService).createInvoice(any());
 
-        listener.handleSamplePatientUpdateDataCreatedEvent(
-            buildEvent(ACCESSION_NUMBER)
-        );
+        listener.handleSamplePatientUpdateDataCreatedEvent(buildEvent(ACCESSION_NUMBER));
 
         verify(odooSyncQueueService, times(1)).enqueue(ACCESSION_NUMBER);
     }
 
     @Test
     public void handleEvent_whenOdooUnavailable_enqueuedWithCorrectAccessionNumber() {
-        doThrow(new OdooUnavailableException("connection refused"))
-            .when(odooIntegrationService)
-            .createInvoice(any());
+        doThrow(new OdooUnavailableException("connection refused")).when(odooIntegrationService).createInvoice(any());
 
-        listener.handleSamplePatientUpdateDataCreatedEvent(
-            buildEvent("LARC99999")
-        );
+        listener.handleSamplePatientUpdateDataCreatedEvent(buildEvent("LARC99999"));
 
         verify(odooSyncQueueService, times(1)).enqueue("LARC99999");
     }
@@ -101,13 +87,9 @@ public class OdooEventListenerTest {
 
     @Test
     public void handleEvent_whenGenericExceptionAndQueueEnabled_enqueuesToRetryQueue() {
-        doThrow(new RuntimeException("unexpected failure"))
-            .when(odooIntegrationService)
-            .createInvoice(any());
+        doThrow(new RuntimeException("unexpected failure")).when(odooIntegrationService).createInvoice(any());
 
-        listener.handleSamplePatientUpdateDataCreatedEvent(
-            buildEvent(ACCESSION_NUMBER)
-        );
+        listener.handleSamplePatientUpdateDataCreatedEvent(buildEvent(ACCESSION_NUMBER));
 
         verify(odooSyncQueueService, times(1)).enqueue(ACCESSION_NUMBER);
     }
@@ -117,13 +99,9 @@ public class OdooEventListenerTest {
     @Test
     public void handleEvent_whenGenericExceptionAndQueueDisabled_doesNotEnqueue() {
         ReflectionTestUtils.setField(listener, "queueEnabled", false);
-        doThrow(new RuntimeException("unexpected failure"))
-            .when(odooIntegrationService)
-            .createInvoice(any());
+        doThrow(new RuntimeException("unexpected failure")).when(odooIntegrationService).createInvoice(any());
 
-        listener.handleSamplePatientUpdateDataCreatedEvent(
-            buildEvent(ACCESSION_NUMBER)
-        );
+        listener.handleSamplePatientUpdateDataCreatedEvent(buildEvent(ACCESSION_NUMBER));
 
         verify(odooSyncQueueService, never()).enqueue(anyString());
     }
@@ -133,15 +111,11 @@ public class OdooEventListenerTest {
     @Test
     public void handleEvent_whenOdooUnavailableAndQueueDisabled_doesNotEnqueue() {
         ReflectionTestUtils.setField(listener, "queueEnabled", false);
-        doThrow(new OdooUnavailableException("Odoo down"))
-            .when(odooIntegrationService)
-            .createInvoice(any());
+        doThrow(new OdooUnavailableException("Odoo down")).when(odooIntegrationService).createInvoice(any());
 
         // OdooUnavailableException always enqueues regardless of queueEnabled
         // because it is caught in its own catch block before the queueEnabled check
-        listener.handleSamplePatientUpdateDataCreatedEvent(
-            buildEvent(ACCESSION_NUMBER)
-        );
+        listener.handleSamplePatientUpdateDataCreatedEvent(buildEvent(ACCESSION_NUMBER));
 
         // OdooUnavailableException path calls enqueueForRetry directly —
         // but enqueueForRetry checks queueEnabled, so no enqueue
@@ -152,29 +126,20 @@ public class OdooEventListenerTest {
 
     @Test
     public void handleEvent_whenEnqueueThrows_doesNotPropagateException() {
-        doThrow(new OdooUnavailableException("Odoo down"))
-            .when(odooIntegrationService)
-            .createInvoice(any());
-        doThrow(new RuntimeException("DB error"))
-            .when(odooSyncQueueService)
-            .enqueue(anyString());
+        doThrow(new OdooUnavailableException("Odoo down")).when(odooIntegrationService).createInvoice(any());
+        doThrow(new RuntimeException("DB error")).when(odooSyncQueueService).enqueue(anyString());
 
         // Should not throw
-        listener.handleSamplePatientUpdateDataCreatedEvent(
-            buildEvent(ACCESSION_NUMBER)
-        );
+        listener.handleSamplePatientUpdateDataCreatedEvent(buildEvent(ACCESSION_NUMBER));
     }
 
     // ─── null updateData edge case ────────────────────────────────────────────
 
     @Test
     public void handleEvent_whenUpdateDataIsNull_handlesGracefully() {
-        doThrow(new OdooUnavailableException("Odoo down"))
-            .when(odooIntegrationService)
-            .createInvoice(null);
+        doThrow(new OdooUnavailableException("Odoo down")).when(odooIntegrationService).createInvoice(null);
 
-        SamplePatientUpdateDataCreatedEvent event =
-            new SamplePatientUpdateDataCreatedEvent(this, null, null, null);
+        SamplePatientUpdateDataCreatedEvent event = new SamplePatientUpdateDataCreatedEvent(this, null, null, null);
 
         // Should not throw; accession number falls back to "unknown"
         listener.handleSamplePatientUpdateDataCreatedEvent(event);
@@ -185,18 +150,9 @@ public class OdooEventListenerTest {
 
     // ─── helpers ──────────────────────────────────────────────────────────────
 
-    private SamplePatientUpdateDataCreatedEvent buildEvent(
-        String accessionNumber
-    ) {
-        SamplePatientUpdateData updateData = mock(
-            SamplePatientUpdateData.class
-        );
+    private SamplePatientUpdateDataCreatedEvent buildEvent(String accessionNumber) {
+        SamplePatientUpdateData updateData = mock(SamplePatientUpdateData.class);
         when(updateData.getAccessionNumber()).thenReturn(accessionNumber);
-        return new SamplePatientUpdateDataCreatedEvent(
-            this,
-            updateData,
-            null,
-            null
-        );
+        return new SamplePatientUpdateDataCreatedEvent(this, updateData, null, null);
     }
 }

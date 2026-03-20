@@ -5,8 +5,6 @@ import static org.mockito.Mockito.*;
 
 import java.util.List;
 import java.util.Map;
-
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -110,8 +108,7 @@ public class RealOdooClientTest {
     public void create_whenCallFails_marksUnavailable() throws Exception {
         doNothing().when(odooClient).init();
         realOdooClient = new RealOdooClient(odooClient);
-        when(odooClient.create(anyString(), anyList()))
-                .thenThrow(new RuntimeException("Odoo crashed"));
+        when(odooClient.create(anyString(), anyList())).thenThrow(new RuntimeException("Odoo crashed"));
 
         try {
             realOdooClient.create("account.move", List.of());
@@ -133,8 +130,7 @@ public class RealOdooClientTest {
         realOdooClient = new RealOdooClient(odooClient);
 
         // First call fails and marks unavailable
-        when(odooClient.create(anyString(), anyList()))
-                .thenThrow(new RuntimeException("temporary failure"))
+        when(odooClient.create(anyString(), anyList())).thenThrow(new RuntimeException("temporary failure"))
                 .thenReturn(99);
 
         try {
@@ -157,7 +153,7 @@ public class RealOdooClientTest {
     public void searchAndRead_whenAvailableAndSucceeds_returnsResult() throws Exception {
         doNothing().when(odooClient).init();
         realOdooClient = new RealOdooClient(odooClient);
-        Object[] expected = new Object[]{Map.of("id", 1)};
+        Object[] expected = new Object[] { Map.of("id", 1) };
         when(odooClient.searchAndRead(anyString(), anyList(), anyList())).thenReturn(expected);
 
         Object[] result = realOdooClient.searchAndRead("res.partner", List.of(), List.of("id"));
@@ -204,7 +200,8 @@ public class RealOdooClientTest {
             assertTrue(realOdooClient.isAvailable());
         }
 
-        // init() should only be called once at startup — not on every isAvailable() call
+        // init() should only be called once at startup — not on every isAvailable()
+        // call
         verify(odooClient, times(1)).init();
     }
 

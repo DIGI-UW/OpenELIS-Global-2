@@ -51,8 +51,8 @@ public class OdooRetryJob {
             try {
                 processItem(item);
             } catch (Exception e) {
-                log.error("Unexpected error processing Odoo queue item for accession {}: {}",
-                        item.getAccessionNumber(), e.getMessage(), e);
+                log.error("Unexpected error processing Odoo queue item for accession {}: {}", item.getAccessionNumber(),
+                        e.getMessage(), e);
             }
         }
     }
@@ -62,8 +62,7 @@ public class OdooRetryJob {
         try {
             Sample sample = sampleService.getSampleByAccessionNumber(item.getAccessionNumber());
             if (sample == null) {
-                odooSyncQueueService.markFailed(item,
-                        "Sample not found for accession: " + item.getAccessionNumber());
+                odooSyncQueueService.markFailed(item, "Sample not found for accession: " + item.getAccessionNumber());
                 return;
             }
 

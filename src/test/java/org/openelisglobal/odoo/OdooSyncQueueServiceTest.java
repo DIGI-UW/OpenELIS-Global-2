@@ -59,9 +59,7 @@ public class OdooSyncQueueServiceTest {
     public void enqueue_callsDAOInsert() {
         odooSyncQueueService.enqueue(ACCESSION_NUMBER);
 
-        ArgumentCaptor<OdooSyncQueue> captor = ArgumentCaptor.forClass(
-            OdooSyncQueue.class
-        );
+        ArgumentCaptor<OdooSyncQueue> captor = ArgumentCaptor.forClass(OdooSyncQueue.class);
         verify(odooSyncQueueDAO, times(1)).insert(captor.capture());
         assertEquals(ACCESSION_NUMBER, captor.getValue().getAccessionNumber());
     }
@@ -133,9 +131,7 @@ public class OdooSyncQueueServiceTest {
     public void markFailed_secondFailure_schedulesRetryAfter5Min() {
         OdooSyncQueue item = buildPendingItem();
         item.setRetryCount(1); // already failed once
-        Timestamp before = Timestamp.from(
-            Instant.now().plusSeconds(4 * 60 + 59)
-        );
+        Timestamp before = Timestamp.from(Instant.now().plusSeconds(4 * 60 + 59));
 
         odooSyncQueueService.markFailed(item, "timeout");
 
@@ -149,9 +145,7 @@ public class OdooSyncQueueServiceTest {
         OdooSyncQueue item = buildPendingItem();
         item.setRetryCount(2); // failed twice before — this is the 3rd failure, index 2 → 15min delay
         item.setMaxRetries(5); // raise max so it doesn't hit FAILED
-        Timestamp before = Timestamp.from(
-            Instant.now().plusSeconds(14 * 60 + 59)
-        );
+        Timestamp before = Timestamp.from(Instant.now().plusSeconds(14 * 60 + 59));
 
         odooSyncQueueService.markFailed(item, "server error");
 
@@ -193,12 +187,9 @@ public class OdooSyncQueueServiceTest {
     public void getItemsReadyForRetry_delegatesToDAO() {
         OdooSyncQueue item1 = buildPendingItem();
         OdooSyncQueue item2 = buildPendingItem();
-        when(odooSyncQueueDAO.getItemsReadyForRetry()).thenReturn(
-            Arrays.asList(item1, item2)
-        );
+        when(odooSyncQueueDAO.getItemsReadyForRetry()).thenReturn(Arrays.asList(item1, item2));
 
-        List<OdooSyncQueue> result =
-            odooSyncQueueService.getItemsReadyForRetry();
+        List<OdooSyncQueue> result = odooSyncQueueService.getItemsReadyForRetry();
 
         assertEquals(2, result.size());
         verify(odooSyncQueueDAO, times(1)).getItemsReadyForRetry();
@@ -220,9 +211,7 @@ public class OdooSyncQueueServiceTest {
     public void getFailedItems_returnsOnlyFailedStatus() {
         OdooSyncQueue failedItem = buildPendingItem();
         failedItem.setStatus(SyncStatus.FAILED);
-        when(odooSyncQueueDAO.getByStatus(SyncStatus.FAILED)).thenReturn(
-            List.of(failedItem)
-        );
+        when(odooSyncQueueDAO.getByStatus(SyncStatus.FAILED)).thenReturn(List.of(failedItem));
 
         List<OdooSyncQueue> result = odooSyncQueueService.getFailedItems();
 
@@ -259,7 +248,6 @@ public class OdooSyncQueueServiceTest {
 
         assertTrue(item.hasExceededMaxRetries());
     }
-
 
     // ─── enqueue idempotency ──────────────────────────────────────────────────
 

@@ -41,18 +41,12 @@ public class SamplePatientUpdateDataCreatedEventListener {
         try {
             odooIntegrationService.createInvoice(updateData);
         } catch (OdooUnavailableException e) {
-            LogEvent.logWarn(
-                this.getClass().getSimpleName(),
-                "handleSamplePatientUpdateDataCreatedEvent",
-                "Odoo unavailable for sample " + accessionNumber + ". Enqueueing for retry."
-            );
+            LogEvent.logWarn(this.getClass().getSimpleName(), "handleSamplePatientUpdateDataCreatedEvent",
+                    "Odoo unavailable for sample " + accessionNumber + ". Enqueueing for retry.");
             enqueueForRetry(accessionNumber);
         } catch (Exception e) {
-            LogEvent.logError(
-                this.getClass().getSimpleName(),
-                "handleSamplePatientUpdateDataCreatedEvent",
-                "Odoo invoice creation failed for sample " + accessionNumber + ": " + e.getMessage()
-            );
+            LogEvent.logError(this.getClass().getSimpleName(), "handleSamplePatientUpdateDataCreatedEvent",
+                    "Odoo invoice creation failed for sample " + accessionNumber + ": " + e.getMessage());
             if (queueEnabled) {
                 enqueueForRetry(accessionNumber);
             }
@@ -61,21 +55,15 @@ public class SamplePatientUpdateDataCreatedEventListener {
 
     private void enqueueForRetry(String accessionNumber) {
         if (!queueEnabled || odooSyncQueueService == null) {
-            LogEvent.logError(
-                this.getClass().getSimpleName(),
-                "enqueueForRetry",
-                "Queue disabled or unavailable. Invoice for sample " + accessionNumber + " will be lost."
-            );
+            LogEvent.logError(this.getClass().getSimpleName(), "enqueueForRetry",
+                    "Queue disabled or unavailable. Invoice for sample " + accessionNumber + " will be lost.");
             return;
         }
         try {
             odooSyncQueueService.enqueue(accessionNumber);
         } catch (Exception e) {
-            LogEvent.logError(
-                this.getClass().getSimpleName(),
-                "enqueueForRetry",
-                "Failed to enqueue sample " + accessionNumber + " for Odoo retry: " + e.getMessage()
-            );
+            LogEvent.logError(this.getClass().getSimpleName(), "enqueueForRetry",
+                    "Failed to enqueue sample " + accessionNumber + " for Odoo retry: " + e.getMessage());
         }
     }
 }

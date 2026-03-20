@@ -88,20 +88,13 @@ public class OdooRetryJobTest {
     @Test
     public void processRetryQueue_whenSampleNotFound_marksItemFailed() {
         OdooSyncQueue item = buildItem(ACCESSION_NUMBER, 0);
-        when(odooSyncQueueService.getItemsReadyForRetry()).thenReturn(
-            List.of(item)
-        );
-        when(
-            sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER)
-        ).thenReturn(null);
+        when(odooSyncQueueService.getItemsReadyForRetry()).thenReturn(List.of(item));
+        when(sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER)).thenReturn(null);
 
         odooRetryJob.processRetryQueue();
 
         verify(odooSyncQueueService, times(1)).markInProgress(item);
-        verify(odooSyncQueueService, times(1)).markFailed(
-            eq(item),
-            contains(ACCESSION_NUMBER)
-        );
+        verify(odooSyncQueueService, times(1)).markFailed(eq(item), contains(ACCESSION_NUMBER));
         verify(odooIntegrationService, never()).createInvoice(any());
     }
 
@@ -113,22 +106,14 @@ public class OdooRetryJobTest {
         Sample sample = new Sample();
         sample.setAccessionNumber(ACCESSION_NUMBER);
 
-        when(odooSyncQueueService.getItemsReadyForRetry()).thenReturn(
-            List.of(item)
-        );
-        when(
-            sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER)
-        ).thenReturn(sample);
-        doNothing()
-            .when(odooIntegrationService)
-            .createInvoiceForSample(any(Sample.class));
+        when(odooSyncQueueService.getItemsReadyForRetry()).thenReturn(List.of(item));
+        when(sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER)).thenReturn(sample);
+        doNothing().when(odooIntegrationService).createInvoiceForSample(any(Sample.class));
 
         odooRetryJob.processRetryQueue();
 
         verify(odooSyncQueueService, times(1)).markInProgress(item);
-        verify(odooIntegrationService, times(1)).createInvoiceForSample(
-            any(Sample.class)
-        );
+        verify(odooIntegrationService, times(1)).createInvoiceForSample(any(Sample.class));
         verify(odooSyncQueueService, times(1)).markCompleted(item);
         verify(odooSyncQueueService, never()).markFailed(any(), anyString());
     }
@@ -141,23 +126,15 @@ public class OdooRetryJobTest {
         Sample sample = new Sample();
         sample.setAccessionNumber(ACCESSION_NUMBER);
 
-        when(odooSyncQueueService.getItemsReadyForRetry()).thenReturn(
-            List.of(item)
-        );
-        when(
-            sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER)
-        ).thenReturn(sample);
-        doThrow(new RuntimeException("Odoo connection refused"))
-            .when(odooIntegrationService)
-            .createInvoiceForSample(any(Sample.class));
+        when(odooSyncQueueService.getItemsReadyForRetry()).thenReturn(List.of(item));
+        when(sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER)).thenReturn(sample);
+        doThrow(new RuntimeException("Odoo connection refused")).when(odooIntegrationService)
+                .createInvoiceForSample(any(Sample.class));
 
         odooRetryJob.processRetryQueue();
 
         verify(odooSyncQueueService, times(1)).markInProgress(item);
-        verify(odooSyncQueueService, times(1)).markFailed(
-            eq(item),
-            contains("Odoo connection refused")
-        );
+        verify(odooSyncQueueService, times(1)).markFailed(eq(item), contains("Odoo connection refused"));
         verify(odooSyncQueueService, never()).markCompleted(any());
     }
 
@@ -172,21 +149,11 @@ public class OdooRetryJobTest {
         Sample sample1 = buildSample("LARC11111");
         Sample sample2 = buildSample("LARC22222");
 
-        when(odooSyncQueueService.getItemsReadyForRetry()).thenReturn(
-            Arrays.asList(item1, item2, item3)
-        );
-        when(sampleService.getSampleByAccessionNumber("LARC11111")).thenReturn(
-            sample1
-        );
-        when(sampleService.getSampleByAccessionNumber("LARC22222")).thenReturn(
-            sample2
-        );
-        when(sampleService.getSampleByAccessionNumber("LARC33333")).thenReturn(
-            null
-        );
-        doNothing()
-            .when(odooIntegrationService)
-            .createInvoiceForSample(any(Sample.class));
+        when(odooSyncQueueService.getItemsReadyForRetry()).thenReturn(Arrays.asList(item1, item2, item3));
+        when(sampleService.getSampleByAccessionNumber("LARC11111")).thenReturn(sample1);
+        when(sampleService.getSampleByAccessionNumber("LARC22222")).thenReturn(sample2);
+        when(sampleService.getSampleByAccessionNumber("LARC33333")).thenReturn(null);
+        doNothing().when(odooIntegrationService).createInvoiceForSample(any(Sample.class));
 
         odooRetryJob.processRetryQueue();
 
@@ -195,10 +162,7 @@ public class OdooRetryJobTest {
         // item1 and item2 succeed
         verify(odooSyncQueueService, times(2)).markCompleted(any());
         // item3 fails because sample not found
-        verify(odooSyncQueueService, times(1)).markFailed(
-            eq(item3),
-            anyString()
-        );
+        verify(odooSyncQueueService, times(1)).markFailed(eq(item3), anyString());
     }
 
     @Test
@@ -209,30 +173,17 @@ public class OdooRetryJobTest {
         Sample sample1 = buildSample("LARC11111");
         Sample sample2 = buildSample("LARC22222");
 
-        when(odooSyncQueueService.getItemsReadyForRetry()).thenReturn(
-            Arrays.asList(item1, item2)
-        );
-        when(sampleService.getSampleByAccessionNumber("LARC11111")).thenReturn(
-            sample1
-        );
-        when(sampleService.getSampleByAccessionNumber("LARC22222")).thenReturn(
-            sample2
-        );
+        when(odooSyncQueueService.getItemsReadyForRetry()).thenReturn(Arrays.asList(item1, item2));
+        when(sampleService.getSampleByAccessionNumber("LARC11111")).thenReturn(sample1);
+        when(sampleService.getSampleByAccessionNumber("LARC22222")).thenReturn(sample2);
 
         // item1 invoice creation fails, item2 succeeds
-        doThrow(new RuntimeException("Odoo down"))
-            .when(odooIntegrationService)
-            .createInvoiceForSample(same(sample1));
-        doNothing()
-            .when(odooIntegrationService)
-            .createInvoiceForSample(same(sample2));
+        doThrow(new RuntimeException("Odoo down")).when(odooIntegrationService).createInvoiceForSample(same(sample1));
+        doNothing().when(odooIntegrationService).createInvoiceForSample(same(sample2));
 
         odooRetryJob.processRetryQueue();
 
-        verify(odooSyncQueueService, times(1)).markFailed(
-            eq(item1),
-            anyString()
-        );
+        verify(odooSyncQueueService, times(1)).markFailed(eq(item1), anyString());
         verify(odooSyncQueueService, times(1)).markCompleted(item2);
     }
 
@@ -244,19 +195,11 @@ public class OdooRetryJobTest {
         OdooSyncQueue item2 = buildItem("LARC22222", 0);
         Sample sample2 = buildSample("LARC22222");
 
-        when(odooSyncQueueService.getItemsReadyForRetry()).thenReturn(
-            Arrays.asList(item1, item2)
-        );
-        doThrow(new RuntimeException("DB error"))
-            .when(odooSyncQueueService)
-            .markInProgress(item1);
+        when(odooSyncQueueService.getItemsReadyForRetry()).thenReturn(Arrays.asList(item1, item2));
+        doThrow(new RuntimeException("DB error")).when(odooSyncQueueService).markInProgress(item1);
         doNothing().when(odooSyncQueueService).markInProgress(item2);
-        when(sampleService.getSampleByAccessionNumber("LARC22222")).thenReturn(
-            sample2
-        );
-        doNothing()
-            .when(odooIntegrationService)
-            .createInvoiceForSample(any(Sample.class));
+        when(sampleService.getSampleByAccessionNumber("LARC22222")).thenReturn(sample2);
+        doNothing().when(odooIntegrationService).createInvoiceForSample(any(Sample.class));
 
         odooRetryJob.processRetryQueue();
 
