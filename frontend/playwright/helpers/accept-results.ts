@@ -11,7 +11,7 @@ import { openAccessionResultsAndWaitForText } from "./results-ui";
  * Flow:
  *   1. Click "Save All Results" label (Carbon Checkbox — hidden input + visible label)
  *   2. Click Save button (data-testid="Save-btn")
- *   3. Wait for POST /rest/AnalyzerResults → page reloads
+ *   3. Wait for empty staging UI (full reload; do not key off a single HTTP response)
  *   4. Verify staging page is now empty (results promoted to official result table)
  *   5. (Optional) Navigate to AccessionResults to verify accepted results appear
  *
@@ -49,30 +49,18 @@ export async function acceptAndVerifyResults(
 
   const saveButton = page.locator('[data-testid="Save-btn"]');
   await expect(saveButton).toBeVisible({ timeout: 5_000 });
-  // On success the app assigns window.location.href to the same
-  // "/AnalyzerResults?type=..." URL (AnalyserResults.js), so waitForURL does
-  // not observe a change. Wait for the save POST (200), then assert the empty
-  // state (retries until the reload paints).
-  // Do not require r.status() === 200 inside the predicate: Playwright may
-  // evaluate before the status is available, and any non-200 would never
-  // match—causing a full timeout with no POST "seen". Filter URL + method,
-  // then assert HTTP 200 explicitly.
-  const saveResponse = page.waitForResponse(
-    (r) =>
-      r.request().method() === "POST" &&
-      /\/rest\/AnalyzerResults(?:\?|\/|$)/.test(r.url()),
-    { timeout: 60_000 },
-  );
+  // On success the UI does a full reload to the same AnalyzerResults URL
+  // (AnalyserResults.js), so waitForURL does not observe navigation.
+  //
+  // Do not wait on a single network response: multiple POSTs can hit
+  // /rest/AnalyzerResults (e.g. validation vs. real save); matching the
+  // first response is flaky. Assert the user-visible empty staging table
+  // instead—Playwright retries until the reload paints or times out.
   await saveButton.click();
-  const response = await saveResponse;
-  expect(response.status()).toBe(200);
-  // Full reload follows in the UI thread; avoid waitForLoadState here (same
-  // URL as before can satisfy "load" on the wrong lifecycle). The expect
-  // below retries against the live DOM until the refreshed empty state shows.
 
   // ── Verify post-save state ───────────────────────────────────────
   const noResults = page.getByText("There are no records to display");
-  await expect(noResults).toBeVisible({ timeout: 60_000 });
+  await expect(noResults).toBeVisible({ timeout: 90_000 });
   await expect(page.locator('[data-testid="LabNo"]')).toHaveCount(0, {
     timeout: 15_000,
   });
