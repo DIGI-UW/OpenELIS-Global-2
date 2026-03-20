@@ -160,11 +160,22 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+      - name: Extract application and Tomcat logs from container
+        if: failure()
+        run: |
+          mkdir -p /tmp/oe-logs /tmp/tomcat-logs
+          docker cp openelisglobal-webapp:/var/lib/openelis-global/logs/ /tmp/oe-logs/ 2>/dev/null || true
+          docker cp openelisglobal-webapp:/usr/local/tomcat/logs/ /tmp/tomcat-logs/ 2>/dev/null || true
+          echo "=== OpenELIS App Logs (last 500 lines) ==="
+          cat /tmp/oe-logs/*.log 2>/dev/null | tail -500 || echo "(no app logs found)"
+          echo "=== Tomcat catalina.out (last 500 lines) ==="
+          cat /tmp/tomcat-logs/catalina*.* 2>/dev/null | tail -500 || echo "(no catalina logs found)"
+
       - name: Dump docker logs on failure
         if: failure()
         uses: jwalton/gh-docker-logs@v2
         with:
-          tail: "200"
+          tail: "2000"
 
   merge-reports:
     name: Report Merge

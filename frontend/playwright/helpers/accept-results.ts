@@ -85,6 +85,13 @@ export async function acceptAndVerifyResults(
 
   const saveResponse = await saveResponsePromise;
   if (!saveResponse.ok()) {
+    // Wait for the Carbon error notification to render so it appears in CI screenshots
+    const errorNotification = page.locator(
+      ".cds--toast-notification--error, .cds--inline-notification--error",
+    );
+    await errorNotification
+      .waitFor({ state: "visible", timeout: 5_000 })
+      .catch(() => {});
     const detail = (await saveResponse.text().catch(() => "")).slice(0, 500);
     throw new Error(
       `POST /rest/AnalyzerResults failed: HTTP ${saveResponse.status()} ${detail}`,

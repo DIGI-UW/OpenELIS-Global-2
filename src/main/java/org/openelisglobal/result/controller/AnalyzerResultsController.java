@@ -780,9 +780,21 @@ public class AnalyzerResultsController extends BaseController {
 
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e.getMessage(), e);
-            // Align with MVC save path: failures must not return 200 — React only redirects
-            // on 200.
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            try {
+                response.setContentType("text/plain");
+                response.getWriter().write(e.getMessage() != null ? e.getMessage() : "Unknown LIMSRuntimeException");
+            } catch (Exception ignored) {
+            }
+        } catch (Exception e) {
+            LogEvent.logError("Unexpected error saving analyzer results", e);
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            try {
+                response.setContentType("text/plain");
+                response.getWriter()
+                        .write(e.getClass().getName() + ": " + (e.getMessage() != null ? e.getMessage() : ""));
+            } catch (Exception ignored) {
+            }
         }
 
     }
