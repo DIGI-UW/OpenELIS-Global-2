@@ -5,6 +5,7 @@ perform an analyzer harness environment restart workflow with:
 
 - **Container restart** with force-recreate for harness services
 - **Optional database reset** (drop volumes with `--full-reset`)
+- **Plugin jar staging** into `volume/plugins` (same runtime prep as CI)
 - **Fixture loading** (`load-test-fixtures.sh --analyzers=full`) and **analyzer
   seeding** (`seed-analyzers.sh`)
 - **Analyzer infrastructure verification** (ASTM bridge, simulator, virtual
@@ -196,6 +197,36 @@ mkdir -p $REPO_ROOT/volume/nginx/certbot
 
 ### 4) Start containers (checkpoint #4)
 
+### 3b) Stage plugin jars for runtime loading (checkpoint #3b)
+
+**This is required for local parity with CI.**
+
+CI restores prebuilt plugin jars into `volume/plugins` before starting the
+harness stack. Local restart must do the same, otherwise FILE analyzers can fail
+to load default configs and local harness behavior diverges from CI.
+
+Run from repo root:
+
+```bash
+cd $REPO_ROOT
+mkdir -p projects/analyzer-harness/volume/plugins
+
+if ! find plugins/analyzers -type f -path "*/target/*.jar" \
+    ! -name "*sources.jar" ! -name "*javadoc.jar" | grep -q .; then
+    mvn clean install -DskipTests -Dmaven.test.skip=true -f plugins/pom.xml
+fi
+
+rm -rf projects/analyzer-harness/volume/plugins/*
+find plugins/analyzers -type f -path "*/target/*.jar" \
+  ! -name "*sources.jar" ! -name "*javadoc.jar" \
+  -exec cp {} projects/analyzer-harness/volume/plugins/ \;
+ls -lah projects/analyzer-harness/volume/plugins
+```
+
+Report: "Staged plugin jars for runtime loading"
+
+### 4) Start containers (checkpoint #4)
+
 ```bash
 cd $REPO_ROOT/projects/analyzer-harness
 docker compose $COMPOSE_FILES up -d
@@ -382,6 +413,10 @@ Where:
 - **Submodule initialization**: Before first run (or after fresh clone), run
   `git submodule update --init tools/analyzer-mock-server tools/openelis-analyzer-bridge plugins`
   so harness can build and start. The bootstrap script does this automatically.
+- **Plugin parity with CI**: Local harness must stage plugin jars into
+  `projects/analyzer-harness/volume/plugins` before startup, matching the CI
+  workflow. An empty harness plugin directory causes local/CI drift for analyzer
+  runtime loading.
 - **Harness uses port 15432** (same as root dev; stop root first to avoid
   conflict).
 - **Frontend hot-reloads**: Changes to `frontend/src/` are picked up
@@ -416,6 +451,8 @@ Where:
   `--analyzers=full`)
 - Analyzer seeding: `projects/analyzer-harness/seed-analyzers.sh` (4 analyzers
   via REST API)
+- Plugin runtime dir: `projects/analyzer-harness/volume/plugins/` (must be
+  populated from `plugins/analyzers/**/target/*.jar`)
 - Build script: `projects/analyzer-harness/build.sh` (WAR + harness images)
 - Reset script: `projects/analyzer-harness/reset-env.sh` (implements this
   workflow)
@@ -430,5 +467,6 @@ Where:
 | **Socat "exactly 2 addresses required"** | `virtual-serial` container keeps restarting                                                                 | Fixed in harness: `virtual-serial` uses `entrypoint: ["/bin/sh", "-c"]` so `command` is run by shell, not passed to socat. Ensure you have the updated `docker-compose.analyzer-test.yml`.                      |
 | **Uninitialized submodules**             | Docker build fails (e.g. analyzer-mock-server or openelis-analyzer-bridge context empty)                    | Run `git submodule update --init tools/analyzer-mock-server tools/openelis-analyzer-bridge plugins` from repo root. Bootstrap script does this.                                                                 |
 | **Missing harness volume**               | Compose fails on missing files (e.g. `volume/database/database.env`, `volume/properties/common.properties`) | Run `projects/analyzer-harness/bootstrap.sh`; it copies/adapts from root `volume/` and creates placeholders. `reset-env.sh` calls it automatically.                                                             |
+| **Empty harness plugin dir**            | FILE analyzers seed but fail to load default config locally, causing local/CI drift                           | Stage plugin jars before startup: build `plugins/` if needed, then copy `plugins/analyzers/**/target/*.jar` into `projects/analyzer-harness/volume/plugins/` exactly as CI runtime expects.                |
 | **Nginx hostname mismatch**              | Proxy starts but frontend/API routes fail (e.g. 502 or wrong host)                                          | Harness uses Docker service names `frontend` and `oe`. Bootstrap generates `volume/nginx/nginx.conf` from root with `frontend.openelis.org`→`frontend`, `oe.openelis.org`→`oe`. Re-run bootstrap to regenerate. |
 | **Login 401**                            | Playwright or curl login fails with 401                                                                     | Re-source `.env` (`set -a; . .env; set +a`) and run `projects/analyzer-harness/scripts/verify-login.sh`. If that fails: check fixtures loaded, account not locked.                                              |
