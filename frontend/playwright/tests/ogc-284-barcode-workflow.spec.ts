@@ -14,7 +14,19 @@ import { videoPause } from "../helpers/video-pause";
  */
 type PauseFn = (ms: number) => Promise<void>;
 
-/** Site/requester lookup: prefer autosuggest, but fall back to tabbing out. */
+/** Site/requester lookup: wait for suggestion dropdown, fall back to Tab if none appear. */
+async function pickFirstAutosuggestOptional(page: Page, pause: PauseFn) {
+  const suggestion = page.locator('[data-cy="auto-suggestion"]').first();
+  try {
+    await expect(suggestion).toBeVisible({ timeout: 5_000 });
+    await suggestion.click();
+    await pause(500);
+  } catch {
+    // No suggestions rendered (empty DB, no match) — accept free text via Tab
+    await page.keyboard.press("Tab");
+    await pause(200);
+  }
+}
 
 /** Visible success panel after SamplePatientEntry save (class from OrderSuccessMessage). */
 async function expectOrderEntrySaveSuccess(page: Page) {
@@ -59,24 +71,6 @@ async function scrollToAndPause(
   await pause(pauseMs);
 }
 
-async function waitForAutoSuggestion(page: Page, pattern?: RegExp) {
-  if (pattern) {
-    const matchingSuggestion = page
-      .locator('[data-cy="auto-suggestion"]')
-      .filter({ hasText: pattern })
-      .first();
-    if (
-      await matchingSuggestion.isVisible({ timeout: 2_000 }).catch(() => false)
-    ) {
-      return matchingSuggestion;
-    }
-  }
-
-  const suggestion = page.locator('[data-cy="auto-suggestion"]').first();
-  await expect(suggestion).toBeVisible({ timeout: 5_000 });
-  return suggestion;
-}
-
 async function waitForSampleStep(page: Page) {
   const sampleSelect = page.locator("select#sampleId_0");
   await expect(sampleSelect).toBeVisible({ timeout: 15_000 });
@@ -106,7 +100,7 @@ async function selectPatient(
 ) {
   // Ensure we're on the Search tab
   const searchTabBtn = page.locator('[data-cy="searchPatientTabButton"]');
-  if (await searchTabBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+  if (await searchTabBtn.isVisible()) {
     await searchTabBtn.click();
   }
 
@@ -143,9 +137,8 @@ async function selectPatient(
       : page.locator('[data-cy="radioButton"]').first();
   await expect(firstRadio).toBeVisible({ timeout: 5000 });
   await scrollToAndPause(page, firstRadio, pause, 800);
-  // Carbon overlays the visible label on top of the radio input, which can
-  // intercept pointer events in CI; forcing a radio check matches Cypress.
-  await firstRadio.check({ force: true });
+  // Carbon radio: click the visible label sibling instead of forcing the hidden input
+  await firstRadio.locator("..").locator("label").click();
 
   // Wait for patient form hydration before moving to the next wizard step.
   await expect(page.locator('[data-cy="patientSelectionReady"]')).toBeVisible({
@@ -170,7 +163,7 @@ async function selectPatient(
   // Search results can omit fields that the Add Order validation schema still
   // requires (national ID, gender, DOB). Backfill them before advancing.
   const nationalIdInput = page.locator("input#nationalId");
-  if (await nationalIdInput.isVisible({ timeout: 5000 }).catch(() => false)) {
+  if (await nationalIdInput.isVisible()) {
     if (!(await nationalIdInput.inputValue()).trim()) {
       await nationalIdInput.fill(`DEMO-${Date.now()}`);
       await nationalIdInput.press("Tab");
@@ -179,15 +172,16 @@ async function selectPatient(
     const genderMale = page.locator("input#radio-1");
     const genderFemale = page.locator("input#radio-2");
     const hasGender =
-      (await genderMale.isChecked().catch(() => false)) ||
-      (await genderFemale.isChecked().catch(() => false));
-    if (!hasGender && (await genderMale.isVisible().catch(() => false))) {
-      await genderMale.check({ force: true });
+      ((await genderMale.count()) > 0 && (await genderMale.isChecked())) ||
+      ((await genderFemale.count()) > 0 && (await genderFemale.isChecked()));
+    if (!hasGender && (await genderMale.isVisible())) {
+      // Carbon radio: click the visible label instead of forcing the hidden input
+      await page.locator('label[for="radio-1"]').click();
     }
 
     const birthDateInput = page.locator("input#date-picker-default-id");
     if (
-      (await birthDateInput.isVisible().catch(() => false)) &&
+      (await birthDateInput.isVisible()) &&
       !(await birthDateInput.inputValue()).trim()
     ) {
       await birthDateInput.fill("13/03/1990");
@@ -213,29 +207,29 @@ async function fillSampleStep(page: Page) {
   }
 
   const collectionDate = page.locator("input#collectionDate_0");
-  if (await collectionDate.isVisible().catch(() => false)) {
+  if (await collectionDate.isVisible()) {
     await collectionDate.fill("13/03/2026");
     await collectionDate.press("Tab");
   }
 
   const collectionTime = page.locator("input#collectionTime_0");
-  if (await collectionTime.isVisible().catch(() => false)) {
+  if (await collectionTime.isVisible()) {
     await collectionTime.fill("07:15");
     await collectionTime.press("Tab");
   }
 
   const collector = page.locator("input#collector_0");
-  if (await collector.isVisible().catch(() => false)) {
+  if (await collector.isVisible()) {
     await collector.fill("E2E Collector");
   }
 
   const quantity = page.locator("input#quantity");
-  if (await quantity.isVisible().catch(() => false)) {
+  if (await quantity.isVisible()) {
     await quantity.fill("1");
   }
 
   const uomSelect = page.locator("select#uomId_0");
-  if (await uomSelect.isVisible().catch(() => false)) {
+  if (await uomSelect.isVisible()) {
     await uomSelect.selectOption({ index: 1 });
   }
 
@@ -250,54 +244,54 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
 
   const labNoInput = page.locator("input#labNo");
   const generateBtn = page.locator("[data-cy='generate-labNumber']");
-  if (await generateBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
+  if (await generateBtn.isVisible()) {
     await generateBtn.click();
     await expect(labNoInput).not.toHaveValue("", { timeout: 10_000 });
   }
 
   const requestDate = page.locator("input#order_requestDate");
-  if (await requestDate.isVisible().catch(() => false)) {
+  if (await requestDate.isVisible()) {
     await requestDate.fill("13/03/2026");
     await page.keyboard.press("Tab");
     await expect(requestDate).toHaveValue("13/03/2026");
   }
   const receivedDate = page.locator("input#order_receivedDate");
-  if (await receivedDate.isVisible().catch(() => false)) {
+  if (await receivedDate.isVisible()) {
     await receivedDate.fill("13/03/2026");
     await page.keyboard.press("Tab");
     await expect(receivedDate).toHaveValue("13/03/2026");
   }
 
   const siteInput = page.locator("input#siteName");
-  if (await siteInput.isVisible().catch(() => false)) {
+  if (await siteInput.isVisible()) {
     await siteInput.clear();
     await siteInput.fill("CAMES MAN");
-    await page.keyboard.press("Tab");
-    await pause(300);
+    await pause(1200);
+    await pickFirstAutosuggestOptional(page, pause);
   }
 
   const requesterLookup = page.locator("input#requesterId");
-  if (await requesterLookup.isVisible().catch(() => false)) {
+  if (await requesterLookup.isVisible()) {
     await requesterLookup.clear();
-    await requesterLookup.fill("Prime, Optimus");
-    await page.keyboard.press("Tab");
-    await pause(300);
+    await requesterLookup.fill("Prime");
+    await pause(800);
+    await pickFirstAutosuggestOptional(page, pause);
   }
 
   const requesterFirst = page.locator("input#requesterFirstName");
-  if (await requesterFirst.isVisible().catch(() => false)) {
+  if (await requesterFirst.isVisible()) {
     await requesterFirst.clear();
     await requesterFirst.fill("Optimus");
     await expect(requesterFirst).toHaveValue("Optimus");
   }
   const requesterLast = page.locator("input#requesterLastName");
-  if (await requesterLast.isVisible().catch(() => false)) {
+  if (await requesterLast.isVisible()) {
     await requesterLast.clear();
     await requesterLast.fill("Prime");
     await expect(requesterLast).toHaveValue("Prime");
   }
 
-  if (await requesterLookup.isVisible().catch(() => false)) {
+  if (await requesterLookup.isVisible()) {
     if (!(await requesterLookup.inputValue()).trim()) {
       await requesterLookup.fill("Prime, Optimus");
     }
@@ -308,7 +302,7 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
   const paymentStatus = page.getByRole("combobox", {
     name: "Patient payment status:",
   });
-  if (await paymentStatus.isVisible().catch(() => false)) {
+  if (await paymentStatus.isVisible()) {
     const current = await paymentStatus.inputValue();
     if (!current) {
       await paymentStatus.selectOption({ index: 1 });
@@ -318,7 +312,7 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
   const samplingPoint = page.getByRole("combobox", {
     name: "Sampling performed for analysis:",
   });
-  if (await samplingPoint.isVisible().catch(() => false)) {
+  if (await samplingPoint.isVisible()) {
     const current = await samplingPoint.inputValue();
     if (!current) {
       await samplingPoint.selectOption({ index: 1 });
@@ -441,7 +435,7 @@ test("US1 — Admin configures barcode label quantities", async ({
   await showSceneLabel(page, "US1 · FR-002c — Optional Elements", testInfo);
 
   const optionalCheckbox = page.locator("#orderPatientDobCheck");
-  if (await optionalCheckbox.isVisible({ timeout: 3000 }).catch(() => false)) {
+  if (await optionalCheckbox.isVisible()) {
     await scrollToAndPause(page, optionalCheckbox, pause, 2000);
   }
 
@@ -506,7 +500,7 @@ test("US2 — Capture label quantities during sample creation", async ({
 
   // Step 1: program selection — skip through (no required input)
   const next2 = page.getByRole("button", { name: "Next", exact: true });
-  if (await next2.isVisible({ timeout: 2000 }).catch(() => false)) {
+  if (await next2.isVisible()) {
     await expect(next2).toBeEnabled({ timeout: 5_000 });
     await next2.click();
     await waitForSampleStep(page);
@@ -543,7 +537,7 @@ test("US2 — Capture label quantities during sample creation", async ({
 
   // Edit specimen labels
   const specimenInput = labelsSection.locator("#sample-row-1");
-  if (await specimenInput.isVisible().catch(() => false)) {
+  if (await specimenInput.isVisible()) {
     await scrollToAndPause(page, specimenInput, pause, 600);
     await specimenInput.fill("2");
     await pause(800);
@@ -551,7 +545,7 @@ test("US2 — Capture label quantities during sample creation", async ({
 
   // Running total
   const runningTotal = labelsSection.locator("p");
-  if (await runningTotal.isVisible().catch(() => false)) {
+  if (await runningTotal.isVisible()) {
     await scrollToAndPause(page, runningTotal, pause, 2000);
   }
 
@@ -599,7 +593,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   await clickNext(page);
 
   const next2 = page.getByRole("button", { name: "Next", exact: true });
-  if (await next2.isVisible({ timeout: 2000 }).catch(() => false)) {
+  if (await next2.isVisible()) {
     await expect(next2).toBeEnabled({ timeout: 5_000 });
     await next2.click();
     await waitForSampleStep(page);
@@ -609,7 +603,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
 
   // Show labels section briefly before moving on
   const labelsSection = page.getByTestId("labels-section-root");
-  if (await labelsSection.isVisible({ timeout: 5000 }).catch(() => false)) {
+  if (await labelsSection.isVisible()) {
     await scrollToAndPause(page, labelsSection, pause, 1500);
   }
 
@@ -634,11 +628,12 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   await showSceneLabel(page, "US3 · FR-011 — Print Dialog", testInfo);
 
   const successArea = page.locator(".orderEntrySuccessMsg").first();
+  await expect(successArea).toBeVisible({ timeout: 10_000 });
   await scrollToAndPause(page, successArea, pause, 1000);
 
   // Scroll to print dialog
   const printTitle = page.getByText(/print labels/i).first();
-  if (await printTitle.isVisible({ timeout: 3000 }).catch(() => false)) {
+  if (await printTitle.isVisible()) {
     await scrollToAndPause(page, printTitle, pause, 1500);
   }
 
@@ -660,7 +655,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   await showSceneLabel(page, "US3 · FR-013 — Done / Defer", testInfo);
 
   const doneButton = page.getByRole("button", { name: /^(done|skip)$/i });
-  if (await doneButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+  if (await doneButton.isVisible()) {
     await scrollToAndPause(page, doneButton, pause, 2000);
   }
 
@@ -679,13 +674,12 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   const printBarcodeHeading = page.getByRole("heading", {
     name: /print bar code labels/i,
   });
-  if (await printBarcodeHeading.isVisible().catch(() => false)) {
-    await scrollToAndPause(page, printBarcodeHeading, pause, 1500);
+  await expect(printBarcodeHeading).toBeVisible({ timeout: 15_000 });
+  await scrollToAndPause(page, printBarcodeHeading, pause, 1500);
 
-    const siteSearch = page.getByLabel(/search site name/i);
-    if (await siteSearch.isVisible().catch(() => false)) {
-      await scrollToAndPause(page, siteSearch, pause, 2000);
-    }
+  const siteSearch = page.getByLabel(/search site name/i);
+  if (await siteSearch.isVisible()) {
+    await scrollToAndPause(page, siteSearch, pause, 2000);
   }
 
   await showTitleCard(

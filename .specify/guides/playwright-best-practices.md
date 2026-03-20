@@ -498,15 +498,123 @@ python .ai/skills/playwright/scripts/validate-playwright-project.py playwright/t
 
 ## Anti-Patterns
 
-| ❌ Avoid                        | ✅ Instead                          |
-| ------------------------------- | ----------------------------------- |
-| `page.waitForTimeout(ms)`       | Auto-retrying `expect()` assertions |
-| `.first()` / `.nth(0)`          | More specific selectors             |
-| Hardcoded credentials in tests  | Environment variables               |
-| Testing CSS classes for state   | Role/ARIA attributes                |
-| Long tests with many assertions | Focused single-concern tests        |
-| Repeated login in each test     | Setup project with storageState     |
-| Raw CSS selectors               | Semantic `getByRole`, `getByLabel`  |
+### Critical Anti-Patterns (Hard Rules)
+
+These patterns MUST NOT appear in Playwright tests. Apply as DO/DO NOT rules
+during code review.
+
+| DO NOT | WHY | DO INSTEAD |
+|---|---|---|
+| `response.ok()` as pass/fail | Backend 500 throws before UI renders error; CI screenshots show stale state | `waitForResponse` for sync only, then `expect(ui).toBeVisible()` |
+| `{ force: true }` on Carbon inputs | Carbon uses `visually-hidden` on `<input>`; force bypasses actionability | Click the `<label>`: `page.locator('label[for="id"]').click()` |
+| `.catch(() => false)` on `isVisible()` | `isVisible()` returns boolean — catch is dead code hiding real errors | Call `isVisible()` directly |
+| `isVisible({ timeout: N })` | Timeout param is deprecated and ignored | Use `expect(el).toBeVisible({ timeout: N })` for auto-retry |
+| `page.getByLabel("text").check()` on Carbon | Targets the hidden `<input>` — fails actionability | Click the `<label>` element |
+| `isChecked()` on optional elements (no guard) | Throws if element not in DOM | `(await el.count()) > 0 && (await el.isChecked())` |
+| Type + Tab to replace autocomplete selection | `onSelect` sets server-side IDs that `onChange` does not | Wait for suggestion, click it; Tab only as fallback |
+| Tests with zero `expect()` calls | Pure navigation provides no regression protection | At least one `expect()` per test |
+
+### Structural Anti-Patterns
+
+| DO NOT | DO INSTEAD |
+|---|---|
+| `page.waitForTimeout(ms)` | Auto-retrying `expect()` assertions |
+| `.first()` / `.nth(0)` blindly | More specific selectors |
+| Hardcoded credentials in tests | `TEST_USER`/`TEST_PASS` environment variables |
+| CSS classes for state assertions | Role/ARIA attribute assertions |
+| Long tests with many concerns | Focused tests with `test.step()` sections |
+| Repeated login in each test | Setup project with `storageState` |
+| Raw CSS selectors | Semantic `getByRole`, `getByLabel` |
+
+### Correct `waitForResponse` Pattern
+
+```typescript
+// Synchronize on network, then assert on UI
+const responsePromise = page.waitForResponse('**/api/save');
+await saveButton.click();
+await responsePromise; // sync only — do not check .ok()
+
+// This is the real assertion
+await expect(page.getByText('Saved successfully')).toBeVisible();
+```
+
+### Correct Carbon Checkbox/Radio Pattern
+
+```typescript
+// DO: Click the label — the visible, clickable element
+await page.locator('label[for="saveallresults"]').click();
+
+// DO: For dynamic IDs, navigate to the parent wrapper
+await radioInput.locator('..').locator('label').click();
+
+// DO NOT: page.getByLabel("text").check() — targets hidden input
+// DO NOT: checkbox.check({ force: true }) — bypasses actionability
+```
+
+### Correct Autocomplete Pattern
+
+```typescript
+// Wait for suggestion dropdown, click the first match
+const suggestion = page.locator('[data-cy="auto-suggestion"]').first();
+try {
+  await expect(suggestion).toBeVisible({ timeout: 5_000 });
+  await suggestion.click();
+} catch {
+  // No suggestions (empty DB, no match) — accept free text via Tab
+  await page.keyboard.press("Tab");
+}
+```
+
+### Correct Optional Element Check
+
+```typescript
+// isVisible() returns boolean directly — no catch needed
+if (await element.isVisible()) {
+  await element.click();
+}
+
+// For isChecked() on optional elements — guard with count()
+const isChecked =
+  (await element.count()) > 0 && (await element.isChecked());
+```
+
+## Multi-Step Workflow Pattern
+
+Use `test.step()` to organize long workflows. Each step should have at least one
+assertion.
+
+```typescript
+test('complete sample order workflow', async ({ page }) => {
+  await test.step('Search and select patient', async () => {
+    await page.goto('/SamplePatientEntry');
+    await page.locator('input#lastName').fill('TEST-Smith');
+    await page.locator('button#local_search').click();
+    await expect(page.locator('[data-cy="radioButton"]').first()).toBeVisible();
+  });
+
+  await test.step('Fill sample details', async () => {
+    // ... fill sample type, tests, etc.
+    await expect(page.getByRole('button', { name: 'Next' })).toBeEnabled();
+  });
+
+  await test.step('Submit and verify success', async () => {
+    await page.getByRole('button', { name: 'Submit' }).click();
+    await expect(page.locator('.orderEntrySuccessMsg')).toBeVisible();
+  });
+});
+```
+
+## Soft Assertions for Transient Notifications
+
+Toasts and notifications may disappear before assertions run. Use soft
+assertions with descriptive messages:
+
+```typescript
+await expect.soft(
+  page.getByRole('alert'),
+  'Success notification should appear after save'
+).toBeVisible({ timeout: 10_000 });
+```
 
 ---
 
@@ -521,5 +629,5 @@ python .ai/skills/playwright/scripts/validate-playwright-project.py playwright/t
 
 ---
 
-**Last Updated:** 2026-03-14  
+**Last Updated:** 2026-03-20
 **Applies To:** `frontend/playwright/`

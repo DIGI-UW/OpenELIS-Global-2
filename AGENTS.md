@@ -1604,6 +1604,70 @@ must be explicitly added to a project's `testMatch` allowlist in
 - **`CORE_DEMO_TESTS` / `HARNESS_DEMO_TESTS`**: Shared globs between each demo
   pair and its `*-demo-video` project — defined in `playwright.config.ts`.
 
+#### Playwright Anti-Patterns (MUST AVOID)
+
+These patterns cause flaky tests and invisible failures. Apply them as hard
+rules when writing or reviewing Playwright code.
+
+**DO NOT: Use `response.ok()` as test pass/fail**
+
+Use `waitForResponse` for synchronization only. The real assertion must be on
+visible UI state. When the backend returns HTTP 500, checking `response.ok()`
+throws before the UI renders its error notification — CI screenshots show stale
+state.
+
+```typescript
+// DO: sync then assert on UI
+const responsePromise = page.waitForResponse('**/api/save');
+await saveButton.click();
+await responsePromise; // sync only — do not check .ok()
+await expect(page.getByText('Saved successfully')).toBeVisible();
+```
+
+**DO NOT: Use `{ force: true }` on Carbon inputs**
+
+Carbon Design System applies `visually-hidden` to `<input type="checkbox">` and
+`<input type="radio">`. The visible, clickable element is the associated
+`<label>`. Click the label instead.
+
+```typescript
+// DO: click the label
+await page.locator('label[for="saveallresults"]').click();
+// or for dynamic IDs:
+await input.locator('..').locator('label').click();
+
+// DO NOT:
+await checkbox.check({ force: true }); // bypasses actionability checks
+await page.getByLabel('text').check(); // targets hidden input — will fail
+```
+
+**DO NOT: Use `.catch(() => false)` on `isVisible()`**
+
+`locator.isVisible()` returns `boolean` without throwing. The `.catch()` is dead
+code that hides real errors (like strict mode violations matching 2+ elements).
+The `timeout` parameter on `isVisible()` is deprecated and ignored.
+
+```typescript
+// DO:
+if (await element.isVisible()) { ... }
+// For waiting: use web-first assertion
+await expect(element).toBeVisible({ timeout: 5_000 });
+
+// DO NOT:
+if (await element.isVisible({ timeout: 3000 }).catch(() => false)) { ... }
+```
+
+**DO NOT: Replace autocomplete selection with type + Tab**
+
+The `AutoComplete` component's `onSelect` callback sets server-side IDs that
+`onChange` (typing) does not. Typing + Tab leaves `referringSiteId` empty. Wait
+for suggestion dropdown items, then click one. Provide a Tab fallback only for
+when no suggestions appear.
+
+**ALWAYS: Include at least one `expect()` assertion per test.**
+
+**Full guide:** `.specify/guides/playwright-best-practices.md`
+
 #### Available npm Scripts
 
 ```bash
